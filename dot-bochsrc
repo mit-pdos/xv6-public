@@ -1,0 +1,79 @@
+###############################################################
+# bochsrc file for pragmalinux disk image.
+#
+# This file is provided both as .bochsrc and bochsrc so
+# that it works on win32 and unix.
+###############################################################
+
+# how much memory the emulated machine will have
+megs: 32
+
+# filename of ROM images
+romimage: file=/usr/local/BIOS-bochs-latest, address=0xf0000
+vgaromimage: file=/usr/local/VGABIOS-lgpl-latest
+
+# Use the parallel port as an alternate console,
+# so that we can run Bochs without the GUI.
+parport1: enabled=1, file="/dev/stdout"
+#parport1: enabled=1, file="/dev/null"
+
+# uncommenting one of the following lines can be used to specify your
+# preferred display. (defaults to x11 for bochs-bin and to term for
+# bochs-term)
+
+#display_library: x
+
+# nogui can still be useful because you can see the output on the
+# parport1 from above
+#display_library: nogui
+
+# if using "term", you probably want to change the parport output to
+# go to a file or /dev/null
+#display_library: term
+
+# disk images
+ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
+# ata0-master: type=disk, mode=flat, path="./obj/kern/bochs.img", cylinders=200, heads=16, spt=63
+ata0-master: type=disk, mode=flat, path="./xv6.img", cylinders=100, heads=10, spt=10
+# ata0-slave: type=disk, mode=flat, path="./obj/fs/fs.img", cylinders=200, heads=16, spt=63
+
+# choose the boot disk.
+boot: c
+
+# where do we send log messages?
+log: bochs.log
+#log: /dev/stdout
+
+# disable the mouse
+mouse: enabled=0
+
+#debug: action=ignore
+info: action=ignore
+error: action=report
+panic: action=ask
+
+# this changes how often the screen is refreshed.  Lowering it will
+# make your screen update more often, which will slow down emulation,
+# but will make the display respond faster.  It can also be useful if
+# you machine is panicing and the most recent screen changes are not
+# displayed before it panics.
+
+vga_update_interval: 100000
+
+# changing ips can lead to dramatically different performance.  It
+# also affects how quickly time passes in the emulated machine.
+# Setting it too low can cause clock interrupts to happen too rapidly.
+# Setting it too high will make the whole machine feel sluggish.
+# (Note: with using clock sync=realtime, the ips parameter is not
+# really used, although it is still used for vga updates)
+ips: 2000000
+
+# This means that time in the emulated machine is the same as
+# realtime.  This can be scary because running the same simulation
+# twice in a row can lead to different results (because they started
+# at different times, for instance).  If you want to use non-real
+# time, then use sync=none.
+clock: sync=realtime, time0=local
+# clock: sync=none, time0=946681200 # jan 1, 2000
+
+keyboard_serial_delay: 10

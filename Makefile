@@ -4,6 +4,7 @@ CC = i386-jos-elf-gcc
 LD = i386-jos-elf-ld
 OBJCOPY = i386-jos-elf-objcopy
 OBJDUMP = i386-jos-elf-objdump
+CFLAGS = -nostdinc -I. -O
 
 xv6.img : bootblock kernel
 	dd if=/dev/zero of=xv6.img count=10000
@@ -22,9 +23,5 @@ kernel : $(OBJS)
 	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS)
 	$(OBJDUMP) -S kernel > kernel.asm
 
-%.o: %.c
-	$(CC) -nostdinc -I. -O -c -o $@ $<
-
 clean : 
-	rm -f bootmain.o bootasm.o bootblock.o bootblock
-	rm -f kernel main.o kernel.asm xv6.img
+	rm -f *.o bootblock kernel kernel.asm xv6.img
