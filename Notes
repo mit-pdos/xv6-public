@@ -1,0 +1,67 @@
+bootmain.c doesn't work right if the ELF sections aren't
+sector-aligned. so you can't use ld -N. and the sections may also need
+to be non-zero length, only really matters for tiny "kernels".
+
+kernel loaded at 1 megabyte. stack same place that bootasm.S left it.
+
+kinit() should find real mem size
+  and rescue useable memory below 1 meg
+
+no paging, no use of page table hardware, just segments
+
+no user area: no magic kernel stack mapping
+  so no copying of kernel stack during fork
+  though there is a kernel stack page for each process
+
+no kernel malloc(), just kalloc() for user core
+
+user pointers aren't valid in the kernel
+
+setting up first process
+  we do want a process zero, as template
+    but not runnable
+  just set up return-from-trap frame on new kernel stack
+  fake user program that calls exec
+
+map text read-only?
+shared text?
+
+what's on the stack during a trap or sys call?
+  PUSHA before scheduler switch? for callee-saved registers.
+  segment contents?
+  what does iret need to get out of the kernel?
+  how does INT know what kernel stack to use?
+ 
+are interrupts turned on in the kernel? probably.
+
+per-cpu curproc
+one tss per process, or one per cpu?
+one segment array per cpu, or per process?
+
+pass curproc explicitly, or implicit from cpu #?
+  e.g. argument to newproc()?
+
+test stack expansion
+test running out of memory, process slots
+
+we can't really use a separate stack segment, since stack addresses
+need to work correctly as ordinary pointers. the same may be true of
+data vs text. how can we have a gap between data and stack, so that
+both can grow, without committing 4GB of physical memory? does this
+mean we need paging?
+
+what's the simplest way to add the paging we need?
+  one page table, re-write it each time we leave the kernel?
+  page table per process?
+  probably need to use 0-0xffffffff segments, so that
+    both data and stack pointers always work
+  so is it now worth it to make a process's phys mem contiguous?
+  or could use segment limits and 4 meg pages?
+    but limits would prevent using stack pointers as data pointers
+  how to write-protect text? not important?
+
+perhaps have fixed-size stack, put it in the data segment?
+
+oops, if kernel stack is in contiguous user phys mem, then moving
+users' memory (e.g. to expand it) will wreck any pointers into the
+kernel stack.
