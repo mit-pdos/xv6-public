@@ -12,11 +12,15 @@ extern unsigned vectors[]; /* vectors.S, array of 256 entry point addresses */
 extern void trapenter();
 extern void trapenter1();
 
+
+int xx;
+
 void
 tinit()
 {
   int i;
 
+  xx = 0;
   for(i = 0; i < 256; i++){
     SETGATE(idt[i], 1, SEG_KCODE << 3, vectors[i], 3);
   }
@@ -27,8 +31,10 @@ void
 trap(struct Trapframe *tf)
 {
   /* which process are we running? */
-  cprintf("trap %d tf %x\n", tf->tf_trapno, tf);
-  while(1)
-    ;
+  if(xx < 10)
+    cprintf("%d\n", tf->tf_trapno);
+  xx++;
+  //while(1)
+  //;
   // XXX probably ought to lgdt on trap return
 }

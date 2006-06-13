@@ -14,7 +14,7 @@ for(my $i = 0; $i < 256; $i++){
     if(($i < 8 || $i > 14) && $i != 17){
         print "\tpushl \$0\n";
     }
-    print "\tpushl $i\n";
+    print "\tpushl \$$i\n";
     print "\tjmp alltraps\n";
 }
 print ".data\n";

@@ -73,3 +73,9 @@ setupsegs() may modify current segment table, is that legal?
 trap() ought to lgdt on return, since currently only done in swtch()
 
 protect hardware interrupt vectors from user INT instructions?
+
+i'm getting a curious interrupt when jumping into user space. maybe
+it's IRQ 0, but it comes at a weird and changing vector (e.g. 119) if
+you don't initialize the PIC. why doesn't jos see this? if i
+initialize the PIC with IRQ_OFFSET 32, the interrupt arrives at vector
+32.

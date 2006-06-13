@@ -5,12 +5,20 @@
 #include "defs.h"
 #include "x86.h"
 
-char junk1[20000];
-char junk2[20000] = { 1 };
+extern char edata[], end[];
 
 main()
 {
   struct proc *p;
+  
+  // clear BSS
+  memset(edata, 0, end - edata);
+
+  // partially initizialize PIC
+  outb(0x20+1, 0xFF); // IO_PIC1
+  outb(0xA0+1, 0xFF); // IO_PIC2
+  outb(0x20, 0x11);
+  outb(0x20+1, 32);
 
   cprintf("\nxV6\n\n");
 
