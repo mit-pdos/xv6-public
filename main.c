@@ -14,8 +14,8 @@ main()
 
   cprintf("\nxV6\n\n");
 
-  // initialize physical memory allocator
-  kinit();
+  kinit(); // physical memory allocator
+  tinit(); // traps and interrupts
 
   // create fake process zero
   p = &proc[0];
@@ -33,6 +33,10 @@ main()
 
   p = newproc(&proc[0]);
   // xxx copy instructions to p->mem
+  p->mem[0] = 0x90; // nop 
+  p->mem[1] = 0x90; // nop 
+  p->mem[2] = 0x42; // inc %edx
+  p->mem[3] = 0x42; // inc %edx
   p->tf->tf_eip = 0;
   p->tf->tf_esp = p->sz;
 

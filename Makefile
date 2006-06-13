@@ -1,4 +1,4 @@
-OBJS = main.o console.o string.o kalloc.o proc.o trapasm.o
+OBJS = main.o console.o string.o kalloc.o proc.o trapasm.o trap.o vectors.o
 
 CC = i386-jos-elf-gcc
 LD = i386-jos-elf-ld
@@ -22,6 +22,9 @@ bootblock : bootasm.S bootmain.c
 kernel : $(OBJS)
 	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS)
 	$(OBJDUMP) -S kernel > kernel.asm
+
+vectors.S : vectors.pl
+	perl vectors.pl > vectors.S
 
 clean : 
 	rm -f *.o bootblock kernel kernel.asm xv6.img

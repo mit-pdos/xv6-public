@@ -1,4 +1,20 @@
+#include "mmu.h"
+        
 	.text
+        .globl alltraps
+        .globl trap
+alltraps:
+        /* vectors.S sends all traps here */
+        pushl   %ds     # build
+        pushl   %es     #  trap
+        pushal          #  frame
+        movl $16,%eax    # SEG_KDATA << 3
+        movw %ax,%ds        #  kernel
+        movw %ax,%es        #  segments
+        pushl %esp      # pass pointer to this trapframe
+        call    trap        #  and call trap()
+        # return falls through to trapret...
+        
         .globl trapret
 	/*
          * a forked process RETs here

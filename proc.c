@@ -20,7 +20,8 @@ setupsegs(struct proc *p)
   p->ts.ts_ss0 = SEG_KDATA << 3;
   p->ts.ts_esp0 = (unsigned)(p->kstack + KSTACKSIZE);
 
-  memset(&p->gdt, 0, sizeof(p->gdt));
+  // XXX it may be wrong to modify the current segment table!
+
   p->gdt[0] = SEG_NULL;
   p->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
   p->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
@@ -73,7 +74,7 @@ newproc(struct proc *op)
   np->esp = (unsigned) sp;
   np->ebp = (unsigned) sp;
 
-  cprintf("esp %x ebp %x mem %x\n", np->esp, np->ebp, np->mem);
+  cprintf("newproc esp %x ebp %x mem %x\n", np->esp, np->ebp, np->mem);
 
   return np;
 }
@@ -101,12 +102,18 @@ swtch(struct proc *op)
   op->ebp = read_ebp();
   op->esp = read_esp();
 
+  cprintf("switching\n");
+
   // XXX callee-saved registers?
 
-  // this happens to work, but probably isn't safe:
-  // it's not clear that np->ebp will evaluate
-  // correctly after changing the stack pointer.
+  // XXX probably ought to lgdt on trap return too
+
   asm volatile("lgdt %0" : : "g" (np->gdt_pd.pd_lim));
+  ltr(SEG_TSS << 3);
+
+  // this happens to work, but probably isn't safe:
+  // it's not clear that np->ebp is guaranteed to evaluate
+  // correctly after changing the stack pointer.
   asm volatile("movl %0, %%esp" : : "g" (np->esp));
   asm volatile("movl %0, %%ebp" : : "g" (np->ebp));
 }

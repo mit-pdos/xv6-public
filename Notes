@@ -65,3 +65,11 @@ perhaps have fixed-size stack, put it in the data segment?
 oops, if kernel stack is in contiguous user phys mem, then moving
 users' memory (e.g. to expand it) will wreck any pointers into the
 kernel stack.
+
+do we need to set fs and gs? so user processes can't abuse them?
+
+setupsegs() may modify current segment table, is that legal?
+
+trap() ought to lgdt on return, since currently only done in swtch()
+
+protect hardware interrupt vectors from user INT instructions?
