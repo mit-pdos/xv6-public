@@ -4,6 +4,7 @@
 #include "proc.h"
 #include "defs.h"
 #include "x86.h"
+#include "traps.h"
 
 struct Gatedesc idt[256];
 struct Pseudodesc idt_pd = { 0, sizeof(idt) - 1, (unsigned) &idt };
@@ -12,29 +13,36 @@ extern unsigned vectors[]; /* vectors.S, array of 256 entry point addresses */
 extern void trapenter();
 extern void trapenter1();
 
-
-int xx;
-
 void
 tinit()
 {
   int i;
 
-  xx = 0;
   for(i = 0; i < 256; i++){
-    SETGATE(idt[i], 1, SEG_KCODE << 3, vectors[i], 3);
+    SETGATE(idt[i], 1, SEG_KCODE << 3, vectors[i], 0);
   }
+  SETGATE(idt[T_SYSCALL], T_SYSCALL, SEG_KCODE << 3, vectors[48], 3);
   asm volatile("lidt %0" : : "g" (idt_pd.pd_lim));
 }
 
 void
 trap(struct Trapframe *tf)
 {
-  /* which process are we running? */
-  if(xx < 10)
-    cprintf("%d\n", tf->tf_trapno);
-  xx++;
-  //while(1)
-  //;
+  int v = tf->tf_trapno;
+  cprintf("trap %d eip %x:%x\n", tf->tf_trapno, tf->tf_cs, tf->tf_eip);
+
+  if(v == T_SYSCALL){
+    curproc->tf = tf;
+    syscall();
+    return;
+  }
+
+  if(v == 32){
+    // probably clock
+    return;
+  }
+
+  while(1)
+    ;
   // XXX probably ought to lgdt on trap return
 }

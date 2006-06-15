@@ -6,6 +6,7 @@
 #include "defs.h"
 
 struct proc proc[NPROC];
+struct proc *curproc;
 
 /*
  * set up a process's task state and segment descriptors
@@ -25,7 +26,8 @@ setupsegs(struct proc *p)
   p->gdt[0] = SEG_NULL;
   p->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
   p->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  p->gdt[SEG_TSS] = SEG16(STS_T32A, (unsigned) &p->ts, sizeof(p->ts), 0);
+  p->gdt[SEG_TSS] = SEG16(STS_T32A, (unsigned) &p->ts,
+                                sizeof(p->ts), 0);
   p->gdt[SEG_TSS].sd_s = 0;
   p->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (unsigned)p->mem, p->sz, 3);
   p->gdt[SEG_UDATA] = SEG(STA_W, (unsigned)p->mem, p->sz, 3);
@@ -41,7 +43,7 @@ extern void trapret();
  * sets up the stack to return as if from system call.
  */
 struct proc *
-newproc(struct proc *op)
+newproc()
 {
   struct proc *np;
   unsigned *sp;
@@ -52,29 +54,30 @@ newproc(struct proc *op)
   if(np >= &proc[NPROC])
     return 0;
 
-  np->sz = op->sz;
-  np->mem = kalloc(op->sz);
+  np->sz = curproc->sz;
+  np->mem = kalloc(curproc->sz);
   if(np->mem == 0)
     return 0;
-  memcpy(np->mem, op->mem, np->sz);
+  memcpy(np->mem, curproc->mem, np->sz);
   np->kstack = kalloc(KSTACKSIZE);
   if(np->kstack == 0){
-    kfree(np->mem, op->sz);
+    kfree(np->mem, curproc->sz);
     return 0;
   }
-  np->tf = (struct Trapframe *) (np->kstack + KSTACKSIZE - sizeof(struct Trapframe));
   setupsegs(np);
-  np->state = RUNNABLE;
   
   // set up kernel stack to return to user space
-  *(np->tf) = *(op->tf);
+  np->tf = (struct Trapframe *) (np->kstack + KSTACKSIZE - sizeof(struct Trapframe));
+  *(np->tf) = *(curproc->tf);
   sp = (unsigned *) np->tf;
   *(--sp) = (unsigned) &trapret;  // for return from swtch()
   *(--sp) = 0;  // previous bp for leave in swtch()
   np->esp = (unsigned) sp;
   np->ebp = (unsigned) sp;
 
-  cprintf("newproc esp %x ebp %x mem %x\n", np->esp, np->ebp, np->mem);
+  np->state = RUNNABLE;
+
+  cprintf("newproc %x\n", np);
 
   return np;
 }
@@ -83,12 +86,12 @@ newproc(struct proc *op)
  * find a runnable process and switch to it.
  */
 void
-swtch(struct proc *op)
+swtch()
 {
   struct proc *np;
   
   while(1){
-    for(np = op + 1; np != op; np++){
+    for(np = curproc + 1; np != curproc; np++){
       if(np == &proc[NPROC])
         np = &proc[0];
       if(np->state == RUNNABLE)
@@ -99,10 +102,12 @@ swtch(struct proc *op)
     // idle...
   }
   
-  op->ebp = read_ebp();
-  op->esp = read_esp();
+  curproc->ebp = read_ebp();
+  curproc->esp = read_esp();
 
-  cprintf("switching\n");
+  cprintf("swtch %x -> %x\n", curproc, np);
+
+  curproc = np;
 
   // XXX callee-saved registers?
 

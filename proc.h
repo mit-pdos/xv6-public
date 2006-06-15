@@ -32,3 +32,4 @@ struct proc{
 };
 
 extern struct proc proc[];
+extern struct proc *curproc;

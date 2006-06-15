@@ -13,6 +13,7 @@ alltraps:
         movw %ax,%es        #  segments
         pushl %esp      # pass pointer to this trapframe
         call    trap        #  and call trap()
+        addl $4, %esp
         # return falls through to trapret...
         
         .globl trapret

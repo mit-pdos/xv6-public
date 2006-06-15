@@ -4,12 +4,16 @@
 #include "proc.h"
 #include "defs.h"
 #include "x86.h"
+#include "traps.h"
+#include "syscall.h"
 
 extern char edata[], end[];
 
+int
 main()
 {
   struct proc *p;
+  int i;
   
   // clear BSS
   memset(edata, 0, end - edata);
@@ -27,6 +31,7 @@ main()
 
   // create fake process zero
   p = &proc[0];
+  curproc = p;
   p->state = WAITING;
   p->sz = PAGE;
   p->mem = kalloc(p->sz);
@@ -39,14 +44,28 @@ main()
   p->tf->tf_eflags = FL_IF;
   setupsegs(p);
 
-  p = newproc(&proc[0]);
-  // xxx copy instructions to p->mem
-  p->mem[0] = 0x90; // nop 
-  p->mem[1] = 0x90; // nop 
-  p->mem[2] = 0x42; // inc %edx
-  p->mem[3] = 0x42; // inc %edx
+  p = newproc();
+
+  i = 0;
+  p->mem[i++] = 0x90; // nop 
+  p->mem[i++] = 0xb8; // mov ..., %eax
+  p->mem[i++] = SYS_fork;
+  p->mem[i++] = 0;
+  p->mem[i++] = 0;
+  p->mem[i++] = 0;
+  p->mem[i++] = 0xcd; // int
+  p->mem[i++] = T_SYSCALL;
+  p->mem[i++] = 0xb8; // mov ..., %eax
+  p->mem[i++] = SYS_exit;
+  p->mem[i++] = 0;
+  p->mem[i++] = 0;
+  p->mem[i++] = 0;
+  p->mem[i++] = 0xcd; // int
+  p->mem[i++] = T_SYSCALL;
   p->tf->tf_eip = 0;
   p->tf->tf_esp = p->sz;
 
-  swtch(&proc[0]);
+  swtch();
+
+  return 0;
 }

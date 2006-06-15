@@ -1,3 +1,6 @@
+#include "types.h"
+#include "defs.h"
+
 void *
 memcpy(void *dst, void *src, unsigned n)
 {

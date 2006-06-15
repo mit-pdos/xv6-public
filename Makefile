@@ -1,10 +1,11 @@
-OBJS = main.o console.o string.o kalloc.o proc.o trapasm.o trap.o vectors.o
+OBJS = main.o console.o string.o kalloc.o proc.o trapasm.o trap.o vectors.o \
+       syscall.o
 
 CC = i386-jos-elf-gcc
 LD = i386-jos-elf-ld
 OBJCOPY = i386-jos-elf-objcopy
 OBJDUMP = i386-jos-elf-objdump
-CFLAGS = -nostdinc -I. -O
+CFLAGS = -nostdinc -I. -O -Wall
 
 xv6.img : bootblock kernel
 	dd if=/dev/zero of=xv6.img count=10000

@@ -40,6 +40,7 @@ one segment array per cpu, or per process?
 
 pass curproc explicitly, or implicit from cpu #?
   e.g. argument to newproc()?
+  hmm, you need a global curproc[cpu] for trap() &c
 
 test stack expansion
 test running out of memory, process slots
