@@ -7,6 +7,7 @@
 
 struct proc proc[NPROC];
 struct proc *curproc;
+int next_pid = 1;
 
 /*
  * set up a process's task state and segment descriptors
@@ -54,6 +55,8 @@ newproc()
   if(np >= &proc[NPROC])
     return 0;
 
+  np->pid = next_pid++;
+  np->ppid = curproc->pid;
   np->sz = curproc->sz;
   np->mem = kalloc(curproc->sz);
   if(np->mem == 0)
@@ -111,7 +114,12 @@ swtch()
 
   // XXX callee-saved registers?
 
-  // XXX probably ought to lgdt on trap return too
+  // h/w sets busy bit in TSS descriptor sometimes, and faults
+  // if it's set in LTR. so clear tss descriptor busy bit.
+  curproc->gdt[SEG_TSS].sd_type = STS_T32A;
+
+  // XXX probably ought to lgdt on trap return too, in case
+  // a system call has moved a program or changed its size.
 
   asm volatile("lgdt %0" : : "g" (np->gdt_pd.pd_lim));
   ltr(SEG_TSS << 3);
@@ -121,4 +129,22 @@ swtch()
   // correctly after changing the stack pointer.
   asm volatile("movl %0, %%esp" : : "g" (np->esp));
   asm volatile("movl %0, %%ebp" : : "g" (np->ebp));
+}
+
+void
+sleep(void *chan)
+{
+  curproc->chan = chan;
+  curproc->state = WAITING;
+  swtch();
+}
+
+void
+wakeup(void *chan)
+{
+  struct proc *p;
+
+  for(p = proc; p < &proc[NPROC]; p++)
+    if(p->state == WAITING && p->chan == chan)
+      p->state = RUNNABLE;
 }

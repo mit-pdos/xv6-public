@@ -24,9 +24,50 @@ sys_fork()
 void
 sys_exit()
 {
-  curproc->state = UNUSED;
-  // XXX free resources. notify parent. abandon children.
+  struct proc *p;
+
+  curproc->state = ZOMBIE;
+
+  // wake up parent
+  for(p = proc; p < &proc[NPROC]; p++)
+    if(p->pid == curproc->ppid)
+      wakeup(p);
+
+  // abandon children
+  for(p = proc; p < &proc[NPROC]; p++)
+    if(p->ppid == curproc->pid)
+      p->pid = 1;
+
   swtch();
+}
+
+void
+sys_wait()
+{
+  struct proc *p;
+  int any;
+
+  cprintf("waid pid %d ppid %d\n", curproc->pid, curproc->ppid);
+
+  while(1){
+    any = 0;
+    for(p = proc; p < &proc[NPROC]; p++){
+      if(p->state == ZOMBIE && p->ppid == curproc->pid){
+        kfree(p->mem, p->sz);
+        kfree(p->kstack, KSTACKSIZE);
+        p->state = UNUSED;
+        cprintf("%x collected %x\n", curproc, p);
+        return;
+      }
+      if(p->state != UNUSED && p->ppid == curproc->pid)
+        any = 1;
+    }
+    if(any == 0){
+      cprintf("%x nothing to wait for\n", curproc);
+      return;
+    }
+    sleep(curproc);
+  }
 }
 
 void
@@ -41,6 +82,9 @@ syscall()
     break;
   case SYS_exit:
     sys_exit();
+    break;
+  case SYS_wait:
+    sys_wait();
     break;
   default:
     cprintf("unknown sys call %d\n", num);

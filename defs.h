@@ -12,6 +12,8 @@ struct proc;
 void setupsegs(struct proc *);
 struct proc * newproc(void);
 void swtch(void);
+void sleep(void *);
+void wakeup(void *);
 
 // trap.c
 void tinit(void);

@@ -42,6 +42,8 @@ main()
   p->tf->tf_es = p->tf->tf_ds = p->tf->tf_ss = (SEG_UDATA << 3) | 3;
   p->tf->tf_cs = (SEG_UCODE << 3) | 3;
   p->tf->tf_eflags = FL_IF;
+  p->pid = 0;
+  p->ppid = 0;
   setupsegs(p);
 
   p = newproc();
@@ -50,6 +52,13 @@ main()
   p->mem[i++] = 0x90; // nop 
   p->mem[i++] = 0xb8; // mov ..., %eax
   p->mem[i++] = SYS_fork;
+  p->mem[i++] = 0;
+  p->mem[i++] = 0;
+  p->mem[i++] = 0;
+  p->mem[i++] = 0xcd; // int
+  p->mem[i++] = T_SYSCALL;
+  p->mem[i++] = 0xb8; // mov ..., %eax
+  p->mem[i++] = SYS_wait;
   p->mem[i++] = 0;
   p->mem[i++] = 0;
   p->mem[i++] = 0;
