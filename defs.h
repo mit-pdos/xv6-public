@@ -24,3 +24,7 @@ void * memset(void *dst, int c, unsigned n);
 
 // syscall.c
 void syscall(void);
+
+// picirq.c
+void irq_setmask_8259A(uint16_t mask);
+void pic_init(void);

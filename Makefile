@@ -1,5 +1,5 @@
 OBJS = main.o console.o string.o kalloc.o proc.o trapasm.o trap.o vectors.o \
-       syscall.o
+       syscall.o ide.o picirq.o
 
 CC = i386-jos-elf-gcc
 LD = i386-jos-elf-ld
