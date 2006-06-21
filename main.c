@@ -22,6 +22,7 @@ main()
 
   cprintf("\nxV6\n\n");
 
+  mpinit(); // multiprocessor
   kinit(); // physical memory allocator
   tinit(); // traps and interrupts
   pic_init();
@@ -47,7 +48,7 @@ main()
   write_eflags(read_eflags() | FL_IF);
   irq_setmask_8259A(0);
 
-#if 1
+#if 0
   ide_read(0, buf, 1);
   cprintf("sec0.0 %x\n", buf[0] & 0xff);
 #endif
