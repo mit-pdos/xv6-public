@@ -261,6 +261,17 @@ cpuid(uint32_t info, uint32_t *eaxp, uint32_t *ebxp, uint32_t *ecxp, uint32_t *e
 		*edxp = edx;
 }
 
+static __inline uint32_t
+cmpxchg(uint32_t oldval, uint32_t newval, volatile uint32_t* lock_addr)
+{
+  uint32_t result;
+  __asm__ __volatile__(
+		       "lock; cmpxchgl %2, %0"
+		       :"+m" (*lock_addr), "=a" (result) : "r"(newval), "1"(oldval) : "cc"
+		       );
+  return result;
+}
+
 static __inline uint64_t
 read_tsc(void)
 {
@@ -299,3 +310,16 @@ struct Trapframe {
     uint16_t tf_ss;
     uint16_t tf_padding4;
 };
+
+
+#define MAX_IRQS	16	// Number of IRQs
+
+// I/O Addresses of the two 8259A programmable interrupt controllers
+#define IO_PIC1		0x20	// Master (IRQs 0-7)
+#define IO_PIC2	        0xA0	// Slave (IRQs 8-15)
+
+#define IRQ_SLAVE       2	// IRQ at which slave connects to master
+#define IRQ_OFFSET      32	// IRQ 0 corresponds to int IRQ_OFFSET
+
+#define IRQ_ERROR       19
+#define IRQ_SPURIOUS    31

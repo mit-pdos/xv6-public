@@ -8,6 +8,7 @@
 #include "syscall.h"
 
 extern char edata[], end[];
+extern int acpu;
 
 char buf[512];
 
@@ -16,13 +17,19 @@ main()
 {
   struct proc *p;
   int i;
-  
+
+  if (acpu) {
+    cprintf("an application processor\n");
+    release_spinlock(&kernel_lock);
+    while (1) ;
+  }
+  acpu = 1;
   // clear BSS
   memset(edata, 0, end - edata);
 
   cprintf("\nxV6\n\n");
 
-  mpinit(); // multiprocessor
+  mp_init(); // multiprocessor
   kinit(); // physical memory allocator
   tinit(); // traps and interrupts
   pic_init();

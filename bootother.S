@@ -1,23 +1,23 @@
 #include "asm.h"
 	
+/*
+ * Start an Application Processor. This must be placed on a 4KB boundary
+ * somewhere in the 1st MB of conventional memory (APBOOTSTRAP). However,
+ * due to some shortcuts below it's restricted further to within the 1st
+ * 64KB. The AP starts in real-mode, with
+ *   CS selector set to the startup memory address/16;
+ *   CS base set to startup memory address;
+ *   CS limit set to 64KB;
+ *   CPL and IP set to 0.
+ *	
+ * Credit: Cliff Frey
+ */
+
 .set PROT_MODE_CSEG,0x8		# code segment selector
 .set PROT_MODE_DSEG,0x10        # data segment selector
 .set CR0_PE_ON,0x1		# protected mode enable flag
-	
-###################################################################################
-# ENTRY POINT	
-#   This code should be stored in the first sector of the hard disk.
-#   After the BIOS initializes the hardware on startup or system reset,
-#   it loads this code at physical address 0x7c00 - 0x7d00 (512 bytes).
-#   Then the BIOS jumps to the beginning of it, address 0x7c00,
-#   while running in 16-bit real-mode (8086 compatibility mode).
-#   The Code Segment register (CS) is initially zero on entry.
-#	
-# This code switches into 32-bit protected mode so that all of
-# memory can accessed, then calls into C.
-###################################################################################
-	
-.globl start					# Entry point	
+
+.globl start
 start:		.code16				# This runs in real mode
 		cli				# Disable interrupts
 		cld				# String operations increment
@@ -28,28 +28,9 @@ start:		.code16				# This runs in real mode
 		movw	%ax,%es			# -> Extra Segment
 		movw	%ax,%ss			# -> Stack Segment
 
-		# Set up the stack pointer, growing downward from 0x7c00.
+		# Set up the stack pointer, growing downward from 0x7000.
 		movw	$start,%sp         	# Stack Pointer
 	
-#### Enable A20:
-####   For fascinating historical reasons (related to the fact that
-####   the earliest 8086-based PCs could only address 1MB of physical memory
-####   and subsequent 80286-based PCs wanted to retain maximum compatibility),
-####   physical address line 20 is tied to low when the machine boots.
-####   Obviously this a bit of a drag for us, especially when trying to
-####   address memory above 1MB.  This code undoes this.
-	
-seta20.1:	inb	$0x64,%al		# Get status
-		testb	$0x2,%al		# Busy?
-		jnz	seta20.1		# Yes
-		movb	$0xd1,%al		# Command: Write
-		outb	%al,$0x64		#  output port
-seta20.2:	inb	$0x64,%al		# Get status
-		testb	$0x2,%al		# Busy?
-		jnz	seta20.2		# Yes
-		movb	$0xdf,%al		# Enable
-		outb	%al,$0x60		#  A20
-
 #### Switch from real to protected mode	
 ####     The descriptors in our GDT allow all physical memory to be accessed.
 ####     Furthermore, the descriptors have base addresses of 0, so that the
@@ -60,7 +41,6 @@ seta20.2:	inb	$0x64,%al		# Get status
 ####	 This initial NOP-translation setup is required by the processor
 ####	 to ensure that the transition to protected mode occurs smoothly.
 	
-real_to_prot:	cli				# Mandatory since we dont set up an IDT
 		lgdt	gdtdesc			# load GDT -- mandatory in protected mode
 		movl	%cr0, %eax		# turn on protected mode
 		orl	$CR0_PE_ON, %eax	# 
@@ -80,10 +60,11 @@ protcseg:
 		movw	%ax, %fs		# -> FS
 		movw	%ax, %gs		# -> GS
 		movw	%ax, %ss		# -> SS: Stack Segment
-	
-		call cmain			# finish the boot load from C.
-						# cmain() should not return
-spin:		jmp spin			# ..but in case it does, spin
+
+	# XXX hack
+		movl	0x10018, %eax		# elfhdr->entry (left over in scratch space)
+		# subl	$KERNBASE, %eax
+		jmp	*%eax                   # this jumps to _start in kern/entry.S
 	
 .p2align 2					# force 4 byte alignment
 gdt:

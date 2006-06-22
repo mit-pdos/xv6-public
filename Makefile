@@ -1,5 +1,5 @@
 OBJS = main.o console.o string.o kalloc.o proc.o trapasm.o trap.o vectors.o \
-       syscall.o ide.o picirq.o mp.o
+       syscall.o ide.o picirq.o mp.o spinlock.o
 
 CC = i386-jos-elf-gcc
 LD = i386-jos-elf-ld
@@ -20,8 +20,12 @@ bootblock : bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
-kernel : $(OBJS)
-	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS)
+kernel : $(OBJS) bootother.S
+	$(CC) -nostdinc -I. -c bootother.S
+	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
+	$(OBJCOPY) -S -O binary bootother.out bootother
+	$(OBJDUMP) -S bootother.o > bootother.asm
+	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary bootother
 	$(OBJDUMP) -S kernel > kernel.asm
 
 vectors.S : vectors.pl
