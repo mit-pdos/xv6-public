@@ -24,6 +24,7 @@ alltraps:
 trapret:
         push $kernel_lock
         call release_spinlock
+        addl $4, %esp
         popal
         popl %es
         popl %ds
