@@ -2,12 +2,31 @@
 #include <x86.h>
 #include "defs.h"
 
+/*
+ * copy console output to parallel port, which you can tell
+ * .bochsrc to copy to the stdout:
+ * parport1: enabled=1, file="/dev/stdout"
+ */
+static void
+lpt_putc(int c)
+{
+	int i;
+
+	for (i = 0; !(inb(0x378+1) & 0x80) && i < 12800; i++)
+		;
+	outb(0x378+0, c);
+	outb(0x378+2, 0x08|0x04|0x01);
+	outb(0x378+2, 0x08);
+}
+
 void
 cons_putc(int c)
 {
   int crtport = 0x3d4; // io port of CGA
   unsigned short *crt = (unsigned short *) 0xB8000; // base of CGA memory
   int ind;
+
+  lpt_putc(c);
 
   // cursor position, 16 bits, col + 80*row
   outb(crtport, 14);
