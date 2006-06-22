@@ -20,7 +20,7 @@ struct proc{
   char *mem; // start of process's physical memory
   unsigned sz; // total size of mem, including kernel stack
   char *kstack; // kernel stack, separate from mem so it doesn't move
-  enum { UNUSED, RUNNABLE, WAITING, ZOMBIE } state;
+  enum { UNUSED, RUNNABLE, WAITING, ZOMBIE, RUNNING } state;
   int pid;
   int ppid;
   void *chan; // sleep
@@ -35,4 +35,4 @@ struct proc{
 };
 
 extern struct proc proc[];
-extern struct proc *curproc;
+extern struct proc *curproc[NCPU];

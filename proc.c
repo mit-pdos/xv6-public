@@ -1,12 +1,12 @@
 #include "types.h"
 #include "mmu.h"
 #include "x86.h"
-#include "proc.h"
 #include "param.h"
+#include "proc.h"
 #include "defs.h"
 
 struct proc proc[NPROC];
-struct proc *curproc;
+struct proc *curproc[NCPU];
 int next_pid = 1;
 
 /*
@@ -47,6 +47,7 @@ struct proc *
 newproc()
 {
   struct proc *np;
+  struct proc *op = curproc[cpu()];
   unsigned *sp;
 
   for(np = &proc[1]; np < &proc[NPROC]; np++)
@@ -56,22 +57,22 @@ newproc()
     return 0;
 
   np->pid = next_pid++;
-  np->ppid = curproc->pid;
-  np->sz = curproc->sz;
-  np->mem = kalloc(curproc->sz);
+  np->ppid = op->pid;
+  np->sz = op->sz;
+  np->mem = kalloc(op->sz);
   if(np->mem == 0)
     return 0;
-  memcpy(np->mem, curproc->mem, np->sz);
+  memcpy(np->mem, op->mem, np->sz);
   np->kstack = kalloc(KSTACKSIZE);
   if(np->kstack == 0){
-    kfree(np->mem, curproc->sz);
+    kfree(np->mem, op->sz);
     return 0;
   }
   setupsegs(np);
   
   // set up kernel stack to return to user space
   np->tf = (struct Trapframe *) (np->kstack + KSTACKSIZE - sizeof(struct Trapframe));
-  *(np->tf) = *(curproc->tf);
+  *(np->tf) = *(op->tf);
   sp = (unsigned *) np->tf;
   *(--sp) = (unsigned) &trapret;  // for return from swtch()
   *(--sp) = 0;  // previous bp for leave in swtch()
@@ -92,31 +93,38 @@ void
 swtch()
 {
   struct proc *np;
+  struct proc *op = curproc[cpu()];
   
+  cprintf("swtch cpu %d op %x proc0 %x\n", cpu(), op, proc);
   while(1){
-    for(np = curproc + 1; np != curproc; np++){
-      if(np == &proc[NPROC])
-        np = &proc[0];
+    np = op + 1;
+    while(np != op){
       if(np->state == RUNNABLE)
         break;
+      np++;
+      if(np == &proc[NPROC])
+        np = &proc[0];
     }
     if(np->state == RUNNABLE)
       break;
-    // idle...
+    cprintf("swtch: nothing to run\n");
+    release_spinlock(&kernel_lock);
+    acquire_spinlock(&kernel_lock);
   }
   
-  curproc->ebp = read_ebp();
-  curproc->esp = read_esp();
+  op->ebp = read_ebp();
+  op->esp = read_esp();
 
-  cprintf("swtch %x -> %x\n", curproc, np);
+  cprintf("cpu %d swtch %x -> %x\n", cpu(), op, np);
 
-  curproc = np;
+  curproc[cpu()] = np;
+  np->state = RUNNING;
 
   // XXX callee-saved registers?
 
   // h/w sets busy bit in TSS descriptor sometimes, and faults
   // if it's set in LTR. so clear tss descriptor busy bit.
-  curproc->gdt[SEG_TSS].sd_type = STS_T32A;
+  np->gdt[SEG_TSS].sd_type = STS_T32A;
 
   // XXX probably ought to lgdt on trap return too, in case
   // a system call has moved a program or changed its size.
@@ -134,8 +142,8 @@ swtch()
 void
 sleep(void *chan)
 {
-  curproc->chan = chan;
-  curproc->state = WAITING;
+  curproc[cpu()]->chan = chan;
+  curproc[cpu()]->state = WAITING;
   swtch();
 }
 

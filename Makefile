@@ -20,18 +20,22 @@ bootblock : bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
-kernel : $(OBJS) bootother.S
+kernel : $(OBJS) bootother.S user1
 	$(CC) -nostdinc -I. -c bootother.S
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
-	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary bootother
+	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary bootother user1
 	$(OBJDUMP) -S kernel > kernel.asm
 
 vectors.S : vectors.pl
 	perl vectors.pl > vectors.S
 
+user1 : user1.c
+	$(CC) -nostdinc -I. -c user1.c
+	$(LD) -N -e main -Ttext 0 -o user1 user1.o
+
 -include *.d
 
 clean : 
-	rm -f *.o bootblock kernel kernel.asm xv6.img *.d
+	rm -f *.o bootblock kernel kernel.asm xv6.img *.d user1

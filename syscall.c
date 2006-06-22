@@ -25,17 +25,18 @@ void
 sys_exit()
 {
   struct proc *p;
+  struct proc *cp = curproc[cpu()];
 
-  curproc->state = ZOMBIE;
+  cp->state = ZOMBIE;
 
   // wake up parent
   for(p = proc; p < &proc[NPROC]; p++)
-    if(p->pid == curproc->ppid)
+    if(p->pid == cp->ppid)
       wakeup(p);
 
   // abandon children
   for(p = proc; p < &proc[NPROC]; p++)
-    if(p->ppid == curproc->pid)
+    if(p->ppid == cp->pid)
       p->pid = 1;
 
   swtch();
@@ -45,37 +46,39 @@ void
 sys_wait()
 {
   struct proc *p;
+  struct proc *cp = curproc[cpu()];
   int any;
 
-  cprintf("waid pid %d ppid %d\n", curproc->pid, curproc->ppid);
+  cprintf("waid pid %d ppid %d\n", cp->pid, cp->ppid);
 
   while(1){
     any = 0;
     for(p = proc; p < &proc[NPROC]; p++){
-      if(p->state == ZOMBIE && p->ppid == curproc->pid){
+      if(p->state == ZOMBIE && p->ppid == cp->pid){
         kfree(p->mem, p->sz);
         kfree(p->kstack, KSTACKSIZE);
         p->state = UNUSED;
-        cprintf("%x collected %x\n", curproc, p);
+        cprintf("%x collected %x\n", cp, p);
         return;
       }
-      if(p->state != UNUSED && p->ppid == curproc->pid)
+      if(p->state != UNUSED && p->ppid == cp->pid)
         any = 1;
     }
     if(any == 0){
-      cprintf("%x nothing to wait for\n", curproc);
+      cprintf("%x nothing to wait for\n", cp);
       return;
     }
-    sleep(curproc);
+    sleep(cp);
   }
 }
 
 void
 syscall()
 {
-  int num = curproc->tf->tf_regs.reg_eax;
+  struct proc *cp = curproc[cpu()];
+  int num = cp->tf->tf_regs.reg_eax;
 
-  cprintf("%x sys %d\n", curproc, num);
+  cprintf("%x sys %d\n", cp, num);
   switch(num){
   case SYS_fork:
     sys_fork();
