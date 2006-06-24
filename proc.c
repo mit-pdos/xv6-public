@@ -112,6 +112,10 @@ swtch()
     acquire_spinlock(&kernel_lock);
   }
   
+  // XXX this may be too late, should probably save on the way
+  // in, in case some other CPU decided to run curproc
+  // before we got here. in fact setting state=WAITING and
+  // setting these variables had better be atomic w.r.t. other CPUs.
   op->ebp = read_ebp();
   op->esp = read_esp();
 

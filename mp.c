@@ -101,6 +101,10 @@ static struct cpu {
 static int ncpu;
 static struct cpu *bcpu;
 
+// per-cpu start-up stack, only used to get into main()
+#define MPSTACK 512
+char mpstacks[NCPU * MPSTACK];
+
 static int
 lapic_read(int r)
 {
@@ -230,17 +234,17 @@ mp_search(void)
    * 2) in the last KB of system base memory;
    * 3) in the BIOS ROM between 0xE0000 and 0xFFFFF.
    */
-  bda = KADDR(0x400);
+  bda = (uint8_t*) 0x400;
   if((p = (bda[0x0F]<<8)|bda[0x0E])){
-    if((mp = mp_scan(KADDR(p), 1024)))
+    if((mp = mp_scan((uint8_t*) p, 1024)))
       return mp;
   }
   else{
     p = ((bda[0x14]<<8)|bda[0x13])*1024;
-    if((mp = mp_scan(KADDR(p-1024), 1024)))
+    if((mp = mp_scan((uint8_t*)p-1024, 1024)))
       return mp;
   }
-  return mp_scan(KADDR(0xF0000), 0x10000);
+  return mp_scan((uint8_t*)0xF0000, 0x10000);
 }
 
 static int 
@@ -260,7 +264,7 @@ mp_detect(void)
   if((mp = mp_search()) == 0 || mp->physaddr == 0)
     return 1;
 
-  pcmp = KADDR(mp->physaddr);
+  pcmp = (struct MPCTB *) mp->physaddr;
   if(memcmp(pcmp, "PCMP", 4))
     return 2;
 
@@ -290,7 +294,8 @@ mp_init()
   uint8_t *p, *e;
   struct MPCTB *mpctb;
   struct MPPE *proc;
-  struct cpu *c;
+  int c;
+  extern int main();
 
   ncpu = 0;
   if ((r = mp_detect()) != 0) return;
@@ -302,8 +307,8 @@ mp_init()
    * application processors and initialising any I/O APICs. The table
    * is guaranteed to be in order such that only one pass is necessary.
    */
-  mpctb = KADDR(mp->physaddr);
-  lapicaddr = KADDR(mpctb->lapicaddr);
+  mpctb = (struct MPCTB *) mp->physaddr;
+  lapicaddr = (uint32_t *) mpctb->lapicaddr;
   cprintf("apicaddr: %x\n", lapicaddr);
   p = ((uint8_t*)mpctb)+sizeof(struct MPCTB);
   e = ((uint8_t*)mpctb)+mpctb->length;
@@ -348,16 +353,18 @@ mp_init()
   lapic_online();
 
   extern uint8_t _binary_bootother_start[], _binary_bootother_size[];
-  memmove(KADDR(APBOOTCODE),_binary_bootother_start, 
+  memmove((void *) APBOOTCODE,_binary_bootother_start, 
 	  (uint32_t) _binary_bootother_size);
 
   acquire_spinlock(&kernel_lock);
-  for (c = cpus; c < &cpus[ncpu]; c++) {
-    if (c == bcpu) continue;
-    cprintf ("starting processor %d\n", c - cpus);
-    release_grant_spinlock(&kernel_lock, c - cpus);
-    lapic_startap(c, (uint32_t) KADDR(APBOOTCODE));
+  for(c = 0; c < ncpu; c++){
+    if (cpus+c == bcpu) continue;
+    cprintf ("starting processor %d\n", c);
+    release_grant_spinlock(&kernel_lock, c);
+    *(unsigned *)(APBOOTCODE-4) = (unsigned) mpstacks + (c + 1) * MPSTACK; // tell it what to use for %esp
+    *(unsigned *)(APBOOTCODE-8) = (unsigned)&main; // tell it where to jump to
+    lapic_startap(cpus + c, (uint32_t) APBOOTCODE);
     acquire_spinlock(&kernel_lock);
-    cprintf ("done starting processor %d\n", c - cpus);
+    cprintf ("done starting processor %d\n", c);
   }
 }

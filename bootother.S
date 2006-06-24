@@ -9,6 +9,10 @@
  *   CS base set to startup memory address;
  *   CS limit set to 64KB;
  *   CPL and IP set to 0.
+ *
+ * mp.c causes each non-boot CPU in turn to jump to start.
+ * mp.c puts the correct %esp in start-4, and the place to jump
+ * to in start-8.
  *	
  * Credit: Cliff Frey
  */
@@ -28,8 +32,8 @@ start:		.code16				# This runs in real mode
 		movw	%ax,%es			# -> Extra Segment
 		movw	%ax,%ss			# -> Stack Segment
 
-		# Set up the stack pointer, growing downward from 0x7000.
-		movw	$start,%sp         	# Stack Pointer
+		# Set up the stack pointer, growing downward from 0x7000-8.
+		movw	$start-8,%sp         	# Stack Pointer
 	
 #### Switch from real to protected mode	
 ####     The descriptors in our GDT allow all physical memory to be accessed.
@@ -61,10 +65,9 @@ protcseg:
 		movw	%ax, %gs		# -> GS
 		movw	%ax, %ss		# -> SS: Stack Segment
 
-	# XXX hack
-		movl	0x10018, %eax		# elfhdr->entry (left over in scratch space)
-		# subl	$KERNBASE, %eax
-		jmp	*%eax                   # this jumps to _start in kern/entry.S
+                movl    start-8, %eax
+                movl    start-4, %esp
+		jmp	*%eax                   
 	
 .p2align 2					# force 4 byte alignment
 gdt:
