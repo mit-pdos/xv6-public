@@ -14,7 +14,7 @@ extern void trapenter();
 extern void trapenter1();
 
 void
-tinit()
+tvinit()
 {
   int i;
 
@@ -22,6 +22,11 @@ tinit()
     SETGATE(idt[i], 1, SEG_KCODE << 3, vectors[i], 0);
   }
   SETGATE(idt[T_SYSCALL], T_SYSCALL, SEG_KCODE << 3, vectors[48], 3);
+}
+
+void
+idtinit()
+{
   asm volatile("lidt %0" : : "g" (idt_pd.pd_lim));
 }
 

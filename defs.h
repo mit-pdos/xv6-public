@@ -17,7 +17,8 @@ void sleep(void *);
 void wakeup(void *);
 
 // trap.c
-void tinit(void);
+void tvinit(void);
+void idtinit(void);
 
 // string.c
 void * memcpy(void *dst, void *src, unsigned n);
