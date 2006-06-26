@@ -10,10 +10,37 @@
 /*
  * User code makes a system call with INT T_SYSCALL.
  * System call number in %eax.
- * Arguments on the stack.
+ * Arguments on the stack, from the user call to the C
+ * library system call function. The saved user %esp points
+ * to a saved frame pointer, a program counter, and then
+ * the first argument.
  *
  * Return value? Error indication? Errno?
  */
+
+/*
+ * fetch 32 bits from a user-supplied pointer.
+ * returns 1 if addr was OK, 0 if illegal.
+ */
+int
+fetchint(struct proc *p, unsigned addr, int *ip)
+{
+  *ip = 0;
+
+  if(addr > p->sz - 4)
+    return 0;
+  memcpy(ip, p->mem + addr, 4);
+  return 1;
+}
+
+int
+fetcharg(int argno, int *ip)
+{
+  unsigned esp;
+
+  esp = (unsigned) curproc[cpu()]->tf->tf_esp;
+  return fetchint(curproc[cpu()], esp + 8 + 4*argno, ip);
+}
 
 void
 sys_fork()
@@ -73,6 +100,15 @@ sys_wait()
 }
 
 void
+sys_cons_putc()
+{
+  int c;
+
+  fetcharg(0, &c);
+  cons_putc(c & 0xff);
+}
+
+void
 syscall()
 {
   struct proc *cp = curproc[cpu()];
@@ -88,6 +124,9 @@ syscall()
     break;
   case SYS_wait:
     sys_wait();
+    break;
+  case SYS_cons_putc:
+    sys_cons_putc();
     break;
   default:
     cprintf("unknown sys call %d\n", num);

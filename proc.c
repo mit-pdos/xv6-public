@@ -95,7 +95,6 @@ swtch()
   struct proc *np;
   struct proc *op = curproc[cpu()];
   
-  cprintf("swtch cpu %d op %x proc0 %x\n", cpu(), op, proc);
   while(1){
     np = op + 1;
     while(np != op){
@@ -107,7 +106,7 @@ swtch()
     }
     if(np->state == RUNNABLE)
       break;
-    cprintf("swtch: nothing to run\n");
+    // cprintf("swtch: nothing to run\n");
     release_spinlock(&kernel_lock);
     acquire_spinlock(&kernel_lock);
   }

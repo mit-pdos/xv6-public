@@ -6,6 +6,7 @@ void kinit(void);
 // console.c
 void cprintf(char *fmt, ...);
 void panic(char *s);
+void cons_putc(int);
 
 // proc.c
 struct proc;

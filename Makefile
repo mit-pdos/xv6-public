@@ -34,6 +34,7 @@ vectors.S : vectors.pl
 user1 : user1.c
 	$(CC) -nostdinc -I. -c user1.c
 	$(LD) -N -e main -Ttext 0 -o user1 user1.o
+	$(OBJDUMP) -S user1 > user1.asm
 
 -include *.d
 
