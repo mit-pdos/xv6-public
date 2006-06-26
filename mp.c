@@ -91,19 +91,17 @@ enum {					/* LAPIC_TDCR */
 };
 
 #define APBOOTCODE 0x7000 // XXX hack
+#define MPSTACK 512
 
-static struct MP* mp;  /* The MP floating point structure */
+static struct MP* mp;  // The MP floating point structure
 static uint32_t *lapicaddr;
 static struct cpu {
-  uint8_t apicid;       /* Local APIC ID */
-  int lintr[2];		/* Local APIC */
+  uint8_t apicid;       // Local APIC ID
+  int lintr[2];		// Local APIC
+  char mpstack[MPSTACK]; // per-cpu start-up stack, only used to get into main()
 } cpus[NCPU];
 static int ncpu;
 static struct cpu *bcpu;
-
-// per-cpu start-up stack, only used to get into main()
-#define MPSTACK 512
-char mpstacks[NCPU * MPSTACK];
 
 static int
 lapic_read(int r)
@@ -361,7 +359,7 @@ mp_init()
     if (cpus+c == bcpu) continue;
     cprintf ("starting processor %d\n", c);
     release_grant_spinlock(&kernel_lock, c);
-    *(unsigned *)(APBOOTCODE-4) = (unsigned) mpstacks + (c + 1) * MPSTACK; // tell it what to use for %esp
+    *(unsigned *)(APBOOTCODE-4) = (unsigned) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
     *(unsigned *)(APBOOTCODE-8) = (unsigned)&main; // tell it where to jump to
     lapic_startap(cpus + c, (uint32_t) APBOOTCODE);
     acquire_spinlock(&kernel_lock);
