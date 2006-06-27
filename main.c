@@ -11,8 +11,8 @@
 
 extern char edata[], end[];
 extern int acpu;
-extern char _binary_user1_start[];
-extern char _binary_user1_size[];
+extern char _binary_user1_start[], _binary_user1_size[];
+extern char _binary_usertests_start[], _binary_usertests_size[];
 
 char buf[512];
 
@@ -25,7 +25,7 @@ main()
     cprintf("an application processor\n");
     release_spinlock(&kernel_lock);
     acquire_spinlock(&kernel_lock);
-    idtinit();
+    idtinit(); // CPU's idt
     lapic_init(cpu());
     curproc[cpu()] = &proc[0]; // XXX
     swtch();
@@ -70,7 +70,7 @@ main()
 
 #if 1
   p = newproc();
-  load_icode(p, _binary_user1_start, (unsigned) _binary_user1_size);
+  load_icode(p, _binary_usertests_start, (unsigned) _binary_usertests_size);
 #endif
 
 #if 0

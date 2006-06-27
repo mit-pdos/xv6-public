@@ -37,13 +37,13 @@ trap(struct Trapframe *tf)
 
   acquire_spinlock(&kernel_lock); // released in trapret in trapasm.S
 
-  cprintf("trap %d eip %x:%x\n", tf->tf_trapno, tf->tf_cs, tf->tf_eip);
-
   if(v == T_SYSCALL){
     curproc[cpu()]->tf = tf;
     syscall();
     return;
   }
+
+  cprintf("trap %d eip %x:%x\n", tf->tf_trapno, tf->tf_cs, tf->tf_eip);
 
   if(v == 32){
     // probably clock

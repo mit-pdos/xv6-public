@@ -2,6 +2,7 @@
 #include "mmu.h"
 #include "x86.h"
 #include "param.h"
+#include "fd.h"
 #include "proc.h"
 #include "defs.h"
 
@@ -49,6 +50,7 @@ newproc()
   struct proc *np;
   struct proc *op = curproc[cpu()];
   unsigned *sp;
+  int fd;
 
   for(np = &proc[1]; np < &proc[NPROC]; np++)
     if(np->state == UNUSED)
@@ -79,6 +81,13 @@ newproc()
   *(--sp) = 0;  // previous bp for leave in swtch()
   np->esp = (unsigned) sp;
   np->ebp = (unsigned) sp;
+
+  // copy file descriptors
+  for(fd = 0; fd < NOFILE; fd++){
+    np->fds[fd] = op->fds[fd];
+    if(np->fds[fd])
+      np->fds[fd]->count += 1;
+  }
 
   np->state = RUNNABLE;
 

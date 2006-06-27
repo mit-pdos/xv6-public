@@ -83,3 +83,11 @@ it's IRQ 0, but it comes at a weird and changing vector (e.g. 119) if
 you don't initialize the PIC. why doesn't jos see this? if i
 initialize the PIC with IRQ_OFFSET 32, the interrupt arrives at vector
 32.
+
+test out-of-fd cases for creating pipe.
+test pipe circular buffer
+test pipe writer or reader closes while other active or waiting
+test exit vs fd reference counts
+test write of more than PIPESIZE
+test reader goes first vs writer goes first
+test streaming of a lot of data

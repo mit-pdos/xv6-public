@@ -24,6 +24,7 @@ struct proc{
   int pid;
   int ppid;
   void *chan; // sleep
+  struct fd *fds[NOFILE];
 
   struct Taskstate ts;  // only to give cpu address of kernel stack
   struct Segdesc gdt[NSEGS];

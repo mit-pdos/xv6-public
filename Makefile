@@ -1,5 +1,5 @@
 OBJS = main.o console.o string.o kalloc.o proc.o trapasm.o trap.o vectors.o \
-       syscall.o ide.o picirq.o mp.o spinlock.o
+       syscall.o ide.o picirq.o mp.o spinlock.o fd.o pipe.o
 
 CC = i386-jos-elf-gcc
 LD = i386-jos-elf-ld
@@ -20,21 +20,29 @@ bootblock : bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
-kernel : $(OBJS) bootother.S user1
+kernel : $(OBJS) bootother.S user1 usertests
 	$(CC) -nostdinc -I. -c bootother.S
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
-	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary bootother user1
+	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary bootother user1 usertests
 	$(OBJDUMP) -S kernel > kernel.asm
 
 vectors.S : vectors.pl
 	perl vectors.pl > vectors.S
 
-user1 : user1.c
+user1 : user1.c ulib.o
 	$(CC) -nostdinc -I. -c user1.c
-	$(LD) -N -e main -Ttext 0 -o user1 user1.o
+	$(LD) -N -e main -Ttext 0 -o user1 user1.o ulib.o
 	$(OBJDUMP) -S user1 > user1.asm
+
+usertests : usertests.c ulib.o
+	$(CC) -nostdinc -I. -c usertests.c
+	$(LD) -N -e main -Ttext 0 -o usertests usertests.o ulib.o
+	$(OBJDUMP) -S usertests > usertests.asm
+
+ulib.o : ulib.c
+	$(CC) -nostdinc -I. -c ulib.c
 
 -include *.d
 

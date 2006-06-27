@@ -1,35 +1,19 @@
-int
-fork()
-{
-  asm("mov $1, %eax");
-  asm("int $48");
-}
-
-void
-cons_putc(int c)
-{
-  asm("mov $4, %eax");
-  asm("int $48");
-}
-
-int
-puts(char *s)
-{
-  int i;
-
-  for(i = 0; s[i]; i++)
-    cons_putc(s[i]);
-  return i;
-}
+char buf[32];
 
 main()
 {
-  int pid;
+  int pid, fds[2], n;
+
+  pipe(fds);
   pid = fork();
-  if(pid == 0){
-    cons_putc('C');
+  if(pid > 0){
+    write(fds[1], "xyz", 4);
+    puts("w");
   } else {
-    cons_putc('P');
+    n = read(fds[0], buf, sizeof(buf));
+    puts("r: ");
+    puts(buf);
+    puts("\n");
   }
   while(1)
     ;

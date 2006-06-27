@@ -37,6 +37,7 @@ void pic_init(void);
 void mp_init(void);
 int cpu(void);
 int mp_isbcpu(void);
+void lapic_init(int c);
 
 // spinlock.c
 extern uint32_t kernel_lock;
@@ -46,3 +47,18 @@ void release_grant_spinlock(uint32_t* lock, int cpu);
 
 // main.c
 void load_icode(struct proc *p, uint8_t *binary, unsigned size);
+
+// pipe.c
+struct pipe;
+struct fd;
+int pipe_alloc(struct fd **fd1, struct fd **fd2);
+void pipe_close(struct pipe *p, int writeable);
+int pipe_write(struct pipe *p, char *addr, int n);
+int pipe_read(struct pipe *p, char *addr, int n);
+
+// fd.c
+int fd_ualloc();
+struct fd * fd_alloc();
+void fd_close(struct fd *);
+int fd_read(struct fd *fd, char *addr, int n);
+int fd_write(struct fd *fd, char *addr, int n);
