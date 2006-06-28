@@ -4,6 +4,7 @@
 #include "memlayout.h"
 #include "param.h"
 #include "x86.h"
+#include "traps.h"
 #include "mmu.h"
 
 /* 
@@ -115,12 +116,33 @@ lapic_write(int r, int data)
   *(lapicaddr+(r/sizeof(*lapicaddr))) = data;
 }
 
+
+void
+lapic_timerinit()
+{
+  cprintf("%d: init timer\n", cpu());
+  lapic_write(LAPIC_TDCR, LAPIC_X1);
+  lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
+  lapic_write(LAPIC_TCCR, 1000000);
+  lapic_write(LAPIC_TICR, 1000000);
+}
+
+void
+lapic_timerintr()
+{
+  cprintf("%d: timer interrupt!\n", cpu());
+  lapic_write (LAPIC_EOI, 0);
+}
+
 void
 lapic_init(int c)
 {
   uint32_t r, lvt;
 
   cprintf("lapic_init %d\n", c);
+
+  irq_setmask_8259A(0xFFFF);
+
   lapic_write(LAPIC_DFR, 0xFFFFFFFF);
   r = (lapic_read(LAPIC_ID)>>24) & 0xFF;
   lapic_write(LAPIC_LDR, (1<<r)<<24);
@@ -152,19 +174,11 @@ lapic_init(int c)
   while(lapic_read(LAPIC_ICRLO) & APIC_DELIVS)
     ;
 
-  /*
-   * Do not allow acceptance of interrupts until all initialisation
-   * for this processor is done. For the bootstrap processor this can be
-   * early duing initialisation. For the application processors this should
-   * be after the bootstrap processor has lowered priority and is accepting
-   * interrupts.
-   */
-  lapic_write(LAPIC_TPR, 0);
   cprintf("Done init of an apic\n");
 }
 
-static void
-lapic_online(void) 
+void
+lapic_enableintr(void) 
 {
   lapic_write(LAPIC_TPR, 0);
 }
@@ -274,7 +288,7 @@ mp_detect(void)
   if(sum || (pcmp->version != 1 && pcmp->version != 4))
     return 3;
 
-  cprintf("MP spec rev #: %x\n", mp->specrev);
+  cprintf("Mp spec rev #: %x\n", mp->specrev);
   return 0;
 }
 
@@ -347,8 +361,6 @@ mp_init()
   
   lapic_init(bcpu-cpus);
   cprintf("ncpu: %d boot %d\n", ncpu, bcpu-cpus);
-
-  lapic_online();
 
   extern uint8_t _binary_bootother_start[], _binary_bootother_size[];
   memmove((void *) APBOOTCODE,_binary_bootother_start, 

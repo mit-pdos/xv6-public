@@ -37,7 +37,10 @@ void pic_init(void);
 void mp_init(void);
 int cpu(void);
 int mp_isbcpu(void);
-void lapic_init(int c);
+void lapic_init(int);
+void lapic_timerinit(void);
+void lapic_timerintr(void);
+void lapic_enableintr(void);
 
 // spinlock.c
 extern uint32_t kernel_lock;

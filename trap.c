@@ -43,14 +43,15 @@ trap(struct Trapframe *tf)
     return;
   }
 
-  cprintf("trap %d eip %x:%x\n", tf->tf_trapno, tf->tf_cs, tf->tf_eip);
-
-  if(v == 32){
-    // probably clock
+  if(v == (IRQ_OFFSET + IRQ_TIMER)){
+    curproc[cpu()]->tf = tf;
+    lapic_timerintr();
     return;
   }
 
-  while(1)
-    ;
+  cprintf("trap %d eip %x:%x\n", tf->tf_trapno, tf->tf_cs, tf->tf_eip);
+
   // XXX probably ought to lgdt on trap return
+
+  return;
 }

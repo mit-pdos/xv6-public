@@ -36,11 +36,11 @@ main()
 
   cprintf("\nxV6\n\n");
 
+  pic_init(); // initialize PIC---not clear why
   mp_init(); // multiprocessor
   kinit(); // physical memory allocator
   tvinit(); // trap vectors
   idtinit(); // CPU's idt
-  pic_init();
 
   // create fake process zero
   p = &proc[0];
@@ -59,8 +59,9 @@ main()
   p->ppid = 0;
   setupsegs(p);
 
-  // turn on interrupts
-  irq_setmask_8259A(0xff);
+  // turn on interrupts on boot processor
+  lapic_timerinit();
+  lapic_enableintr();
   write_eflags(read_eflags() | FL_IF);
 
 #if 0
@@ -68,38 +69,8 @@ main()
   cprintf("sec0.0 %x\n", buf[0] & 0xff);
 #endif
 
-#if 1
   p = newproc();
   load_icode(p, _binary_usertests_start, (unsigned) _binary_usertests_size);
-#endif
-
-#if 0
-  i = 0;
-  p->mem[i++] = 0x90; // nop 
-  p->mem[i++] = 0xb8; // mov ..., %eax
-  p->mem[i++] = SYS_fork;
-  p->mem[i++] = 0;
-  p->mem[i++] = 0;
-  p->mem[i++] = 0;
-  p->mem[i++] = 0xcd; // int
-  p->mem[i++] = T_SYSCALL;
-  p->mem[i++] = 0xb8; // mov ..., %eax
-  p->mem[i++] = SYS_wait;
-  p->mem[i++] = 0;
-  p->mem[i++] = 0;
-  p->mem[i++] = 0;
-  p->mem[i++] = 0xcd; // int
-  p->mem[i++] = T_SYSCALL;
-  p->mem[i++] = 0xb8; // mov ..., %eax
-  p->mem[i++] = SYS_exit;
-  p->mem[i++] = 0;
-  p->mem[i++] = 0;
-  p->mem[i++] = 0;
-  p->mem[i++] = 0xcd; // int
-  p->mem[i++] = T_SYSCALL;
-  p->tf->tf_eip = 0;
-  p->tf->tf_esp = p->sz;
-#endif
 
   swtch();
 
@@ -109,32 +80,32 @@ main()
 void
 load_icode(struct proc *p, uint8_t *binary, unsigned size)
 {
-	int i;
-	struct Elf *elf;
-	struct Proghdr *ph;
+  int i;
+  struct Elf *elf;
+  struct Proghdr *ph;
 
-	// Check magic number on binary
-	elf = (struct Elf*) binary;
-        cprintf("elf %x magic %x\n", elf, elf->e_magic);
-	if (elf->e_magic != ELF_MAGIC)
-		panic("load_icode: not an ELF binary");
+  // Check magic number on binary
+  elf = (struct Elf*) binary;
+  cprintf("elf %x magic %x\n", elf, elf->e_magic);
+  if (elf->e_magic != ELF_MAGIC)
+    panic("load_icode: not an ELF binary");
 
   p->tf->tf_eip = elf->e_entry;
   p->tf->tf_esp = p->sz;
 
-	// Map and load segments as directed.
-	ph = (struct Proghdr*) (binary + elf->e_phoff);
-	for (i = 0; i < elf->e_phnum; i++, ph++) {
-		if (ph->p_type != ELF_PROG_LOAD)
-			continue;
-                cprintf("va %x memsz %d\n", ph->p_va, ph->p_memsz);
-		if (ph->p_va + ph->p_memsz < ph->p_va)
-			panic("load_icode: overflow in elf header segment");
-		if (ph->p_va + ph->p_memsz >= p->sz)
-			panic("load_icode: icode wants to be above UTOP");
+  // Map and load segments as directed.
+  ph = (struct Proghdr*) (binary + elf->e_phoff);
+  for (i = 0; i < elf->e_phnum; i++, ph++) {
+    if (ph->p_type != ELF_PROG_LOAD)
+      continue;
+    cprintf("va %x memsz %d\n", ph->p_va, ph->p_memsz);
+    if (ph->p_va + ph->p_memsz < ph->p_va)
+      panic("load_icode: overflow in elf header segment");
+    if (ph->p_va + ph->p_memsz >= p->sz)
+      panic("load_icode: icode wants to be above UTOP");
 
-		// Load/clear the segment
-		memcpy(p->mem + ph->p_va, binary + ph->p_offset, ph->p_filesz);
-		memset(p->mem + ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
-	}
+    // Load/clear the segment
+    memcpy(p->mem + ph->p_va, binary + ph->p_offset, ph->p_filesz);
+    memset(p->mem + ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
+  }
 }

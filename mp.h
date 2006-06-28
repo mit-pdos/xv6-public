@@ -109,7 +109,7 @@ enum {
   APIC_NMI = 0x00000400,
   APIC_INIT = 0x00000500,	/* INIT/RESET */
   APIC_STARTUP = 0x00000600,	/* Startup IPI */
-  APIC_ExtINT = 0x00000700,
+  APIC_EXTINT = 0x00000700,
 
   APIC_PHYSICAL = 0x00000000,	/* [11] Destination Mode (RW) */
   APIC_LOGICAL = 0x00000800,
@@ -117,7 +117,7 @@ enum {
   APIC_DELIVS = 0x00001000,	/* [12] Delivery Status (RO) */
   APIC_HIGH = 0x00000000,	/* [13] Interrupt Input Pin Polarity (RW) */
   APIC_LOW = 0x00002000,
-  APIC_RemoteIRR	= 0x00004000,	/* [14] Remote IRR (RO) */
+  APIC_REMOTEIRR	= 0x00004000,	/* [14] Remote IRR (RO) */
   APIC_EDGE = 0x00000000,	/* [15] Trigger Mode (RW) */
   APIC_LEVEL = 0x00008000,
   APIC_IMASK = 0x00010000,	/* [16] Interrupt Mask */
