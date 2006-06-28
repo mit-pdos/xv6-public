@@ -183,6 +183,12 @@ lapic_enableintr(void)
   lapic_write(LAPIC_TPR, 0);
 }
 
+void
+lapic_disableintr(void) 
+{
+  lapic_write(LAPIC_TPR, 0xFF);
+}
+
 int
 cpu(void)
 {

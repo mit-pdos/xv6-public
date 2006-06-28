@@ -41,6 +41,7 @@ void lapic_init(int);
 void lapic_timerinit(void);
 void lapic_timerintr(void);
 void lapic_enableintr(void);
+void lapic_disableintr(void);
 
 // spinlock.c
 extern uint32_t kernel_lock;
