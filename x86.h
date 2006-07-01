@@ -244,6 +244,30 @@ read_esp(void)
         return esp;
 }
 
+static __inline uint32_t
+read_esi(void)
+{
+        uint32_t esi;
+        __asm __volatile("movl %%esi,%0" : "=r" (esi));
+        return esi;
+}
+
+static __inline uint32_t
+read_edi(void)
+{
+        uint32_t edi;
+        __asm __volatile("movl %%edi,%0" : "=r" (edi));
+        return edi;
+}
+
+static __inline uint32_t
+read_ebx(void)
+{
+        uint32_t ebx;
+        __asm __volatile("movl %%ebx,%0" : "=r" (ebx));
+        return ebx;
+}
+
 static __inline void
 cpuid(uint32_t info, uint32_t *eaxp, uint32_t *ebxp, uint32_t *ecxp, uint32_t *edxp)
 {
@@ -278,6 +302,20 @@ read_tsc(void)
         uint64_t tsc;
         __asm __volatile("rdtsc" : "=A" (tsc));
         return tsc;
+}
+
+// disable interrupts
+static __inline void
+cli(void)
+{
+        __asm __volatile("cli");
+}
+
+// enable interrupts
+static __inline void
+sti(void)
+{
+        __asm __volatile("sti");
 }
 
 struct PushRegs {

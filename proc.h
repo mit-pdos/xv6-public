@@ -37,3 +37,14 @@ struct proc{
 
 extern struct proc proc[];
 extern struct proc *curproc[NCPU];
+
+#define MPSTACK 512
+
+struct cpu {
+  uint8_t apicid;       // Local APIC ID
+  int lintr[2];		// Local APIC
+  char mpstack[MPSTACK]; // per-cpu start-up stack, only used to get into main()
+};
+
+extern struct cpu cpus[NCPU];
+extern int ncpu;

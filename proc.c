@@ -104,36 +104,46 @@ swtch()
 {
   struct proc *np;
   struct proc *op = curproc[cpu()];
-  
-  while(1){
-    np = op + 1;
-    while(np != op){
-      if(np->state == RUNNABLE)
-        break;
-      np++;
-      if(np == &proc[NPROC])
-        np = &proc[0];
-    }
-    if(np->state == RUNNABLE)
-      break;
-    // cprintf("swtch: nothing to run\n");
-    release_spinlock(&kernel_lock);
-    acquire_spinlock(&kernel_lock);
-  }
-  
-  // XXX this may be too late, should probably save on the way
-  // in, in case some other CPU decided to run curproc
-  // before we got here. in fact setting state=WAITING and
-  // setting these variables had better be atomic w.r.t. other CPUs.
+  unsigned sp;
+  int i;
+
+  // force push of callee-saved registers
+  asm volatile("nop" : : : "%edi", "%esi", "%ebx");
+
+  // save calling process's stack pointers
   op->ebp = read_ebp();
   op->esp = read_esp();
 
-  cprintf("cpu %d swtch %x -> %x\n", cpu(), op, np);
+  // don't execute on calling process's stack
+  sp = (unsigned) cpus[cpu()].mpstack + MPSTACK - 32;
+  asm volatile("movl %0, %%esp" : : "g" (sp));
+  asm volatile("movl %0, %%ebp" : : "g" (sp));
+
+  // gcc might store op on the stack
+  np = curproc[cpu()];
+  np = np + 1;
+
+  while(1){
+    for(i = 0; i < NPROC; i++){
+      if(np >= &proc[NPROC])
+        np = &proc[0];
+      if(np->state == RUNNABLE)
+        break;
+      np++;
+    }
+    if(i < NPROC)
+      break;
+    // cprintf("swtch %d: nothing to run %d %d\n",
+            // cpu(), proc[1].state, proc[2].state);
+    release_spinlock(&kernel_lock);
+    acquire_spinlock(&kernel_lock);
+    np = &proc[0];
+  }
+  
+  cprintf("cpu %d swtch %x -> %x\n", cpu(), curproc[cpu()], np);
 
   curproc[cpu()] = np;
   np->state = RUNNING;
-
-  // XXX callee-saved registers?
 
   // h/w sets busy bit in TSS descriptor sometimes, and faults
   // if it's set in LTR. so clear tss descriptor busy bit.

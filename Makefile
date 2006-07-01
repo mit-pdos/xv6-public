@@ -5,7 +5,7 @@ CC = i386-jos-elf-gcc
 LD = i386-jos-elf-ld
 OBJCOPY = i386-jos-elf-objcopy
 OBJDUMP = i386-jos-elf-objdump
-CFLAGS = -nostdinc -I. -O -Wall -MD
+CFLAGS = -nostdinc -I. -O2 -Wall -MD
 
 xv6.img : bootblock kernel
 	dd if=/dev/zero of=xv6.img count=10000

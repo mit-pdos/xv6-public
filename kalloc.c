@@ -45,9 +45,14 @@ kfree(char *cp, int len)
   struct run **rr;
   struct run *p = (struct run *) cp;
   struct run *pend = (struct run *) (cp + len);
+  int i;
 
   if(len % PAGE)
     panic("kfree");
+
+  // XXX fill with junk to help debug
+  for(i = 0; i < len; i++)
+    cp[i] = 1;
 
   rr = &freelist;
   while(*rr){

@@ -5,3 +5,4 @@
 #define SYS_pipe 5
 #define SYS_write 6
 #define SYS_read 7
+#define SYS_close 8

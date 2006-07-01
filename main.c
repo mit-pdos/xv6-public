@@ -46,7 +46,7 @@ main()
   p = &proc[0];
   curproc[cpu()] = p;
   p->state = WAITING;
-  p->sz = PAGE;
+  p->sz = 4 * PAGE;
   p->mem = kalloc(p->sz);
   memset(p->mem, 0, p->sz);
   p->kstack = kalloc(KSTACKSIZE);

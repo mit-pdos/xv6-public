@@ -91,7 +91,7 @@ sys_pipe()
 int
 sys_write()
 {
-  int fd, n;
+  int fd, n, ret;
   unsigned addr;
   struct proc *p = curproc[cpu()];
 
@@ -103,13 +103,14 @@ sys_write()
     return -1;
   if(addr + n > p->sz)
     return -1;
-  return fd_write(p->fds[fd], p->mem + addr, n);
+  ret = fd_write(p->fds[fd], p->mem + addr, n);
+  return ret;
 }
 
 int
 sys_read()
 {
-  int fd, n;
+  int fd, n, ret;
   unsigned addr;
   struct proc *p = curproc[cpu()];
 
@@ -121,7 +122,25 @@ sys_read()
     return -1;
   if(addr + n > p->sz)
     return -1;
-  return fd_read(p->fds[fd], p->mem + addr, n);
+  ret = fd_read(p->fds[fd], p->mem + addr, n);
+  return ret;
+}
+
+int
+sys_close()
+{
+  int fd;
+  struct proc *p = curproc[cpu()];
+
+  if(fetcharg(0, &fd) < 0)
+    return -1;
+  if(fd < 0 || fd >= NOFILE)
+    return -1;
+  if(p->fds[fd] == 0)
+    return -1;
+  fd_close(p->fds[fd]);
+  p->fds[fd] = 0;
+  return 0;
 }
 
 int
@@ -138,6 +157,14 @@ sys_exit()
 {
   struct proc *p;
   struct proc *cp = curproc[cpu()];
+  int fd;
+
+  for(fd = 0; fd < NOFILE; fd++){
+    if(cp->fds[fd]){
+      fd_close(cp->fds[fd]);
+      cp->fds[fd] = 0;
+    }
+  }
 
   cp->state = ZOMBIE;
 
@@ -226,6 +253,9 @@ syscall()
     break;
   case SYS_read:
     ret = sys_read();
+    break;
+  case SYS_close:
+    ret = sys_close();
     break;
   default:
     cprintf("unknown sys call %d\n", num);

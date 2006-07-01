@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "traps.h"
 #include "mmu.h"
+#include "proc.h"
 
 /* 
  * Credit: Plan 9 sources, Intel MP spec, and Cliff Frey
@@ -92,16 +93,11 @@ enum {					/* LAPIC_TDCR */
 };
 
 #define APBOOTCODE 0x7000 // XXX hack
-#define MPSTACK 512
 
 static struct MP* mp;  // The MP floating point structure
 static uint32_t *lapicaddr;
-static struct cpu {
-  uint8_t apicid;       // Local APIC ID
-  int lintr[2];		// Local APIC
-  char mpstack[MPSTACK]; // per-cpu start-up stack, only used to get into main()
-} cpus[NCPU];
-static int ncpu;
+struct cpu cpus[NCPU];
+int ncpu;
 static struct cpu *bcpu;
 
 static int
@@ -130,7 +126,7 @@ lapic_timerinit()
 void
 lapic_timerintr()
 {
-  cprintf("%d: timer interrupt!\n", cpu());
+  // cprintf("%d: timer interrupt!\n", cpu());
   lapic_write (LAPIC_EOI, 0);
 }
 
