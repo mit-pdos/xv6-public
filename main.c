@@ -36,7 +36,7 @@ main()
 
   cprintf("\nxV6\n\n");
 
-  pic_init(); // initialize PIC---not clear why
+  pic_init(); // initialize PIC
   mp_init(); // multiprocessor
   kinit(); // physical memory allocator
   tvinit(); // trap vectors
@@ -59,12 +59,14 @@ main()
   p->ppid = 0;
   setupsegs(p);
 
+  write_eflags(read_eflags() | FL_IF);
+
   // turn on interrupts on boot processor
   lapic_timerinit();
   lapic_enableintr();
-  write_eflags(read_eflags() | FL_IF);
 
 #if 0
+  ide_init();
   ide_read(0, buf, 1);
   cprintf("sec0.0 %x\n", buf[0] & 0xff);
 #endif

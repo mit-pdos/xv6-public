@@ -92,6 +92,28 @@ enum {					/* LAPIC_TDCR */
   LAPIC_X1 = 0x0000000B,	/* divide by 1 */
 };
 
+static char* buses[] = {
+	"CBUSI ",
+	"CBUSII",
+	"EISA  ",
+	"FUTURE",
+	"INTERN",
+	"ISA   ",
+	"MBI   ",
+	"MBII  ",
+	"MCA   ",
+	"MPI   ",
+	"MPSA  ",
+	"NUBUS ",
+	"PCI   ",
+	"PCMCIA",
+	"TC    ",
+	"VL    ",
+	"VME   ",
+	"XPRESS",
+	0,
+};
+
 #define APBOOTCODE 0x7000 // XXX hack
 
 static struct MP* mp;  // The MP floating point structure
@@ -126,7 +148,7 @@ lapic_timerinit()
 void
 lapic_timerintr()
 {
-  // cprintf("%d: timer interrupt!\n", cpu());
+  cprintf("%d: timer interrupt!\n", cpu());
   lapic_write (LAPIC_EOI, 0);
 }
 
@@ -137,23 +159,17 @@ lapic_init(int c)
 
   cprintf("lapic_init %d\n", c);
 
-  irq_setmask_8259A(0xFFFF);
+  lapic_write(LAPIC_DFR, 0xFFFFFFFF); // set destination format register
+  r = (lapic_read(LAPIC_ID)>>24) & 0xFF; // read APIC ID
+  lapic_write(LAPIC_LDR, (1<<r)<<24);  // set logical destination register to r
+  lapic_write(LAPIC_TPR, 0xFF);  // no interrupts for now
+  lapic_write(LAPIC_SVR, LAPIC_ENABLE|(IRQ_OFFSET+IRQ_SPURIOUS));  // enable APIC
 
-  lapic_write(LAPIC_DFR, 0xFFFFFFFF);
-  r = (lapic_read(LAPIC_ID)>>24) & 0xFF;
-  lapic_write(LAPIC_LDR, (1<<r)<<24);
-  lapic_write(LAPIC_TPR, 0xFF);
-  lapic_write(LAPIC_SVR, LAPIC_ENABLE|(IRQ_OFFSET+IRQ_SPURIOUS));
+  // in virtual wire mode, set up the LINT0 and LINT1 as follows:
+  lapic_write(LAPIC_LINT0, APIC_IMASK | APIC_EXTINT);
+  lapic_write(LAPIC_LINT1, APIC_IMASK | APIC_NMI);
 
-  /*
-   * Set the local interrupts. It's likely these should just be
-   * masked off for SMP mode as some Pentium Pros have problems if
-   * LINT[01] are set to ExtINT.
-   * Acknowledge any outstanding interrupts.
-   */
-  lapic_write(LAPIC_LINT0, cpus[c].lintr[0]);
-  lapic_write(LAPIC_LINT1, cpus[c].lintr[1]);
-  lapic_write(LAPIC_EOI, 0);
+  lapic_write(LAPIC_EOI, 0); // acknowledge any outstanding interrupts.
 
   lvt = (lapic_read(LAPIC_VER)>>16) & 0xFF;
   if(lvt >= 4)
@@ -290,7 +306,7 @@ mp_detect(void)
   if(sum || (pcmp->version != 1 && pcmp->version != 4))
     return 3;
 
-  cprintf("Mp spec rev #: %x\n", mp->specrev);
+  cprintf("Mp spec rev #: %x imcrp 0x%x\n", mp->specrev, mp->imcrp);
   return 0;
 }
 
@@ -308,8 +324,10 @@ mp_init()
   uint8_t *p, *e;
   struct MPCTB *mpctb;
   struct MPPE *proc;
+  struct MPBE *bus;
   int c;
   extern int main();
+  int i;
 
   ncpu = 0;
   if ((r = mp_detect()) != 0) return;
@@ -332,8 +350,6 @@ mp_init()
     case MPPROCESSOR:
       proc = (struct MPPE *) p;
       cpus[ncpu].apicid = proc->apicid;
-      cpus[ncpu].lintr[0] = APIC_IMASK;
-      cpus[ncpu].lintr[1] = APIC_IMASK;
       cprintf("a processor %x\n", cpus[ncpu].apicid);
       if (proc->flags & MPBP) {
 	bcpu = &cpus[ncpu];
@@ -342,6 +358,12 @@ mp_init()
       p += sizeof(struct MPPE);
       continue;
     case MPBUS:
+      bus = (struct MPBE *) p;
+      for(i = 0; buses[i]; i++){
+	if(strncmp(buses[i], bus->string, sizeof(bus->string)) == 0)
+	  break;
+      }
+      cprintf("a bus %d\n", i);
       p += sizeof(struct MPBE);
       continue;
     case MPIOAPIC:
@@ -349,6 +371,7 @@ mp_init()
       p += sizeof(struct MPIOAPIC);
       continue;
     case MPIOINTR:
+      cprintf("an I/O intr\n");
       p += sizeof(struct MPIE);
       continue;
     default:

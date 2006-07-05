@@ -61,7 +61,6 @@ trap(struct Trapframe *tf)
     return;
   }
 
-  cprintf("trap %d eip %x:%x\n", tf->tf_trapno, tf->tf_cs, tf->tf_eip);
 
   // XXX probably ought to lgdt on trap return
 

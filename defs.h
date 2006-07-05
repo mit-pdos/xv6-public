@@ -25,11 +25,13 @@ void * memcpy(void *dst, void *src, unsigned n);
 void * memset(void *dst, int c, unsigned n);
 int memcmp(const void *v1, const void *v2, unsigned n);
 void *memmove(void *dst, const void *src, unsigned n);
+int strncmp(const char *p, const char *q, unsigned n);
 
 // syscall.c
 void syscall(void);
 
 // picirq.c
+extern uint16_t irq_mask_8259A;
 void irq_setmask_8259A(uint16_t mask);
 void pic_init(void);
 
@@ -66,3 +68,7 @@ struct fd * fd_alloc();
 void fd_close(struct fd *);
 int fd_read(struct fd *fd, char *addr, int n);
 int fd_write(struct fd *fd, char *addr, int n);
+
+// ide.c
+void ide_init(void);
+int ide_read(uint32_t secno, void *dst, unsigned nsecs);

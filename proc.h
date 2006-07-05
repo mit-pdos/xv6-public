@@ -42,7 +42,6 @@ extern struct proc *curproc[NCPU];
 
 struct cpu {
   uint8_t apicid;       // Local APIC ID
-  int lintr[2];		// Local APIC
   char mpstack[MPSTACK]; // per-cpu start-up stack, only used to get into main()
 };
 
