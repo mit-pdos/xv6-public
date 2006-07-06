@@ -39,6 +39,13 @@ ide_init(void)
   ide_wait_ready(0);
 }
 
+void
+ide_intr(void)
+{
+  cprintf("ide_intr\n");
+}
+
+
 
 int
 ide_probe_disk1(void)
@@ -87,13 +94,15 @@ ide_read(uint32_t secno, void *dst, unsigned nsecs)
   outb(0x1F5, (secno >> 16) & 0xFF);
   outb(0x1F6, 0xE0 | ((diskno&1)<<4) | ((secno>>24)&0x0F));
   outb(0x1F7, 0x20);	// CMD 0x20 means read sector
-   
+
+#if 0
   for (; nsecs > 0; nsecs--, dst += 512) {
     if ((r = ide_wait_ready(1)) < 0)
       return r;
     insl(0x1F0, dst, 512/4);
   }
-	
+#endif
+
   return 0;
 }
 

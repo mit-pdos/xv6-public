@@ -71,4 +71,5 @@ int fd_write(struct fd *fd, char *addr, int n);
 
 // ide.c
 void ide_init(void);
+void ide_intri(void);
 int ide_read(uint32_t secno, void *dst, unsigned nsecs);

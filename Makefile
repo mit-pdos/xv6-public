@@ -20,12 +20,12 @@ bootblock : bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
-kernel : $(OBJS) bootother.S user1 usertests
+kernel : $(OBJS) bootother.S user1 usertests userfs
 	$(CC) -nostdinc -I. -c bootother.S
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
-	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary bootother user1 usertests
+	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary bootother user1 usertests userfs
 	$(OBJDUMP) -S kernel > kernel.asm
 
 vectors.S : vectors.pl
@@ -40,6 +40,11 @@ usertests : usertests.c ulib.o
 	$(CC) -nostdinc -I. -c usertests.c
 	$(LD) -N -e main -Ttext 0 -o usertests usertests.o ulib.o
 	$(OBJDUMP) -S usertests > usertests.asm
+
+userfs : userfs.c ulib.o
+	$(CC) -nostdinc -I. -c userfs.c
+	$(LD) -N -e main -Ttext 0 -o userfs userfs.o ulib.o
+	$(OBJDUMP) -S userfs > userfs.asm
 
 ulib.o : ulib.c
 	$(CC) -nostdinc -I. -c ulib.c

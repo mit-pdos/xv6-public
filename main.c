@@ -13,6 +13,7 @@ extern char edata[], end[];
 extern int acpu;
 extern char _binary_user1_start[], _binary_user1_size[];
 extern char _binary_usertests_start[], _binary_usertests_size[];
+extern char _binary_userfs_start[], _binary_userfs_size[];
 
 char buf[512];
 
@@ -59,20 +60,16 @@ main()
   p->ppid = 0;
   setupsegs(p);
 
+  // become interruptable
   write_eflags(read_eflags() | FL_IF);
 
-  // turn on interrupts on boot processor
+  // turn on timer and enable interrupts on the local APIC
   lapic_timerinit();
   lapic_enableintr();
 
-#if 0
-  ide_init();
-  ide_read(0, buf, 1);
-  cprintf("sec0.0 %x\n", buf[0] & 0xff);
-#endif
-
   p = newproc();
-  load_icode(p, _binary_usertests_start, (unsigned) _binary_usertests_size);
+  //  load_icode(p, _binary_usertests_start, (unsigned) _binary_usertests_size);
+  load_icode(p, _binary_userfs_start, (unsigned) _binary_userfs_size);
 
   swtch();
 

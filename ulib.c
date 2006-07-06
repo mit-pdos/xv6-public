@@ -56,3 +56,11 @@ close(int fd)
   asm("mov $8, %eax");
   asm("int $48");
 }
+
+int
+block(void)
+{
+  asm("mov $9, %eax");
+  asm("int $48");
+}
+

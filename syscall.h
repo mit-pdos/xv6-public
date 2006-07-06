@@ -6,3 +6,4 @@
 #define SYS_write 6
 #define SYS_read 7
 #define SYS_close 8
+#define SYS_block 9

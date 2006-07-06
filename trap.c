@@ -60,6 +60,10 @@ trap(struct Trapframe *tf)
     lapic_timerintr();
     return;
   }
+  if(v == (IRQ_OFFSET + IRQ_IDE)){
+    ide_intr();
+    return;
+  }
 
 
   // XXX probably ought to lgdt on trap return

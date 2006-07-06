@@ -224,6 +224,20 @@ sys_cons_putc()
   return 0;
 }
 
+int
+sys_block(void)
+{
+  char buf[1];
+
+  cprintf("%d: call sys_block\n", cpu());
+  ide_init();
+  ide_read(0, buf, 1);
+  //  cprintf("sec0.0 %x\n", buf[0] & 0xff);
+  cprintf ("call sleep\n");
+  sleep (0);
+  return 0;
+}
+
 void
 syscall()
 {
@@ -256,6 +270,9 @@ syscall()
     break;
   case SYS_close:
     ret = sys_close();
+    break;
+  case SYS_block:
+    ret = sys_block();
     break;
   default:
     cprintf("unknown sys call %d\n", num);
