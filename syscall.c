@@ -227,14 +227,24 @@ sys_cons_putc()
 int
 sys_block(void)
 {
-  char buf[1];
+  char buf[512];
+  int i, j;
 
   cprintf("%d: call sys_block\n", cpu());
-  ide_init();
-  ide_read(0, buf, 1);
-  //  cprintf("sec0.0 %x\n", buf[0] & 0xff);
-  cprintf ("call sleep\n");
-  sleep (0);
+  for (i = 0; i < 100; i++) {
+    if (ide_start_read(i, buf, 1)) {
+      panic("couldn't start read\n");
+    }
+    cprintf("call sleep\n");
+    sleep (&disk_channel);
+    if (ide_read(i, buf, 1)) {
+      panic("couldn't do read\n");
+    }
+    cprintf("sector %d: ", i);
+    for (j = 0; j < 2; j++)
+      cprintf("%x ", buf[j] & 0xff);
+    cprintf("\n");
+  }
   return 0;
 }
 

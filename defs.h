@@ -70,6 +70,8 @@ int fd_read(struct fd *fd, char *addr, int n);
 int fd_write(struct fd *fd, char *addr, int n);
 
 // ide.c
+extern int disk_channel;
 void ide_init(void);
-void ide_intri(void);
+void ide_intr(void);
+int ide_start_read(uint32_t secno, void *dst, unsigned nsecs);
 int ide_read(uint32_t secno, void *dst, unsigned nsecs);

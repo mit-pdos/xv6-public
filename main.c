@@ -60,12 +60,14 @@ main()
   p->ppid = 0;
   setupsegs(p);
 
-  // become interruptable
-  write_eflags(read_eflags() | FL_IF);
-
   // turn on timer and enable interrupts on the local APIC
   lapic_timerinit();
   lapic_enableintr();
+  // init disk device
+  ide_init(); 
+
+  // become interruptable
+  write_eflags(read_eflags() | FL_IF);
 
   p = newproc();
   //  load_icode(p, _binary_usertests_start, (unsigned) _binary_usertests_size);
