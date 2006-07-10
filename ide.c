@@ -16,6 +16,14 @@
 #define IDE_DF		0x20
 #define IDE_ERR		0x01
 
+struct ide_request {
+  uint32_t secno;
+  void *dst;
+  unsigned nsecs;
+};
+struct ide_request request[NREQUEST];
+int head, tail;
+
 static int diskno = 0;
 int disk_channel;
 
@@ -44,10 +52,8 @@ void
 ide_intr(void)
 {
   cprintf("ide_intr\n");
-  wakeup(&disk_channel);
+  wakeup(&request[tail]);
 }
-
-
 
 int
 ide_probe_disk1(void)
@@ -79,35 +85,66 @@ ide_set_disk(int d)
   diskno = d;
 }
 
-int
+void
+ide_start_request (void)
+{
+  struct ide_request *r;
+
+  if (head == tail) {
+    r = &request[tail];
+    ide_wait_ready(0);
+    outb(0x3f6, 0);
+    outb(0x1F2, r->nsecs);
+    outb(0x1F3, r->secno & 0xFF);
+    outb(0x1F4, (r->secno >> 8) & 0xFF);
+    outb(0x1F5, (r->secno >> 16) & 0xFF);
+    outb(0x1F6, 0xE0 | ((diskno&1)<<4) | ((r->secno>>24)&0x0F));
+    outb(0x1F7, 0x20);	// CMD 0x20 means read sector
+  }
+}
+
+void *
 ide_start_read(uint32_t secno, void *dst, unsigned nsecs)
 {
+  struct ide_request *r;
+
   if(nsecs > 256)
     panic("ide_start_read: nsecs too large");
 
-  ide_wait_ready(0);
+  while ((head + 1) % NREQUEST == tail)
+    sleep (&disk_channel);
 
-  outb(0x3f6, 0);
-  outb(0x1F2, nsecs);
-  outb(0x1F3, secno & 0xFF);
-  outb(0x1F4, (secno >> 8) & 0xFF);
-  outb(0x1F5, (secno >> 16) & 0xFF);
-  outb(0x1F6, 0xE0 | ((diskno&1)<<4) | ((secno>>24)&0x0F));
-  outb(0x1F7, 0x20);	// CMD 0x20 means read sector
+  r = &request[head];
+  r->secno = secno;
+  r->dst = dst;
+  r->nsecs = nsecs;
 
-  return 0;
+  ide_start_request();
+
+  head = (head + 1) % NREQUEST;
+
+  return r;
 }
 
 int
-ide_read(uint32_t secno, void *dst, unsigned nsecs)
+ide_finish_read(void *c)
 {
-  int r;
+  int r = 0;
+  struct ide_request *req = (struct ide_request *) c;
 
-  for (; nsecs > 0; nsecs--, dst += 512) {
+  for (; req->nsecs > 0; req->nsecs--, req->dst += 512) {
     if ((r = ide_wait_ready(1)) < 0)
-      return r;
-    insl(0x1F0, dst, 512/4);
+      break;
+    insl(0x1F0, req->dst, 512/4);
   }
+
+  if ((head + 1) % NREQUEST == tail) {
+    wakeup(&disk_channel);
+  }
+  
+  tail = (tail + 1) % NREQUEST;
+  ide_start_request();
+
   return 0;
 }
 

@@ -229,15 +229,16 @@ sys_block(void)
 {
   char buf[512];
   int i, j;
+  void *c;
 
   cprintf("%d: call sys_block\n", cpu());
   for (i = 0; i < 100; i++) {
-    if (ide_start_read(i, buf, 1)) {
+    if ((c = ide_start_read(i, buf, 1)) == 0) {
       panic("couldn't start read\n");
     }
     cprintf("call sleep\n");
-    sleep (&disk_channel);
-    if (ide_read(i, buf, 1)) {
+    sleep (c);
+    if (ide_finish_read(c)) {
       panic("couldn't do read\n");
     }
     cprintf("sector %d: ", i);
