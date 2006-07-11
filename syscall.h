@@ -7,3 +7,4 @@
 #define SYS_read 7
 #define SYS_close 8
 #define SYS_block 9
+#define SYS_kill 10

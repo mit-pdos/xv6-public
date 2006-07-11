@@ -158,6 +158,4 @@ ktest()
   if(p1 == 0)
     panic("ktest2");
   kfree(p1, PAGE * 20);
-
-  cprintf("ktest ok\n");
 }

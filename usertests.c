@@ -1,6 +1,6 @@
-// simple fork and pipe read/write
-
 char buf[2048];
+
+// simple fork and pipe read/write
 
 void
 pipe1()
@@ -47,9 +47,54 @@ pipe1()
   puts("pipe1 ok\n");
 }
 
+// meant to be run w/ at most two CPUs
+void
+preempt()
+{
+  int pid1, pid2, pid3;
+  int pfds[2];
+
+  pid1 = fork();
+  if(pid1 == 0)
+    while(1)
+      ;
+    
+  pid2 = fork();
+  if(pid2 == 0)
+    while(1)
+      ;
+
+  pipe(pfds);
+  pid3 = fork();
+  if(pid3 == 0){
+    close(pfds[0]);
+    if(write(pfds[1], "x", 1) != 1)
+      puts("preempt write error");
+    close(pfds[1]);
+    while(1)
+      ;
+  }
+
+  close(pfds[1]);
+  if(read(pfds[0], buf, sizeof(buf)) != 1){
+    puts("preempt read error");
+    return;
+  }
+  close(pfds[0]);
+  kill(pid1);
+  kill(pid2);
+  kill(pid3);
+  wait();
+  wait();
+  wait();
+  puts("preempt ok\n");
+}
+
 main()
 {
+  puts("usertests starting\n");
   pipe1();
+  //preempt();
 
   while(1)
     ;

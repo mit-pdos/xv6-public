@@ -184,3 +184,45 @@ wakeup(void *chan)
     if(p->state == WAITING && p->chan == chan)
       p->state = RUNNABLE;
 }
+
+// give up the CPU but stay marked as RUNNABLE
+void
+yield()
+{
+  if(curproc[cpu()] == 0 || curproc[cpu()]->state != RUNNING)
+    panic("yield");
+  curproc[cpu()]->state = RUNNABLE;
+  swtch();
+}
+
+void
+proc_exit()
+{
+  struct proc *p;
+  struct proc *cp = curproc[cpu()];
+  int fd;
+
+  cprintf("exit %x\n", cp);
+
+  for(fd = 0; fd < NOFILE; fd++){
+    if(cp->fds[fd]){
+      fd_close(cp->fds[fd]);
+      cp->fds[fd] = 0;
+    }
+  }
+
+  cp->state = ZOMBIE;
+
+  // wake up parent
+  for(p = proc; p < &proc[NPROC]; p++)
+    if(p->pid == cp->ppid)
+      wakeup(p);
+
+  // abandon children
+  for(p = proc; p < &proc[NPROC]; p++)
+    if(p->ppid == cp->pid)
+      p->pid = 1;
+
+  // switch into scheduler
+  swtch();
+}

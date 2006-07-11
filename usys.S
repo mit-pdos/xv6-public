@@ -10,9 +10,11 @@
 
 STUB(fork)
 STUB(exit)
+STUB(wait)
 STUB(cons_putc)
 STUB(pipe)
 STUB(read)
 STUB(write)
 STUB(close)
 STUB(block)
+STUB(kill)

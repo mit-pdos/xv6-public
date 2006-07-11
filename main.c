@@ -66,11 +66,12 @@ main()
   ide_init(); 
 
   // become interruptable
-  write_eflags(read_eflags() | FL_IF);
+  sti();
 
   p = newproc();
-  // load_icode(p, _binary_usertests_start, (unsigned) _binary_usertests_size);
-  load_icode(p, _binary_userfs_start, (unsigned) _binary_userfs_size);
+  
+  load_icode(p, _binary_usertests_start, (unsigned) _binary_usertests_size);
+  //load_icode(p, _binary_userfs_start, (unsigned) _binary_userfs_size);
   cprintf("loaded userfs\n");
   scheduler();
 

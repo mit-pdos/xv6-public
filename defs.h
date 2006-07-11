@@ -17,6 +17,8 @@ void swtch(void);
 void sleep(void *);
 void wakeup(void *);
 void scheduler(void);
+void proc_exit(void);
+void yield(void);
 
 // swtch.S
 struct jmpbuf;

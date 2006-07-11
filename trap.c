@@ -45,6 +45,8 @@ trap(struct Trapframe *tf)
     struct proc *cp = curproc[cpu()];
     if(cp == 0)
       panic("syscall with no proc");
+    if(cp->killed)
+      proc_exit();
     cp->tf = tf;
     syscall();
     if(cp != curproc[cpu()])
@@ -55,11 +57,20 @@ trap(struct Trapframe *tf)
       panic("trap ret wrong tf");
     if(read_esp() < (unsigned)cp->kstack || read_esp() >= (unsigned)cp->kstack + KSTACKSIZE)
       panic("trap ret esp wrong");
+    if(cp->killed)
+      proc_exit();
     return;
   }
 
   if(v == (IRQ_OFFSET + IRQ_TIMER)){
+    struct proc *cp = curproc[cpu()];
     lapic_timerintr();
+    if(cp){
+      sti();
+      if(cp->killed)
+        proc_exit();
+      yield();
+    }
     return;
   }
   if(v == (IRQ_OFFSET + IRQ_IDE)){
