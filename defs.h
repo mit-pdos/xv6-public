@@ -10,11 +10,18 @@ void cons_putc(int);
 
 // proc.c
 struct proc;
+struct jmpbuf;
 void setupsegs(struct proc *);
 struct proc * newproc(void);
 void swtch(void);
 void sleep(void *);
 void wakeup(void *);
+void scheduler(void);
+
+// swtch.S
+struct jmpbuf;
+int setjmp(struct jmpbuf*);
+void longjmp(struct jmpbuf*);
 
 // trap.c
 void tvinit(void);

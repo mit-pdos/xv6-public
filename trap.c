@@ -36,13 +36,15 @@ trap(struct Trapframe *tf)
   int v = tf->tf_trapno;
 
   if(tf->tf_cs == 0x8 && kernel_lock == cpu())
-    cprintf("cpu %d: trap from %x:%x with lock=%d\n",
-            cpu(), tf->tf_cs, tf->tf_eip, kernel_lock);
+    cprintf("cpu %d: trap %d from %x:%x with lock=%d\n",
+            cpu(), v, tf->tf_cs, tf->tf_eip, kernel_lock);
 
   acquire_spinlock(&kernel_lock); // released in trapret in trapasm.S
 
   if(v == T_SYSCALL){
     struct proc *cp = curproc[cpu()];
+    if(cp == 0)
+      panic("syscall with no proc");
     cp->tf = tf;
     syscall();
     if(cp != curproc[cpu()])
@@ -51,7 +53,7 @@ trap(struct Trapframe *tf)
       panic("trap ret but not RUNNING");
     if(tf != cp->tf)
       panic("trap ret wrong tf");
-    if(read_esp() < cp->kstack || read_esp() >= cp->kstack + KSTACKSIZE)
+    if(read_esp() < (unsigned)cp->kstack || read_esp() >= (unsigned)cp->kstack + KSTACKSIZE)
       panic("trap ret esp wrong");
     return;
   }

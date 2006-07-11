@@ -141,8 +141,8 @@ lapic_timerinit()
   cprintf("%d: init timer\n", cpu());
   lapic_write(LAPIC_TDCR, LAPIC_X1);
   lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
-  lapic_write(LAPIC_TCCR, 1000000);
-  lapic_write(LAPIC_TICR, 1000000);
+  lapic_write(LAPIC_TCCR, 10000000);
+  lapic_write(LAPIC_TICR, 10000000);
 }
 
 void

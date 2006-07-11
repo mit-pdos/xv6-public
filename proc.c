@@ -48,8 +48,7 @@ struct proc *
 newproc()
 {
   struct proc *np;
-  struct proc *op = curproc[cpu()];
-  unsigned *sp;
+  struct proc *op;
   int fd;
 
   for(np = &proc[1]; np < &proc[NPROC]; np++)
@@ -57,6 +56,11 @@ newproc()
       break;
   if(np >= &proc[NPROC])
     return 0;
+
+  // copy from proc[0] if we're bootstrapping
+  op = curproc[cpu()];
+  if(op == 0)
+    op = &proc[0];
 
   np->pid = next_pid++;
   np->ppid = op->pid;
@@ -76,11 +80,12 @@ newproc()
   np->tf = (struct Trapframe *) (np->kstack + KSTACKSIZE - sizeof(struct Trapframe));
   *(np->tf) = *(op->tf);
   np->tf->tf_regs.reg_eax = 0; // so fork() returns 0 in child
-  sp = (unsigned *) np->tf;
-  *(--sp) = (unsigned) &trapret;  // for return from swtch()
-  *(--sp) = 0;  // previous bp for leave in swtch()
-  np->esp = (unsigned) sp;
-  np->ebp = (unsigned) sp;
+  cprintf("newproc pid=%d return to %x:%x tf-%p\n", np->pid, np->tf->tf_cs, np->tf->tf_eip, np->tf);
+
+  // set up new jmpbuf to start executing at trapret with esp pointing at tf
+  memset(&np->jmpbuf, 0, sizeof np->jmpbuf);
+  np->jmpbuf.jb_eip = (unsigned) trapret;
+  np->jmpbuf.jb_esp = (unsigned) np->tf - 4;  // -4 for the %eip that isn't actually there
 
   // copy file descriptors
   for(fd = 0; fd < NOFILE; fd++){
@@ -96,33 +101,20 @@ newproc()
   return np;
 }
 
-/*
- * find a runnable process and switch to it.
- */
 void
-swtch()
+scheduler(void)
 {
-  struct proc *np;
-  struct proc *op = curproc[cpu()];
-  unsigned sp;
+  struct proc *op, *np;
   int i;
 
-  // force push of callee-saved registers
-  asm volatile("nop" : : : "%edi", "%esi", "%ebx");
+  cprintf("start scheduler on cpu %d jmpbuf %p\n", cpu(), &cpus[cpu()].jmpbuf);
+  cpus[cpu()].lastproc = &proc[0];
 
-  // save calling process's stack pointers
-  op->ebp = read_ebp();
-  op->esp = read_esp();
-
-  // don't execute on calling process's stack
-  sp = (unsigned) cpus[cpu()].mpstack + MPSTACK - 32;
-  asm volatile("movl %0, %%esp" : : "g" (sp));
-  asm volatile("movl %0, %%ebp" : : "g" (sp));
-
-  // gcc might store op on the stack
-  np = curproc[cpu()];
-  np = np + 1;
-
+  setjmp(&cpus[cpu()].jmpbuf);
+  
+  // find a runnable process and switch to it
+  curproc[cpu()] = 0;
+  np = cpus[cpu()].lastproc + 1;
   while(1){
     for(i = 0; i < NPROC; i++){
       if(np >= &proc[NPROC])
@@ -139,34 +131,47 @@ swtch()
     acquire_spinlock(&kernel_lock);
     np = &proc[0];
   }
-  
-  cprintf("cpu %d swtch %x -> %x\n", cpu(), curproc[cpu()], np);
 
+  cpus[cpu()].lastproc = np;
   curproc[cpu()] = np;
+  
   np->state = RUNNING;
 
   // h/w sets busy bit in TSS descriptor sometimes, and faults
   // if it's set in LTR. so clear tss descriptor busy bit.
   np->gdt[SEG_TSS].sd_type = STS_T32A;
 
+  // XXX should probably have an lgdt() function in x86.h
+  // to confine all the inline assembly.
   // XXX probably ought to lgdt on trap return too, in case
   // a system call has moved a program or changed its size.
-
   asm volatile("lgdt %0" : : "g" (np->gdt_pd.pd_lim));
   ltr(SEG_TSS << 3);
 
-  // this happens to work, but probably isn't safe:
-  // it's not clear that np->ebp is guaranteed to evaluate
-  // correctly after changing the stack pointer.
-  asm volatile("movl %0, %%esp" : : "g" (np->esp));
-  asm volatile("movl %0, %%ebp" : : "g" (np->ebp));
+  if(0) cprintf("cpu%d: run %d esp=%p callerpc=%p\n", cpu(), np-proc);
+  longjmp(&np->jmpbuf);
+}
+
+// give up the cpu by switching to the scheduler,
+// which runs on the per-cpu stack.
+void
+swtch(void)
+{
+  struct proc *p = curproc[cpu()];
+  if(p == 0)
+    panic("swtch");
+  if(setjmp(&p->jmpbuf) == 0)
+    longjmp(&cpus[cpu()].jmpbuf);
 }
 
 void
 sleep(void *chan)
 {
-  curproc[cpu()]->chan = chan;
-  curproc[cpu()]->state = WAITING;
+  struct proc *p = curproc[cpu()];
+  if(p == 0)
+    panic("sleep");
+  p->chan = chan;
+  p->state = WAITING;
   swtch();
 }
 

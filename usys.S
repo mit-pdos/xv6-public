@@ -1,0 +1,18 @@
+#include "syscall.h"
+#include "traps.h"
+
+#define STUB(name) \
+	.globl name; \
+	name: \
+		movl $SYS_ ## name, %eax; \
+		int $T_SYSCALL; \
+		ret 
+
+STUB(fork)
+STUB(exit)
+STUB(cons_putc)
+STUB(pipe)
+STUB(read)
+STUB(write)
+STUB(close)
+STUB(block)

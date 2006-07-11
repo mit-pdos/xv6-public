@@ -1,25 +1,4 @@
 int
-fork()
-{
-  asm("mov $1, %eax");
-  asm("int $48");
-}
-
-int
-exit()
-{
-  asm("mov $2, %eax");
-  asm("int $48");
-}
-
-void
-cons_putc(int c)
-{
-  asm("mov $4, %eax");
-  asm("int $48");
-}
-
-int
 puts(char *s)
 {
   int i;
@@ -27,40 +6,5 @@ puts(char *s)
   for(i = 0; s[i]; i++)
     cons_putc(s[i]);
   return i;
-}
-
-int
-pipe(int fds[])
-{
-  asm("mov $5, %eax");
-  asm("int $48");
-}
-
-int
-read(int fd, char *buf, int n)
-{
-  asm("mov $7, %eax");
-  asm("int $48");
-}
-
-int
-write(int fd, char *buf, int n)
-{
-  asm("mov $6, %eax");
-  asm("int $48");
-}
-
-int
-close(int fd)
-{
-  asm("mov $8, %eax");
-  asm("int $48");
-}
-
-int
-block(void)
-{
-  asm("mov $9, %eax");
-  asm("int $48");
 }
 

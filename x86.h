@@ -349,7 +349,6 @@ struct Trapframe {
     uint16_t tf_padding4;
 };
 
-
 #define MAX_IRQS	16	// Number of IRQs
 
 #define IRQ_OFFSET      32	// IRQ 0 corresponds to int IRQ_OFFSET
