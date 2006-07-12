@@ -17,10 +17,11 @@ int getcallerpc(void *v) {
 void
 acquire(struct spinlock * lock)
 {
+  struct proc *cp = curproc[cpu()];
   unsigned who;
 
-  if(curproc[cpu()])
-    who = (unsigned) curproc[cpu()];
+  if(cp)
+    who = (unsigned) cp;
   else
     who = cpu() + 1;
 
@@ -38,16 +39,20 @@ acquire(struct spinlock * lock)
     lock->who = who;
   }
 
+  if(cp)
+    cp->locks += 1;
+
   if(DEBUG) cprintf("cpu%d: acquired at %x\n", cpu(), getcallerpc(&lock));
 }
 
 void
 release(struct spinlock * lock)
 {
+  struct proc *cp = curproc[cpu()];
   unsigned who;
 
-  if(curproc[cpu()])
-    who = (unsigned) curproc[cpu()];
+  if(cp)
+    who = (unsigned) cp;
   else
     who = cpu() + 1;
 
@@ -57,6 +62,8 @@ release(struct spinlock * lock)
     panic("release");
 
   lock->count -= 1;
+  if(cp)
+    cp->locks -= 1;
   if(lock->count < 1){
     lock->who = 0;
     cmpxchg(1, 0, &lock->locked);

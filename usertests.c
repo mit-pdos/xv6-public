@@ -93,8 +93,8 @@ preempt()
 main()
 {
   puts("usertests starting\n");
-  //pipe1();
-  preempt();
+  pipe1();
+  //preempt();
 
   while(1)
     ;

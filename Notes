@@ -114,26 +114,15 @@ wakeup needs proc_table_lock
   so we need recursive locks?
   or you must hold the lock to call wakeup?
 
-if locks contain proc *, they can't be used at interrupt time
-  only proc_table_lock will be used at interrupt time?
-  maybe it doesn't matter if we use curproc?
-
 in general, the table locks protect both free-ness and
   public variables of table elements
   in many cases you can use table elements w/o a lock
   e.g. if you are the process, or you are using an fd
 
-why can't i get a lock in console code?
-  always triple fault
-  because release turns on interrupts!
-  a bad idea very early in main()
-  but mp_init() calls cprintf
-
 lock code shouldn't call cprintf...
-ide_init doesn't work now?
-and IOAPIC: read from unsupported address
-  when running pre-empt user test
-  so maybe something wrong with clock interrupts
-  no! if one cpu holds lock w/ curproc0=,
-    then another cpu can take it, it looks like
-    a recursive acquire()
+
+nasty hack to allow locks before first process,
+  and to allow them in interrupts when curproc may be zero
+
+race between release and sleep in sys_wait()
+race between sys_exit waking up parent and setting state=ZOMBIE

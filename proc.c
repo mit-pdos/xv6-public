@@ -181,7 +181,9 @@ swtch(int newstate)
 {
   struct proc *p = curproc[cpu()];
   if(p == 0)
-    panic("swtch");
+    panic("swtch no proc");
+  if(p->locks != 0)
+    panic("swtch w/ locks");
   p->newstate = newstate; // basically an argument to scheduler()
   if(setjmp(&p->jmpbuf) == 0)
     longjmp(&cpus[cpu()].jmpbuf);
@@ -203,9 +205,11 @@ wakeup(void *chan)
   struct proc *p;
 
   acquire(&proc_table_lock);
-  for(p = proc; p < &proc[NPROC]; p++)
-    if(p->state == WAITING && p->chan == chan)
+  for(p = proc; p < &proc[NPROC]; p++){
+    if(p->state == WAITING && p->chan == chan){
       p->state = RUNNABLE;
+    }
+  }
   release(&proc_table_lock);
 }
 
@@ -225,7 +229,7 @@ proc_exit()
   struct proc *cp = curproc[cpu()];
   int fd;
 
-  cprintf("exit %x\n", cp);
+  cprintf("exit %x pid %d ppid %d\n", cp, cp->pid, cp->ppid);
 
   for(fd = 0; fd < NOFILE; fd++){
     if(cp->fds[fd]){
@@ -246,7 +250,7 @@ proc_exit()
     if(p->ppid == cp->pid)
       p->pid = 1;
 
-  acquire(&proc_table_lock);
+  release(&proc_table_lock);
 
   // switch into scheduler
   swtch(ZOMBIE);
@@ -265,10 +269,8 @@ cli(void)
 void
 sti(void)
 {
-  if(cpus[cpu()].clis < 1){
-    cprintf("cpu %d clis %d\n", cpu(), cpus[cpu()].clis);
+  if(cpus[cpu()].clis < 1)
     panic("sti");
-  }
   cpus[cpu()].clis -= 1;
   if(cpus[cpu()].clis < 1)
     __asm __volatile("sti");

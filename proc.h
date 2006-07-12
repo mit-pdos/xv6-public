@@ -45,6 +45,7 @@ struct proc{
   int ppid;
   void *chan; // sleep
   int killed;
+  int locks; // # of locks currently held
   struct fd *fds[NOFILE];
 
   struct Taskstate ts;  // only to give cpu address of kernel stack
