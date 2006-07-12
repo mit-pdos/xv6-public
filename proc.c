@@ -148,6 +148,7 @@ scheduler(void)
 
     if(i < NPROC){
       np->state = RUNNING;
+      release(&proc_table_lock);
       break;
     }
     
@@ -157,8 +158,6 @@ scheduler(void)
 
   cpus[cpu()].lastproc = np;
   curproc[cpu()] = np;
-  
-  release(&proc_table_lock);
 
   // h/w sets busy bit in TSS descriptor sometimes, and faults
   // if it's set in LTR. so clear tss descriptor busy bit.
@@ -251,4 +250,26 @@ proc_exit()
 
   // switch into scheduler
   swtch(ZOMBIE);
+}
+
+// disable interrupts
+void
+cli(void)
+{
+  cpus[cpu()].clis += 1;
+  if(cpus[cpu()].clis == 1)
+    __asm __volatile("cli");
+}
+
+// enable interrupts
+void
+sti(void)
+{
+  if(cpus[cpu()].clis < 1){
+    cprintf("cpu %d clis %d\n", cpu(), cpus[cpu()].clis);
+    panic("sti");
+  }
+  cpus[cpu()].clis -= 1;
+  if(cpus[cpu()].clis < 1)
+    __asm __volatile("sti");
 }

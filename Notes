@@ -125,6 +125,10 @@ in general, the table locks protect both free-ness and
 
 why can't i get a lock in console code?
   always triple fault
+  because release turns on interrupts!
+  a bad idea very early in main()
+  but mp_init() calls cprintf
+
 lock code shouldn't call cprintf...
 ide_init doesn't work now?
 and IOAPIC: read from unsupported address

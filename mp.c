@@ -325,8 +325,6 @@ mp_init()
   struct MPCTB *mpctb;
   struct MPPE *proc;
   struct MPBE *bus;
-  int c;
-  extern int main();
   int i;
 
   ncpu = 0;
@@ -386,13 +384,20 @@ mp_init()
   
   lapic_init(bcpu-cpus);
   cprintf("ncpu: %d boot %d\n", ncpu, bcpu-cpus);
+}
 
+void
+mp_startthem()
+{
   extern uint8_t _binary_bootother_start[], _binary_bootother_size[];
+  extern int main();
+  int c;
+
   memmove((void *) APBOOTCODE,_binary_bootother_start, 
 	  (uint32_t) _binary_bootother_size);
 
   for(c = 0; c < ncpu; c++){
-    if (cpus+c == bcpu) continue;
+    if (c == cpu()) continue;
     cprintf ("starting processor %d\n", c);
     *(unsigned *)(APBOOTCODE-4) = (unsigned) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
     *(unsigned *)(APBOOTCODE-8) = (unsigned)&main; // tell it where to jump to

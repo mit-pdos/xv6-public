@@ -8,6 +8,7 @@
 #include "syscall.h"
 #include "elf.h"
 #include "param.h"
+#include "spinlock.h"
 
 extern char edata[], end[];
 extern int acpu;
@@ -15,22 +16,32 @@ extern char _binary_user1_start[], _binary_user1_size[];
 extern char _binary_usertests_start[], _binary_usertests_size[];
 extern char _binary_userfs_start[], _binary_userfs_size[];
 
+extern use_printf_lock;
+
 int
 main()
 {
   struct proc *p;
 
   if (acpu) {
+    cpus[cpu()].clis = 1;
     cprintf("an application processor\n");
     idtinit(); // CPU's idt
     lapic_init(cpu());
     lapic_timerinit();
     lapic_enableintr();
+    sti();
     scheduler();
   }
   acpu = 1;
+
   // clear BSS
   memset(edata, 0, end - edata);
+
+  mp_init(); // just set up apic so cpu() works
+  use_printf_lock = 1;
+
+  cpus[cpu()].clis = 1; // cpu starts as if we had called cli()
 
   cprintf("\nxV6\n\n");
 
@@ -56,7 +67,7 @@ main()
   p->ppid = 0;
   setupsegs(p);
 
-  mp_init(); // multiprocessor
+  mp_startthem();
 
   // turn on timer and enable interrupts on the local APIC
   lapic_timerinit();

@@ -19,6 +19,8 @@ void wakeup(void *);
 void scheduler(void);
 void proc_exit(void);
 void yield(void);
+void cli(void);
+void sti(void);
 
 // swtch.S
 struct jmpbuf;
@@ -46,6 +48,7 @@ void pic_init(void);
 
 // mp.c
 void mp_init(void);
+void mp_startthem(void);
 int cpu(void);
 int mp_isbcpu(void);
 void lapic_init(int);

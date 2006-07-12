@@ -8,6 +8,8 @@
 
 #define DEBUG 0
 
+extern use_printf_lock;
+
 int getcallerpc(void *v) {
   return ((int*)v)[-1];
 }
@@ -15,37 +17,49 @@ int getcallerpc(void *v) {
 void
 acquire(struct spinlock * lock)
 {
-  struct proc * cp = curproc[cpu()];
+  unsigned who;
 
-  // on a real machine there would be a memory barrier here
+  if(curproc[cpu()])
+    who = (unsigned) curproc[cpu()];
+  else
+    who = cpu() + 1;
+
   if(DEBUG) cprintf("cpu%d: acquiring at %x\n", cpu(), getcallerpc(&lock));
-  if (cp && lock->p == cp && lock->locked){
+
+  if (lock->who == who && lock->locked){
     lock->count += 1;
   } else { 
     cli();
-    while ( cmpxchg(0, 1, &lock->locked) != 1 ) { ; }
+    // if we get the lock, eax will be zero
+    // if we don't get the lock, eax will be one
+    while ( cmpxchg(0, 1, &lock->locked) == 1 ) { ; }
     lock->locker_pc = getcallerpc(&lock);
     lock->count = 1;
-    lock->p = cp;
+    lock->who = who;
   }
+
   if(DEBUG) cprintf("cpu%d: acquired at %x\n", cpu(), getcallerpc(&lock));
 }
 
 void
 release(struct spinlock * lock)
 {
-  struct proc * cp = curproc[cpu()];
+  unsigned who;
+
+  if(curproc[cpu()])
+    who = (unsigned) curproc[cpu()];
+  else
+    who = cpu() + 1;
 
   if(DEBUG) cprintf ("cpu%d: releasing at %x\n", cpu(), getcallerpc(&lock));
 
-  if(lock->p != cp || lock->count < 1 || lock->locked != 1)
+  if(lock->who != who || lock->count < 1 || lock->locked != 1)
     panic("release");
 
   lock->count -= 1;
   if(lock->count < 1){
-    lock->p = 0;
+    lock->who = 0;
     cmpxchg(1, 0, &lock->locked);
     sti();
-    // on a real machine there would be a memory barrier here
   }
 }

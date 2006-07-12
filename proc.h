@@ -69,6 +69,7 @@ struct cpu {
   struct jmpbuf jmpbuf;
   char mpstack[MPSTACK]; // per-cpu start-up stack, only used to get into main()
   struct proc *lastproc;  // last proc scheduled on this cpu (never NULL)
+  int clis; // cli() nesting depth
 };
 
 extern struct cpu cpus[NCPU];
