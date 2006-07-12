@@ -38,10 +38,13 @@ main()
   // clear BSS
   memset(edata, 0, end - edata);
 
-  mp_init(); // just set up apic so cpu() works
+  mp_init(); // collect info about this machine
+
   use_printf_lock = 1;
 
   cpus[cpu()].clis = 1; // cpu starts as if we had called cli()
+
+  lapic_init(mp_bcpu());
 
   cprintf("\nxV6\n\n");
 

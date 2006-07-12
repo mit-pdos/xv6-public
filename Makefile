@@ -1,5 +1,5 @@
 OBJS = main.o console.o string.o kalloc.o proc.o trapasm.o trap.o vectors.o \
-       syscall.o ide.o picirq.o mp.o spinlock.o fd.o pipe.o swtch.o
+       syscall.o ide.o picirq.o mp.o lapic.o spinlock.o fd.o pipe.o swtch.o
 
 # Cross-compiling (e.g., on Mac OS X)
 TOOLPREFIX = i386-jos-elf-

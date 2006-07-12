@@ -49,13 +49,17 @@ void pic_init(void);
 // mp.c
 void mp_init(void);
 void mp_startthem(void);
-int cpu(void);
-int mp_isbcpu(void);
+int mp_bcpu(void);
+
+// lapic
+extern uint32_t *lapicaddr;
 void lapic_init(int);
+void lapic_startap(uint8_t, int);
 void lapic_timerinit(void);
 void lapic_timerintr(void);
 void lapic_enableintr(void);
 void lapic_disableintr(void);
+int cpu(void);
 
 // spinlock.c
 struct spinlock;
