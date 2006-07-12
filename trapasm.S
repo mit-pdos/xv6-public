@@ -22,10 +22,6 @@ alltraps:
          * expects ESP to point to a Trapframe
          */
 trapret:
-        pushl $kernel_lock
-        call release_spinlock
-        addl $0x4, %esp
-
         popal
         popl %es
         popl %ds

@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "traps.h"
 #include "syscall.h"
+#include "spinlock.h"
 
 /*
  * User code makes a system call with INT T_SYSCALL.
@@ -17,6 +18,8 @@
  *
  * Return value? Error indication? Errno?
  */
+
+extern struct spinlock proc_table_lock;
 
 /*
  * fetch 32 bits from a user-supplied pointer.
@@ -149,6 +152,7 @@ sys_fork()
   struct proc *np;
 
   np = newproc();
+  np->state = RUNNABLE;
   return np->pid;
 }
 
@@ -170,18 +174,21 @@ sys_wait()
 
   while(1){
     any = 0;
+    acquire(&proc_table_lock);
     for(p = proc; p < &proc[NPROC]; p++){
       if(p->state == ZOMBIE && p->ppid == cp->pid){
         kfree(p->mem, p->sz);
         kfree(p->kstack, KSTACKSIZE);
         pid = p->pid;
         p->state = UNUSED;
+        release(&proc_table_lock);
         cprintf("%x collected %x\n", cp, p);
         return pid;
       }
       if(p->state != UNUSED && p->ppid == cp->pid)
         any = 1;
     }
+    release(&proc_table_lock);
     if(any == 0){
       cprintf("%x nothing to wait for\n", cp);
       return -1;
@@ -232,14 +239,17 @@ sys_kill()
   struct proc *p;
 
   fetcharg(0, &pid);
+  acquire(&proc_table_lock);
   for(p = proc; p < &proc[NPROC]; p++){
     if(p->pid == pid && p->state != UNUSED){
       p->killed = 1;
       if(p->state == WAITING)
         p->state = RUNNABLE;
+      release(&proc_table_lock);
       return 0;
     }
   }
+  release(&proc_table_lock);
   return -1;
 }
 

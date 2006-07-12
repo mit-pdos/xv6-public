@@ -5,6 +5,9 @@
 #include "proc.h"
 #include "defs.h"
 #include "fd.h"
+#include "spinlock.h"
+
+struct spinlock fd_table_lock;
 
 struct fd fds[NFD];
 
@@ -22,18 +25,24 @@ fd_ualloc()
   return -1;
 }
 
+/*
+ * allocate a file descriptor structure
+ */
 struct fd *
 fd_alloc()
 {
   int i;
 
+  acquire(&fd_table_lock);
   for(i = 0; i < NFD; i++){
     if(fds[i].type == FD_CLOSED){
       fds[i].type = FD_NONE;
       fds[i].count = 1;
+      release(&fd_table_lock);
       return fds + i;
     }
   }
+  release(&fd_table_lock);
   return 0;
 }
 
@@ -69,8 +78,11 @@ fd_read(struct fd *fd, char *addr, int n)
 void
 fd_close(struct fd *fd)
 {
+  acquire(&fd_table_lock);
+
   if(fd->count < 1 || fd->type == FD_CLOSED)
     panic("fd_close");
+
   fd->count -= 1;
 
   if(fd->count == 0){
@@ -79,6 +91,19 @@ fd_close(struct fd *fd)
     } else {
       panic("fd_close");
     }
+    fd->count = 0;
     fd->type = FD_CLOSED;
   }
+  
+  release(&fd_table_lock);
+}
+
+void
+fd_reference(struct fd *fd)
+{
+  acquire(&fd_table_lock);
+  if(fd->count < 1 || fd->type == FD_CLOSED)
+    panic("fd_reference");
+  fd->count += 1;
+  release(&fd_table_lock);
 }

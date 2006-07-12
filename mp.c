@@ -391,15 +391,11 @@ mp_init()
   memmove((void *) APBOOTCODE,_binary_bootother_start, 
 	  (uint32_t) _binary_bootother_size);
 
-  acquire_spinlock(&kernel_lock);
   for(c = 0; c < ncpu; c++){
     if (cpus+c == bcpu) continue;
     cprintf ("starting processor %d\n", c);
-    release_grant_spinlock(&kernel_lock, c);
     *(unsigned *)(APBOOTCODE-4) = (unsigned) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
     *(unsigned *)(APBOOTCODE-8) = (unsigned)&main; // tell it where to jump to
     lapic_startap(cpus + c, (uint32_t) APBOOTCODE);
-    acquire_spinlock(&kernel_lock);
-    cprintf ("done starting processor %d\n", c);
   }
 }

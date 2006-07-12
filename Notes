@@ -85,17 +85,44 @@ test pipe reader closes then write
 test two readers, two writers.
 test children being inherited by grandparent &c
 
-kill
-  sleep()ing for something
-  running at user level
-  running in kernel
-  ooh, the relevant CPU may never get a clock interrupt
-  should each cpu have its own clock?
-  where to check?
-    loops around sleep()
-    return from any trap
-  rules about being killed deep inside a system call
-  test above cases
+some sleep()s should be interruptible by kill()
 
 cli/sti in acquire/release should nest!
   in case you acquire two locks
+
+what would need fixing if we got rid of kernel_lock?
+  console output
+  proc_exit() needs lock on proc *array* to deallocate
+  kill() needs lock on proc *array*
+  allocator's free list
+  global fd table (really free-ness)
+  sys_close() on fd table
+  fork on proc list, also next pid
+    hold lock until public slots in proc struct initialized
+
+locks
+  init_lock
+    sequences CPU startup
+  proc_table_lock
+    also protects next_pid
+  per-fd lock *just* protects count read-modify-write
+    also maybe freeness?
+  memory allocator
+  printf
+
+wakeup needs proc_table_lock
+  so we need recursive locks?
+  or you must hold the lock to call wakeup?
+
+if locks contain proc *, they can't be used at interrupt time
+  only proc_table_lock will be used at interrupt time?
+  maybe it doesn't matter if we use curproc?
+
+in general, the table locks protect both free-ness and
+  public variables of table elements
+  in many cases you can use table elements w/o a lock
+  e.g. if you are the process, or you are using an fd
+
+why can't i get a lock in console code?
+  always triple fault
+lock code shouldn't call cprintf...

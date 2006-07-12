@@ -1,6 +1,9 @@
 #include <types.h>
 #include <x86.h>
 #include "defs.h"
+#include "spinlock.h"
+
+struct spinlock console_lock;
 
 /*
  * copy console output to parallel port, which you can tell
@@ -25,6 +28,8 @@ cons_putc(int c)
   int crtport = 0x3d4; // io port of CGA
   unsigned short *crt = (unsigned short *) 0xB8000; // base of CGA memory
   int ind;
+
+  //acquire(&console_lock);
 
   lpt_putc(c);
 
@@ -56,6 +61,8 @@ cons_putc(int c)
   outb(crtport + 1, ind >> 8);
   outb(crtport, 15);
   outb(crtport + 1, ind);
+
+  //release(&console_lock);
 }
 
 void

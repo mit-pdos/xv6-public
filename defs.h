@@ -13,7 +13,7 @@ struct proc;
 struct jmpbuf;
 void setupsegs(struct proc *);
 struct proc * newproc(void);
-void swtch(void);
+void swtch(int);
 void sleep(void *);
 void wakeup(void *);
 void scheduler(void);
@@ -55,10 +55,9 @@ void lapic_enableintr(void);
 void lapic_disableintr(void);
 
 // spinlock.c
-extern uint32_t kernel_lock;
-void acquire_spinlock(uint32_t* lock);
-void release_spinlock(uint32_t* lock);
-void release_grant_spinlock(uint32_t* lock, int cpu);
+struct spinlock;
+void acquire(struct spinlock * lock);
+void release(struct spinlock * lock);
 
 // main.c
 void load_icode(struct proc *p, uint8_t *binary, unsigned size);
@@ -77,6 +76,7 @@ struct fd * fd_alloc();
 void fd_close(struct fd *);
 int fd_read(struct fd *fd, char *addr, int n);
 int fd_write(struct fd *fd, char *addr, int n);
+void fd_reference(struct fd *fd);
 
 // ide.c
 void ide_init(void);

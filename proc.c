@@ -5,6 +5,9 @@
 #include "fd.h"
 #include "proc.h"
 #include "defs.h"
+#include "spinlock.h"
+
+struct spinlock proc_table_lock;
 
 struct proc proc[NPROC];
 struct proc *curproc[NCPU];
@@ -43,6 +46,7 @@ extern void trapret();
 /*
  * internal fork(). does not copy kernel stack; instead,
  * sets up the stack to return as if from system call.
+ * caller must set state to RUNNABLE.
  */
 struct proc *
 newproc()
@@ -51,11 +55,18 @@ newproc()
   struct proc *op;
   int fd;
 
-  for(np = &proc[1]; np < &proc[NPROC]; np++)
-    if(np->state == UNUSED)
+  acquire(&proc_table_lock);
+
+  for(np = &proc[1]; np < &proc[NPROC]; np++){
+    if(np->state == UNUSED){
+      np->state = EMBRYO;
       break;
-  if(np >= &proc[NPROC])
+    }
+  }
+  if(np >= &proc[NPROC]){
+    release(&proc_table_lock);
     return 0;
+  }
 
   // copy from proc[0] if we're bootstrapping
   op = curproc[cpu()];
@@ -64,6 +75,9 @@ newproc()
 
   np->pid = next_pid++;
   np->ppid = op->pid;
+
+  release(&proc_table_lock);
+
   np->sz = op->sz;
   np->mem = kalloc(op->sz);
   if(np->mem == 0)
@@ -72,6 +86,7 @@ newproc()
   np->kstack = kalloc(KSTACKSIZE);
   if(np->kstack == 0){
     kfree(np->mem, op->sz);
+    np->state = UNUSED;
     return 0;
   }
   setupsegs(np);
@@ -91,10 +106,8 @@ newproc()
   for(fd = 0; fd < NOFILE; fd++){
     np->fds[fd] = op->fds[fd];
     if(np->fds[fd])
-      np->fds[fd]->count += 1;
+      fd_reference(np->fds[fd]);
   }
-
-  np->state = RUNNABLE;
 
   cprintf("newproc %x\n", np);
 
@@ -111,11 +124,20 @@ scheduler(void)
   cpus[cpu()].lastproc = &proc[0];
 
   setjmp(&cpus[cpu()].jmpbuf);
-  
+
+  op = curproc[cpu()];
+  if(op){
+    if(op->newstate <= 0 || op->newstate > ZOMBIE)
+      panic("scheduler");
+    op->state = op->newstate;
+    op->newstate = -1;
+  }
+
   // find a runnable process and switch to it
   curproc[cpu()] = 0;
   np = cpus[cpu()].lastproc + 1;
   while(1){
+    acquire(&proc_table_lock);
     for(i = 0; i < NPROC; i++){
       if(np >= &proc[NPROC])
         np = &proc[0];
@@ -123,20 +145,20 @@ scheduler(void)
         break;
       np++;
     }
-    if(i < NPROC)
+
+    if(i < NPROC){
+      np->state = RUNNING;
+      release(&proc_table_lock);
       break;
-    // cprintf("swtch %d: nothing to run %d %d\n",
-            // cpu(), proc[1].state, proc[2].state);
-    release_spinlock(&kernel_lock);
-    acquire_spinlock(&kernel_lock);
+    }
+    
+    release(&proc_table_lock);
     np = &proc[0];
   }
 
   cpus[cpu()].lastproc = np;
   curproc[cpu()] = np;
   
-  np->state = RUNNING;
-
   // h/w sets busy bit in TSS descriptor sometimes, and faults
   // if it's set in LTR. so clear tss descriptor busy bit.
   np->gdt[SEG_TSS].sd_type = STS_T32A;
@@ -155,11 +177,12 @@ scheduler(void)
 // give up the cpu by switching to the scheduler,
 // which runs on the per-cpu stack.
 void
-swtch(void)
+swtch(int newstate)
 {
   struct proc *p = curproc[cpu()];
   if(p == 0)
     panic("swtch");
+  p->newstate = newstate; // basically an argument to scheduler()
   if(setjmp(&p->jmpbuf) == 0)
     longjmp(&cpus[cpu()].jmpbuf);
 }
@@ -171,8 +194,7 @@ sleep(void *chan)
   if(p == 0)
     panic("sleep");
   p->chan = chan;
-  p->state = WAITING;
-  swtch();
+  swtch(WAITING);
 }
 
 void
@@ -180,9 +202,11 @@ wakeup(void *chan)
 {
   struct proc *p;
 
+  acquire(&proc_table_lock);
   for(p = proc; p < &proc[NPROC]; p++)
     if(p->state == WAITING && p->chan == chan)
       p->state = RUNNABLE;
+  release(&proc_table_lock);
 }
 
 // give up the CPU but stay marked as RUNNABLE
@@ -191,8 +215,7 @@ yield()
 {
   if(curproc[cpu()] == 0 || curproc[cpu()]->state != RUNNING)
     panic("yield");
-  curproc[cpu()]->state = RUNNABLE;
-  swtch();
+  swtch(RUNNABLE);
 }
 
 void
@@ -211,7 +234,7 @@ proc_exit()
     }
   }
 
-  cp->state = ZOMBIE;
+  acquire(&proc_table_lock);
 
   // wake up parent
   for(p = proc; p < &proc[NPROC]; p++)
@@ -223,6 +246,8 @@ proc_exit()
     if(p->ppid == cp->pid)
       p->pid = 1;
 
+  acquire(&proc_table_lock);
+
   // switch into scheduler
-  swtch();
+  swtch(ZOMBIE);
 }
