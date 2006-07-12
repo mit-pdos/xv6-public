@@ -126,3 +126,10 @@ in general, the table locks protect both free-ness and
 why can't i get a lock in console code?
   always triple fault
 lock code shouldn't call cprintf...
+ide_init doesn't work now?
+and IOAPIC: read from unsupported address
+  when running pre-empt user test
+  so maybe something wrong with clock interrupts
+  no! if one cpu holds lock w/ curproc0=,
+    then another cpu can take it, it looks like
+    a recursive acquire()
