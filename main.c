@@ -12,9 +12,9 @@
 
 extern char edata[], end[];
 extern int acpu;
-extern char _binary_user1_start[], _binary_user1_size[];
-extern char _binary_usertests_start[], _binary_usertests_size[];
-extern char _binary_userfs_start[], _binary_userfs_size[];
+extern uint8_t _binary_user1_start[], _binary_user1_size[];
+extern uint8_t _binary_usertests_start[], _binary_usertests_size[];
+extern uint8_t _binary_userfs_start[], _binary_userfs_size[];
 
 extern int use_console_lock;
 
