@@ -281,6 +281,56 @@ proc_exit()
   panic("a zombie revived");
 }
 
+int
+proc_wait(void)
+{
+  struct proc *p;
+  struct proc *cp = curproc[cpu()];
+  int any, pid;
+
+  acquire(&proc_table_lock);
+
+  while(1){
+    any = 0;
+    for(p = proc; p < &proc[NPROC]; p++){
+      if(p->state == ZOMBIE && p->ppid == cp->pid){
+        kfree(p->mem, p->sz);
+        kfree(p->kstack, KSTACKSIZE);
+        pid = p->pid;
+        p->state = UNUSED;
+        release(&proc_table_lock);
+        return pid;
+      }
+      if(p->state != UNUSED && p->ppid == cp->pid)
+        any = 1;
+    }
+    if(any == 0){
+      release(&proc_table_lock);
+      return -1;
+    }
+    sleep(cp, &proc_table_lock);
+  }
+}
+
+int
+proc_kill(int pid)
+{
+  struct proc *p;
+
+  acquire(&proc_table_lock);
+  for(p = proc; p < &proc[NPROC]; p++){
+    if(p->pid == pid && p->state != UNUSED){
+      p->killed = 1;
+      if(p->state == WAITING)
+        p->state = RUNNABLE;
+      release(&proc_table_lock);
+      return 0;
+    }
+  }
+  release(&proc_table_lock);
+  return -1;
+}
+
 // disable interrupts
 void
 cli(void)

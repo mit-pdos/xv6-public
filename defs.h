@@ -19,6 +19,8 @@ void sleep(void *, struct spinlock *);
 void wakeup(void *);
 void scheduler(void);
 void proc_exit(void);
+int proc_kill(int);
+int proc_wait(void);
 void yield(void);
 void cli(void);
 void sti(void);
