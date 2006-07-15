@@ -23,7 +23,7 @@ extern struct spinlock proc_table_lock;
 
 /*
  * fetch 32 bits from a user-supplied pointer.
- * returns 1 if addr was OK, 0 if illegal.
+ * returns 0 if addr was OK, -1 if illegal.
  */
 int
 fetchint(struct proc *p, unsigned addr, int *ip)
@@ -31,9 +31,9 @@ fetchint(struct proc *p, unsigned addr, int *ip)
   *ip = 0;
 
   if(addr > p->sz - 4)
-    return 0;
+    return -1;
   memcpy(ip, p->mem + addr, 4);
-  return 1;
+  return 0;
 }
 
 int
@@ -49,9 +49,9 @@ int
 putint(struct proc *p, unsigned addr, int ip)
 {
   if(addr > p->sz - 4)
-    return 0;
+    return -1;
   memcpy(p->mem + addr, &ip, 4);
-  return 1;
+  return 0;
 }
 
 int
