@@ -95,7 +95,6 @@ newproc()
   np->tf = (struct Trapframe *) (np->kstack + KSTACKSIZE - sizeof(struct Trapframe));
   *(np->tf) = *(op->tf);
   np->tf->tf_regs.reg_eax = 0; // so fork() returns 0 in child
-  cprintf("newproc pid=%d return to %x:%x tf-%p\n", np->pid, np->tf->tf_cs, np->tf->tf_eip, np->tf);
 
   // set up new jmpbuf to start executing at trapret with esp pointing at tf
   memset(&np->jmpbuf, 0, sizeof np->jmpbuf);
@@ -108,8 +107,6 @@ newproc()
     if(np->fds[fd])
       fd_reference(np->fds[fd]);
   }
-
-  cprintf("newproc %x\n", np);
 
   return np;
 }
@@ -126,18 +123,27 @@ scheduler(void)
   setjmp(&cpus[cpu()].jmpbuf);
 
   op = curproc[cpu()];
+
+  if(op == 0 || op->mtx != &proc_table_lock)
+    acquire1(&proc_table_lock, op);
+
   if(op){
     if(op->newstate <= 0 || op->newstate > ZOMBIE)
       panic("scheduler");
     op->state = op->newstate;
     op->newstate = -1;
+    if(op->mtx){
+      struct spinlock *mtx = op->mtx;
+      op->mtx = 0;
+      if(mtx != &proc_table_lock)
+        release1(mtx, op);
+    }
   }
 
   // find a runnable process and switch to it
   curproc[cpu()] = 0;
   np = cpus[cpu()].lastproc + 1;
   while(1){
-    acquire(&proc_table_lock);
     for(i = 0; i < NPROC; i++){
       if(np >= &proc[NPROC])
         np = &proc[0];
@@ -148,11 +154,13 @@ scheduler(void)
 
     if(i < NPROC){
       np->state = RUNNING;
-      release(&proc_table_lock);
+      release1(&proc_table_lock, op);
       break;
     }
     
-    release(&proc_table_lock);
+    release1(&proc_table_lock, op);
+    op = 0;
+    acquire(&proc_table_lock);
     np = &proc[0];
   }
 
@@ -180,36 +188,56 @@ void
 swtch(int newstate)
 {
   struct proc *p = curproc[cpu()];
+
   if(p == 0)
     panic("swtch no proc");
-  if(p->locks != 0)
+  if(p->mtx == 0 && p->locks != 0)
     panic("swtch w/ locks");
+  if(p->mtx && p->locks != 1)
+    panic("swtch w/ locks 1");
+  if(p->mtx && p->mtx->locked == 0)
+    panic("switch w/ lock but not held");
+  if(p->locks && (read_eflags() & FL_IF))
+    panic("swtch w/ lock but FL_IF");
+
   p->newstate = newstate; // basically an argument to scheduler()
   if(setjmp(&p->jmpbuf) == 0)
     longjmp(&cpus[cpu()].jmpbuf);
 }
 
 void
-sleep(void *chan)
+sleep(void *chan, struct spinlock *mtx)
 {
   struct proc *p = curproc[cpu()];
+
   if(p == 0)
     panic("sleep");
+
   p->chan = chan;
+  p->mtx = mtx; // scheduler will release it
+
   swtch(WAITING);
+  
+  if(mtx)
+    acquire(mtx);
+  p->chan = 0;
+}
+
+void
+wakeup1(void *chan)
+{
+  struct proc *p;
+
+  for(p = proc; p < &proc[NPROC]; p++)
+    if(p->state == WAITING && p->chan == chan)
+      p->state = RUNNABLE;
 }
 
 void
 wakeup(void *chan)
 {
-  struct proc *p;
-
   acquire(&proc_table_lock);
-  for(p = proc; p < &proc[NPROC]; p++){
-    if(p->state == WAITING && p->chan == chan){
-      p->state = RUNNABLE;
-    }
-  }
+  wakeup1(chan);
   release(&proc_table_lock);
 }
 
@@ -229,8 +257,6 @@ proc_exit()
   struct proc *cp = curproc[cpu()];
   int fd;
 
-  cprintf("exit %x pid %d ppid %d\n", cp, cp->pid, cp->ppid);
-
   for(fd = 0; fd < NOFILE; fd++){
     if(cp->fds[fd]){
       fd_close(cp->fds[fd]);
@@ -243,32 +269,35 @@ proc_exit()
   // wake up parent
   for(p = proc; p < &proc[NPROC]; p++)
     if(p->pid == cp->ppid)
-      wakeup(p);
+      wakeup1(p);
 
   // abandon children
   for(p = proc; p < &proc[NPROC]; p++)
     if(p->ppid == cp->pid)
       p->pid = 1;
-
-  release(&proc_table_lock);
-
-  // switch into scheduler
+  
+  cp->mtx = &proc_table_lock;
   swtch(ZOMBIE);
+  panic("a zombie revived");
 }
 
 // disable interrupts
 void
 cli(void)
 {
-  cpus[cpu()].clis += 1;
-  if(cpus[cpu()].clis == 1)
+  if(cpus[cpu()].clis == 0)
     __asm __volatile("cli");
+  cpus[cpu()].clis += 1;
+  if((read_eflags() & FL_IF) != 0)
+    panic("cli but enabled");
 }
 
 // enable interrupts
 void
 sti(void)
 {
+  if((read_eflags() & FL_IF) != 0)
+    panic("sti but enabled");
   if(cpus[cpu()].clis < 1)
     panic("sti");
   cpus[cpu()].clis -= 1;

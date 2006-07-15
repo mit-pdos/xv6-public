@@ -4,7 +4,8 @@
 #include "spinlock.h"
 
 struct spinlock console_lock;
-int use_printf_lock = 0;
+int paniced = 0;
+int use_console_lock = 0;
 
 /*
  * copy console output to parallel port, which you can tell
@@ -23,15 +24,18 @@ lpt_putc(int c)
 	outb(0x378+2, 0x08);
 }
 
-void
-cons_putc(int c)
+static void
+real_cons_putc(int c)
 {
   int crtport = 0x3d4; // io port of CGA
   unsigned short *crt = (unsigned short *) 0xB8000; // base of CGA memory
   int ind;
 
-  if(use_printf_lock)
-    acquire(&console_lock);
+  if(paniced){
+    cli();
+    while(1)
+      ;
+  }
 
   lpt_putc(c);
 
@@ -63,8 +67,15 @@ cons_putc(int c)
   outb(crtport + 1, ind >> 8);
   outb(crtport, 15);
   outb(crtport + 1, ind);
+}
 
-  if(use_printf_lock)
+void
+cons_putc(int c)
+{
+  if(use_console_lock)
+    acquire(&console_lock);
+  real_cons_putc(c);
+  if(use_console_lock)
     release(&console_lock);
 }
 
@@ -91,7 +102,7 @@ printint(int xx, int base, int sgn)
 
   while(i > 0){
     i -= 1;
-    cons_putc(buf[i]);
+    real_cons_putc(buf[i]);
   }
 }
 
@@ -104,13 +115,16 @@ cprintf(char *fmt, ...)
   int i, state = 0, c;
   unsigned int *ap = (unsigned int *) &fmt + 1;
 
+  if(use_console_lock)
+    acquire(&console_lock);
+
   for(i = 0; fmt[i]; i++){
     c = fmt[i] & 0xff;
     if(state == 0){
       if(c == '%'){
         state = '%';
       } else {
-        cons_putc(c);
+        real_cons_putc(c);
       }
     } else if(state == '%'){
       if(c == 'd'){
@@ -120,20 +134,25 @@ cprintf(char *fmt, ...)
         printint(*ap, 16, 0);
         ap++;
       } else if(c == '%'){
-        cons_putc(c);
+        real_cons_putc(c);
       }
       state = 0;
     }
   }
+
+  if(use_console_lock)
+    release(&console_lock);
 }
 
 void
 panic(char *s)
 {
-  use_printf_lock = 0;
+  __asm __volatile("cli");
+  use_console_lock = 0;
   cprintf("panic: ");
   cprintf(s, 0);
   cprintf("\n", 0);
+  paniced = 1; // freeze other CPU
   while(1)
     ;
 }

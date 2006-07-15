@@ -126,3 +126,26 @@ nasty hack to allow locks before first process,
 
 race between release and sleep in sys_wait()
 race between sys_exit waking up parent and setting state=ZOMBIE
+race in pipe code when full/empty
+
+lock order
+  per-pipe lock
+  proc_table_lock fd_table_lock kalloc_lock
+  console_lock
+
+condition variable + mutex that protects it
+  proc * (for wait()), proc_table_lock
+  pipe structure, pipe lock
+
+systematic way to test sleep races?
+  print something at the start of sleep?
+
+do you have to be holding the mutex in order to call wakeup()?
+
+should lock around printf, not putc
+
+device interrupts don't clear FL_IF
+  so a recursive timer interrupt is possible
+
+the sleep/swtch/schedule code that holds over a lock is ugly
+

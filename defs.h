@@ -14,7 +14,8 @@ struct jmpbuf;
 void setupsegs(struct proc *);
 struct proc * newproc(void);
 void swtch(int);
-void sleep(void *);
+struct spinlock;
+void sleep(void *, struct spinlock *);
 void wakeup(void *);
 void scheduler(void);
 void proc_exit(void);
@@ -65,6 +66,8 @@ int cpu(void);
 struct spinlock;
 void acquire(struct spinlock * lock);
 void release(struct spinlock * lock);
+void acquire1(struct spinlock * lock, struct proc *);
+void release1(struct spinlock * lock, struct proc *);
 
 // main.c
 void load_icode(struct proc *p, uint8_t *binary, unsigned size);

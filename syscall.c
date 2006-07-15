@@ -152,8 +152,12 @@ sys_fork()
   struct proc *np;
 
   np = newproc();
-  np->state = RUNNABLE;
-  return np->pid;
+  if(np){
+    np->state = RUNNABLE;
+    return np->pid;
+  } else {
+    return -1;
+  }
 }
 
 int
@@ -170,11 +174,10 @@ sys_wait()
   struct proc *cp = curproc[cpu()];
   int any, pid;
 
-  cprintf("waid pid %d ppid %d\n", cp->pid, cp->ppid);
+  acquire(&proc_table_lock);
 
   while(1){
     any = 0;
-    acquire(&proc_table_lock);
     for(p = proc; p < &proc[NPROC]; p++){
       if(p->state == ZOMBIE && p->ppid == cp->pid){
         kfree(p->mem, p->sz);
@@ -182,18 +185,16 @@ sys_wait()
         pid = p->pid;
         p->state = UNUSED;
         release(&proc_table_lock);
-        cprintf("%x collected %x\n", cp, p);
         return pid;
       }
       if(p->state != UNUSED && p->ppid == cp->pid)
         any = 1;
     }
-    release(&proc_table_lock);
     if(any == 0){
-      cprintf("%x nothing to wait for\n", cp);
+      release(&proc_table_lock);
       return -1;
     }
-    sleep(cp);
+    sleep(cp, &proc_table_lock);
   }
 }
 
@@ -220,7 +221,7 @@ sys_block(void)
       panic("couldn't start read\n");
     }
     cprintf("call sleep\n");
-    sleep (c);
+    sleep (c, 0);
     if (ide_finish_read(c)) {
       panic("couldn't do read\n");
     }
@@ -251,6 +252,17 @@ sys_kill()
   }
   release(&proc_table_lock);
   return -1;
+}
+
+int
+sys_panic()
+{
+  struct proc *p = curproc[cpu()];
+  unsigned int addr;
+
+  fetcharg(0, &addr);
+  panic(p->mem + addr);
+  return 0;
 }
 
 void
@@ -291,6 +303,9 @@ syscall()
     break;
   case SYS_kill:
     ret = sys_kill();
+    break;
+  case SYS_panic:
+    ret = sys_panic();
     break;
   default:
     cprintf("unknown sys call %d\n", num);

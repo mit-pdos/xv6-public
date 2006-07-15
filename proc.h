@@ -41,6 +41,7 @@ struct proc{
   char *kstack; // kernel stack, separate from mem so it doesn't move
   enum proc_state state;
   enum proc_state newstate; // desired state after swtch()
+  struct spinlock *mtx; // mutex for condition variable
   int pid;
   int ppid;
   void *chan; // sleep

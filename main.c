@@ -16,7 +16,7 @@ extern char _binary_user1_start[], _binary_user1_size[];
 extern char _binary_usertests_start[], _binary_usertests_size[];
 extern char _binary_userfs_start[], _binary_userfs_size[];
 
-extern use_printf_lock;
+extern int use_console_lock;
 
 int
 main()
@@ -40,7 +40,7 @@ main()
 
   mp_init(); // collect info about this machine
 
-  use_printf_lock = 1;
+  use_console_lock = 1;
 
   cpus[cpu()].clis = 1; // cpu starts as if we had called cli()
 

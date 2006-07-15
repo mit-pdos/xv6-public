@@ -16,7 +16,7 @@ pipe1()
       for(i = 0; i < 1033; i++)
         buf[i] = seq++;
       if(write(fds[1], buf, 1033) != 1033){
-        puts("pipe1 oops 1\n");
+        panic("pipe1 oops 1\n");
         exit(1);
       }
     }
@@ -31,7 +31,7 @@ pipe1()
         break;
       for(i = 0; i < n; i++){
         if((buf[i] & 0xff) != (seq++ & 0xff)){
-          puts("pipe1 oops 2\n");
+          panic("pipe1 oops 2\n");
           return;
         }
       }
@@ -41,8 +41,9 @@ pipe1()
         cc = sizeof(buf);
     }
     if(total != 5 * 1033)
-      puts("pipe1 oops 3\n");
+      panic("pipe1 oops 3\n");
     close(fds[0]);
+    wait();
   }
   puts("pipe1 ok\n");
 }
@@ -69,7 +70,7 @@ preempt()
   if(pid3 == 0){
     close(pfds[0]);
     if(write(pfds[1], "x", 1) != 1)
-      puts("preempt write error");
+      panic("preempt write error");
     close(pfds[1]);
     while(1)
       ;
@@ -77,7 +78,7 @@ preempt()
 
   close(pfds[1]);
   if(read(pfds[0], buf, sizeof(buf)) != 1){
-    puts("preempt read error");
+    panic("preempt read error");
     return;
   }
   close(pfds[0]);
@@ -90,12 +91,37 @@ preempt()
   puts("preempt ok\n");
 }
 
+// try to find any races between exit and wait
+void
+exitwait()
+{
+  int i, pid;
+
+  for(i = 0; i < 100; i++){
+    pid = fork();
+    if(pid < 0){
+      panic("fork failed\n");
+      return;
+    }
+    if(pid){
+      if(wait() != pid){
+        panic("wait wrong pid\n");
+        return;
+      }
+    } else {
+      exit(0);
+    }
+  }
+  puts("exitwait ok\n");
+}
+
 main()
 {
   puts("usertests starting\n");
-  pipe1();
-  //preempt();
 
-  while(1)
-    ;
+  pipe1();
+  preempt();
+  exitwait();
+
+  panic("usertests finished successfuly");
 }

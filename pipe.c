@@ -81,16 +81,17 @@ pipe_write(struct pipe *p, char *addr, int n)
 
   for(i = 0; i < n; i++){
     while(((p->writep + 1) % PIPESIZE) == p->readp){
-      if(p->readopen == 0)
+      if(p->readopen == 0){
+        release(&p->lock);
         return -1;
-      release(&p->lock);
+      }
       wakeup(&p->readp);
-      sleep(&p->writep);
-      acquire(&p->lock);
+      sleep(&p->writep, &p->lock);
     }
     p->data[p->writep] = addr[i];
     p->writep = (p->writep + 1) % PIPESIZE;
   }
+
   release(&p->lock);
   wakeup(&p->readp);
   return i;
@@ -101,19 +102,23 @@ pipe_read(struct pipe *p, char *addr, int n)
 {
   int i;
 
+  acquire(&p->lock);
+
   while(p->readp == p->writep){
-    if(p->writeopen == 0)
+    if(p->writeopen == 0){
+      release(&p->lock);
       return 0;
-    sleep(&p->readp);
+    }
+    sleep(&p->readp, &p->lock);
   }
 
-  acquire(&p->lock);
   for(i = 0; i < n; i++){
     if(p->readp == p->writep)
       break;
     addr[i] = p->data[p->readp];
     p->readp = (p->readp + 1) % PIPESIZE;
   }
+
   release(&p->lock);
   wakeup(&p->writep);
   return i;
