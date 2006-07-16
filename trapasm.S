@@ -30,9 +30,9 @@ trapret:
         addl $0x8, %esp /* trapno and errcode */
         iret
 
-.globl forkret
-forkret:
-	call forkret1
+.globl forkret1
+forkret1:
+	movl 4(%esp), %esp
 	jmp trapret
 		
 .globl 	acpu

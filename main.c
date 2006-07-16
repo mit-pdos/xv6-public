@@ -81,7 +81,7 @@ main()
   // become interruptable
   sti();
 
-  p = newproc();
+  p = copyproc(&proc[0]);
   
   load_icode(p, _binary_usertests_start, (unsigned) _binary_usertests_size);
   //load_icode(p, _binary_userfs_start, (unsigned) _binary_userfs_size);
@@ -122,7 +122,7 @@ load_icode(struct proc *p, uint8_t *binary, unsigned size)
       panic("load_icode: icode wants to be above UTOP");
 
     // Load/clear the segment
-    memcpy(p->mem + ph->p_va, binary + ph->p_offset, ph->p_filesz);
+    memmove(p->mem + ph->p_va, binary + ph->p_offset, ph->p_filesz);
     memset(p->mem + ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
   }
 }

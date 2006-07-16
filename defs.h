@@ -12,7 +12,7 @@ void cons_putc(int);
 struct proc;
 struct jmpbuf;
 void setupsegs(struct proc *);
-struct proc * newproc(void);
+struct proc * copyproc(struct proc*);
 struct spinlock;
 void sleep(void *, struct spinlock *);
 void wakeup(void *);
@@ -32,7 +32,6 @@ void tvinit(void);
 void idtinit(void);
 
 // string.c
-void * memcpy(void *dst, void *src, unsigned n);
 void * memset(void *dst, int c, unsigned n);
 int memcmp(const void *v1, const void *v2, unsigned n);
 void *memmove(void *dst, const void *src, unsigned n);
@@ -92,3 +91,4 @@ void ide_init(void);
 void ide_intr(void);
 void* ide_start_read(uint32_t secno, void *dst, unsigned nsecs);
 int ide_finish_read(void *);
+

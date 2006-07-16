@@ -2,18 +2,6 @@
 #include "defs.h"
 
 void *
-memcpy(void *dst, void *src, unsigned n)
-{
-  char *d = (char *) dst;
-  char *s = (char *) src;
-
-  while(n-- > 0)
-    *d++ = *s++;
-
-  return dst;
-}
-
-void *
 memset(void *dst, int c, unsigned n)
 {
   char *d = (char *) dst;
@@ -69,3 +57,21 @@ strncmp(const char *p, const char *q, unsigned n)
 	else
 		return (int) ((unsigned char) *p - (unsigned char) *q);
 }
+
+// Memcpy is deprecated and should NOT be called.
+// Use memmove instead, which has defined semantics
+// when the two memory ranges overlap.
+// Memcpy is here only because gcc compiles some
+// structure assignments into calls to memcpy.
+void *
+memcpy(void *dst, void *src, unsigned n)
+{
+  char *d = (char *) dst;
+  char *s = (char *) src;
+
+  while(n-- > 0)
+    *d++ = *s++;
+
+  return dst;
+}
+

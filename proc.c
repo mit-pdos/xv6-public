@@ -13,6 +13,7 @@ struct proc proc[NPROC];
 struct proc *curproc[NCPU];
 int next_pid = 1;
 extern void forkret(void);
+extern void forkret1(struct Trapframe*);
 
 /*
  * set up a process's task state and segment descriptors
@@ -42,82 +43,85 @@ setupsegs(struct proc *p)
   p->gdt_pd.pd_base = (unsigned) p->gdt;
 }
 
-extern void trapret();
-
-/*
- * internal fork(). does not copy kernel stack; instead,
- * sets up the stack to return as if from system call.
- * caller must set state to RUNNABLE.
- */
-struct proc *
-newproc()
+// Look in the process table for an UNUSED proc.
+// If found, change state to EMBRYO and return it.
+// Otherwise return 0.
+struct proc*
+allocproc(void)
 {
-  struct proc *np;
-  struct proc *op;
-  int fd;
-
-  acquire(&proc_table_lock);
-
-  for(np = &proc[1]; np < &proc[NPROC]; np++){
-    if(np->state == UNUSED){
-      np->state = EMBRYO;
-      break;
+  int i;
+  struct proc *p;
+  
+  for(i = 0; i < NPROC; i++){
+    p = &proc[i];
+    if(p->state == UNUSED){
+      p->state = EMBRYO;
+      return p;
     }
   }
-  if(np >= &proc[NPROC]){
+  return 0;
+}
+
+// Create a new process copying p as the parent.
+// Does not copy the kernel stack.  
+// Instead, sets up stack to return as if from system call.
+// Caller must arrange for process to run (set state to RUNNABLE).
+struct proc *
+copyproc(struct proc* p)
+{
+  int i;
+  struct proc *np;
+
+  // Allocate process.
+  acquire(&proc_table_lock);
+  if((np = allocproc()) == 0){
     release(&proc_table_lock);
     return 0;
   }
-
-  // copy from proc[0] if we're bootstrapping
-  op = curproc[cpu()];
-  if(op == 0)
-    op = &proc[0];
-
   np->pid = next_pid++;
-  np->ppid = op->pid;
-
+  np->ppid = p->pid;
   release(&proc_table_lock);
 
-  np->sz = op->sz;
-  np->mem = kalloc(op->sz);
-  if(np->mem == 0)
-    return 0;
-  memcpy(np->mem, op->mem, np->sz);
-  np->kstack = kalloc(KSTACKSIZE);
-  if(np->kstack == 0){
-    kfree(np->mem, op->sz);
+  // Copy process image memory.
+  np->sz = p->sz;
+  np->mem = kalloc(np->sz);
+  if(np->mem == 0){
     np->state = UNUSED;
     return 0;
   }
-  setupsegs(np);
-  
-  // set up kernel stack to return to user space
-  np->tf = (struct Trapframe *) (np->kstack + KSTACKSIZE - sizeof(struct Trapframe));
-  *(np->tf) = *(op->tf);
-  np->tf->tf_regs.reg_eax = 0; // so fork() returns 0 in child
+  memmove(np->mem, p->mem, np->sz);
 
-  // Set up new jmpbuf to start executing forkret (see trapasm.S)
-  // with esp pointing at tf.  Forkret will call forkret1 (below) to release
-  // the proc_table_lock and then jump into the usual trap return code.
+  // Allocate kernel stack.
+  np->kstack = kalloc(KSTACKSIZE);
+  if(np->kstack == 0){
+    kfree(np->mem, np->sz);
+    np->state = UNUSED;
+    return 0;
+  }
+  
+  // Initialize segment table.
+  setupsegs(np);
+
+  // Copy trapframe registers from parent.
+  np->tf = (struct Trapframe*)(np->kstack + KSTACKSIZE) - 1;
+  *np->tf = *p->tf;
+  
+  // Clear %eax so that fork system call returns 0 in child.
+  np->tf->tf_regs.reg_eax = 0;
+
+  // Set up new jmpbuf to start executing at forkret (see below).
   memset(&np->jmpbuf, 0, sizeof np->jmpbuf);
-  np->jmpbuf.jb_eip = (unsigned) forkret;
-  np->jmpbuf.jb_esp = (unsigned) np->tf - 4;  // -4 for the %eip that isn't actually there
+  np->jmpbuf.jb_eip = (unsigned)forkret;
+  np->jmpbuf.jb_esp = (unsigned)np->tf;
 
   // Copy file descriptors
-  for(fd = 0; fd < NOFILE; fd++){
-    np->fds[fd] = op->fds[fd];
-    if(np->fds[fd])
-      fd_reference(np->fds[fd]);
+  for(i = 0; i < NOFILE; i++){
+    np->fds[i] = p->fds[i];
+    if(np->fds[i])
+      fd_reference(np->fds[i]);
   }
 
   return np;
-}
-
-void
-forkret1(void)
-{
-  release(&proc_table_lock);
 }
 
 // Per-CPU process scheduler. 
@@ -199,7 +203,7 @@ sched(void)
 
 // Give up the CPU for one scheduling round.
 void
-yield()
+yield(void)
 {
   struct proc *p;
 
@@ -209,6 +213,18 @@ yield()
   p->state = RUNNABLE;
   sched();
   release(&proc_table_lock);
+}
+
+// A process's very first scheduling by scheduler()
+// will longjmp here to do the first jump into user space.
+void
+forkret(void)
+{
+  // Still holding proc_table_lock from scheduler.
+  release(&proc_table_lock);
+  
+  // Jump into assembly, never to return.
+  forkret1(curproc[cpu()]->tf);
 }
 
 // Atomically release lock and sleep on chan.

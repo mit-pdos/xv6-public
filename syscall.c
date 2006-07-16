@@ -30,7 +30,7 @@ fetchint(struct proc *p, unsigned addr, int *ip)
 
   if(addr > p->sz - 4)
     return -1;
-  memcpy(ip, p->mem + addr, 4);
+  memmove(ip, p->mem + addr, 4);
   return 0;
 }
 
@@ -49,7 +49,7 @@ putint(struct proc *p, unsigned addr, int ip)
 {
   if(addr > p->sz - 4)
     return -1;
-  memcpy(p->mem + addr, &ip, 4);
+  memmove(p->mem + addr, &ip, 4);
   return 0;
 }
 
@@ -150,13 +150,10 @@ sys_fork(void)
 {
   struct proc *np;
 
-  np = newproc();
-  if(np){
-    np->state = RUNNABLE;
-    return np->pid;
-  } else {
+  if((np = copyproc(curproc[cpu()])) == 0)
     return -1;
-  }
+  np->state = RUNNABLE;
+  return np->pid;
 }
 
 int

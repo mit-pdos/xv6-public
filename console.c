@@ -58,7 +58,7 @@ real_cons_putc(int c)
 
   if((ind / 80) >= 24){
     // scroll up
-    memcpy(crt, crt + 80, sizeof(crt[0]) * (23 * 80));
+    memmove(crt, crt + 80, sizeof(crt[0]) * (23 * 80));
     ind -= 80;
     memset(crt + ind, 0, sizeof(crt[0]) * ((24 * 80) - ind));
   }
