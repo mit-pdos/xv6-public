@@ -1,5 +1,21 @@
-OBJS = main.o console.o string.o kalloc.o proc.o trapasm.o trap.o vectors.o \
-       syscall.o ide.o picirq.o mp.o lapic.o spinlock.o fd.o pipe.o swtch.o
+OBJS = \
+	console.o\
+	fd.o\
+	ide.o\
+	kalloc.o\
+	lapic.o\
+	main.o\
+	mp.o\
+	picirq.o\
+	pipe.o\
+	proc.o\
+	setjmp.o\
+	spinlock.o\
+	string.o\
+	syscall.o\
+	trapasm.o\
+	trap.o\
+	vectors.o\
 
 # Cross-compiling (e.g., on Mac OS X)
 TOOLPREFIX = i386-jos-elf-
@@ -11,7 +27,7 @@ CC = $(TOOLPREFIX)gcc
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
-CFLAGS = -nostdinc -I. -O2 -Wall -MD
+CFLAGS = -nostdinc -fno-builtin -I. -O2 -Wall -MD
 AS = $(TOOLPREFIX)gas
 
 xv6.img : bootblock kernel
@@ -40,25 +56,20 @@ vectors.S : vectors.pl
 
 ULIB = ulib.o usys.o
 
-user1 : user1.c $(ULIB)
-	$(CC) -nostdinc -I. -c user1.c
+user1 : user1.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o user1 user1.o $(ULIB)
 	$(OBJDUMP) -S user1 > user1.asm
 
-usertests : usertests.c $(ULIB)
-	$(CC) -nostdinc -I. -c usertests.c
+usertests : usertests.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o usertests usertests.o $(ULIB)
 	$(OBJDUMP) -S usertests > usertests.asm
 
-userfs : userfs.c $(ULIB)
-	$(CC) -nostdinc -I. -c userfs.c
+userfs : userfs.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o userfs userfs.o $(ULIB)
 	$(OBJDUMP) -S userfs > userfs.asm
-
-ulib.o : ulib.c
-	$(CC) -nostdinc -I. -c ulib.c
 
 -include *.d
 
 clean : 
-	rm -f *.o bootblock kernel kernel.asm xv6.img *.d user1
+	rm -f *.o bootblock kernel kernel.asm xv6.img *.d user1 userfs usertests
+
