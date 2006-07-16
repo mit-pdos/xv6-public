@@ -18,8 +18,11 @@ extern uint8_t _binary_userfs_start[], _binary_userfs_size[];
 extern int use_console_lock;
 
 // CPU 0 starts running C code here.
-int
-main()
+// This is called main0 not main so that it can have
+// a void return type.  Gcc can't handle functions named
+// main that don't return int.  Really.
+void
+main0(void)
 {
   int i;
   struct proc *p;
@@ -89,7 +92,7 @@ main()
 }
 
 // Additional processors start here.
-int 
+void
 mpmain(void)
 {
   cprintf("an application processor\n");

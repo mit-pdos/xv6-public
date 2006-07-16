@@ -48,7 +48,7 @@ kernel : $(OBJS) bootother.S user1 usertests userfs
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
-	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary bootother user1 usertests userfs
+	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother user1 usertests userfs
 	$(OBJDUMP) -S kernel > kernel.asm
 
 vectors.S : vectors.pl
