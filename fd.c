@@ -37,7 +37,7 @@ fd_alloc()
   for(i = 0; i < NFD; i++){
     if(fds[i].type == FD_CLOSED){
       fds[i].type = FD_NONE;
-      fds[i].count = 1;
+      fds[i].ref = 1;
       release(&fd_table_lock);
       return fds + i;
     }
@@ -80,18 +80,16 @@ fd_close(struct fd *fd)
 {
   acquire(&fd_table_lock);
 
-  if(fd->count < 1 || fd->type == FD_CLOSED)
+  if(fd->ref < 1 || fd->type == FD_CLOSED)
     panic("fd_close");
 
-  fd->count -= 1;
-
-  if(fd->count == 0){
+  if(--fd->ref == 0){
     if(fd->type == FD_PIPE){
       pipe_close(fd->pipe, fd->writeable);
     } else {
       panic("fd_close");
     }
-    fd->count = 0;
+    fd->ref = 0;
     fd->type = FD_CLOSED;
   }
   
@@ -102,8 +100,8 @@ void
 fd_incref(struct fd *fd)
 {
   acquire(&fd_table_lock);
-  if(fd->count < 1 || fd->type == FD_CLOSED)
-    panic("fd_reference");
-  fd->count++;
+  if(fd->ref < 1 || fd->type == FD_CLOSED)
+    panic("fd_incref");
+  fd->ref++;
   release(&fd_table_lock);
 }
