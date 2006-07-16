@@ -13,3 +13,4 @@ int cons_puts(char*);
 
 int puts(char*);
 int puts1(char*);
+char* strcpy(char*, char*);

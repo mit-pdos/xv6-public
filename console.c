@@ -105,7 +105,7 @@ printint(int xx, int base, int sgn)
 }
 
 /*
- * print to the console. only understands %d and %x.
+ * print to the console. only understands %d, %x, %p, %s.
  */
 void
 cprintf(char *fmt, ...)
@@ -131,7 +131,18 @@ cprintf(char *fmt, ...)
       } else if(c == 'x' || c == 'p'){
         printint(*ap, 16, 0);
         ap++;
+      } else if(c == 's'){
+        char *s = (char*)*ap;
+        ap++;
+        while(*s != 0){
+          real_cons_putc(*s);
+          s++;
+        }
       } else if(c == '%'){
+        real_cons_putc(c);
+      } else {
+        // Unknown % sequence.  Print it to draw attention.
+        real_cons_putc('%');
         real_cons_putc(c);
       }
       state = 0;
