@@ -1,5 +1,5 @@
-#include <types.h>
-#include <x86.h>
+#include "types.h"
+#include "x86.h"
 #include "defs.h"
 #include "spinlock.h"
 
