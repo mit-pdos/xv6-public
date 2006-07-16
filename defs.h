@@ -64,6 +64,8 @@ int cpu(void);
 struct spinlock;
 void acquire(struct spinlock * lock);
 void release(struct spinlock * lock);
+void acquire1(struct spinlock * lock, struct proc *);
+void release1(struct spinlock * lock, struct proc *);
 
 // main.c
 void load_icode(struct proc *p, uint8_t *binary, unsigned size);

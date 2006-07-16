@@ -147,19 +147,19 @@
 
 // Segment Descriptors
 struct Segdesc {
-	unsigned sd_lim_15_0 : 16;  // Low bits of segment limit
-	unsigned sd_base_15_0 : 16; // Low bits of segment base address
-	unsigned sd_base_23_16 : 8; // Middle bits of segment base address
-	unsigned sd_type : 4;       // Segment type (see STS_ constants)
-	unsigned sd_s : 1;          // 0 = system, 1 = application
-	unsigned sd_dpl : 2;        // Descriptor Privilege Level
-	unsigned sd_p : 1;          // Present
-	unsigned sd_lim_19_16 : 4;  // High bits of segment limit
-	unsigned sd_avl : 1;        // Unused (available for software use)
-	unsigned sd_rsv1 : 1;       // Reserved
-	unsigned sd_db : 1;         // 0 = 16-bit segment, 1 = 32-bit segment
-	unsigned sd_g : 1;          // Granularity: limit scaled by 4K when set
-	unsigned sd_base_31_24 : 8; // High bits of segment base address
+	unsigned lim_15_0 : 16;  // Low bits of segment limit
+	unsigned base_15_0 : 16; // Low bits of segment base address
+	unsigned base_23_16 : 8; // Middle bits of segment base address
+	unsigned type : 4;       // Segment type (see STS_ constants)
+	unsigned s : 1;          // 0 = system, 1 = application
+	unsigned dpl : 2;        // Descriptor Privilege Level
+	unsigned p : 1;          // Present
+	unsigned lim_19_16 : 4;  // High bits of segment limit
+	unsigned avl : 1;        // Unused (available for software use)
+	unsigned rsv1 : 1;       // Reserved
+	unsigned db : 1;         // 0 = 16-bit segment, 1 = 32-bit segment
+	unsigned g : 1;          // Granularity: limit scaled by 4K when set
+	unsigned base_31_24 : 8; // High bits of segment base address
 };
 // Null segment
 #define SEG_NULL	(struct Segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
@@ -210,56 +210,56 @@ struct Segdesc {
 
 // Task state segment format (as described by the Pentium architecture book)
 struct Taskstate {
-	uint32_t ts_link;	// Old ts selector
-	uintptr_t ts_esp0;	// Stack pointers and segment selectors
-	uint16_t ts_ss0;	//   after an increase in privilege level
-	uint16_t ts_padding1;
-	uintptr_t ts_esp1;
-	uint16_t ts_ss1;
-	uint16_t ts_padding2;
-	uintptr_t ts_esp2;
-	uint16_t ts_ss2;
-	uint16_t ts_padding3;
-	physaddr_t ts_cr3;	// Page directory base
-	uintptr_t ts_eip;	// Saved state from last task switch
-	uint32_t ts_eflags;
-	uint32_t ts_eax;	// More saved state (registers)
-	uint32_t ts_ecx;
-	uint32_t ts_edx;
-	uint32_t ts_ebx;
-	uintptr_t ts_esp;
-	uintptr_t ts_ebp;
-	uint32_t ts_esi;
-	uint32_t ts_edi;
-	uint16_t ts_es;		// Even more saved state (segment selectors)
-	uint16_t ts_padding4;
-	uint16_t ts_cs;
-	uint16_t ts_padding5;
-	uint16_t ts_ss;
-	uint16_t ts_padding6;
-	uint16_t ts_ds;
-	uint16_t ts_padding7;
-	uint16_t ts_fs;
-	uint16_t ts_padding8;
-	uint16_t ts_gs;
-	uint16_t ts_padding9;
-	uint16_t ts_ldt;
-	uint16_t ts_padding10;
-	uint16_t ts_t;		// Trap on task switch
-	uint16_t ts_iomb;	// I/O map base address
+	uint32_t link;	// Old ts selector
+	uintptr_t esp0;	// Stack pointers and segment selectors
+	uint16_t ss0;	//   after an increase in privilege level
+	uint16_t padding1;
+	uintptr_t esp1;
+	uint16_t ss1;
+	uint16_t padding2;
+	uintptr_t esp2;
+	uint16_t ss2;
+	uint16_t padding3;
+	physaddr_t cr3;	// Page directory base
+	uintptr_t eip;	// Saved state from last task switch
+	uint32_t eflags;
+	uint32_t eax;	// More saved state (registers)
+	uint32_t ecx;
+	uint32_t edx;
+	uint32_t ebx;
+	uintptr_t esp;
+	uintptr_t ebp;
+	uint32_t esi;
+	uint32_t edi;
+	uint16_t es;		// Even more saved state (segment selectors)
+	uint16_t padding4;
+	uint16_t cs;
+	uint16_t padding5;
+	uint16_t ss;
+	uint16_t padding6;
+	uint16_t ds;
+	uint16_t padding7;
+	uint16_t fs;
+	uint16_t padding8;
+	uint16_t gs;
+	uint16_t padding9;
+	uint16_t ldt;
+	uint16_t padding10;
+	uint16_t t;		// Trap on task switch
+	uint16_t iomb;	// I/O map base address
 };
 
 // Gate descriptors for interrupts and traps
 struct Gatedesc {
-	unsigned gd_off_15_0 : 16;   // low 16 bits of offset in segment
-	unsigned gd_ss : 16;         // segment selector
-	unsigned gd_args : 5;        // # args, 0 for interrupt/trap gates
-	unsigned gd_rsv1 : 3;        // reserved(should be zero I guess)
-	unsigned gd_type : 4;        // type(STS_{TG,IG32,TG32})
-	unsigned gd_s : 1;           // must be 0 (system)
-	unsigned gd_dpl : 2;         // descriptor(meaning new) privilege level
-	unsigned gd_p : 1;           // Present
-	unsigned gd_off_31_16 : 16;  // high bits of offset in segment
+	unsigned off_15_0 : 16;   // low 16 bits of offset in segment
+	unsigned ss : 16;         // segment selector
+	unsigned args : 5;        // # args, 0 for interrupt/trap gates
+	unsigned rsv1 : 3;        // reserved(should be zero I guess)
+	unsigned type : 4;        // type(STS_{TG,IG32,TG32})
+	unsigned s : 1;           // must be 0 (system)
+	unsigned dpl : 2;         // descriptor(meaning new) privilege level
+	unsigned p : 1;           // Present
+	unsigned off_31_16 : 16;  // high bits of offset in segment
 };
 
 // Set up a normal interrupt/trap gate descriptor.
@@ -269,38 +269,38 @@ struct Gatedesc {
 // - dpl: Descriptor Privilege Level -
 //	  the privilege level required for software to invoke
 //	  this interrupt/trap gate explicitly using an int instruction.
-#define SETGATE(gate, istrap, sel, off, dpl)			\
+#define SETGATE(gate, istrap, sel, off, d)			\
 {								\
-	(gate).gd_off_15_0 = (uint32_t) (off) & 0xffff;		\
-	(gate).gd_ss = (sel);					\
-	(gate).gd_args = 0;					\
-	(gate).gd_rsv1 = 0;					\
-	(gate).gd_type = (istrap) ? STS_TG32 : STS_IG32;	\
-	(gate).gd_s = 0;					\
-	(gate).gd_dpl = (dpl);					\
-	(gate).gd_p = 1;					\
-	(gate).gd_off_31_16 = (uint32_t) (off) >> 16;		\
+	(gate).off_15_0 = (uint32_t) (off) & 0xffff;		\
+	(gate).ss = (sel);					\
+	(gate).args = 0;					\
+	(gate).rsv1 = 0;					\
+	(gate).type = (istrap) ? STS_TG32 : STS_IG32;	\
+	(gate).s = 0;					\
+	(gate).dpl = (d);					\
+	(gate).p = 1;					\
+	(gate).off_31_16 = (uint32_t) (off) >> 16;		\
 }
 
 // Set up a call gate descriptor.
-#define SETCALLGATE(gate, ss, off, dpl)           	        \
+#define SETCALLGATE(gate, ss, off, d)           	        \
 {								\
-	(gate).gd_off_15_0 = (uint32_t) (off) & 0xffff;		\
-	(gate).gd_ss = (ss);					\
-	(gate).gd_args = 0;					\
-	(gate).gd_rsv1 = 0;					\
-	(gate).gd_type = STS_CG32;				\
-	(gate).gd_s = 0;					\
-	(gate).gd_dpl = (dpl);					\
-	(gate).gd_p = 1;					\
-	(gate).gd_off_31_16 = (uint32_t) (off) >> 16;		\
+	(gate).off_15_0 = (uint32_t) (off) & 0xffff;		\
+	(gate).ss = (ss);					\
+	(gate).args = 0;					\
+	(gate).rsv1 = 0;					\
+	(gate).type = STS_CG32;				\
+	(gate).s = 0;					\
+	(gate).dpl = (d);					\
+	(gate).p = 1;					\
+	(gate).off_31_16 = (uint32_t) (off) >> 16;		\
 }
 
 // Pseudo-descriptors used for LGDT, LLDT and LIDT instructions.
 struct Pseudodesc {
-	uint16_t pd__garbage;         // LGDT supposed to be from address 4N+2
-	uint16_t pd_lim;              // Limit
-	uint32_t pd_base __attribute__ ((packed));       // Base address
+	uint16_t _garbage;         // LGDT supposed to be from address 4N+2
+	uint16_t lim;              // Limit
+	uint32_t base __attribute__ ((packed));       // Base address
 };
 #define PD_ADDR(desc)	(&(desc).pd_lim)
 

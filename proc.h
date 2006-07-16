@@ -22,15 +22,15 @@ struct jmpbuf {
   // they are constant across kernel contexts
   // save all the regular registers so we don't care which are caller save
   // don't save eax because that's the return register
-  // layout known to swtch.S
-  int jb_ebx;
-  int jb_ecx;
-  int jb_edx;
-  int jb_esi;
-  int jb_edi;
-  int jb_esp;
-  int jb_ebp;
-  int jb_eip;
+  // layout known to setjmp.S
+  int ebx;
+  int ecx;
+  int edx;
+  int esi;
+  int edi;
+  int esp;
+  int ebp;
+  int eip;
 };
 
 enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };

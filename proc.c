@@ -25,8 +25,8 @@ void
 setupsegs(struct proc *p)
 {
   memset(&p->ts, 0, sizeof(struct Taskstate));
-  p->ts.ts_ss0 = SEG_KDATA << 3;
-  p->ts.ts_esp0 = (unsigned)(p->kstack + KSTACKSIZE);
+  p->ts.ss0 = SEG_KDATA << 3;
+  p->ts.esp0 = (unsigned)(p->kstack + KSTACKSIZE);
 
   // XXX it may be wrong to modify the current segment table!
 
@@ -35,12 +35,12 @@ setupsegs(struct proc *p)
   p->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
   p->gdt[SEG_TSS] = SEG16(STS_T32A, (unsigned) &p->ts,
                                 sizeof(p->ts), 0);
-  p->gdt[SEG_TSS].sd_s = 0;
+  p->gdt[SEG_TSS].s = 0;
   p->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (unsigned)p->mem, p->sz, 3);
   p->gdt[SEG_UDATA] = SEG(STA_W, (unsigned)p->mem, p->sz, 3);
-  p->gdt_pd.pd__garbage = 0;
-  p->gdt_pd.pd_lim = sizeof(p->gdt) - 1;
-  p->gdt_pd.pd_base = (unsigned) p->gdt;
+  p->gdt_pd._garbage = 0;
+  p->gdt_pd.lim = sizeof(p->gdt) - 1;
+  p->gdt_pd.base = (unsigned) p->gdt;
 }
 
 // Look in the process table for an UNUSED proc.
@@ -107,12 +107,12 @@ copyproc(struct proc* p)
   *np->tf = *p->tf;
   
   // Clear %eax so that fork system call returns 0 in child.
-  np->tf->tf_regs.reg_eax = 0;
+  np->tf->regs.eax = 0;
 
   // Set up new jmpbuf to start executing at forkret (see below).
   memset(&np->jmpbuf, 0, sizeof np->jmpbuf);
-  np->jmpbuf.jb_eip = (unsigned)forkret;
-  np->jmpbuf.jb_esp = (unsigned)np->tf;
+  np->jmpbuf.eip = (unsigned)forkret;
+  np->jmpbuf.esp = (unsigned)np->tf;
 
   // Copy file descriptors
   for(i = 0; i < NOFILE; i++){
@@ -153,13 +153,13 @@ scheduler(void)
       // It can run on the other stack.
       // h/w sets busy bit in TSS descriptor sometimes, and faults
       // if it's set in LTR. so clear tss descriptor busy bit.
-      p->gdt[SEG_TSS].sd_type = STS_T32A;
+      p->gdt[SEG_TSS].type = STS_T32A;
     
       // XXX should probably have an lgdt() function in x86.h
       // to confine all the inline assembly.
       // XXX probably ought to lgdt on trap return too, in case
       // a system call has moved a program or changed its size.
-      asm volatile("lgdt %0" : : "g" (p->gdt_pd.pd_lim));
+      asm volatile("lgdt %0" : : "g" (p->gdt_pd.lim));
       ltr(SEG_TSS << 3);
 
       // Switch to chosen process.  It is the process's job 

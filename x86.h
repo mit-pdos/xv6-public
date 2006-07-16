@@ -320,33 +320,33 @@ sti(void)
 
 struct PushRegs {
     /* registers as pushed by pusha */
-    uint32_t reg_edi;
-    uint32_t reg_esi;
-    uint32_t reg_ebp;
-    uint32_t reg_oesp;      /* Useless */
-    uint32_t reg_ebx;
-    uint32_t reg_edx;
-    uint32_t reg_ecx;
-    uint32_t reg_eax;
+    uint32_t edi;
+    uint32_t esi;
+    uint32_t ebp;
+    uint32_t oesp;      /* Useless */
+    uint32_t ebx;
+    uint32_t edx;
+    uint32_t ecx;
+    uint32_t eax;
 };
 
 struct Trapframe {
-    struct PushRegs tf_regs;
-    uint16_t tf_es;
-    uint16_t tf_padding1;
-    uint16_t tf_ds;
-    uint16_t tf_padding2;
-    uint32_t tf_trapno;
+    struct PushRegs regs;
+    uint16_t es;
+    uint16_t padding1;
+    uint16_t ds;
+    uint16_t padding2;
+    uint32_t trapno;
     /* below here defined by x86 hardware */
-    uint32_t tf_err;
-    uintptr_t tf_eip;
-    uint16_t tf_cs;
-    uint16_t tf_padding3;
-    uint32_t tf_eflags;
+    uint32_t err;
+    uintptr_t eip;
+    uint16_t cs;
+    uint16_t padding3;
+    uint32_t eflags;
     /* below here only when crossing rings, such as from user to kernel */
-    uintptr_t tf_esp;
-    uint16_t tf_ss;
-    uint16_t tf_padding4;
+    uintptr_t esp;
+    uint16_t ss;
+    uint16_t padding4;
 };
 
 #define MAX_IRQS	16	// Number of IRQs

@@ -51,7 +51,7 @@ fetcharg(int argno, void *ip)
 {
   unsigned esp;
 
-  esp = (unsigned) curproc[cpu()]->tf->tf_esp;
+  esp = (unsigned) curproc[cpu()]->tf->esp;
   return fetchint(curproc[cpu()], esp + 4 + 4*argno, ip);
 }
 
@@ -263,7 +263,7 @@ void
 syscall(void)
 {
   struct proc *cp = curproc[cpu()];
-  int num = cp->tf->tf_regs.reg_eax;
+  int num = cp->tf->regs.eax;
   int ret = -1;
 
   //cprintf("%x sys %d\n", cp, num);
@@ -301,10 +301,13 @@ syscall(void)
   case SYS_panic:
     ret = sys_panic();
     break;
+  case SYS_cons_puts:
+    ret = sys_cons_puts();
+    break;
   default:
     cprintf("unknown sys call %d\n", num);
     // XXX fault
     break;
   }
-  cp->tf->tf_regs.reg_eax = ret;
+  cp->tf->regs.eax = ret;
 }

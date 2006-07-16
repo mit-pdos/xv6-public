@@ -28,17 +28,17 @@ tvinit()
 void
 idtinit()
 {
-  asm volatile("lidt %0" : : "g" (idt_pd.pd_lim));
+  asm volatile("lidt %0" : : "g" (idt_pd.lim));
 }
 
 void
 trap(struct Trapframe *tf)
 {
-  int v = tf->tf_trapno;
+  int v = tf->trapno;
 
   if(v == T_SYSCALL){
     struct proc *cp = curproc[cpu()];
-    int num = cp->tf->tf_regs.reg_eax;
+    int num = cp->tf->regs.eax;
     if(cp == 0)
       panic("syscall with no proc");
     if(cp->killed)
@@ -78,7 +78,7 @@ trap(struct Trapframe *tf)
       // (If the kernel was executing at time of interrupt,
       // don't kill the process.  Let the process get back
       // out to its regular system call return.)
-      if((tf->tf_cs&3) == 3 && cp->killed)
+      if((tf->cs&3) == 3 && cp->killed)
         proc_exit();
       
       // Force process to give up CPU and let others run.

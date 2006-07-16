@@ -62,9 +62,9 @@ main()
   p->kstack = kalloc(KSTACKSIZE);
   p->tf = (struct Trapframe *) (p->kstack + KSTACKSIZE - sizeof(struct Trapframe));
   memset(p->tf, 0, sizeof(struct Trapframe));
-  p->tf->tf_es = p->tf->tf_ds = p->tf->tf_ss = (SEG_UDATA << 3) | 3;
-  p->tf->tf_cs = (SEG_UCODE << 3) | 3;
-  p->tf->tf_eflags = FL_IF;
+  p->tf->es = p->tf->ds = p->tf->ss = (SEG_UDATA << 3) | 3;
+  p->tf->cs = (SEG_UCODE << 3) | 3;
+  p->tf->eflags = FL_IF;
   p->pid = 0;
   p->ppid = 0;
   setupsegs(p);
@@ -103,26 +103,26 @@ load_icode(struct proc *p, uint8_t *binary, unsigned size)
 
   // Check magic number on binary
   elf = (struct Elf*) binary;
-  cprintf("elf %x magic %x\n", elf, elf->e_magic);
-  if (elf->e_magic != ELF_MAGIC)
+  cprintf("elf %x magic %x\n", elf, elf->magic);
+  if (elf->magic != ELF_MAGIC)
     panic("load_icode: not an ELF binary");
 
-  p->tf->tf_eip = elf->e_entry;
-  p->tf->tf_esp = p->sz;
+  p->tf->eip = elf->entry;
+  p->tf->esp = p->sz;
 
   // Map and load segments as directed.
-  ph = (struct Proghdr*) (binary + elf->e_phoff);
-  for (i = 0; i < elf->e_phnum; i++, ph++) {
-    if (ph->p_type != ELF_PROG_LOAD)
+  ph = (struct Proghdr*) (binary + elf->phoff);
+  for (i = 0; i < elf->phnum; i++, ph++) {
+    if (ph->type != ELF_PROG_LOAD)
       continue;
-    cprintf("va %x memsz %d\n", ph->p_va, ph->p_memsz);
-    if (ph->p_va + ph->p_memsz < ph->p_va)
+    cprintf("va %x memsz %d\n", ph->va, ph->memsz);
+    if (ph->va + ph->memsz < ph->va)
       panic("load_icode: overflow in elf header segment");
-    if (ph->p_va + ph->p_memsz >= p->sz)
+    if (ph->va + ph->memsz >= p->sz)
       panic("load_icode: icode wants to be above UTOP");
 
     // Load/clear the segment
-    memmove(p->mem + ph->p_va, binary + ph->p_offset, ph->p_filesz);
-    memset(p->mem + ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
+    memmove(p->mem + ph->va, binary + ph->offset, ph->filesz);
+    memset(p->mem + ph->va + ph->filesz, 0, ph->memsz - ph->filesz);
   }
 }
