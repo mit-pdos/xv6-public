@@ -70,11 +70,18 @@ trap(struct Trapframe *tf)
     lapic_timerintr();
     if(cpus[cpu()].nlock)
       panic("timer interrupt while holding a lock");
+    if((read_eflags() & FL_IF) == 0)
+      panic("timer interrupt but interrupts now disabled");
     if(cp){
-      if((read_eflags() & FL_IF) == 0)
-        panic("timer interrupt but interrupts now disabled");
-      if(cp->killed)
+      // Force process exit if it has been killed
+      // and the interrupt came from user space.
+      // (If the kernel was executing at time of interrupt,
+      // don't kill the process.  Let the process get back
+      // out to its regular system call return.)
+      if((tf->tf_cs&3) == 3 && cp->killed)
         proc_exit();
+      
+      // Force process to give up CPU and let others run.
       if(cp->state == RUNNING)
         yield();
     }
