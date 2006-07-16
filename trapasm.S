@@ -1,8 +1,10 @@
 #include "mmu.h"
         
 	.text
-        .globl alltraps
-        .globl trap
+.globl trap
+.globl trapret1
+
+.globl alltraps
 alltraps:
         /* vectors.S sends all traps here */
         pushl   %ds     # build
@@ -16,11 +18,11 @@ alltraps:
         addl $4, %esp
         # return falls through to trapret...
         
-        .globl trapret
 	/*
          * a forked process RETs here
          * expects ESP to point to a Trapframe
          */
+.globl trapret
 trapret:
         popal
         popl %es
@@ -28,6 +30,10 @@ trapret:
         addl $0x8, %esp /* trapno and errcode */
         iret
 
+.globl forkret
+forkret:
+	call forkret1
+	jmp trapret
 		
 .globl 	acpu
 acpu:

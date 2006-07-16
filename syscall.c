@@ -34,8 +34,9 @@ fetchint(struct proc *p, unsigned addr, int *ip)
   return 0;
 }
 
+// This arg is void* so that both int* and uint* can be passed.
 int
-fetcharg(int argno, int *ip)
+fetcharg(int argno, void *ip)
 {
   unsigned esp;
 

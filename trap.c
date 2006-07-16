@@ -36,11 +36,6 @@ trap(struct Trapframe *tf)
 {
   int v = tf->tf_trapno;
 
-  if(cpus[cpu()].clis){
-    cprintf("cpu %d v %d eip %x\n", cpu(), v, tf->tf_eip);
-    panic("interrupt while interrupts are off");
-  }
-
   if(v == T_SYSCALL){
     struct proc *cp = curproc[cpu()];
     int num = cp->tf->tf_regs.reg_eax;
@@ -56,12 +51,10 @@ trap(struct Trapframe *tf)
       panic("trap ret but not RUNNING");
     if(tf != cp->tf)
       panic("trap ret wrong tf");
-    if(cp->locks){
+    if(cpus[cpu()].nlock){
       cprintf("num=%d\n", num);
       panic("syscall returning locks held");
     }
-    if(cpus[cpu()].clis)
-      panic("syscall returning but clis != 0");
     if((read_eflags() & FL_IF) == 0)
       panic("syscall returning but FL_IF clear");
     if(read_esp() < (unsigned)cp->kstack ||
@@ -75,7 +68,7 @@ trap(struct Trapframe *tf)
   if(v == (IRQ_OFFSET + IRQ_TIMER)){
     struct proc *cp = curproc[cpu()];
     lapic_timerintr();
-    if(cp && cp->locks)
+    if(cpus[cpu()].nlock)
       panic("timer interrupt while holding a lock");
     if(cp){
 #if 1

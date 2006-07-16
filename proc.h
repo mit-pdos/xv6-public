@@ -33,7 +33,7 @@ struct jmpbuf {
   int jb_eip;
 };
 
-enum proc_state { UNUSED, EMBRYO, WAITING, RUNNABLE, RUNNING, ZOMBIE };
+enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct proc{
   char *mem; // start of process's physical memory
@@ -46,7 +46,6 @@ struct proc{
   int ppid;
   void *chan; // sleep
   int killed;
-  int locks; // # of locks currently held
   struct fd *fds[NOFILE];
 
   struct Taskstate ts;  // only to give cpu address of kernel stack
@@ -71,7 +70,7 @@ struct cpu {
   struct jmpbuf jmpbuf;
   char mpstack[MPSTACK]; // per-cpu start-up stack, only used to get into main()
   struct proc *lastproc;  // last proc scheduled on this cpu (never NULL)
-  int clis; // cli() nesting depth
+  int nlock; // # of locks currently held
 };
 
 extern struct cpu cpus[NCPU];

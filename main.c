@@ -18,19 +18,19 @@ extern uint8_t _binary_userfs_start[], _binary_userfs_size[];
 
 extern int use_console_lock;
 
+struct spinlock sillylock;  // hold this to keep interrupts disabled
+
 int
 main()
 {
   struct proc *p;
 
   if (acpu) {
-    cpus[cpu()].clis = 1;
     cprintf("an application processor\n");
     idtinit(); // CPU's idt
     lapic_init(cpu());
     lapic_timerinit();
     lapic_enableintr();
-    sti();
     scheduler();
   }
   acpu = 1;
@@ -40,9 +40,8 @@ main()
 
   mp_init(); // collect info about this machine
 
+  acquire(&sillylock);
   use_console_lock = 1;
-
-  cpus[cpu()].clis = 1; // cpu starts as if we had called cli()
 
   lapic_init(mp_bcpu());
 
@@ -56,7 +55,7 @@ main()
   // create fake process zero
   p = &proc[0];
   memset(p, 0, sizeof *p);
-  p->state = WAITING;
+  p->state = SLEEPING;
   p->sz = 4 * PAGE;
   p->mem = kalloc(p->sz);
   memset(p->mem, 0, p->sz);
@@ -88,6 +87,7 @@ main()
   //load_icode(p, _binary_userfs_start, (unsigned) _binary_userfs_size);
   p->state = RUNNABLE;
   cprintf("loaded userfs\n");
+  release(&sillylock);
 
   scheduler();
 

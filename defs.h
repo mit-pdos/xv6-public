@@ -13,7 +13,6 @@ struct proc;
 struct jmpbuf;
 void setupsegs(struct proc *);
 struct proc * newproc(void);
-void swtch(int);
 struct spinlock;
 void sleep(void *, struct spinlock *);
 void wakeup(void *);
@@ -22,8 +21,6 @@ void proc_exit(void);
 int proc_kill(int);
 int proc_wait(void);
 void yield(void);
-void cli(void);
-void sti(void);
 
 // swtch.S
 struct jmpbuf;
