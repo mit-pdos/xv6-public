@@ -1,7 +1,6 @@
 #include "types.h"
 #include "mp.h"
 #include "defs.h"
-#include "memlayout.h"
 #include "param.h"
 #include "x86.h"
 #include "traps.h"
