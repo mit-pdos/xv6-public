@@ -31,7 +31,7 @@ void ktest();
  * after _end.
  */
 void
-kinit()
+kinit(void)
 {
   extern int end;
   unsigned mem;
@@ -102,7 +102,7 @@ kfree(char *cp, int len)
  * returns a kernel-segment pointer.
  * returns 0 if there's no run that's big enough.
  */
-char *
+char*
 kalloc(int n)
 {
   struct run **rr;
@@ -133,7 +133,7 @@ kalloc(int n)
 }
 
 void
-ktest()
+ktest(void)
 {
   char *p1, *p2, *p3;
 
@@ -158,11 +158,8 @@ ktest()
 
   // test running out of memory
   p1 = 0;
-  while(1){
-    p2 = kalloc(PAGE);
-    if(p2 == 0)
-      break;
-    *(char **)p2 = p1;
+  while((p2 = kalloc(PAGE)) != 0){
+    *(char**)p2 = p1;
     p1 = p2;
   }
   while(p1){
