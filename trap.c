@@ -8,7 +8,6 @@
 #include "syscall.h"
 
 struct Gatedesc idt[256];
-struct Pseudodesc idt_pd = { 0, sizeof(idt) - 1, (unsigned) &idt };
 extern unsigned vectors[]; /* vectors.S, array of 256 entry point addresses */
 
 extern void trapenter();
@@ -28,7 +27,7 @@ tvinit()
 void
 idtinit()
 {
-  asm volatile("lidt %0" : : "g" (idt_pd.lim));
+  lidt(idt, sizeof idt);
 }
 
 void

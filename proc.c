@@ -38,9 +38,6 @@ setupsegs(struct proc *p)
   p->gdt[SEG_TSS].s = 0;
   p->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (unsigned)p->mem, p->sz, 3);
   p->gdt[SEG_UDATA] = SEG(STA_W, (unsigned)p->mem, p->sz, 3);
-  p->gdt_pd._garbage = 0;
-  p->gdt_pd.lim = sizeof(p->gdt) - 1;
-  p->gdt_pd.base = (unsigned) p->gdt;
 }
 
 // Look in the process table for an UNUSED proc.
@@ -159,7 +156,9 @@ scheduler(void)
       // to confine all the inline assembly.
       // XXX probably ought to lgdt on trap return too, in case
       // a system call has moved a program or changed its size.
-      asm volatile("lgdt %0" : : "g" (p->gdt_pd.lim));
+      lgdt(p->gdt, sizeof p->gdt);
+    // asm volatile("lgdt %0" : : "g" (p->gdt_pd.lim));
+
       ltr(SEG_TSS << 3);
 
       // Switch to chosen process.  It is the process's job 

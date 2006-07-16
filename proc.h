@@ -50,7 +50,6 @@ struct proc{
 
   struct Taskstate ts;  // only to give cpu address of kernel stack
   struct Segdesc gdt[NSEGS];
-  struct Pseudodesc gdt_pd;
   unsigned esp; // kernel stack pointer
   unsigned ebp; // kernel frame pointer
 

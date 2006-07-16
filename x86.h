@@ -12,7 +12,10 @@ static __inline void outsw(int port, const void *addr, int cnt) __attribute__((a
 static __inline void outsl(int port, const void *addr, int cnt) __attribute__((always_inline));
 static __inline void outl(int port, uint32_t data) __attribute__((always_inline));
 static __inline void invlpg(void *addr) __attribute__((always_inline));
-static __inline void lidt(void *p) __attribute__((always_inline));
+struct Segdesc;
+static __inline void lgdt(struct Segdesc *p, int) __attribute__((always_inline));
+struct Gatedesc;
+static __inline void lidt(struct Gatedesc *p, int) __attribute__((always_inline));
 static __inline void lldt(uint16_t sel) __attribute__((always_inline));
 static __inline void ltr(uint16_t sel) __attribute__((always_inline));
 static __inline void lcr0(uint32_t val) __attribute__((always_inline));
@@ -141,9 +144,27 @@ invlpg(void *addr)
 }  
 
 static __inline void
-lidt(void *p)
+lgdt(struct Segdesc *p, int size)
 {
-	__asm __volatile("lidt (%0)" : : "r" (p));
+	volatile uint16_t pd[3];
+  
+	pd[0] = size-1;
+	pd[1] = (uint)p;
+	pd[2] = (uint)p >> 16;
+
+	asm volatile("lgdt (%0)" : : "g" (pd));
+}
+
+static __inline void
+lidt(struct Gatedesc *p, int size)
+{
+	volatile uint16_t pd[3];
+  
+	pd[0] = size-1;
+	pd[1] = (uint)p;
+	pd[2] = (uint)p >> 16;
+  
+	asm volatile("lidt (%0)" : : "g" (pd));
 }
 
 static __inline void

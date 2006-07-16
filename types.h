@@ -4,3 +4,4 @@ typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
 typedef uint32_t uintptr_t;
 typedef uint32_t physaddr_t;
+typedef unsigned int uint;
