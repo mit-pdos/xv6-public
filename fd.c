@@ -99,7 +99,7 @@ fd_close(struct fd *fd)
 }
 
 void
-fd_reference(struct fd *fd)
+fd_incref(struct fd *fd)
 {
   acquire(&fd_table_lock);
   if(fd->count < 1 || fd->type == FD_CLOSED)

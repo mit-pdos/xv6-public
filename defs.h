@@ -84,7 +84,7 @@ struct fd * fd_alloc();
 void fd_close(struct fd *);
 int fd_read(struct fd *fd, char *addr, int n);
 int fd_write(struct fd *fd, char *addr, int n);
-void fd_reference(struct fd *fd);
+void fd_incref(struct fd *fd);
 
 // ide.c
 void ide_init(void);
