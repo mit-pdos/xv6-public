@@ -1,5 +1,8 @@
+#include "user.h"
+
 char buf[32];
 
+int
 main()
 {
   int pid, fds[2], n;
@@ -15,6 +18,5 @@ main()
     puts(buf);
     puts("\n");
   }
-  while(1)
-    ;
+  for(;;);
 }

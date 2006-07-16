@@ -1,3 +1,5 @@
+#include "user.h"
+
 char buf[2048];
 
 // simple fork and pipe read/write
@@ -17,10 +19,10 @@ pipe1()
         buf[i] = seq++;
       if(write(fds[1], buf, 1033) != 1033){
         panic("pipe1 oops 1\n");
-        exit(1);
+        exit();
       }
     }
-    exit(0);
+    exit();
   } else {
     close(fds[1]);
     total = 0;
@@ -109,12 +111,13 @@ exitwait()
         return;
       }
     } else {
-      exit(0);
+      exit();
     }
   }
   puts("exitwait ok\n");
 }
 
+int
 main()
 {
   puts("usertests starting\n");
@@ -123,5 +126,6 @@ main()
   preempt();
   exitwait();
 
-  panic("usertests finished successfuly");
+  panic("usertests succeeded");
+  return 0;
 }
