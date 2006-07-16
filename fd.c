@@ -104,6 +104,6 @@ fd_incref(struct fd *fd)
   acquire(&fd_table_lock);
   if(fd->count < 1 || fd->type == FD_CLOSED)
     panic("fd_reference");
-  fd->count += 1;
+  fd->count++;
   release(&fd_table_lock);
 }

@@ -53,7 +53,7 @@ real_cons_putc(int c)
   } else {
     c |= 0x0700; // black on white
     crt[ind] = c;
-    ind += 1;
+    ind++;
   }
 
   if((ind / 80) >= 24){
@@ -100,10 +100,8 @@ printint(int xx, int base, int sgn)
   if(neg)
     buf[i++] = '-';
 
-  while(i > 0){
-    i -= 1;
+  while(--i >= 0)
     real_cons_putc(buf[i]);
-  }
 }
 
 /*

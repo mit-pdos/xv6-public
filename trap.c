@@ -71,13 +71,8 @@ trap(struct Trapframe *tf)
     if(cpus[cpu()].nlock)
       panic("timer interrupt while holding a lock");
     if(cp){
-#if 1
       if((read_eflags() & FL_IF) == 0)
         panic("timer interrupt but interrupts now disabled");
-#else
-      cpus[cpu()].clis += 1;
-      sti();
-#endif
       if(cp->killed)
         proc_exit();
       if(cp->state == RUNNING)
