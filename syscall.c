@@ -228,17 +228,20 @@ sys_block(void)
   char buf[512];
   int i, j;
   void *c;
+  extern struct spinlock ide_lock;
 
   cprintf("%d: call sys_block\n", cpu());
   for (i = 0; i < 100; i++) {
+    acquire(&ide_lock);
     if ((c = ide_start_read(i, buf, 1)) == 0) {
       panic("couldn't start read\n");
     }
     cprintf("call sleep\n");
-    sleep (c, 0);
+    sleep (c, &ide_lock);
     if (ide_finish_read(c)) {
       panic("couldn't do read\n");
     }
+    release(&ide_lock);
     cprintf("sector %d: ", i);
     for (j = 0; j < 2; j++)
       cprintf("%x ", buf[j] & 0xff);

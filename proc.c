@@ -176,6 +176,15 @@ scheduler(void)
       if(p->state == RUNNING)
         panic("swtch to scheduler with state=RUNNING");
       
+      if(!holding(&proc_table_lock)){
+        cprintf("back to scheduler without proc_table_lock (pid=%d state=%d)", p->pid, p->state);
+        panic("scheduler lock");
+      }
+      if(cpus[cpu()].nlock != 1){
+        cprintf("holding %d locks in scheduler (pid=%d state=%d)\n", cpus[cpu()].nlock, p->pid, p->state);
+        panic("scheduler lock");
+      }
+
       // XXX if not holding proc_table_lock panic.
     }
     release(&proc_table_lock);
@@ -235,6 +244,9 @@ sleep(void *chan, struct spinlock *lk)
 
   if(p == 0)
     panic("sleep");
+
+  if(lk == 0)
+    panic("sleep without lk");
 
   // Must acquire proc_table_lock in order to 
   // change p->state and then call sched.

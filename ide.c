@@ -10,6 +10,7 @@
 #include "proc.h"
 #include "defs.h"
 #include "x86.h"
+#include "spinlock.h"
 
 #define IDE_BSY		0x80
 #define IDE_DRDY	0x40
@@ -23,6 +24,7 @@ struct ide_request {
 };
 struct ide_request request[NREQUEST];
 int head, tail;
+struct spinlock ide_lock;
 
 static int diskno = 0;
 int disk_channel;
@@ -107,12 +109,14 @@ void *
 ide_start_read(uint32_t secno, void *dst, uint nsecs)
 {
   struct ide_request *r;
+  if(!holding(&ide_lock))
+    panic("ide_start_read: not holding ide_lock");
 
   if(nsecs > 256)
     panic("ide_start_read: nsecs too large");
 
   while ((head + 1) % NREQUEST == tail)
-    sleep (&disk_channel, 0);
+    sleep (&disk_channel, &ide_lock);
 
   r = &request[head];
   r->secno = secno;
@@ -132,6 +136,8 @@ ide_finish_read(void *c)
   int r = 0;
   struct ide_request *req = (struct ide_request *) c;
 
+  if(!holding(&ide_lock))
+    panic("ide_start_read: not holding ide_lock");
   for (; req->nsecs > 0; req->nsecs--, req->dst += 512) {
     if ((r = ide_wait_ready(1)) < 0)
       break;
