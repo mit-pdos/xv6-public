@@ -104,7 +104,7 @@ copyproc(struct proc* p)
   *np->tf = *p->tf;
   
   // Clear %eax so that fork system call returns 0 in child.
-  np->tf->regs.eax = 0;
+  np->tf->eax = 0;
 
   // Set up new jmpbuf to start executing at forkret (see below).
   memset(&np->jmpbuf, 0, sizeof np->jmpbuf);

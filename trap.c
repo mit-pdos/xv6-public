@@ -37,7 +37,7 @@ trap(struct Trapframe *tf)
 
   if(v == T_SYSCALL){
     struct proc *cp = curproc[cpu()];
-    int num = cp->tf->regs.eax;
+    int num = cp->tf->eax;
     if(cp == 0)
       panic("syscall with no proc");
     if(cp->killed)

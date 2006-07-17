@@ -339,7 +339,7 @@ sti(void)
 	__asm__ volatile("sti");
 }
 
-struct PushRegs {
+struct Trapframe {
     /* registers as pushed by pusha */
     uint32_t edi;
     uint32_t esi;
@@ -349,10 +349,7 @@ struct PushRegs {
     uint32_t edx;
     uint32_t ecx;
     uint32_t eax;
-};
-
-struct Trapframe {
-    struct PushRegs regs;
+    /* rest of trap frame */
     uint16_t es;
     uint16_t padding1;
     uint16_t ds;
