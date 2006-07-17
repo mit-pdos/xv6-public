@@ -205,8 +205,8 @@ mp_startthem(void)
   for(c = 0; c < ncpu; c++){
     if (c == cpu()) continue;
     cprintf ("starting processor %d\n", c);
-    *(unsigned *)(APBOOTCODE-4) = (unsigned) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
-    *(unsigned *)(APBOOTCODE-8) = (unsigned)mpmain; // tell it where to jump to
+    *(uint *)(APBOOTCODE-4) = (uint) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
+    *(uint *)(APBOOTCODE-8) = (uint)mpmain; // tell it where to jump to
     lapic_startap(cpus[c].apicid, (uint32_t) APBOOTCODE);
   }
 }

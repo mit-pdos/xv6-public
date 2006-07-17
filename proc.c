@@ -26,18 +26,18 @@ setupsegs(struct proc *p)
 {
   memset(&p->ts, 0, sizeof(struct Taskstate));
   p->ts.ss0 = SEG_KDATA << 3;
-  p->ts.esp0 = (unsigned)(p->kstack + KSTACKSIZE);
+  p->ts.esp0 = (uint)(p->kstack + KSTACKSIZE);
 
   // XXX it may be wrong to modify the current segment table!
 
   p->gdt[0] = SEG_NULL;
   p->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
   p->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  p->gdt[SEG_TSS] = SEG16(STS_T32A, (unsigned) &p->ts,
+  p->gdt[SEG_TSS] = SEG16(STS_T32A, (uint) &p->ts,
                                 sizeof(p->ts), 0);
   p->gdt[SEG_TSS].s = 0;
-  p->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (unsigned)p->mem, p->sz, 3);
-  p->gdt[SEG_UDATA] = SEG(STA_W, (unsigned)p->mem, p->sz, 3);
+  p->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz, 3);
+  p->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz, 3);
 }
 
 // Look in the process table for an UNUSED proc.
@@ -108,8 +108,8 @@ copyproc(struct proc* p)
 
   // Set up new jmpbuf to start executing at forkret (see below).
   memset(&np->jmpbuf, 0, sizeof np->jmpbuf);
-  np->jmpbuf.eip = (unsigned)forkret;
-  np->jmpbuf.esp = (unsigned)np->tf;
+  np->jmpbuf.eip = (uint)forkret;
+  np->jmpbuf.esp = (uint)np->tf;
 
   // Copy file descriptors
   for(i = 0; i < NOFILE; i++){

@@ -24,7 +24,7 @@
  * returns 0 if addr was OK, -1 if illegal.
  */
 int
-fetchint(struct proc *p, unsigned addr, int *ip)
+fetchint(struct proc *p, uint addr, int *ip)
 {
   *ip = 0;
 
@@ -37,7 +37,7 @@ fetchint(struct proc *p, unsigned addr, int *ip)
 // Fetch byte from a user-supplied pointer.
 // Returns 0 on success, -1 if pointer is illegal.
 int
-fetchbyte(struct proc *p, unsigned addr, char* c)
+fetchbyte(struct proc *p, uint addr, char* c)
 {
   if(addr >= p->sz)
     return -1;
@@ -49,14 +49,14 @@ fetchbyte(struct proc *p, unsigned addr, char* c)
 int
 fetcharg(int argno, void *ip)
 {
-  unsigned esp;
+  uint esp;
 
-  esp = (unsigned) curproc[cpu()]->tf->esp;
+  esp = (uint) curproc[cpu()]->tf->esp;
   return fetchint(curproc[cpu()], esp + 4 + 4*argno, ip);
 }
 
 int
-putint(struct proc *p, unsigned addr, int ip)
+putint(struct proc *p, uint addr, int ip)
 {
   if(addr > p->sz - 4)
     return -1;
@@ -70,7 +70,7 @@ sys_pipe(void)
   struct fd *rfd = 0, *wfd = 0;
   int f1 = -1, f2 = -1;
   struct proc *p = curproc[cpu()];
-  unsigned fdp;
+  uint fdp;
 
   if(pipe_alloc(&rfd, &wfd) < 0)
     goto oops;
@@ -105,7 +105,7 @@ int
 sys_write(void)
 {
   int fd, n, ret;
-  unsigned addr;
+  uint addr;
   struct proc *p = curproc[cpu()];
 
   if(fetcharg(0, &fd) < 0 || fetcharg(1, &addr) < 0 || fetcharg(2, &n) < 0)
@@ -124,7 +124,7 @@ int
 sys_read(void)
 {
   int fd, n, ret;
-  unsigned addr;
+  uint addr;
   struct proc *p = curproc[cpu()];
 
   if(fetcharg(0, &fd) < 0 || fetcharg(1, &addr) < 0 || fetcharg(2, &n) < 0)
@@ -209,7 +209,7 @@ sys_cons_puts(void)
 {
   char buf[256];
   int i;
-  unsigned addr;
+  uint addr;
   struct proc *cp = curproc[cpu()];
 
   if(fetcharg(0, &addr) < 0)
@@ -251,7 +251,7 @@ int
 sys_panic(void)
 {
   struct proc *p = curproc[cpu()];
-  unsigned int addr;
+  uint addr;
 
   if(fetcharg(0, &addr) < 0)
     return -1;

@@ -1,4 +1,4 @@
 struct spinlock {
-  unsigned int locked;
-  unsigned locker_pc;
+  uint locked;
+  uint locker_pc;
 };

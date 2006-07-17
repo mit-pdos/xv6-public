@@ -34,11 +34,11 @@ void
 kinit(void)
 {
   extern int end;
-  unsigned mem;
+  uint mem;
   char *start;
   
   start = (char *) &end;
-  start = (char *) (((unsigned)start + PAGE) & ~(PAGE-1));
+  start = (char *) (((uint)start + PAGE) & ~(PAGE-1));
   mem = 256; // XXX
   cprintf("mem = %d\n", mem * PAGE);
   kfree(start, mem * PAGE);

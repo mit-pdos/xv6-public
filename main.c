@@ -81,8 +81,8 @@ main0(void)
 
   p = copyproc(&proc[0]);
   
-  load_icode(p, _binary_usertests_start, (unsigned) _binary_usertests_size);
-  //load_icode(p, _binary_userfs_start, (unsigned) _binary_userfs_size);
+  load_icode(p, _binary_usertests_start, (uint) _binary_usertests_size);
+  //load_icode(p, _binary_userfs_start, (uint) _binary_userfs_size);
   p->state = RUNNABLE;
   cprintf("loaded userfs\n");
 
@@ -107,7 +107,7 @@ mpmain(void)
 }
 
 void
-load_icode(struct proc *p, uint8_t *binary, unsigned size)
+load_icode(struct proc *p, uint8_t *binary, uint size)
 {
   int i;
   struct Elf *elf;

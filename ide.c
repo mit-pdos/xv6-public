@@ -19,7 +19,7 @@
 struct ide_request {
   uint32_t secno;
   void *dst;
-  unsigned nsecs;
+  uint nsecs;
 };
 struct ide_request request[NREQUEST];
 int head, tail;
@@ -104,7 +104,7 @@ ide_start_request (void)
 }
 
 void *
-ide_start_read(uint32_t secno, void *dst, unsigned nsecs)
+ide_start_read(uint32_t secno, void *dst, uint nsecs)
 {
   struct ide_request *r;
 
@@ -149,7 +149,7 @@ ide_finish_read(void *c)
 }
 
 int
-ide_write(uint32_t secno, const void *src, unsigned nsecs)
+ide_write(uint32_t secno, const void *src, uint nsecs)
 {
   int r;
 	

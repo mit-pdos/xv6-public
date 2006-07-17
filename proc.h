@@ -37,7 +37,7 @@ enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct proc{
   char *mem; // start of process's physical memory
-  unsigned sz; // total size of mem, including kernel stack
+  uint sz; // total size of mem, including kernel stack
   char *kstack; // kernel stack, separate from mem so it doesn't move
   enum proc_state state;
   enum proc_state newstate; // desired state after swtch()
@@ -50,8 +50,8 @@ struct proc{
 
   struct Taskstate ts;  // only to give cpu address of kernel stack
   struct Segdesc gdt[NSEGS];
-  unsigned esp; // kernel stack pointer
-  unsigned ebp; // kernel frame pointer
+  uint esp; // kernel stack pointer
+  uint ebp; // kernel frame pointer
 
   struct jmpbuf jmpbuf;
 

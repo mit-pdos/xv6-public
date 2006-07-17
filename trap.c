@@ -8,7 +8,7 @@
 #include "syscall.h"
 
 struct Gatedesc idt[256];
-extern unsigned vectors[]; /* vectors.S, array of 256 entry point addresses */
+extern uint vectors[]; /* vectors.S, array of 256 entry point addresses */
 
 extern void trapenter(void);
 extern void trapenter1(void);
@@ -56,8 +56,8 @@ trap(struct Trapframe *tf)
     }
     if((read_eflags() & FL_IF) == 0)
       panic("syscall returning but FL_IF clear");
-    if(read_esp() < (unsigned)cp->kstack ||
-       read_esp() >= (unsigned)cp->kstack + KSTACKSIZE)
+    if(read_esp() < (uint)cp->kstack ||
+       read_esp() >= (uint)cp->kstack + KSTACKSIZE)
       panic("trap ret esp wrong");
     if(cp->killed)
       proc_exit();

@@ -61,7 +61,7 @@ cmain(void)
 bad:
 	outw(0x8A00, 0x8A00);
 	outw(0x8A00, 0x8E00);
-	while (1)
+	while(1)
 		/* do nothing */;
 }
 

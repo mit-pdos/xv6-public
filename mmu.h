@@ -61,19 +61,19 @@
 
 // Segment Descriptors
 struct Segdesc {
-	unsigned lim_15_0 : 16;  // Low bits of segment limit
-	unsigned base_15_0 : 16; // Low bits of segment base address
-	unsigned base_23_16 : 8; // Middle bits of segment base address
-	unsigned type : 4;       // Segment type (see STS_ constants)
-	unsigned s : 1;          // 0 = system, 1 = application
-	unsigned dpl : 2;        // Descriptor Privilege Level
-	unsigned p : 1;          // Present
-	unsigned lim_19_16 : 4;  // High bits of segment limit
-	unsigned avl : 1;        // Unused (available for software use)
-	unsigned rsv1 : 1;       // Reserved
-	unsigned db : 1;         // 0 = 16-bit segment, 1 = 32-bit segment
-	unsigned g : 1;          // Granularity: limit scaled by 4K when set
-	unsigned base_31_24 : 8; // High bits of segment base address
+	uint lim_15_0 : 16;  // Low bits of segment limit
+	uint base_15_0 : 16; // Low bits of segment base address
+	uint base_23_16 : 8; // Middle bits of segment base address
+	uint type : 4;       // Segment type (see STS_ constants)
+	uint s : 1;          // 0 = system, 1 = application
+	uint dpl : 2;        // Descriptor Privilege Level
+	uint p : 1;          // Present
+	uint lim_19_16 : 4;  // High bits of segment limit
+	uint avl : 1;        // Unused (available for software use)
+	uint rsv1 : 1;       // Reserved
+	uint db : 1;         // 0 = 16-bit segment, 1 = 32-bit segment
+	uint g : 1;          // Granularity: limit scaled by 4K when set
+	uint base_31_24 : 8; // High bits of segment base address
 };
 // Null segment
 #define SEG_NULL	(struct Segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
@@ -82,12 +82,12 @@ struct Segdesc {
 // Normal segment
 #define SEG(type, base, lim, dpl) (struct Segdesc)			\
 { ((lim) >> 12) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,	\
-    type, 1, dpl, 1, (unsigned) (lim) >> 28, 0, 0, 1, 1,		\
-    (unsigned) (base) >> 24 }
+    type, 1, dpl, 1, (uint) (lim) >> 28, 0, 0, 1, 1,		\
+    (uint) (base) >> 24 }
 #define SEG16(type, base, lim, dpl) (struct Segdesc)			\
 { (lim) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,		\
-    type, 1, dpl, 1, (unsigned) (lim) >> 16, 0, 0, 1, 0,		\
-    (unsigned) (base) >> 24 }
+    type, 1, dpl, 1, (uint) (lim) >> 16, 0, 0, 1, 0,		\
+    (uint) (base) >> 24 }
 
 #endif /* !__ASSEMBLER__ */
 
@@ -165,15 +165,15 @@ struct Taskstate {
 
 // Gate descriptors for interrupts and traps
 struct Gatedesc {
-	unsigned off_15_0 : 16;   // low 16 bits of offset in segment
-	unsigned ss : 16;         // segment selector
-	unsigned args : 5;        // # args, 0 for interrupt/trap gates
-	unsigned rsv1 : 3;        // reserved(should be zero I guess)
-	unsigned type : 4;        // type(STS_{TG,IG32,TG32})
-	unsigned s : 1;           // must be 0 (system)
-	unsigned dpl : 2;         // descriptor(meaning new) privilege level
-	unsigned p : 1;           // Present
-	unsigned off_31_16 : 16;  // high bits of offset in segment
+	uint off_15_0 : 16;   // low 16 bits of offset in segment
+	uint ss : 16;         // segment selector
+	uint args : 5;        // # args, 0 for interrupt/trap gates
+	uint rsv1 : 3;        // reserved(should be zero I guess)
+	uint type : 4;        // type(STS_{TG,IG32,TG32})
+	uint s : 1;           // must be 0 (system)
+	uint dpl : 2;         // descriptor(meaning new) privilege level
+	uint p : 1;           // Present
+	uint off_31_16 : 16;  // high bits of offset in segment
 };
 
 // Set up a normal interrupt/trap gate descriptor.

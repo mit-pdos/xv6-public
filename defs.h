@@ -32,10 +32,10 @@ void tvinit(void);
 void idtinit(void);
 
 // string.c
-void * memset(void *dst, int c, unsigned n);
-int memcmp(const void *v1, const void *v2, unsigned n);
-void *memmove(void *dst, const void *src, unsigned n);
-int strncmp(const char *p, const char *q, unsigned n);
+void * memset(void *dst, int c, uint n);
+int memcmp(const void *v1, const void *v2, uint n);
+void *memmove(void *dst, const void *src, uint n);
+int strncmp(const char *p, const char *q, uint n);
 
 // syscall.c
 void syscall(void);
@@ -68,7 +68,7 @@ void acquire1(struct spinlock * lock, struct proc *);
 void release1(struct spinlock * lock, struct proc *);
 
 // main.c
-void load_icode(struct proc *p, uint8_t *binary, unsigned size);
+void load_icode(struct proc *p, uint8_t *binary, uint size);
 
 // pipe.c
 struct pipe;
@@ -89,6 +89,6 @@ void fd_incref(struct fd *fd);
 // ide.c
 void ide_init(void);
 void ide_intr(void);
-void* ide_start_read(uint32_t secno, void *dst, unsigned nsecs);
+void* ide_start_read(uint32_t secno, void *dst, uint nsecs);
 int ide_finish_read(void *);
 
