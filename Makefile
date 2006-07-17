@@ -71,5 +71,5 @@ userfs : userfs.o $(ULIB)
 -include *.d
 
 clean : 
-	rm -f *.o bootblock kernel kernel.asm xv6.img *.d user1 userfs usertests
-
+	rm -f *.o *.d *.asm vectors.S \
+		bootblock kernel xv6.img user1 userfs usertests
