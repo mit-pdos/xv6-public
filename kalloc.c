@@ -23,7 +23,7 @@ struct run {
 };
 struct run *freelist;
 
-void ktest();
+void ktest(void);
 
 /*
  * initialize free list of physical pages. this code

@@ -108,7 +108,7 @@ lapic_write(int r, int data)
 
 
 void
-lapic_timerinit()
+lapic_timerinit(void)
 {
   cprintf("%d: init timer\n", cpu());
   lapic_write(LAPIC_TDCR, LAPIC_X1);
@@ -118,7 +118,7 @@ lapic_timerinit()
 }
 
 void
-lapic_timerintr()
+lapic_timerintr(void)
 {
   cprintf("%d: timer interrupt!\n", cpu());
   lapic_write (LAPIC_EOI, 0);

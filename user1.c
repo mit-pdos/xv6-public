@@ -3,7 +3,7 @@
 char buf[32];
 
 int
-main()
+main(void)
 {
   int pid, fds[2], n;
 

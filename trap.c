@@ -10,11 +10,11 @@
 struct Gatedesc idt[256];
 extern unsigned vectors[]; /* vectors.S, array of 256 entry point addresses */
 
-extern void trapenter();
-extern void trapenter1();
+extern void trapenter(void);
+extern void trapenter1(void);
 
 void
-tvinit()
+tvinit(void)
 {
   int i;
 
@@ -25,7 +25,7 @@ tvinit()
 }
 
 void
-idtinit()
+idtinit(void)
 {
   lidt(idt, sizeof idt);
 }

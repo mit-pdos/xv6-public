@@ -4,7 +4,7 @@
 #include "spinlock.h"
 
 struct spinlock console_lock;
-int paniced = 0;
+int panicked = 0;
 int use_console_lock = 0;
 
 /*
@@ -31,9 +31,9 @@ real_cons_putc(int c)
   unsigned short *crt = (unsigned short *) 0xB8000; // base of CGA memory
   int ind;
 
-  if(paniced){
+  if(panicked){
     cli();
-    while(1)
+    for(;;)
       ;
   }
 
@@ -161,7 +161,7 @@ panic(char *s)
   cprintf("panic: ");
   cprintf(s, 0);
   cprintf("\n", 0);
-  paniced = 1; // freeze other CPU
-  while(1)
+  panicked = 1; // freeze other CPU
+  for(;;)
     ;
 }

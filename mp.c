@@ -117,7 +117,7 @@ mp_detect(void)
 }
 
 void
-mp_init()
+mp_init(void)
 { 
   int r;
   uint8_t *p, *e;
@@ -193,7 +193,7 @@ mp_bcpu(void)
 extern void mpmain(void);
 
 void
-mp_startthem()
+mp_startthem(void)
 {
   extern uint8_t _binary_bootother_start[], _binary_bootother_size[];
   extern int main();

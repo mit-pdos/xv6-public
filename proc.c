@@ -311,7 +311,7 @@ proc_kill(int pid)
 // Exited processes remain in the zombie state 
 // until their parent calls wait() to find out they exited.
 void
-proc_exit()
+proc_exit(void)
 {
   struct proc *p;
   struct proc *cp = curproc[cpu()];

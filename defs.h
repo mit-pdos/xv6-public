@@ -79,8 +79,8 @@ int pipe_write(struct pipe *p, char *addr, int n);
 int pipe_read(struct pipe *p, char *addr, int n);
 
 // fd.c
-int fd_ualloc();
-struct fd * fd_alloc();
+int fd_ualloc(void);
+struct fd * fd_alloc(void);
 void fd_close(struct fd *);
 int fd_read(struct fd *fd, char *addr, int n);
 int fd_write(struct fd *fd, char *addr, int n);

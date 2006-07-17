@@ -15,7 +15,7 @@ struct fd fds[NFD];
  * allocate a file descriptor number for curproc.
  */
 int
-fd_ualloc()
+fd_ualloc(void)
 {
   int fd;
   struct proc *p = curproc[cpu()];
@@ -29,7 +29,7 @@ fd_ualloc()
  * allocate a file descriptor structure
  */
 struct fd *
-fd_alloc()
+fd_alloc(void)
 {
   int i;
 

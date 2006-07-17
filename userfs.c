@@ -5,7 +5,7 @@
 char buf[1024];
 
 int
-main()
+main(void)
 {
   puts("userfs running\n");
   block();
