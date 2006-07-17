@@ -1,6 +1,6 @@
 #define ELF_MAGIC 0x464C457FU	/* "\x7FELF" in little endian */
 
-struct Elf {
+struct elfhdr {
 	uint32_t magic;	// must equal ELF_MAGIC
 	uint8_t elf[12];
 	uint16_t type;
@@ -18,7 +18,7 @@ struct Elf {
 	uint16_t shstrndx;
 };
 
-struct Proghdr {
+struct proghdr {
 	uint32_t type;
 	uint32_t offset;
 	uint32_t va;

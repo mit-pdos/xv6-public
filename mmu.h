@@ -60,7 +60,7 @@
 #else	// not __ASSEMBLER__
 
 // Segment Descriptors
-struct Segdesc {
+struct segdesc {
 	uint lim_15_0 : 16;  // Low bits of segment limit
 	uint base_15_0 : 16; // Low bits of segment base address
 	uint base_23_16 : 8; // Middle bits of segment base address
@@ -76,15 +76,15 @@ struct Segdesc {
 	uint base_31_24 : 8; // High bits of segment base address
 };
 // Null segment
-#define SEG_NULL	(struct Segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define SEG_NULL	(struct segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 // Segment that is loadable but faults when used
-#define SEG_FAULT	(struct Segdesc){ 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0 }
+#define SEG_FAULT	(struct segdesc){ 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0 }
 // Normal segment
-#define SEG(type, base, lim, dpl) (struct Segdesc)			\
+#define SEG(type, base, lim, dpl) (struct segdesc)			\
 { ((lim) >> 12) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,	\
     type, 1, dpl, 1, (uint) (lim) >> 28, 0, 0, 1, 1,		\
     (uint) (base) >> 24 }
-#define SEG16(type, base, lim, dpl) (struct Segdesc)			\
+#define SEG16(type, base, lim, dpl) (struct segdesc)			\
 { (lim) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,		\
     type, 1, dpl, 1, (uint) (lim) >> 16, 0, 0, 1, 0,		\
     (uint) (base) >> 24 }
@@ -123,7 +123,7 @@ struct Segdesc {
 #ifndef __ASSEMBLER__
 
 // Task state segment format (as described by the Pentium architecture book)
-struct Taskstate {
+struct taskstate {
 	uint32_t link;	// Old ts selector
 	uintptr_t esp0;	// Stack pointers and segment selectors
 	uint16_t ss0;	//   after an increase in privilege level
@@ -164,7 +164,7 @@ struct Taskstate {
 };
 
 // Gate descriptors for interrupts and traps
-struct Gatedesc {
+struct gatedesc {
 	uint off_15_0 : 16;   // low 16 bits of offset in segment
 	uint ss : 16;         // segment selector
 	uint args : 5;        // # args, 0 for interrupt/trap gates

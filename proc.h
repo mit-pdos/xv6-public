@@ -48,14 +48,14 @@ struct proc{
   int killed;
   struct fd *fds[NOFILE];
 
-  struct Taskstate ts;  // only to give cpu address of kernel stack
-  struct Segdesc gdt[NSEGS];
+  struct taskstate ts;  // only to give cpu address of kernel stack
+  struct segdesc gdt[NSEGS];
   uint esp; // kernel stack pointer
   uint ebp; // kernel frame pointer
 
   struct jmpbuf jmpbuf;
 
-  struct Trapframe *tf; // points into kstack, used to find user regs
+  struct trapframe *tf; // points into kstack, used to find user regs
 };
 
 extern struct proc proc[];

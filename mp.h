@@ -4,7 +4,7 @@
  * Credit: Plan 9 sources
  */
 
-struct MP {			/* floating pointer */
+struct mp {			/* floating pointer */
   uint8_t signature[4];		/* "_MP_" */
   physaddr_t physaddr;	        /* physical address of MP configuration table */
   uint8_t length;		/* 1 */
@@ -15,7 +15,7 @@ struct MP {			/* floating pointer */
   uint8_t reserved[3];
 };
 
-struct MPCTB {			/* configuration table header */
+struct mpctb {			/* configuration table header */
   uint8_t signature[4];		/* "PCMP" */
   uint16_t length;		/* total table length */
   uint8_t version;		/* [14] */
@@ -30,7 +30,7 @@ struct MPCTB {			/* configuration table header */
   uint8_t reserved;
 };
 
-struct MPPE {		/* processor table entry */
+struct mppe {		/* processor table entry */
   uint8_t type;			/* entry type (0) */
   uint8_t apicid;		/* local APIC id */
   uint8_t version;		/* local APIC verison */
@@ -40,13 +40,13 @@ struct MPPE {		/* processor table entry */
   uint8_t reserved[8];
 };
 
-struct MPBE {		/* bus table entry */
+struct mpbe {		/* bus table entry */
   uint8_t type;			/* entry type (1) */
   uint8_t busno;		/* bus id */
   char string[6];		/* bus type string */
 };
 
-struct MPIOAPIC {	/* I/O APIC table entry */
+struct mpioapic {	/* I/O APIC table entry */
   uint8_t type;			/* entry type (2) */
   uint8_t apicno;		/* I/O APIC id */
   uint8_t version;		/* I/O APIC version */
@@ -54,7 +54,7 @@ struct MPIOAPIC {	/* I/O APIC table entry */
   uintptr_t addr;		/* I/O APIC address */
 };
 
-struct MPIE {		/* interrupt table entry */
+struct mpie {		/* interrupt table entry */
   uint8_t type;			/* entry type ([34]) */
   uint8_t intr;			/* interrupt type */
   uint16_t flags;		/* interrupt flag */

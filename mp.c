@@ -31,12 +31,12 @@ static char* buses[] = {
 
 #define APBOOTCODE 0x7000 // XXX hack
 
-static struct MP* mp;  // The MP floating point structure
+static struct mp* mp;  // The MP floating point structure
 struct cpu cpus[NCPU];
 int ncpu;
 static struct cpu *bcpu;
 
-static struct MP*
+static struct mp*
 mp_scan(uint8_t *addr, int len)
 {
   uint8_t *e, *p, sum;
@@ -44,24 +44,24 @@ mp_scan(uint8_t *addr, int len)
 
   cprintf("scanning: 0x%x\n", (uint32_t)addr);
   e = addr+len;
-  for(p = addr; p < e; p += sizeof(struct MP)){
+  for(p = addr; p < e; p += sizeof(struct mp)){
     if(memcmp(p, "_MP_", 4))
       continue;
     sum = 0;
-    for(i = 0; i < sizeof(struct MP); i++)
+    for(i = 0; i < sizeof(struct mp); i++)
       sum += p[i];
     if(sum == 0)
-      return (struct MP *)p;
+      return (struct mp *)p;
   }
   return 0;
 }
 
-static struct MP*
+static struct mp*
 mp_search(void)
 {
   uint8_t *bda;
   uint32_t p;
-  struct MP *mp;
+  struct mp *mp;
 
   /*
    * Search for the MP Floating Pointer Structure, which according to the
@@ -86,7 +86,7 @@ mp_search(void)
 static int 
 mp_detect(void)
 {
-  struct MPCTB *pcmp;
+  struct mpctb *pcmp;
   uint8_t *p, sum;
   uint32_t length;
 
@@ -100,7 +100,7 @@ mp_detect(void)
   if((mp = mp_search()) == 0 || mp->physaddr == 0)
     return 1;
 
-  pcmp = (struct MPCTB *) mp->physaddr;
+  pcmp = (struct mpctb *) mp->physaddr;
   if(memcmp(pcmp, "PCMP", 4))
     return 2;
 
@@ -121,9 +121,9 @@ mp_init(void)
 { 
   int r;
   uint8_t *p, *e;
-  struct MPCTB *mpctb;
-  struct MPPE *proc;
-  struct MPBE *bus;
+  struct mpctb *mpctb;
+  struct mppe *proc;
+  struct mpbe *bus;
   int i;
 
   ncpu = 0;
@@ -136,40 +136,40 @@ mp_init(void)
    * application processors and initialising any I/O APICs. The table
    * is guaranteed to be in order such that only one pass is necessary.
    */
-  mpctb = (struct MPCTB *) mp->physaddr;
+  mpctb = (struct mpctb *) mp->physaddr;
   lapicaddr = (uint32_t *) mpctb->lapicaddr;
   cprintf("apicaddr: %x\n", lapicaddr);
-  p = ((uint8_t*)mpctb)+sizeof(struct MPCTB);
+  p = ((uint8_t*)mpctb)+sizeof(struct mpctb);
   e = ((uint8_t*)mpctb)+mpctb->length;
 
   while(p < e) {
     switch(*p){
     case MPPROCESSOR:
-      proc = (struct MPPE *) p;
+      proc = (struct mppe *) p;
       cpus[ncpu].apicid = proc->apicid;
       cprintf("a processor %x\n", cpus[ncpu].apicid);
       if (proc->flags & MPBP) {
 	bcpu = &cpus[ncpu];
       }
       ncpu++;
-      p += sizeof(struct MPPE);
+      p += sizeof(struct mppe);
       continue;
     case MPBUS:
-      bus = (struct MPBE *) p;
+      bus = (struct mpbe *) p;
       for(i = 0; buses[i]; i++){
 	if(strncmp(buses[i], bus->string, sizeof(bus->string)) == 0)
 	  break;
       }
       cprintf("a bus %d\n", i);
-      p += sizeof(struct MPBE);
+      p += sizeof(struct mpbe);
       continue;
     case MPIOAPIC:
       cprintf("an I/O APIC\n");
-      p += sizeof(struct MPIOAPIC);
+      p += sizeof(struct mpioapic);
       continue;
     case MPIOINTR:
       cprintf("an I/O intr\n");
-      p += sizeof(struct MPIE);
+      p += sizeof(struct mpie);
       continue;
     default:
       cprintf("mpinit: unknown PCMP type 0x%x (e-p 0x%x)\n", *p, e-p);
