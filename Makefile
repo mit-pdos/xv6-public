@@ -27,7 +27,7 @@ CC = $(TOOLPREFIX)gcc
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
-CFLAGS = -nostdinc -fno-builtin -I. -O2 -Wall -MD
+CFLAGS = -fno-builtin -O2 -Wall -MD
 AS = $(TOOLPREFIX)gas
 
 xv6.img : bootblock kernel
@@ -71,5 +71,5 @@ userfs : userfs.o $(ULIB)
 -include *.d
 
 clean : 
-	rm -f *.o *.d *.asm vectors.S \
+	rm -f *.o *.d *.asm vectors.S parport.out \
 		bootblock kernel xv6.img user1 userfs usertests
