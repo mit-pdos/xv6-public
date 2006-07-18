@@ -13,8 +13,7 @@
  * System call number in %eax.
  * Arguments on the stack, from the user call to the C
  * library system call function. The saved user %esp points
- * to a saved frame pointer, a program counter, and then
- * the first argument.
+ * to a saved program counter, and then the first argument.
  *
  * Return value? Error indication? Errno?
  */
@@ -56,11 +55,11 @@ fetcharg(int argno, void *ip)
 }
 
 int
-putint(struct proc *p, uint addr, int ip)
+putint(struct proc *p, uint addr, int x)
 {
   if(addr > p->sz - 4)
     return -1;
-  memmove(p->mem + addr, &ip, 4);
+  memmove(p->mem + addr, &x, 4);
   return 0;
 }
 
@@ -269,7 +268,6 @@ syscall(void)
   int num = cp->tf->eax;
   int ret = -1;
 
-  //cprintf("%x sys %d\n", cp, num);
   switch(num){
   case SYS_fork:
     ret = sys_fork();

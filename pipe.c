@@ -61,6 +61,8 @@ pipe_alloc(struct fd **fd1, struct fd **fd2)
 void
 pipe_close(struct pipe *p, int writeable)
 {
+  acquire(&p->lock);
+
   if(writeable){
     p->writeopen = 0;
     wakeup(&p->readp);
@@ -68,6 +70,9 @@ pipe_close(struct pipe *p, int writeable)
     p->readopen = 0;
     wakeup(&p->writep);
   }
+  
+  release(&p->lock);
+
   if(p->readopen == 0 && p->writeopen == 0)
     kfree((char *) p, PAGE);
 }

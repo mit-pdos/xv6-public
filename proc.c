@@ -109,7 +109,7 @@ copyproc(struct proc* p)
   // Set up new jmpbuf to start executing at forkret (see below).
   memset(&np->jmpbuf, 0, sizeof np->jmpbuf);
   np->jmpbuf.eip = (uint)forkret;
-  np->jmpbuf.esp = (uint)np->tf;
+  np->jmpbuf.esp = (uint)np->tf - 4;
 
   // Copy file descriptors
   for(i = 0; i < NOFILE; i++){
