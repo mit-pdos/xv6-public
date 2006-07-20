@@ -1,32 +1,32 @@
 #define ELF_MAGIC 0x464C457FU	/* "\x7FELF" in little endian */
 
 struct elfhdr {
-	uint32_t magic;	// must equal ELF_MAGIC
-	uint8_t elf[12];
-	uint16_t type;
-	uint16_t machine;
-	uint32_t version;
-	uint32_t entry;
-	uint32_t phoff;
-	uint32_t shoff;
-	uint32_t flags;
-	uint16_t ehsize;
-	uint16_t phentsize;
-	uint16_t phnum;
-	uint16_t shentsize;
-	uint16_t shnum;
-	uint16_t shstrndx;
+	uint magic;	// must equal ELF_MAGIC
+	uchar elf[12];
+	ushort type;
+	ushort machine;
+	uint version;
+	uint entry;
+	uint phoff;
+	uint shoff;
+	uint flags;
+	ushort ehsize;
+	ushort phentsize;
+	ushort phnum;
+	ushort shentsize;
+	ushort shnum;
+	ushort shstrndx;
 };
 
 struct proghdr {
-	uint32_t type;
-	uint32_t offset;
-	uint32_t va;
-	uint32_t pa;
-	uint32_t filesz;
-	uint32_t memsz;
-	uint32_t flags;
-	uint32_t align;
+	uint type;
+	uint offset;
+	uint va;
+	uint pa;
+	uint filesz;
+	uint memsz;
+	uint flags;
+	uint align;
 };
 
 // Values for Proghdr type

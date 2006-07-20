@@ -65,7 +65,7 @@ extern struct proc *curproc[NCPU];  // can be NULL if no proc running.
 #define MPSTACK 512
 
 struct cpu {
-  uint8_t apicid;       // Local APIC ID
+  uchar apicid;       // Local APIC ID
   struct jmpbuf jmpbuf;
   char mpstack[MPSTACK]; // per-cpu start-up stack, only used to get into main()
   struct proc *lastproc;  // last proc scheduled on this cpu (never NULL)

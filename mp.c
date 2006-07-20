@@ -37,12 +37,12 @@ int ncpu;
 static struct cpu *bcpu;
 
 static struct mp*
-mp_scan(uint8_t *addr, int len)
+mp_scan(uchar *addr, int len)
 {
-  uint8_t *e, *p, sum;
+  uchar *e, *p, sum;
   int i;
 
-  cprintf("scanning: 0x%x\n", (uint32_t)addr);
+  cprintf("scanning: 0x%x\n", (uint)addr);
   e = addr+len;
   for(p = addr; p < e; p += sizeof(struct mp)){
     if(memcmp(p, "_MP_", 4))
@@ -59,8 +59,8 @@ mp_scan(uint8_t *addr, int len)
 static struct mp*
 mp_search(void)
 {
-  uint8_t *bda;
-  uint32_t p;
+  uchar *bda;
+  uint p;
   struct mp *mp;
 
   /*
@@ -70,25 +70,25 @@ mp_search(void)
    * 2) in the last KB of system base memory;
    * 3) in the BIOS ROM between 0xE0000 and 0xFFFFF.
    */
-  bda = (uint8_t*) 0x400;
+  bda = (uchar*) 0x400;
   if((p = (bda[0x0F]<<8)|bda[0x0E])){
-    if((mp = mp_scan((uint8_t*) p, 1024)))
+    if((mp = mp_scan((uchar*) p, 1024)))
       return mp;
   }
   else{
     p = ((bda[0x14]<<8)|bda[0x13])*1024;
-    if((mp = mp_scan((uint8_t*)p-1024, 1024)))
+    if((mp = mp_scan((uchar*)p-1024, 1024)))
       return mp;
   }
-  return mp_scan((uint8_t*)0xF0000, 0x10000);
+  return mp_scan((uchar*)0xF0000, 0x10000);
 }
 
 static int 
 mp_detect(void)
 {
   struct mpctb *pcmp;
-  uint8_t *p, sum;
-  uint32_t length;
+  uchar *p, sum;
+  uint length;
 
   /*
    * Search for an MP configuration table. For now,
@@ -106,7 +106,7 @@ mp_detect(void)
 
   length = pcmp->length;
   sum = 0;
-  for(p = (uint8_t*)pcmp; length; length--)
+  for(p = (uchar*)pcmp; length; length--)
     sum += *p++;
 
   if(sum || (pcmp->version != 1 && pcmp->version != 4))
@@ -120,7 +120,7 @@ void
 mp_init(void)
 { 
   int r;
-  uint8_t *p, *e;
+  uchar *p, *e;
   struct mpctb *mpctb;
   struct mppe *proc;
   struct mpbe *bus;
@@ -137,10 +137,10 @@ mp_init(void)
    * is guaranteed to be in order such that only one pass is necessary.
    */
   mpctb = (struct mpctb *) mp->physaddr;
-  lapicaddr = (uint32_t *) mpctb->lapicaddr;
+  lapicaddr = (uint *) mpctb->lapicaddr;
   cprintf("apicaddr: %x\n", lapicaddr);
-  p = ((uint8_t*)mpctb)+sizeof(struct mpctb);
-  e = ((uint8_t*)mpctb)+mpctb->length;
+  p = ((uchar*)mpctb)+sizeof(struct mpctb);
+  e = ((uchar*)mpctb)+mpctb->length;
 
   while(p < e) {
     switch(*p){
@@ -195,18 +195,18 @@ extern void mpmain(void);
 void
 mp_startthem(void)
 {
-  extern uint8_t _binary_bootother_start[], _binary_bootother_size[];
+  extern uchar _binary_bootother_start[], _binary_bootother_size[];
   extern int main();
   int c;
 
   memmove((void *) APBOOTCODE,_binary_bootother_start, 
-	  (uint32_t) _binary_bootother_size);
+	  (uint) _binary_bootother_size);
 
   for(c = 0; c < ncpu; c++){
     if (c == cpu()) continue;
     cprintf ("starting processor %d\n", c);
     *(uint *)(APBOOTCODE-4) = (uint) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
     *(uint *)(APBOOTCODE-8) = (uint)mpmain; // tell it where to jump to
-    lapic_startap(cpus[c].apicid, (uint32_t) APBOOTCODE);
+    lapic_startap(cpus[c].apicid, (uint) APBOOTCODE);
   }
 }

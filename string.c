@@ -15,8 +15,8 @@ memset(void *dst, int c, uint n)
 int
 memcmp(const void *v1, const void *v2, uint n)
 {
-  const uint8_t *s1 = (const uint8_t *) v1;
-  const uint8_t *s2 = (const uint8_t *) v2;
+  const uchar *s1 = (const uchar *) v1;
+  const uchar *s2 = (const uchar *) v2;
 
   while (n-- > 0) {
     if (*s1 != *s2)
@@ -55,7 +55,7 @@ strncmp(const char *p, const char *q, uint n)
 	if (n == 0)
 		return 0;
 	else
-		return (int) ((uint8_t) *p - (uint8_t) *q);
+		return (int) ((uchar) *p - (uchar) *q);
 }
 
 // Memcpy is deprecated and should NOT be called.

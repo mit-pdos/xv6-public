@@ -92,7 +92,7 @@ enum {					/* LAPIC_TDCR */
   LAPIC_X1 = 0x0000000B,	/* divide by 1 */
 };
 
-uint32_t *lapicaddr;
+uint *lapicaddr;
 
 static int
 lapic_read(int r)
@@ -127,7 +127,7 @@ lapic_timerintr(void)
 void
 lapic_init(int c)
 {
-  uint32_t r, lvt;
+  uint r, lvt;
 
   cprintf("lapic_init %d\n", c);
 
@@ -180,7 +180,7 @@ cpu(void)
 }
 
 void
-lapic_startap(uint8_t apicid, int v)
+lapic_startap(uchar apicid, int v)
 {
   int crhi, i;
   volatile int j = 0;

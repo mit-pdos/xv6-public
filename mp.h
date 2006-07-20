@@ -5,63 +5,63 @@
  */
 
 struct mp {			/* floating pointer */
-  uint8_t signature[4];		/* "_MP_" */
-  physaddr_t physaddr;	        /* physical address of MP configuration table */
-  uint8_t length;		/* 1 */
-  uint8_t specrev;		/* [14] */
-  uint8_t checksum;		/* all bytes must add up to 0 */
-  uint8_t type;			/* MP system configuration type */
-  uint8_t imcrp;
-  uint8_t reserved[3];
+  uchar signature[4];		/* "_MP_" */
+  void* physaddr;	        /* physical address of MP configuration table */
+  uchar length;		/* 1 */
+  uchar specrev;		/* [14] */
+  uchar checksum;		/* all bytes must add up to 0 */
+  uchar type;			/* MP system configuration type */
+  uchar imcrp;
+  uchar reserved[3];
 };
 
 struct mpctb {			/* configuration table header */
-  uint8_t signature[4];		/* "PCMP" */
-  uint16_t length;		/* total table length */
-  uint8_t version;		/* [14] */
-  uint8_t checksum;		/* all bytes must add up to 0 */
-  uint8_t product[20];		/* product id */
-  uintptr_t oemtable;		/* OEM table pointer */
-  uint16_t oemlength;		/* OEM table length */
-  uint16_t entry;		/* entry count */
-  uintptr_t lapicaddr;		/* address of local APIC */
-  uint16_t xlength;		/* extended table length */
-  uint8_t xchecksum;		/* extended table checksum */
-  uint8_t reserved;
+  uchar signature[4];		/* "PCMP" */
+  ushort length;		/* total table length */
+  uchar version;		/* [14] */
+  uchar checksum;		/* all bytes must add up to 0 */
+  uchar product[20];		/* product id */
+  uint * oemtable;		/* OEM table pointer */
+  ushort oemlength;		/* OEM table length */
+  ushort entry;		/* entry count */
+  uint * lapicaddr;		/* address of local APIC */
+  ushort xlength;		/* extended table length */
+  uchar xchecksum;		/* extended table checksum */
+  uchar reserved;
 };
 
 struct mppe {		/* processor table entry */
-  uint8_t type;			/* entry type (0) */
-  uint8_t apicid;		/* local APIC id */
-  uint8_t version;		/* local APIC verison */
-  uint8_t flags;		/* CPU flags */
-  uint8_t signature[4];		/* CPU signature */
-  uint32_t feature;		/* feature flags from CPUID instruction */
-  uint8_t reserved[8];
+  uchar type;			/* entry type (0) */
+  uchar apicid;		/* local APIC id */
+  uchar version;		/* local APIC verison */
+  uchar flags;		/* CPU flags */
+  uchar signature[4];		/* CPU signature */
+  uint feature;		/* feature flags from CPUID instruction */
+  uchar reserved[8];
 };
 
 struct mpbe {		/* bus table entry */
-  uint8_t type;			/* entry type (1) */
-  uint8_t busno;		/* bus id */
+  uchar type;			/* entry type (1) */
+  uchar busno;		/* bus id */
   char string[6];		/* bus type string */
 };
 
 struct mpioapic {	/* I/O APIC table entry */
-  uint8_t type;			/* entry type (2) */
-  uint8_t apicno;		/* I/O APIC id */
-  uint8_t version;		/* I/O APIC version */
-  uint8_t flags;		/* I/O APIC flags */
-  uintptr_t addr;		/* I/O APIC address */
+  uchar type;			/* entry type (2) */
+  uchar apicno;		/* I/O APIC id */
+  uchar version;		/* I/O APIC version */
+  uchar flags;		/* I/O APIC flags */
+  uint * addr;		/* I/O APIC address */
 };
 
 struct mpie {		/* interrupt table entry */
-  uint8_t type;			/* entry type ([34]) */
-  uint8_t intr;			/* interrupt type */
-  uint16_t flags;		/* interrupt flag */
-  uint8_t busno;		/* source bus id */
-  uint8_t irq;			/* source bus irq */
-  uint8_t apicno;		/* destination APIC id */
-  uint8_t intin;		/* destination APIC [L]INTIN# */
+  uchar type;			/* entry type ([34]) */
+  uchar intr;			/* interrupt type */
+  ushort flags;		/* interrupt flag */
+  uchar busno;		/* source bus id */
+  uchar irq;			/* source bus irq */
+  uchar apicno;		/* destination APIC id */
+  uchar intin;		/* destination APIC [L]INTIN# */
 };
 
 enum {			/* table entry types */

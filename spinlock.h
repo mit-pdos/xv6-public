@@ -1,5 +1,5 @@
 struct spinlock {
   uint locked;
-  uint32_t pc;
+  uint pc;
   int cpu;
 };

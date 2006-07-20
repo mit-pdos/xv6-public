@@ -40,8 +40,8 @@ int strncmp(const char *p, const char *q, uint n);
 void syscall(void);
 
 // picirq.c
-extern uint16_t irq_mask_8259A;
-void irq_setmask_8259A(uint16_t mask);
+extern ushort irq_mask_8259A;
+void irq_setmask_8259A(ushort mask);
 void pic_init(void);
 
 // mp.c
@@ -50,9 +50,9 @@ void mp_startthem(void);
 int mp_bcpu(void);
 
 // lapic
-extern uint32_t *lapicaddr;
+extern uint *lapicaddr;
 void lapic_init(int);
-void lapic_startap(uint8_t, int);
+void lapic_startap(uchar, int);
 void lapic_timerinit(void);
 void lapic_timerintr(void);
 void lapic_enableintr(void);
@@ -66,7 +66,7 @@ void release(struct spinlock*);
 int holding(struct spinlock*);
 
 // main.c
-void load_icode(struct proc *p, uint8_t *binary, uint size);
+void load_icode(struct proc *p, uchar *binary, uint size);
 
 // pipe.c
 struct pipe;
@@ -87,6 +87,6 @@ void fd_incref(struct fd *fd);
 // ide.c
 void ide_init(void);
 void ide_intr(void);
-void* ide_start_read(uint32_t secno, void *dst, uint nsecs);
+void* ide_start_read(uint secno, void *dst, uint nsecs);
 int ide_finish_read(void *);
 

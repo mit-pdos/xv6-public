@@ -235,8 +235,10 @@ sys_block(void)
     if ((c = ide_start_read(i, buf, 1)) == 0) {
       panic("couldn't start read\n");
     }
+#if 0
     cprintf("call sleep\n");
     sleep (c, &ide_lock);
+#endif
     if (ide_finish_read(c)) {
       panic("couldn't do read\n");
     }

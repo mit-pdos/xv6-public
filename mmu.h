@@ -124,43 +124,43 @@ struct segdesc {
 
 // Task state segment format (as described by the Pentium architecture book)
 struct taskstate {
-	uint32_t link;	// Old ts selector
-	uintptr_t esp0;	// Stack pointers and segment selectors
-	uint16_t ss0;	//   after an increase in privilege level
-	uint16_t padding1;
-	uintptr_t esp1;
-	uint16_t ss1;
-	uint16_t padding2;
-	uintptr_t esp2;
-	uint16_t ss2;
-	uint16_t padding3;
-	physaddr_t cr3;	// Page directory base
-	uintptr_t eip;	// Saved state from last task switch
-	uint32_t eflags;
-	uint32_t eax;	// More saved state (registers)
-	uint32_t ecx;
-	uint32_t edx;
-	uint32_t ebx;
-	uintptr_t esp;
-	uintptr_t ebp;
-	uint32_t esi;
-	uint32_t edi;
-	uint16_t es;		// Even more saved state (segment selectors)
-	uint16_t padding4;
-	uint16_t cs;
-	uint16_t padding5;
-	uint16_t ss;
-	uint16_t padding6;
-	uint16_t ds;
-	uint16_t padding7;
-	uint16_t fs;
-	uint16_t padding8;
-	uint16_t gs;
-	uint16_t padding9;
-	uint16_t ldt;
-	uint16_t padding10;
-	uint16_t t;		// Trap on task switch
-	uint16_t iomb;	// I/O map base address
+	uint link;	// Old ts selector
+	uint * esp0;	// Stack pointers and segment selectors
+	ushort ss0;	//   after an increase in privilege level
+	ushort padding1;
+	uint * esp1;
+	ushort ss1;
+	ushort padding2;
+	uint * esp2;
+	ushort ss2;
+	ushort padding3;
+	void * cr3;	// Page directory base
+	uint * eip;	// Saved state from last task switch
+	uint eflags;
+	uint eax;	// More saved state (registers)
+	uint ecx;
+	uint edx;
+	uint ebx;
+	uint * esp;
+	uint * ebp;
+	uint esi;
+	uint edi;
+	ushort es;		// Even more saved state (segment selectors)
+	ushort padding4;
+	ushort cs;
+	ushort padding5;
+	ushort ss;
+	ushort padding6;
+	ushort ds;
+	ushort padding7;
+	ushort fs;
+	ushort padding8;
+	ushort gs;
+	ushort padding9;
+	ushort ldt;
+	ushort padding10;
+	ushort t;		// Trap on task switch
+	ushort iomb;	// I/O map base address
 };
 
 // Gate descriptors for interrupts and traps
@@ -185,7 +185,7 @@ struct gatedesc {
 //	  this interrupt/trap gate explicitly using an int instruction.
 #define SETGATE(gate, istrap, sel, off, d)			\
 {								\
-	(gate).off_15_0 = (uint32_t) (off) & 0xffff;		\
+	(gate).off_15_0 = (uint) (off) & 0xffff;		\
 	(gate).ss = (sel);					\
 	(gate).args = 0;					\
 	(gate).rsv1 = 0;					\
@@ -193,13 +193,13 @@ struct gatedesc {
 	(gate).s = 0;					\
 	(gate).dpl = (d);					\
 	(gate).p = 1;					\
-	(gate).off_31_16 = (uint32_t) (off) >> 16;		\
+	(gate).off_31_16 = (uint) (off) >> 16;		\
 }
 
 // Set up a call gate descriptor.
 #define SETCALLGATE(gate, ss, off, d)           	        \
 {								\
-	(gate).off_15_0 = (uint32_t) (off) & 0xffff;		\
+	(gate).off_15_0 = (uint) (off) & 0xffff;		\
 	(gate).ss = (ss);					\
 	(gate).args = 0;					\
 	(gate).rsv1 = 0;					\
@@ -207,7 +207,7 @@ struct gatedesc {
 	(gate).s = 0;					\
 	(gate).dpl = (d);					\
 	(gate).p = 1;					\
-	(gate).off_31_16 = (uint32_t) (off) >> 16;		\
+	(gate).off_31_16 = (uint) (off) >> 16;		\
 }
 
 #endif /* !__ASSEMBLER__ */

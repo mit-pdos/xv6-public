@@ -11,9 +11,9 @@
 #include "spinlock.h"
 
 extern char edata[], end[];
-extern uint8_t _binary_user1_start[], _binary_user1_size[];
-extern uint8_t _binary_usertests_start[], _binary_usertests_size[];
-extern uint8_t _binary_userfs_start[], _binary_userfs_size[];
+extern uchar _binary_user1_start[], _binary_user1_size[];
+extern uchar _binary_usertests_start[], _binary_usertests_size[];
+extern uchar _binary_userfs_start[], _binary_userfs_size[];
 
 extern int use_console_lock;
 
@@ -73,7 +73,7 @@ main0(void)
   lapic_enableintr();
 
   // init disk device
-  //ide_init(); 
+  ide_init(); 
 
   // Enable interrupts on this processor.
   cpus[cpu()].nlock--;
@@ -81,8 +81,8 @@ main0(void)
 
   p = copyproc(&proc[0]);
   
-  load_icode(p, _binary_usertests_start, (uint) _binary_usertests_size);
-  //load_icode(p, _binary_userfs_start, (uint) _binary_userfs_size);
+  //load_icode(p, _binary_usertests_start, (uint) _binary_usertests_size);
+  load_icode(p, _binary_userfs_start, (uint) _binary_userfs_size);
   p->state = RUNNABLE;
   cprintf("loaded userfs\n");
 
@@ -107,7 +107,7 @@ mpmain(void)
 }
 
 void
-load_icode(struct proc *p, uint8_t *binary, uint size)
+load_icode(struct proc *p, uchar *binary, uint size)
 {
   int i;
   struct elfhdr *elf;

@@ -12,7 +12,7 @@
 
 // Current IRQ mask.
 // Initial IRQ mask has interrupt 2 enabled (for slave 8259A).
-uint16_t irq_mask_8259A = 0xFFFF & ~(1<<IRQ_SLAVE);
+ushort irq_mask_8259A = 0xFFFF & ~(1<<IRQ_SLAVE);
 
 /* Initialize the 8259A interrupt controllers. */
 void
@@ -71,7 +71,7 @@ pic_init(void)
 }
 
 void
-irq_setmask_8259A(uint16_t mask)
+irq_setmask_8259A(ushort mask)
 {
   int i;
   irq_mask_8259A = mask;
