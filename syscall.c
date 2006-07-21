@@ -7,6 +7,9 @@
 #include "traps.h"
 #include "syscall.h"
 #include "spinlock.h"
+#include "buf.h"
+#include "fs.h"
+#include "fsvar.h"
 
 /*
  * User code makes a system call with INT T_SYSCALL.
@@ -224,30 +227,27 @@ sys_cons_puts(void)
 int
 sys_block(void)
 {
-  char buf[512];
   int i, j;
-  void *c;
-  extern struct spinlock ide_lock;
+  struct buf *b;
+  struct inode *ip;
 
-  cprintf("%d: call sys_block\n", cpu());
-  for (i = 0; i < 100; i++) {
-    acquire(&ide_lock);
-    if ((c = ide_start_read(i, buf, 1)) == 0) {
-      panic("couldn't start read\n");
-    }
-#if 0
-    cprintf("call sleep\n");
-    sleep (c, &ide_lock);
-#endif
-    if (ide_finish_read(c)) {
-      panic("couldn't do read\n");
-    }
-    release(&ide_lock);
-    cprintf("sector %d: ", i);
-    for (j = 0; j < 2; j++)
-      cprintf("%x ", buf[j] & 0xff);
+  for (i = 0; i < 2; i++) {
+    b = bread(1, i);
+
+    cprintf("disk 1 sector %d: ", i);
+    for (j = 0; j < 4; j++)
+      cprintf("%x ", b->data[j] & 0xff);
     cprintf("\n");
+
+    brelse(b);
   }
+
+  ip = iget(1, 1);
+  cprintf("%d %d %d %d %d %d %d %d\n",
+          ip->dev, ip->inum, ip->count, ip->busy,
+          ip->type, ip->nlink, ip->size, ip->addrs[0]);
+  iput(ip);
+
   return 0;
 }
 

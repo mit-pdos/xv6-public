@@ -87,6 +87,14 @@ void fd_incref(struct fd *fd);
 // ide.c
 void ide_init(void);
 void ide_intr(void);
-void* ide_start_read(uint secno, void *dst, uint nsecs);
+void* ide_start_read(int diskno, uint secno, void *dst, uint nsecs);
 int ide_finish_read(void *);
 
+// bio.c
+struct buf;
+struct buf *bread(uint, uint);
+void brelse(struct buf *);
+
+// fs.c
+struct inode * iget(uint dev, uint inum);
+void iput(struct inode *ip);

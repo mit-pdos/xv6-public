@@ -16,6 +16,8 @@ OBJS = \
 	trapasm.o\
 	trap.o\
 	vectors.o\
+	bio.o\
+	fs.o\
 
 # Cross-compiling (e.g., on Mac OS X)
 TOOLPREFIX = i386-jos-elf-
@@ -30,7 +32,7 @@ OBJDUMP = $(TOOLPREFIX)objdump
 CFLAGS = -fno-builtin -O2 -Wall -MD
 AS = $(TOOLPREFIX)gas
 
-xv6.img : bootblock kernel
+xv6.img : bootblock kernel fs.img
 	dd if=/dev/zero of=xv6.img count=10000
 	dd if=bootblock of=xv6.img conv=notrunc
 	dd if=kernel of=xv6.img seek=1 conv=notrunc
@@ -68,8 +70,15 @@ userfs : userfs.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o userfs userfs.o $(ULIB)
 	$(OBJDUMP) -S userfs > userfs.asm
 
+mkfs : mkfs.c fs.h
+	cc -o mkfs mkfs.c
+
+fs.img : mkfs
+	./mkfs fs.img
+
 -include *.d
 
 clean : 
 	rm -f *.o *.d *.asm vectors.S parport.out \
-		bootblock kernel xv6.img user1 userfs usertests
+		bootblock kernel xv6.img user1 userfs usertests \
+		fs.img mkfs

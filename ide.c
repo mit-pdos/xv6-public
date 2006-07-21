@@ -84,7 +84,7 @@ ide_start_request (void)
 {
   struct ide_request *r;
 
-  if (head == tail) {
+  if (head != tail) {
     r = &request[tail];
     ide_wait_ready(0);
     outb(0x3f6, 0);
@@ -98,7 +98,7 @@ ide_start_request (void)
 }
 
 void *
-ide_start_read(uint secno, void *dst, uint nsecs)
+ide_start_read(int diskno, uint secno, void *dst, uint nsecs)
 {
   struct ide_request *r;
   if(!holding(&ide_lock))
@@ -114,11 +114,11 @@ ide_start_read(uint secno, void *dst, uint nsecs)
   r->secno = secno;
   r->dst = dst;
   r->nsecs = nsecs;
-  r->diskno = 0;
-
-  ide_start_request();
+  r->diskno = diskno;
 
   head = (head + 1) % NREQUEST;
+
+  ide_start_request();
 
   return r;
 }
@@ -128,6 +128,9 @@ ide_finish_read(void *c)
 {
   int r = 0;
   struct ide_request *req = (struct ide_request *) c;
+
+  if(c != &request[tail])
+    panic("ide_finish_read");
 
   if(!holding(&ide_lock))
     panic("ide_start_read: not holding ide_lock");
@@ -148,10 +151,9 @@ ide_finish_read(void *c)
 }
 
 int
-ide_write(uint secno, const void *src, uint nsecs)
+ide_write(int diskno, uint secno, const void *src, uint nsecs)
 {
   int r;
-  int diskno = 0;
 	
   if(nsecs > 256)
     panic("ide_write");
