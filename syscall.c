@@ -243,10 +243,20 @@ sys_block(void)
   }
 
   ip = iget(1, 1);
-  cprintf("%d %d %d %d %d %d %d %d\n",
+  cprintf("iget 1: %d %d %d %d %d %d %d %d\n",
           ip->dev, ip->inum, ip->count, ip->busy,
           ip->type, ip->nlink, ip->size, ip->addrs[0]);
   iput(ip);
+
+  ip = namei(".././//./../");
+  if(ip){
+    cprintf("namei: %d %d %d %d %d %d %d %d\n",
+            ip->dev, ip->inum, ip->count, ip->busy,
+            ip->type, ip->nlink, ip->size, ip->addrs[0]);
+    iput(ip);
+  } else {
+    cprintf("namei failed\n");
+  }
 
   return 0;
 }

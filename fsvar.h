@@ -10,3 +10,5 @@ struct inode {
   uint size;
   uint addrs[NDIRECT];
 };
+
+extern uint rootdev;

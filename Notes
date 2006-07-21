@@ -142,10 +142,22 @@ systematic way to test sleep races?
 
 do you have to be holding the mutex in order to call wakeup()?
 
-should lock around printf, not putc
-
 device interrupts don't clear FL_IF
   so a recursive timer interrupt is possible
 
-the sleep/swtch/schedule code that holds over a lock is ugly
+what does inode->busy mean?
+  might be held across disk reads
+  no-one is allowed to do anything to the inode
+  protected by inode_table_lock
+inode->count counts in-memory pointers to the struct
+  prevents inode[] element from being re-used
+  protected by inode_table_lock
 
+blocks and inodes have ad-hoc sleep-locks
+  provide a single mechanism?
+
+need to lock bufs in bio between bread and brelse
+
+test 14-character file names
+and file arguments longer than 14
+and directories longer than one sector

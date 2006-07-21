@@ -24,7 +24,7 @@ ushort
 xshort(ushort x)
 {
   ushort y;
-  uchar *a = &y;
+  uchar *a = (uchar *) &y;
   a[0] = x;
   a[1] = x >> 8;
   return y;
@@ -34,7 +34,7 @@ uint
 xint(uint x)
 {
   uint y;
-  uchar *a = &y;
+  uchar *a = (uchar *) &y;
   a[0] = x;
   a[1] = x >> 8;
   a[2] = x >> 16;
@@ -47,14 +47,19 @@ main(int argc, char *argv[])
   int i;
   struct dinode din;
   char dbuf[512];
+  uint bn;
 
   if(argc != 2){
     fprintf(stderr, "Usage: mkfs fs.img\n");
     exit(1);
   }
 
-  if(sizeof(struct dinode) * IPB != 512){
+  if((512 % sizeof(struct dinode)) != 0){
     fprintf(stderr, "sizeof(dinode) must divide 512\n");
+    exit(1);
+  }
+  if((512 % sizeof(struct dirent)) != 0){
+    fprintf(stderr, "sizeof(dirent) must divide 512\n");
     exit(1);
   }
 
@@ -78,7 +83,8 @@ main(int argc, char *argv[])
   din.type = xshort(T_DIR);
   din.nlink = xshort(2);
   din.size = xint(512);
-  din.addrs[0] = xint(freeblock++);
+  bn = freeblock++;
+  din.addrs[0] = xint(bn);
   winode(1, &din);
 
   bzero(dbuf, sizeof(dbuf));
@@ -86,7 +92,7 @@ main(int argc, char *argv[])
   strcpy(((struct dirent *) dbuf)[0].name, ".");
   ((struct dirent *) dbuf)[1].inum = xshort(1);
   strcpy(((struct dirent *) dbuf)[1].name, "..");
-  wsect(din.addrs[0], dbuf);
+  wsect(bn, dbuf);
 
   exit(0);
 }

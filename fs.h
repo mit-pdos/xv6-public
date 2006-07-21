@@ -21,8 +21,10 @@ struct dinode {
 
 #define IPB (512 / sizeof(struct dinode))
 
+#define DIRSIZ 14
+
 struct dirent {
   ushort inum;
-  char name[14];
+  char name[DIRSIZ];
 };
 

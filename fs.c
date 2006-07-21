@@ -14,6 +14,9 @@
 struct inode inode[NINODE];
 struct spinlock inode_table_lock;
 
+uint rootdev = 1;
+
+// returns an inode with busy set and incremented reference count.
 struct inode *
 iget(uint dev, uint inum)
 {
@@ -54,15 +57,50 @@ iget(uint dev, uint inum)
   nip->nlink = dip->nlink;
   nip->size = dip->size;
   memmove(nip->addrs, dip->addrs, sizeof(nip->addrs));
-  cprintf("bn %d off %d\n", inum / IPB + 2, (unsigned)dip - (unsigned)bp->data);
   brelse(bp);
 
   return nip;
 }
 
 void
+ilock(struct inode *ip)
+{
+  if(ip->count < 1)
+    panic("ilock");
+
+  acquire(&inode_table_lock);
+
+  while(ip->busy)
+    sleep(ip, &inode_table_lock);
+  ip->busy = 1;
+
+  release(&inode_table_lock);
+}
+
+// caller is holding onto a reference to this inode, but no
+// longer needs to examine or change it, so clear ip->busy.
+void
+iunlock(struct inode *ip)
+{
+  if(ip->busy != 1)
+    panic("iunlock");
+
+  acquire(&inode_table_lock);
+
+  ip->busy = 0;
+  wakeup(ip);
+
+  release(&inode_table_lock);
+}
+
+// caller is releasing a reference to this inode.
+// you must have the inode lock.
+void
 iput(struct inode *ip)
 {
+  if(ip->count < 1 || ip->busy != 1)
+    panic("iput");
+
   acquire(&inode_table_lock);
 
   ip->count -= 1;
@@ -70,4 +108,83 @@ iput(struct inode *ip)
   wakeup(ip);
 
   release(&inode_table_lock);
+}
+
+void
+iincref(struct inode *ip)
+{
+  acquire(&inode_table_lock);
+
+  ip->count += 1;
+
+  release(&inode_table_lock);
+}
+
+uint
+bmap(struct inode *ip, uint bn)
+{
+  unsigned x;
+
+  if(bn >= NDIRECT)
+    panic("bmap 1");
+  x = ip->addrs[bn];
+  if(x == 0)
+    panic("bmap 2");
+  return x;
+}
+
+struct inode *
+namei(char *path)
+{
+  struct inode *dp;
+  char *cp = path;
+  uint off, dev;
+  struct buf *bp;
+  struct dirent *ep;
+  int i;
+  unsigned ninum;
+
+  dp = iget(rootdev, 1);
+
+  while(*cp == '/')
+    cp++;
+
+  while(1){
+    if(*cp == '\0')
+      return dp;
+
+    if(dp->type != T_DIR){
+      iput(dp);
+      return 0;
+    }
+
+    for(off = 0; off < dp->size; off += 512){
+      bp = bread(dp->dev, bmap(dp, off / 512));
+      for(ep = (struct dirent *) bp->data;
+          ep < (struct dirent *) (bp->data + 512);
+          ep++){
+        if(ep->inum == 0) 
+          continue;
+        for(i = 0; i < DIRSIZ && cp[i] != '/' && cp[i]; i++)
+          if(cp[i] != ep->name[i])
+            break;
+        if((cp[i] == '\0' || cp[i] == '/') && (i >= DIRSIZ || ep->name[i] == '\0')){
+          ninum = ep->inum;
+          brelse(bp);
+          cp += i;
+          goto found;
+        }
+      }
+      brelse(bp);
+    }
+    iput(dp);
+    return 0;
+
+  found:
+    dev = dp->dev;
+    iput(dp);
+    dp = iget(dev, ninum);
+    while(*cp == '/')
+      cp++;
+  }
 }
