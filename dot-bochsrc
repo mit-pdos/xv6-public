@@ -107,7 +107,7 @@ romimage: file=$BXSHARE/BIOS-bochs-latest, address=0xf0000
 #  650Mhz Athlon K-7 with Linux 2.4.4/egcs-2.91.66  2 to  2.5 Mips
 #  400Mhz Pentium II with Linux 2.0.36/egcs-1.0.3   1 to  1.8 Mips
 #=======================================================================
-cpu: count=2, ips=10000000, reset_on_triple_fault=0
+cpu: count=2, ips=10000000
 
 #=======================================================================
 # MEGS
@@ -270,6 +270,7 @@ ata3: enabled=0, ioaddr1=0x168, ioaddr2=0x360, irq=9
 #   ata3-slave:  type=cdrom, path=iso.sample, status=inserted
 #=======================================================================
 ata0-master: type=disk, mode=flat, path="xv6.img", cylinders=100, heads=10, spt=10
+ata0-slave: type=disk, mode=flat, path="fs.img", cylinders=1024, heads=1, spt=1
 #ata0-slave: type=cdrom, path=D:, status=inserted
 #ata0-slave: type=cdrom, path=/dev/cdrom, status=inserted
 #ata0-slave: type=cdrom, path="drive", status=inserted
@@ -443,7 +444,7 @@ debugger_log: -
 #   parport2: enabled=1, file="/dev/lp0"
 #   parport1: enabled=0
 #=======================================================================
-parport1: enabled=1, file="parport.out"
+parport1: enabled=1, file="/dev/stdout"
 
 #=======================================================================
 # SB16:
