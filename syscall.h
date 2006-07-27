@@ -10,3 +10,4 @@
 #define SYS_kill 10
 #define SYS_panic 11
 #define SYS_cons_puts 12
+#define SYS_exec 13

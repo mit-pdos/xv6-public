@@ -133,6 +133,29 @@ bmap(struct inode *ip, uint bn)
   return x;
 }
 
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
+int
+readi(struct inode *ip, void *xdst, uint off, uint n)
+{
+  char *dst = (char *) xdst;
+  uint target = n, n1;
+  struct buf *bp;
+
+  while(n > 0 && off < ip->size){
+    bp = bread(ip->dev, bmap(ip, off / 512));
+    n1 = min(n, ip->size - off);
+    n1 = min(n1, 512 - (off % 512));
+    memmove(dst, bp->data + (off % 512), n1);
+    n -= n1;
+    off += n1;
+    dst += n1;
+    brelse(bp);
+  }
+
+  return target - n;
+}
+
 struct inode *
 namei(char *path)
 {

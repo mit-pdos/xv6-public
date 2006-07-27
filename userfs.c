@@ -9,5 +9,6 @@ main(void)
 {
   puts("userfs running\n");
   block();
+  exec("usertests");
   return 0;
 }

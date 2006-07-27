@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <assert.h>
 #include "types.h"
 #include "param.h"
 #include "fs.h"
@@ -10,14 +11,17 @@
 int nblocks = 1009;
 int ninodes = 100;
 
-int fd;
+int fsfd;
 struct superblock sb;
 char zeroes[512];
 uint freeblock;
+uint freeinode = 1;
 
 void wsect(uint, void *);
 void winode(uint, struct dinode *);
 void rsect(uint sec, void *buf);
+uint ialloc(ushort type);
+void iappend(uint inum, void *p, int n);
 
 // convert to intel byte order
 ushort
@@ -44,27 +48,21 @@ xint(uint x)
 
 main(int argc, char *argv[])
 {
-  int i;
-  struct dinode din;
-  char dbuf[512];
-  uint bn;
+  int i, cc, fd;
+  uint bn, rootino, inum;
+  struct dirent de;
+  char buf[512];
 
-  if(argc != 2){
-    fprintf(stderr, "Usage: mkfs fs.img\n");
+  if(argc < 2){
+    fprintf(stderr, "Usage: mkfs fs.img files...\n");
     exit(1);
   }
 
-  if((512 % sizeof(struct dinode)) != 0){
-    fprintf(stderr, "sizeof(dinode) must divide 512\n");
-    exit(1);
-  }
-  if((512 % sizeof(struct dirent)) != 0){
-    fprintf(stderr, "sizeof(dirent) must divide 512\n");
-    exit(1);
-  }
+  assert((512 % sizeof(struct dinode)) == 0);
+  assert((512 % sizeof(struct dirent)) == 0);
 
-  fd = open(argv[1], O_RDWR|O_CREAT|O_TRUNC, 0666);
-  if(fd < 0){
+  fsfd = open(argv[1], O_RDWR|O_CREAT|O_TRUNC, 0666);
+  if(fsfd < 0){
     perror(argv[1]);
     exit(1);
   }
@@ -79,20 +77,38 @@ main(int argc, char *argv[])
 
   wsect(1, &sb);
 
-  bzero(&din, sizeof(din));
-  din.type = xshort(T_DIR);
-  din.nlink = xshort(2);
-  din.size = xint(512);
-  bn = freeblock++;
-  din.addrs[0] = xint(bn);
-  winode(1, &din);
+  rootino = ialloc(T_DIR);
+  assert(rootino == 1);
 
-  bzero(dbuf, sizeof(dbuf));
-  ((struct dirent *) dbuf)[0].inum = xshort(1);
-  strcpy(((struct dirent *) dbuf)[0].name, ".");
-  ((struct dirent *) dbuf)[1].inum = xshort(1);
-  strcpy(((struct dirent *) dbuf)[1].name, "..");
-  wsect(bn, dbuf);
+  bzero(&de, sizeof(de));
+  de.inum = xshort(rootino);
+  strcpy(de.name, ".");
+  iappend(rootino, &de, sizeof(de));
+
+  bzero(&de, sizeof(de));
+  de.inum = xshort(rootino);
+  strcpy(de.name, "..");
+  iappend(rootino, &de, sizeof(de));
+
+  for(i = 2; i < argc; i++){
+    assert(index(argv[i], '/') == 0);
+    if((fd = open(argv[i], 0)) < 0){
+      perror(argv[i]);
+      exit(1);
+    }
+
+    inum = ialloc(T_FILE);
+
+    bzero(&de, sizeof(de));
+    de.inum = xshort(inum);
+    strncpy(de.name, argv[i], DIRSIZ);
+    iappend(rootino, &de, sizeof(de));
+    
+    while((cc = read(fd, buf, sizeof(buf))) > 0)
+      iappend(inum, buf, cc);
+
+    close(fd);
+  }
 
   exit(0);
 }
@@ -100,11 +116,11 @@ main(int argc, char *argv[])
 void
 wsect(uint sec, void *buf)
 {
-  if(lseek(fd, sec * 512L, 0) != sec * 512L){
+  if(lseek(fsfd, sec * 512L, 0) != sec * 512L){
     perror("lseek");
     exit(1);
   }
-  if(write(fd, buf, 512) != 512){
+  if(write(fsfd, buf, 512) != 512){
     perror("write");
     exit(1);
   }
@@ -127,20 +143,80 @@ winode(uint inum, struct dinode *ip)
   rsect(bn, buf);
   dip = ((struct dinode *) buf) + (inum % IPB);
   *dip = *ip;
-  printf("bn %d off %d\n",
-         bn, (unsigned)dip - (unsigned) buf);
   wsect(bn, buf);
+  printf("wi %d size %d addrs %d %d...\n",
+         inum,
+         xint(dip->size),
+         xint(dip->addrs[0]),
+         xint(dip->addrs[1]));
+}
+
+void
+rinode(uint inum, struct dinode *ip)
+{
+  char buf[512];
+  uint bn;
+  struct dinode *dip;
+
+  bn = i2b(inum);
+  rsect(bn, buf);
+  dip = ((struct dinode *) buf) + (inum % IPB);
+  *ip = *dip;
 }
 
 void
 rsect(uint sec, void *buf)
 {
-  if(lseek(fd, sec * 512L, 0) != sec * 512L){
+  if(lseek(fsfd, sec * 512L, 0) != sec * 512L){
     perror("lseek");
     exit(1);
   }
-  if(read(fd, buf, 512) != 512){
+  if(read(fsfd, buf, 512) != 512){
     perror("read");
     exit(1);
   }
+}
+
+uint
+ialloc(ushort type)
+{
+  uint inum = freeinode++;
+  struct dinode din;
+
+  bzero(&din, sizeof(din));
+  din.type = xshort(type);
+  din.nlink = xshort(1);
+  din.size = xint(0);
+  winode(inum, &din);
+  return inum;
+}
+
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
+void
+iappend(uint inum, void *xp, int n)
+{
+  char *p = (char *) xp;
+  uint fbn, off, n1;
+  struct dinode din;
+  char buf[512];
+
+  rinode(inum, &din);
+
+  off = xint(din.size);
+  while(n > 0){
+    fbn = off / 512;
+    assert(fbn < NDIRECT);
+    if(din.addrs[fbn] == 0)
+      din.addrs[fbn] = xint(freeblock++);
+    n1 = min(n, (fbn + 1) * 512 - off);
+    rsect(xint(din.addrs[fbn]), buf);
+    bcopy(p, buf + off - (fbn * 512), n1);
+    wsect(xint(din.addrs[fbn]), buf);
+    n -= n1;
+    off += n1;
+    p += n1;
+  }
+  din.size = xint(off);
+  winode(inum, &din);
 }

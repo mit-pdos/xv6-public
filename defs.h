@@ -102,3 +102,4 @@ void iunlock(struct inode *ip);
 void iincref(struct inode *ip);
 void iput(struct inode *ip);
 struct inode * namei(char *path);
+int readi(struct inode *ip, void *xdst, uint off, uint n);

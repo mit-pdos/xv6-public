@@ -73,8 +73,8 @@ userfs : userfs.o $(ULIB)
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs
-	./mkfs fs.img
+fs.img : mkfs usertests
+	./mkfs fs.img usertests
 
 -include *.d
 

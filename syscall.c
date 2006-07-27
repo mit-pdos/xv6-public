@@ -10,6 +10,7 @@
 #include "buf.h"
 #include "fs.h"
 #include "fsvar.h"
+#include "elf.h"
 
 /*
  * User code makes a system call with INT T_SYSCALL.
@@ -55,6 +56,21 @@ fetcharg(int argno, void *ip)
 
   esp = (uint) curproc[cpu()]->tf->esp;
   return fetchint(curproc[cpu()], esp + 4 + 4*argno, ip);
+}
+
+// check that an entire string is valid in user space
+int
+checkstring(uint s)
+{
+  char c;
+
+  while(1){
+    if(fetchbyte(curproc[cpu()], s, &c) < 0)
+      return -1;
+    if(c == '\0')
+      return 0;
+    s++;
+  }
 }
 
 int
@@ -225,6 +241,81 @@ sys_cons_puts(void)
 }
 
 int
+sys_exec(void)
+{
+  struct proc *cp = curproc[cpu()];
+  uint arg0, sz;
+  int i;
+  struct inode *ip;
+  struct elfhdr elf;
+  struct proghdr ph;
+
+  if(fetcharg(0, &arg0) < 0)
+    return -1;
+  if(checkstring(arg0) < 0)
+    return -1;
+  ip = namei(cp->mem + arg0);
+  if(ip == 0)
+    return -1;
+
+  if(readi(ip, &elf, 0, sizeof(elf)) < sizeof(elf))
+    goto bad;
+
+  if(elf.magic != ELF_MAGIC)
+    goto bad;
+
+  sz = 0;
+  for(i = 0; i < elf.phnum; i++){
+    if(readi(ip, &ph, elf.phoff + i * sizeof(ph), sizeof(ph)) != sizeof(ph))
+      goto bad;
+    if(ph.type != ELF_PROG_LOAD)
+      continue;
+    if(ph.memsz < ph.filesz)
+      goto bad;
+    sz += ph.memsz;
+  }
+  
+  sz += 4096 - (sz % 4096);
+  sz += 4096;
+
+  // commit to the new image.
+  kfree(cp->mem, cp->sz);
+  cp->sz = sz;
+  cp->mem = kalloc(cp->sz);
+
+  for(i = 0; i < elf.phnum; i++){
+    if(readi(ip, &ph, elf.phoff + i * sizeof(ph), sizeof(ph)) != sizeof(ph))
+      goto bad;
+    if(ph.type != ELF_PROG_LOAD)
+      continue;
+    if(ph.va + ph.memsz > sz)
+      goto bad2;
+    if(readi(ip, cp->mem + ph.va, ph.offset, ph.filesz) != ph.filesz)
+      goto bad2;
+    memset(cp->mem + ph.va + ph.filesz, 0, ph.memsz - ph.filesz);
+  }
+
+  iput(ip);
+
+  cp->tf->eip = elf.entry;
+  cp->tf->esp = cp->sz;
+  setupsegs(cp);
+
+  return 0;
+
+ bad:
+  cprintf("exec failed early\n");
+  iput(ip);
+  return -1;
+
+ bad2:
+  cprintf("exec failed late\n");
+  iput(ip);
+  proc_exit();
+  return 0;
+}
+
+int
 sys_block(void)
 {
   int i, j;
@@ -248,14 +339,14 @@ sys_block(void)
           ip->type, ip->nlink, ip->size, ip->addrs[0]);
   iput(ip);
 
-  ip = namei(".././//./../");
+  ip = namei(".././//./../usertests");
   if(ip){
-    cprintf("namei: %d %d %d %d %d %d %d %d\n",
+    cprintf("namei(usertests): %d %d %d %d %d %d %d %d\n",
             ip->dev, ip->inum, ip->count, ip->busy,
             ip->type, ip->nlink, ip->size, ip->addrs[0]);
     iput(ip);
   } else {
-    cprintf("namei failed\n");
+    cprintf("namei(usertests) failed\n");
   }
 
   return 0;
@@ -316,6 +407,9 @@ syscall(void)
     break;
   case SYS_cons_puts:
     ret = sys_cons_puts();
+    break;
+  case SYS_exec:
+    ret = sys_exec();
     break;
   default:
     cprintf("unknown sys call %d\n", num);
