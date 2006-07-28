@@ -115,7 +115,7 @@ exitwait(void)
 }
 
 int
-main(void)
+main(int argc, char *argv[])
 {
   puts("usertests starting\n");
 

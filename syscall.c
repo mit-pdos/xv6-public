@@ -58,17 +58,20 @@ fetcharg(int argno, void *ip)
   return fetchint(curproc[cpu()], esp + 4 + 4*argno, ip);
 }
 
-// check that an entire string is valid in user space
+// check that an entire string is valid in user space.
+// returns the length, not including null, or -1.
 int
 checkstring(uint s)
 {
   char c;
+  int len = 0;
 
   while(1){
     if(fetchbyte(curproc[cpu()], s, &c) < 0)
       return -1;
     if(c == '\0')
-      return 0;
+      return len;
+    len++;
     s++;
   }
 }
@@ -244,13 +247,16 @@ int
 sys_exec(void)
 {
   struct proc *cp = curproc[cpu()];
-  uint arg0, sz;
-  int i;
+  uint arg0, arg1, sz=0, ap, sp, p1, p2;
+  int i, nargs, argbytes, len;
   struct inode *ip;
   struct elfhdr elf;
   struct proghdr ph;
+  char *mem = 0;
 
   if(fetcharg(0, &arg0) < 0)
+    return -1;
+  if(fetcharg(1, &arg1) < 0)
     return -1;
   if(checkstring(arg0) < 0)
     return -1;
@@ -278,14 +284,62 @@ sys_exec(void)
   sz += 4096 - (sz % 4096);
   sz += 4096;
 
+  mem = kalloc(sz);
+  if(mem == 0)
+    goto bad;
+  memset(mem, 0, sz);
+
+  // arg1 is a pointer to an array of pointers to string.
+  nargs = 0;
+  argbytes = 0;
+  for(i = 0; ; i++){
+    if(fetchint(cp, arg1 + 4*i, &ap) < 0)
+      goto bad;
+    if(ap == 0)
+      break;
+    len = checkstring(ap);
+    if(len < 0)
+      goto bad;
+    nargs++;
+    argbytes += len + 1;
+  }
+
+  // argn\0
+  // ...
+  // arg0\0
+  // 0
+  // ptr to argn
+  // ...
+  // 12: ptr to arg0
+  //  8: argv (points to ptr to arg0)
+  //  4: argc
+  //  0: fake return pc
+  sp = sz - argbytes - (nargs+1)*4 - 4 - 4 - 4;
+  *(uint*)(mem + sp) = 0xffffffff;
+  *(uint*)(mem + sp + 4) = nargs;
+  *(uint*)(mem + sp + 8) = (uint)(sp + 12);
+
+  p1 = sp + 12;
+  p2 = sp + 12 + (nargs + 1) * 4;
+  for(i = 0; i < nargs; i++){
+    fetchint(cp, arg1 + 4*i, &ap);
+    len = checkstring(ap);
+    memmove(mem + p2, cp->mem + ap, len + 1);
+    *(uint*)(mem + p1) = p2;
+    p1 += 4;
+    p2 += len + 1;
+  }
+  *(uint*)(mem + p1) = 0;
+
   // commit to the new image.
   kfree(cp->mem, cp->sz);
   cp->sz = sz;
-  cp->mem = kalloc(cp->sz);
+  cp->mem = mem;
+  mem = 0;
 
   for(i = 0; i < elf.phnum; i++){
     if(readi(ip, &ph, elf.phoff + i * sizeof(ph), sizeof(ph)) != sizeof(ph))
-      goto bad;
+      goto bad2;
     if(ph.type != ELF_PROG_LOAD)
       continue;
     if(ph.va + ph.memsz > sz)
@@ -298,13 +352,15 @@ sys_exec(void)
   iput(ip);
 
   cp->tf->eip = elf.entry;
-  cp->tf->esp = cp->sz;
+  cp->tf->esp = sp;
   setupsegs(cp);
 
   return 0;
 
  bad:
   cprintf("exec failed early\n");
+  if(mem)
+    kfree(mem, sz);
   iput(ip);
   return -1;
 

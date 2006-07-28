@@ -161,3 +161,5 @@ need to lock bufs in bio between bread and brelse
 test 14-character file names
 and file arguments longer than 14
 and directories longer than one sector
+
+kalloc() can return 0; do callers handle this right?

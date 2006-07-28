@@ -144,11 +144,6 @@ winode(uint inum, struct dinode *ip)
   dip = ((struct dinode *) buf) + (inum % IPB);
   *dip = *ip;
   wsect(bn, buf);
-  printf("wi %d size %d addrs %d %d...\n",
-         inum,
-         xint(dip->size),
-         xint(dip->addrs[0]),
-         xint(dip->addrs[1]));
 }
 
 void
