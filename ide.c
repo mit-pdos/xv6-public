@@ -53,8 +53,10 @@ ide_init(void)
 void
 ide_intr(void)
 {
-  cprintf("ide_intr\n");
+  acquire(&ide_lock);
+  cprintf("%d: ide_intr\n", cpu());
   wakeup(&request[tail]);
+  release(&ide_lock);
 }
 
 int
