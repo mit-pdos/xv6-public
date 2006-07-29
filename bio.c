@@ -8,7 +8,7 @@
 #include "buf.h"
 
 struct buf buf[NBUF];
-struct spinlock buf_table_lock;
+struct spinlock buf_table_lock = { "buf_table" };
 
 struct buf *
 getblk()

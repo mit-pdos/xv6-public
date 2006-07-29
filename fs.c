@@ -12,7 +12,7 @@
 // these are inodes currently in use
 // an entry is free if count == 0
 struct inode inode[NINODE];
-struct spinlock inode_table_lock;
+struct spinlock inode_table_lock = { "inode_table" };
 
 uint rootdev = 1;
 
@@ -111,11 +111,14 @@ iput(struct inode *ip)
 }
 
 void
-iincref(struct inode *ip)
+idecref(struct inode *ip)
 {
   acquire(&inode_table_lock);
 
-  ip->count += 1;
+  if(ip->count < 1)
+    panic("idecref");
+
+  ip->count -= 1;
 
   release(&inode_table_lock);
 }

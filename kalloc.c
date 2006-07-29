@@ -15,7 +15,7 @@
 #include "proc.h"
 #include "spinlock.h"
 
-struct spinlock kalloc_lock;
+struct spinlock kalloc_lock = { "kalloc" };
 
 struct run {
   struct run *next;

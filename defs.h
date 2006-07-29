@@ -99,7 +99,7 @@ void brelse(struct buf *);
 struct inode * iget(uint dev, uint inum);
 void ilock(struct inode *ip);
 void iunlock(struct inode *ip);
-void iincref(struct inode *ip);
+void idecref(struct inode *ip);
 void iput(struct inode *ip);
 struct inode * namei(char *path);
 int readi(struct inode *ip, void *xdst, uint off, uint n);

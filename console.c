@@ -3,7 +3,7 @@
 #include "defs.h"
 #include "spinlock.h"
 
-struct spinlock console_lock;
+struct spinlock console_lock = { "console" };
 int panicked = 0;
 int use_console_lock = 0;
 

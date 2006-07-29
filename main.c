@@ -95,6 +95,8 @@ mpmain(void)
 {
   cprintf("an application processor\n");
   idtinit(); // CPU's idt
+  if(cpu() == 0)
+    panic("mpmain on cpu 0");
   lapic_init(cpu());
   lapic_timerinit();
   lapic_enableintr();

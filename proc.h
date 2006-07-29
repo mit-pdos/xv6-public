@@ -70,6 +70,8 @@ struct cpu {
   char mpstack[MPSTACK]; // per-cpu start-up stack, only used to get into main()
   struct proc *lastproc;  // last proc scheduled on this cpu (never NULL)
   int nlock; // # of locks currently held
+  struct spinlock *lastacquire; // xxx debug
+  struct spinlock *lastrelease; // xxx debug
 };
 
 extern struct cpu cpus[NCPU];

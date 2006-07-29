@@ -25,7 +25,7 @@ struct ide_request {
 };
 struct ide_request request[NREQUEST];
 int head, tail;
-struct spinlock ide_lock;
+struct spinlock ide_lock = { "ide" };
 
 int disk_channel;
 

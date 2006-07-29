@@ -11,6 +11,7 @@
 #include "fs.h"
 #include "fsvar.h"
 #include "elf.h"
+#include "fd.h"
 
 /*
  * User code makes a system call with INT T_SYSCALL.
@@ -244,6 +245,41 @@ sys_cons_puts(void)
 }
 
 int
+sys_open(void)
+{
+  struct proc *cp = curproc[cpu()];
+  struct inode *ip;
+  uint arg0, arg1;
+  int ufd;
+  struct fd *fd;
+
+  if(fetcharg(0, &arg0) < 0 || fetcharg(1, &arg1) < 0)
+    return -1;
+  if(checkstring(arg0) < 0)
+    return -1;
+  if((ip = namei(cp->mem + arg0)) == 0)
+    return -1;
+  if((fd = fd_alloc()) == 0){
+    iput(ip);
+    return -1;
+  }
+  if((ufd = fd_ualloc()) < 0){
+    iput(ip);
+    fd_close(fd);
+    return -1;
+  }
+
+  iunlock(ip);
+  fd->type = FD_FILE;
+  fd->readable = 1;
+  fd->writeable = 0;
+  fd->ip = ip;
+  cp->fds[ufd] = fd;
+
+  return ufd;
+}
+
+int
 sys_exec(void)
 {
   struct proc *cp = curproc[cpu()];
@@ -466,6 +502,9 @@ syscall(void)
     break;
   case SYS_exec:
     ret = sys_exec();
+    break;
+  case SYS_open:
+    ret = sys_open();
     break;
   default:
     cprintf("unknown sys call %d\n", num);

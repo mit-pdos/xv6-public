@@ -11,3 +11,4 @@
 #define SYS_panic 11
 #define SYS_cons_puts 12
 #define SYS_exec 13
+#define SYS_open 14
