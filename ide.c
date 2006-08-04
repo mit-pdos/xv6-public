@@ -45,9 +45,12 @@ ide_wait_ready(int check_error)
 void
 ide_init(void)
 {
-  cprintf("ide_init: enable IRQ 14\n");
-  irq_setmask_8259A(irq_mask_8259A & ~(1<<14));
+  if (ncpu < 2) {
+    panic ("ide_init: disk interrupt is going to the second  cpu\n");
+  }
+  ioapic_enable (14, 1); // 14 is IRQ # for IDE
   ide_wait_ready(0);
+  cprintf ("ide_init:done\n");
 }
 
 void
@@ -57,6 +60,7 @@ ide_intr(void)
   cprintf("%d: ide_intr\n", cpu());
   wakeup(&request[tail]);
   release(&ide_lock);
+  lapic_eoi();
 }
 
 int

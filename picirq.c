@@ -67,7 +67,6 @@ pic_init(void)
 
   if (irq_mask_8259A != 0xFFFF)
     irq_setmask_8259A(irq_mask_8259A);
-
 }
 
 void

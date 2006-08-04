@@ -45,6 +45,7 @@ main0(void)
   cprintf("\nxV6\n\n");
 
   pic_init(); // initialize PIC
+  ioapic_init();
   kinit(); // physical memory allocator
   tvinit(); // trap vectors
   idtinit(); // CPU's idt

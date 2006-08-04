@@ -4,6 +4,7 @@ OBJS = \
 	ide.o\
 	kalloc.o\
 	lapic.o\
+	ioapic.o\
 	main.o\
 	mp.o\
 	picirq.o\

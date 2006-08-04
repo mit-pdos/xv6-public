@@ -29,12 +29,12 @@ static char* buses[] = {
 	0,
 };
 
-#define APBOOTCODE 0x7000 // XXX hack
-
-static struct mp* mp;  // The MP floating point structure
 struct cpu cpus[NCPU];
 int ncpu;
+uchar ioapic_id;
+
 static struct cpu *bcpu;
+static struct mp* mp;  // The MP floating point structure
 
 static struct mp*
 mp_scan(uchar *addr, int len)
@@ -112,7 +112,6 @@ mp_detect(void)
   if(sum || (pcmp->version != 1 && pcmp->version != 4))
     return 3;
 
-  cprintf("Mp spec rev #: %x imcrp 0x%x\n", mp->specrev, mp->imcrp);
   return 0;
 }
 
@@ -124,12 +123,15 @@ mp_init(void)
   struct mpctb *mpctb;
   struct mppe *proc;
   struct mpbe *bus;
+  struct mpioapic *ioapic;
+  struct mpie *intr;
   int i;
+  uchar byte;
 
   ncpu = 0;
   if ((r = mp_detect()) != 0) return;
 
-  cprintf ("This computer is a multiprocessor!\n");
+  cprintf("Mp spec rev #: %x imcrp 0x%x\n", mp->specrev, mp->imcrp);
 
   /*
    * Run through the table saving information needed for starting
@@ -164,11 +166,14 @@ mp_init(void)
       p += sizeof(struct mpbe);
       continue;
     case MPIOAPIC:
-      cprintf("an I/O APIC\n");
+      ioapic = (struct mpioapic *) p;
+      cprintf("an I/O APIC: id %d %x\n", ioapic->apicno, ioapic->flags);
+      ioapic_id = ioapic->apicno;
       p += sizeof(struct mpioapic);
       continue;
     case MPIOINTR:
-      cprintf("an I/O intr\n");
+      intr = (struct mpie *) p;
+      // cprintf("an I/O intr: type %d flags 0x%x bus %d souce bus irq %d dest ioapic id %d dest ioapic intin %d\n", intr->intr, intr->flags, intr->busno, intr->irq, intr->apicno, intr->intin);
       p += sizeof(struct mpie);
       continue;
     default:
@@ -180,9 +185,17 @@ mp_init(void)
       break;
     }
   }
-  
+
+  if (mp->imcrp) {  // it appears that bochs doesn't support IMCR, and code won't run
+    outb(0x22, 0x70);	/* select IMCR */
+    byte = inb(0x23);	/* current contents */
+    byte |= 0x01;	/* mask external INTR */
+    outb(0x23, byte);	/* disconnect 8259s/NMI */
+  }
+
   cprintf("ncpu: %d boot %d\n", ncpu, bcpu-cpus);
 }
+
 
 int
 mp_bcpu(void)
@@ -191,6 +204,8 @@ mp_bcpu(void)
 }
 
 extern void mpmain(void);
+
+#define APBOOTCODE 0x7000 // XXX hack
 
 void
 mp_startthem(void)

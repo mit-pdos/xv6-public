@@ -173,6 +173,12 @@ lapic_disableintr(void)
   lapic_write(LAPIC_TPR, 0xFF);
 }
 
+void
+lapic_eoi(void)
+{
+  lapic_write (LAPIC_EOI, 0);
+}
+
 int
 cpu(void)
 {

@@ -57,7 +57,13 @@ void lapic_timerinit(void);
 void lapic_timerintr(void);
 void lapic_enableintr(void);
 void lapic_disableintr(void);
+void lapic_eoi(void);
 int cpu(void);
+
+// ioapic
+extern uchar ioapic_id;
+void ioapic_init(void);
+void ioapic_enable (int irq, int cpu);
 
 // spinlock.c
 struct spinlock;

@@ -415,6 +415,7 @@ sys_block(void)
   struct inode *ip;
 
   for (i = 0; i < 2; i++) {
+    cprintf ("issue read\n");
     b = bread(1, i);
 
     cprintf("disk 1 sector %d: ", i);
