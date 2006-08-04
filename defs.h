@@ -40,8 +40,6 @@ int strncmp(const char *p, const char *q, uint n);
 void syscall(void);
 
 // picirq.c
-extern ushort irq_mask_8259A;
-void irq_setmask_8259A(ushort mask);
 void pic_init(void);
 
 // mp.c

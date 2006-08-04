@@ -12,7 +12,24 @@
 
 // Current IRQ mask.
 // Initial IRQ mask has interrupt 2 enabled (for slave 8259A).
-ushort irq_mask_8259A = 0xFFFF & ~(1<<IRQ_SLAVE);
+static ushort irq_mask_8259A = 0xFFFF & ~(1<<IRQ_SLAVE);
+
+static void
+irq_setmask_8259A(ushort mask)
+{
+  int i;
+  irq_mask_8259A = mask;
+
+  outb(IO_PIC1+1, (char)mask);
+  outb(IO_PIC2+1, (char)(mask >> 8));
+
+  cprintf("%d: enabled interrupts:", cpu());
+
+  for (i = 0; i < 16; i++)
+    if (~mask & (1<<i))
+      cprintf(" %d", i);
+  cprintf("\n");
+}
 
 /* Initialize the 8259A interrupt controllers. */
 void
@@ -67,21 +84,4 @@ pic_init(void)
 
   if (irq_mask_8259A != 0xFFFF)
     irq_setmask_8259A(irq_mask_8259A);
-}
-
-void
-irq_setmask_8259A(ushort mask)
-{
-  int i;
-  irq_mask_8259A = mask;
-
-  outb(IO_PIC1+1, (char)mask);
-  outb(IO_PIC2+1, (char)(mask >> 8));
-
-  cprintf("%d: enabled interrupts:", cpu());
-
-  for (i = 0; i < 16; i++)
-    if (~mask & (1<<i))
-      cprintf(" %d", i);
-  cprintf("\n");
 }
