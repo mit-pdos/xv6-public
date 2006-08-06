@@ -91,8 +91,8 @@ void fd_incref(struct fd *fd);
 // ide.c
 void ide_init(void);
 void ide_intr(void);
-void* ide_start_read(int diskno, uint secno, void *dst, uint nsecs);
-int ide_finish_read(void *);
+void* ide_start_rw(int diskno, uint secno, void *dst, uint nsecs, int read);
+int ide_finish(void *);
 
 // bio.c
 struct buf;

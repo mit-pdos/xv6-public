@@ -42,9 +42,9 @@ bread(uint dev, uint sector)
   b = getblk();
 
   acquire(&ide_lock);
-  c = ide_start_read(dev & 0xff, sector, b->data, 1);
+  c = ide_start_rw(dev & 0xff, sector, b->data, 1, 1);
   sleep (c, &ide_lock);
-  ide_finish_read(c);
+  ide_finish(c);
   release(&ide_lock);
 
   return b;
