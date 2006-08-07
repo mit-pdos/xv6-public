@@ -96,7 +96,9 @@ int ide_finish(void *);
 
 // bio.c
 struct buf;
+struct buf *getblk(void);
 struct buf *bread(uint, uint);
+void bwrite(uint, struct buf *, uint);
 void brelse(struct buf *);
 
 // fs.c
