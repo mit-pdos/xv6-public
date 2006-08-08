@@ -54,12 +54,69 @@ iget(uint dev, uint inum)
   bp = bread(dev, inum / IPB + 2);
   dip = &((struct dinode *)(bp->data))[inum % IPB];
   nip->type = dip->type;
+  nip->major = dip->major;
+  nip->minor = dip->minor;
   nip->nlink = dip->nlink;
   nip->size = dip->size;
   memmove(nip->addrs, dip->addrs, sizeof(nip->addrs));
   brelse(bp);
 
   return nip;
+}
+
+// allocate an inode on disk
+struct inode *
+ialloc(uint dev, short type)
+{
+  struct inode *ip;
+  struct dinode *dip = 0;
+  struct superblock *sb;
+  int ninodes;
+  int inum;
+  struct buf *bp;
+
+  bp = bread(dev, 1);
+  sb = (struct superblock *) bp;
+  ninodes = sb->ninodes;
+  brelse(bp);
+ 
+  for (inum = 1; inum < ninodes; inum++) {  // loop over inode blocks
+    bp = bread(dev, inum / IPB + 2);
+    dip = &((struct dinode *)(bp->data))[inum % IPB];
+    if (dip->type == 0) {  // a free inode
+      break;
+    }
+    brelse(bp);
+  }
+ 
+  if (inum >= ninodes) {
+    cprintf ("ialloc: no inodes left\n");
+    return 0;
+  }
+
+  cprintf ("ialloc: %d\n", inum);
+  dip->type = type;
+  bwrite (dev, bp, inum / IPB + 2);   // mark it allocated on the disk
+  brelse(bp);
+  ip = iget (dev, inum);
+  return ip;
+}
+
+void 
+iupdate (struct inode *ip)
+{
+  struct buf *bp;
+  struct dinode *dip;
+
+  bp = bread(ip->dev, ip->inum / IPB + 2);
+  dip = &((struct dinode *)(bp->data))[ip->inum % IPB];
+  dip->type = ip->type;
+  dip->major = ip->major;
+  dip->minor = ip->minor;
+  dip->nlink = ip->nlink;
+  dip->size = ip->size;
+  bwrite (ip->dev, bp, ip->inum / IPB + 2);   // mark it allocated on the disk
+  brelse(bp); 
 }
 
 void
@@ -213,4 +270,42 @@ namei(char *path)
     while(*cp == '/')
       cp++;
   }
+}
+
+struct inode *
+mknod(struct inode *dp, char *cp, short type, short major, short minor)
+{
+  struct inode *ip;
+  struct dirent *ep = 0;
+  int off;
+  int i;
+  struct buf *bp = 0;
+
+  cprintf("mknod: %s %d %d %d\n", cp, type, major, minor);
+
+  ip = ialloc(dp->dev, type);
+  if (ip == 0) return 0;
+  ip->major = major;
+  ip->minor = minor;
+
+  for(off = 0; off < dp->size; off += 512) {
+    bp = bread(dp->dev, bmap(dp, off / 512));
+    for(ep = (struct dirent *) bp->data;
+	ep < (struct dirent *) (bp->data + 512);
+	ep++){
+      if(ep->inum == 0) {
+	goto found;
+      }
+    }
+    brelse(bp);
+  }
+  panic("mknod: no dir entry free\n");
+
+ found:
+  ep->inum = ip->inum;
+  for(i = 0; i < DIRSIZ && cp[i]; i++) ep->name[i] = cp[i];
+  bwrite (dp->dev, bp, bmap(dp, off/512));   // write directory
+  brelse(bp);
+  iupdate (ip);
+  return ip;
 }

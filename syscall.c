@@ -280,6 +280,41 @@ sys_open(void)
 }
 
 int
+sys_mknod(void)
+{
+  struct proc *cp = curproc[cpu()];
+  struct inode *dp, *nip;
+  uint arg0, arg1, arg2, arg3;
+  int l;
+
+  if(fetcharg(0, &arg0) < 0 || fetcharg(1, &arg1) < 0 || 
+     fetcharg(2, &arg2) < 0 || fetcharg(3, &arg3) < 0)
+    return -1;
+
+  if((l = checkstring(arg0)) < 0)
+    return -1;
+
+  if(l >= DIRSIZ)
+    return -1;
+
+  dp = iget(rootdev, 1);
+
+  cprintf("root inode type: %d\n", dp->type);
+
+  if (dp->type != T_DIR) 
+    return -1;
+  
+  nip = mknod (dp, cp->mem + arg0, (short) arg1, (short) arg2, 
+		   (short) arg3);
+
+  if (nip == 0) return -1;
+  iput(nip);
+  iput(dp);
+  
+  return 0;
+}
+
+int
 sys_exec(void)
 {
   struct proc *cp = curproc[cpu()];
@@ -514,6 +549,9 @@ syscall(void)
     break;
   case SYS_open:
     ret = sys_open();
+    break;
+  case SYS_mknod:
+    ret = sys_mknod();
     break;
   default:
     cprintf("unknown sys call %d\n", num);

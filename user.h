@@ -10,7 +10,7 @@ int block(void);
 int kill(int);
 int panic(char*);
 int cons_puts(char*);
-
+int mknod (char*,short,short,short);
 int puts(char*);
 int puts1(char*);
 char* strcpy(char*, char*);
