@@ -11,7 +11,7 @@ struct spinlock proc_table_lock = { "proc_table" };
 
 struct proc proc[NPROC];
 struct proc *curproc[NCPU];
-int next_pid = 1;
+int next_pid = NCPU;
 extern void forkret(void);
 extern void forkret1(struct trapframe*);
 
@@ -31,7 +31,7 @@ setupsegs(struct proc *p)
   // XXX it may be wrong to modify the current segment table!
 
   p->gdt[0] = SEG_NULL;
-  p->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
+  p->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024, 0); // xxx
   p->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
   p->gdt[SEG_TSS] = SEG16(STS_T32A, (uint) &p->ts,
                                 sizeof(p->ts), 0);
@@ -134,8 +134,8 @@ scheduler(void)
   struct proc *p;
   int i;
 
-  cprintf("start scheduler on cpu %d jmpbuf %p\n", cpu(), &cpus[cpu()].jmpbuf);
-  cpus[cpu()].lastproc = &proc[0];
+  cprintf("cpu%d: start scheduler jmpbuf %p\n",
+          cpu(), &cpus[cpu()].jmpbuf);
 
   if(cpus[cpu()].nlock != 0){
     cprintf("la %x lr %x\n", cpus[cpu()].lastacquire, cpus[cpu()].lastrelease   );
@@ -189,6 +189,8 @@ scheduler(void)
         cprintf("holding %d locks in scheduler (pid=%d state=%d)\n", cpus[cpu()].nlock, p->pid, p->state);
         panic("scheduler lock");
       }
+
+      setupsegs(&proc[cpu()]);
 
       // XXX if not holding proc_table_lock panic.
     }

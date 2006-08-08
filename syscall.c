@@ -274,6 +274,7 @@ sys_open(void)
   fd->readable = 1;
   fd->writeable = 0;
   fd->ip = ip;
+  fd->off = 0;
   cp->fds[ufd] = fd;
 
   return ufd;

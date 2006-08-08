@@ -33,7 +33,8 @@ struct jmpbuf {
   int eip;
 };
 
-enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE,
+                  IDLEPROC };
 
 struct proc{
   char *mem; // start of process's physical memory
@@ -67,8 +68,8 @@ extern struct proc *curproc[NCPU];  // can be NULL if no proc running.
 struct cpu {
   uchar apicid;       // Local APIC ID
   struct jmpbuf jmpbuf;
-  char mpstack[MPSTACK]; // per-cpu start-up stack, only used to get into main()
-  struct proc *lastproc;  // last proc scheduled on this cpu (never NULL)
+  char mpstack[MPSTACK]; // per-cpu start-up stack
+  volatile int booted;
   int nlock; // # of locks currently held
   struct spinlock *lastacquire; // xxx debug
   struct spinlock *lastrelease; // xxx debug

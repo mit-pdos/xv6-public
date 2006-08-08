@@ -163,3 +163,81 @@ and file arguments longer than 14
 and directories longer than one sector
 
 kalloc() can return 0; do callers handle this right?
+
+why directing interrupts to cpu 1 causes trouble
+  cpu 1 turns on interrupts with no tss!
+    and perhaps a stale gdt (from boot)
+  since it has never run a process, never called setupsegs()
+  but does cpu really need the tss?
+    not switching stacks
+  fake process per cpu, just for tss?
+    seems like a waste
+  move tss to cpu[]?
+    but tss points to per-process kernel stack
+    would also give us a gdt
+  OOPS that wasn't the problem
+
+wait for other cpu to finish starting before enabling interrupts?
+  some kind of crash in ide_init ioapic_enable cprintf
+move ide_init before mp_start?
+  didn't do any good
+  maybe cpu0 taking ide interrupt, cpu1 getting a nested lock error
+
+cprintfs are screwed up if locking is off
+  often loops forever
+  hah, just use lpt alone
+
+looks like cpu0 took the ide interrupt and was the last to hold
+the lock, but cpu1 thinks it is nested
+cpu0 is in load_icode / printf / cons_putc
+  probably b/c cpu1 cleared use_console_lock
+cpu1 is in scheduler() / printf / acquire
+
+  1: init timer
+  0: init timer
+  cpu 1 initial nlock 1
+  ne0s:t iidd el_occnkt rc
+  onsole cpu 1 old caller stack 1001A5 10071D 104DFF 1049FE
+  panic: acquire
+  ^CNext at t=33002418
+  (0) [0x00100091] 0008:0x00100091 (unk. ctxt): jmp .+0xfffffffe          ; ebfe
+  (1) [0x00100332] 0008:0x00100332 (unk. ctxt): jmp .+0xfffffffe          
+  
+why is output interleaved even before panic?
+
+does release turn on interrupts even inside an interrupt handler?
+
+overflowing cpu[] stack?
+  probably not, change from 512 to 4096 didn't do anything
+
+
+  1: init timer
+  0: init timer
+  cnpeus te11  linnitki aclo nnoolleek  cp1u
+   ss  oarltd  sccahleldeul esrt aocnk  cpu 0111 Ej6  buf1 01A3140 C5118 
+  0
+  la anic1::7 0a0c0  uuirr e
+  ^CNext at t=31691050
+  (0) [0x00100373] 0008:0x00100373 (unk. ctxt): jmp .+0xfffffffe          ; ebfe
+  (1) [0x00100091] 0008:0x00100091 (unk. ctxt): jmp .+0xfffffffe          ; ebfe
+
+cpu0:
+
+0: init timer
+nested lock console cpu 0 old caller stack 1001e6 101a34 1 0
+  (that's mpmain)
+panic: acquire
+
+cpu1:
+
+1: init timer
+cpu 1 initial nlock 1
+start scheduler on cpu 1 jmpbuf ...
+la 107000 lr ...
+  that is, nlock != 0
+
+maybe a race; acquire does
+  locked = 1
+  cpu = cpu()
+what if another acquire calls holding w/ locked = 1 but
+  before cpu is set?

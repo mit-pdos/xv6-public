@@ -110,7 +110,7 @@ lapic_write(int r, int data)
 void
 lapic_timerinit(void)
 {
-  cprintf("%d: init timer\n", cpu());
+  cprintf("cpu%d: init timer\n", cpu());
   lapic_write(LAPIC_TDCR, LAPIC_X1);
   lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
   lapic_write(LAPIC_TCCR, 10000000);
@@ -120,7 +120,7 @@ lapic_timerinit(void)
 void
 lapic_timerintr(void)
 {
-  cprintf("%d: timer interrupt!\n", cpu());
+  cprintf("cpu%d: timer interrupt!\n", cpu());
   lapic_write (LAPIC_EOI, 0);
 }
 
@@ -129,7 +129,7 @@ lapic_init(int c)
 {
   uint r, lvt;
 
-  cprintf("lapic_init %d\n", c);
+  cprintf("cpu%d: lapic_init %d\n", c);
 
   lapic_write(LAPIC_DFR, 0xFFFFFFFF); // set destination format register
   r = (lapic_read(LAPIC_ID)>>24) & 0xFF; // read APIC ID
@@ -158,7 +158,7 @@ lapic_init(int c)
   while(lapic_read(LAPIC_ICRLO) & APIC_DELIVS)
     ;
 
-  cprintf("Done init of an apic\n");
+  cprintf("cpu%d: apic init done\n", cpu());
 }
 
 void
@@ -182,7 +182,8 @@ lapic_eoi(void)
 int
 cpu(void)
 {
-  return (lapic_read(LAPIC_ID)>>24) & 0xFF;
+  int x = (lapic_read(LAPIC_ID)>>24) & 0xFF;
+  return x;
 }
 
 void

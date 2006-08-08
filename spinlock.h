@@ -1,6 +1,6 @@
 struct spinlock {
   char *name;
   uint locked;
-  uint pc;
+  uint pcs[10];
   int cpu;
 };

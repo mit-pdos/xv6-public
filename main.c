@@ -42,18 +42,24 @@ main0(void)
 
   lapic_init(mp_bcpu());
 
-  cprintf("\nxV6\n\n");
+  cprintf("\n\ncpu%d: booting xv6\n\n", cpu());
 
   pic_init(); // initialize PIC
   ioapic_init();
   kinit(); // physical memory allocator
   tvinit(); // trap vectors
-  idtinit(); // CPU's idt
+  idtinit(); // this CPU's idt register
 
-  // create fake process zero
+  // create a fake process per CPU
+  // so each CPU always has a tss and a gdt
+  for(p = &proc[0]; p < &proc[NCPU]; p++){
+    p->state = IDLEPROC;
+    p->kstack = cpus[p-proc].mpstack;
+    p->pid = p - proc;
+  }
+
+  // fix process 0 so that copyproc() will work
   p = &proc[0];
-  memset(p, 0, sizeof *p);
-  p->state = SLEEPING;
   p->sz = 4 * PAGE;
   p->mem = kalloc(p->sz);
   memset(p->mem, 0, p->sz);
@@ -63,9 +69,10 @@ main0(void)
   p->tf->es = p->tf->ds = p->tf->ss = (SEG_UDATA << 3) | 3;
   p->tf->cs = (SEG_UCODE << 3) | 3;
   p->tf->eflags = FL_IF;
-  p->pid = 0;
-  p->ppid = 0;
   setupsegs(p);
+
+  // init disk device
+  ide_init(); 
 
   mp_startthem();
 
@@ -73,10 +80,9 @@ main0(void)
   lapic_timerinit();
   lapic_enableintr();
 
-  // init disk device
-  ide_init(); 
-
   // Enable interrupts on this processor.
+  cprintf("cpu%d: nlock %d before -- and sti\n",
+          cpu(), cpus[0].nlock);
   cpus[cpu()].nlock--;
   sti();
 
@@ -94,7 +100,7 @@ main0(void)
 void
 mpmain(void)
 {
-  cprintf("an application processor\n");
+  cprintf("cpu%d: starting\n", cpu());
   idtinit(); // CPU's idt
   if(cpu() == 0)
     panic("mpmain on cpu 0");
@@ -102,8 +108,13 @@ mpmain(void)
   lapic_timerinit();
   lapic_enableintr();
 
+  setupsegs(&proc[cpu()]);
+
+  cpuid(0, 0, 0, 0, 0);	// memory barrier
+  cpus[cpu()].booted = 1;
+
   // Enable interrupts on this processor.
-  cprintf("cpu %d initial nlock %d\n", cpu(), cpus[cpu()].nlock);
+  cprintf("cpu%d: initial nlock %d\n", cpu(), cpus[cpu()].nlock);
   cpus[cpu()].nlock--;
   sti();
 

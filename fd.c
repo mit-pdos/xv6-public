@@ -69,6 +69,13 @@ fd_read(struct fd *fd, char *addr, int n)
     return -1;
   if(fd->type == FD_PIPE){
     return pipe_read(fd->pipe, addr, n);
+  } else if(fd->type == FD_FILE){
+    ilock(fd->ip);
+    int cc = readi(fd->ip, addr, fd->off, n);
+    if(cc > 0)
+      fd->off += cc;
+    iunlock(fd->ip);
+    return cc;
   } else {
     panic("fd_read");
     return -1;

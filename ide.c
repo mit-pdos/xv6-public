@@ -51,14 +51,14 @@ ide_init(void)
   }
   ioapic_enable (14, 1); // 14 is IRQ # for IDE
   ide_wait_ready(0);
-  cprintf ("ide_init:done\n");
+  cprintf ("cpu%d: ide_init:done\n", cpu());
 }
 
 void
 ide_intr(void)
 {
   acquire(&ide_lock);
-  cprintf("%d: ide_intr\n", cpu());
+  cprintf("cpu%d: ide_intr\n", cpu());
   wakeup(&request[tail]);
   release(&ide_lock);
   lapic_eoi();
