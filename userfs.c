@@ -20,7 +20,7 @@ main(void)
     puts ("mknod failed\n");
   else
     puts ("made a node\n");
-  fd = open("console", 1);
+  fd = open("console", O_WRONLY);
   if(fd >= 0){
     puts("open console ok\n");
   } else {
@@ -45,6 +45,14 @@ main(void)
   } else {
     puts("open doesnotexist failed\n");
   }
+
+  fd = open("doesnotexist", O_CREATE|O_RDWR);
+  if(fd >= 0){
+    puts("creat doesnotexist succeeded\n");
+  } else {
+    puts("error: creat doesnotexist failed!\n");
+  }
+  close(fd);
   //exec("echo", echo_args);
   exec("cat", cat_args);
   return 0;

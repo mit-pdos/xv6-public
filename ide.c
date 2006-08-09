@@ -58,7 +58,7 @@ void
 ide_intr(void)
 {
   acquire(&ide_lock);
-  cprintf("cpu%d: ide_intr\n", cpu());
+  //  cprintf("cpu%d: ide_intr\n", cpu());
   wakeup(&request[tail]);
   release(&ide_lock);
   lapic_eoi();

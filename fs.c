@@ -239,6 +239,12 @@ readi(struct inode *ip, void *xdst, uint off, uint n)
   uint target = n, n1;
   struct buf *bp;
 
+  if (ip->type == T_DEV) {
+    if (ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].d_read)
+      return -1;
+    return devsw[ip->major].d_read (ip->minor, xdst, n);
+  }
+
   while(n > 0 && off < ip->size){
     bp = bread(ip->dev, bmap(ip, off / BSIZE));
     n1 = min(n, ip->size - off);
@@ -257,6 +263,8 @@ int
 writei(struct inode *ip, void *addr, uint n)
 {
   if (ip->type == T_DEV) {
+    if (ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].d_write)
+      return -1;
     return devsw[ip->major].d_write (ip->minor, addr, n);
   } else {
     panic ("writei: unknown type\n");

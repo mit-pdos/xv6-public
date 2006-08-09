@@ -252,18 +252,28 @@ sys_open(void)
   uint arg0, arg1;
   int ufd;
   struct fd *fd;
+  struct inode *dp;
+  int l;
 
   if(fetcharg(0, &arg0) < 0 || fetcharg(1, &arg1) < 0)
     return -1;
-  if(checkstring(arg0) < 0)
+  if((l = checkstring(arg0)) < 0)
     return -1;
-  if((ip = namei(cp->mem + arg0)) == 0)
-    return -1;
+  if((ip = namei(cp->mem + arg0)) == 0) {
+    if (arg1 & O_CREATE) {
+      if (l >= DIRSIZ)
+	return -1;
+      dp = iget(rootdev, 1);  // XXX should parse name
+      if (dp->type != T_DIR) 
+	return -1;
+      if ((ip = mknod (dp, cp->mem + arg0, T_FILE, 0, 0)) == 0)
+	return -1;
+    } else return -1;
+  }
   if((fd = fd_alloc()) == 0){
     iput(ip);
     return -1;
   }
-
   if((ufd = fd_ualloc()) < 0){
     iput(ip);
     fd_close(fd);
@@ -272,8 +282,11 @@ sys_open(void)
 
   iunlock(ip);
   fd->type = FD_FILE;
-  if (arg1) {
+  if (arg1 & O_RDWR) {
     fd->readable = 1;
+    fd->writeable = 1;
+  } else if (arg1 & O_WRONLY) {
+    fd->readable = 0;
     fd->writeable = 1;
   } else {
     fd->readable = 1;
@@ -304,13 +317,9 @@ sys_mknod(void)
   if(l >= DIRSIZ)
     return -1;
 
-  dp = iget(rootdev, 1);
-
-  cprintf("root inode type: %d\n", dp->type);
-
+  dp = iget(rootdev, 1);    // XXX should parse name
   if (dp->type != T_DIR) 
     return -1;
-  
   nip = mknod (dp, cp->mem + arg0, (short) arg1, (short) arg2, 
 		   (short) arg3);
 
