@@ -163,8 +163,6 @@ console_write (int minor, void *buf, int n)
   int i;
   uchar *b = buf;
 
-  cprintf ("print character to console\n");
-
   for (i = 0; i < n; i++) {
     cons_putc((int) b[i]);
   }
