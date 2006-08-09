@@ -8,15 +8,19 @@
 #include "param.h"
 #include "fs.h"
 
-int nblocks = 1009;
+int nblocks = 1008;
 int ninodes = 100;
+int size = 1024;
 
 int fsfd;
 struct superblock sb;
 char zeroes[512];
 uint freeblock;
+uint usedblocks;
+uint bitblocks;
 uint freeinode = 1;
 
+void balloc(int);
 void wsect(uint, void *);
 void winode(uint, struct dinode *);
 void rsect(uint sec, void *buf);
@@ -67,12 +71,20 @@ main(int argc, char *argv[])
     exit(1);
   }
 
-  sb.nblocks = xint(nblocks); // so whole disk is 1024 sectors
+  sb.size = xint(size);
+  sb.nblocks = xint(nblocks); // so whole disk is size sectors
   sb.ninodes = xint(ninodes);
 
-  freeblock = ninodes / IPB + 2;
+  bitblocks = sb.size/(512*8) + 1; 
+  usedblocks = ninodes / IPB + 3 + bitblocks;
+  freeblock = usedblocks;
 
-  for(i = 0; i < nblocks + (ninodes / IPB) + 3; i++)
+  printf ("used %d (bit %d ninode %d) free %d total %d\n", usedblocks, 
+	  bitblocks, ninodes/IPB + 1, freeblock, nblocks+usedblocks);
+
+  assert (nblocks + usedblocks == size);
+
+  for(i = 0; i < nblocks + usedblocks; i++)
     wsect(i, zeroes);
 
   wsect(1, &sb);
@@ -109,6 +121,8 @@ main(int argc, char *argv[])
 
     close(fd);
   }
+
+  balloc(usedblocks);
 
   exit(0);
 }
@@ -186,6 +200,22 @@ ialloc(ushort type)
   return inum;
 }
 
+void
+balloc(int used)
+{
+  uchar buf[512];
+  int i;
+
+  printf("balloc: first %d blocks have been allocated\n", used);
+  assert (used < 512);
+  bzero(buf, 512);
+  for (i = 0; i < used; i++) {
+    buf[i/8] = buf[i/8] | (0x1 << (i%8));
+  }
+  printf("balloc: write bitmap block at sector %d\n", ninodes/IPB + 3);
+  wsect(ninodes / IPB + 3, buf);
+}
+
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
 void
@@ -202,8 +232,10 @@ iappend(uint inum, void *xp, int n)
   while(n > 0){
     fbn = off / 512;
     assert(fbn < NDIRECT);
-    if(din.addrs[fbn] == 0)
+    if(din.addrs[fbn] == 0) {
       din.addrs[fbn] = xint(freeblock++);
+      usedblocks++;
+    }
     n1 = min(n, (fbn + 1) * 512 - off);
     rsect(xint(din.addrs[fbn]), buf);
     bcopy(p, buf + off - (fbn * 512), n1);

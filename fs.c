@@ -16,6 +16,43 @@ struct spinlock inode_table_lock = { "inode_table" };
 
 uint rootdev = 1;
 
+static uint 
+balloc(uint dev) 
+{
+  int b;
+  struct buf *bp;
+  struct superblock *sb;
+  int bi;
+  int size;
+  int ninodes;
+  uchar m;
+
+  bp = bread(dev, 1);
+  sb = (struct superblock *) bp->data;
+  size = sb->size;
+  ninodes = sb->ninodes;
+
+  for (b = 0; b < size; b++) {
+    if (b % BPB == 0) {
+      brelse(bp);
+      bp = bread(dev, BBLOCK(b, ninodes));
+    }
+    bi = b % BPB;
+    m = 0x1 << (bi % 8);
+    if ((bp->data[bi/8] & m) == 0) {  // is block free?
+      break;
+    }
+  }
+  if (b >= size)
+    panic("balloc: out of blocks\n");
+
+  cprintf ("balloc: allocate block %d\n", b);
+  bp->data[bi/8] |= 0x1 << (bi % 8);
+  bwrite (dev, bp, BBLOCK(b, ninodes));  // mark it allocated on disk
+  return b;
+}
+
+
 // returns an inode with busy set and incremented reference count.
 struct inode *
 iget(uint dev, uint inum)
@@ -51,7 +88,7 @@ iget(uint dev, uint inum)
 
   release(&inode_table_lock);
 
-  bp = bread(dev, inum / IPB + 2);
+  bp = bread(dev, IBLOCK(inum));
   dip = &((struct dinode *)(bp->data))[inum % IPB];
   nip->type = dip->type;
   nip->major = dip->major;
@@ -76,12 +113,12 @@ ialloc(uint dev, short type)
   struct buf *bp;
 
   bp = bread(dev, 1);
-  sb = (struct superblock *) bp;
+  sb = (struct superblock *) bp->data;
   ninodes = sb->ninodes;
   brelse(bp);
- 
+
   for (inum = 1; inum < ninodes; inum++) {  // loop over inode blocks
-    bp = bread(dev, inum / IPB + 2);
+    bp = bread(dev, IBLOCK(inum));
     dip = &((struct dinode *)(bp->data))[inum % IPB];
     if (dip->type == 0) {  // a free inode
       break;
@@ -90,13 +127,12 @@ ialloc(uint dev, short type)
   }
  
   if (inum >= ninodes) {
-    cprintf ("ialloc: no inodes left\n");
-    return 0;
+    panic ("ialloc: no inodes left\n");
   }
 
   cprintf ("ialloc: %d\n", inum);
   dip->type = type;
-  bwrite (dev, bp, inum / IPB + 2);   // mark it allocated on the disk
+  bwrite (dev, bp, IBLOCK(inum));   // mark it allocated on the disk
   brelse(bp);
   ip = iget (dev, inum);
   return ip;
@@ -108,14 +144,14 @@ iupdate (struct inode *ip)
   struct buf *bp;
   struct dinode *dip;
 
-  bp = bread(ip->dev, ip->inum / IPB + 2);
+  bp = bread(ip->dev, IBLOCK(ip->inum));
   dip = &((struct dinode *)(bp->data))[ip->inum % IPB];
   dip->type = ip->type;
   dip->major = ip->major;
   dip->minor = ip->minor;
   dip->nlink = ip->nlink;
   dip->size = ip->size;
-  bwrite (ip->dev, bp, ip->inum / IPB + 2);   // mark it allocated on the disk
+  bwrite (ip->dev, bp, IBLOCK(ip->inum));   // mark it allocated on the disk
   brelse(bp); 
 }
 
@@ -203,10 +239,10 @@ readi(struct inode *ip, void *xdst, uint off, uint n)
   struct buf *bp;
 
   while(n > 0 && off < ip->size){
-    bp = bread(ip->dev, bmap(ip, off / 512));
+    bp = bread(ip->dev, bmap(ip, off / BSIZE));
     n1 = min(n, ip->size - off);
-    n1 = min(n1, 512 - (off % 512));
-    memmove(dst, bp->data + (off % 512), n1);
+    n1 = min(n1, BSIZE - (off % BSIZE));
+    memmove(dst, bp->data + (off % BSIZE), n1);
     n -= n1;
     off += n1;
     dst += n1;
@@ -241,10 +277,10 @@ namei(char *path)
       return 0;
     }
 
-    for(off = 0; off < dp->size; off += 512){
-      bp = bread(dp->dev, bmap(dp, off / 512));
+    for(off = 0; off < dp->size; off += BSIZE){
+      bp = bread(dp->dev, bmap(dp, off / BSIZE));
       for(ep = (struct dirent *) bp->data;
-          ep < (struct dirent *) (bp->data + 512);
+          ep < (struct dirent *) (bp->data + BSIZE);
           ep++){
         if(ep->inum == 0) 
           continue;
@@ -288,10 +324,10 @@ mknod(struct inode *dp, char *cp, short type, short major, short minor)
   ip->major = major;
   ip->minor = minor;
 
-  for(off = 0; off < dp->size; off += 512) {
-    bp = bread(dp->dev, bmap(dp, off / 512));
+  for(off = 0; off < dp->size; off += BSIZE) {
+    bp = bread(dp->dev, bmap(dp, off / BSIZE));
     for(ep = (struct dirent *) bp->data;
-	ep < (struct dirent *) (bp->data + 512);
+	ep < (struct dirent *) (bp->data + BSIZE);
 	ep++){
       if(ep->inum == 0) {
 	goto found;
@@ -304,7 +340,7 @@ mknod(struct inode *dp, char *cp, short type, short major, short minor)
  found:
   ep->inum = ip->inum;
   for(i = 0; i < DIRSIZ && cp[i]; i++) ep->name[i] = cp[i];
-  bwrite (dp->dev, bp, bmap(dp, off/512));   // write directory
+  bwrite (dp->dev, bp, bmap(dp, off/BSIZE));   // write directory
   brelse(bp);
   iupdate (ip);
   return ip;

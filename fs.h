@@ -1,15 +1,16 @@
 // on-disk file system format
 
-// second sector
+#define BSIZE 512  // block size
+
+// sector 1 (2nd sector)
 struct superblock{
-  int nblocks;
-  int ninodes;
+  uint size;
+  uint nblocks;
+  uint ninodes;
 };
 
 #define NDIRECT 13
 
-// inodes start at the third sector
-// and blocks start at (ninodes * sizeof(dinode) + 511) / 512
 struct dinode {
   short type;
   short major;
@@ -23,7 +24,11 @@ struct dinode {
 #define T_FILE 2
 #define T_DEV 3
 
-#define IPB (512 / sizeof(struct dinode))
+// sector 0 is unused, sector 1 is superblock, inodes start at sector 2
+#define IPB (BSIZE / sizeof(struct dinode))
+#define IBLOCK(inum) (inum / IPB + 2)   // start of inode
+#define BPB (BSIZE*8)
+#define BBLOCK(b,ninodes) (b/BPB + (ninodes/IPB) + 3)  // start of bitmap
 
 #define DIRSIZ 14
 
