@@ -109,4 +109,5 @@ void idecref(struct inode *ip);
 void iput(struct inode *ip);
 struct inode * namei(char *path);
 int readi(struct inode *ip, void *xdst, uint off, uint n);
+int writei(struct inode *ip, void *addr, uint n);
 struct inode *mknod(struct inode *, char *, short, short, short);

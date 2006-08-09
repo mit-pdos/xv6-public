@@ -7,3 +7,4 @@
 #define NREQUEST 100 // outstanding disk requests
 #define NBUF 10
 #define NINODE 100
+#define NDEV 10

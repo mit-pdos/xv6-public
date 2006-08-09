@@ -2,6 +2,7 @@
 #include "x86.h"
 #include "defs.h"
 #include "spinlock.h"
+#include "dev.h"
 
 struct spinlock console_lock = { "console" };
 int panicked = 0;
@@ -154,4 +155,25 @@ panic(char *s)
   panicked = 1; // freeze other CPU
   for(;;)
     ;
+}
+
+int
+console_write (int minor, void *buf, int n)
+{
+  int i;
+  uchar *b = buf;
+
+  cprintf ("print character to console\n");
+
+  for (i = 0; i < n; i++) {
+    cons_putc((int) b[i]);
+  }
+
+  return n;
+}
+
+void
+console_init ()
+{
+  devsw[CONSOLE].d_write = console_write;
 }

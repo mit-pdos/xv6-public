@@ -6,8 +6,10 @@
 #include "defs.h"
 #include "fd.h"
 #include "spinlock.h"
+#include "dev.h"
 
 struct spinlock fd_table_lock;
+struct devsw devsw[NDEV];
 
 struct fd fds[NFD];
 
@@ -56,6 +58,8 @@ fd_write(struct fd *fd, char *addr, int n)
     return -1;
   if(fd->type == FD_PIPE){
     return pipe_write(fd->pipe, addr, n);
+  } else if (fd->type == FD_FILE) {
+    return writei (fd->ip, addr, n);
   } else {
     panic("fd_write");
     return -1;
