@@ -323,6 +323,10 @@ mknod(struct inode *dp, char *cp, short type, short major, short minor)
   if (ip == 0) return 0;
   ip->major = major;
   ip->minor = minor;
+  ip->size = 0;
+  ip->nlink = 0;
+
+  iupdate (ip);  // write new inode to disk
 
   for(off = 0; off < dp->size; off += BSIZE) {
     bp = bread(dp->dev, bmap(dp, off / BSIZE));
@@ -340,8 +344,11 @@ mknod(struct inode *dp, char *cp, short type, short major, short minor)
  found:
   ep->inum = ip->inum;
   for(i = 0; i < DIRSIZ && cp[i]; i++) ep->name[i] = cp[i];
-  bwrite (dp->dev, bp, bmap(dp, off/BSIZE));   // write directory
+  bwrite (dp->dev, bp, bmap(dp, off/BSIZE));   // write directory block
   brelse(bp);
-  iupdate (ip);
+
+  dp->size += sizeof(struct dirent);   // update directory inode
+  iupdate (dp);
+
   return ip;
 }
