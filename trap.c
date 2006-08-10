@@ -41,6 +41,17 @@ trap(struct trapframe *tf)
     panic("interrupt while holding a lock");
   }
 
+  if(cpu() == 1 && curproc[cpu()] == 0){
+    if(&tf < cpus[cpu()].mpstack || &tf > cpus[cpu()].mpstack + 512){
+      cprintf("&tf %x mpstack %x\n", &tf, cpus[cpu()].mpstack);
+      panic("trap cpu stack");
+    }
+  } else if(curproc[cpu()]){
+    if(&tf < curproc[cpu()]->kstack){
+      panic("trap kstack");
+    }
+  }
+
   if(v == T_SYSCALL){
     struct proc *cp = curproc[cpu()];
     int num = cp->tf->eax;
@@ -97,11 +108,20 @@ trap(struct trapframe *tf)
 
   if(v == (IRQ_OFFSET + IRQ_IDE)){
     ide_intr();
+    if(cpus[cpu()].nlock)
+      panic("ide_intr returned while holding a lock");
+    cli(); // prevent a waiting interrupt from overflowing stack
+    lapic_eoi();
     return;
   }
 
   if(v == (IRQ_OFFSET + IRQ_KBD)){
     kbd_intr();
+    if(cpus[cpu()].nlock){
+      panic("kbd_intr returned while holding a lock");
+    }
+    cli(); // prevent a waiting interrupt from overflowing stack
+    lapic_eoi();
     return;
   }
 

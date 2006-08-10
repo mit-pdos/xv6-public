@@ -13,6 +13,12 @@ struct devsw devsw[NDEV];
 
 struct fd fds[NFD];
 
+void
+fd_init(void)
+{
+  initlock(&fd_table_lock, "fd_table");
+}
+
 /*
  * allocate a file descriptor number for curproc.
  */

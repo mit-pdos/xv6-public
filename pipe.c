@@ -34,7 +34,7 @@ pipe_alloc(struct fd **fd1, struct fd **fd2)
   p->writeopen = 1;
   p->writep = 0;
   p->readp = 0;
-  memset(&p->lock, 0, sizeof(p->lock));
+  initlock(&p->lock, "pipe");
   (*fd1)->type = FD_PIPE;
   (*fd1)->readable = 1;
   (*fd1)->writeable = 0;

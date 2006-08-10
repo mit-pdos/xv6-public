@@ -15,7 +15,7 @@
 #include "proc.h"
 #include "spinlock.h"
 
-struct spinlock kalloc_lock = { "kalloc" };
+struct spinlock kalloc_lock;
 
 struct run {
   struct run *next;
@@ -37,6 +37,7 @@ kinit(void)
   uint mem;
   char *start;
   
+  initlock(&kalloc_lock, "kalloc");
   start = (char *) &end;
   start = (char *) (((uint)start + PAGE) & ~(PAGE-1));
   mem = 256; // XXX

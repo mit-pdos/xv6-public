@@ -15,8 +15,6 @@ extern uchar _binary_user1_start[], _binary_user1_size[];
 extern uchar _binary_usertests_start[], _binary_usertests_size[];
 extern uchar _binary_userfs_start[], _binary_userfs_size[];
 
-extern int use_console_lock;
-
 // CPU 0 starts running C code here.
 // This is called main0 not main so that it can have
 // a void return type.  Gcc can't handle functions named
@@ -27,28 +25,36 @@ main0(void)
   int i;
   struct proc *p;
 
+  lcr4(0); // xxx copy of cpu #
+
   // clear BSS
   memset(edata, 0, end - edata);
 
   // Make sure interrupts stay disabled on all processors
   // until each signals it is ready, by pretending to hold
   // an extra lock.
-  for(i=0; i<NCPU; i++)
+  // xxx maybe replace w/ acquire remembering if FL_IF
+  for(i=0; i<NCPU; i++){
     cpus[i].nlock++;
+    cpus[i].guard1 = 0xdeadbeef;
+    cpus[i].guard2 = 0xdeadbeef;
+  }
 
   mp_init(); // collect info about this machine
-
-  use_console_lock = 1;
 
   lapic_init(mp_bcpu());
 
   cprintf("\n\ncpu%d: booting xv6\n\n", cpu());
 
+  pinit();
+  binit();
   pic_init(); // initialize PIC
   ioapic_init();
   kinit(); // physical memory allocator
   tvinit(); // trap vectors
   idtinit(); // this CPU's idt register
+  fd_init();
+  iinit();
 
   // create a fake process per CPU
   // so each CPU always has a tss and a gdt
@@ -101,6 +107,8 @@ main0(void)
 void
 mpmain(void)
 {
+  lcr4(1); // xxx copy of cpu #
+
   cprintf("cpu%d: starting\n", cpu());
   idtinit(); // CPU's idt
   if(cpu() == 0)

@@ -13,9 +13,15 @@
 // these are inodes currently in use
 // an entry is free if count == 0
 struct inode inode[NINODE];
-struct spinlock inode_table_lock = { "inode_table" };
+struct spinlock inode_table_lock;
 
 uint rootdev = 1;
+
+void
+iinit(void)
+{
+  initlock(&inode_table_lock, "inode_table");
+}
 
 static uint 
 balloc(uint dev) 

@@ -41,8 +41,6 @@ struct proc{
   uint sz; // total size of mem, including kernel stack
   char *kstack; // kernel stack, separate from mem so it doesn't move
   enum proc_state state;
-  enum proc_state newstate; // desired state after swtch()
-  struct spinlock *mtx; // mutex for condition variable
   int pid;
   int ppid;
   void *chan; // sleep
@@ -68,7 +66,9 @@ extern struct proc *curproc[NCPU];  // can be NULL if no proc running.
 struct cpu {
   uchar apicid;       // Local APIC ID
   struct jmpbuf jmpbuf;
+  int guard1;
   char mpstack[MPSTACK]; // per-cpu start-up stack
+  int guard2;
   volatile int booted;
   int nlock; // # of locks currently held
   struct spinlock *lastacquire; // xxx debug

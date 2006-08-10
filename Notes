@@ -279,3 +279,78 @@ BUT now userfs doesn't do the final cat README
 
 AND w/ cprintf("kbd overflow"), panic holding locks in scheduler
   maybe also simulataneous panic("interrupt while holding a lock")
+
+again (holding down x key):
+  kbd overflow
+  kbd oaaniicloowh
+  olding locks in scheduler
+  trap v 33 eip 100F5F c^CNext at t=32166285
+  (0) [0x0010033e] 0008:0010033e (unk. ctxt): jmp .+0xfffffffe (0x0010033e) ; ebfe
+  (1) [0x0010005c] 0008:0010005c (unk. ctxt): jmp .+0xfffffffe (0x0010005c) ; ebfe
+cpu0 paniced due to holding locks in scheduler
+cpu1 got panic("interrupt while holding a lock")
+  again in lapic_write.
+  while re-enabling an IRQ?
+
+again:
+cpu 0 panic("holding locks in scheduler")
+  but didn't trigger related panics earlier in scheduler or sched()
+  of course the panic is right after release() and thus sti()
+  so we may be seeing an interrupt that left locks held
+cpu 1 unknown panic
+why does it happen to both cpus at the same time?
+
+again:
+cpu 0 panic("holding locks in scheduler")
+  but trap() didn't see any held locks on return
+cpu 1 no apparent panic
+
+again:
+cpu 0 panic: holding too many locks in scheduler
+cpu 1 panic: kbd_intr returned while holding a lock
+
+again:
+cpu 0 panic: holding too man
+  la 10d70c lr 10027b
+  those don't seem to be locks...
+  only place non-constant lock is used is sleep()'s 2nd arg
+  maybe register not preserved across context switch?
+  it's in %esi...
+  sched() doesn't touch %esi
+  %esi is evidently callee-saved
+  something to do with interrupts? since ordinarily it works
+cpu 1 panic: kbd_int returned while holding a lock
+  la 107340 lr 107300
+  console_lock and kbd_lock
+
+maybe console_lock is often not released due to change
+  in use_console_lock (panic on other cpu)
+
+again:
+cpu 0: panic: h...
+  la 10D78C lr 102CA0
+cpu 1: panic: acquire FL_IF (later than cpu 0)
+
+but if sleep() were acquiring random locks, we'd see panics
+in release, after sleep() returned.
+actually when system is idle, maybe no-one sleeps at all.
+  just scheduler() and interrupts
+
+questions:
+  does userfs use pipes? or fork?
+    no
+  does anything bad happen if process 1 exits? eg exit() in cat.c
+    looks ok
+  are there really no processes left?
+  lock_init() so we can have a magic number?
+
+HMM maybe the variables at the end of struct cpu are being overwritten
+  nlocks, lastacquire, lastrelease
+  by cpu->stack?
+  adding junk buffers maybe causes crash to take longer...
+  when do we run on cpu stack?
+  just in scheduler()?
+    and interrupts from scheduler()
+ 
+OH! recursive interrupts will use up any amount of cpu[].stack!
+  underflow and wrecks *previous* cpu's struct

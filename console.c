@@ -3,10 +3,15 @@
 #include "defs.h"
 #include "spinlock.h"
 #include "dev.h"
+#include "param.h"
 
-struct spinlock console_lock = { "console" };
+struct spinlock console_lock;
 int panicked = 0;
 int use_console_lock = 0;
+
+// per-cpu copy of output to help panic/lock debugging
+char obuf[NCPU][1024];
+uint obufi[NCPU];
 
 /*
  * copy console output to parallel port, which you can tell
@@ -31,6 +36,10 @@ cons_putc(int c)
   int crtport = 0x3d4; // io port of CGA
   ushort *crt = (ushort *) 0xB8000; // base of CGA memory
   int ind;
+
+  obuf[rcr4()][obufi[rcr4()]++] = c;
+  if(obufi[rcr4()] >= 1024)
+    obufi[rcr4()] = 0;
 
   if(panicked){
     cli();
@@ -101,11 +110,13 @@ printint(int xx, int base, int sgn)
 void
 cprintf(char *fmt, ...)
 {
-  int i, state = 0, c;
+  int i, state = 0, c, locking = 0;
   uint *ap = (uint *)(void*)&fmt + 1;
 
-  if(use_console_lock)
+  if(use_console_lock){
+    locking = 1;
     acquire(&console_lock);
+  }
 
   for(i = 0; fmt[i]; i++){
     c = fmt[i] & 0xff;
@@ -140,7 +151,7 @@ cprintf(char *fmt, ...)
     }
   }
 
-  if(use_console_lock)
+  if(locking)
     release(&console_lock);
 }
 
@@ -293,7 +304,7 @@ static uchar *charcode[4] = {
 char kbd_buf[KBD_BUF];
 int kbd_r;
 int kbd_w;
-struct spinlock kbd_lock = { "kbd_lock" };
+struct spinlock kbd_lock;
 
 void
 kbd_intr()
@@ -303,20 +314,17 @@ kbd_intr()
 
   st = inb(KBSTATP);
   if ((st & KBS_DIB) == 0){
-    lapic_eoi();
     return;
   }
   data = inb(KBDATAP);
 
   if (data == 0xE0) {
     shift |= E0ESC;
-    lapic_eoi();
     return;
   } else if (data & 0x80) {
     // Key released
     data = (shift & E0ESC ? data : data & 0x7F);
     shift &= ~(shiftcode[data] | E0ESC);
-    lapic_eoi();
     return;
   } else if (shift & E0ESC) {
     // Last character was an E0 escape; or with 0x80
@@ -346,14 +354,17 @@ kbd_intr()
   }
 
   release(&kbd_lock);
-
-  lapic_eoi();
 }
 
 void
 console_init()
 {
+  initlock(&console_lock, "console");
+  initlock(&kbd_lock, "kbd");
+
   devsw[CONSOLE].d_write = console_write;
 
   ioapic_enable (IRQ_KBD, 1);
+
+  use_console_lock = 1;
 }

@@ -10,7 +10,18 @@
 // because cprintf uses them itself.
 //#define cprintf dont_use_cprintf
 
+#define LOCKMAGIC 0x6673ffea
+
 extern int use_console_lock;
+
+void
+initlock(struct spinlock *lock, char *name)
+{
+  lock->magic = LOCKMAGIC;
+  lock->name = name;
+  lock->locked = 0;
+  lock->cpu = 0xffffffff;
+}
 
 void
 getcallerpcs(void *v, uint pcs[])
@@ -27,6 +38,8 @@ getcallerpcs(void *v, uint pcs[])
 void
 acquire(struct spinlock * lock)
 {
+  if(lock->magic != LOCKMAGIC)
+    panic("weird lock magic");
   if(holding(lock))
     panic("acquire");
 
@@ -45,6 +58,9 @@ acquire(struct spinlock * lock)
 void
 release(struct spinlock * lock)
 {
+  if(lock->magic != LOCKMAGIC)
+    panic("weird lock magic");
+
 	if(!holding(lock))
 		panic("release");
 
@@ -55,8 +71,6 @@ release(struct spinlock * lock)
 	lock->locked = 0;
 	if(--cpus[cpu()].nlock == 0)
 		sti();
-        // xxx we may have just turned interrupts on during
-        // an interrupt, is that ok?
 }
 
 int

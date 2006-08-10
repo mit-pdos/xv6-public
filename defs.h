@@ -10,6 +10,7 @@ void panic(char *s);
 void kbd_intr(void);
 
 // proc.c
+void pinit(void);
 struct proc;
 struct jmpbuf;
 void setupsegs(struct proc *);
@@ -67,6 +68,7 @@ void ioapic_enable (int irq, int cpu);
 
 // spinlock.c
 struct spinlock;
+void initlock(struct spinlock *, char *);
 void acquire(struct spinlock*);
 void release(struct spinlock*);
 int holding(struct spinlock*);
@@ -83,6 +85,7 @@ int pipe_write(struct pipe *p, char *addr, int n);
 int pipe_read(struct pipe *p, char *addr, int n);
 
 // fd.c
+void fd_init(void);
 int fd_ualloc(void);
 struct fd * fd_alloc(void);
 void fd_close(struct fd *);
@@ -97,6 +100,7 @@ void* ide_start_rw(int diskno, uint secno, void *dst, uint nsecs, int read);
 int ide_finish(void *);
 
 // bio.c
+void binit(void);
 struct buf;
 struct buf *getblk(void);
 struct buf *bread(uint, uint);
@@ -104,6 +108,7 @@ void bwrite(uint, struct buf *, uint);
 void brelse(struct buf *);
 
 // fs.c
+void iinit(void);
 struct inode * iget(uint dev, uint inum);
 void ilock(struct inode *ip);
 void iunlock(struct inode *ip);
