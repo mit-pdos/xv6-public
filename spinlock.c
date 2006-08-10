@@ -30,8 +30,10 @@ acquire(struct spinlock * lock)
   if(holding(lock))
     panic("acquire");
 
-	if(cpus[cpu()].nlock++ == 0)
-		cli();
+  if(cpus[cpu()].nlock == 0)
+    cli();
+  cpus[cpu()].nlock++;
+                
 	while(cmpxchg(0, 1, &lock->locked) == 1)
 		;
 	cpuid(0, 0, 0, 0, 0);	// memory barrier
@@ -53,6 +55,8 @@ release(struct spinlock * lock)
 	lock->locked = 0;
 	if(--cpus[cpu()].nlock == 0)
 		sti();
+        // xxx we may have just turned interrupts on during
+        // an interrupt, is that ok?
 }
 
 int

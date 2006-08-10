@@ -4,8 +4,10 @@ void kfree(char *cp, int len);
 void kinit(void);
 
 // console.c
+void console_init(void);
 void cprintf(char *fmt, ...);
 void panic(char *s);
+void kbd_intr(void);
 
 // proc.c
 struct proc;

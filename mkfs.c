@@ -75,7 +75,7 @@ main(int argc, char *argv[])
   sb.nblocks = xint(nblocks); // so whole disk is size sectors
   sb.ninodes = xint(ninodes);
 
-  bitblocks = sb.size/(512*8) + 1; 
+  bitblocks = size/(512*8) + 1; 
   usedblocks = ninodes / IPB + 3 + bitblocks;
   freeblock = usedblocks;
 

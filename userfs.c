@@ -1,6 +1,7 @@
 #include "user.h"
 #include "types.h"
 #include "fs.h"
+#include "fcntl.h"
 
 // file system tests
 

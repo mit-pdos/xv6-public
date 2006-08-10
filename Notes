@@ -241,3 +241,41 @@ maybe a race; acquire does
   cpu = cpu()
 what if another acquire calls holding w/ locked = 1 but
   before cpu is set?
+
+if I type a lot (kbd), i get a panic
+cpu1 in scheduler: panic "holding locks in scheduler"
+cpu0 also in the same panic!
+recursive interrupt?
+  FL_IF is probably set during interrupt... is that correct?
+again:
+  olding locks in scheduler
+  trap v 33 eip 100ED3 c (that is, interrupt while holding a lock)
+  100ed3 is in lapic_write
+again:
+  trap v 33 eip 102A3C cpu 1 nlock 1 (in acquire)
+  panic: interrupt while holding a lock
+again:
+  trap v 33 eip 102A3C cpu 1 nlock 1
+  panic: interrupt while holding a lock
+OR is it the cprintf("kbd overflow")?
+  no, get panic even w/o that cprintf
+OR a release() at interrupt time turns interrupts back on?
+  of course i don't think they were off...
+OK, fixing trap.c to make interrupts turn off FL_IF
+  that makes it take longer, but still panics
+  (maybe b/c release sets FL_IF)
+
+shouldn't something (PIC?) prevent recursive interrupts of same IRQ?
+  or should FL_IF be clear during all interrupts?
+
+maybe acquire should remember old FL_IF value, release should restore
+  if acquire did cli()
+
+DUH the increment of nlock in acquire() happens before the cli!
+  so the panic is probably not a real problem
+  test nlock, cli(), then increment?
+
+BUT now userfs doesn't do the final cat README
+
+AND w/ cprintf("kbd overflow"), panic holding locks in scheduler
+  maybe also simulataneous panic("interrupt while holding a lock")

@@ -329,6 +329,7 @@ writei(struct inode *ip, void *addr, uint off, uint n)
     return r;
   } else {
     panic ("writei: unknown type\n");
+    return 0;
   }
 }
 
