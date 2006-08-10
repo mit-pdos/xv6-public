@@ -13,6 +13,9 @@ int cons_puts(char*);
 int exec(char *, char **);
 int open(char *, int);
 int mknod (char*,short,short,short);
+int unlink (char*);
 int puts(char*);
 int puts1(char*);
 char* strcpy(char*, char*);
+void printf(int fd, char *fmt, ...);
+

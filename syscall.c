@@ -331,6 +331,30 @@ sys_mknod(void)
 }
 
 int
+sys_unlink(void)
+{
+  struct proc *cp = curproc[cpu()];
+  struct inode *ip;
+  uint arg0;
+
+  if(fetcharg(0, &arg0) < 0)
+    return -1;
+
+  if(checkstring(arg0) < 0)
+    return -1;
+
+  ip = namei(cp->mem + arg0);
+  ip->nlink--;
+  if (ip->nlink <= 0) {
+    panic("sys_link: unimplemented\n");
+  }
+  iupdate(ip);
+  iput(ip);
+
+  return 0;
+}
+
+int
 sys_exec(void)
 {
   struct proc *cp = curproc[cpu()];
@@ -560,6 +584,9 @@ syscall(void)
     break;
   case SYS_mknod:
     ret = sys_mknod();
+    break;
+  case SYS_unlink:
+    ret = sys_unlink();
     break;
   default:
     cprintf("unknown sys call %d\n", num);

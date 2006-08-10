@@ -23,7 +23,7 @@ balloc(uint dev)
   int b;
   struct buf *bp;
   struct superblock *sb;
-  int bi;
+  int bi = 0;
   int size;
   int ninodes;
   uchar m;
@@ -50,9 +50,32 @@ balloc(uint dev)
   cprintf ("balloc: allocate block %d\n", b);
   bp->data[bi/8] |= 0x1 << (bi % 8);
   bwrite (dev, bp, BBLOCK(b, ninodes));  // mark it allocated on disk
+  brelse(bp);
   return b;
 }
 
+static void 
+bfree(int dev, uint b)
+{
+  struct buf *bp;
+  struct superblock *sb;
+  int bi;
+  int ninodes;
+  uchar m;
+
+  cprintf ("bfree: free block %d\n", b);
+  bp = bread(dev, 1);
+  sb = (struct superblock *) bp->data;
+  ninodes = sb->ninodes;
+  brelse(bp);
+
+  bp = bread(dev, BBLOCK(b, ninodes));
+  bi = b % BPB;
+  m = ~(0x1 << (bi %8));
+  bp->data[bi/8] &= m;
+  bwrite (dev, bp, BBLOCK(b, ninodes));  // mark it free on disk
+  brelse(bp);
+}
 
 // returns an inode with busy set and incremented reference count.
 struct inode *
@@ -102,7 +125,24 @@ iget(uint dev, uint inum)
   return nip;
 }
 
-// allocate an inode on disk
+void 
+iupdate (struct inode *ip)
+{
+  struct buf *bp;
+  struct dinode *dip;
+
+  bp = bread(ip->dev, IBLOCK(ip->inum));
+  dip = &((struct dinode *)(bp->data))[ip->inum % IPB];
+  dip->type = ip->type;
+  dip->major = ip->major;
+  dip->minor = ip->minor;
+  dip->nlink = ip->nlink;
+  dip->size = ip->size;
+  memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+  bwrite (ip->dev, bp, IBLOCK(ip->inum));   // mark it allocated on the disk
+  brelse(bp); 
+}
+
 struct inode *
 ialloc(uint dev, short type)
 {
@@ -139,21 +179,11 @@ ialloc(uint dev, short type)
   return ip;
 }
 
-void 
-iupdate (struct inode *ip)
+static void
+ifree(uint dev, struct inode *ip)
 {
-  struct buf *bp;
-  struct dinode *dip;
-
-  bp = bread(ip->dev, IBLOCK(ip->inum));
-  dip = &((struct dinode *)(bp->data))[ip->inum % IPB];
-  dip->type = ip->type;
-  dip->major = ip->major;
-  dip->minor = ip->minor;
-  dip->nlink = ip->nlink;
-  dip->size = ip->size;
-  bwrite (ip->dev, bp, IBLOCK(ip->inum));   // mark it allocated on the disk
-  brelse(bp); 
+  ip->type = 0;
+  iupdate(ip);
 }
 
 void
@@ -259,13 +289,44 @@ readi(struct inode *ip, void *xdst, uint off, uint n)
   return target - n;
 }
 
+#define MIN(a, b) ((a < b) ? a : b)
+
 int
-writei(struct inode *ip, void *addr, uint n)
+writei(struct inode *ip, void *addr, uint off, uint n)
 {
   if (ip->type == T_DEV) {
     if (ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].d_write)
       return -1;
     return devsw[ip->major].d_write (ip->minor, addr, n);
+  } else if (ip->type == T_FILE || ip->type == T_DIR) { // XXX dir here too?
+    struct buf *bp;
+    int r = 0;
+    int m;
+    int lbn;
+    uint b;
+    while (r < n) {
+      lbn = off / BSIZE;
+      if (lbn >= NDIRECT) return r;
+      if (ip->addrs[lbn] == 0) {
+	b = balloc(ip->dev);
+	if (b <= 0) return r;
+	ip->addrs[lbn] = b;
+      }
+      m = MIN(BSIZE - off % BSIZE, n-r);
+      bp = bread(ip->dev, bmap(ip, off / BSIZE));
+      memmove (bp->data + off % BSIZE, addr, m);
+      bwrite (ip->dev, bp, bmap(ip, off/BSIZE));
+      brelse (bp);
+      r += m;
+      off += m;
+    }
+    if (r > 0) {
+      if (off > ip->size) {
+	ip->size = off;
+      }
+      iupdate(ip);
+    }
+    return r;
   } else {
     panic ("writei: unknown type\n");
   }
@@ -358,7 +419,7 @@ mknod(struct inode *dp, char *cp, short type, short major, short minor)
     }
     brelse(bp);
   }
-  panic("mknod: no dir entry free\n");
+  panic("mknod: XXXX no dir entry free\n");
 
  found:
   ep->inum = ip->inum;

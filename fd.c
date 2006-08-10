@@ -59,7 +59,13 @@ fd_write(struct fd *fd, char *addr, int n)
   if(fd->type == FD_PIPE){
     return pipe_write(fd->pipe, addr, n);
   } else if (fd->type == FD_FILE) {
-    return writei (fd->ip, addr, n);
+    ilock(fd->ip);
+    int r = writei (fd->ip, addr, fd->off, n);
+    if (r > 0) {
+      fd->off += r;
+    }
+    iunlock(fd->ip);
+    return r;
   } else {
     panic("fd_write");
     return -1;

@@ -163,9 +163,13 @@ console_write (int minor, void *buf, int n)
   int i;
   uchar *b = buf;
 
+  acquire(&console_lock);
+
   for (i = 0; i < n; i++) {
     cons_putc((int) b[i]);
   }
+
+  release(&console_lock);
 
   return n;
 }

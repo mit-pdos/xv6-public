@@ -4,7 +4,7 @@
 
 // file system tests
 
-char buf[1024];
+char buf[2000];
 char *echo_args[] = { "echo", "hello", "goodbye", 0 };
 char *cat_args[] = { "cat", "README", 0 };
 
@@ -12,48 +12,64 @@ int
 main(void)
 {
   int fd;
+  int i;
+  int stdout;
 
-  puts("userfs running\n");
-  block();
-
+  //  printf(stdout, "userfs running\n");
   if (mknod ("console", T_DEV, 1, 1) < 0)
     puts ("mknod failed\n");
   else
     puts ("made a node\n");
-  fd = open("console", O_WRONLY);
-  if(fd >= 0){
-    puts("open console ok\n");
-  } else {
-    puts("open console failed!\n");
-  }
-  if (write (fd, "hello\n", 6) != 6) {
-    puts ("write to console failed\n");
-  }
-  close (fd);
+  stdout = open("console", O_WRONLY);
+  printf(stdout, "userfs is running\n");
+
+  block();
 
   fd = open("echo", 0);
   if(fd >= 0){
-    puts("open echo ok\n");
+    printf(stdout, "open echo ok\n");
     close(fd);
   } else {
-    puts("open echo failed!\n");
+    printf(stdout, "open echo failed!\n");
   }
   fd = open("doesnotexist", 0);
   if(fd >= 0){
-    puts("open doesnotexist succeeded!\n");
+    printf(stdout, "open doesnotexist succeeded!\n");
     close(fd);
   } else {
-    puts("open doesnotexist failed\n");
+    printf(stdout, "open doesnotexist failed\n");
   }
-
   fd = open("doesnotexist", O_CREATE|O_RDWR);
   if(fd >= 0){
-    puts("creat doesnotexist succeeded\n");
+    printf(stdout, "creat doesnotexist succeeded\n");
   } else {
-    puts("error: creat doesnotexist failed!\n");
+    printf(stdout, "error: creat doesnotexist failed!\n");
+  }
+  for (i = 0; i < 100; i++) {
+    if (write (fd, "aaaaaaaaaa", 10) != 10) {
+      printf(stdout, "error: write new file failed\n");
+    }
+    if (write (fd, "bbbbbbbbbb", 10) != 10) {
+      printf(stdout, "error: write new file failed\n");
+    }
+  }
+  printf(stdout, "writes done\n");
+  close(fd);
+  fd = open("doesnotexist", O_RDONLY);
+  if(fd >= 0){
+    printf(stdout, "open doesnotexist succeeded\n");
+  } else {
+    printf(stdout, "error: open doesnotexist failed!\n");
+  }
+  i = read(fd, buf, 10000);
+  if (i == 2000) {
+    printf(stdout, "read succeeded\\n");
+  } else {
+    printf(stdout, "read failed\n");
   }
   close(fd);
   //exec("echo", echo_args);
+  printf(stdout, "about to do exec\n");
   exec("cat", cat_args);
   return 0;
 }
