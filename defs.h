@@ -118,4 +118,5 @@ struct inode * namei(char *path);
 int readi(struct inode *ip, char *xdst, uint off, uint n);
 int writei(struct inode *ip, char *addr, uint off, uint n);
 struct inode *mknod(struct inode *, char *, short, short, short);
+int unlink(char *cp);
 void iupdate (struct inode *ip);

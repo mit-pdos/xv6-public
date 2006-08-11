@@ -265,10 +265,9 @@ sys_open(void)
       if (l >= DIRSIZ)
 	return -1;
       dp = iget(rootdev, 1);  // XXX should parse name
-      if (dp->type != T_DIR) 
-	return -1;
-      if ((ip = mknod (dp, cp->mem + arg0, T_FILE, 0, 0)) == 0)
-	return -1;
+      ip = mknod (dp, cp->mem + arg0, T_FILE, 0, 0);
+      iput(dp);
+      if (ip == 0) return -1;
     } else return -1;
   }
   if((fd = fd_alloc()) == 0){
@@ -319,45 +318,26 @@ sys_mknod(void)
     return -1;
 
   dp = iget(rootdev, 1);    // XXX should parse name
-  if (dp->type != T_DIR) {
-    iput(dp);
-    return -1;
-  }
-
   nip = mknod (dp, cp->mem + arg0, (short) arg1, (short) arg2, 
 		   (short) arg3);
-
   iput(dp);
-
-  if (nip == 0) return -1;
-
   iput(nip);
-  
-  return 0;
+  return (nip == 0) ? -1 : 0;
 }
 
 int
 sys_unlink(void)
 {
   struct proc *cp = curproc[cpu()];
-  struct inode *ip;
   uint arg0;
-
+  int r;
+  
   if(fetcharg(0, &arg0) < 0)
     return -1;
-
   if(checkstring(arg0) < 0)
     return -1;
-
-  ip = namei(cp->mem + arg0);
-  ip->nlink--;
-  if (ip->nlink <= 0) {
-    panic("sys_link: unimplemented\n");
-  }
-  iupdate(ip);
-  iput(ip);
-
-  return 0;
+  r = unlink(cp->mem + arg0);
+  return r;
 }
 
 int

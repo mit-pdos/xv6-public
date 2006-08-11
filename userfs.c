@@ -5,7 +5,7 @@
 
 // file system tests
 
-char buf[2000];
+char buf[3000];
 char *echo_args[] = { "echo", "hello", "goodbye", 0 };
 char *cat_args[] = { "cat", "README", 0 };
 
@@ -62,13 +62,14 @@ main(void)
   } else {
     printf(stdout, "error: open doesnotexist failed!\n");
   }
-  i = read(fd, buf, 10000);
+  i = read(fd, buf, 2000);
   if (i == 2000) {
-    printf(stdout, "read succeeded\\n");
+    printf(stdout, "read succeeded\n");
   } else {
     printf(stdout, "read failed\n");
   }
   close(fd);
+  unlink("doesnotexist");
   //exec("echo", echo_args);
   printf(stdout, "about to do exec\n");
   exec("cat", cat_args);

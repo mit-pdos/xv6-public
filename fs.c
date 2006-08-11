@@ -187,7 +187,7 @@ ialloc(uint dev, short type)
 }
 
 static void
-ifree(uint dev, struct inode *ip)
+ifree(struct inode *ip)
 {
   ip->type = 0;
   iupdate(ip);
@@ -439,4 +439,62 @@ mknod(struct inode *dp, char *cp, short type, short major, short minor)
   iupdate (dp);
 
   return ip;
+}
+
+int
+unlink(char *cp)
+{
+  int i;
+  struct inode *ip, *dp;
+  struct dirent *ep = 0;
+  int off;
+  struct buf *bp = 0;
+  
+    if ((ip = namei(cp)) == 0) {
+    cprintf("file to be unlinked doesn't exist\n");
+    return -1;
+  }
+
+  ip->nlink--;
+  if (ip->nlink > 0) {
+    iupdate(ip);
+    iput(ip); // is this the right order?
+    return 0;
+  }
+
+  // free inode, its blocks, and remove dir entry
+  for (i = 0; i < NDIRECT; i++) {
+    if (ip->addrs[i] != 0) {
+      bfree(ip->dev, ip->addrs[i]);
+      ip->addrs[i] = 0;
+    }
+  }
+  ip->size = 0;
+  ip->major = 0;
+  ip->minor = 0;
+  iupdate(ip);
+  ifree(ip);  // is this the right order?
+
+  dp = iget(rootdev, 1);    // XXX should parse name
+  for(off = 0; off < dp->size; off += BSIZE) {
+    bp = bread(dp->dev, bmap(dp, off / BSIZE));
+    for(ep = (struct dirent *) bp->data;
+	ep < (struct dirent *) (bp->data + BSIZE);
+	ep++){
+      if(ep->inum == ip->inum) {
+	goto found;
+      }
+    }
+    brelse(bp);
+  }
+  panic("mknod: XXXX no dir entry free\n");
+
+ found:
+  ep->inum = 0;
+  bwrite (dp->dev, bp, bmap(dp, off/BSIZE));   // write directory block
+  brelse(bp);
+  iput(ip);
+  iupdate (dp);
+  iput(dp);
+  return 0;
 }

@@ -76,7 +76,7 @@ ioapic_enable (int irq, int cpunum)
   ioapic_write(io, IOAPIC_REDTBL_LO(irq), l);
   h = ioapic_read(io, IOAPIC_REDTBL_HI(irq));
   h &= ~IOART_DEST;
-  h |= (cpunum << APIC_ID_SHIFT);  // for fun, disk interrupts to cpu 1
+  h |= (cpunum << APIC_ID_SHIFT); 
   ioapic_write(io, IOAPIC_REDTBL_HI(irq), h);
   cprintf("cpu%d: intr %d: lo 0x%x hi 0x%x\n", cpu(), irq, l, h);
 }
