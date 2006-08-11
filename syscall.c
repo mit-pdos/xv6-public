@@ -319,14 +319,19 @@ sys_mknod(void)
     return -1;
 
   dp = iget(rootdev, 1);    // XXX should parse name
-  if (dp->type != T_DIR) 
+  if (dp->type != T_DIR) {
+    iput(dp);
     return -1;
+  }
+
   nip = mknod (dp, cp->mem + arg0, (short) arg1, (short) arg2, 
 		   (short) arg3);
 
-  if (nip == 0) return -1;
-  iput(nip);
   iput(dp);
+
+  if (nip == 0) return -1;
+
+  iput(nip);
   
   return 0;
 }
@@ -376,7 +381,7 @@ sys_exec(void)
   if(ip == 0)
     return -1;
 
-  if(readi(ip, &elf, 0, sizeof(elf)) < sizeof(elf))
+  if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
     goto bad;
 
   if(elf.magic != ELF_MAGIC)
@@ -384,7 +389,8 @@ sys_exec(void)
 
   sz = 0;
   for(i = 0; i < elf.phnum; i++){
-    if(readi(ip, &ph, elf.phoff + i * sizeof(ph), sizeof(ph)) != sizeof(ph))
+    if(readi(ip, (char*)&ph, elf.phoff + i * sizeof(ph),
+             sizeof(ph)) != sizeof(ph))
       goto bad;
     if(ph.type != ELF_PROG_LOAD)
       continue;
@@ -450,7 +456,8 @@ sys_exec(void)
   mem = 0;
 
   for(i = 0; i < elf.phnum; i++){
-    if(readi(ip, &ph, elf.phoff + i * sizeof(ph), sizeof(ph)) != sizeof(ph))
+    if(readi(ip, (char*)&ph, elf.phoff + i * sizeof(ph),
+             sizeof(ph)) != sizeof(ph))
       goto bad2;
     if(ph.type != ELF_PROG_LOAD)
       continue;

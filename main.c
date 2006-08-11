@@ -11,9 +11,8 @@
 #include "spinlock.h"
 
 extern char edata[], end[];
-extern uchar _binary_user1_start[], _binary_user1_size[];
-extern uchar _binary_usertests_start[], _binary_usertests_size[];
 extern uchar _binary_userfs_start[], _binary_userfs_size[];
+extern uchar _binary_init_start[], _binary_init_size[];
 
 // CPU 0 starts running C code here.
 // This is called main0 not main so that it can have
@@ -96,9 +95,10 @@ main0(void)
   p = copyproc(&proc[0]);
   
   //load_icode(p, _binary_usertests_start, (uint) _binary_usertests_size);
-  load_icode(p, _binary_userfs_start, (uint) _binary_userfs_size);
+  //load_icode(p, _binary_userfs_start, (uint) _binary_userfs_size);
+  load_icode(p, _binary_init_start, (uint) _binary_init_size);
   p->state = RUNNABLE;
-  cprintf("loaded userfs\n");
+  cprintf("loaded init\n");
 
   scheduler();
 }

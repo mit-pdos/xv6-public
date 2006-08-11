@@ -46,12 +46,12 @@ bootblock : bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
-kernel : $(OBJS) bootother.S user1 usertests userfs
+kernel : $(OBJS) bootother.S userfs init
 	$(CC) -nostdinc -I. -c bootother.S
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
-	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother user1 usertests userfs
+	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother userfs init
 	$(OBJDUMP) -S kernel > kernel.asm
 
 vectors.S : vectors.pl
@@ -79,15 +79,23 @@ userfs : userfs.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o userfs userfs.o $(ULIB)
 	$(OBJDUMP) -S userfs > userfs.asm
 
+init : init.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o init init.o $(ULIB)
+	$(OBJDUMP) -S init > init.asm
+
+sh : sh.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o sh sh.o $(ULIB)
+	$(OBJDUMP) -S sh > sh.asm
+
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs usertests echo cat README
-	./mkfs fs.img usertests echo cat README
+fs.img : mkfs userfs usertests echo cat README init sh
+	./mkfs fs.img userfs usertests echo cat README init sh
 
 -include *.d
 
 clean : 
 	rm -f *.o *.d *.asm vectors.S parport.out \
 		bootblock kernel xv6.img user1 userfs usertests \
-		fs.img mkfs echo
+		fs.img mkfs echo init

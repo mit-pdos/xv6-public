@@ -3,17 +3,7 @@
 int
 puts(char *s)
 {
-  return cons_puts(s);
-}
-
-int
-puts1(char *s)
-{
-  int i;
-
-  for(i = 0; s[i]; i++)
-    cons_putc(s[i]);
-  return i;
+  return write(1, s, strlen(s));
 }
 
 char*
@@ -25,4 +15,31 @@ strcpy(char *s, char *t)
 	while((*s++ = *t++) != 0)
 		;
 	return os;
+}
+
+unsigned int
+strlen(char *s)
+{
+  int n = 0;
+  for(n = 0; s[n]; n++)
+    ;
+  return n;
+}
+
+char *
+gets(char *buf, int max)
+{
+  int i = 0, cc;
+  char c;
+  
+  while(i+1 < max){
+    cc = read(0, &c, 1);
+    if(cc < 1)
+      break;
+    if(c == '\n' || c == '\r')
+      break;
+    buf[i++] = c;
+  }
+  buf[i] = '\0';
+  return buf;
 }

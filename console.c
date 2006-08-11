@@ -169,15 +169,14 @@ panic(char *s)
 }
 
 int
-console_write (int minor, void *buf, int n)
+console_write (int minor, char *buf, int n)
 {
   int i;
-  uchar *b = buf;
 
   acquire(&console_lock);
 
   for (i = 0; i < n; i++) {
-    cons_putc((int) b[i]);
+    cons_putc(buf[i] & 0xff);
   }
 
   release(&console_lock);
@@ -349,11 +348,37 @@ kbd_intr()
     kbd_buf[kbd_w++] = c;
     if(kbd_w >= KBD_BUF)
       kbd_w = 0;
+    wakeup(&kbd_r);
   } else {
     cprintf("kbd overflow\n");
   }
 
   release(&kbd_lock);
+}
+
+int
+console_read(int minor, char *dst, int n)
+{
+  uint target = n;
+
+  acquire(&kbd_lock);
+
+  while(kbd_w == kbd_r)
+    sleep(&kbd_r, &kbd_lock);
+
+  while(n > 0 && kbd_w != kbd_r){
+    *dst = kbd_buf[kbd_r];
+    cons_putc(*dst & 0xff);
+    dst++;
+    --n;
+    kbd_r++;
+    if(kbd_r >= KBD_BUF)
+      kbd_r = 0;
+  }
+
+  release(&kbd_lock);
+
+  return target - n;
 }
 
 void
@@ -363,6 +388,7 @@ console_init()
   initlock(&kbd_lock, "kbd");
 
   devsw[CONSOLE].d_write = console_write;
+  devsw[CONSOLE].d_read = console_read;
 
   ioapic_enable (IRQ_KBD, 1);
 
