@@ -1,4 +1,5 @@
 #include "types.h"
+#include "stat.h"
 #include "param.h"
 #include "x86.h"
 #include "mmu.h"
@@ -119,6 +120,18 @@ fd_close(struct fd *fd)
   }
   
   release(&fd_table_lock);
+}
+
+int
+fd_stat(struct fd *fd, struct stat *st)
+{
+  if(fd->type == FD_FILE){
+    ilock(fd->ip);
+    stati(fd->ip, st);
+    iunlock(fd->ip);
+    return 0;
+  } else
+    return -1;
 }
 
 void

@@ -14,7 +14,7 @@ int exec(char *, char **);
 int open(char *, int);
 int mknod (char*,short,short,short);
 int unlink (char*);
-
+int fstat (int fd, struct stat *stat);
 int puts(char*);
 char* strcpy(char*, char*);
 void printf(int fd, char *fmt, ...);

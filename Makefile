@@ -87,11 +87,15 @@ sh : sh.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o sh sh.o $(ULIB)
 	$(OBJDUMP) -S sh > sh.asm
 
+ls : ls.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o ls ls.o $(ULIB)
+	$(OBJDUMP) -S ls > ls.asm
+
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs userfs usertests echo cat README init sh
-	./mkfs fs.img userfs usertests echo cat README init sh
+fs.img : mkfs userfs usertests echo cat README init sh ls
+	./mkfs fs.img userfs usertests echo cat README init sh ls
 
 -include *.d
 

@@ -85,12 +85,14 @@ int pipe_write(struct pipe *p, char *addr, int n);
 int pipe_read(struct pipe *p, char *addr, int n);
 
 // fd.c
+struct stat;
 void fd_init(void);
 int fd_ualloc(void);
 struct fd * fd_alloc(void);
 void fd_close(struct fd *);
 int fd_read(struct fd *fd, char *addr, int n);
 int fd_write(struct fd *fd, char *addr, int n);
+int fd_stat(struct fd *fd, struct stat *);
 void fd_incref(struct fd *fd);
 
 // ide.c
@@ -115,6 +117,7 @@ void iunlock(struct inode *ip);
 void idecref(struct inode *ip);
 void iput(struct inode *ip);
 struct inode * namei(char *path, uint *);
+void stati(struct inode *ip, struct stat *st);
 int readi(struct inode *ip, char *xdst, uint off, uint n);
 int writei(struct inode *ip, char *addr, uint off, uint n);
 struct inode *mknod(char *, short, short, short);

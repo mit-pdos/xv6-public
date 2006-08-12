@@ -1,4 +1,5 @@
 #include "types.h"
+#include "stat.h"
 #include "param.h"
 #include "mmu.h"
 #include "proc.h"
@@ -334,6 +335,28 @@ sys_unlink(void)
   return r;
 }
 
+
+int
+sys_fstat(void)
+{
+  struct proc *cp = curproc[cpu()];
+  uint fd, addr;
+  int r;
+  
+  if(fetcharg(0, &fd) < 0)
+    return -1;
+  if(fetcharg(1, &addr) < 0)
+    return -1;
+  if(fd < 0 || fd >= NOFILE)
+    return -1;
+  if(cp->fds[fd] == 0)
+    return -1;
+  if(addr + sizeof(struct stat) > cp->sz)
+    return -1;
+  r = fd_stat (cp->fds[fd], (struct stat *)(cp->mem + addr));
+  return r;
+}
+
 int
 sys_exec(void)
 {
@@ -569,6 +592,9 @@ syscall(void)
     break;
   case SYS_unlink:
     ret = sys_unlink();
+    break;
+  case SYS_fstat:
+    ret = sys_fstat();
     break;
   default:
     cprintf("unknown sys call %d\n", num);

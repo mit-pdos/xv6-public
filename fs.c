@@ -1,4 +1,5 @@
 #include "types.h"
+#include "stat.h"
 #include "param.h"
 #include "x86.h"
 #include "mmu.h"
@@ -269,6 +270,16 @@ bmap(struct inode *ip, uint bn)
 }
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
+
+void
+stati(struct inode *ip, struct stat *st)
+{
+  st->st_dev = ip->dev;
+  st->st_ino = ip->inum;
+  st->st_type = ip->type;
+  st->st_nlink = ip->nlink;
+  st->st_size = ip->size;
+}
 
 int
 readi(struct inode *ip, char *dst, uint off, uint n)

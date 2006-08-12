@@ -14,4 +14,5 @@
 #define SYS_open 14
 #define SYS_mknod 15
 #define SYS_unlink 16
+#define SYS_fstat 17
 
