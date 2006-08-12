@@ -20,20 +20,31 @@ struct buf *
 getblk(uint dev, uint sector)
 {
   struct buf *b;
+  static struct buf *scan = buf;
+  int i;
 
   acquire(&buf_table_lock);
 
   while(1){
     for(b = buf; b < buf+NBUF; b++)
-      if((b->flags & B_BUSY) && b->dev == dev && b->sector)
+      if((b->flags & (B_BUSY|B_VALID)) && b->dev == dev && b->sector == sector)
         break;
 
     if(b < buf+NBUF){
-      sleep(buf, &buf_table_lock);
+      if(b->flags & B_BUSY){
+        sleep(buf, &buf_table_lock);
+      } else {
+        b->flags |= B_BUSY;
+        release(&buf_table_lock);
+        return b;
+      }
     } else {
-      for(b = buf; b < buf+NBUF; b++){
+      for(i = 0; i < NBUF; i++){
+        b = scan++;
+        if(scan >= buf+NBUF)
+          scan = buf;
         if((b->flags & B_BUSY) == 0){
-          b->flags |= B_BUSY;
+          b->flags = B_BUSY;
           b->dev = dev;
           b->sector = sector;
           release(&buf_table_lock);
@@ -53,11 +64,14 @@ bread(uint dev, uint sector)
   extern struct spinlock ide_lock;
 
   b = getblk(dev, sector);
+  if(b->flags & B_VALID)
+    return b;
 
   acquire(&ide_lock);
   c = ide_start_rw(dev & 0xff, sector, b->data, 1, 1);
   sleep (c, &ide_lock);
   ide_finish(c);
+  b->flags |= B_VALID;
   release(&ide_lock);
 
   return b;
@@ -73,6 +87,7 @@ bwrite(uint dev, struct buf *b, uint sector)
   c = ide_start_rw(dev & 0xff, sector, b->data, 1, 0);
   sleep (c, &ide_lock);
   ide_finish(c);
+  b->flags |= B_VALID;
   release(&ide_lock);
 }
 

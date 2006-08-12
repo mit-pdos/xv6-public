@@ -354,3 +354,6 @@ HMM maybe the variables at the end of struct cpu are being overwritten
  
 OH! recursive interrupts will use up any amount of cpu[].stack!
   underflow and wrecks *previous* cpu's struct
+
+better buffer cache replacement
+read/write of open file that's been unlinked

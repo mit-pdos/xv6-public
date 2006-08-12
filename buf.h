@@ -5,3 +5,4 @@ struct buf {
   uchar data[512];
 };
 #define B_BUSY 0x1
+#define B_VALID 0x2
