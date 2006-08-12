@@ -106,7 +106,7 @@ void binit(void);
 struct buf;
 struct buf * getblk(uint dev, uint sector);
 struct buf *bread(uint, uint);
-void bwrite(uint, struct buf *, uint);
+void bwrite(struct buf *, uint);
 void brelse(struct buf *);
 
 // fs.c

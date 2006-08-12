@@ -363,5 +363,5 @@ more than one directory content block
 sh arguments
 sh redirection
 indirect blocks
-two bugs in unlink
-how come unlink xxx fails? iput problem?
+two bugs in unlink: don't just return if nlink > 0,
+  and search for name, not inum
