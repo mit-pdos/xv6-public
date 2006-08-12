@@ -10,27 +10,41 @@
 struct buf buf[NBUF];
 struct spinlock buf_table_lock;
 
+// linked list of all buffers, through prev/next.
+// bufhead->next is most recently used.
+// bufhead->tail is least recently used.
+struct buf bufhead;
+
 void
 binit(void)
 {
+  struct buf *b;
+
   initlock(&buf_table_lock, "buf_table");
+
+  bufhead.prev = &bufhead;
+  bufhead.next = &bufhead;
+  for(b = buf; b < buf+NBUF; b++){
+    b->next = bufhead.next;
+    b->prev = &bufhead;
+    bufhead.next->prev = b;
+    bufhead.next = b;
+  }
 }
 
 struct buf *
 getblk(uint dev, uint sector)
 {
   struct buf *b;
-  static struct buf *scan = buf;
-  int i;
 
   acquire(&buf_table_lock);
 
   while(1){
-    for(b = buf; b < buf+NBUF; b++)
+    for(b = bufhead.next; b != &bufhead; b = b->next)
       if((b->flags & (B_BUSY|B_VALID)) && b->dev == dev && b->sector == sector)
         break;
 
-    if(b < buf+NBUF){
+    if(b != &bufhead){
       if(b->flags & B_BUSY){
         sleep(buf, &buf_table_lock);
       } else {
@@ -39,10 +53,7 @@ getblk(uint dev, uint sector)
         return b;
       }
     } else {
-      for(i = 0; i < NBUF; i++){
-        b = scan++;
-        if(scan >= buf+NBUF)
-          scan = buf;
+      for(b = bufhead.prev; b != &bufhead; b = b->prev){
         if((b->flags & B_BUSY) == 0){
           b->flags = B_BUSY;
           b->dev = dev;
@@ -64,8 +75,9 @@ bread(uint dev, uint sector)
   extern struct spinlock ide_lock;
 
   b = getblk(dev, sector);
-  if(b->flags & B_VALID)
+  if(b->flags & B_VALID){
     return b;
+  }
 
   acquire(&ide_lock);
   c = ide_start_rw(dev & 0xff, sector, b->data, 1, 1);
@@ -98,6 +110,13 @@ brelse(struct buf *b)
     panic("brelse");
   
   acquire(&buf_table_lock);
+
+  b->next->prev = b->prev;
+  b->prev->next = b->next;
+  b->next = bufhead.next;
+  b->prev = &bufhead;
+  bufhead.next->prev = b;
+  bufhead.next = b;
 
   b->flags &= ~B_BUSY;
   wakeup(buf);
