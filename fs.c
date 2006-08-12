@@ -412,6 +412,8 @@ namei(char *path, uint *ret_pinum)
     pinum = dp->inum;
     iput(dp);
     dp = iget(dev, ninum);
+    if(dp->type == 0 || dp->nlink < 1)
+      panic("namei");
     while(*cp == '/')
       cp++;
   }
@@ -443,7 +445,7 @@ mknod(char *cp, short type, short major, short minor)
   ip->major = major;
   ip->minor = minor;
   ip->size = 0;
-  ip->nlink = 0;
+  ip->nlink = 1;
 
   iupdate (ip);  // write new inode to disk
 
@@ -467,8 +469,8 @@ mknod(char *cp, short type, short major, short minor)
   brelse(bp);
   dp->size += sizeof(struct dirent);   // update directory inode
   iupdate (dp);
-  iput(dp);
-  return ip;
+          iput(dp);
+          return ip;
 }
 
 int

@@ -157,6 +157,7 @@ sharedfd()
     }
   }
   close(fd);
+  unlink("sharedfd");
   if(nc == 1000 && np == 1000)
     printf(1, "sharedfd ok\n");
   else
@@ -219,7 +220,118 @@ twofiles()
     }
   }
 
+  unlink("f1");
+  unlink("f2");
+
   puts("twofiles ok\n");
+}
+
+// two processes create and delete files in same directory
+void
+createdelete()
+{
+  int pid, i, fd;
+  int n = 10; // for now, fit in one directory block
+  char name[32];
+
+  pid = fork();
+  if(pid < 0){
+    puts("fork failed\n");
+    exit();
+  }
+
+  name[0] = pid ? 'p' : 'c';
+  name[2] = '\0';
+  for(i = 0; i < n; i++){
+    name[1] = '0' + i;
+    fd = open(name, O_CREATE | O_RDWR);
+    if(fd < 0){
+      puts("create failed\n");
+      exit();
+    }
+    close(fd);
+    if(i > 0 && (i % 2 ) == 0){
+      name[1] = '0' + (i / 2);
+      if(unlink(name) < 0){
+        puts("unlink failed\n");
+        exit();
+      }
+    }
+  }
+
+  if(pid)
+    wait();
+  else
+    exit();
+
+  for(i = 0; i < n; i++){
+    name[0] = 'p';
+    name[1] = '0' + i;
+    fd = open(name, 0);
+    if((i == 0 || i >= n/2) && fd < 0){
+      printf(1, "oops createdelete %s didn't exist\n", name);
+    } else if((i >= 1 && i < n/2) && fd >= 0){
+      printf(1, "oops createdelete %s did exist\n", name);
+    }
+    if(fd >= 0)
+      close(fd);
+
+    name[0] = 'c';
+    name[1] = '0' + i;
+    fd = open(name, 0);
+    if((i == 0 || i >= n/2) && fd < 0){
+      printf(1, "oops createdelete %s didn't exist\n", name);
+    } else if((i >= 1 && i < n/2) && fd >= 0){
+      printf(1, "oops createdelete %s did exist\n", name);
+    }
+    if(fd >= 0)
+      close(fd);
+  }
+
+  for(i = 0; i < n; i++){
+    name[0] = 'p';
+    name[1] = '0' + i;
+    unlink(name);
+    name[0] = 'c';
+    unlink(name);
+  }
+
+  printf(1, "createdelete ok\n");
+}
+
+// can I unlink a file and still read it?
+void
+unlinkread()
+{
+  int fd;
+  
+  fd = open("unlinkread", O_CREATE | O_RDWR);
+  if(fd < 0){
+    puts("create unlinkread failed\n");
+    exit();
+  }
+  write(fd, "hello", 5);
+  close(fd);
+
+  fd = open("unlinkread", O_RDWR);
+  if(fd < 0){
+    puts("open unlinkread failed\n");
+    exit();
+  }
+  if(unlink("unlinkread") != 0){
+    puts("unlink unlinkread failed\n");
+    exit();
+  }
+  if(read(fd, buf, sizeof(buf)) != 5){
+    puts("unlinkread read failed");
+    exit();
+  }
+  if(write(fd, buf, 10) != 10){
+    puts("unlinkread write failed\n");
+    exit();
+  }
+  close(fd);
+  puts("unlinkread ok\n");
 }
 
 int
@@ -227,6 +339,8 @@ main(int argc, char *argv[])
 {
   puts("usertests starting\n");
 
+  unlinkread();
+  createdelete();
   twofiles();
   sharedfd();
   pipe1();
