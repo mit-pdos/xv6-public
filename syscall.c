@@ -253,20 +253,17 @@ sys_open(void)
   uint arg0, arg1;
   int ufd;
   struct fd *fd;
-  struct inode *dp;
   int l;
 
   if(fetcharg(0, &arg0) < 0 || fetcharg(1, &arg1) < 0)
     return -1;
   if((l = checkstring(arg0)) < 0)
     return -1;
-  if((ip = namei(cp->mem + arg0)) == 0) {
+  if((ip = namei(cp->mem + arg0, 0)) == 0) {
     if (arg1 & O_CREATE) {
       if (l >= DIRSIZ)
 	return -1;
-      dp = iget(rootdev, 1);  // XXX should parse name
-      ip = mknod (dp, cp->mem + arg0, T_FILE, 0, 0);
-      iput(dp);
+      ip = mknod (cp->mem + arg0, T_FILE, 0, 0);
       if (ip == 0) return -1;
     } else return -1;
   }
@@ -303,7 +300,7 @@ int
 sys_mknod(void)
 {
   struct proc *cp = curproc[cpu()];
-  struct inode *dp, *nip;
+  struct inode *nip;
   uint arg0, arg1, arg2, arg3;
   int l;
 
@@ -317,10 +314,7 @@ sys_mknod(void)
   if(l >= DIRSIZ)
     return -1;
 
-  dp = iget(rootdev, 1);    // XXX should parse name
-  nip = mknod (dp, cp->mem + arg0, (short) arg1, (short) arg2, 
-		   (short) arg3);
-  iput(dp);
+  nip = mknod (cp->mem + arg0, (short) arg1, (short) arg2, (short) arg3);
   iput(nip);
   return (nip == 0) ? -1 : 0;
 }
@@ -357,7 +351,7 @@ sys_exec(void)
     return -1;
   if(checkstring(arg0) < 0)
     return -1;
-  ip = namei(cp->mem + arg0);
+  ip = namei(cp->mem + arg0, 0);
   if(ip == 0)
     return -1;
 
@@ -495,7 +489,7 @@ sys_block(void)
           ip->type, ip->nlink, ip->size, ip->addrs[0]);
   iput(ip);
 
-  ip = namei(".././//./../usertests");
+  ip = namei(".././//./../usertests", 0);
   if(ip){
     cprintf("namei(usertests): %d %d %d %d %d %d %d %d\n",
             ip->dev, ip->inum, ip->count, ip->busy,

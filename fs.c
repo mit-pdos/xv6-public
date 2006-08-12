@@ -189,6 +189,7 @@ ialloc(uint dev, short type)
 static void
 ifree(struct inode *ip)
 {
+  cprintf("ifree: %d\n", ip->inum);
   ip->type = 0;
   iupdate(ip);
 }
@@ -340,7 +341,7 @@ writei(struct inode *ip, char *addr, uint off, uint n)
 }
 
 struct inode *
-namei(char *path)
+namei(char *path, uint *ret_pinum)
 {
   struct inode *dp;
   char *cp = path;
@@ -349,17 +350,24 @@ namei(char *path)
   struct dirent *ep;
   int i;
   unsigned ninum;
+  unsigned pinum;
 
   dp = iget(rootdev, 1);
+  pinum = dp->inum;
 
   while(*cp == '/')
     cp++;
 
   while(1){
-    if(*cp == '\0')
+    if(*cp == '\0') {
+      if (ret_pinum)
+	*ret_pinum = pinum;
       return dp;
+    }
 
     if(dp->type != T_DIR){
+      if (ret_pinum)
+	*ret_pinum = pinum;
       iput(dp);
       return 0;
     }
@@ -384,10 +392,13 @@ namei(char *path)
       brelse(bp);
     }
     iput(dp);
+    if (ret_pinum)
+      *ret_pinum = pinum;
     return 0;
 
   found:
     dev = dp->dev;
+    pinum = dp->inum;
     iput(dp);
     dp = iget(dev, ninum);
     while(*cp == '/')
@@ -396,19 +407,28 @@ namei(char *path)
 }
 
 struct inode *
-mknod(struct inode *dp, char *cp, short type, short major, short minor)
+mknod(char *cp, short type, short major, short minor)
 {
-  struct inode *ip;
+  struct inode *ip, *dp;
   struct dirent *ep = 0;
   int off;
   int i;
   struct buf *bp = 0;
+  uint pinum = 0;
 
-  cprintf("mknod: dir %d %s %d %d %d\n",
-          dp->inum, cp, type, major, minor);
+  cprintf("mknod: %s %d %d %d\n", cp, type, major, minor);
 
+  if ((ip = namei(cp, &pinum)) != 0) {
+    iput(ip);
+    return 0;
+  }
+  cprintf("mknod: pinum = %d\n", pinum);
+  dp = iget(rootdev, pinum);
   ip = ialloc(dp->dev, type);
-  if (ip == 0) return 0;
+  if (ip == 0) {
+    iput(dp);
+    return 0;
+  }
   ip->major = major;
   ip->minor = minor;
   ip->size = 0;
@@ -434,10 +454,9 @@ mknod(struct inode *dp, char *cp, short type, short major, short minor)
   for(i = 0; i < DIRSIZ && cp[i]; i++) ep->name[i] = cp[i];
   bwrite (dp->dev, bp, bmap(dp, off/BSIZE));   // write directory block
   brelse(bp);
-
   dp->size += sizeof(struct dirent);   // update directory inode
   iupdate (dp);
-
+  iput(dp);
   return ip;
 }
 
@@ -449,8 +468,9 @@ unlink(char *cp)
   struct dirent *ep = 0;
   int off;
   struct buf *bp = 0;
+  uint pinum;
   
-    if ((ip = namei(cp)) == 0) {
+  if ((ip = namei(cp, &pinum)) == 0) {
     cprintf("file to be unlinked doesn't exist\n");
     return -1;
   }
@@ -475,7 +495,7 @@ unlink(char *cp)
   iupdate(ip);
   ifree(ip);  // is this the right order?
 
-  dp = iget(rootdev, 1);    // XXX should parse name
+  dp = iget(rootdev, pinum);
   for(off = 0; off < dp->size; off += BSIZE) {
     bp = bread(dp->dev, bmap(dp, off / BSIZE));
     for(ep = (struct dirent *) bp->data;

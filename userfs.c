@@ -5,7 +5,7 @@
 
 // file system tests
 
-char buf[3000];
+char buf[2000];
 char *echo_args[] = { "echo", "hello", "goodbye", 0 };
 char *cat_args[] = { "cat", "README", 0 };
 
@@ -14,14 +14,8 @@ main(void)
 {
   int fd;
   int i;
-  int stdout;
+  int stdout = 1;
 
-  //  printf(stdout, "userfs running\n");
-  if (mknod ("console", T_DEV, 1, 1) < 0)
-    puts ("mknod failed\n");
-  else
-    puts ("made a node\n");
-  stdout = open("console", O_WRONLY);
   printf(stdout, "userfs is running\n");
 
   block();
