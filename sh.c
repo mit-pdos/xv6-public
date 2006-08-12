@@ -12,7 +12,7 @@ main(void)
   int pid;
 
   while(1){
-    write(1, "$ ", 2);
+    puts("$ ");
     gets(buf, sizeof(buf));
     if(buf[0] == '\0')
       continue;
@@ -21,8 +21,7 @@ main(void)
       args[0] = buf;
       args[1] = 0;
       exec(buf, args);
-      write(1, buf, strlen(buf));
-      write(1, ": not found\n", 12);
+      printf(1, "%s: not found\n", buf);
       exit();
     }
     if(pid > 0)

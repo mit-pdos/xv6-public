@@ -26,6 +26,17 @@ strlen(char *s)
   return n;
 }
 
+void *
+memset(void *dst, int c, unsigned int n)
+{
+  char *d = (char *) dst;
+
+  while(n-- > 0)
+    *d++ = c;
+
+  return dst;
+}
+
 char *
 gets(char *buf, int max)
 {

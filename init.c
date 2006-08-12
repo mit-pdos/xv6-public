@@ -17,10 +17,10 @@ main(void)
   open("console", 1);
   open("console", 1);
 
-  write(1, "init...\n", 8);
+  puts("init...\n");
 
   while(1){
-    write(1, "running sh...\n", 14);
+    puts("running sh...\n");
     pid = fork();
     if(pid == 0){
       exec("sh", sh_args);

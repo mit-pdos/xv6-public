@@ -104,7 +104,7 @@ int ide_finish(void *);
 // bio.c
 void binit(void);
 struct buf;
-struct buf *getblk(void);
+struct buf * getblk(uint dev, uint sector);
 struct buf *bread(uint, uint);
 void bwrite(uint, struct buf *, uint);
 void brelse(struct buf *);

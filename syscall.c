@@ -215,38 +215,6 @@ sys_kill(void)
 }
 
 int
-sys_cons_putc(void)
-{
-  int c;
-  char buf[2];
-
-  if(fetcharg(0, &c) < 0)
-    return -1;
-  buf[0] = c;
-  buf[1] = 0;
-  cprintf("%s", buf);
-  return 0;
-}
-
-int
-sys_cons_puts(void)
-{
-  char buf[256];
-  int i;
-  uint addr;
-  struct proc *cp = curproc[cpu()];
-
-  if(fetcharg(0, &addr) < 0)
-    return -1;
-  for(i=0; i<sizeof buf-1 && fetchbyte(cp, addr+i, &buf[i]) >= 0; i++)
-    if(buf[i] == 0)
-      break;
-  buf[i] = 0;
-  cprintf("%s", buf);
-  return 0;
-}
-
-int
 sys_open(void)
 {
   struct proc *cp = curproc[cpu()];
@@ -525,18 +493,6 @@ sys_block(void)
   return 0;
 }
 
-int
-sys_panic(void)
-{
-  struct proc *p = curproc[cpu()];
-  uint addr;
-
-  if(fetcharg(0, &addr) < 0)
-    return -1;
-  panic(p->mem + addr);
-  return 0;
-}
-
 void
 syscall(void)
 {
@@ -553,9 +509,6 @@ syscall(void)
     break;
   case SYS_wait:
     ret = sys_wait();
-    break;
-  case SYS_cons_putc:
-    ret = sys_cons_putc();
     break;
   case SYS_pipe:
     ret = sys_pipe();
@@ -574,12 +527,6 @@ syscall(void)
     break;
   case SYS_kill:
     ret = sys_kill();
-    break;
-  case SYS_panic:
-    ret = sys_panic();
-    break;
-  case SYS_cons_puts:
-    ret = sys_cons_puts();
     break;
   case SYS_exec:
     ret = sys_exec();

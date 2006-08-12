@@ -1,4 +1,5 @@
 #include "user.h"
+#include "fcntl.h"
 
 char buf[2048];
 
@@ -18,7 +19,7 @@ pipe1(void)
       for(i = 0; i < 1033; i++)
         buf[i] = seq++;
       if(write(fds[1], buf, 1033) != 1033){
-        panic("pipe1 oops 1\n");
+        printf(1, "pipe1 oops 1\n");
         exit();
       }
     }
@@ -30,7 +31,7 @@ pipe1(void)
     while((n = read(fds[0], buf, cc)) > 0){
       for(i = 0; i < n; i++){
         if((buf[i] & 0xff) != (seq++ & 0xff)){
-          panic("pipe1 oops 2\n");
+          printf(1, "pipe1 oops 2\n");
           return;
         }
       }
@@ -40,7 +41,7 @@ pipe1(void)
         cc = sizeof(buf);
     }
     if(total != 5 * 1033)
-      panic("pipe1 oops 3\n");
+      printf(1, "pipe1 oops 3\n");
     close(fds[0]);
     wait();
   }
@@ -69,7 +70,7 @@ preempt(void)
   if(pid3 == 0){
     close(pfds[0]);
     if(write(pfds[1], "x", 1) != 1)
-      panic("preempt write error");
+      printf(1, "preempt write error");
     close(pfds[1]);
     for(;;)
       ;
@@ -77,7 +78,7 @@ preempt(void)
 
   close(pfds[1]);
   if(read(pfds[0], buf, sizeof(buf)) != 1){
-    panic("preempt read error");
+    printf(1, "preempt read error");
     return;
   }
   close(pfds[0]);
@@ -99,12 +100,12 @@ exitwait(void)
   for(i = 0; i < 100; i++){
     pid = fork();
     if(pid < 0){
-      panic("fork failed\n");
+      printf(1, "fork failed\n");
       return;
     }
     if(pid){
       if(wait() != pid){
-        panic("wait wrong pid\n");
+        printf(1, "wait wrong pid\n");
         return;
       }
     } else {
@@ -114,15 +115,124 @@ exitwait(void)
   puts("exitwait ok\n");
 }
 
+// two processes write to the same file descriptor
+// is the offset shared? does inode locking work?
+void
+sharedfd()
+{
+  int fd, pid, i, n, nc, np;
+  char buf[10];
+
+  unlink("sharedfd");
+  fd = open("sharedfd", O_CREATE|O_RDWR);
+  if(fd < 0){
+    printf(1, "usertests: cannot open sharedfd for writing");
+    return;
+  }
+  pid = fork();
+  memset(buf, pid==0?'c':'p', sizeof(buf));
+  for(i = 0; i < 100; i++){
+    if(write(fd, buf, sizeof(buf)) != sizeof(buf)){
+      printf(1, "usertests: write sharedfd failed\n");
+      break;
+    }
+  }
+  if(pid == 0)
+    exit();
+  else
+    wait();
+  close(fd);
+  fd = open("sharedfd", 0);
+  if(fd < 0){
+    printf(1, "usertests: cannot open sharedfd for reading\n");
+    return;
+  }
+  nc = np = 0;
+  while((n = read(fd, buf, sizeof(buf))) > 0){
+    for(i = 0; i < sizeof(buf); i++){
+      if(buf[i] == 'c')
+        nc++;
+      if(buf[i] == 'p')
+        np++;
+    }
+  }
+  close(fd);
+  if(nc == 1000 && np == 1000)
+    printf(1, "sharedfd ok\n");
+  else
+    printf(1, "sharedfd oops %d %d\n", nc, np);
+}
+
+// two processes write two different files at the same
+// time, to test block allocation.
+void
+twofiles()
+{
+  int fd, pid, i, j, n, total;
+  char *fname;
+
+  unlink("f1");
+  unlink("f2");
+
+  pid = fork();
+  if(pid < 0){
+    puts("fork failed\n");
+    return;
+  }
+
+  fname = pid ? "f1" : "f2";
+  fd = open(fname, O_CREATE | O_RDWR);
+  if(fd < 0){
+    puts("create failed\n");
+    exit();
+  }
+
+  memset(buf, pid?'p':'c', 512);
+  for(i = 0; i < 12; i++){
+    if((n = write(fd, buf, 500)) != 500){
+      printf(1, "write failed %d\n", n);
+      exit();
+    }
+  }
+  close(fd);
+  if(pid)
+    wait();
+  else
+    exit();
+
+  for(i = 0; i < 2; i++){
+    fd = open(i?"f1":"f2", 0);
+    total = 0;
+    while((n = read(fd, buf, sizeof(buf))) > 0){
+      for(j = 0; j < n; j++){
+        if(buf[j] != (i?'p':'c')){
+          puts("wrong char\n");
+          exit();
+        }
+      }
+      total += n;
+    }
+    close(fd);
+    if(total != 12*500){
+      printf(1, "wrong length %d\n", total);
+      exit();
+    }
+  }
+
+  puts("twofiles ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
   puts("usertests starting\n");
 
+  twofiles();
+  sharedfd();
   pipe1();
   preempt();
   exitwait();
 
-  panic("usertests succeeded");
-  return 0;
+  puts("usertests finished\n");
+  exit();
 }
