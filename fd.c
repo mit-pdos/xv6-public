@@ -8,6 +8,8 @@
 #include "fd.h"
 #include "spinlock.h"
 #include "dev.h"
+#include "fs.h"
+#include "fsvar.h"
 
 struct spinlock fd_table_lock;
 struct devsw devsw[NDEV];

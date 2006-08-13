@@ -22,13 +22,6 @@ irq_setmask_8259A(ushort mask)
 
   outb(IO_PIC1+1, (char)mask);
   outb(IO_PIC2+1, (char)(mask >> 8));
-
-  cprintf("%d: enabled interrupts:", cpu());
-
-  for (i = 0; i < 16; i++)
-    if (~mask & (1<<i))
-      cprintf(" %d", i);
-  cprintf("\n");
 }
 
 /* Initialize the 8259A interrupt controllers. */

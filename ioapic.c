@@ -43,7 +43,6 @@ ioapic_init(void)
   id = ioapic_read(io, IOAPIC_ID) >> APIC_ID_SHIFT;	
   if (id != ioapic_id)
     panic ("ioapic_init: id isn't equal to ioapic_id\n");
-  cprintf ("ioapic VER: 0x%x id %d nintr %d\n", l, id, nintr);
   for (i = 0; i < nintr; i++) {
     // active-hi and edge-triggered for ISA interrupts
     // Assume that pin 0 on the first I/O APIC is an ExtINT pin.
@@ -78,5 +77,4 @@ ioapic_enable (int irq, int cpunum)
   h &= ~IOART_DEST;
   h |= (cpunum << APIC_ID_SHIFT); 
   ioapic_write(io, IOAPIC_REDTBL_HI(irq), h);
-  cprintf("cpu%d: intr %d: lo 0x%x hi 0x%x\n", cpu(), irq, l, h);
 }

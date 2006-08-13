@@ -17,10 +17,7 @@ main(void)
   open("console", 1);
   open("console", 1);
 
-  puts("init...\n");
-
   while(1){
-    puts("running sh...\n");
     pid = fork();
     if(pid == 0){
       exec("sh", sh_args);
