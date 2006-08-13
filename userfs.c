@@ -7,6 +7,7 @@
 // file system tests
 
 char buf[2000];
+char name[3];
 char *echo_args[] = { "echo", "hello", "goodbye", 0 };
 char *cat_args[] = { "cat", "README", 0 };
 
@@ -65,6 +66,20 @@ main(void)
   }
   close(fd);
   unlink("doesnotexist");
+  name[0] = 'a';
+  name[2] = '\0';
+  for (i = 0; i < 52; i++) {
+    name[1] = '0' + i;
+    fd = open(name, O_CREATE|O_RDWR);
+    close(fd);
+  }
+  name[0] = 'a';
+  name[2] = '\0';
+  for (i = 0; i < 52; i++) {
+    name[1] = '0' + i;
+    unlink(name);
+  }
+
   //exec("echo", echo_args);
   printf(stdout, "about to do exec\n");
   exec("cat", cat_args);
