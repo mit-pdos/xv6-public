@@ -116,7 +116,7 @@ void ilock(struct inode *ip);
 void iunlock(struct inode *ip);
 void idecref(struct inode *ip);
 void iput(struct inode *ip);
-struct inode * namei(char *path, uint *);
+struct inode * namei(char *path, int, uint *);
 void stati(struct inode *ip, struct stat *st);
 int readi(struct inode *ip, char *xdst, uint off, uint n);
 int writei(struct inode *ip, char *addr, uint off, uint n);

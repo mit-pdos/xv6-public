@@ -365,3 +365,18 @@ two bugs in unlink: don't just return if nlink > 0,
   and search for name, not inum
 is there a create/create race for same file name?
   resulting in two entries w/ same name in directory?
+
+namei
+  return just inode
+  return offset in dir where found, w/ dir locked, for unlink
+  return dir locked, for mknod
+
+is the offset alone useful? how do I read/write it?
+
+test: one process unlinks a file while another links to it
+test: simultaneous create of same file
+test: one process opens a file while another deletes it
+
+oy, mkfs wants dir size to be last written entry, but i
+  want it to be nblocks*512
+  maybe fix kernel code to handle former

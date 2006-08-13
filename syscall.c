@@ -228,7 +228,7 @@ sys_open(void)
     return -1;
   if((l = checkstring(arg0)) < 0)
     return -1;
-  if((ip = namei(cp->mem + arg0, 0)) == 0) {
+  if((ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0)) == 0) {
     if (arg1 & O_CREATE) {
       if (l >= DIRSIZ)
 	return -1;
@@ -356,7 +356,7 @@ sys_exec(void)
     return -1;
   if(checkstring(arg0) < 0)
     return -1;
-  ip = namei(cp->mem + arg0, 0);
+  ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0);
   if(ip == 0)
     return -1;
 
@@ -494,7 +494,7 @@ sys_block(void)
           ip->type, ip->nlink, ip->size, ip->addrs[0]);
   iput(ip);
 
-  ip = namei(".././//./../usertests", 0);
+  ip = namei(".././//./../usertests", NAMEI_LOOKUP, 0);
   if(ip){
     cprintf("namei(usertests): %d %d %d %d %d %d %d %d\n",
             ip->dev, ip->inum, ip->count, ip->busy,

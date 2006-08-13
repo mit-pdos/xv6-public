@@ -108,18 +108,22 @@ fd_close(struct fd *fd)
     panic("fd_close");
 
   if(--fd->ref == 0){
-    if(fd->type == FD_PIPE){
-      pipe_close(fd->pipe, fd->writeable);
-    } else if(fd->type == FD_FILE){
-      idecref(fd->ip);
+    struct fd dummy = *fd;
+
+    fd->ref = 0;
+    fd->type = FD_CLOSED;
+    release(&fd_table_lock);
+
+    if(dummy.type == FD_PIPE){
+      pipe_close(dummy.pipe, dummy.writeable);
+    } else if(dummy.type == FD_FILE){
+      idecref(dummy.ip);
     } else {
       panic("fd_close");
     }
-    fd->ref = 0;
-    fd->type = FD_CLOSED;
+  } else {
+    release(&fd_table_lock);
   }
-  
-  release(&fd_table_lock);
 }
 
 int

@@ -286,14 +286,8 @@ iput(struct inode *ip)
 void
 idecref(struct inode *ip)
 {
-  acquire(&inode_table_lock);
-
-  if(ip->count < 1)
-    panic("idecref");
-
-  ip->count -= 1;
-
-  release(&inode_table_lock);
+  ilock(ip);
+  iput(ip);
 }
 
 void
@@ -376,34 +370,37 @@ writei(struct inode *ip, char *addr, uint off, uint n)
   }
 }
 
+// look up a path name, in one of three modes.
+// NAMEI_LOOKUP: return locked target inode.
+// NAMEI_CREATE: return locked parent inode.
+//   but return 0 if name does exist.
+// NAMEI_DELETE: return locked parent inode, offset of dirent in *ret_off.
+//   return 0 if name doesn't exist.
 struct inode *
-namei(char *path, uint *ret_pinum)
+namei(char *path, int mode, uint *ret_off)
 {
   struct inode *dp;
-  char *cp = path;
+  char *cp = path, *cp1;
   uint off, dev;
   struct buf *bp;
   struct dirent *ep;
-  int i;
+  int i, atend;
   unsigned ninum;
-  unsigned pinum;
-
+  
   dp = iget(rootdev, 1);
-  pinum = dp->inum;
 
   while(*cp == '/')
     cp++;
 
   while(1){
-    if(*cp == '\0') {
-      if (ret_pinum)
-	*ret_pinum = pinum;
-      return dp;
+    if(*cp == '\0'){
+      if(mode == NAMEI_LOOKUP)
+        return dp;
+      iput(dp);
+      return 0;
     }
 
     if(dp->type != T_DIR){
-      if (ret_pinum)
-	*ret_pinum = pinum;
       iput(dp);
       return 0;
     }
@@ -419,6 +416,7 @@ namei(char *path, uint *ret_pinum)
           if(cp[i] != ep->name[i])
             break;
         if((cp[i] == '\0' || cp[i] == '/') && (i >= DIRSIZ || ep->name[i] == '\0')){
+          off += (uchar*)ep - bp->data;
           ninum = ep->inum;
           brelse(bp);
           cp += i;
@@ -427,14 +425,22 @@ namei(char *path, uint *ret_pinum)
       }
       brelse(bp);
     }
+    atend = 1;
+    for(cp1 = cp; *cp1; cp1++)
+      if(*cp1 == '/')
+        atend = 0;
+    if(mode == NAMEI_CREATE && atend)
+      return dp;
+
     iput(dp);
-    if (ret_pinum)
-      *ret_pinum = pinum;
     return 0;
 
   found:
+    if(mode == NAMEI_DELETE && *cp == '\0'){
+      *ret_off = off;
+      return dp;
+    }
     dev = dp->dev;
-    pinum = dp->inum;
     iput(dp);
     dp = iget(dev, ninum);
     if(dp->type == 0 || dp->nlink < 1)
@@ -453,6 +459,9 @@ wdir(struct inode *dp, char *name, uint ino)
   int i;
   int lb;
 
+  if(dp->size % BSIZE)
+    dp->size += (BSIZE - dp->size % BSIZE);
+
   for(off = 0; off < dp->size; off += BSIZE) {
     bp = bread(dp->dev, bmap(dp, off / BSIZE));
     for(ep = (struct dirent *) bp->data;
@@ -469,14 +478,16 @@ wdir(struct inode *dp, char *name, uint ino)
   }
   dp->addrs[lb] = balloc(dp->dev);
   bp = bread(dp->dev, dp->addrs[lb]);
+  memset(bp->data, 0, BSIZE);
   ep = (struct dirent *) (bp->data);
+  dp->size += BSIZE;
+
  found:
   ep->inum = ino;
   for(i = 0; i < DIRSIZ && name[i]; i++)
     ep->name[i] = name[i];
   for( ; i < DIRSIZ; i++)
     ep->name[i] = '\0';
-  dp->size += sizeof(struct dirent);
   bwrite (bp, bmap(dp, off/BSIZE));   // write directory block
   brelse(bp);
   iupdate(dp);
@@ -486,15 +497,12 @@ struct inode *
 mknod(char *cp, short type, short major, short minor)
 {
   struct inode *ip, *dp;
-  uint pinum = 0;
 
   cprintf("mknod: %s %d %d %d\n", cp, type, major, minor);
 
-  if ((ip = namei(cp, &pinum)) != 0) {
-    iput(ip);
+  if ((dp = namei(cp, NAMEI_CREATE, 0)) == 0)
     return 0;
-  }
-  dp = iget(rootdev, pinum);
+
   ip = ialloc(dp->dev, type);
   if (ip == 0) {
     iput(dp);
@@ -515,74 +523,81 @@ mknod(char *cp, short type, short major, short minor)
 int
 unlink(char *cp)
 {
-  struct inode *ip;
-  struct inode *dp;
-  struct dirent *ep = 0;
-  int off;
-  struct buf *bp = 0;
-  uint pinum;
-
+  struct inode *ip, *dp;
+  struct dirent de;
+  uint off, inum, cc;
   
-  if ((ip = namei(cp, &pinum)) == 0) {
+  cprintf("unlink(%s)\n", cp);
+
+  if ((dp = namei(cp, NAMEI_DELETE, &off)) == 0) {
     cprintf("unlink(%s) it doesn't exist\n", cp);
     return -1;
   }
 
-  ip->nlink--;
-  if (ip->nlink > 0) {
-    iput(ip);
-    return 0;
+  if((cc = readi(dp, (char*)&de, off, sizeof(de))) != sizeof(de) ||
+     de.inum == 0){
+    cprintf("off %d dp->size %d cc %d de.inum %d",
+            off, dp->size, cc, de.inum);
+    panic("unlink no entry");
   }
+  inum = de.inum;
+  cprintf("dinum %d off %d de %s/%d\n", 
+          dp->inum, off, de.name, de.inum);
 
-  dp = iget(rootdev, pinum);
-  for(off = 0; off < dp->size; off += BSIZE) {
-    bp = bread(dp->dev, bmap(dp, off / BSIZE));
-    for(ep = (struct dirent *) bp->data;
-	ep < (struct dirent *) (bp->data + BSIZE);
-	ep++){
-      if(ep->inum == ip->inum) {
-	goto found;
-      }
-    }
-    brelse(bp);
-  }
-  panic("unlink: entry doesn't exist\n");
+  memset(&de, 0, sizeof(de));
+  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+    panic("unlink dir write");
 
- found:
-  ep->inum = 0;
-  memset(ep->name, '\0', DIRSIZ);
-  bwrite (bp, bmap(dp, off/BSIZE));   // write directory block
-  brelse(bp);
-  dp->size -= sizeof(struct dirent);
-  iupdate (dp);
+  iupdate(dp);
   iput(dp);
+
+  ip = iget(dp->dev, inum);
+  if(ip == 0)
+    panic("unlink no inode");
+
+  ip->nlink--;
+
+  iupdate(ip);
   iput(ip);
+
   return 0;
 }
 
 int
 link(char *name1, char *name2)
 {
-  struct inode *ip, *dp, *xip;
-  uint pinum = 0;
+  struct inode *ip, *dp;
 
   cprintf("link(%s, %s)\n", name1, name2);
 
-  if ((xip = namei(name2, &pinum)) != 0) {
-    cprintf("  failed %s exists\n", name2);
-    iput(xip);
-    return -1;
-  }
-
-  if ((ip = namei(name1, &pinum)) == 0){
+  if ((ip = namei(name1, NAMEI_LOOKUP, 0)) == 0){
     cprintf("  failed %s does not exist\n", name1);
     return -1;
   }
+  if(ip->type == T_DIR){
+    cprintf("  failed %s is a dir\n", name1);
+    iput(ip);
+    return -1;
+  }
+
+  iunlock(ip);
+
+  if ((dp = namei(name2, NAMEI_CREATE, 0)) == 0) {
+    cprintf("  failed %s exists\n", name2);
+    idecref(ip);
+    return -1;
+  }
+  if(dp->dev != ip->dev){
+    cprintf("  cross-device link\n");
+    idecref(ip);
+    iput(dp);
+    return -1;
+  }
   
+  ilock(ip);
   ip->nlink += 1;
   iupdate (ip);
 
-  dp = iget(rootdev, pinum);
   wdir(dp, name2, ip->inum);
   iput(dp);
   iput(ip);

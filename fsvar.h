@@ -14,3 +14,7 @@ struct inode {
 };
 
 extern uint rootdev;
+
+#define NAMEI_LOOKUP 1
+#define NAMEI_CREATE 2
+#define NAMEI_DELETE 3
