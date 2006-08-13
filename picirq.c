@@ -17,7 +17,6 @@ static ushort irq_mask_8259A = 0xFFFF & ~(1<<IRQ_SLAVE);
 static void
 irq_setmask_8259A(ushort mask)
 {
-  int i;
   irq_mask_8259A = mask;
 
   outb(IO_PIC1+1, (char)mask);
