@@ -140,9 +140,6 @@ scheduler(void)
   struct proc *p;
   int i;
 
-  cprintf("cpu%d: start scheduler jmpbuf %p\n",
-          cpu(), &cpus[cpu()].jmpbuf);
-
   if(cpus[cpu()].nlock != 0){
     cprintf("la %x lr %x\n", cpus[cpu()].lastacquire, cpus[cpu()].lastrelease   );
     panic("holding locks at first entry to scheduler");

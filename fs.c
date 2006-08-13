@@ -439,14 +439,41 @@ namei(char *path, uint *ret_pinum)
   }
 }
 
+void
+wdir(struct inode *dp, char *name, uint ino)
+{
+  uint off;
+  struct buf *bp = 0;
+  struct dirent *ep = 0;
+  int i;
+
+  for(off = 0; off < dp->size; off += BSIZE) {
+    bp = bread(dp->dev, bmap(dp, off / BSIZE));
+    for(ep = (struct dirent *) bp->data;
+	ep < (struct dirent *) (bp->data + BSIZE);
+	ep++){
+      if(ep->inum == 0)
+	goto found;
+    }
+    brelse(bp);
+  }
+
+  panic("mknod: XXXX no dir entry free\n");
+
+ found:
+  ep->inum = ino;
+  for(i = 0; i < DIRSIZ && name[i]; i++)
+    ep->name[i] = name[i];
+  for( ; i < DIRSIZ; i++)
+    ep->name[i] = '\0';
+  bwrite (bp, bmap(dp, off/BSIZE));   // write directory block
+  brelse(bp);
+}
+
 struct inode *
 mknod(char *cp, short type, short major, short minor)
 {
   struct inode *ip, *dp;
-  struct dirent *ep = 0;
-  int off;
-  int i;
-  struct buf *bp = 0;
   uint pinum = 0;
 
   cprintf("mknod: %s %d %d %d\n", cp, type, major, minor);
@@ -469,27 +496,7 @@ mknod(char *cp, short type, short major, short minor)
 
   iupdate (ip);  // write new inode to disk
 
-  for(off = 0; off < dp->size; off += BSIZE) {
-    bp = bread(dp->dev, bmap(dp, off / BSIZE));
-    for(ep = (struct dirent *) bp->data;
-	ep < (struct dirent *) (bp->data + BSIZE);
-	ep++){
-      if(ep->inum == 0) {
-	goto found;
-      }
-    }
-    brelse(bp);
-  }
-  panic("mknod: XXXX no dir entry free\n");
-
- found:
-  ep->inum = ip->inum;
-  for(i = 0; i < DIRSIZ && cp[i]; i++)
-    ep->name[i] = cp[i];
-  for( ; i < DIRSIZ; i++)
-    ep->name[i] = '\0';
-  bwrite (bp, bmap(dp, off/BSIZE));   // write directory block
-  brelse(bp);
+  wdir(dp, cp, ip->inum);
 
   iput(dp);
 
@@ -539,5 +546,37 @@ unlink(char *cp)
   iupdate (dp);
   iput(dp);
   iput(ip);
+  return 0;
+}
+
+int
+link(char *name1, char *name2)
+{
+  struct inode *ip, *dp, *xip;
+  uint pinum = 0;
+
+  cprintf("link(%s, %s)\n", name1, name2);
+
+  if ((xip = namei(name2, &pinum)) != 0) {
+    cprintf("  failed %s exists\n", name2);
+    iput(xip);
+    return -1;
+  }
+
+  if ((ip = namei(name1, &pinum)) == 0){
+    cprintf("  failed %s does not exist\n", name1);
+    return -1;
+  }
+  
+  ip->nlink += 1;
+  iupdate (ip);
+
+  dp = iget(rootdev, pinum);
+  wdir(dp, name2, ip->inum);
+  iput(dp);
+  iput(ip);
+
+  cprintf("  succeeded\n");
+
   return 0;
 }

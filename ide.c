@@ -52,14 +52,12 @@ ide_init(void)
   }
   ioapic_enable (IRQ_IDE, 1);
   ide_wait_ready(0);
-  cprintf ("cpu%d: ide_init:done\n", cpu());
 }
 
 void
 ide_intr(void)
 {
   acquire(&ide_lock);
-  //  cprintf("cpu%d: ide_intr\n", cpu());
   wakeup(&request[tail]);
   release(&ide_lock);
 }

@@ -123,3 +123,4 @@ int writei(struct inode *ip, char *addr, uint off, uint n);
 struct inode *mknod(char *, short, short, short);
 int unlink(char *cp);
 void iupdate (struct inode *ip);
+int link(char *file1, char *file2);

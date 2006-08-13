@@ -344,11 +344,72 @@ unlinkread()
   puts("unlinkread ok\n");
 }
 
+void
+linktest()
+{
+  int fd;
+
+  unlink("lf1");
+  unlink("lf2");
+
+  fd = open("lf1", O_CREATE|O_RDWR);
+  if(fd < 0){
+    puts("create lf1 failed\n");
+    exit();
+  }
+  if(write(fd, "hello", 5) != 5){
+    puts("write lf1 failed\n");
+    exit();
+  }
+  close(fd);
+
+  if(link("lf1", "lf2") < 0){
+    puts("link lf1 lf2 failed\n");
+    exit();
+  }
+  unlink("lf1");
+
+  if(open("lf1", 0) >= 0){
+    puts("unlinked lf1 but it is still there!\n");
+    exit();
+  }
+
+  fd = open("lf2", 0);
+  if(fd < 0){
+    puts("open lf2 failed\n");
+    exit();
+  }
+  if(read(fd, buf, sizeof(buf)) != 5){
+    puts("read lf2 failed\n");
+    exit();
+  }
+  close(fd);
+    
+  if(link("lf2", "lf2") >= 0){
+    puts("link lf2 lf2 succeeded! oops\n");
+    exit();
+  }
+
+  unlink("lf2");
+  if(link("lf2", "lf1") >= 0){
+    puts("link non-existant succeeded! oops\n");
+    exit();
+  }
+
+  if(link(".", "lf1") >= 0){
+    puts("link . lf1 succeeded! oops\n");
+    exit();
+  }
+
+  puts("linktest ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
   puts("usertests starting\n");
 
+  linktest();
   unlinkread();
   createdelete();
   twofiles();
