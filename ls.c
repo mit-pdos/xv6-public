@@ -12,6 +12,7 @@ main(int argc, char *argv[])
 {
   int fd;
   uint off;
+  uint sz;
 
   if(argc > 1){
     puts("Usage: ls\n");
@@ -30,18 +31,19 @@ main(int argc, char *argv[])
   if (st.st_type != T_DIR) {
     printf(2, "ls: . is not a dir\n");
   }
-  cprintf("size %d\n", st.st_size);
-  for(off = 0; off < st.st_size; off += sizeof(struct dirent)) {
+  sz = st.st_size;
+  for(off = 0; off < sz; off += sizeof(struct dirent)) {
     if (read(fd, &dirent, sizeof(struct dirent)) != sizeof(struct dirent)) {
-      printf(2, "ls: read error\n");
-      exit();
+      printf(1, "ls: read error\n");
+      break;
     }
     if (dirent.inum != 0) {
-
-      if (stat (dirent.name, &st) < 0) 
-	printf(2, "stat: failed\n");
-
-      printf(1, "%s t %d\n", dirent.name, st.st_type);
+      if (stat (dirent.name, &st) < 0)  {
+	printf(1, "stat: failed\n");
+	break;
+      }
+      printf(1, "%s t %d ino %d sz %d\n", dirent.name, st.st_type, 
+	     dirent.inum, st.st_size);
     }
   }
   close(fd);

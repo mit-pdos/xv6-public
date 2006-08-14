@@ -23,6 +23,7 @@ uint freeinode = 1;
 void balloc(int);
 void wsect(uint, void *);
 void winode(uint, struct dinode *);
+void rinode(uint inum, struct dinode *ip);
 void rsect(uint sec, void *buf);
 uint ialloc(ushort type);
 void iappend(uint inum, void *p, int n);
@@ -53,9 +54,10 @@ xint(uint x)
 main(int argc, char *argv[])
 {
   int i, cc, fd;
-  uint bn, rootino, inum;
+  uint bn, rootino, inum, off;
   struct dirent de;
   char buf[512];
+  struct dinode din;
 
   if(argc < 2){
     fprintf(stderr, "Usage: mkfs fs.img files...\n");
@@ -121,6 +123,13 @@ main(int argc, char *argv[])
 
     close(fd);
   }
+
+  // fix size of root inode dir
+  rinode(rootino, &din);
+  off = xint(din.size);  
+  off = ((off/BSIZE) + 1) * BSIZE;
+  din.size = xint(off);
+  winode(rootino, &din);
 
   balloc(usedblocks);
 

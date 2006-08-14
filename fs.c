@@ -355,7 +355,8 @@ writei(struct inode *ip, char *addr, uint off, uint n)
     }
     if (r > 0) {
       if (off > ip->size) {
-	ip->size = off;
+	if (ip->type == T_DIR) ip->size = ((off / BSIZE) + 1) * BSIZE;
+	else ip->size = off;
       }
       iupdate(ip);
     }

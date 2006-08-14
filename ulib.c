@@ -61,11 +61,11 @@ gets(char *buf, int max)
 int
 stat(char *n, struct stat *st)
 {
-  int fd = open(n, O_RDONLY);
+  int fd;
   int r;
 
+  fd = open(n, O_RDONLY);
   if (fd < 0) return -1;
-
   r = fstat(fd, st);
   close(fd);
   return r;
