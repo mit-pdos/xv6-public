@@ -1,5 +1,6 @@
-#include "user.h"
 #include "types.h"
+#include "stat.h"
+#include "user.h"
 
 static void
 putc(int fd, char c)
@@ -63,6 +64,9 @@ printf(int fd, char *fmt, ...)
           putc(fd, *s);
           s++;
         }
+      } else if(c == 'c'){
+	putc(fd, *ap);
+	ap++;
       } else if(c == '%'){
         putc(fd, c);
       } else {

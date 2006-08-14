@@ -91,11 +91,19 @@ ls : ls.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o ls ls.o $(ULIB)
 	$(OBJDUMP) -S ls > ls.asm
 
+mkdir : mkdir.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o mkdir mkdir.o $(ULIB)
+	$(OBJDUMP) -S mkdir > mkdir.asm
+
+rm : rm.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o rm rm.o $(ULIB)
+	$(OBJDUMP) -S rm > rm.asm
+
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs userfs usertests echo cat README init sh ls
-	./mkfs fs.img userfs usertests echo cat README init sh ls
+fs.img : mkfs userfs usertests echo cat readme init sh ls mkdir rm
+	./mkfs fs.img userfs usertests echo cat readme init sh ls mkdir rm
 
 -include *.d
 

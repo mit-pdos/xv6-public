@@ -9,7 +9,7 @@
 char buf[2000];
 char name[3];
 char *echo_args[] = { "echo", "hello", "goodbye", 0 };
-char *cat_args[] = { "cat", "README", 0 };
+char *cat_args[] = { "cat", "readme", 0 };
 
 int
 main(void)
