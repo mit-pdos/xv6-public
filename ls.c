@@ -4,7 +4,7 @@
 #include "fs.h"
 
 char buf[512];
-struct stat stat;
+struct stat st;
 struct dirent dirent;
 
 int
@@ -23,20 +23,26 @@ main(int argc, char *argv[])
     printf(2, "ls: cannot open .\n");
     exit();
   }
-  if (fstat(fd, &stat) < 0) {
+  if (fstat(fd, &st) < 0) {
     printf(2, "ls: cannot open .\n");
     exit();
   }
-  if (stat.st_type != T_DIR) {
+  if (st.st_type != T_DIR) {
     printf(2, "ls: . is not a dir\n");
   }
-  for(off = 0; off < stat.st_size; off += sizeof(struct dirent)) {
+  cprintf("size %d\n", st.st_size);
+  for(off = 0; off < st.st_size; off += sizeof(struct dirent)) {
     if (read(fd, &dirent, sizeof(struct dirent)) != sizeof(struct dirent)) {
       printf(2, "ls: read error\n");
       exit();
     }
-    if (dirent.inum != 0)
-      printf(1, "%s\n", dirent.name);
+    if (dirent.inum != 0) {
+
+      if (stat (dirent.name, &st) < 0) 
+	printf(2, "stat: failed\n");
+
+      printf(1, "%s t %d\n", dirent.name, st.st_type);
+    }
   }
   close(fd);
 

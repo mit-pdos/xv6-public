@@ -1,3 +1,6 @@
+#include "types.h"
+#include "stat.h"
+#include "fcntl.h"
 #include "user.h"
 
 int
@@ -53,4 +56,17 @@ gets(char *buf, int max)
   }
   buf[i] = '\0';
   return buf;
+}
+
+int
+stat(char *n, struct stat *st)
+{
+  int fd = open(n, O_RDONLY);
+  int r;
+
+  if (fd < 0) return -1;
+
+  r = fstat(fd, st);
+  close(fd);
+  return r;
 }

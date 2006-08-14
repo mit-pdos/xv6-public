@@ -14,9 +14,10 @@ int exec(char *, char **);
 int open(char *, int);
 int mknod (char*,short,short,short);
 int unlink (char*);
-struct stat;
 int fstat (int fd, struct stat *stat);
 int link(char *, char *);
+int mkdir(char *);
+int stat(char *, struct stat *stat);
 
 int puts(char*);
 char* strcpy(char*, char*);
