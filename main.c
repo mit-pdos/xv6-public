@@ -68,13 +68,14 @@ main0(void)
   p->sz = 4 * PAGE;
   p->mem = kalloc(p->sz);
   memset(p->mem, 0, p->sz);
-  p->kstack = kalloc(KSTACKSIZE);
-  p->tf = (struct trapframe *) (p->kstack + KSTACKSIZE - sizeof(struct trapframe));
+  p->kstack = kalloc(KSTACKSIbZE);
+  p->tf = (struct trapframe *) (p->kstack + KSTACKSIZE) - 1;
   memset(p->tf, 0, sizeof(struct trapframe));
   p->tf->es = p->tf->ds = p->tf->ss = (SEG_UDATA << 3) | 3;
   p->tf->cs = (SEG_UCODE << 3) | 3;
   p->tf->eflags = FL_IF;
   setupsegs(p);
+  // curproc[cpu()] = p;
 
   // initialize I/O devices, let them enable interrupts
   console_init();
@@ -90,6 +91,8 @@ main0(void)
   cpus[cpu()].nlock--;
   sti();
 
+  // p->cwd = iget(rootdev, 1);
+  // iunlock(p->cwd);
   p = copyproc(&proc[0]);
   
   //load_icode(p, _binary_usertests_start, (uint) _binary_usertests_size);

@@ -110,11 +110,13 @@ void bwrite(struct buf *, uint);
 void brelse(struct buf *);
 
 // fs.c
+extern uint rootdev;
 void iinit(void);
 struct inode * iget(uint dev, uint inum);
 void ilock(struct inode *ip);
 void iunlock(struct inode *ip);
 void idecref(struct inode *ip);
+void iincref(struct inode *ip);
 void iput(struct inode *ip);
 struct inode * namei(char *path, int, uint *);
 void stati(struct inode *ip, struct stat *st);

@@ -46,6 +46,7 @@ struct proc{
   void *chan; // sleep
   int killed;
   struct fd *fds[NOFILE];
+  struct inode *cwd;
 
   struct taskstate ts;  // only to give cpu address of kernel stack
   struct segdesc gdt[NSEGS];

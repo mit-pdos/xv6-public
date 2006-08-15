@@ -160,7 +160,7 @@ panic(char *s)
 {
   __asm __volatile("cli");
   use_console_lock = 0;
-  cprintf("panic: ");
+  cprintf("panic (%d): ", cpu());
   cprintf(s, 0);
   cprintf("\n", 0);
   panicked = 1; // freeze other CPU
