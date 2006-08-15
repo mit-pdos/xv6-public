@@ -67,6 +67,10 @@ usertests : usertests.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o usertests usertests.o $(ULIB)
 	$(OBJDUMP) -S usertests > usertests.asm
 
+fstests : fstests.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o fstests fstests.o $(ULIB)
+	$(OBJDUMP) -S fstests > fstests.asm
+
 echo : echo.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o echo echo.o $(ULIB)
 	$(OBJDUMP) -S echo > echo.asm
@@ -102,12 +106,12 @@ rm : rm.o $(ULIB)
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs userfs usertests echo cat readme init sh ls mkdir rm
-	./mkfs fs.img userfs usertests echo cat readme init sh ls mkdir rm
+fs.img : mkfs userfs usertests echo cat readme init sh ls mkdir rm fstests
+	./mkfs fs.img userfs usertests echo cat readme init sh ls mkdir rm fstests
 
 -include *.d
 
 clean : 
 	rm -f *.o *.d *.asm vectors.S parport.out \
 		bootblock kernel xv6.img user1 userfs usertests \
-		fs.img mkfs echo init
+		fs.img mkfs echo init fstests

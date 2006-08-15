@@ -22,32 +22,14 @@ no kernel malloc(), just kalloc() for user core
 
 user pointers aren't valid in the kernel
 
-setting up first process
-  we do want a process zero, as template
-    but not runnable
-  just set up return-from-trap frame on new kernel stack
-  fake user program that calls exec
-
-map text read-only?
-shared text?
-
-what's on the stack during a trap or sys call?
-  PUSHA before scheduler switch? for callee-saved registers.
-  segment contents?
-  what does iret need to get out of the kernel?
-  how does INT know what kernel stack to use?
- 
-are interrupts turned on in the kernel? probably.
-
-per-cpu curproc
-one tss per process, or one per cpu?
-one segment array per cpu, or per process?
+are interrupts turned on in the kernel? yes.
 
 pass curproc explicitly, or implicit from cpu #?
   e.g. argument to newproc()?
   hmm, you need a global curproc[cpu] for trap() &c
 
-test stack expansion
+no stack expansion
+
 test running out of memory, process slots
 
 we can't really use a separate stack segment, since stack addresses
@@ -55,16 +37,6 @@ need to work correctly as ordinary pointers. the same may be true of
 data vs text. how can we have a gap between data and stack, so that
 both can grow, without committing 4GB of physical memory? does this
 mean we need paging?
-
-what's the simplest way to add the paging we need?
-  one page table, re-write it each time we leave the kernel?
-  page table per process?
-  probably need to use 0-0xffffffff segments, so that
-    both data and stack pointers always work
-  so is it now worth it to make a process's phys mem contiguous?
-  or could use segment limits and 4 meg pages?
-    but limits would prevent using stack pointers as data pointers
-  how to write-protect text? not important?
 
 perhaps have fixed-size stack, put it in the data segment?
 
@@ -87,19 +59,6 @@ test children being inherited by grandparent &c
 
 some sleep()s should be interruptible by kill()
 
-cli/sti in acquire/release should nest!
-  in case you acquire two locks
-
-what would need fixing if we got rid of kernel_lock?
-  console output
-  proc_exit() needs lock on proc *array* to deallocate
-  kill() needs lock on proc *array*
-  allocator's free list
-  global fd table (really free-ness)
-  sys_close() on fd table
-  fork on proc list, also next pid
-    hold lock until public slots in proc struct initialized
-
 locks
   init_lock
     sequences CPU startup
@@ -110,37 +69,17 @@ locks
   memory allocator
   printf
 
-wakeup needs proc_table_lock
-  so we need recursive locks?
-  or you must hold the lock to call wakeup?
-
 in general, the table locks protect both free-ness and
   public variables of table elements
   in many cases you can use table elements w/o a lock
   e.g. if you are the process, or you are using an fd
-
-lock code shouldn't call cprintf...
-
-nasty hack to allow locks before first process,
-  and to allow them in interrupts when curproc may be zero
-
-race between release and sleep in sys_wait()
-race between sys_exit waking up parent and setting state=ZOMBIE
-race in pipe code when full/empty
 
 lock order
   per-pipe lock
   proc_table_lock fd_table_lock kalloc_lock
   console_lock
 
-condition variable + mutex that protects it
-  proc * (for wait()), proc_table_lock
-  pipe structure, pipe lock
-
-systematic way to test sleep races?
-  print something at the start of sleep?
-
-do you have to be holding the mutex in order to call wakeup()?
+do you have to be holding the mutex in order to call wakeup()? yes
 
 device interrupts don't clear FL_IF
   so a recursive timer interrupt is possible
@@ -156,202 +95,11 @@ inode->count counts in-memory pointers to the struct
 blocks and inodes have ad-hoc sleep-locks
   provide a single mechanism?
 
-need to lock bufs in bio between bread and brelse
-
 test 14-character file names
 and file arguments longer than 14
-and directories longer than one sector
 
 kalloc() can return 0; do callers handle this right?
 
-why directing interrupts to cpu 1 causes trouble
-  cpu 1 turns on interrupts with no tss!
-    and perhaps a stale gdt (from boot)
-  since it has never run a process, never called setupsegs()
-  but does cpu really need the tss?
-    not switching stacks
-  fake process per cpu, just for tss?
-    seems like a waste
-  move tss to cpu[]?
-    but tss points to per-process kernel stack
-    would also give us a gdt
-  OOPS that wasn't the problem
-
-wait for other cpu to finish starting before enabling interrupts?
-  some kind of crash in ide_init ioapic_enable cprintf
-move ide_init before mp_start?
-  didn't do any good
-  maybe cpu0 taking ide interrupt, cpu1 getting a nested lock error
-
-cprintfs are screwed up if locking is off
-  often loops forever
-  hah, just use lpt alone
-
-looks like cpu0 took the ide interrupt and was the last to hold
-the lock, but cpu1 thinks it is nested
-cpu0 is in load_icode / printf / cons_putc
-  probably b/c cpu1 cleared use_console_lock
-cpu1 is in scheduler() / printf / acquire
-
-  1: init timer
-  0: init timer
-  cpu 1 initial nlock 1
-  ne0s:t iidd el_occnkt rc
-  onsole cpu 1 old caller stack 1001A5 10071D 104DFF 1049FE
-  panic: acquire
-  ^CNext at t=33002418
-  (0) [0x00100091] 0008:0x00100091 (unk. ctxt): jmp .+0xfffffffe          ; ebfe
-  (1) [0x00100332] 0008:0x00100332 (unk. ctxt): jmp .+0xfffffffe          
-  
-why is output interleaved even before panic?
-
-does release turn on interrupts even inside an interrupt handler?
-
-overflowing cpu[] stack?
-  probably not, change from 512 to 4096 didn't do anything
-
-
-  1: init timer
-  0: init timer
-  cnpeus te11  linnitki aclo nnoolleek  cp1u
-   ss  oarltd  sccahleldeul esrt aocnk  cpu 0111 Ej6  buf1 01A3140 C5118 
-  0
-  la anic1::7 0a0c0  uuirr e
-  ^CNext at t=31691050
-  (0) [0x00100373] 0008:0x00100373 (unk. ctxt): jmp .+0xfffffffe          ; ebfe
-  (1) [0x00100091] 0008:0x00100091 (unk. ctxt): jmp .+0xfffffffe          ; ebfe
-
-cpu0:
-
-0: init timer
-nested lock console cpu 0 old caller stack 1001e6 101a34 1 0
-  (that's mpmain)
-panic: acquire
-
-cpu1:
-
-1: init timer
-cpu 1 initial nlock 1
-start scheduler on cpu 1 jmpbuf ...
-la 107000 lr ...
-  that is, nlock != 0
-
-maybe a race; acquire does
-  locked = 1
-  cpu = cpu()
-what if another acquire calls holding w/ locked = 1 but
-  before cpu is set?
-
-if I type a lot (kbd), i get a panic
-cpu1 in scheduler: panic "holding locks in scheduler"
-cpu0 also in the same panic!
-recursive interrupt?
-  FL_IF is probably set during interrupt... is that correct?
-again:
-  olding locks in scheduler
-  trap v 33 eip 100ED3 c (that is, interrupt while holding a lock)
-  100ed3 is in lapic_write
-again:
-  trap v 33 eip 102A3C cpu 1 nlock 1 (in acquire)
-  panic: interrupt while holding a lock
-again:
-  trap v 33 eip 102A3C cpu 1 nlock 1
-  panic: interrupt while holding a lock
-OR is it the cprintf("kbd overflow")?
-  no, get panic even w/o that cprintf
-OR a release() at interrupt time turns interrupts back on?
-  of course i don't think they were off...
-OK, fixing trap.c to make interrupts turn off FL_IF
-  that makes it take longer, but still panics
-  (maybe b/c release sets FL_IF)
-
-shouldn't something (PIC?) prevent recursive interrupts of same IRQ?
-  or should FL_IF be clear during all interrupts?
-
-maybe acquire should remember old FL_IF value, release should restore
-  if acquire did cli()
-
-DUH the increment of nlock in acquire() happens before the cli!
-  so the panic is probably not a real problem
-  test nlock, cli(), then increment?
-
-BUT now userfs doesn't do the final cat README
-
-AND w/ cprintf("kbd overflow"), panic holding locks in scheduler
-  maybe also simulataneous panic("interrupt while holding a lock")
-
-again (holding down x key):
-  kbd overflow
-  kbd oaaniicloowh
-  olding locks in scheduler
-  trap v 33 eip 100F5F c^CNext at t=32166285
-  (0) [0x0010033e] 0008:0010033e (unk. ctxt): jmp .+0xfffffffe (0x0010033e) ; ebfe
-  (1) [0x0010005c] 0008:0010005c (unk. ctxt): jmp .+0xfffffffe (0x0010005c) ; ebfe
-cpu0 paniced due to holding locks in scheduler
-cpu1 got panic("interrupt while holding a lock")
-  again in lapic_write.
-  while re-enabling an IRQ?
-
-again:
-cpu 0 panic("holding locks in scheduler")
-  but didn't trigger related panics earlier in scheduler or sched()
-  of course the panic is right after release() and thus sti()
-  so we may be seeing an interrupt that left locks held
-cpu 1 unknown panic
-why does it happen to both cpus at the same time?
-
-again:
-cpu 0 panic("holding locks in scheduler")
-  but trap() didn't see any held locks on return
-cpu 1 no apparent panic
-
-again:
-cpu 0 panic: holding too many locks in scheduler
-cpu 1 panic: kbd_intr returned while holding a lock
-
-again:
-cpu 0 panic: holding too man
-  la 10d70c lr 10027b
-  those don't seem to be locks...
-  only place non-constant lock is used is sleep()'s 2nd arg
-  maybe register not preserved across context switch?
-  it's in %esi...
-  sched() doesn't touch %esi
-  %esi is evidently callee-saved
-  something to do with interrupts? since ordinarily it works
-cpu 1 panic: kbd_int returned while holding a lock
-  la 107340 lr 107300
-  console_lock and kbd_lock
-
-maybe console_lock is often not released due to change
-  in use_console_lock (panic on other cpu)
-
-again:
-cpu 0: panic: h...
-  la 10D78C lr 102CA0
-cpu 1: panic: acquire FL_IF (later than cpu 0)
-
-but if sleep() were acquiring random locks, we'd see panics
-in release, after sleep() returned.
-actually when system is idle, maybe no-one sleeps at all.
-  just scheduler() and interrupts
-
-questions:
-  does userfs use pipes? or fork?
-    no
-  does anything bad happen if process 1 exits? eg exit() in cat.c
-    looks ok
-  are there really no processes left?
-  lock_init() so we can have a magic number?
-
-HMM maybe the variables at the end of struct cpu are being overwritten
-  nlocks, lastacquire, lastrelease
-  by cpu->stack?
-  adding junk buffers maybe causes crash to take longer...
-  when do we run on cpu stack?
-  just in scheduler()?
-    and interrupts from scheduler()
- 
 OH! recursive interrupts will use up any amount of cpu[].stack!
   underflow and wrecks *previous* cpu's struct
 
@@ -360,15 +108,26 @@ mkdir
 sh arguments
 sh redirection
 indirect blocks
-two bugs in unlink: don't just return if nlink > 0,
-  and search for name, not inum
 is there a create/create race for same file name?
   resulting in two entries w/ same name in directory?
+why does shell often ignore first line of input?
 
 test: one process unlinks a file while another links to it
-test: simultaneous create of same file
 test: one process opens a file while another deletes it
+test: mkdir. deadlock d/.. vs ../d
 
-wdir should use writei, to avoid special-case block allocation
-  also readi
-  is dir locked? probably
+make proc[0] runnable
+cpu early tss and gdt
+how do we get cpu0 scheduler() to use mpstack, not proc[0].kstack?
+when iget() first sleeps, where does it longjmp to?
+maybe set up proc[0] to be runnable, with entry proc0main(), then
+  have main() call scheduler()?
+  perhaps so proc[0] uses right kstack?
+  and scheduler() uses mpstack?
+ltr sets the busy bit in the TSS, faults if already set
+  so gdt and TSS per cpu?
+  we don't want to be using some random process's gdt when it changes it.
+maybe get rid of per-proc gdt and ts
+  one per cpu
+  refresh it when needed
+  setupsegs(proc *)

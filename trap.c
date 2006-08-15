@@ -41,8 +41,8 @@ trap(struct trapframe *tf)
     panic("interrupt while holding a lock");
   }
 
-  if(cpu() == 1 && curproc[cpu()] == 0){
-    if(&tf < cpus[cpu()].mpstack || &tf > cpus[cpu()].mpstack + 512){
+  if(curproc[cpu()] == 0){
+    if(&tf < cpus[cpu()].mpstack || &tf > cpus[cpu()].mpstack + MPSTACK){
       cprintf("&tf %x mpstack %x\n", &tf, cpus[cpu()].mpstack);
       panic("trap cpu stack");
     }
@@ -125,7 +125,8 @@ trap(struct trapframe *tf)
     return;
   }
 
-  cprintf("trap %d\n", v);
+  cprintf("trap %d from cpu %d eip %x\n", v, cpu(), tf->eip);
+  panic("trap");
 
   return;
 }

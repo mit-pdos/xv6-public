@@ -48,8 +48,6 @@ struct proc{
   struct fd *fds[NOFILE];
   struct inode *cwd;
 
-  struct taskstate ts;  // only to give cpu address of kernel stack
-  struct segdesc gdt[NSEGS];
   uint esp; // kernel stack pointer
   uint ebp; // kernel frame pointer
 
@@ -67,6 +65,8 @@ extern struct proc *curproc[NCPU];  // can be NULL if no proc running.
 struct cpu {
   uchar apicid;       // Local APIC ID
   struct jmpbuf jmpbuf;
+  struct taskstate ts;  // only to give cpu address of kernel stack
+  struct segdesc gdt[NSEGS];
   int guard1;
   char mpstack[MPSTACK]; // per-cpu start-up stack
   int guard2;

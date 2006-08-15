@@ -11,7 +11,7 @@ struct spinlock proc_table_lock;
 
 struct proc proc[NPROC];
 struct proc *curproc[NCPU];
-int next_pid = NCPU;
+int next_pid = 1;
 extern void forkret(void);
 extern void forkret1(struct trapframe*);
 
@@ -22,28 +22,39 @@ pinit(void)
 }
 
 /*
- * set up a process's task state and segment descriptors
- * correctly, given its current size and address in memory.
- * this should be called whenever the latter change.
- * doesn't change the cpu's current segmentation setup.
+ * set up CPU's segment descriptors and task state for a
+ * given process. If p==0, set up for "idle" state for
+ * when scheduler() isn't running any process.
  */
 void
 setupsegs(struct proc *p)
 {
-  memset(&p->ts, 0, sizeof(struct taskstate));
-  p->ts.ss0 = SEG_KDATA << 3;
-  p->ts.esp0 = (uint)(p->kstack + KSTACKSIZE);
+  struct cpu *c = &cpus[cpu()];
+
+  c->ts.ss0 = SEG_KDATA << 3;
+  if(p){
+    c->ts.esp0 = (uint)(p->kstack + KSTACKSIZE);
+  } else {
+    c->ts.esp0 = 0xffffffff;
+  }
 
   // XXX it may be wrong to modify the current segment table!
 
-  p->gdt[0] = SEG_NULL;
-  p->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024, 0); // xxx
-  p->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  p->gdt[SEG_TSS] = SEG16(STS_T32A, (uint) &p->ts,
-                                sizeof(p->ts), 0);
-  p->gdt[SEG_TSS].s = 0;
-  p->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz, 3);
-  p->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz, 3);
+  c->gdt[0] = SEG_NULL;
+  c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024, 0); // xxx
+  c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
+  c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint) &c->ts, sizeof(c->ts), 0);
+  c->gdt[SEG_TSS].s = 0;
+  if(p){
+    c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz, 3);
+    c->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz, 3);
+  } else {
+    c->gdt[SEG_UCODE] = SEG_NULL;
+    c->gdt[SEG_UDATA] = SEG_NULL;
+  }
+
+  lgdt(c->gdt, sizeof c->gdt);
+  ltr(SEG_TSS << 3);
 }
 
 // Look in the process table for an UNUSED proc.
@@ -101,9 +112,6 @@ copyproc(struct proc* p)
     np->state = UNUSED;
     return 0;
   }
-  
-  // Initialize segment table.
-  setupsegs(np);
 
   // Copy trapframe registers from parent.
   np->tf = (struct trapframe*)(np->kstack + KSTACKSIZE) - 1;
@@ -159,26 +167,11 @@ scheduler(void)
       if(p->state != RUNNABLE)
         continue;
       
-      // Run this process.
-      // XXX move this into swtch or trapret or something.
-      // It can run on the other stack.
-      // h/w sets busy bit in TSS descriptor sometimes, and faults
-      // if it's set in LTR. so clear tss descriptor busy bit.
-      p->gdt[SEG_TSS].type = STS_T32A;
-    
-      // XXX should probably have an lgdt() function in x86.h
-      // to confine all the inline assembly.
-      // XXX probably ought to lgdt on trap return too, in case
-      // a system call has moved a program or changed its size.
-      lgdt(p->gdt, sizeof p->gdt);
-    // asm volatile("lgdt %0" : : "g" (p->gdt_pd.lim));
-
-      ltr(SEG_TSS << 3);
-
       // Switch to chosen process.  It is the process's job 
       // to release proc_table_lock and then reacquire it
       // before jumping back to us.
-      if(0) cprintf("cpu%d: run %d\n", cpu(), p-proc);
+
+      setupsegs(p);
       curproc[cpu()] = p;
       p->state = RUNNING;
       if(setjmp(&cpus[cpu()].jmpbuf) == 0)
@@ -199,9 +192,7 @@ scheduler(void)
         panic("scheduler lock");
       }
 
-      setupsegs(&proc[cpu()]);
-
-      // XXX if not holding proc_table_lock panic.
+      setupsegs(0);
     }
 
     release(&proc_table_lock);
