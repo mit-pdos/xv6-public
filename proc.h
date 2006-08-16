@@ -33,8 +33,7 @@ struct jmpbuf {
   int eip;
 };
 
-enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE,
-                  IDLEPROC };
+enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct proc{
   char *mem; // start of process's physical memory

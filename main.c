@@ -11,8 +11,9 @@
 #include "spinlock.h"
 
 extern char edata[], end[];
-extern uchar _binary_userfs_start[], _binary_userfs_size[];
 extern uchar _binary_init_start[], _binary_init_size[];
+
+void main00();
 
 // CPU 0 starts running C code here.
 // This is called main0 not main so that it can have
@@ -59,18 +60,18 @@ main0(void)
   fd_init();
   iinit();
 
-  // fix process 0 so that copyproc() will work
+  // initialize process 0
   p = &proc[0];
-  p->state = IDLEPROC;
+  p->state = RUNNABLE;
   p->sz = 4 * PAGE;
   p->mem = kalloc(p->sz);
   memset(p->mem, 0, p->sz);
   p->kstack = kalloc(KSTACKSIZE);
-  p->tf = (struct trapframe *) (p->kstack + KSTACKSIZE) - 1;
-  memset(p->tf, 0, sizeof(struct trapframe));
-  p->tf->es = p->tf->ds = p->tf->ss = (SEG_UDATA << 3) | 3;
-  p->tf->cs = (SEG_UCODE << 3) | 3;
-  p->tf->eflags = FL_IF;
+
+  // cause proc[0] to start in kernel at main00
+  memset(&p->jmpbuf, 0, sizeof p->jmpbuf);
+  p->jmpbuf.eip = (uint)main00;
+  p->jmpbuf.esp = (uint) (p->kstack + KSTACKSIZE - 4);
 
   // make sure there's a TSS
   setupsegs(0);
@@ -88,15 +89,6 @@ main0(void)
   // Enable interrupts on this processor.
   cpus[cpu()].nlock--;
   sti();
-
-  // p->cwd = iget(rootdev, 1);
-  // iunlock(p->cwd);
-  p = copyproc(&proc[0]);
-  
-  //load_icode(p, _binary_usertests_start, (uint) _binary_usertests_size);
-  //load_icode(p, _binary_userfs_start, (uint) _binary_userfs_size);
-  load_icode(p, _binary_init_start, (uint) _binary_init_size);
-  p->state = RUNNABLE;
 
   scheduler();
 }
@@ -128,6 +120,40 @@ mpmain(void)
   scheduler();
 }
 
+// proc[0] starts here, called by scheduler() in the ordinary way.
+void
+main00()
+{
+  struct proc *p0 = &proc[0];
+  struct proc *p1;
+  extern struct spinlock proc_table_lock;
+  struct trapframe tf;
+
+  release(&proc_table_lock);
+
+  p0->cwd = iget(rootdev, 1);
+  iunlock(p0->cwd);
+
+  // fake a trap frame as if a user process had made a system
+  // call, so that copyproc will have a place for the new
+  // process to return to.
+  p0 = &proc[0];
+  p0->tf = &tf;
+  memset(p0->tf, 0, sizeof(struct trapframe));
+  p0->tf->es = p0->tf->ds = p0->tf->ss = (SEG_UDATA << 3) | 3;
+  p0->tf->cs = (SEG_UCODE << 3) | 3;
+  p0->tf->eflags = FL_IF;
+  p0->tf->esp = p0->sz;
+
+  p1 = copyproc(&proc[0]);
+  
+  load_icode(p1, _binary_init_start, (uint) _binary_init_size);
+  p1->state = RUNNABLE;
+
+  proc_wait();
+  panic("init exited");
+}
+
 void
 load_icode(struct proc *p, uchar *binary, uint size)
 {
@@ -141,7 +167,6 @@ load_icode(struct proc *p, uchar *binary, uint size)
     panic("load_icode: not an ELF binary");
 
   p->tf->eip = elf->entry;
-  p->tf->esp = p->sz;
 
   // Map and load segments as directed.
   ph = (struct proghdr*) (binary + elf->phoff);

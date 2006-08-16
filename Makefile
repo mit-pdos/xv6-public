@@ -46,12 +46,12 @@ bootblock : bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
-kernel : $(OBJS) bootother.S userfs init
+kernel : $(OBJS) bootother.S init
 	$(CC) -nostdinc -I. -c bootother.S
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
-	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother userfs init
+	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother init
 	$(OBJDUMP) -S kernel > kernel.asm
 
 vectors.S : vectors.pl
