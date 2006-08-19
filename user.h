@@ -17,8 +17,9 @@ int unlink (char*);
 int fstat (int fd, struct stat *stat);
 int link(char *, char *);
 int mkdir(char *);
-int stat(char *, struct stat *stat);
+int chdir(char *);
 
+int stat(char *, struct stat *stat);
 int puts(char*);
 char* strcpy(char*, char*);
 void printf(int fd, char *fmt, ...);

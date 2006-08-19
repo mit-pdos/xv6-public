@@ -385,6 +385,7 @@ struct inode *
 namei(char *path, int mode, uint *ret_off)
 {
   struct inode *dp;
+  struct proc *p = curproc[cpu()];
   char *cp = path, *cp1;
   uint off, dev;
   struct buf *bp;
@@ -392,7 +393,12 @@ namei(char *path, int mode, uint *ret_off)
   int i, atend;
   unsigned ninum;
   
-  dp = iget(rootdev, 1);
+  if (*cp == '/') dp = iget(rootdev, 1);
+  else {
+    dp = p->cwd;
+    iincref(dp);
+    ilock(dp);
+  }
 
   while(*cp == '/')
     cp++;

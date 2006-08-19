@@ -15,22 +15,31 @@ main(int argc, char *argv[])
   uint sz;
   int i;
 
-  if(argc > 1){
-    puts("Usage: ls\n");
+  if(argc > 2){
+    puts("Usage: ls [dir]\n");
     exit();
   }
 
-  fd = open(".", 0);
-  if(fd < 0){
-    printf(2, "ls: cannot open .\n");
-    exit();
+  if (argc == 2) {
+    fd = open(argv[1], 0);
+    if(fd < 0){
+      printf(2, "ls: cannot open dir %s\n", argv[1]);
+      exit();
+    } 
+  } else {
+    fd = open(".", 0);
+    if(fd < 0){
+      printf(2, "ls: cannot open .\n");
+      exit();
+    }
   }
+
   if (fstat(fd, &st) < 0) {
-    printf(2, "ls: cannot open .\n");
+    printf(2, "ls: cannot stat dir\n");
     exit();
   }
   if (st.st_type != T_DIR) {
-    printf(2, "ls: . is not a dir\n");
+    printf(2, "ls: dir is not a directory\n");
   }
   sz = st.st_size;
   for(off = 0; off < sz; off += sizeof(struct dirent)) {
@@ -39,9 +48,10 @@ main(int argc, char *argv[])
       break;
     }
     if (dirent.inum != 0) {
+      // xxx prepend to name the pathname supplied to ls (e.g. .. in ls ..)
       if (stat (dirent.name, &st) < 0)  {
-	printf(1, "stat: failed\n");
-	break;
+	printf(1, "stat: failed %s\n", dirent.name);
+	continue;
       }
       for (i = 0; i < DIRSIZ; i++) {
 	if (dirent.name[i] != '\0')

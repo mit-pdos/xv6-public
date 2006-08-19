@@ -132,8 +132,8 @@ copyproc(struct proc* p)
       fd_incref(np->fds[i]);
   }
 
-  // np->cwd = p->cwd;
-  // iincref(p->cwd);
+  np->cwd = p->cwd;
+  iincref(p->cwd);
 
   return np;
 }
