@@ -94,6 +94,7 @@ int fd_read(struct fd *fd, char *addr, int n);
 int fd_write(struct fd *fd, char *addr, int n);
 int fd_stat(struct fd *fd, struct stat *);
 void fd_incref(struct fd *fd);
+int fd_dup(struct fd *fd);
 
 // ide.c
 void ide_init(void);

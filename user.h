@@ -6,7 +6,6 @@ int pipe(int*);
 int write(int, void*, int);
 int read(int, void*, int);
 int close(int);
-int block(void);
 int kill(int);
 int panic(char*);
 int cons_puts(char*);
@@ -18,6 +17,7 @@ int fstat (int fd, struct stat *stat);
 int link(char *, char *);
 int mkdir(char *);
 int chdir(char *);
+int dup(int);
 
 int stat(char *, struct stat *stat);
 int puts(char*);

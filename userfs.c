@@ -20,8 +20,6 @@ main(void)
 
   printf(stdout, "userfs is running\n");
 
-  block();
-
   fd = open("echo", 0);
   if(fd >= 0){
     printf(stdout, "open echo ok\n");

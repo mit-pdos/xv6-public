@@ -399,6 +399,23 @@ sys_fstat(void)
 }
 
 int
+sys_dup(void)
+{
+  struct proc *cp = curproc[cpu()];
+  uint fd;
+  int r;
+  
+  if(fetcharg(0, &fd) < 0)
+    return -1;
+  if(fd < 0 || fd >= NOFILE)
+    return -1;
+  if(cp->fds[fd] == 0)
+    return -1;
+  r = fd_dup (cp->fds[fd]);
+  return r;
+}
+
+int
 sys_link(void)
 {
   struct proc *cp = curproc[cpu()];
@@ -543,44 +560,6 @@ sys_exec(void)
   return 0;
 }
 
-int
-sys_block(void)
-{
-  int i, j;
-  struct buf *b;
-  struct inode *ip;
-
-  for (i = 0; i < 2; i++) {
-    cprintf ("issue read\n");
-    b = bread(1, i);
-
-    cprintf("disk 1 sector %d: ", i);
-    for (j = 0; j < 4; j++)
-      cprintf("%x ", b->data[j] & 0xff);
-    cprintf("\n");
-
-    brelse(b);
-  }
-
-  ip = iget(1, 1);
-  cprintf("iget 1: %d %d %d %d %d %d %d %d\n",
-          ip->dev, ip->inum, ip->count, ip->busy,
-          ip->type, ip->nlink, ip->size, ip->addrs[0]);
-  iput(ip);
-
-  ip = namei(".././//./../usertests", NAMEI_LOOKUP, 0);
-  if(ip){
-    cprintf("namei(usertests): %d %d %d %d %d %d %d %d\n",
-            ip->dev, ip->inum, ip->count, ip->busy,
-            ip->type, ip->nlink, ip->size, ip->addrs[0]);
-    iput(ip);
-  } else {
-    cprintf("namei(usertests) failed\n");
-  }
-
-  return 0;
-}
-
 void
 syscall(void)
 {
@@ -610,9 +589,6 @@ syscall(void)
   case SYS_close:
     ret = sys_close();
     break;
-  case SYS_block:
-    ret = sys_block();
-    break;
   case SYS_kill:
     ret = sys_kill();
     break;
@@ -639,6 +615,9 @@ syscall(void)
     break;
   case SYS_chdir:
     ret = sys_chdir();
+    break;
+  case SYS_dup:
+    ret = sys_dup();
     break;
   default:
     cprintf("unknown sys call %d\n", num);
