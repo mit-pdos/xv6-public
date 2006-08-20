@@ -402,17 +402,36 @@ int
 sys_dup(void)
 {
   struct proc *cp = curproc[cpu()];
-  uint fd;
-  int r;
+  uint fd, ufd1;
+  struct fd *fd1;
   
   if(fetcharg(0, &fd) < 0)
     return -1;
   if(fd < 0 || fd >= NOFILE)
     return -1;
-  if(cp->fds[fd] == 0)
+  if(cp->fds[fd] == 0) 
     return -1;
-  r = fd_dup (cp->fds[fd]);
-  return r;
+  if (cp->fds[fd]->type != FD_PIPE && cp->fds[fd]->type != FD_FILE)
+    return -1;
+
+  if ((fd1 = fd_alloc()) == 0) {
+    return -1;
+  }
+  if ((ufd1 = fd_ualloc()) < 0) {
+    fd_close(fd1);
+    return -1;
+  }
+  fd1->type = cp->fds[fd]->type;
+  fd1->readable = cp->fds[fd]->readable;
+  fd1->writeable = cp->fds[fd]->writeable;
+  if (cp->fds[fd]->type == FD_FILE) {
+    fd1->ip = cp->fds[fd]->ip;
+    iincref(fd1->ip);
+  } else if (cp->fds[fd]->type == FD_PIPE) {
+    fd1->pipe = cp->fds[fd]->pipe;
+  }
+  fd1->off = cp->fds[fd]->off;
+  return ufd1;
 }
 
 int
