@@ -140,6 +140,7 @@ sys_write(void)
     return -1;
   if(addr + n > p->sz)
     return -1;
+
   ret = fd_write(p->fds[fd], p->mem + addr, n);
   return ret;
 }
@@ -421,6 +422,7 @@ sys_dup(void)
     fd_close(fd1);
     return -1;
   }
+  cp->fds[ufd1] = fd1;
   fd1->type = cp->fds[fd]->type;
   fd1->readable = cp->fds[fd]->readable;
   fd1->writeable = cp->fds[fd]->writeable;
@@ -446,6 +448,27 @@ sys_link(void)
   if(fetcharg(1, &name2) < 0 || checkstring(name2) < 0)
     return -1;
   r = link(cp->mem + name1, cp->mem + name2);
+  return r;
+}
+
+int
+sys_getpid(void)
+{
+  struct proc *cp = curproc[cpu()];
+  return cp->pid;
+}
+
+
+int
+sys_sbrk(void)
+{
+  int r, n;
+  struct proc *cp = curproc[cpu()];
+
+  if(fetcharg(0, &n) < 0)
+    return -1;
+  r = growproc(n);
+  setupsegs(cp);  
   return r;
 }
 
@@ -637,6 +660,12 @@ syscall(void)
     break;
   case SYS_dup:
     ret = sys_dup();
+    break;
+  case SYS_getpid:
+    ret = sys_getpid();
+    break;
+  case SYS_sbrk:
+    ret = sys_sbrk();
     break;
   default:
     cprintf("unknown sys call %d\n", num);

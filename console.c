@@ -304,26 +304,31 @@ char kbd_buf[KBD_BUF];
 int kbd_r;
 int kbd_w;
 struct spinlock kbd_lock;
+static uint shift;
 
 void
 kbd_intr()
 {
   uint st, data, c;
-  static uint shift;
+
+  acquire(&kbd_lock);
 
   st = inb(KBSTATP);
   if ((st & KBS_DIB) == 0){
+    release(&kbd_lock);
     return;
   }
   data = inb(KBDATAP);
 
   if (data == 0xE0) {
     shift |= E0ESC;
+    release(&kbd_lock);
     return;
   } else if (data & 0x80) {
     // Key released
     data = (shift & E0ESC ? data : data & 0x7F);
     shift &= ~(shiftcode[data] | E0ESC);
+    release(&kbd_lock);
     return;
   } else if (shift & E0ESC) {
     // Last character was an E0 escape; or with 0x80
@@ -341,8 +346,12 @@ kbd_intr()
     else if ('A' <= c && c <= 'Z')
       c += 'a' - 'A';
   }
-  
-  acquire(&kbd_lock);
+
+  // xxx hack
+  if (c == 0x0) {
+    release(&kbd_lock);
+    return;
+  }
 
   if(((kbd_w + 1) % KBD_BUF) != kbd_r){
     kbd_buf[kbd_w++] = c;
@@ -367,7 +376,7 @@ console_read(int minor, char *dst, int n)
     sleep(&kbd_r, &kbd_lock);
 
   while(n > 0 && kbd_w != kbd_r){
-    *dst = kbd_buf[kbd_r];
+    *dst = (kbd_buf[kbd_r]) & 0xff;
     cons_putc(*dst & 0xff);
     dst++;
     --n;

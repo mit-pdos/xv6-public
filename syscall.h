@@ -15,4 +15,6 @@
 #define SYS_mkdir 16
 #define SYS_chdir 17
 #define SYS_dup 18
+#define SYS_getpid 19
+#define SYS_sbrk 20
 

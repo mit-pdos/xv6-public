@@ -138,6 +138,24 @@ copyproc(struct proc* p)
   return np;
 }
 
+int
+growproc(int n)
+{
+  struct proc *cp = curproc[cpu()];
+  char *newmem, *oldmem;
+
+  newmem = kalloc(cp->sz + n);
+  if(newmem == 0) return -1;
+  memmove(newmem, cp->mem, cp->sz);
+  memset(newmem + cp->sz, 0, n);
+  oldmem = cp->mem;
+  cp->mem = newmem;
+  kfree(oldmem, cp->sz);
+  cp->sz += n;
+  cprintf("growproc: added %d bytes\n", n);
+  return 0;
+}
+
 // Per-CPU process scheduler. 
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:

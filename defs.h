@@ -16,6 +16,7 @@ struct jmpbuf;
 void setupsegs(struct proc *);
 struct proc * copyproc(struct proc*);
 struct spinlock;
+int growproc(int);
 void sleep(void *, struct spinlock *);
 void wakeup(void *);
 void scheduler(void);

@@ -131,3 +131,11 @@ maybe get rid of per-proc gdt and ts
   one per cpu
   refresh it when needed
   setupsegs(proc *)
+
+why do we get 0 characters from keyboard?
+are the locks in the right place in keyboardintr?
+
+sh: support pipes?  leave it for the class?
+sh: dynamic memory allocation?
+sh: should sh support ; () &  --- need malloc
+sh: stop stdin on ctrl-d (for cat > y)
