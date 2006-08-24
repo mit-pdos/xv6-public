@@ -138,22 +138,23 @@ copyproc(struct proc* p)
   return np;
 }
 
-int
+char *
 growproc(int n)
 {
   struct proc *cp = curproc[cpu()];
   char *newmem, *oldmem;
 
   newmem = kalloc(cp->sz + n);
-  if(newmem == 0) return -1;
+  if(newmem == 0) return (char *) -1;
   memmove(newmem, cp->mem, cp->sz);
   memset(newmem + cp->sz, 0, n);
   oldmem = cp->mem;
   cp->mem = newmem;
   kfree(oldmem, cp->sz);
   cp->sz += n;
-  cprintf("growproc: added %d bytes\n", n);
-  return 0;
+  cprintf("growproc: added %d bytes starting at address 0x%x\n", n, 
+	  newmem + cp->sz - n);
+  return newmem + cp->sz - n;
 }
 
 // Per-CPU process scheduler. 

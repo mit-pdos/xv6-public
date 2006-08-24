@@ -19,6 +19,7 @@ int mkdir(char *);
 int chdir(char *);
 int dup(int);
 int getpid();
+char *sbrk(int);
 
 int stat(char *, struct stat *stat);
 int puts(char*);
@@ -29,3 +30,5 @@ void printf(int fd, char *fmt, ...);
 char *gets(char *, int max);
 unsigned int strlen(char *);
 void * memset(void *dst, int c, unsigned int n);
+void *mallic(uint);
+void free(void *);

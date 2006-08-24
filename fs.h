@@ -9,7 +9,11 @@ struct superblock{
   uint ninodes;
 };
 
-#define NDIRECT 13
+#define NADDRS NDIRECT+1
+#define NDIRECT 12
+#define INDIRECT 12
+#define NINDIRECT (BSIZE / sizeof(uint))
+#define MAXFILE (NDIRECT  + NINDIRECT)
 
 struct dinode {
   short type;
@@ -17,7 +21,7 @@ struct dinode {
   short minor;
   short nlink;
   uint size;
-  uint addrs[NDIRECT];
+  uint addrs[NADDRS];
 };
 
 #define T_DIR 1

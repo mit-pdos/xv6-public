@@ -231,24 +231,46 @@ uint
 bmap(struct inode *ip, uint bn)
 {
   unsigned x;
+  uint *a;
+  struct buf *inbp;
 
-  if(bn >= NDIRECT)
+  if(bn >= MAXFILE)
     panic("bmap 1");
-  x = ip->addrs[bn];
-  if(x == 0)
-    panic("bmap 2");
+  if (bn < NDIRECT) {
+    x = ip->addrs[bn];
+    if (x == 0)
+      panic("bmap 2");
+  } else {
+    cprintf("indirect block read\n");
+    inbp = bread(ip->dev, INDIRECT);
+    a = (uint *) inbp->data;
+    x = a[bn - NDIRECT];
+    brelse(inbp);
+    if (x == 0)
+      panic("bmap 3");
+  }
   return x;
 }
 
 void 
 iunlink(struct inode *ip)
 {
-  int i;
+  int i, j;
 
   // free inode, its blocks, and remove dir entry
-  for (i = 0; i < NDIRECT; i++) {
+  for (i = 0; i < NADDRS; i++) {
     if (ip->addrs[i] != 0) {
-      bfree(ip->dev, ip->addrs[i]);
+      if (i == INDIRECT) {
+	for (j = 0; j < NINDIRECT; j++) {
+	  uint *a = (uint *) (ip->addrs[i]);
+	  if (a[j] != 0) {
+	    bfree(ip->dev, a[j]);
+	    a[j] = 0;
+	  }
+	}
+      }
+      else 
+	bfree(ip->dev, ip->addrs[i]);
       ip->addrs[i] = 0;
     }
   }
@@ -333,30 +355,62 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 }
 
 int
+newblock(struct inode *ip, uint lbn)
+{
+  struct buf *inbp;
+  uint *inaddrs;
+  uint b;
+
+  if (lbn < NDIRECT) {
+    if (ip->addrs[lbn] == 0) {
+      b = balloc(ip->dev);
+      if (b <= 0) return -1;
+      ip->addrs[lbn] = b;
+    }
+  } else {
+    cprintf("newblock: use indirect block\n");
+    if (ip->addrs[INDIRECT] == 0) {
+      cprintf("newblock: allocate indirect block\n");
+      b = balloc(ip->dev);
+      if (b <= 0) return -1;
+      ip->addrs[INDIRECT] = b;
+    }
+    inbp = bread(ip->dev, bmap(ip, INDIRECT));
+    inaddrs = (uint *) inbp->data;
+    if (inaddrs[lbn - NDIRECT] == 0) {
+      b = balloc(ip->dev);
+      if (b <= 0) return -1;
+      inaddrs[lbn - NDIRECT] = b;
+      bwrite(inbp, INDIRECT);
+    }
+    brelse(inbp);
+  }
+  return 0;
+}
+
+int
 writei(struct inode *ip, char *addr, uint off, uint n)
 {
   if (ip->type == T_DEV) {
     if (ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].d_write)
       return -1;
     return devsw[ip->major].d_write (ip->minor, addr, n);
-  } else if (ip->type == T_FILE || ip->type == T_DIR) { // XXX dir here too?
+  } else if (ip->type == T_FILE || ip->type == T_DIR) {
     struct buf *bp;
     int r = 0;
     int m;
     int lbn;
-    uint b;
     while (r < n) {
       lbn = off / BSIZE;
-      if (lbn >= NDIRECT) return r;
-      if (ip->addrs[lbn] == 0) {
-	b = balloc(ip->dev);
-	if (b <= 0) return r;
-	ip->addrs[lbn] = b;
+      if (lbn >= MAXFILE) return r;
+      if (newblock(ip, lbn) < 0) {
+	cprintf("newblock failed\n");
+	return r;
       }
       m = min(BSIZE - off % BSIZE, n-r);
-      bp = bread(ip->dev, bmap(ip, off / BSIZE));
+      bp = bread(ip->dev, bmap(ip, lbn));
       memmove (bp->data + off % BSIZE, addr, m);
-      bwrite (bp, bmap(ip, off/BSIZE));
+      bwrite (bp, bmap(ip, lbn));
       brelse (bp);
       r += m;
       off += m;

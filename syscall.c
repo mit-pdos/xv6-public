@@ -404,7 +404,6 @@ sys_dup(void)
 {
   struct proc *cp = curproc[cpu()];
   uint fd, ufd1;
-  struct fd *fd1;
   
   if(fetcharg(0, &fd) < 0)
     return -1;
@@ -414,25 +413,11 @@ sys_dup(void)
     return -1;
   if (cp->fds[fd]->type != FD_PIPE && cp->fds[fd]->type != FD_FILE)
     return -1;
-
-  if ((fd1 = fd_alloc()) == 0) {
-    return -1;
-  }
   if ((ufd1 = fd_ualloc()) < 0) {
-    fd_close(fd1);
     return -1;
   }
-  cp->fds[ufd1] = fd1;
-  fd1->type = cp->fds[fd]->type;
-  fd1->readable = cp->fds[fd]->readable;
-  fd1->writeable = cp->fds[fd]->writeable;
-  if (cp->fds[fd]->type == FD_FILE) {
-    fd1->ip = cp->fds[fd]->ip;
-    iincref(fd1->ip);
-  } else if (cp->fds[fd]->type == FD_PIPE) {
-    fd1->pipe = cp->fds[fd]->pipe;
-  }
-  fd1->off = cp->fds[fd]->off;
+  cp->fds[ufd1] = cp->fds[fd];
+  fd_incref(cp->fds[ufd1]);
   return ufd1;
 }
 
@@ -462,14 +447,15 @@ sys_getpid(void)
 int
 sys_sbrk(void)
 {
-  int r, n;
+  char *r;
+  int n;
   struct proc *cp = curproc[cpu()];
 
   if(fetcharg(0, &n) < 0)
     return -1;
   r = growproc(n);
   setupsegs(cp);  
-  return r;
+  return (int) r;
 }
 
 int

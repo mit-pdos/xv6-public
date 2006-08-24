@@ -57,7 +57,7 @@ kernel : $(OBJS) bootother.S init
 vectors.S : vectors.pl
 	perl vectors.pl > vectors.S
 
-ULIB = ulib.o usys.o printf.o
+ULIB = ulib.o usys.o printf.o umalloc.o
 
 user1 : user1.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o user1 user1.o $(ULIB)

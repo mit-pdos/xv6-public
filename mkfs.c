@@ -106,6 +106,7 @@ main(int argc, char *argv[])
 
   for(i = 2; i < argc; i++){
     assert(index(argv[i], '/') == 0);
+
     if((fd = open(argv[i], 0)) < 0){
       perror(argv[i]);
       exit(1);
@@ -234,21 +235,40 @@ iappend(uint inum, void *xp, int n)
   uint fbn, off, n1;
   struct dinode din;
   char buf[512];
+  uint indirect[NINDIRECT];
+  uint x;
 
   rinode(inum, &din);
 
   off = xint(din.size);
   while(n > 0){
     fbn = off / 512;
-    assert(fbn < NDIRECT);
-    if(din.addrs[fbn] == 0) {
-      din.addrs[fbn] = xint(freeblock++);
-      usedblocks++;
+    assert(fbn < MAXFILE);
+    if (fbn < NDIRECT) {
+      if(xint(din.addrs[fbn]) == 0) {
+	din.addrs[fbn] = xint(freeblock++);
+	usedblocks++;
+      }
+      x = xint(din.addrs[fbn]);
+    } else {
+      if(xint(din.addrs[INDIRECT]) == 0) {
+	printf("allocate indirect block\n");
+	din.addrs[INDIRECT] = xint(freeblock++);
+	usedblocks++;
+      }
+      printf("read indirect block\n");
+      rsect(xint(din.addrs[INDIRECT]), (char *) indirect);
+      if (indirect[fbn - NDIRECT] == 0) {
+	indirect[fbn - NDIRECT] = xint(freeblock++);
+	usedblocks++;
+	wsect(INDIRECT, (char *) indirect);
+      }
+      x = xint(indirect[fbn-NDIRECT]);
     }
     n1 = min(n, (fbn + 1) * 512 - off);
-    rsect(xint(din.addrs[fbn]), buf);
+    rsect(x, buf);
     bcopy(p, buf + off - (fbn * 512), n1);
-    wsect(xint(din.addrs[fbn]), buf);
+    wsect(x, buf);
     n -= n1;
     off += n1;
     p += n1;
