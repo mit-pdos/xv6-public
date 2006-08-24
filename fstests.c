@@ -365,11 +365,56 @@ concreate()
   puts("concreate ok\n");
 }
 
+// directory that uses indirect blocks
+void
+bigdir()
+{
+  int i, fd;
+  char name[10];
+
+  unlink("bd");
+
+  fd = open("bd", O_CREATE);
+  if(fd < 0){
+    puts("bigdir create failed\n");
+    exit();
+  }
+  close(fd);
+
+  for(i = 0; i < 500; i++){
+    name[0] = 'x';
+    name[1] = '0' + (i / 64);
+    name[2] = '0' + (i % 64);
+    name[3] = '\0';
+    if(link("bd", name) != 0){
+      puts("bigdir link failed\n");
+      exit();
+    }
+    puts("c");
+  }
+
+  unlink("bd");
+  for(i = 0; i < 500; i++){
+    name[0] = 'x';
+    name[1] = '0' + (i / 64);
+    name[2] = '0' + (i % 64);
+    name[3] = '\0';
+    if(unlink(name) != 0){
+      puts("bigdir unlink failed");
+      exit();
+    }
+    puts("d");
+  }
+
+  puts("bigdir ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
   puts("fstests starting\n");
 
+  bigdir();
   concreate();
   linktest();
   unlinkread();

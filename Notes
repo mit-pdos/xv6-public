@@ -115,6 +115,11 @@ why does shell often ignore first line of input?
 test: one process unlinks a file while another links to it
 test: one process opens a file while another deletes it
 test: mkdir. deadlock d/.. vs ../d
+test: sub-sub directories. mkdir("d1/d2")
+test: dup() shared fd->off
+test: indirect blocks. files and directories.
+test: sbrk
+test: does echo foo > x truncate x?
 
 make proc[0] runnable
 cpu early tss and gdt
@@ -139,3 +144,7 @@ sh: support pipes?  leave it for the class?
 sh: dynamic memory allocation?
 sh: should sh support ; () &  --- need malloc
 sh: stop stdin on ctrl-d (for cat > y)
+
+really should have bdwrite() for file content
+  and make some inode updates async
+  so soft updates make sense
