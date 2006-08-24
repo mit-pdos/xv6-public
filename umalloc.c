@@ -25,7 +25,9 @@ void
 free(void *ap)
 {
   Header *bp, *p;
-  
+
+  printf(1, "free\n");
+
   bp = (Header *) ap - 1;
   for (p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
     if (p >= p->s.ptr && (bp > p || bp < p->s.ptr))
@@ -51,6 +53,7 @@ morecore(uint nu)
   
   if (nu < PAGE)
     nu = PAGE;
+  printf(1, "call sbrk\n");
   cp = sbrk(nu * sizeof(Header));
   if (cp == (char *) -1)
     return 0;
@@ -65,6 +68,8 @@ malloc(uint nbytes)
 {
   Header *p, *prevp;
   uint nunits;
+
+  printf(1, "malloc %d\n", nbytes);
 
   nunits = (nbytes + sizeof(Header) - 1)/sizeof(Header) + 1;
   if ((prevp = freep) == 0) {
@@ -81,6 +86,7 @@ malloc(uint nbytes)
 	p->s.size = nunits;
       }
       freep = prevp;
+      printf(1, "malloc returns: %d\n", (int) (p+1));
       return (void *) (p + 1);
     }
     if (p == freep) 

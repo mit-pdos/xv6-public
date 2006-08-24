@@ -30,5 +30,5 @@ void printf(int fd, char *fmt, ...);
 char *gets(char *, int max);
 unsigned int strlen(char *);
 void * memset(void *dst, int c, unsigned int n);
-void *mallic(uint);
+void *malloc(uint);
 void free(void *);

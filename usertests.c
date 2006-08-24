@@ -117,14 +117,50 @@ exitwait(void)
   puts("exitwait ok\n");
 }
 
+void
+mem(void)
+{
+  void *m = malloc(4096);
+  void *m1, *m2;
+
+  free(m + 3*1024);
+  free(m + 2*1024);
+  free(m + 1024);
+  free(m);
+  m1 = malloc(4096);
+  if (m1 != m) {
+    puts("didn't coalesce\n");
+    exit();
+  }
+  free(m1);
+  
+  m1 = 0;
+  while ((m2 = malloc(1024)) != 0) {
+    *(char **) m2 = m1;
+    m1 = m2;
+  }
+  while (m1) {
+    m2 = *(char **)m1;
+    free(m1);
+    m1 = m2;
+  }
+  m1 = malloc(1024*20);
+  if (m1 == 0) {
+    puts("couldn't allocate mem?!!\n");
+    exit();
+  }
+  free(m1);
+}
+
 int
 main(int argc, char *argv[])
 {
   puts("usertests starting\n");
 
-  pipe1();
-  preempt();
-  exitwait();
+  // pipe1();
+  // preempt();
+  // exitwait();
+  mem();
 
   puts("usertests finished\n");
   exit();
