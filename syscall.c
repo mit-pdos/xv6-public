@@ -219,24 +219,34 @@ int
 sys_open(void)
 {
   struct proc *cp = curproc[cpu()];
-  struct inode *ip;
+  struct inode *ip, *dp;
   uint arg0, arg1;
   int ufd;
   struct fd *fd;
   int l;
+  char *last;
 
   if(fetcharg(0, &arg0) < 0 || fetcharg(1, &arg1) < 0)
     return -1;
   if((l = checkstring(arg0)) < 0)
     return -1;
-  if((ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0)) == 0) {
-    if (arg1 & O_CREATE) {
-      if (l >= DIRSIZ)
-	return -1;
-      ip = mknod (cp->mem + arg0, T_FILE, 0, 0);
-      if (ip == 0) return -1;
-    } else return -1;
+
+  if(arg1 & O_CREATE){
+    dp = namei(cp->mem + arg0, NAMEI_CREATE, 0, &last, &ip);
+    if(dp){
+      ip = mknod1(dp, last, T_FILE, 0, 0);
+      iput(dp);
+      if(ip == 0)
+        return -1;
+    } else if(ip == 0){
+      return -1;
+    }
+  } else {
+    ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0, 0, 0);
+    if(ip == 0)
+      return -1;
   }
+
   if((fd = fd_alloc()) == 0){
     iput(ip);
     return -1;
@@ -316,7 +326,7 @@ sys_mkdir(void)
   de.inum = nip->inum;
   writei (nip, (char *) &de, 0, sizeof(de));
 
-  pip = namei(".", NAMEI_LOOKUP, 0);
+  pip = namei(".", NAMEI_LOOKUP, 0, 0, 0);
   de.inum = pip->inum;
   de.name[1] = '.';
   iput(pip);
@@ -344,7 +354,7 @@ sys_chdir(void)
   if(l >= DIRSIZ)
     return -1;
 
-  if ((ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0)) == 0)
+  if ((ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0, 0, 0)) == 0)
     return -1;
   
   if (ip == cp->cwd) {
@@ -475,7 +485,7 @@ sys_exec(void)
     return -1;
   if(checkstring(arg0) < 0)
     return -1;
-  ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0);
+  ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0, 0, 0);
   if(ip == 0)
     return -1;
 

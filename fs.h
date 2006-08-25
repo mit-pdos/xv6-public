@@ -9,7 +9,7 @@ struct superblock{
   uint ninodes;
 };
 
-#define NADDRS NDIRECT+1
+#define NADDRS (NDIRECT+1)
 #define NDIRECT 12
 #define INDIRECT 12
 #define NINDIRECT (BSIZE / sizeof(uint))

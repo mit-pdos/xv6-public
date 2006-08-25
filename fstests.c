@@ -213,7 +213,7 @@ unlinkread()
     exit();
   }
 
-  fd1 = open("xxx", O_CREATE | O_RDWR);
+  fd1 = open("unlinkread", O_CREATE | O_RDWR);
   write(fd1, "yyy", 3);
   close(fd1);
 
@@ -230,7 +230,7 @@ unlinkread()
     exit();
   }
   close(fd);
-  unlink("xxx");
+  unlink("unlinkread");
   puts("unlinkread ok\n");
 }
 
@@ -319,7 +319,7 @@ concreate()
     } else {
       fd = open(file, O_CREATE | O_RDWR);
       if(fd < 0){
-        puts("concreate create failed\n");
+        printf(1, "concreate create %s failed\n", file);
         exit();
       }
       close(fd);
@@ -409,12 +409,126 @@ bigdir()
   puts("bigdir ok\n");
 }
 
+void
+subdir()
+{
+  int fd;
+
+  if(mkdir("dd") != 0){
+    puts("subdir mkdir dd failed\n");
+    exit();
+  }
+
+  fd = open("dd/ff", O_CREATE | O_RDWR);
+  if(fd < 0){
+    puts("create dd/ff failed\n");
+    exit();
+  }
+  write(fd, "ff", 2);
+  close(fd);
+
+  if(mkdir("/dd/dd") != 0){
+    puts("subdir mkdir dd/dd failed\n");
+    exit();
+  }
+
+  fd = open("dd/dd/ff", O_CREATE | O_RDWR);
+  if(fd < 0){
+    puts("create dd/dd/ff failed\n");
+    exit();
+  }
+  write(fd, "FF", 2);
+  close(fd);
+
+  if(link("dd/dd/ff", "dd/dd/ffff") != 0){
+    puts("link dd/dd/ff dd/dd/ffff failed\n");
+    exit();
+  }
+
+  if(unlink("dd/dd/ff") != 0){
+    puts("unlink dd/dd/ff failed\n");
+    exit();
+  }
+
+  fd = open("dd/dd/ffff", 0);
+  if(fd < 0){
+    puts("open dd/dd/ffff failed\n");
+    exit();
+  }
+  if(read(fd, buf, sizeof(buf)) != 2){
+    puts("read dd/dd/ffff wrong len\n");
+    exit();
+  }
+  close(fd);
+
+  if(open("dd/dd/ff", 0) >= 0){
+    puts("open dd/dd/ff succeeded!\n");
+    exit();
+  }
+
+  if(open("dd/ff/ff", O_CREATE|O_RDWR) >= 0){
+    puts("create dd/ff/ff succeeded!\n");
+    exit();
+  }
+  if(open("dd/xx/ff", O_CREATE|O_RDWR) >= 0){
+    puts("create dd/xx/ff succeeded!\n");
+    exit();
+  }
+  if(link("dd/ff/ff", "dd/dd/xx") == 0){
+    puts("link dd/ff/ff dd/dd/xx succeeded!\n");
+    exit();
+  }
+  if(link("dd/xx/ff", "dd/dd/xx") == 0){
+    puts("link dd/xx/ff dd/dd/xx succeeded!\n");
+    exit();
+  }
+  if(link("dd/ff", "dd/dd/ff") == 0){
+    puts("link dd/ff dd/dd/ff succeeded!\n");
+    exit();
+  }
+  if(mkdir("dd/ff/ff") == 0){
+    puts("mkdir dd/ff/ff succeeded!\n");
+    exit();
+  }
+  if(mkdir("dd/xx/ff") == 0){
+    puts("mkdir dd/xx/ff succeeded!\n");
+    exit();
+  }
+  if(mkdir("dd/dd/ff") == 0){
+    puts("mkdir dd/dd/ff succeeded!\n");
+    exit();
+  }
+  if(unlink("dd/xx/ff") == 0){
+    puts("unlink dd/xx/ff succeeded!\n");
+    exit();
+  }
+  if(unlink("dd/ff/ff") == 0){
+    puts("unlink dd/ff/ff succeeded!\n");
+    exit();
+  }
+
+  if(unlink("dd/dd/ff") != 0){
+    puts("unlink dd/dd/ff failed\n");
+    exit();
+  }
+  if(unlink("dd/ff") != 0){
+    puts("unlink dd/ff failed\n");
+    exit();
+  }
+
+  // unlink dd/dd
+  // unlink dd
+
+  puts("subdir ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
   puts("fstests starting\n");
 
-  bigdir();
+  subdir();
+  // bigdir(); // slow
   concreate();
   linktest();
   unlinkread();

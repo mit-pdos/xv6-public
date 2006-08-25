@@ -10,7 +10,7 @@ struct inode {
   short minor;
   short nlink;
   uint size;
-  uint addrs[NDIRECT];
+  uint addrs[NADDRS];
 };
 
 extern uint rootdev;

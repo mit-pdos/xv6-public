@@ -241,12 +241,14 @@ bmap(struct inode *ip, uint bn)
     if (x == 0)
       panic("bmap 2");
   } else {
+    if(ip->addrs[INDIRECT] == 0)
+      panic("bmap 3");
     inbp = bread(ip->dev, ip->addrs[INDIRECT]);
     a = (uint *) inbp->data;
     x = a[bn - NDIRECT];
     brelse(inbp);
     if (x == 0)
-      panic("bmap 3");
+      panic("bmap 4");
   }
   return x;
 }
@@ -431,11 +433,14 @@ writei(struct inode *ip, char *addr, uint off, uint n)
 // look up a path name, in one of three modes.
 // NAMEI_LOOKUP: return locked target inode.
 // NAMEI_CREATE: return locked parent inode.
-//   but return 0 if name does exist.
+//   return 0 if name does exist.
+//   *ret_last points to last path component (i.e. new file name).
+//   *ret_ip points to the the name that did exist, if it did.
+//   *ret_ip and *ret_last may be zero even if return value is zero.
 // NAMEI_DELETE: return locked parent inode, offset of dirent in *ret_off.
 //   return 0 if name doesn't exist.
 struct inode *
-namei(char *path, int mode, uint *ret_off)
+namei(char *path, int mode, uint *ret_off, char **ret_last, struct inode **ret_ip)
 {
   struct inode *dp;
   struct proc *p = curproc[cpu()];
@@ -445,7 +450,18 @@ namei(char *path, int mode, uint *ret_off)
   struct dirent *ep;
   int i, atend;
   unsigned ninum;
-  
+
+  if(mode == NAMEI_DELETE && ret_off == 0)
+    panic("namei no ret_off");
+  if(mode == NAMEI_CREATE && ret_last == 0)
+    panic("namei no ret_last");
+  if(ret_off)
+    *ret_off = 0xffffffff;
+  if(ret_last)
+    *ret_last = 0;
+  if(ret_ip)
+    *ret_ip = 0;
+
   if (*cp == '/') dp = iget(rootdev, 1);
   else {
     dp = p->cwd;
@@ -460,6 +476,10 @@ namei(char *path, int mode, uint *ret_off)
     if(*cp == '\0'){
       if(mode == NAMEI_LOOKUP)
         return dp;
+      if(mode == NAMEI_CREATE && ret_ip){
+        *ret_ip = dp;
+        return 0;
+      }
       iput(dp);
       return 0;
     }
@@ -493,8 +513,14 @@ namei(char *path, int mode, uint *ret_off)
     for(cp1 = cp; *cp1; cp1++)
       if(*cp1 == '/')
         atend = 0;
-    if(mode == NAMEI_CREATE && atend)
+    if(mode == NAMEI_CREATE && atend){
+      if(*cp == '\0'){
+        iput(dp);
+        return 0;
+      }
+      *ret_last = cp;
       return dp;
+    }
 
     iput(dp);
     return 0;
@@ -521,6 +547,9 @@ wdir(struct inode *dp, char *name, uint ino)
   struct dirent de;
   int i;
 
+  if(name[0] == '\0')
+    panic("wdir no name");
+
   for(off = 0; off < dp->size; off += sizeof(de)){
     if(readi(dp, (char *) &de, off, sizeof(de)) != sizeof(de))
       panic("wdir read");
@@ -529,8 +558,11 @@ wdir(struct inode *dp, char *name, uint ino)
   }
 
   de.inum = ino;
-  for(i = 0; i < DIRSIZ && name[i]; i++)
+  for(i = 0; i < DIRSIZ && name[i]; i++){
+    if(name[i] == '/')
+      panic("wdir /");
     de.name[i] = name[i];
+  }
   for( ; i < DIRSIZ; i++)
     de.name[i] = '\0';
 
@@ -542,9 +574,22 @@ struct inode *
 mknod(char *cp, short type, short major, short minor)
 {
   struct inode *ip, *dp;
+  char *last;
 
-  if ((dp = namei(cp, NAMEI_CREATE, 0)) == 0)
+  if ((dp = namei(cp, NAMEI_CREATE, 0, &last, 0)) == 0)
     return 0;
+
+  ip = mknod1(dp, last, type, major, minor);
+
+  iput(dp);
+
+  return ip;
+}
+
+struct inode *
+mknod1(struct inode *dp, char *name, short type, short major, short minor)
+{
+  struct inode *ip;
 
   ip = ialloc(dp->dev, type);
   if (ip == 0) {
@@ -558,8 +603,8 @@ mknod(char *cp, short type, short major, short minor)
 
   iupdate (ip);  // write new inode to disk
   
-  wdir(dp, cp, ip->inum);
-  iput(dp);
+  wdir(dp, name, ip->inum);
+
   return ip;
 }
 
@@ -570,7 +615,8 @@ unlink(char *cp)
   struct dirent de;
   uint off, inum, dev;
   
-  if ((dp = namei(cp, NAMEI_DELETE, &off)) == 0)
+  dp = namei(cp, NAMEI_DELETE, &off, 0, 0);
+  if(dp == 0)
     return -1;
 
   dev = dp->dev;
@@ -604,8 +650,9 @@ int
 link(char *name1, char *name2)
 {
   struct inode *ip, *dp;
+  char *last;
 
-  if ((ip = namei(name1, NAMEI_LOOKUP, 0)) == 0)
+  if ((ip = namei(name1, NAMEI_LOOKUP, 0, 0, 0)) == 0)
     return -1;
   if(ip->type == T_DIR){
     iput(ip);
@@ -614,7 +661,7 @@ link(char *name1, char *name2)
 
   iunlock(ip);
 
-  if ((dp = namei(name2, NAMEI_CREATE, 0)) == 0) {
+  if ((dp = namei(name2, NAMEI_CREATE, 0, &last, 0)) == 0) {
     idecref(ip);
     return -1;
   }
@@ -628,7 +675,7 @@ link(char *name1, char *name2)
   ip->nlink += 1;
   iupdate (ip);
 
-  wdir(dp, name2, ip->inum);
+  wdir(dp, last, ip->inum);
   iput(dp);
   iput(ip);
 

@@ -120,6 +120,11 @@ test: dup() shared fd->off
 test: indirect blocks. files and directories.
 test: sbrk
 test: does echo foo > x truncate x?
+test: does create/mkdir/link extract last component correctly?
+      does namei insist that all the intermediate directories exist?
+test: creat/link/mkdir w/ / in name
+test: try to create dir ents when intermediate dir doesn't exist
+      or is a file, not a dir   
 
 make proc[0] runnable
 cpu early tss and gdt
