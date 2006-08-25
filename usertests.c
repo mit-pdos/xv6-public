@@ -120,20 +120,8 @@ exitwait(void)
 void
 mem(void)
 {
-  void *m = malloc(4096);
   void *m1, *m2;
 
-  free(m + 3*1024);
-  free(m + 2*1024);
-  free(m + 1024);
-  free(m);
-  m1 = malloc(4096);
-  if (m1 != m) {
-    puts("didn't coalesce\n");
-    exit();
-  }
-  free(m1);
-  
   m1 = 0;
   while ((m2 = malloc(1024)) != 0) {
     *(char **) m2 = m1;

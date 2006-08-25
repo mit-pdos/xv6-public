@@ -126,8 +126,10 @@ trap(struct trapframe *tf)
   }
 
   cprintf("trap %d from cpu %d eip %x\n", v, cpu(), tf->eip);
-  if(curproc[cpu()])
+  if(curproc[cpu()]) {
     cprintf("pid %d\n", curproc[cpu()]->pid);
+    proc_exit();
+  }
   //  panic("trap");
 
   return;
