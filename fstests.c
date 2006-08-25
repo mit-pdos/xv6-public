@@ -482,8 +482,8 @@ subdir()
     puts("link dd/xx/ff dd/dd/xx succeeded!\n");
     exit();
   }
-  if(link("dd/ff", "dd/dd/ff") == 0){
-    puts("link dd/ff dd/dd/ff succeeded!\n");
+  if(link("dd/ff", "dd/dd/ffff") == 0){
+    puts("link dd/ff dd/dd/ffff succeeded!\n");
     exit();
   }
   if(mkdir("dd/ff/ff") == 0){
@@ -494,8 +494,8 @@ subdir()
     puts("mkdir dd/xx/ff succeeded!\n");
     exit();
   }
-  if(mkdir("dd/dd/ff") == 0){
-    puts("mkdir dd/dd/ff succeeded!\n");
+  if(mkdir("dd/dd/ffff") == 0){
+    puts("mkdir dd/dd/ffff succeeded!\n");
     exit();
   }
   if(unlink("dd/xx/ff") == 0){
@@ -507,7 +507,7 @@ subdir()
     exit();
   }
 
-  if(unlink("dd/dd/ff") != 0){
+  if(unlink("dd/dd/ffff") != 0){
     puts("unlink dd/dd/ff failed\n");
     exit();
   }
