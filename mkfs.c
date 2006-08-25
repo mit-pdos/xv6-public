@@ -261,7 +261,7 @@ iappend(uint inum, void *xp, int n)
       if (indirect[fbn - NDIRECT] == 0) {
 	indirect[fbn - NDIRECT] = xint(freeblock++);
 	usedblocks++;
-	wsect(INDIRECT, (char *) indirect);
+	wsect(xint(din.addrs[INDIRECT]), (char *) indirect);
       }
       x = xint(indirect[fbn-NDIRECT]);
     }
