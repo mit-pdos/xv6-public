@@ -114,17 +114,10 @@ why does shell often ignore first line of input?
 
 test: one process unlinks a file while another links to it
 test: one process opens a file while another deletes it
-test: mkdir. deadlock d/.. vs ../d
-test: sub-sub directories. mkdir("d1/d2")
+test: mkdir. deadlock d/.. vs ../d, two processes.
 test: dup() shared fd->off
-test: indirect blocks. files and directories.
 test: sbrk
 test: does echo foo > x truncate x?
-test: does create/mkdir/link extract last component correctly?
-      does namei insist that all the intermediate directories exist?
-test: creat/link/mkdir w/ / in name
-test: try to create dir ents when intermediate dir doesn't exist
-      or is a file, not a dir   
 
 make proc[0] runnable
 cpu early tss and gdt

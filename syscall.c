@@ -320,6 +320,8 @@ sys_mkdir(void)
     return -1;
 
   nip = mknod (cp->mem + arg0, T_DIR, 0, 0);
+  if(nip == 0)
+    return -1;
   
   memset (de.name, '\0', DIRSIZ);
   de.name[0] = '.';
@@ -356,7 +358,7 @@ sys_chdir(void)
 
   if ((ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0, 0, 0)) == 0)
     return -1;
-  
+
   if (ip == cp->cwd) {
     iput (ip);
     return 0;
@@ -364,7 +366,7 @@ sys_chdir(void)
 
   if (ip->type != T_DIR) {
     iput(ip);
-    return 0;
+    return -1;
   }
 
   idecref(cp->cwd);

@@ -450,6 +450,19 @@ subdir()
     exit();
   }
 
+  if(chdir("dd") != 0){
+    puts("chdir dd failed\n");
+    exit();
+  }
+  if(chdir("dd/../../dd") != 0){
+    puts("chdir dd/../../dd failed\n");
+    exit();
+  }
+  if(chdir("./..") != 0){
+    puts("chdir ./.. failed\n");
+    exit();
+  }
+
   fd = open("dd/dd/ffff", 0);
   if(fd < 0){
     puts("open dd/dd/ffff failed\n");
@@ -506,6 +519,14 @@ subdir()
     puts("unlink dd/ff/ff succeeded!\n");
     exit();
   }
+  if(chdir("dd/ff") == 0){
+    puts("chdir dd/ff succeeded!\n");
+    exit();
+  }
+  if(chdir("dd/xx") == 0){
+    puts("chdir dd/xx succeeded!\n");
+    exit();
+  }
 
   if(unlink("dd/dd/ffff") != 0){
     puts("unlink dd/dd/ff failed\n");
@@ -522,11 +543,66 @@ subdir()
   puts("subdir ok\n");
 }
 
+void
+bigfile()
+{
+  int fd, i, total, cc;
+
+  unlink("bigfile");
+  fd = open("bigfile", O_CREATE | O_RDWR);
+  if(fd < 0){
+    puts("cannot create bigfile");
+    exit();
+  }
+  for(i = 0; i < 20; i++){
+    memset(buf, i, 600);
+    if(write(fd, buf, 600) != 600){
+      puts("write bigfile failed\n");
+      exit();
+    }
+  }
+  close(fd);
+  
+  fd = open("bigfile", 0);
+  if(fd < 0){
+    puts("cannot open bigfile\n");
+    exit();
+  }
+  total = 0;
+  for(i = 0; ; i++){
+    cc = read(fd, buf, 300);
+    if(cc < 0){
+      puts("read bigfile failed\n");
+      exit();
+    }
+    if(cc == 0)
+      break;
+    if(cc != 300){
+      puts("short read bigfile\n");
+      exit();
+    }
+    if(buf[0] != i/2 || buf[299] != i/2){
+      puts("read bigfile wrong data\n");
+      exit();
+    }
+    total += cc;
+  }
+  close(fd);
+  if(total != 20*600){
+    puts("read bigfile wrong total\n");
+    exit();
+  }
+  unlink("bigfile");
+
+  puts("bigfile ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
   puts("fstests starting\n");
 
+  bigfile();
   subdir();
   // bigdir(); // slow
   concreate();
