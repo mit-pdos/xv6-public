@@ -240,11 +240,18 @@ sys_open(void)
         return -1;
     } else if(ip == 0){
       return -1;
+    } else if(ip->type == T_DIR){
+      iput(ip);
+      return -1;
     }
   } else {
     ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0, 0, 0);
     if(ip == 0)
       return -1;
+  }
+  if(ip->type == T_DIR && ((arg1 & O_RDWR) || (arg1 & O_WRONLY))){
+    iput(ip);
+    return -1;
   }
 
   if((fd = fd_alloc()) == 0){
@@ -305,10 +312,11 @@ sys_mkdir(void)
 {
   struct proc *cp = curproc[cpu()];
   struct inode *nip;
-  struct inode *pip;
+  struct inode *dp;
   uint arg0;
   int l;
   struct dirent de;
+  char *last;
 
   if(fetcharg(0, &arg0) < 0) 
     return -1;
@@ -316,26 +324,32 @@ sys_mkdir(void)
   if((l = checkstring(arg0)) < 0)
     return -1;
 
-  if(l >= DIRSIZ)
+  dp = namei(cp->mem + arg0, NAMEI_CREATE, 0, &last, 0);
+  if(dp == 0)
     return -1;
 
-  nip = mknod (cp->mem + arg0, T_DIR, 0, 0);
-  if(nip == 0)
+  nip = mknod1(dp, last, T_DIR, 0, 0);
+  if(nip == 0){
+    iput(dp);
     return -1;
+  }
+
+  dp->nlink += 1;
+  iupdate(dp);
   
   memset (de.name, '\0', DIRSIZ);
   de.name[0] = '.';
   de.inum = nip->inum;
   writei (nip, (char *) &de, 0, sizeof(de));
 
-  pip = namei(".", NAMEI_LOOKUP, 0, 0, 0);
-  de.inum = pip->inum;
+  de.inum = dp->inum;
   de.name[1] = '.';
-  iput(pip);
   writei (nip, (char *) &de, sizeof(de), sizeof(de));
 
+  iput(dp);
   iput(nip);
-  return (nip == 0) ? -1 : 0;
+
+  return 0;
 }
 
 
