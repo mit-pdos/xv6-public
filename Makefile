@@ -54,6 +54,24 @@ kernel : $(OBJS) bootother.S init
 	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother init
 	$(OBJDUMP) -S kernel > kernel.asm
 
+tags: $(OBJS) bootother.S init
+	etags *.S *.c
+
+PRINT =	README\
+	types.h param.h defs.h x86.h asm.h elf.h mmu.h spinlock.h\
+	bootasm.S bootother.S main.c init.c spinlock.c\
+	proc.h proc.c setjmp.S kalloc.c\
+	syscall.h trapasm.S traps.h trap.c vectors.pl syscall.c\
+	buf.h dev.h fcntl.h stat.h fd.h fs.h fsvar.h fd.c fs.c bio.c ide.c\
+	pipe.c\
+	mp.h ioapic.h mp.c lapic.c ioapic.c picirq.c\
+	console.c\
+	string.c\
+
+print: $(PRINT)
+	a2ps --line-numbers=1 -M Letter $(PRINT) -o xv6.ps
+	a2ps --line-numbers=1 -M Letter $(PRINT) --toc -atoc -o xv6toc.ps
+
 vectors.S : vectors.pl
 	perl vectors.pl > vectors.S
 

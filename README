@@ -1,1 +1,12 @@
-This is the content of file README.
+xv6 is a re-implementation of Unix Version 6 (v6), which was developed
+by Dennis Ritchie and Ken Thompson. xv6 follows the structure and
+style of v6, but is implemented for a modern x86-based multiprocessor
+using ANSI C.
+
+xv6 is inspired by the following work by Lions about Unix version 6:
+
+- Lions' Commentary on UNIX' 6th Edition, John Lions, Peer to Peer
+Communications; ISBN: 1-57398-013-7; 1st edition (June 14, 2000). See
+also http://pdos.csail.mit.edu/6.828/2006/v6.html, which provides
+pointers to on-line resources for v6.
+
