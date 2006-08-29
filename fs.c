@@ -632,7 +632,7 @@ unlink(char *cp)
   memset(&de, 0, sizeof(de));
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("unlink dir write");
-
+  
   iupdate(dp);
   iput(dp);
 

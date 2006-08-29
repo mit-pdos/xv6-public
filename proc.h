@@ -46,12 +46,7 @@ struct proc{
   int killed;
   struct fd *fds[NOFILE];
   struct inode *cwd;
-
-  uint esp; // kernel stack pointer
-  uint ebp; // kernel frame pointer
-
   struct jmpbuf jmpbuf;
-
   struct trapframe *tf; // points into kstack, used to find user regs
 };
 

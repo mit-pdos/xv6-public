@@ -22,7 +22,7 @@ char *argv[MAXARGS];
 char argv0buf[BUFSIZ];
 int argc;
 
-int debug = 1;
+int debug = 0;
 
 int parse(char *s);
 void runcmd(void);
