@@ -13,20 +13,25 @@ main(void)
 {
   int pid;
   
-  if(open("console", 0) < 0){
+  if(open("console", O_RDWR) < 0){
     mknod("console", T_DEV, 1, 1);
-    open("console", 0);
+    open("console", O_RDWR);
   }
-  open("console", 1);
-  open("console", 1);
+  dup(0);
+  dup(0);
 
   while(1){
     pid = fork();
-    if(pid == 0){
-      exec("sh", sh_args);
+    if(pid < 0){
+      puts("init: fork failed\n");
       exit();
     }
-    if(pid > 0)
+    if(pid == 0){
+      exec("sh", sh_args);
+      puts("init: exec sh failed\n");
+      exit();
+    } else {
       wait();
+    }
   }
 }

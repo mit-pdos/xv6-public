@@ -1,14 +1,7 @@
 /*
- * This file contains definitions for the x86 memory management unit (MMU),
- * including paging- and segmentation-related data structures and constants,
- * the %cr0, %cr4, and %eflags registers, and traps.
+ * This file contains definitions for the x86 memory management unit (MMU).
+ * from JOS.
  */
-
-/*
- *	Register flags and fundamental constants.
- */
-
-#define PGSIZE		4096		// bytes mapped by a page
 
 // Eflags register
 #define FL_CF		0x00000001	// Carry Flag
@@ -33,33 +26,7 @@
 #define FL_VIP		0x00100000	// Virtual Interrupt Pending
 #define FL_ID		0x00200000	// ID flag
 
-// Page fault error codes
-#define FEC_PR		0x1	// Page fault caused by protection violation
-#define FEC_WR		0x2	// Page fault caused by a write
-#define FEC_U		0x4	// Page fault occured while in user mode
-
-/*
- *
- *	Segmentation data structures and constants.
- *
- */
-
-#ifdef __ASSEMBLER__
-
-/*
- * Macros to build GDT entries in assembly.
- */
-#define SEG_NULL						\
-	.word 0, 0;						\
-	.byte 0, 0, 0, 0
-#define SEG(type,base,lim)					\
-	.word (((lim) >> 12) & 0xffff), ((base) & 0xffff);	\
-	.byte (((base) >> 16) & 0xff), (0x90 | (type)),		\
-		(0xC0 | (((lim) >> 28) & 0xf)), (((base) >> 24) & 0xff)
-
-#else	// not __ASSEMBLER__
-
-// Segment Descriptors
+// Segment Descriptor
 struct segdesc {
 	uint lim_15_0 : 16;  // Low bits of segment limit
 	uint base_15_0 : 16; // Low bits of segment base address
@@ -75,21 +42,20 @@ struct segdesc {
 	uint g : 1;          // Granularity: limit scaled by 4K when set
 	uint base_31_24 : 8; // High bits of segment base address
 };
+
 // Null segment
 #define SEG_NULL	(struct segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-// Segment that is loadable but faults when used
-#define SEG_FAULT	(struct segdesc){ 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0 }
+
 // Normal segment
 #define SEG(type, base, lim, dpl) (struct segdesc)			\
 { ((lim) >> 12) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,	\
     type, 1, dpl, 1, (uint) (lim) >> 28, 0, 0, 1, 1,		\
     (uint) (base) >> 24 }
+
 #define SEG16(type, base, lim, dpl) (struct segdesc)			\
 { (lim) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,		\
     type, 1, dpl, 1, (uint) (lim) >> 16, 0, 0, 1, 0,		\
     (uint) (base) >> 24 }
-
-#endif /* !__ASSEMBLER__ */
 
 // Application segment type bits
 #define STA_X		0x8	    // Executable segment
@@ -113,16 +79,7 @@ struct segdesc {
 #define STS_IG32	0xE	    // 32-bit Interrupt Gate
 #define STS_TG32	0xF	    // 32-bit Trap Gate
 
-
-/*
- *
- *	Traps.
- *
- */
-
-#ifndef __ASSEMBLER__
-
-// Task state segment format (as described by the Pentium architecture book)
+// Task state segment format
 struct taskstate {
 	uint link;	// Old ts selector
 	uint esp0;	// Stack pointers and segment selectors
@@ -196,20 +153,4 @@ struct gatedesc {
 	(gate).p = 1;					\
 	(gate).off_31_16 = (uint) (off) >> 16;		\
 }
-
-// Set up a call gate descriptor.
-#define SETCALLGATE(gate, ss, off, d)           	        \
-{								\
-	(gate).off_15_0 = (uint) (off) & 0xffff;		\
-	(gate).ss = (ss);					\
-	(gate).args = 0;					\
-	(gate).rsv1 = 0;					\
-	(gate).type = STS_CG32;				\
-	(gate).s = 0;					\
-	(gate).dpl = (d);					\
-	(gate).p = 1;					\
-	(gate).off_31_16 = (uint) (off) >> 16;		\
-}
-
-#endif /* !__ASSEMBLER__ */
 

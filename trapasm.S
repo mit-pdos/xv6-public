@@ -1,5 +1,3 @@
-#include "mmu.h"
-        
 	.text
 .globl trap
 .globl trapret1

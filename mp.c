@@ -42,7 +42,6 @@ mp_scan(uchar *addr, int len)
   uchar *e, *p, sum;
   int i;
 
-  cprintf("scanning: 0x%x\n", (uint)addr);
   e = addr+len;
   for(p = addr; p < e; p += sizeof(struct mp)){
     if(memcmp(p, "_MP_", 4))
@@ -131,8 +130,6 @@ mp_init(void)
   ncpu = 0;
   if ((r = mp_detect()) != 0) return;
 
-  cprintf("Mp spec rev #: %x imcrp 0x%x\n", mp->specrev, mp->imcrp);
-
   /*
    * Run through the table saving information needed for starting
    * application processors and initialising any I/O APICs. The table
@@ -140,7 +137,6 @@ mp_init(void)
    */
   mpctb = (struct mpctb *) mp->physaddr;
   lapicaddr = (uint *) mpctb->lapicaddr;
-  cprintf("apicaddr: %x\n", lapicaddr);
   p = ((uchar*)mpctb)+sizeof(struct mpctb);
   e = ((uchar*)mpctb)+mpctb->length;
 
@@ -149,7 +145,6 @@ mp_init(void)
     case MPPROCESSOR:
       proc = (struct mppe *) p;
       cpus[ncpu].apicid = proc->apicid;
-      cprintf("a processor %x\n", cpus[ncpu].apicid);
       if (proc->flags & MPBP) {
 	bcpu = &cpus[ncpu];
       }
@@ -162,18 +157,15 @@ mp_init(void)
 	if(strncmp(buses[i], bus->string, sizeof(bus->string)) == 0)
 	  break;
       }
-      cprintf("a bus %d\n", i);
       p += sizeof(struct mpbe);
       continue;
     case MPIOAPIC:
       ioapic = (struct mpioapic *) p;
-      cprintf("an I/O APIC: id %d %x\n", ioapic->apicno, ioapic->flags);
       ioapic_id = ioapic->apicno;
       p += sizeof(struct mpioapic);
       continue;
     case MPIOINTR:
       intr = (struct mpie *) p;
-      // cprintf("an I/O intr: type %d flags 0x%x bus %d souce bus irq %d dest ioapic id %d dest ioapic intin %d\n", intr->intr, intr->flags, intr->busno, intr->irq, intr->apicno, intr->intin);
       p += sizeof(struct mpie);
       continue;
     default:
@@ -192,8 +184,6 @@ mp_init(void)
     byte |= 0x01;	/* mask external INTR */
     outb(0x23, byte);	/* disconnect 8259s/NMI */
   }
-
-  cprintf("ncpu: %d boot %d\n", ncpu, bcpu-cpus);
 }
 
 
@@ -219,7 +209,6 @@ mp_startthem(void)
 
   for(c = 0; c < ncpu; c++){
     if (c == cpu()) continue;
-    cprintf ("cpu%d: starting processor %d\n", cpu(), c);
     *(uint *)(APBOOTCODE-4) = (uint) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
     *(uint *)(APBOOTCODE-8) = (uint)mpmain; // tell it where to jump to
     lapic_startap(cpus[c].apicid, (uint) APBOOTCODE);

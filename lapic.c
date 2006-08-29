@@ -110,7 +110,6 @@ lapic_write(int r, int data)
 void
 lapic_timerinit(void)
 {
-  cprintf("cpu%d: init timer\n", cpu());
   lapic_write(LAPIC_TDCR, LAPIC_X1);
   lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
   lapic_write(LAPIC_TCCR, 10000000);
@@ -128,8 +127,6 @@ void
 lapic_init(int c)
 {
   uint r, lvt;
-
-  cprintf("cpu%d: lapic_init %d\n", c);
 
   lapic_write(LAPIC_DFR, 0xFFFFFFFF); // set destination format register
   r = (lapic_read(LAPIC_ID)>>24) & 0xFF; // read APIC ID
@@ -157,8 +154,6 @@ lapic_init(int c)
   lapic_write(LAPIC_ICRLO, LAPIC_ALLINC|APIC_LEVEL|LAPIC_DEASSERT|APIC_INIT);
   while(lapic_read(LAPIC_ICRLO) & APIC_DELIVS)
     ;
-
-  cprintf("cpu%d: apic init done\n", cpu());
 }
 
 void
@@ -204,7 +199,7 @@ lapic_startap(uchar apicid, int v)
   // in p9 code, this was i < 2, which is what the spec says on page B-3
   for(i = 0; i < 1; i++){
     lapic_write(LAPIC_ICRHI, crhi);
-    lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_EDGE|APIC_STARTUP|(v/PGSIZE));
+    lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_EDGE|APIC_STARTUP|(v/4096));
     while (j++ < 100000) {;}
   }
 }

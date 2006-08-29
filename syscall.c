@@ -473,7 +473,7 @@ sys_getpid(void)
 int
 sys_sbrk(void)
 {
-  unsigned addr;
+  uint addr;
   int n;
   struct proc *cp = curproc[cpu()];
 

@@ -70,7 +70,7 @@ PRINT =	\
 	string.c\
 
 print: $(PRINT)
-//	~/src/lgrind/source/lgrind -d ~/src/lgrind/lgrindef $(PRINT) > xv6.tex
+	//~/src/lgrind/source/lgrind -d ~/src/lgrind/lgrindef $(PRINT) > xv6.tex
 	lgrind $(PRINT) > xv6.tex
 	latex xv6.tex
 	dvips -o xv61.ps xv6.dvi

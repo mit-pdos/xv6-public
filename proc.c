@@ -169,18 +169,11 @@ scheduler(void)
   struct proc *p;
   int i;
 
-  if(cpus[cpu()].nlock != 0){
-    cprintf("la %x lr %x\n", cpus[cpu()].lastacquire, cpus[cpu()].lastrelease   );
-    panic("holding locks at first entry to scheduler");
-  }
-
   for(;;){
     // Loop over process table looking for process to run.
     acquire(&proc_table_lock);
+
     for(i = 0; i < NPROC; i++){
-      if(cpus[cpu()].guard1 != 0xdeadbeef || 
-         cpus[cpu()].guard2 != 0xdeadbeef)
-        panic("cpu guard");
       p = &proc[i];
       if(p->state != RUNNABLE)
         continue;
@@ -198,31 +191,11 @@ scheduler(void)
       // Process is done running for now. 
       // It should have changed its p->state before coming back.
       curproc[cpu()] = 0;
-      if(p->state == RUNNING)
-        panic("swtch to scheduler with state=RUNNING");
       
-      if(!holding(&proc_table_lock)){
-        cprintf("back to scheduler without proc_table_lock (pid=%d state=%d)", p->pid, p->state);
-        panic("scheduler lock");
-      }
-      if(cpus[cpu()].nlock != 1){
-        cprintf("holding %d locks in scheduler (pid=%d state=%d)\n", cpus[cpu()].nlock, p->pid, p->state);
-        panic("scheduler lock");
-      }
-
       setupsegs(0);
     }
 
     release(&proc_table_lock);
-    
-    if(cpus[cpu()].nlock != 0)
-      panic("holding locks in scheduler");
-
-    // With proc_table_lock released, there are no 
-    // locks held on this cpu, so interrupts are enabled.
-    // Hardware interrupts can happen here.
-    // Also, releasing the lock here lets the other CPUs
-    // look for runnable processes too.
   }
 }
 

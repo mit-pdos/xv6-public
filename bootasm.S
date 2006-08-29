@@ -1,3 +1,7 @@
+#
+# from JOS
+#
+        
 #include "asm.h"
 	
 .set PROT_MODE_CSEG,0x8		# code segment selector

@@ -13,7 +13,7 @@
 extern char edata[], end[];
 extern uchar _binary_init_start[], _binary_init_size[];
 
-void main00();
+void process0();
 
 // CPU 0 starts running C code here.
 // This is called main0 not main so that it can have
@@ -32,43 +32,33 @@ main0(void)
   asm volatile("movl %0, %%esp" : : "r" (cpus[0].mpstack + MPSTACK - 32));
   asm volatile("movl %0, %%ebp" : : "r" (cpus[0].mpstack + MPSTACK));
 
-  // Make sure interrupts stay disabled on all processors
-  // until each signals it is ready, by pretending to hold
-  // an extra lock.
-  // xxx maybe replace w/ acquire remembering if FL_IF was already clear
-  for(i=0; i<NCPU; i++){
-    cpus[i].nlock++;
-    cpus[i].guard1 = 0xdeadbeef;
-    cpus[i].guard2 = 0xdeadbeef;
-  }
+  // Prevent release() from enabling interrupts.
+  for(i=0; i<NCPU; i++)
+    cpus[i].nlock = 1;
 
   mp_init(); // collect info about this machine
 
   lapic_init(mp_bcpu());
 
-  cprintf("\n\ncpu%d: booting xv6\n\n", cpu());
+  cprintf("\ncpu%d: starting xv6\n\n", cpu());
 
-  pinit();
-  binit();
-  pic_init(); // initialize PIC
+  pinit(); // process table
+  binit(); // buffer cache
+  pic_init();
   ioapic_init();
   kinit(); // physical memory allocator
   tvinit(); // trap vectors
-  idtinit(); // this CPU's idt register
+  idtinit(); // this CPU's interrupt descriptor table
   fd_init();
-  iinit();
+  iinit(); // i-node table
 
   // initialize process 0
   p = &proc[0];
   p->state = RUNNABLE;
-  p->sz = 4 * PAGE;
-  p->mem = kalloc(p->sz);
-  memset(p->mem, 0, p->sz);
   p->kstack = kalloc(KSTACKSIZE);
 
-  // cause proc[0] to start in kernel at main00
-  memset(&p->jmpbuf, 0, sizeof p->jmpbuf);
-  p->jmpbuf.eip = (uint)main00;
+  // cause proc[0] to start in kernel at process0
+  p->jmpbuf.eip = (uint) process0;
   p->jmpbuf.esp = (uint) (p->kstack + KSTACKSIZE - 4);
 
   // make sure there's a TSS
@@ -78,6 +68,7 @@ main0(void)
   console_init();
   ide_init(); 
 
+  // start other CPUs
   mp_startthem();
 
   // turn on timer and enable interrupts on the local APIC
@@ -118,7 +109,7 @@ mpmain(void)
 
 // proc[0] starts here, called by scheduler() in the ordinary way.
 void
-main00()
+process0()
 {
   struct proc *p0 = &proc[0];
   struct proc *p1;
@@ -130,10 +121,13 @@ main00()
   p0->cwd = iget(rootdev, 1);
   iunlock(p0->cwd);
 
+  // dummy user memory to make copyproc() happy
+  p0->sz = 4 * PAGE;
+  p0->mem = kalloc(p0->sz);
+
   // fake a trap frame as if a user process had made a system
   // call, so that copyproc will have a place for the new
   // process to return to.
-  p0 = &proc[0];
   p0->tf = &tf;
   memset(p0->tf, 0, sizeof(struct trapframe));
   p0->tf->es = p0->tf->ds = p0->tf->ss = (SEG_UDATA << 3) | 3;
@@ -141,7 +135,7 @@ main00()
   p0->tf->eflags = FL_IF;
   p0->tf->esp = p0->sz;
 
-  p1 = copyproc(&proc[0]);
+  p1 = copyproc(p0);
   
   load_icode(p1, _binary_init_start, (uint) _binary_init_size);
   p1->state = RUNNABLE;
@@ -157,7 +151,6 @@ load_icode(struct proc *p, uchar *binary, uint size)
   struct elfhdr *elf;
   struct proghdr *ph;
 
-  // Check magic number on binary
   elf = (struct elfhdr*) binary;
   if (elf->magic != ELF_MAGIC)
     panic("load_icode: not an ELF binary");

@@ -66,13 +66,9 @@ struct cpu {
   struct jmpbuf jmpbuf;
   struct taskstate ts;  // only to give cpu address of kernel stack
   struct segdesc gdt[NSEGS];
-  int guard1;
   char mpstack[MPSTACK]; // per-cpu start-up stack
-  int guard2;
   volatile int booted;
   int nlock; // # of locks currently held
-  struct spinlock *lastacquire; // xxx debug
-  struct spinlock *lastrelease; // xxx debug
 };
 
 extern struct cpu cpus[NCPU];

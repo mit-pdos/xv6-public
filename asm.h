@@ -1,3 +1,8 @@
+//
+// macros to create x86 segments from assembler
+// from JOS
+//
+
 #define SEG_NULL						\
 	.word 0, 0;						\
 	.byte 0, 0, 0, 0

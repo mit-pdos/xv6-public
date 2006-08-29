@@ -13,7 +13,10 @@ pipe1(void)
   int fds[2], pid;
   int seq = 0, i, n, cc, total;
 
-  pipe(fds);
+  if(pipe(fds) != 0){
+    puts("pipe() failed\n");
+    exit();
+  }
   pid = fork();
   if(pid == 0){
     close(fds[0]);
@@ -26,7 +29,7 @@ pipe1(void)
       }
     }
     exit();
-  } else {
+  } else if(pid > 0){
     close(fds[1]);
     total = 0;
     cc = 1;
@@ -43,9 +46,12 @@ pipe1(void)
         cc = sizeof(buf);
     }
     if(total != 5 * 1033)
-      printf(1, "pipe1 oops 3\n");
+      printf(1, "pipe1 oops 3 total %d\n", total);
     close(fds[0]);
     wait();
+  } else {
+    puts("fork() failed\n");
+    exit();
   }
   puts("pipe1 ok\n");
 }
@@ -121,26 +127,30 @@ void
 mem(void)
 {
   void *m1, *m2;
+  int pid;
 
-  m1 = 0;
-  while ((m2 = malloc(1024)) != 0) {
-    printf(1, "malloc %x\n", m2);
-    *(char **) m2 = m1;
-    m1 = m2;
-  }
-  while (m1) {
-    m2 = *(char **)m1;
+  if((pid = fork()) == 0){
+    m1 = 0;
+    while ((m2 = malloc(10001)) != 0) {
+      *(char **) m2 = m1;
+      m1 = m2;
+    }
+    while (m1) {
+      m2 = *(char **)m1;
+      free(m1);
+      m1 = m2;
+    }
+    m1 = malloc(1024*20);
+    if (m1 == 0) {
+      puts("couldn't allocate mem?!!\n");
+      exit();
+    }
     free(m1);
-    m1 = m2;
-  }
-  m1 = malloc(1024*20);
-  if (m1 == 0) {
-    puts("couldn't allocate mem?!!\n");
+    printf(1, "mem ok\n");
     exit();
+  } else {
+    wait();
   }
-  free(m1);
-
-  printf(1, "mem ok\n");
 }
 
 int
