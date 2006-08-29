@@ -6,18 +6,11 @@
 #include "proc.h"
 #include "spinlock.h"
 
-// Can't call cprintf from inside these routines,
-// because cprintf uses them itself.
-//#define cprintf dont_use_cprintf
-
-#define LOCKMAGIC 0x6673ffea
-
 extern int use_console_lock;
 
 void
 initlock(struct spinlock *lock, char *name)
 {
-  lock->magic = LOCKMAGIC;
   lock->name = name;
   lock->locked = 0;
   lock->cpu = 0xffffffff;
@@ -38,8 +31,6 @@ getcallerpcs(void *v, uint pcs[])
 void
 acquire(struct spinlock * lock)
 {
-  if(lock->magic != LOCKMAGIC)
-    panic("weird lock magic");
   if(holding(lock))
     panic("acquire");
 
@@ -47,34 +38,32 @@ acquire(struct spinlock * lock)
     cli();
   cpus[cpu()].nlock++;
                 
-	while(cmpxchg(0, 1, &lock->locked) == 1)
-		;
-	cpuid(0, 0, 0, 0, 0);	// memory barrier
-	getcallerpcs(&lock, lock->pcs);
-	lock->cpu = cpu() + 10;
-        cpus[cpu()].lastacquire = lock;
+  while(cmpxchg(0, 1, &lock->locked) == 1)
+    ;
+  cpuid(0, 0, 0, 0, 0);	// memory barrier
+  getcallerpcs(&lock, lock->pcs);
+  lock->cpu = cpu() + 10;
+  cpus[cpu()].lastacquire = lock;
 }
 
 void
 release(struct spinlock * lock)
 {
-  if(lock->magic != LOCKMAGIC)
-    panic("weird lock magic");
 
-	if(!holding(lock))
-		panic("release");
+  if(!holding(lock))
+    panic("release");
 
-        cpus[cpu()].lastrelease = lock;
-        lock->pcs[0] = 0;
-        lock->cpu = 0xffffffff;
-	cpuid(0, 0, 0, 0, 0);	// memory barrier
-	lock->locked = 0;
-	if(--cpus[cpu()].nlock == 0)
-		sti();
+  cpus[cpu()].lastrelease = lock;
+  lock->pcs[0] = 0;
+  lock->cpu = 0xffffffff;
+  cpuid(0, 0, 0, 0, 0);	// memory barrier
+  lock->locked = 0;
+  if(--cpus[cpu()].nlock == 0)
+    sti();
 }
 
 int
 holding(struct spinlock *lock)
 {
-	return lock->locked && lock->cpu == cpu() + 10;
+  return lock->locked && lock->cpu == cpu() + 10;
 }

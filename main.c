@@ -25,8 +25,6 @@ main0(void)
   int i;
   struct proc *p;
 
-  lcr4(0); // xxx copy of cpu #
-
   // clear BSS
   memset(edata, 0, end - edata);
 
@@ -97,8 +95,6 @@ main0(void)
 void
 mpmain(void)
 {
-  lcr4(1); // xxx copy of cpu #
-
   cprintf("cpu%d: starting\n", cpu());
   idtinit(); // CPU's idt
   if(cpu() == 0)

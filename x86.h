@@ -1,84 +1,8 @@
-static __inline void breakpoint(void) __attribute__((always_inline));
-static __inline uchar inb(int port) __attribute__((always_inline));
-static __inline void insb(int port, void *addr, int cnt) __attribute__((always_inline));
-static __inline ushort inw(int port) __attribute__((always_inline));
-static __inline void insw(int port, void *addr, int cnt) __attribute__((always_inline));
-static __inline uint inl(int port) __attribute__((always_inline));
-static __inline void insl(int port, void *addr, int cnt) __attribute__((always_inline));
-static __inline void outb(int port, uchar data) __attribute__((always_inline));
-static __inline void outsb(int port, const void *addr, int cnt) __attribute__((always_inline));
-static __inline void outw(int port, ushort data) __attribute__((always_inline));
-static __inline void outsw(int port, const void *addr, int cnt) __attribute__((always_inline));
-static __inline void outsl(int port, const void *addr, int cnt) __attribute__((always_inline));
-static __inline void outl(int port, uint data) __attribute__((always_inline));
-static __inline void invlpg(void *addr) __attribute__((always_inline));
-struct segdesc;
-static __inline void lgdt(struct segdesc *p, int) __attribute__((always_inline));
-struct gatedesc;
-static __inline void lidt(struct gatedesc *p, int) __attribute__((always_inline));
-static __inline void lldt(ushort sel) __attribute__((always_inline));
-static __inline void ltr(ushort sel) __attribute__((always_inline));
-static __inline void lcr0(uint val) __attribute__((always_inline));
-static __inline uint rcr0(void) __attribute__((always_inline));
-static __inline uint rcr2(void) __attribute__((always_inline));
-static __inline void lcr3(uint val) __attribute__((always_inline));
-static __inline uint rcr3(void) __attribute__((always_inline));
-static __inline void lcr4(uint val) __attribute__((always_inline));
-static __inline uint rcr4(void) __attribute__((always_inline));
-static __inline void tlbflush(void) __attribute__((always_inline));
-static __inline uint read_eflags(void) __attribute__((always_inline));
-static __inline void write_eflags(uint eflags) __attribute__((always_inline));
-static __inline uint read_ebp(void) __attribute__((always_inline));
-static __inline uint read_esp(void) __attribute__((always_inline));
-static __inline void cpuid(uint info, uint *eaxp, uint *ebxp, uint *ecxp, uint *edxp);
-static __inline void cli(void) __attribute__((always_inline));
-static __inline void sti(void) __attribute__((always_inline));
-
-static __inline void
-breakpoint(void)
-{
-	__asm __volatile("int3");
-}
-
 static __inline uchar
 inb(int port)
 {
 	uchar data;
 	__asm __volatile("inb %w1,%0" : "=a" (data) : "d" (port));
-	return data;
-}
-
-static __inline void
-insb(int port, void *addr, int cnt)
-{
-	__asm __volatile("cld\n\trepne\n\tinsb"			:
-			 "=D" (addr), "=c" (cnt)		:
-			 "d" (port), "0" (addr), "1" (cnt)	:
-			 "memory", "cc");
-}
-
-static __inline ushort
-inw(int port)
-{
-	ushort data;
-	__asm __volatile("inw %w1,%0" : "=a" (data) : "d" (port));
-	return data;
-}
-
-static __inline void
-insw(int port, void *addr, int cnt)
-{
-	__asm __volatile("cld\n\trepne\n\tinsw"			:
-			 "=D" (addr), "=c" (cnt)		:
-			 "d" (port), "0" (addr), "1" (cnt)	:
-			 "memory", "cc");
-}
-
-static __inline uint
-inl(int port)
-{
-	uint data;
-	__asm __volatile("inl %w1,%0" : "=a" (data) : "d" (port));
 	return data;
 }
 
@@ -98,27 +22,9 @@ outb(int port, uchar data)
 }
 
 static __inline void
-outsb(int port, const void *addr, int cnt)
-{
-	__asm __volatile("cld\n\trepne\n\toutsb"		:
-			 "=S" (addr), "=c" (cnt)		:
-			 "d" (port), "0" (addr), "1" (cnt)	:
-			 "cc");
-}
-
-static __inline void
 outw(int port, ushort data)
 {
 	__asm __volatile("outw %0,%w1" : : "a" (data), "d" (port));
-}
-
-static __inline void
-outsw(int port, const void *addr, int cnt)
-{
-	__asm __volatile("cld\n\trepne\n\toutsw"		:
-			 "=S" (addr), "=c" (cnt)		:
-			 "d" (port), "0" (addr), "1" (cnt)	:
-			 "cc");
 }
 
 static __inline void
@@ -130,17 +36,7 @@ outsl(int port, const void *addr, int cnt)
 			 "cc");
 }
 
-static __inline void
-outl(int port, uint data)
-{
-	__asm __volatile("outl %0,%w1" : : "a" (data), "d" (port));
-}
-
-static __inline void 
-invlpg(void *addr)
-{ 
-	__asm __volatile("invlpg (%0)" : : "r" (addr) : "memory");
-}  
+struct segdesc;
 
 static __inline void
 lgdt(struct segdesc *p, int size)
@@ -153,6 +49,8 @@ lgdt(struct segdesc *p, int size)
 
 	asm volatile("lgdt (%0)" : : "g" (pd));
 }
+
+struct gatedesc;
 
 static __inline void
 lidt(struct gatedesc *p, int size)
@@ -167,73 +65,9 @@ lidt(struct gatedesc *p, int size)
 }
 
 static __inline void
-lldt(ushort sel)
-{
-	__asm __volatile("lldt %0" : : "r" (sel));
-}
-
-static __inline void
 ltr(ushort sel)
 {
 	__asm __volatile("ltr %0" : : "r" (sel));
-}
-
-static __inline void
-lcr0(uint val)
-{
-	__asm __volatile("movl %0,%%cr0" : : "r" (val));
-}
-
-static __inline uint
-rcr0(void)
-{
-	uint val;
-	__asm __volatile("movl %%cr0,%0" : "=r" (val));
-	return val;
-}
-
-static __inline uint
-rcr2(void)
-{
-	uint val;
-	__asm __volatile("movl %%cr2,%0" : "=r" (val));
-	return val;
-}
-
-static __inline void
-lcr3(uint val)
-{
-	__asm __volatile("movl %0,%%cr3" : : "r" (val));
-}
-
-static __inline uint
-rcr3(void)
-{
-	uint val;
-	__asm __volatile("movl %%cr3,%0" : "=r" (val));
-	return val;
-}
-
-static __inline void
-lcr4(uint val)
-{
-	__asm __volatile("movl %0,%%cr4" : : "r" (val));
-}
-
-static __inline uint
-rcr4(void)
-{
-	uint cr4;
-	__asm __volatile("movl %%cr4,%0" : "=r" (cr4));
-	return cr4;
-}
-
-static __inline void
-tlbflush(void)
-{
-	uint cr3;
-	__asm __volatile("movl %%cr3,%0" : "=r" (cr3));
-	__asm __volatile("movl %0,%%cr3" : : "r" (cr3));
 }
 
 static __inline uint
@@ -248,46 +82,6 @@ static __inline void
 write_eflags(uint eflags)
 {
         __asm __volatile("pushl %0; popfl" : : "r" (eflags));
-}
-
-static __inline uint
-read_ebp(void)
-{
-        uint ebp;
-        __asm __volatile("movl %%ebp,%0" : "=r" (ebp));
-        return ebp;
-}
-
-static __inline uint
-read_esp(void)
-{
-        uint esp;
-        __asm __volatile("movl %%esp,%0" : "=r" (esp));
-        return esp;
-}
-
-static __inline uint
-read_esi(void)
-{
-        uint esi;
-        __asm __volatile("movl %%esi,%0" : "=r" (esi));
-        return esi;
-}
-
-static __inline uint
-read_edi(void)
-{
-        uint edi;
-        __asm __volatile("movl %%edi,%0" : "=r" (edi));
-        return edi;
-}
-
-static __inline uint
-read_ebx(void)
-{
-        uint ebx;
-        __asm __volatile("movl %%ebx,%0" : "=r" (ebx));
-        return ebx;
 }
 
 static __inline void

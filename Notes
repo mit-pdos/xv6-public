@@ -95,48 +95,14 @@ inode->count counts in-memory pointers to the struct
 blocks and inodes have ad-hoc sleep-locks
   provide a single mechanism?
 
-test 14-character file names
-and file arguments longer than 14
-
 kalloc() can return 0; do callers handle this right?
-
-OH! recursive interrupts will use up any amount of cpu[].stack!
-  underflow and wrecks *previous* cpu's struct
-
-disk scheduling
-mkdir
-sh arguments
-sh redirection
-indirect blocks
-is there a create/create race for same file name?
-  resulting in two entries w/ same name in directory?
-why does shell often ignore first line of input?
 
 test: one process unlinks a file while another links to it
 test: one process opens a file while another deletes it
-test: mkdir. deadlock d/.. vs ../d, two processes.
+test: deadlock d/.. vs ../d, two processes.
 test: dup() shared fd->off
 test: sbrk
 test: does echo foo > x truncate x?
-
-make proc[0] runnable
-cpu early tss and gdt
-how do we get cpu0 scheduler() to use mpstack, not proc[0].kstack?
-when iget() first sleeps, where does it longjmp to?
-maybe set up proc[0] to be runnable, with entry proc0main(), then
-  have main() call scheduler()?
-  perhaps so proc[0] uses right kstack?
-  and scheduler() uses mpstack?
-ltr sets the busy bit in the TSS, faults if already set
-  so gdt and TSS per cpu?
-  we don't want to be using some random process's gdt when it changes it.
-maybe get rid of per-proc gdt and ts
-  one per cpu
-  refresh it when needed
-  setupsegs(proc *)
-
-why do we get 0 characters from keyboard?
-are the locks in the right place in keyboardintr?
 
 sh: support pipes?  leave it for the class?
 sh: dynamic memory allocation?
@@ -146,3 +112,11 @@ sh: stop stdin on ctrl-d (for cat > y)
 really should have bdwrite() for file content
   and make some inode updates async
   so soft updates make sense
+
+disk scheduling
+echo foo > bar should truncate bar
+  so O_CREATE should not truncate
+  but O_TRUNC should
+
+make it work on one cpu
+make it work on amsterdam

@@ -34,58 +34,18 @@ void
 trap(struct trapframe *tf)
 {
   int v = tf->trapno;
-  
-  if(cpus[cpu()].nlock){
-    cprintf("trap v %d eip %x cpu %d nlock %d\n",
-            v, tf->eip, cpu(), cpus[cpu()].nlock);
-    panic("interrupt while holding a lock");
-  }
-
-  if(curproc[cpu()] == 0){
-    if(&tf < cpus[cpu()].mpstack || &tf > cpus[cpu()].mpstack + MPSTACK){
-      cprintf("&tf %x mpstack %x\n", &tf, cpus[cpu()].mpstack);
-      panic("trap cpu stack");
-    }
-  } else if(curproc[cpu()]){
-    if(&tf < curproc[cpu()]->kstack){
-      panic("trap kstack");
-    }
-  }
 
   if(v == T_SYSCALL){
     struct proc *cp = curproc[cpu()];
     int num = cp->tf->eax;
-    if((read_eflags() & FL_IF) == 0)
-      panic("syscall but interrupts now disabled");
-    if(cp == 0)
-      panic("syscall with no proc");
     if(cp->killed)
       proc_exit();
     cp->tf = tf;
     syscall();
-    if(cp != curproc[cpu()])
-      panic("trap ret wrong curproc");
-    if(cp->state != RUNNING)
-      panic("trap ret but not RUNNING");
-    if(tf != cp->tf)
-      panic("trap ret wrong tf");
-    if(cpus[cpu()].nlock){
-      cprintf("num=%d\n", num);
-      panic("syscall returning locks held");
-    }
-    if((read_eflags() & FL_IF) == 0)
-      panic("syscall returning but FL_IF clear");
-    if(read_esp() < (uint)cp->kstack ||
-       read_esp() >= (uint)cp->kstack + KSTACKSIZE)
-      panic("trap ret esp wrong");
     if(cp->killed)
       proc_exit();
-    // XXX probably ought to lgdt on trap return
     return;
   }
-
-  //if(read_eflags() & FL_IF)
-  //panic("interrupt but interrupts enabled");
 
   if(v == (IRQ_OFFSET + IRQ_TIMER)){
     struct proc *cp = curproc[cpu()];
@@ -108,8 +68,6 @@ trap(struct trapframe *tf)
 
   if(v == (IRQ_OFFSET + IRQ_IDE)){
     ide_intr();
-    if(cpus[cpu()].nlock)
-      panic("ide_intr returned while holding a lock");
     cli(); // prevent a waiting interrupt from overflowing stack
     lapic_eoi();
     return;
@@ -117,9 +75,6 @@ trap(struct trapframe *tf)
 
   if(v == (IRQ_OFFSET + IRQ_KBD)){
     kbd_intr();
-    if(cpus[cpu()].nlock){
-      panic("kbd_intr returned while holding a lock");
-    }
     cli(); // prevent a waiting interrupt from overflowing stack
     lapic_eoi();
     return;

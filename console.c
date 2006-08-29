@@ -9,10 +9,6 @@ struct spinlock console_lock;
 int panicked = 0;
 int use_console_lock = 0;
 
-// per-cpu copy of output to help panic/lock debugging
-char obuf[NCPU][1024];
-uint obufi[NCPU];
-
 /*
  * copy console output to parallel port, which you can tell
  * .bochsrc to copy to the stdout:
@@ -36,10 +32,6 @@ cons_putc(int c)
   int crtport = 0x3d4; // io port of CGA
   ushort *crt = (ushort *) 0xB8000; // base of CGA memory
   int ind;
-
-  obuf[rcr4()][obufi[rcr4()]++] = c;
-  if(obufi[rcr4()] >= 1024)
-    obufi[rcr4()] = 0;
 
   if(panicked){
     cli();

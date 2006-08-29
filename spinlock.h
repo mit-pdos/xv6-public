@@ -1,5 +1,4 @@
 struct spinlock {
-  uint magic;
   char *name;
   uint locked;
   int cpu;
