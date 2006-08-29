@@ -473,15 +473,16 @@ sys_getpid(void)
 int
 sys_sbrk(void)
 {
+  unsigned addr;
   int n;
   struct proc *cp = curproc[cpu()];
 
   if(fetcharg(0, &n) < 0)
     return -1;
-  if(growproc(n) != 0)
+  if((addr = growproc(n)) == 0xffffffff)
     return -1;
   setupsegs(cp);  
-  return 0;
+  return addr;
 }
 
 int

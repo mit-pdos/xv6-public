@@ -124,6 +124,7 @@ mem(void)
 
   m1 = 0;
   while ((m2 = malloc(1024)) != 0) {
+    printf(1, "malloc %x\n", m2);
     *(char **) m2 = m1;
     m1 = m2;
   }
@@ -138,6 +139,8 @@ mem(void)
     exit();
   }
   free(m1);
+
+  printf(1, "mem ok\n");
 }
 
 int
@@ -145,10 +148,10 @@ main(int argc, char *argv[])
 {
   puts("usertests starting\n");
 
-  // pipe1();
-  // preempt();
-  // exitwait();
   mem();
+  pipe1();
+  preempt();
+  exitwait();
 
   puts("usertests finished\n");
   exit();
