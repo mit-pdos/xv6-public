@@ -57,7 +57,8 @@ kernel : $(OBJS) bootother.S init
 tags: $(OBJS) bootother.S init
 	etags *.S *.c
 
-PRINT =	README\
+PRINT =	\
+	README\
 	types.h param.h defs.h x86.h asm.h elf.h mmu.h spinlock.h\
 	bootasm.S bootother.S main.c init.c spinlock.c\
 	proc.h proc.c setjmp.S kalloc.c\
@@ -69,8 +70,14 @@ PRINT =	README\
 	string.c\
 
 print: $(PRINT)
-	a2ps --line-numbers=1 -M Letter $(PRINT) -o xv6.ps
-	a2ps --line-numbers=1 -M Letter $(PRINT) --toc -atoc -o xv6toc.ps
+//	~/src/lgrind/source/lgrind -d ~/src/lgrind/lgrindef $(PRINT) > xv6.tex
+	lgrind $(PRINT) > xv6.tex
+	latex xv6.tex
+	dvips -o xv61.ps xv6.dvi
+	psnup -2 xv61.ps > xv6.ps
+	rm -f xv61.ps
+//	a2ps --line-numbers=1 -M Letter $(PRINT) -o xv6.ps
+//	a2ps --line-numbers=1 -M Letter $(PRINT) --toc -atoc -o xv6toc.ps
 
 vectors.S : vectors.pl
 	perl vectors.pl > vectors.S
@@ -130,6 +137,7 @@ fs.img : mkfs userfs usertests echo cat readme init sh ls mkdir rm fstests
 -include *.d
 
 clean : 
-	rm -f *.o *.d *.asm vectors.S parport.out \
-		bootblock kernel xv6.img user1 userfs usertests \
-		fs.img mkfs echo init fstests
+	rm -f *.ps *.tex *.dvi *.idx *.aux .log \
+	*.o *.d *.asm vectors.S parport.out \
+	bootblock kernel xv6.img user1 userfs usertests \
+	fs.img mkfs echo init fstests
