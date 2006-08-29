@@ -36,9 +36,9 @@ struct jmpbuf {
 enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct proc{
-  char *mem; // start of process's physical memory
-  uint sz; // total size of mem, including kernel stack
-  char *kstack; // kernel stack, separate from mem so it doesn't move
+  char *mem;    // start of process's memory (a kernel address)
+  uint sz;      // user memory size
+  char *kstack; // kernel stack
   enum proc_state state;
   int pid;
   int ppid;
@@ -52,7 +52,6 @@ struct proc{
 
 extern struct proc proc[];
 extern struct proc *curproc[NCPU];  // can be NULL if no proc running.
-  // XXX move curproc into cpu structure?
 
 #define MPSTACK 512
 

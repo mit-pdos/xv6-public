@@ -101,7 +101,6 @@ test: one process unlinks a file while another links to it
 test: one process opens a file while another deletes it
 test: deadlock d/.. vs ../d, two processes.
 test: dup() shared fd->off
-test: sbrk
 test: does echo foo > x truncate x?
 
 sh: support pipes?  leave it for the class?
@@ -119,4 +118,5 @@ echo foo > bar should truncate bar
   but O_TRUNC should
 
 make it work on one cpu
-make it work on amsterdam
+make it work on a real machine
+release before acquire at end of sleep?
