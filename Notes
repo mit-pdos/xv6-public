@@ -120,3 +120,4 @@ echo foo > bar should truncate bar
 make it work on one cpu
 make it work on a real machine
 release before acquire at end of sleep?
+check 2nd disk (i.e. if not in .bochsrc)

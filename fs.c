@@ -24,6 +24,9 @@ iinit(void)
   initlock(&inode_table_lock, "inode_table");
 }
 
+/*
+ * allocate a disk block
+ */
 static uint 
 balloc(uint dev) 
 {
@@ -52,7 +55,7 @@ balloc(uint dev)
     }
   }
   if (b >= size)
-    panic("balloc: out of blocks\n");
+    panic("balloc: out of blocks");
 
   bp->data[bi/8] |= 0x1 << (bi % 8);
   bwrite (bp, BBLOCK(b, ninodes));  // mark it allocated on disk
@@ -87,7 +90,11 @@ bfree(int dev, uint b)
   brelse(bp);
 }
 
-// returns an inode with busy set and incremented reference count.
+/* 
+ * fetch an inode, from the in-core table if it's already
+ * in use, otherwise read from the disk.
+ * returns an inode with busy set and incremented reference count.
+ */
 struct inode *
 iget(uint dev, uint inum)
 {
@@ -180,8 +187,9 @@ ialloc(uint dev, short type)
   }
  
   if (inum >= ninodes) 
-    panic ("ialloc: no inodes left\n");
+    panic ("ialloc: no inodes left");
 
+  memset(dip, 0, sizeof(*dip));
   dip->type = type;
   bwrite (bp, IBLOCK(inum));   // mark it allocated on the disk
   brelse(bp);
@@ -254,12 +262,11 @@ bmap(struct inode *ip, uint bn)
 }
 
 void 
-iunlink(struct inode *ip)
+itrunc(struct inode *ip)
 {
   int i, j;
   struct buf *inbp;
 
-  // free inode, its blocks, and remove dir entry
   for (i = 0; i < NADDRS; i++) {
     if (ip->addrs[i] != 0) {
       if (i == INDIRECT) {
@@ -278,10 +285,7 @@ iunlink(struct inode *ip)
     }
   }
   ip->size = 0;
-  ip->major = 0;
-  ip->minor = 0;
   iupdate(ip);
-  ifree(ip);  // is this the right order?
 }
 
 // caller is releasing a reference to this inode.
@@ -292,8 +296,10 @@ iput(struct inode *ip)
   if(ip->count < 1 || ip->busy != 1)
     panic("iput");
 
-  if ((ip->count == 1) && (ip->nlink == 0)) 
-    iunlink(ip);
+  if ((ip->count == 1) && (ip->nlink == 0)) {
+    itrunc(ip);
+    ifree(ip);
+  }
 
   acquire(&inode_table_lock);
 
@@ -425,7 +431,7 @@ writei(struct inode *ip, char *addr, uint off, uint n)
     }
     return r;
   } else {
-    panic ("writei: unknown type\n");
+    panic ("writei: unknown type");
     return 0;
   }
 }
@@ -451,10 +457,6 @@ namei(char *path, int mode, uint *ret_off, char **ret_last, struct inode **ret_i
   int i, atend;
   unsigned ninum;
 
-  if(mode == NAMEI_DELETE && ret_off == 0)
-    panic("namei no ret_off");
-  if(mode == NAMEI_CREATE && ret_last == 0)
-    panic("namei no ret_last");
   if(ret_off)
     *ret_off = 0xffffffff;
   if(ret_last)
@@ -550,9 +552,6 @@ wdir(struct inode *dp, char *name, uint ino)
   struct dirent de;
   int i;
 
-  if(name[0] == '\0')
-    panic("wdir no name");
-
   for(off = 0; off < dp->size; off += sizeof(de)){
     if(readi(dp, (char *) &de, off, sizeof(de)) != sizeof(de))
       panic("wdir read");
@@ -561,11 +560,8 @@ wdir(struct inode *dp, char *name, uint ino)
   }
 
   de.inum = ino;
-  for(i = 0; i < DIRSIZ && name[i]; i++){
-    if(name[i] == '/')
-      panic("wdir /");
+  for(i = 0; i < DIRSIZ && name[i]; i++)
     de.name[i] = name[i];
-  }
   for( ; i < DIRSIZ; i++)
     de.name[i] = '\0';
 
@@ -595,10 +591,8 @@ mknod1(struct inode *dp, char *name, short type, short major, short minor)
   struct inode *ip;
 
   ip = ialloc(dp->dev, type);
-  if (ip == 0) {
-    iput(dp);
+  if (ip == 0) 
     return 0;
-  }
   ip->major = major;
   ip->minor = minor;
   ip->size = 0;

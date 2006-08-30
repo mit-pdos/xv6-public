@@ -1,7 +1,5 @@
 /*
- * Minimal PIO-based (non-interrupt-driven) IDE driver code.
- * For information about what all this IDE/ATA magic means,
- * see the materials available on the class references page.
+ * Simple PIO-based (non-DMA) IDE driver code.
  */
 
 #include "types.h"
@@ -27,8 +25,10 @@ struct ide_request {
 struct ide_request request[NREQUEST];
 int head, tail;
 struct spinlock ide_lock;
-
+int disk_1_present;
 int disk_channel;
+
+int ide_probe_disk1(void);
 
 static int
 ide_wait_ready(int check_error)
@@ -47,11 +47,9 @@ void
 ide_init(void)
 {
   initlock(&ide_lock, "ide");
-  if (ncpu < 2) {
-    panic ("ide_init: disk interrupt is going to the second  cpu\n");
-  }
-  ioapic_enable (IRQ_IDE, 1);
+  ioapic_enable (IRQ_IDE, ncpu - 1);
   ide_wait_ready(0);
+  disk_1_present = ide_probe_disk1();
 }
 
 void
@@ -80,7 +78,6 @@ ide_probe_disk1(void)
   // switch back to Device 0
   outb(0x1F6, 0xE0 | (0<<4));
 
-  cprintf("Device 1 presence: %d\n", (x < 1000));
   return (x < 1000);
 }
 
@@ -111,11 +108,8 @@ ide_start_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
 {
   struct ide_request *r;
 
-  if(!holding(&ide_lock))
-    panic("ide_start_read: not holding ide_lock");
-
-  if(nsecs > 1)
-    panic("ide_start_read: nsecs too large");
+  if(diskno && !disk_1_present)
+    panic("ide disk 1 not present");
 
   while ((head + 1) % NREQUEST == tail)
     sleep (&disk_channel, &ide_lock);
@@ -139,12 +133,6 @@ ide_finish(void *c)
 {
   int r;
   struct ide_request *req = (struct ide_request *) c;
-
-  if(c != &request[tail])
-    panic("ide_finish_read");
-
-  if(!holding(&ide_lock))
-    panic("ide_start_read: not holding ide_lock");
 
   if (req->read) {
     if ((r = ide_wait_ready(1)) >= 0)

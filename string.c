@@ -57,21 +57,3 @@ strncmp(const char *p, const char *q, uint n)
 	else
 		return (int) ((uchar) *p - (uchar) *q);
 }
-
-// Memcpy is deprecated and should NOT be called.
-// Use memmove instead, which has defined semantics
-// when the two memory ranges overlap.
-// Memcpy is here only because gcc compiles some
-// structure assignments into calls to memcpy.
-void *
-memcpy(void *dst, void *src, uint n)
-{
-  char *d = (char *) dst;
-  char *s = (char *) src;
-
-  while(n-- > 0)
-    *d++ = *s++;
-
-  return dst;
-}
-

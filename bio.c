@@ -75,9 +75,8 @@ bread(uint dev, uint sector)
   extern struct spinlock ide_lock;
 
   b = getblk(dev, sector);
-  if(b->flags & B_VALID){
+  if(b->flags & B_VALID)
     return b;
-  }
 
   acquire(&ide_lock);
   c = ide_start_rw(dev & 0xff, sector, b->data, 1, 1);

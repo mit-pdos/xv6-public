@@ -116,6 +116,7 @@ void iinit(void);
 struct inode * iget(uint dev, uint inum);
 void ilock(struct inode *ip);
 void iunlock(struct inode *ip);
+void itrunc(struct inode *ip);
 void idecref(struct inode *ip);
 void iincref(struct inode *ip);
 void iput(struct inode *ip);

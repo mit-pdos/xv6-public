@@ -21,8 +21,6 @@
  * Arguments on the stack, from the user call to the C
  * library system call function. The saved user %esp points
  * to a saved program counter, and then the first argument.
- *
- * Return value? Error indication? Errno?
  */
 
 /*
@@ -51,7 +49,6 @@ fetchbyte(struct proc *p, uint addr, char* c)
   return 0;
 }
 
-// This arg is void* so that both int* and uint* can be passed.
 int
 fetcharg(int argno, void *ip)
 {
@@ -366,9 +363,6 @@ sys_chdir(void)
   if((l = checkstring(arg0)) < 0)
     return -1;
 
-  if(l >= DIRSIZ)
-    return -1;
-
   if ((ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0, 0, 0)) == 0)
     return -1;
 
@@ -436,11 +430,8 @@ sys_dup(void)
     return -1;
   if(cp->fds[fd] == 0) 
     return -1;
-  if (cp->fds[fd]->type != FD_PIPE && cp->fds[fd]->type != FD_FILE)
+  if ((ufd1 = fd_ualloc()) < 0) 
     return -1;
-  if ((ufd1 = fd_ualloc()) < 0) {
-    return -1;
-  }
   cp->fds[ufd1] = cp->fds[fd];
   fd_incref(cp->fds[ufd1]);
   return ufd1;

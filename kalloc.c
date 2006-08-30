@@ -23,8 +23,6 @@ struct run {
 };
 struct run *freelist;
 
-void ktest(void);
-
 /*
  * initialize free list of physical pages. this code
  * cheats by just considering the one megabyte of pages
@@ -43,7 +41,6 @@ kinit(void)
   mem = 256; // XXX
   cprintf("mem = %d\n", mem * PAGE);
   kfree(start, mem * PAGE);
-  ktest();
 }
 
 void
@@ -130,46 +127,6 @@ kalloc(int n)
     rr = &(*rr)->next;
   }
   release(&kalloc_lock);
+  cprintf("kalloc: out of memory\n");
   return 0;
-}
-
-void
-ktest(void)
-{
-  char *p1, *p2, *p3;
-
-  // test coalescing
-  p1 = kalloc(4 * PAGE);
-  kfree(p1 + 3*PAGE, PAGE);
-  kfree(p1 + 2*PAGE, PAGE);
-  kfree(p1, PAGE);
-  kfree(p1 + PAGE, PAGE);
-  p2 = kalloc(4 * PAGE);
-  if(p2 != p1)
-    panic("ktest");
-  kfree(p2, 4 * PAGE);
-
-  // test finding first run that fits
-  p1 = kalloc(1 * PAGE);
-  p2 = kalloc(1 * PAGE);
-  kfree(p1, PAGE);
-  p3 = kalloc(2 * PAGE);
-  kfree(p2, PAGE);
-  kfree(p3, 2 * PAGE);
-
-  // test running out of memory
-  p1 = 0;
-  while((p2 = kalloc(PAGE)) != 0){
-    *(char**)p2 = p1;
-    p1 = p2;
-  }
-  while(p1){
-    p2 = *(char **)p1;
-    kfree(p1, PAGE);
-    p1 = p2;
-  }
-  p1 = kalloc(PAGE * 20);
-  if(p1 == 0)
-    panic("ktest2");
-  kfree(p1, PAGE * 20);
 }

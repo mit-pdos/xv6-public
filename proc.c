@@ -113,7 +113,7 @@ copyproc(struct proc* p)
 
   // Copy trapframe registers from parent.
   np->tf = (struct trapframe*)(np->kstack + KSTACKSIZE) - 1;
-  *np->tf = *p->tf;
+  memmove(np->tf, p->tf, sizeof(*np->tf));
   
   // Clear %eax so that fork system call returns 0 in child.
   np->tf->eax = 0;
