@@ -1,5 +1,6 @@
 #include "types.h"
 #include "x86.h"
+#include "traps.h"
 #include "defs.h"
 #include "spinlock.h"
 #include "dev.h"

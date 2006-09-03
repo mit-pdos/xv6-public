@@ -8,6 +8,7 @@
 #include "proc.h"
 #include "defs.h"
 #include "x86.h"
+#include "traps.h"
 #include "spinlock.h"
 
 #define IDE_BSY		0x80
