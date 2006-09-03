@@ -79,12 +79,16 @@ trap(struct trapframe *tf)
     return;
   }
 
-  cprintf("trap %d from cpu %d eip %x\n", v, cpu(), tf->eip);
+  if(v == (IRQ_OFFSET + IRQ_SPURIOUS)){
+    cprintf("spurious interrupt from cpu %d eip %x\n", cpu(), tf->eip);
+    return;  // no eoi for this one.
+  }
+
   if(curproc[cpu()]) {
-    cprintf("pid %d\n", curproc[cpu()]->pid);
+    cprintf("pid %d: unhandled trap %d on cpu %d eip %x---terminate process\n", 
+	    curproc[cpu()]->pid, v, cpu(), tf->eip);
     proc_exit();
   }
-  //  panic("trap");
-
-  return;
+  cprintf("unexpected trap %d from cpu %d eip %x\n", v, cpu(), tf->eip);
+  panic("trap");
 }

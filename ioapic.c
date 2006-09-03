@@ -46,7 +46,7 @@ ioapic_init(void)
   for (i = 0; i < nintr; i++) {
     // active-hi and edge-triggered for ISA interrupts
     // Assume that pin 0 on the first I/O APIC is an ExtINT pin.
-    // Assume that pins 1-15 are ISA interrupts and that all
+    // Assume that pins 1-15 are ISA interrupts
     l = ioapic_read(io, IOAPIC_REDTBL_LO(i));
     l = l & ~IOART_INTMASK;  // allow INTs
     l |= IOART_INTMSET;
@@ -59,7 +59,6 @@ ioapic_init(void)
     h = ioapic_read(io, IOAPIC_REDTBL_HI(i));
     h &= ~IOART_DEST;
     ioapic_write(io, IOAPIC_REDTBL_HI(i), h);
-    //    cprintf("intr %d: lo 0x%x hi 0x%x\n", i, l, h);
   }
 }
 

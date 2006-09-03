@@ -200,7 +200,6 @@ int
 main(void)
 {
   printf(stdout, "userfs is running\n");
-
   opentest();
   writetest();
   writetest1();
