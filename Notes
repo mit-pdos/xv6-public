@@ -117,7 +117,6 @@ echo foo > bar should truncate bar
   so O_CREATE should not truncate
   but O_TRUNC should
 
-make it work on one cpu
 make it work on a real machine
 release before acquire at end of sleep?
 check 2nd disk (i.e. if not in .bochsrc)

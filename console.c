@@ -365,8 +365,9 @@ console_read(int minor, char *dst, int n)
 
   acquire(&kbd_lock);
 
-  while(kbd_w == kbd_r)
+  while(kbd_w == kbd_r) {
     sleep(&kbd_r, &kbd_lock);
+  }
 
   while(n > 0 && kbd_w != kbd_r){
     *dst = (kbd_buf[kbd_r]) & 0xff;
@@ -392,7 +393,7 @@ console_init()
   devsw[CONSOLE].d_write = console_write;
   devsw[CONSOLE].d_read = console_read;
 
-  ioapic_enable (IRQ_KBD, 1);
+  ioapic_enable (IRQ_KBD, 0);
 
   use_console_lock = 1;
 }
