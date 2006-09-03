@@ -14,7 +14,6 @@
  * mp.c puts the correct %esp in start-4, and the place to jump
  * to in start-8.
  *	
- * Credit: Cliff Frey and Plan 9
  */
 
 .set PROT_MODE_CSEG,0x8		# code segment selector

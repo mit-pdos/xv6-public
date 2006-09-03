@@ -1,6 +1,5 @@
 //
 // format of an ELF executable file
-// from JOS
 //
 
 #define ELF_MAGIC 0x464C457FU	/* "\x7FELF" in little endian */

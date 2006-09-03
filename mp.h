@@ -1,7 +1,6 @@
 /*
- * MultiProcessor Specification Version 1.[14].
+ * See MultiProcessor Specification Version 1.[14].
  *
- * Credit: Plan 9 sources
  */
 
 struct mp {			/* floating pointer */

@@ -7,11 +7,6 @@
 #include "mmu.h"
 #include "proc.h"
 
-
-/* 
- * Credit: Plan 9 sources, Intel MP spec, and Cliff Frey
- */
-
 enum {					/* Local APIC registers */
   LAPIC_ID  = 0x0020,	/* ID */
   LAPIC_VER = 0x0030,	/* Version */

@@ -10,3 +10,17 @@ Communications; ISBN: 1-57398-013-7; 1st edition (June 14, 2000). See
 also http://pdos.csail.mit.edu/6.828/2006/v6.html, which provides
 pointers to on-line resources for v6.
 
+Code was used from the following sources:
+    JOS (asm.h, elf.h, mmu.h, bootasm.S, ide.c, and others)
+    Plan 9 (bootother.S, mp.h, mp.c, ioapic.h, lapic.c)
+    FreeBSD (ioapic.c)
+
+The following people made contributions:
+    Russ Cox (context switching, locking)
+    Cliff Frey (MP)
+    Xiao Yu (MP)
+
+If you spot errors or have suggestions for improvement, please send
+email to Frans Kaashoek and Robert Morris
+({kaashoek,rtm}@csail.mit.edu).  This version is the very first one,
+so don't be surprised if there are errors or the code is unclear.

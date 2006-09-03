@@ -1,6 +1,5 @@
 //
 // macros to create x86 segments from assembler
-// from JOS
 //
 
 #define SEG_NULL						\
