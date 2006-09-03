@@ -69,15 +69,15 @@ PRINT =	\
 	console.c\
 	string.c\
 
+# make a print, but the resulting xv6.ind need some editing
 print: $(PRINT)
-	//~/src/lgrind/source/lgrind -d ~/src/lgrind/lgrindef $(PRINT) > xv6.tex
-	lgrind $(PRINT) > xv6.tex
+	lgrind -d ./lgrindef $(PRINT) > xv6.tex 
+	latex xv6.tex
+	makeindex xv6.idx
 	latex xv6.tex
 	dvips -o xv61.ps xv6.dvi
 	psnup -2 xv61.ps > xv6.ps
 	rm -f xv61.ps
-//	a2ps --line-numbers=1 -M Letter $(PRINT) -o xv6.ps
-//	a2ps --line-numbers=1 -M Letter $(PRINT) --toc -atoc -o xv6toc.ps
 
 vectors.S : vectors.pl
 	perl vectors.pl > vectors.S
@@ -137,7 +137,7 @@ fs.img : mkfs userfs usertests echo cat readme init sh ls mkdir rm fstests
 -include *.d
 
 clean : 
-	rm -f *.ps *.tex *.dvi *.idx *.aux .log \
+	rm -f *.ps *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm vectors.S parport.out \
 	bootblock kernel xv6.img user1 userfs usertests \
 	fs.img mkfs echo init fstests
