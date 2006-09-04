@@ -21,7 +21,7 @@ tvinit(void)
   for(i = 0; i < 256; i++){
     SETGATE(idt[i], 1, SEG_KCODE << 3, vectors[i], 0);
   }
-  SETGATE(idt[T_SYSCALL], 1, SEG_KCODE << 3, vectors[48], 3);
+  SETGATE(idt[T_SYSCALL], 1, SEG_KCODE << 3, vectors[T_SYSCALL], 3);
 }
 
 void

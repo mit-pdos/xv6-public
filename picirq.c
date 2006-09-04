@@ -1,5 +1,3 @@
-/* See COPYRIGHT for copyright information. */
-
 #include "types.h"
 #include "x86.h"
 #include "traps.h"
