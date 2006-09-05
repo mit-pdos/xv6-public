@@ -58,6 +58,7 @@ tags: $(OBJS) bootother.S init
 	etags *.S *.c
 
 PRINT =	\
+	runoff.list \
 	README\
 	types.h param.h defs.h x86.h asm.h elf.h mmu.h spinlock.h\
 	bootasm.S bootother.S main.c init.c spinlock.c\
@@ -69,15 +70,11 @@ PRINT =	\
 	console.c\
 	string.c\
 
-# make a print, but the resulting xv6.ind need some editing
-print: $(PRINT)
-	lgrind -d ./lgrindef $(PRINT) > xv6.tex 
-	latex xv6.tex
-	makeindex xv6.idx
-	latex xv6.tex
-	dvips -o xv61.ps xv6.dvi
-	psnup -2 xv61.ps > xv6.ps
-	rm -f xv61.ps
+# make a printout
+xv6.pdf : $(PRINT)
+	./runoff
+
+print : xv6.pdf
 
 vectors.S : vectors.pl
 	perl vectors.pl > vectors.S
