@@ -14,6 +14,8 @@ OBJS = \
 	spinlock.o\
 	string.o\
 	syscall.o\
+	sysfile.o\
+	sysproc.o\
 	trapasm.o\
 	trap.o\
 	vectors.o\
@@ -134,6 +136,7 @@ fs.img : mkfs userfs usertests echo cat README init sh ls mkdir rm fstests
 -include *.d
 
 clean : 
+	/bin/rm -f rm
 	rm -f *.ps *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm vectors.S parport.out \
 	bootblock kernel xv6.img user1 userfs usertests \
