@@ -92,14 +92,14 @@ int pipe_read(struct pipe*, char*, int);
 
 // fd.c
 struct stat;
-void fd_init(void);
-int fd_ualloc(void);
-struct file* fd_alloc(void);
-void fd_close(struct file*);
-int fd_read(struct file*, char*, int n);
-int fd_write(struct file*, char*, int n);
-int fd_stat(struct file*, struct stat*);
-void fd_incref(struct file*);
+void fileinit(void);
+int fdalloc(void);
+struct file* filealloc(void);
+void fileclose(struct file*);
+int fileread(struct file*, char*, int n);
+int filewrite(struct file*, char*, int n);
+int filestat(struct file*, struct stat*);
+void fileincref(struct file*);
 
 // ide.c
 void ide_init(void);

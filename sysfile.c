@@ -25,10 +25,10 @@ sys_pipe(void)
 
   if(pipe_alloc(&rfd, &wfd) < 0)
     goto oops;
-  if((f1 = fd_ualloc()) < 0)
+  if((f1 = fdalloc()) < 0)
     goto oops;
   p->ofile[f1] = rfd;
-  if((f2 = fd_ualloc()) < 0)
+  if((f2 = fdalloc()) < 0)
     goto oops;
   p->ofile[f2] = wfd;
   if(fetcharg(0, &fdp) < 0)
@@ -41,9 +41,9 @@ sys_pipe(void)
 
  oops:
   if(rfd)
-    fd_close(rfd);
+    fileclose(rfd);
   if(wfd)
-    fd_close(wfd);
+    fileclose(wfd);
   if(f1 >= 0)
     p->ofile[f1] = 0;
   if(f2 >= 0)
@@ -67,7 +67,7 @@ sys_write(void)
   if(addr + n > p->sz)
     return -1;
 
-  ret = fd_write(p->ofile[fd], p->mem + addr, n);
+  ret = filewrite(p->ofile[fd], p->mem + addr, n);
   return ret;
 }
 
@@ -86,7 +86,7 @@ sys_read(void)
     return -1;
   if(addr + n > p->sz)
     return -1;
-  ret = fd_read(p->ofile[fd], p->mem + addr, n);
+  ret = fileread(p->ofile[fd], p->mem + addr, n);
   return ret;
 }
 
@@ -102,7 +102,7 @@ sys_close(void)
     return -1;
   if(p->ofile[fd] == 0)
     return -1;
-  fd_close(p->ofile[fd]);
+  fileclose(p->ofile[fd]);
   p->ofile[fd] = 0;
   return 0;
 }
@@ -146,13 +146,13 @@ sys_open(void)
     return -1;
   }
 
-  if((fd = fd_alloc()) == 0){
+  if((fd = filealloc()) == 0){
     iput(ip);
     return -1;
   }
-  if((ufd = fd_ualloc()) < 0){
+  if((ufd = fdalloc()) < 0){
     iput(ip);
-    fd_close(fd);
+    fileclose(fd);
     return -1;
   }
 
@@ -310,7 +310,7 @@ sys_fstat(void)
     return -1;
   if(addr + sizeof(struct stat) > cp->sz)
     return -1;
-  r = fd_stat(cp->ofile[fd], (struct stat*)(cp->mem + addr));
+  r = filestat(cp->ofile[fd], (struct stat*)(cp->mem + addr));
   return r;
 }
 
@@ -326,10 +326,10 @@ sys_dup(void)
     return -1;
   if(cp->ofile[fd] == 0)
     return -1;
-  if((ufd1 = fd_ualloc()) < 0)
+  if((ufd1 = fdalloc()) < 0)
     return -1;
   cp->ofile[ufd1] = cp->ofile[fd];
-  fd_incref(cp->ofile[ufd1]);
+  fileincref(cp->ofile[ufd1]);
   return ufd1;
 }
 

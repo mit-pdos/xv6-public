@@ -24,9 +24,9 @@ pipe_alloc(struct file **fd1, struct file **fd2)
   *fd1 = *fd2 = 0;
   struct pipe *p = 0;
 
-  if((*fd1 = fd_alloc()) == 0)
+  if((*fd1 = filealloc()) == 0)
     goto oops;
-  if((*fd2 = fd_alloc()) == 0)
+  if((*fd2 = filealloc()) == 0)
     goto oops;
   if((p = (struct pipe*) kalloc(PAGE)) == 0)
     goto oops;
@@ -49,11 +49,11 @@ pipe_alloc(struct file **fd1, struct file **fd2)
     kfree((char*) p, PAGE);
   if(*fd1){
     (*fd1)->type = FD_NONE;
-    fd_close(*fd1);
+    fileclose(*fd1);
   }
   if(*fd2){
     (*fd2)->type = FD_NONE;
-    fd_close(*fd2);
+    fileclose(*fd2);
   }
   return -1;
 }
