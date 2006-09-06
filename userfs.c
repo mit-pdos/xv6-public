@@ -111,7 +111,7 @@ writetest1(void)
   }
 
   n = 0;
-  while(1) {
+  for(;;) {
     i = read(fd, buf, 512);
     if(i == 0) {
       if(n == MAXFILE - 1) {
@@ -162,17 +162,17 @@ void dirtest(void)
 {
   printf(stdout, "mkdir\n");
 
-  if(mkdir("dir0") < 0)  {
+  if(mkdir("dir0") < 0) {
     printf(stdout, "mkdir failed\n");
     exit();
   }
 
-  if(chdir("dir0") < 0)  {
+  if(chdir("dir0") < 0) {
     printf(stdout, "chdir dir0 failed\n");
     exit();
   }
 
-  if(chdir("..") < 0)  {
+  if(chdir("..") < 0) {
     printf(stdout, "chdir .. failed\n");
     exit();
   }
