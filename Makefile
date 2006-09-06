@@ -132,6 +132,8 @@ mkfs : mkfs.c fs.h
 
 fs.img : mkfs userfs usertests echo cat README init sh ls mkdir rm fstests
 	./mkfs fs.img userfs usertests echo cat README init sh ls mkdir rm fstests
+	# Remove system binaries to avoid confusion.
+	/bin/rm -f echo cat sh ls mkdir rm
 
 -include *.d
 
