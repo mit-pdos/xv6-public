@@ -9,10 +9,13 @@
 #include "traps.h"
 #include "spinlock.h"
 
-#define IDE_BSY     0x80
-#define IDE_DRDY    0x40
-#define IDE_DF      0x20
-#define IDE_ERR     0x01
+#define IDE_BSY       0x80
+#define IDE_DRDY      0x40
+#define IDE_DF        0x20
+#define IDE_ERR       0x01
+
+#define IDE_CMD_READ  0x20
+#define IDE_CMD_WRITE 0x30
 
 struct ide_request {
   int diskno;
@@ -95,9 +98,10 @@ ide_start_request (void)
     outb(0x1F4, (r->secno >> 8) & 0xFF);
     outb(0x1F5, (r->secno >> 16) & 0xFF);
     outb(0x1F6, 0xE0 | ((r->diskno&1)<<4) | ((r->secno>>24)&0x0F));
-    if(r->read) outb(0x1F7, 0x20); // read
+    if(r->read)
+      outb(0x1F7, IDE_CMD_READ);
     else {
-      outb(0x1F7, 0x30); // write
+      outb(0x1F7, IDE_CMD_WRITE);
       outsl(0x1F0, r->addr, 512/4);
     }
   }
