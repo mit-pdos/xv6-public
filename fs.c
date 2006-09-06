@@ -479,7 +479,7 @@ namei(char *path, int mode, uint *ret_off, char **ret_last, struct inode **ret_i
   while(*cp == '/')
     cp++;
 
-  while(1){
+  for(;;){
     if(*cp == '\0'){
       if(mode == NAMEI_LOOKUP)
         return dp;

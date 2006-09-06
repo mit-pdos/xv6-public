@@ -62,7 +62,7 @@ checkstring(uint s)
   char c;
   int len = 0;
 
-  while(1){
+  for(;;){
     if(fetchbyte(curproc[cpu()], s, &c) < 0)
       return -1;
     if(c == '\0')
