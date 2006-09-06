@@ -11,8 +11,8 @@
 #include "traps.h"
 #include "spinlock.h"
 
-#define IDE_BSY		0x80
-#define IDE_DRDY	0x40
+#define IDE_BSY     0x80
+#define IDE_DRDY    0x40
 #define IDE_DF		0x20
 #define IDE_ERR		0x01
 
@@ -23,6 +23,7 @@ struct ide_request {
   uint nsecs;
   uint read;
 };
+
 struct ide_request request[NREQUEST];
 int head, tail;
 struct spinlock ide_lock;
@@ -154,7 +155,7 @@ int
 ide_write(int diskno, uint secno, const void *src, uint nsecs)
 {
   int r;
-	
+
   if(nsecs > 256)
     panic("ide_write");
 
@@ -165,7 +166,7 @@ ide_write(int diskno, uint secno, const void *src, uint nsecs)
   outb(0x1F4, (secno >> 8) & 0xFF);
   outb(0x1F5, (secno >> 16) & 0xFF);
   outb(0x1F6, 0xE0 | ((diskno&1)<<4) | ((secno>>24)&0x0F));
-  outb(0x1F7, 0x30);	// CMD 0x30 means write sector
+  outb(0x1F7, 0x30);    // CMD 0x30 means write sector
 
   for (; nsecs > 0; nsecs--, src += 512) {
     if ((r = ide_wait_ready(1)) < 0)

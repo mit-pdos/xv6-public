@@ -30,10 +30,10 @@ main(int argc, char *argv[])
     for(i = 1; i < argc; i++){
       fd = open(argv[i], 0);
       if(fd < 0){
-	puts("cat: cannot open ");
-	puts(argv[i]);
-	puts("\n");
-	exit();
+        puts("cat: cannot open ");
+        puts(argv[i]);
+        puts("\n");
+        exit();
       }
       rfile(fd);
       close(fd);

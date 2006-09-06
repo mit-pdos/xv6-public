@@ -32,7 +32,7 @@ memmove(void *dst, const void *src, uint n)
 {
   const char *s;
   char *d;
-	
+
   s = src;
   d = dst;
   if (s < d && s + n > d) {
@@ -50,10 +50,10 @@ memmove(void *dst, const void *src, uint n)
 int
 strncmp(const char *p, const char *q, uint n)
 {
-	while (n > 0 && *p && *p == *q)
-		n--, p++, q++;
-	if (n == 0)
-		return 0;
-	else
-		return (int) ((uchar) *p - (uchar) *q);
+  while (n > 0 && *p && *p == *q)
+    n--, p++, q++;
+  if (n == 0)
+    return 0;
+  else
+    return (int) ((uchar) *p - (uchar) *q);
 }

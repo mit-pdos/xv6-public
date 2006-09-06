@@ -8,25 +8,25 @@
 #include "proc.h"
 
 static char* buses[] = {
-	"CBUSI ",
-	"CBUSII",
-	"EISA  ",
-	"FUTURE",
-	"INTERN",
-	"ISA   ",
-	"MBI   ",
-	"MBII  ",
-	"MCA   ",
-	"MPI   ",
-	"MPSA  ",
-	"NUBUS ",
-	"PCI   ",
-	"PCMCIA",
-	"TC    ",
-	"VL    ",
-	"VME   ",
-	"XPRESS",
-	0,
+  "CBUSI ",
+  "CBUSII",
+  "EISA  ",
+  "FUTURE",
+  "INTERN",
+  "ISA   ",
+  "MBI   ",
+  "MBII  ",
+  "MCA   ",
+  "MPI   ",
+  "MPSA  ",
+  "NUBUS ",
+  "PCI   ",
+  "PCMCIA",
+  "TC    ",
+  "VL    ",
+  "VME   ",
+  "XPRESS",
+  0,
 };
 
 struct cpu cpus[NCPU];
@@ -146,7 +146,7 @@ mp_init(void)
       proc = (struct mppe *) p;
       cpus[ncpu].apicid = proc->apicid;
       if (proc->flags & MPBP) {
-	bcpu = &cpus[ncpu];
+        bcpu = &cpus[ncpu];
       }
       ncpu++;
       p += sizeof(struct mppe);
@@ -154,8 +154,8 @@ mp_init(void)
     case MPBUS:
       bus = (struct mpbe *) p;
       for(i = 0; buses[i]; i++){
-	if(strncmp(buses[i], bus->string, sizeof(bus->string)) == 0)
-	  break;
+        if(strncmp(buses[i], bus->string, sizeof(bus->string)) == 0)
+          break;
       }
       p += sizeof(struct mpbe);
       continue;
@@ -171,18 +171,18 @@ mp_init(void)
     default:
       cprintf("mpinit: unknown PCMP type 0x%x (e-p 0x%x)\n", *p, e-p);
       while(p < e){
-	cprintf("%uX ", *p);
-	p++;
+        cprintf("%uX ", *p);
+        p++;
       }
       break;
     }
   }
 
   if (mp->imcrp) {  // it appears that bochs doesn't support IMCR, and code won't run
-    outb(0x22, 0x70);	/* select IMCR */
-    byte = inb(0x23);	/* current contents */
-    byte |= 0x01;	/* mask external INTR */
-    outb(0x23, byte);	/* disconnect 8259s/NMI */
+    outb(0x22, 0x70);   /* select IMCR */
+    byte = inb(0x23);   /* current contents */
+    byte |= 0x01;       /* mask external INTR */
+    outb(0x23, byte);   /* disconnect 8259s/NMI */
   }
 }
 
@@ -205,7 +205,7 @@ mp_startthem(void)
   int c;
 
   memmove((void *) APBOOTCODE,_binary_bootother_start, 
-	  (uint) _binary_bootother_size);
+          (uint) _binary_bootother_size);
 
   for(c = 0; c < ncpu; c++){
     if (c == cpu()) continue;

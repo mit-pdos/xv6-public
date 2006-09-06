@@ -5,32 +5,32 @@
 #define ELF_MAGIC 0x464C457FU	/* "\x7FELF" in little endian */
 
 struct elfhdr {
-	uint magic;	// must equal ELF_MAGIC
-	uchar elf[12];
-	ushort type;
-	ushort machine;
-	uint version;
-	uint entry;
-	uint phoff;
-	uint shoff;
-	uint flags;
-	ushort ehsize;
-	ushort phentsize;
-	ushort phnum;
-	ushort shentsize;
-	ushort shnum;
-	ushort shstrndx;
+  uint magic;  // must equal ELF_MAGIC
+  uchar elf[12];
+  ushort type;
+  ushort machine;
+  uint version;
+  uint entry;
+  uint phoff;
+  uint shoff;
+  uint flags;
+  ushort ehsize;
+  ushort phentsize;
+  ushort phnum;
+  ushort shentsize;
+  ushort shnum;
+  ushort shstrndx;
 };
 
 struct proghdr {
-	uint type;
-	uint offset;
-	uint va;
-	uint pa;
-	uint filesz;
-	uint memsz;
-	uint flags;
-	uint align;
+  uint type;
+  uint offset;
+  uint va;
+  uint pa;
+  uint filesz;
+  uint memsz;
+  uint flags;
+  uint align;
 };
 
 // Values for Proghdr type

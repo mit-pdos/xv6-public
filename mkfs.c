@@ -81,8 +81,8 @@ main(int argc, char *argv[])
   usedblocks = ninodes / IPB + 3 + bitblocks;
   freeblock = usedblocks;
 
-  printf ("used %d (bit %d ninode %d) free %d total %d\n", usedblocks, 
-	  bitblocks, ninodes/IPB + 1, freeblock, nblocks+usedblocks);
+  printf("used %d (bit %d ninode %d) free %d total %d\n", usedblocks, 
+         bitblocks, ninodes/IPB + 1, freeblock, nblocks+usedblocks);
 
   assert (nblocks + usedblocks == size);
 
@@ -246,22 +246,22 @@ iappend(uint inum, void *xp, int n)
     assert(fbn < MAXFILE);
     if (fbn < NDIRECT) {
       if(xint(din.addrs[fbn]) == 0) {
-	din.addrs[fbn] = xint(freeblock++);
-	usedblocks++;
+        din.addrs[fbn] = xint(freeblock++);
+        usedblocks++;
       }
       x = xint(din.addrs[fbn]);
     } else {
       if(xint(din.addrs[INDIRECT]) == 0) {
-	printf("allocate indirect block\n");
-	din.addrs[INDIRECT] = xint(freeblock++);
-	usedblocks++;
+        printf("allocate indirect block\n");
+        din.addrs[INDIRECT] = xint(freeblock++);
+        usedblocks++;
       }
       printf("read indirect block\n");
       rsect(xint(din.addrs[INDIRECT]), (char *) indirect);
       if (indirect[fbn - NDIRECT] == 0) {
-	indirect[fbn - NDIRECT] = xint(freeblock++);
-	usedblocks++;
-	wsect(xint(din.addrs[INDIRECT]), (char *) indirect);
+        indirect[fbn - NDIRECT] = xint(freeblock++);
+        usedblocks++;
+        wsect(xint(din.addrs[INDIRECT]), (char *) indirect);
       }
       x = xint(indirect[fbn-NDIRECT]);
     }

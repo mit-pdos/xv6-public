@@ -68,28 +68,28 @@ parse(char *s)
   while (1) {
     switch ((c = gettoken(0, &t))) {
 
-    case 'w':	// Add an argument
+    case 'w':   // Add an argument
       if (cmdlist[nextcmd].argc >= MAXARGS) {
-	printf(2, "too many arguments\n");
-	return -1;
+        printf(2, "too many arguments\n");
+        return -1;
       }
       cmdlist[nextcmd].argv[cmdlist[nextcmd].argc++] = t;
       break;
-			
-    case '<':	// Input redirection
+                        
+    case '<':   // Input redirection
       // Grab the filename from the argument list
       if (gettoken(0, &t) != 'w') {
-	printf(2, "syntax error: < not followed by word\n");
-	return -1;
+        printf(2, "syntax error: < not followed by word\n");
+        return -1;
       }
       addio('<', t);
       break;
-			
-    case '>':	// Output redirection
+                        
+    case '>':   // Output redirection
       // Grab the filename from the argument list
       if (gettoken(0, &t) != 'w') {
-	printf(2, "syntax error: > not followed by word\n");
-	return -1;
+        printf(2, "syntax error: > not followed by word\n");
+        return -1;
       }
       addio('>', t);
       break;
@@ -100,13 +100,13 @@ parse(char *s)
       nextcmd++;
       break;
 
-    case 0:		// String is complete
+    case 0:             // String is complete
       return 0;
-			
+                        
     default:
       printf(2, "syntax error: bad return %d from gettoken", c);
       return -1;
-			
+                        
     }
   }
 }
@@ -136,14 +136,14 @@ runcmd(void)
       cmdlist[c].argv[0] = cmdlist[c].argv0buf;
     }
     cmdlist[c].argv[cmdlist[c].argc] = 0;
-	
+        
     // Print the command.
     if (debug) {
       printf(2, "[%d] SPAWN:", getpid());
       for (i = 0; cmdlist[c].argv[i]; i++)
-	printf(2, " %s", cmdlist[c].argv[i]);
+        printf(2, " %s", cmdlist[c].argv[i]);
       for (i = 0; i < nextio; i++) {
-	printf(2, "%c %s", iolist[i].token, iolist[i].s);
+        printf(2, "%c %s", iolist[i].token, iolist[i].s);
       }
       printf(2, "\n");
     }
@@ -156,55 +156,55 @@ runcmd(void)
 
     if (cmdlist[c].token == '|')
       if (pipe(fdarray) < 0)
-	printf(2, "cmd %d pipe failed\n", c);
+        printf(2, "cmd %d pipe failed\n", c);
 
     pid = fork();
     if (pid == 0) {
       if (cmdlist[c].token == '|') {
-	if (close(1) < 0) 
-	  printf(2, "close 1 failed\n");
-	if ((tfd = dup(fdarray[1])) < 0)
-	  printf(2, "dup failed\n");
-	if (close(fdarray[0]) < 0)
-	  printf(2, "close fdarray[0] failed\n");
-	if (close(fdarray[1]) < 0)
-	  printf(2, "close fdarray[1] failed\n");
+        if (close(1) < 0) 
+          printf(2, "close 1 failed\n");
+        if ((tfd = dup(fdarray[1])) < 0)
+          printf(2, "dup failed\n");
+        if (close(fdarray[0]) < 0)
+          printf(2, "close fdarray[0] failed\n");
+        if (close(fdarray[1]) < 0)
+          printf(2, "close fdarray[1] failed\n");
       }
       if (c > 0 && cmdlist[c-1].token == '|') {
-	if (close(0) < 0) 
-	  printf(2, "close 0 failed\n");
-	if ((tfd = dup(fdarray[0])) < 0)
-	  printf(2, "dup failed\n");
-	if (close(fdarray[0]) < 0)
-	  printf(2, "close fdarray[0] failed\n");
-	if (close(fdarray[1]) < 0)
-	  printf(2, "close fdarray[1] failed\n");
+        if (close(0) < 0) 
+          printf(2, "close 0 failed\n");
+        if ((tfd = dup(fdarray[0])) < 0)
+          printf(2, "dup failed\n");
+        if (close(fdarray[0]) < 0)
+          printf(2, "close fdarray[0] failed\n");
+        if (close(fdarray[1]) < 0)
+          printf(2, "close fdarray[1] failed\n");
       }
       if (ioredirection() < 0)
-	exit();
+        exit();
       if ((r = exec(cmdlist[c].argv0buf, (char**) cmdlist[c].argv)) < 0) {
-	printf(2, "exec %s: %d\n", cmdlist[c].argv[0], r);
-	exit();
+        printf(2, "exec %s: %d\n", cmdlist[c].argv[0], r);
+        exit();
       }
     } else if (pid > 0) {
       int p;
       if (debug)
-	printf(2, "[%d] FORKED child %d\n", getpid(), pid);
+        printf(2, "[%d] FORKED child %d\n", getpid(), pid);
 
       if (c > 0 && cmdlist[c-1].token == '|') {
-	close(fdarray[0]);
-	close(fdarray[1]);
+        close(fdarray[0]);
+        close(fdarray[1]);
       }
       if (cmdlist[c].token != '|') {
-	if (debug)
-	  printf(2, "[%d] WAIT for children\n", getpid());
-	do {
-	  p = wait();
-	  if (debug)
-	    printf(2, "[%d] WAIT child %d finished\n", getpid(), p);
-	} while (p > 0);
-	if (debug)
-	  printf(2, "[%d] wait finished\n", getpid());
+        if (debug)
+          printf(2, "[%d] WAIT for children\n", getpid());
+        do {
+          p = wait();
+          if (debug)
+            printf(2, "[%d] WAIT child %d finished\n", getpid(), p);
+        } while (p > 0);
+        if (debug)
+          printf(2, "[%d] wait finished\n", getpid());
       }
     }
   }
@@ -219,23 +219,23 @@ ioredirection(void)
     switch (iolist[i].token) {
     case '<':
       if (close(0) < 0)
-	printf(2, "close 0 failed\n");
+        printf(2, "close 0 failed\n");
       if ((fd = open(iolist[i].s, O_RDONLY)) < 0) {
-	printf(2, "failed to open %s for read: %d", iolist[i].s, fd);
-	return -1;
+        printf(2, "failed to open %s for read: %d", iolist[i].s, fd);
+        return -1;
       }
       if (debug)
-	printf(2, "redirect 0 from %s\n", iolist[i].s);
+        printf(2, "redirect 0 from %s\n", iolist[i].s);
       break;
     case '>':
       if (close(1) < 0)
-	printf(2, "close 1 failed\n");
+        printf(2, "close 1 failed\n");
       if ((fd = open(iolist[i].s, O_WRONLY|O_CREATE)) < 0) {
-	printf(2, "failed to open %s for write: %d", iolist[i].s, fd);
-	exit();
+        printf(2, "failed to open %s for write: %d", iolist[i].s, fd);
+        exit();
       }
       if (debug)
-	printf(2, "redirect 1 to %s\n", iolist[i].s);
+        printf(2, "redirect 1 to %s\n", iolist[i].s);
       break;
     }
   }
@@ -283,11 +283,11 @@ gettoken(char *s, char **p1)
 // Get the next token from string s.
 // Set *p1 to the beginning of the token and *p2 just past the token.
 // Returns
-//	0 for end-of-string;
-//	< for <;
-//	> for >;
-//	| for |;
-//	w for a word.
+//      0 for end-of-string;
+//      < for <;
+//      > for >;
+//      | for |;
+//      w for a word.
 //
 // Eventually (once we parse the space where the \0 will go),
 // words get nul-terminated.

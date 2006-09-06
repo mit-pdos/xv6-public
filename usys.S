@@ -2,11 +2,11 @@
 #include "traps.h"
 
 #define STUB(name) \
-	.globl name; \
-	name: \
-		movl $SYS_ ## name, %eax; \
-		int $T_SYSCALL; \
-		ret 
+  .globl name; \
+  name: \
+    movl $SYS_ ## name, %eax; \
+    int $T_SYSCALL; \
+    ret 
 
 STUB(fork)
 STUB(exit)

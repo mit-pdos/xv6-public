@@ -270,16 +270,16 @@ itrunc(struct inode *ip)
   for (i = 0; i < NADDRS; i++) {
     if (ip->addrs[i] != 0) {
       if (i == INDIRECT) {
-	inbp = bread(ip->dev, ip->addrs[INDIRECT]);
+        inbp = bread(ip->dev, ip->addrs[INDIRECT]);
         uint *a = (uint *) inbp->data;
-	for (j = 0; j < NINDIRECT; j++) {
-	  if (a[j] != 0) {
-	    bfree(ip->dev, a[j]);
-	    a[j] = 0;
-	  }
-	}
-	brelse(inbp);
-      }	
+        for (j = 0; j < NINDIRECT; j++) {
+          if (a[j] != 0) {
+            bfree(ip->dev, a[j]);
+            a[j] = 0;
+          }
+        }
+        brelse(inbp);
+      } 
       bfree(ip->dev, ip->addrs[i]);
       ip->addrs[i] = 0;
     }
@@ -411,8 +411,8 @@ writei(struct inode *ip, char *addr, uint off, uint n)
       lbn = off / BSIZE;
       if (lbn >= MAXFILE) return r;
       if (newblock(ip, lbn) < 0) {
-	cprintf("newblock failed\n");
-	return r;
+        cprintf("newblock failed\n");
+        return r;
       }
       m = min(BSIZE - off % BSIZE, n-r);
       bp = bread(ip->dev, bmap(ip, lbn));
@@ -424,8 +424,8 @@ writei(struct inode *ip, char *addr, uint off, uint n)
     }
     if (r > 0) {
       if (off > ip->size) {
-	if (ip->type == T_DIR) ip->size = ((off / BSIZE) + 1) * BSIZE;
-	else ip->size = off;
+        if (ip->type == T_DIR) ip->size = ((off / BSIZE) + 1) * BSIZE;
+        else ip->size = off;
       }
       iupdate(ip);
     }

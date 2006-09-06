@@ -40,7 +40,7 @@ acquire(struct spinlock * lock)
                 
   while(cmpxchg(0, 1, &lock->locked) == 1)
     ;
-  cpuid(0, 0, 0, 0, 0);	// memory barrier
+  cpuid(0, 0, 0, 0, 0);  // memory barrier
   getcallerpcs(&lock, lock->pcs);
   lock->cpu = cpu() + 10;
 }
@@ -54,7 +54,7 @@ release(struct spinlock * lock)
 
   lock->pcs[0] = 0;
   lock->cpu = 0xffffffff;
-  cpuid(0, 0, 0, 0, 0);	// memory barrier
+  cpuid(0, 0, 0, 0, 0);  // memory barrier
   lock->locked = 0;
   if(--cpus[cpu()].nlock == 0)
     sti();

@@ -65,8 +65,8 @@ printf(int fd, char *fmt, ...)
           s++;
         }
       } else if(c == 'c'){
-	putc(fd, *ap);
-	ap++;
+        putc(fd, *ap);
+        ap++;
       } else if(c == '%'){
         putc(fd, c);
       } else {

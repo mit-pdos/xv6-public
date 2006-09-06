@@ -86,7 +86,7 @@ trap(struct trapframe *tf)
 
   if(curproc[cpu()]) {
     cprintf("pid %d: unhandled trap %d on cpu %d eip %x---terminate process\n", 
-	    curproc[cpu()]->pid, v, cpu(), tf->eip);
+            curproc[cpu()]->pid, v, cpu(), tf->eip);
     proc_exit();
   }
   cprintf("unexpected trap %d from cpu %d eip %x\n", v, cpu(), tf->eip);

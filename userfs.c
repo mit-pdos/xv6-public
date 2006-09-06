@@ -115,8 +115,8 @@ writetest1(void)
     i = read(fd, buf, 512);
     if (i == 0) {
       if (n == MAXFILE - 1) {
-	printf(stdout, "read only %d blocks from big", n);
-	exit();
+        printf(stdout, "read only %d blocks from big", n);
+        exit();
       }
       break;
     } else if (i != 512) {

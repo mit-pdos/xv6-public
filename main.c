@@ -97,7 +97,7 @@ mpmain(void)
   // make sure there's a TSS
   setupsegs(0);
 
-  cpuid(0, 0, 0, 0, 0);	// memory barrier
+  cpuid(0, 0, 0, 0, 0);  // memory barrier
   cpus[cpu()].booted = 1;
 
   // Enable interrupts on this processor.

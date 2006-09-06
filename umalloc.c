@@ -74,17 +74,17 @@ malloc(uint nbytes)
   for (p = prevp->s.ptr; ; prevp = p, p = p->s.ptr) {
     if (p->s.size >= nunits) {
       if (p->s.size == nunits)
-	prevp->s.ptr = p->s.ptr;
+        prevp->s.ptr = p->s.ptr;
       else {
-	p->s.size -= nunits;
-	p += p->s.size;
-	p->s.size = nunits;
+        p->s.size -= nunits;
+        p += p->s.size;
+        p->s.size = nunits;
       }
       freep = prevp;
       return (void *) (p + 1);
     }
     if (p == freep) 
       if ((p = morecore(nunits)) == 0)
-	return 0;
+        return 0;
   }
 }

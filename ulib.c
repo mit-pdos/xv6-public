@@ -12,20 +12,20 @@ puts(char *s)
 char*
 strcpy(char *s, char *t)
 {
-	char *os;
-	
-	os = s;
-	while((*s++ = *t++) != 0)
-		;
-	return os;
+  char *os;
+  
+  os = s;
+  while((*s++ = *t++) != 0)
+    ;
+  return os;
 }
 
 int
 strcmp(const char *p, const char *q)
 {
-	while (*p && *p == *q)
-		p++, q++;
-	return (int) ((unsigned char) *p - (unsigned char) *q);
+  while (*p && *p == *q)
+    p++, q++;
+  return (int) ((unsigned char) *p - (unsigned char) *q);
 }
 
 unsigned int
@@ -37,7 +37,7 @@ strlen(char *s)
   return n;
 }
 
-void *
+void*
 memset(void *dst, int c, unsigned int n)
 {
   char *d = (char *) dst;
@@ -48,16 +48,16 @@ memset(void *dst, int c, unsigned int n)
   return dst;
 }
 
-char *
+char*
 strchr(const char *s, char c)
 {
-	for (; *s; s++)
-		if (*s == c)
-			return (char *) s;
-	return 0;
+  for (; *s; s++)
+    if (*s == c)
+      return (char *) s;
+  return 0;
 }
 
-char *
+char*
 gets(char *buf, int max)
 {
   int i = 0, cc;

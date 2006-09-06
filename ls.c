@@ -59,17 +59,17 @@ main(int argc, char *argv[])
     sz = st.st_size;
     for(off = 0; off < sz; off += sizeof(struct dirent)) {
       if (read(fd, &dirent, sizeof(struct dirent)) != sizeof(struct dirent)) {
-	printf(1, "ls: read error\n");
-	break;
+        printf(1, "ls: read error\n");
+        break;
       }
       if (dirent.inum != 0) {
-	// xxx prepend to name the pathname supplied to ls (e.g. .. in ls ..)
-	if (stat (dirent.name, &st) < 0)  {
-	  printf(1, "stat: failed %s\n", dirent.name);
-	  continue;
-	}
-	pname(dirent.name);
-	printf(1, "%d %d %d\n", st.st_type, dirent.inum, st.st_size);
+        // xxx prepend to name the pathname supplied to ls (e.g. .. in ls ..)
+        if (stat (dirent.name, &st) < 0)  {
+          printf(1, "stat: failed %s\n", dirent.name);
+          continue;
+        }
+        pname(dirent.name);
+        printf(1, "%d %d %d\n", st.st_type, dirent.inum, st.st_size);
       }
     }
     break;

@@ -13,10 +13,10 @@ for(my $i = 0; $i < 256; $i++){
     print ".globl vector$i\n";
     print "vector$i:\n";
     if(($i < 8 || $i > 14) && $i != 17){
-        print "\tpushl \$0\n";
+        print "  pushl \$0\n";
     }
-    print "\tpushl \$$i\n";
-    print "\tjmp alltraps\n";
+    print "  pushl \$$i\n";
+    print "  jmp alltraps\n";
 }
 
 print "\n/* vector table */\n";
@@ -24,5 +24,5 @@ print ".data\n";
 print ".globl vectors\n";
 print "vectors:\n";
 for(my $i = 0; $i < 256; $i++){
-    print "\t.long vector$i\n";
+    print "  .long vector$i\n";
 }

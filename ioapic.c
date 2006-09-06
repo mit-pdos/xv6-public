@@ -11,8 +11,8 @@ struct ioapic {
 };
 
 
-#define	IOAPIC_REDTBL_LO(i)	(IOAPIC_REDTBL + (i) * 2)
-#define	IOAPIC_REDTBL_HI(i)	(IOAPIC_REDTBL_LO(i) + 1)
+#define IOAPIC_REDTBL_LO(i)  (IOAPIC_REDTBL + (i) * 2)
+#define IOAPIC_REDTBL_HI(i)  (IOAPIC_REDTBL_LO(i) + 1)
 
 static uint
 ioapic_read(struct ioapic *io, int reg)
@@ -40,7 +40,7 @@ ioapic_init(void)
   io = (struct ioapic *) IO_APIC_BASE;
   l = ioapic_read(io, IOAPIC_VER);
   nintr =  ((l & IOART_VER_MAXREDIR) >> MAXREDIRSHIFT) + 1;
-  id = ioapic_read(io, IOAPIC_ID) >> APIC_ID_SHIFT;	
+  id = ioapic_read(io, IOAPIC_ID) >> APIC_ID_SHIFT;
   if (id != ioapic_id)
     panic ("ioapic_init: id isn't equal to ioapic_id\n");
   for (i = 0; i < nintr; i++) {
