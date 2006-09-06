@@ -13,7 +13,7 @@ char*
 strcpy(char *s, char *t)
 {
   char *os;
-  
+
   os = s;
   while((*s++ = *t++) != 0)
     ;
@@ -23,7 +23,7 @@ strcpy(char *s, char *t)
 int
 strcmp(const char *p, const char *q)
 {
-  while (*p && *p == *q)
+  while(*p && *p == *q)
     p++, q++;
   return (int) ((unsigned char) *p - (unsigned char) *q);
 }
@@ -40,7 +40,7 @@ strlen(char *s)
 void*
 memset(void *dst, int c, unsigned int n)
 {
-  char *d = (char *) dst;
+  char *d = (char*) dst;
 
   while(n-- > 0)
     *d++ = c;
@@ -51,9 +51,9 @@ memset(void *dst, int c, unsigned int n)
 char*
 strchr(const char *s, char c)
 {
-  for (; *s; s++)
-    if (*s == c)
-      return (char *) s;
+  for(; *s; s++)
+    if(*s == c)
+      return (char*) s;
   return 0;
 }
 
@@ -62,7 +62,7 @@ gets(char *buf, int max)
 {
   int i = 0, cc;
   char c;
-  
+
   while(i+1 < max){
     cc = read(0, &c, 1);
     if(cc < 1)
@@ -82,7 +82,7 @@ stat(char *n, struct stat *st)
   int r;
 
   fd = open(n, O_RDONLY);
-  if (fd < 0) return -1;
+  if(fd < 0) return -1;
   r = fstat(fd, st);
   close(fd);
   return r;

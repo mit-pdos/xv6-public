@@ -12,7 +12,7 @@ int
 main(void)
 {
   int pid;
-  
+
   if(open("console", O_RDWR) < 0){
     mknod("console", T_DEV, 1, 1);
     open("console", O_RDWR);

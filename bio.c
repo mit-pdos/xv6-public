@@ -32,7 +32,7 @@ binit(void)
   }
 }
 
-struct buf *
+struct buf*
 getblk(uint dev, uint sector)
 {
   struct buf *b;
@@ -67,7 +67,7 @@ getblk(uint dev, uint sector)
   }
 }
 
-struct buf *
+struct buf*
 bread(uint dev, uint sector)
 {
   void *c;
@@ -80,7 +80,7 @@ bread(uint dev, uint sector)
 
   acquire(&ide_lock);
   c = ide_start_rw(dev & 0xff, sector, b->data, 1, 1);
-  sleep (c, &ide_lock);
+  sleep(c, &ide_lock);
   ide_finish(c);
   b->flags |= B_VALID;
   release(&ide_lock);
@@ -96,7 +96,7 @@ bwrite(struct buf *b, uint sector)
 
   acquire(&ide_lock);
   c = ide_start_rw(b->dev & 0xff, sector, b->data, 1, 0);
-  sleep (c, &ide_lock);
+  sleep(c, &ide_lock);
   ide_finish(c);
   b->flags |= B_VALID;
   release(&ide_lock);
@@ -107,7 +107,7 @@ brelse(struct buf *b)
 {
   if((b->flags & B_BUSY) == 0)
     panic("brelse");
-  
+
   acquire(&buf_table_lock);
 
   b->next->prev = b->prev;

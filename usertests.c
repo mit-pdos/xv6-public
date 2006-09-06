@@ -67,7 +67,7 @@ preempt(void)
   if(pid1 == 0)
     for(;;)
       ;
-    
+
   pid2 = fork();
   if(pid2 == 0)
     for(;;)
@@ -131,17 +131,17 @@ mem(void)
 
   if((pid = fork()) == 0){
     m1 = 0;
-    while ((m2 = malloc(10001)) != 0) {
-      *(char **) m2 = m1;
+    while((m2 = malloc(10001)) != 0) {
+      *(char**) m2 = m1;
       m1 = m2;
     }
-    while (m1) {
-      m2 = *(char **)m1;
+    while(m1) {
+      m2 = *(char**)m1;
       free(m1);
       m1 = m2;
     }
     m1 = malloc(1024*20);
-    if (m1 == 0) {
+    if(m1 == 0) {
       puts("couldn't allocate mem?!!\n");
       exit();
     }

@@ -7,7 +7,7 @@
 #include "mmu.h"
 #include "proc.h"
 
-static char* buses[] = {
+static char *buses[] = {
   "CBUSI ",
   "CBUSII",
   "EISA  ",
@@ -34,7 +34,7 @@ int ncpu;
 uchar ioapic_id;
 
 static struct cpu *bcpu;
-static struct mp* mp;  // The MP floating point structure
+static struct mp *mp;  // The MP floating point structure
 
 static struct mp*
 mp_scan(uchar *addr, int len)
@@ -50,7 +50,7 @@ mp_scan(uchar *addr, int len)
     for(i = 0; i < sizeof(struct mp); i++)
       sum += p[i];
     if(sum == 0)
-      return (struct mp *)p;
+      return (struct mp*)p;
   }
   return 0;
 }
@@ -82,7 +82,7 @@ mp_search(void)
   return mp_scan((uchar*)0xF0000, 0x10000);
 }
 
-static int 
+static int
 mp_detect(void)
 {
   struct mpctb *pcmp;
@@ -99,7 +99,7 @@ mp_detect(void)
   if((mp = mp_search()) == 0 || mp->physaddr == 0)
     return 1;
 
-  pcmp = (struct mpctb *) mp->physaddr;
+  pcmp = (struct mpctb*) mp->physaddr;
   if(memcmp(pcmp, "PCMP", 4))
     return 2;
 
@@ -116,7 +116,7 @@ mp_detect(void)
 
 void
 mp_init(void)
-{ 
+{
   int r;
   uchar *p, *e;
   struct mpctb *mpctb;
@@ -128,31 +128,31 @@ mp_init(void)
   uchar byte;
 
   ncpu = 0;
-  if ((r = mp_detect()) != 0) return;
+  if((r = mp_detect()) != 0) return;
 
   /*
    * Run through the table saving information needed for starting
    * application processors and initialising any I/O APICs. The table
    * is guaranteed to be in order such that only one pass is necessary.
    */
-  mpctb = (struct mpctb *) mp->physaddr;
-  lapicaddr = (uint *) mpctb->lapicaddr;
+  mpctb = (struct mpctb*) mp->physaddr;
+  lapicaddr = (uint*) mpctb->lapicaddr;
   p = ((uchar*)mpctb)+sizeof(struct mpctb);
   e = ((uchar*)mpctb)+mpctb->length;
 
   while(p < e) {
     switch(*p){
     case MPPROCESSOR:
-      proc = (struct mppe *) p;
+      proc = (struct mppe*) p;
       cpus[ncpu].apicid = proc->apicid;
-      if (proc->flags & MPBP) {
+      if(proc->flags & MPBP) {
         bcpu = &cpus[ncpu];
       }
       ncpu++;
       p += sizeof(struct mppe);
       continue;
     case MPBUS:
-      bus = (struct mpbe *) p;
+      bus = (struct mpbe*) p;
       for(i = 0; buses[i]; i++){
         if(strncmp(buses[i], bus->string, sizeof(bus->string)) == 0)
           break;
@@ -160,12 +160,12 @@ mp_init(void)
       p += sizeof(struct mpbe);
       continue;
     case MPIOAPIC:
-      ioapic = (struct mpioapic *) p;
+      ioapic = (struct mpioapic*) p;
       ioapic_id = ioapic->apicno;
       p += sizeof(struct mpioapic);
       continue;
     case MPIOINTR:
-      intr = (struct mpie *) p;
+      intr = (struct mpie*) p;
       p += sizeof(struct mpie);
       continue;
     default:
@@ -178,7 +178,7 @@ mp_init(void)
     }
   }
 
-  if (mp->imcrp) {  // it appears that bochs doesn't support IMCR, and code won't run
+  if(mp->imcrp) {  // it appears that bochs doesn't support IMCR, and code won't run
     outb(0x22, 0x70);   /* select IMCR */
     byte = inb(0x23);   /* current contents */
     byte |= 0x01;       /* mask external INTR */
@@ -204,13 +204,13 @@ mp_startthem(void)
   extern int main();
   int c;
 
-  memmove((void *) APBOOTCODE,_binary_bootother_start, 
+  memmove((void*) APBOOTCODE,_binary_bootother_start,
           (uint) _binary_bootother_size);
 
   for(c = 0; c < ncpu; c++){
-    if (c == cpu()) continue;
-    *(uint *)(APBOOTCODE-4) = (uint) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
-    *(uint *)(APBOOTCODE-8) = (uint)mpmain; // tell it where to jump to
+    if(c == cpu()) continue;
+    *(uint*)(APBOOTCODE-4) = (uint) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
+    *(uint*)(APBOOTCODE-8) = (uint)mpmain; // tell it where to jump to
     lapic_startap(cpus[c].apicid, (uint) APBOOTCODE);
     while(cpus[c].booted == 0)
       ;

@@ -5,7 +5,7 @@
 
 struct mp {             /* floating pointer */
   uchar signature[4];           /* "_MP_" */
-  void* physaddr;               /* physical address of MP configuration table */
+  void *physaddr;               /* physical address of MP configuration table */
   uchar length;                 /* 1 */
   uchar specrev;                /* [14] */
   uchar checksum;               /* all bytes must add up to 0 */
@@ -20,10 +20,10 @@ struct mpctb {          /* configuration table header */
   uchar version;                /* [14] */
   uchar checksum;               /* all bytes must add up to 0 */
   uchar product[20];            /* product id */
-  uint * oemtable;              /* OEM table pointer */
+  uint *oemtable;              /* OEM table pointer */
   ushort oemlength;             /* OEM table length */
   ushort entry;                 /* entry count */
-  uint * lapicaddr;             /* address of local APIC */
+  uint *lapicaddr;             /* address of local APIC */
   ushort xlength;               /* extended table length */
   uchar xchecksum;              /* extended table checksum */
   uchar reserved;
@@ -50,7 +50,7 @@ struct mpioapic {       /* I/O APIC table entry */
   uchar apicno;                 /* I/O APIC id */
   uchar version;                /* I/O APIC version */
   uchar flags;                  /* I/O APIC flags */
-  uint * addr;                  /* I/O APIC address */
+  uint *addr;                  /* I/O APIC address */
 };
 
 struct mpie {           /* interrupt table entry */

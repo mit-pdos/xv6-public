@@ -34,10 +34,10 @@ kinit(void)
   extern int end;
   uint mem;
   char *start;
-  
+
   initlock(&kalloc_lock, "kalloc");
-  start = (char *) &end;
-  start = (char *) (((uint)start + PAGE) & ~(PAGE-1));
+  start = (char*) &end;
+  start = (char*) (((uint)start + PAGE) & ~(PAGE-1));
   mem = 256; // assume 256 pages of RAM
   cprintf("mem = %d\n", mem * PAGE);
   kfree(start, mem * PAGE);
@@ -47,8 +47,8 @@ void
 kfree(char *cp, int len)
 {
   struct run **rr;
-  struct run *p = (struct run *) cp;
-  struct run *pend = (struct run *) (cp + len);
+  struct run *p = (struct run*) cp;
+  struct run *pend = (struct run*) (cp + len);
   int i;
 
   if(len % PAGE)
@@ -62,7 +62,7 @@ kfree(char *cp, int len)
 
   rr = &freelist;
   while(*rr){
-    struct run *rend = (struct run *) ((char *)(*rr) + (*rr)->len);
+    struct run *rend = (struct run*) ((char*)(*rr) + (*rr)->len);
     if(p >= *rr && p < rend)
       panic("freeing free page");
     if(pend == *rr){
@@ -116,10 +116,10 @@ kalloc(int n)
     if(r->len == n){
       *rr = r->next;
       release(&kalloc_lock);
-      return (char *) r;
+      return (char*) r;
     }
     if(r->len > n){
-      char *p = (char *)r + (r->len - n);
+      char *p = (char*)r + (r->len - n);
       r->len -= n;
       release(&kalloc_lock);
       return p;

@@ -18,7 +18,7 @@ static uint
 ioapic_read(struct ioapic *io, int reg)
 {
   io->ioregsel = reg;
-  return (io->iowin);
+  return io->iowin;
 }
 
 static void
@@ -37,13 +37,13 @@ ioapic_init(void)
   uchar id;
   int i;
 
-  io = (struct ioapic *) IO_APIC_BASE;
+  io = (struct ioapic*) IO_APIC_BASE;
   l = ioapic_read(io, IOAPIC_VER);
   nintr =  ((l & IOART_VER_MAXREDIR) >> MAXREDIRSHIFT) + 1;
   id = ioapic_read(io, IOAPIC_ID) >> APIC_ID_SHIFT;
-  if (id != ioapic_id)
-    panic ("ioapic_init: id isn't equal to ioapic_id\n");
-  for (i = 0; i < nintr; i++) {
+  if(id != ioapic_id)
+    panic("ioapic_init: id isn't equal to ioapic_id\n");
+  for(i = 0; i < nintr; i++) {
     // active-hi and edge-triggered for ISA interrupts
     // Assume that pin 0 on the first I/O APIC is an ExtINT pin.
     // Assume that pins 1-15 are ISA interrupts
@@ -68,12 +68,12 @@ ioapic_enable (int irq, int cpunum)
   uint l, h;
   struct ioapic *io;
 
-  io = (struct ioapic *) IO_APIC_BASE;
+  io = (struct ioapic*) IO_APIC_BASE;
   l = ioapic_read(io, IOAPIC_REDTBL_LO(irq));
   l = l & ~IOART_INTMASK;  // allow INTs
   ioapic_write(io, IOAPIC_REDTBL_LO(irq), l);
   h = ioapic_read(io, IOAPIC_REDTBL_HI(irq));
   h &= ~IOART_DEST;
-  h |= (cpunum << APIC_ID_SHIFT); 
+  h |= (cpunum << APIC_ID_SHIFT);
   ioapic_write(io, IOAPIC_REDTBL_HI(irq), h);
 }

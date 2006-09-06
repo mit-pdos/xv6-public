@@ -39,7 +39,7 @@ fd_ualloc(void)
 /*
  * allocate a file descriptor structure
  */
-struct fd *
+struct fd*
 fd_alloc(void)
 {
   int i;
@@ -67,10 +67,10 @@ fd_write(struct fd *fd, char *addr, int n)
     return -1;
   if(fd->type == FD_PIPE){
     return pipe_write(fd->pipe, addr, n);
-  } else if (fd->type == FD_FILE) {
+  } else if(fd->type == FD_FILE) {
     ilock(fd->ip);
-    int r = writei (fd->ip, addr, fd->off, n);
-    if (r > 0) {
+    int r = writei(fd->ip, addr, fd->off, n);
+    if(r > 0) {
       fd->off += r;
     }
     iunlock(fd->ip);

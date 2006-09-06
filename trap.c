@@ -57,7 +57,7 @@ trap(struct trapframe *tf)
       // out to its regular system call return.)
       if((tf->cs&3) == 3 && cp->killed)
         proc_exit();
-      
+
       // Force process to give up CPU and let others run.
       if(cp->state == RUNNING)
         yield();
@@ -85,7 +85,7 @@ trap(struct trapframe *tf)
   }
 
   if(curproc[cpu()]) {
-    cprintf("pid %d: unhandled trap %d on cpu %d eip %x---terminate process\n", 
+    cprintf("pid %d: unhandled trap %d on cpu %d eip %x---terminate process\n",
             curproc[cpu()]->pid, v, cpu(), tf->eip);
     proc_exit();
   }

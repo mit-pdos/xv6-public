@@ -42,7 +42,7 @@ static __inline void
 lgdt(struct segdesc *p, int size)
 {
   volatile ushort pd[3];
-  
+
   pd[0] = size-1;
   pd[1] = (uint)p;
   pd[2] = (uint)p >> 16;
@@ -56,11 +56,11 @@ static __inline void
 lidt(struct gatedesc *p, int size)
 {
   volatile ushort pd[3];
-  
+
   pd[0] = size-1;
   pd[1] = (uint)p;
   pd[2] = (uint)p >> 16;
-  
+
   asm volatile("lidt (%0)" : : "g" (pd));
 }
 
@@ -91,13 +91,13 @@ cpuid(uint info, uint *eaxp, uint *ebxp, uint *ecxp, uint *edxp)
   asm volatile("cpuid" :
                "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx) :
                "a" (info));
-  if (eaxp)
+  if(eaxp)
     *eaxp = eax;
-  if (ebxp)
+  if(ebxp)
     *ebxp = ebx;
-  if (ecxp)
+  if(ecxp)
     *ecxp = ecx;
-  if (edxp)
+  if(edxp)
     *edxp = edx;
 }
 

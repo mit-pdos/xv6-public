@@ -151,7 +151,7 @@ createdelete()
 
   if(pid)
     exit();
-  else 
+  else
     exit();
 
   for(i = 0; i < n; i++){
@@ -198,7 +198,7 @@ void
 unlinkread()
 {
   int fd, fd1;
-  
+
   fd = open("unlinkread", O_CREATE | O_RDWR);
   if(fd < 0){
     puts("create unlinkread failed\n");
@@ -278,7 +278,7 @@ linktest()
     exit();
   }
   close(fd);
-    
+
   if(link("lf2", "lf2") >= 0){
     puts("link lf2 lf2 succeeded! oops\n");
     exit();
@@ -591,7 +591,7 @@ bigfile()
     }
   }
   close(fd);
-  
+
   fd = open("bigfile", 0);
   if(fd < 0){
     puts("cannot open bigfile\n");

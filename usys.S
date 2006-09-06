@@ -6,7 +6,7 @@
   name: \
     movl $SYS_ ## name, %eax; \
     int $T_SYSCALL; \
-    ret 
+    ret
 
 STUB(fork)
 STUB(exit)

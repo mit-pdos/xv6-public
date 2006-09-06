@@ -73,6 +73,6 @@ pic_init(void)
   outb(IO_PIC2, 0x68);               /* OCW3 */
   outb(IO_PIC2, 0x0a);               /* OCW3 */
 
-  if (irq_mask_8259A != 0xFFFF)
+  if(irq_mask_8259A != 0xFFFF)
     irq_setmask_8259A(irq_mask_8259A);
 }

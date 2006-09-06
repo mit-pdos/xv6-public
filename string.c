@@ -1,10 +1,10 @@
 #include "types.h"
 #include "defs.h"
 
-void *
+void*
 memset(void *dst, int c, uint n)
 {
-  char *d = (char *) dst;
+  char *d = (char*) dst;
 
   while(n-- > 0)
     *d++ = c;
@@ -15,11 +15,11 @@ memset(void *dst, int c, uint n)
 int
 memcmp(const void *v1, const void *v2, uint n)
 {
-  const uchar *s1 = (const uchar *) v1;
-  const uchar *s2 = (const uchar *) v2;
+  const uchar *s1 = (const uchar*) v1;
+  const uchar *s2 = (const uchar*) v2;
 
-  while (n-- > 0) {
-    if (*s1 != *s2)
+  while(n-- > 0) {
+    if(*s1 != *s2)
       return (int) *s1 - (int) *s2;
     s1++, s2++;
   }
@@ -27,7 +27,7 @@ memcmp(const void *v1, const void *v2, uint n)
   return 0;
 }
 
-void *
+void*
 memmove(void *dst, const void *src, uint n)
 {
   const char *s;
@@ -35,13 +35,13 @@ memmove(void *dst, const void *src, uint n)
 
   s = src;
   d = dst;
-  if (s < d && s + n > d) {
+  if(s < d && s + n > d) {
     s += n;
     d += n;
-    while (n-- > 0)
+    while(n-- > 0)
       *--d = *--s;
   } else
-    while (n-- > 0)
+    while(n-- > 0)
       *d++ = *s++;
 
   return dst;
@@ -50,9 +50,9 @@ memmove(void *dst, const void *src, uint n)
 int
 strncmp(const char *p, const char *q, uint n)
 {
-  while (n > 0 && *p && *p == *q)
+  while(n > 0 && *p && *p == *q)
     n--, p++, q++;
-  if (n == 0)
+  if(n == 0)
     return 0;
   else
     return (int) ((uchar) *p - (uchar) *q);

@@ -24,7 +24,7 @@ main(int argc, char *argv[])
 {
   int fd, i;
 
-  if (argc <= 1) {
+  if(argc <= 1) {
     rfile(0);
   } else {
     for(i = 1; i < argc; i++){

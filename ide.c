@@ -37,10 +37,10 @@ ide_wait_ready(int check_error)
 {
   int r;
 
-  while (((r = inb(0x1F7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY)
+  while(((r = inb(0x1F7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY)
     /* do nothing */;
 
-  if (check_error && (r & (IDE_DF|IDE_ERR)) != 0)
+  if(check_error && (r & (IDE_DF|IDE_ERR)) != 0)
     return -1;
   return 0;
 }
@@ -74,13 +74,13 @@ ide_probe_disk1(void)
   outb(0x1F6, 0xE0 | (1<<4));
 
   // check for Device 1 to be ready for a while
-  for (x = 0; x < 1000 && (r = inb(0x1F7)) == 0; x++)
+  for(x = 0; x < 1000 && (r = inb(0x1F7)) == 0; x++)
     /* do nothing */;
 
   // switch back to Device 0
   outb(0x1F6, 0xE0 | (0<<4));
 
-  return (x < 1000);
+  return x < 1000;
 }
 
 void
@@ -88,7 +88,7 @@ ide_start_request (void)
 {
   struct ide_request *r;
 
-  if (head != tail) {
+  if(head != tail) {
     r = &request[tail];
     ide_wait_ready(0);
     outb(0x3f6, 0);  // generate interrupt
@@ -97,7 +97,7 @@ ide_start_request (void)
     outb(0x1F4, (r->secno >> 8) & 0xFF);
     outb(0x1F5, (r->secno >> 16) & 0xFF);
     outb(0x1F6, 0xE0 | ((r->diskno&1)<<4) | ((r->secno>>24)&0x0F));
-    if (r->read) outb(0x1F7, 0x20); // read
+    if(r->read) outb(0x1F7, 0x20); // read
     else {
       outb(0x1F7, 0x30); // write
       outsl(0x1F0, r->addr, 512/4);
@@ -105,7 +105,7 @@ ide_start_request (void)
   }
 }
 
-void *
+void*
 ide_start_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
 {
   struct ide_request *r;
@@ -113,8 +113,8 @@ ide_start_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
   if(diskno && !disk_1_present)
     panic("ide disk 1 not present");
 
-  while ((head + 1) % NREQUEST == tail)
-    sleep (&disk_channel, &ide_lock);
+  while((head + 1) % NREQUEST == tail)
+    sleep(&disk_channel, &ide_lock);
 
   r = &request[head];
   r->secno = secno;
@@ -134,17 +134,17 @@ int
 ide_finish(void *c)
 {
   int r;
-  struct ide_request *req = (struct ide_request *) c;
+  struct ide_request *req = (struct ide_request*) c;
 
-  if (req->read) {
-    if ((r = ide_wait_ready(1)) >= 0)
+  if(req->read) {
+    if((r = ide_wait_ready(1)) >= 0)
       insl(0x1F0, req->addr, 512/4);
   }
 
-  if ((head + 1) % NREQUEST == tail) {
+  if((head + 1) % NREQUEST == tail) {
     wakeup(&disk_channel);
   }
-  
+
   tail = (tail + 1) % NREQUEST;
   ide_start_request();
 
@@ -168,8 +168,8 @@ ide_write(int diskno, uint secno, const void *src, uint nsecs)
   outb(0x1F6, 0xE0 | ((diskno&1)<<4) | ((secno>>24)&0x0F));
   outb(0x1F7, 0x30);    // CMD 0x30 means write sector
 
-  for (; nsecs > 0; nsecs--, src += 512) {
-    if ((r = ide_wait_ready(1)) < 0)
+  for(; nsecs > 0; nsecs--, src += 512) {
+    if((r = ide_wait_ready(1)) < 0)
       return r;
     outsl(0x1F0, src, 512/4);
   }

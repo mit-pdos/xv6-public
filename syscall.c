@@ -41,7 +41,7 @@ fetchint(struct proc *p, uint addr, int *ip)
 // Fetch byte from a user-supplied pointer.
 // Returns 0 on success, -1 if pointer is illegal.
 int
-fetchbyte(struct proc *p, uint addr, char* c)
+fetchbyte(struct proc *p, uint addr, char *c)
 {
   if(addr >= p->sz)
     return -1;
@@ -262,10 +262,10 @@ sys_open(void)
 
   iunlock(ip);
   fd->type = FD_FILE;
-  if (arg1 & O_RDWR) {
+  if(arg1 & O_RDWR) {
     fd->readable = 1;
     fd->writeable = 1;
-  } else if (arg1 & O_WRONLY) {
+  } else if(arg1 & O_WRONLY) {
     fd->readable = 0;
     fd->writeable = 1;
   } else {
@@ -287,7 +287,7 @@ sys_mknod(void)
   uint arg0, arg1, arg2, arg3;
   int l;
 
-  if(fetcharg(0, &arg0) < 0 || fetcharg(1, &arg1) < 0 || 
+  if(fetcharg(0, &arg0) < 0 || fetcharg(1, &arg1) < 0 ||
      fetcharg(2, &arg2) < 0 || fetcharg(3, &arg3) < 0)
     return -1;
 
@@ -297,7 +297,7 @@ sys_mknod(void)
   if(l >= DIRSIZ)
     return -1;
 
-  nip = mknod (cp->mem + arg0, (short) arg1, (short) arg2, (short) arg3);
+  nip = mknod(cp->mem + arg0, (short) arg1, (short) arg2, (short) arg3);
   if(nip)
     iput(nip);
   return (nip == 0) ? -1 : 0;
@@ -314,7 +314,7 @@ sys_mkdir(void)
   struct dirent de;
   char *last;
 
-  if(fetcharg(0, &arg0) < 0) 
+  if(fetcharg(0, &arg0) < 0)
     return -1;
 
   if((l = checkstring(arg0)) < 0)
@@ -332,15 +332,15 @@ sys_mkdir(void)
 
   dp->nlink += 1;
   iupdate(dp);
-  
-  memset (de.name, '\0', DIRSIZ);
+
+  memset(de.name, '\0', DIRSIZ);
   de.name[0] = '.';
   de.inum = nip->inum;
-  writei (nip, (char *) &de, 0, sizeof(de));
+  writei(nip, (char*) &de, 0, sizeof(de));
 
   de.inum = dp->inum;
   de.name[1] = '.';
-  writei (nip, (char *) &de, sizeof(de), sizeof(de));
+  writei(nip, (char*) &de, sizeof(de), sizeof(de));
 
   iput(dp);
   iput(nip);
@@ -356,22 +356,22 @@ sys_chdir(void)
   struct inode *ip;
     uint arg0;
   int l;
-  
-  if(fetcharg(0, &arg0) < 0) 
+
+  if(fetcharg(0, &arg0) < 0)
     return -1;
 
   if((l = checkstring(arg0)) < 0)
     return -1;
 
-  if ((ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0, 0, 0)) == 0)
+  if((ip = namei(cp->mem + arg0, NAMEI_LOOKUP, 0, 0, 0)) == 0)
     return -1;
 
-  if (ip == cp->cwd) {
-    iput (ip);
+  if(ip == cp->cwd) {
+    iput(ip);
     return 0;
   }
 
-  if (ip->type != T_DIR) {
+  if(ip->type != T_DIR) {
     iput(ip);
     return -1;
   }
@@ -388,7 +388,7 @@ sys_unlink(void)
   struct proc *cp = curproc[cpu()];
   uint arg0;
   int r;
-  
+
   if(fetcharg(0, &arg0) < 0)
     return -1;
   if(checkstring(arg0) < 0)
@@ -403,7 +403,7 @@ sys_fstat(void)
   struct proc *cp = curproc[cpu()];
   uint fd, addr;
   int r;
-  
+
   if(fetcharg(0, &fd) < 0)
     return -1;
   if(fetcharg(1, &addr) < 0)
@@ -414,7 +414,7 @@ sys_fstat(void)
     return -1;
   if(addr + sizeof(struct stat) > cp->sz)
     return -1;
-  r = fd_stat (cp->fds[fd], (struct stat *)(cp->mem + addr));
+  r = fd_stat(cp->fds[fd], (struct stat*)(cp->mem + addr));
   return r;
 }
 
@@ -423,14 +423,14 @@ sys_dup(void)
 {
   struct proc *cp = curproc[cpu()];
   uint fd, ufd1;
-  
+
   if(fetcharg(0, &fd) < 0)
     return -1;
   if(fd < 0 || fd >= NOFILE)
     return -1;
-  if(cp->fds[fd] == 0) 
+  if(cp->fds[fd] == 0)
     return -1;
-  if ((ufd1 = fd_ualloc()) < 0) 
+  if((ufd1 = fd_ualloc()) < 0)
     return -1;
   cp->fds[ufd1] = cp->fds[fd];
   fd_incref(cp->fds[ufd1]);
@@ -443,7 +443,7 @@ sys_link(void)
   struct proc *cp = curproc[cpu()];
   uint name1, name2;
   int r;
-  
+
   if(fetcharg(0, &name1) < 0 || checkstring(name1) < 0)
     return -1;
   if(fetcharg(1, &name2) < 0 || checkstring(name2) < 0)
@@ -471,7 +471,7 @@ sys_sbrk(void)
     return -1;
   if((addr = growproc(n)) == 0xffffffff)
     return -1;
-  setupsegs(cp);  
+  setupsegs(cp);
   return addr;
 }
 
@@ -513,7 +513,7 @@ sys_exec(void)
       goto bad;
     sz += ph.memsz;
   }
-  
+
   sz += 4096 - (sz % 4096);
   sz += 4096;
 

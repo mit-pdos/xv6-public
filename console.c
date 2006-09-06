@@ -20,7 +20,7 @@ lpt_putc(int c)
 {
   int i;
 
-  for (i = 0; !(inb(0x378+1) & 0x80) && i < 12800; i++)
+  for(i = 0; !(inb(0x378+1) & 0x80) && i < 12800; i++)
     ;
   outb(0x378+0, c);
   outb(0x378+2, 0x08|0x04|0x01);
@@ -31,7 +31,7 @@ static void
 cons_putc(int c)
 {
   int crtport = 0x3d4; // io port of CGA
-  ushort *crt = (ushort *) 0xB8000; // base of CGA memory
+  ushort *crt = (ushort*) 0xB8000; // base of CGA memory
   int ind;
 
   if(panicked){
@@ -79,7 +79,7 @@ printint(int xx, int base, int sgn)
   char digits[] = "0123456789ABCDEF";
   int i = 0, neg = 0;
   uint x;
-  
+
   if(sgn && xx < 0){
     neg = 1;
     x = 0 - xx;
@@ -104,7 +104,7 @@ void
 cprintf(char *fmt, ...)
 {
   int i, state = 0, c, locking = 0;
-  uint *ap = (uint *)(void*)&fmt + 1;
+  uint *ap = (uint*)(void*)&fmt + 1;
 
   if(use_console_lock){
     locking = 1;
@@ -166,13 +166,13 @@ panic(char *s)
 }
 
 int
-console_write (int minor, char *buf, int n)
+console_write(int minor, char *buf, int n)
 {
   int i;
 
   acquire(&console_lock);
 
-  for (i = 0; i < n; i++) {
+  for(i = 0; i < n; i++) {
     cons_putc(buf[i] & 0xff);
   }
 
@@ -211,7 +211,7 @@ console_write (int minor, char *buf, int n)
 #define KEY_INS         0xE8
 #define KEY_DEL         0xE9
 
-static uchar shiftcode[256] = 
+static uchar shiftcode[256] =
 {
   [0x1D] CTL,
   [0x2A] SHIFT,
@@ -221,7 +221,7 @@ static uchar shiftcode[256] =
   [0xB8] ALT
 };
 
-static uchar togglecode[256] = 
+static uchar togglecode[256] =
 {
   [0x3A] CAPSLOCK,
   [0x45] NUMLOCK,
@@ -249,7 +249,7 @@ static uchar normalmap[256] =
   [0xD2] KEY_INS,   [0xD3] KEY_DEL
 };
 
-static uchar shiftmap[256] = 
+static uchar shiftmap[256] =
 {
   NO,   033,  '!',  '@',  '#',  '$',  '%',  '^',  // 0x00
   '&',  '*',  '(',  ')',  '_',  '+',  '\b', '\t',
@@ -272,13 +272,13 @@ static uchar shiftmap[256] =
 
 #define C(x) (x - '@')
 
-static uchar ctlmap[256] = 
+static uchar ctlmap[256] =
 {
-  NO,      NO,      NO,      NO,      NO,      NO,      NO,      NO, 
-  NO,      NO,      NO,      NO,      NO,      NO,      NO,      NO, 
+  NO,      NO,      NO,      NO,      NO,      NO,      NO,      NO,
+  NO,      NO,      NO,      NO,      NO,      NO,      NO,      NO,
   C('Q'),  C('W'),  C('E'),  C('R'),  C('T'),  C('Y'),  C('U'),  C('I'),
   C('O'),  C('P'),  NO,      NO,      '\r',    NO,      C('A'),  C('S'),
-  C('D'),  C('F'),  C('G'),  C('H'),  C('J'),  C('K'),  C('L'),  NO, 
+  C('D'),  C('F'),  C('G'),  C('H'),  C('J'),  C('K'),  C('L'),  NO,
   NO,      NO,      NO,      C('\\'), C('Z'),  C('X'),  C('C'),  C('V'),
   C('B'),  C('N'),  C('M'),  NO,      NO,      C('/'),  NO,      NO,
   [0x97] KEY_HOME,
@@ -311,41 +311,41 @@ kbd_intr()
   acquire(&kbd_lock);
 
   st = inb(KBSTATP);
-  if ((st & KBS_DIB) == 0){
+  if((st & KBS_DIB) == 0){
     release(&kbd_lock);
     return;
   }
   data = inb(KBDATAP);
 
-  if (data == 0xE0) {
+  if(data == 0xE0) {
     shift |= E0ESC;
     release(&kbd_lock);
     return;
-  } else if (data & 0x80) {
+  } else if(data & 0x80) {
     // Key released
     data = (shift & E0ESC ? data : data & 0x7F);
     shift &= ~(shiftcode[data] | E0ESC);
     release(&kbd_lock);
     return;
-  } else if (shift & E0ESC) {
+  } else if(shift & E0ESC) {
     // Last character was an E0 escape; or with 0x80
     data |= 0x80;
     shift &= ~E0ESC;
   }
-  
+
   shift |= shiftcode[data];
   shift ^= togglecode[data];
-  
+
   c = charcode[shift & (CTL | SHIFT)][data];
-  if (shift & CAPSLOCK) {
-    if ('a' <= c && c <= 'z')
+  if(shift & CAPSLOCK) {
+    if('a' <= c && c <= 'z')
       c += 'A' - 'a';
-    else if ('A' <= c && c <= 'Z')
+    else if('A' <= c && c <= 'Z')
       c += 'a' - 'A';
   }
 
   // xxx hack
-  if (c == 0x0) {
+  if(c == 0x0) {
     release(&kbd_lock);
     return;
   }
@@ -397,7 +397,7 @@ console_init()
   devsw[CONSOLE].d_write = console_write;
   devsw[CONSOLE].d_read = console_read;
 
-  ioapic_enable (IRQ_KBD, 0);
+  ioapic_enable(IRQ_KBD, 0);
 
   use_console_lock = 1;
 }

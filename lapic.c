@@ -114,7 +114,7 @@ lapic_timerinit(void)
 void
 lapic_timerintr(void)
 {
-  lapic_write (LAPIC_EOI, 0);
+  lapic_write(LAPIC_EOI, 0);
 }
 
 void
@@ -151,13 +151,13 @@ lapic_init(int c)
 }
 
 void
-lapic_enableintr(void) 
+lapic_enableintr(void)
 {
   lapic_write(LAPIC_TPR, 0);
 }
 
 void
-lapic_disableintr(void) 
+lapic_disableintr(void)
 {
   lapic_write(LAPIC_TPR, 0xFF);
 }
@@ -165,7 +165,7 @@ lapic_disableintr(void)
 void
 lapic_eoi(void)
 {
-  lapic_write (LAPIC_EOI, 0);
+  lapic_write(LAPIC_EOI, 0);
 }
 
 int
@@ -185,15 +185,15 @@ lapic_startap(uchar apicid, int v)
   lapic_write(LAPIC_ICRHI, crhi);
   lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|LAPIC_ASSERT|APIC_INIT);
 
-  while (j++ < 10000) {;}
+  while(j++ < 10000) {;}
   lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|LAPIC_DEASSERT|APIC_INIT);
 
-  while (j++ < 1000000) {;}
+  while(j++ < 1000000) {;}
 
   // in p9 code, this was i < 2, which is what the spec says on page B-3
   for(i = 0; i < 1; i++){
     lapic_write(LAPIC_ICRHI, crhi);
     lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_EDGE|APIC_STARTUP|(v/4096));
-    while (j++ < 100000) {;}
+    while(j++ < 100000) {;}
   }
 }

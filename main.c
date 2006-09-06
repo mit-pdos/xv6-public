@@ -66,7 +66,7 @@ main0(void)
 
   // initialize I/O devices, let them enable interrupts
   console_init();
-  ide_init(); 
+  ide_init();
 
   // start other CPUs
   mp_startthem();
@@ -136,7 +136,7 @@ process0()
   p0->tf->esp = p0->sz;
 
   p1 = copyproc(p0);
-  
+
   load_icode(p1, _binary_init_start, (uint) _binary_init_size);
   p1->state = RUNNABLE;
 
@@ -152,19 +152,19 @@ load_icode(struct proc *p, uchar *binary, uint size)
   struct proghdr *ph;
 
   elf = (struct elfhdr*) binary;
-  if (elf->magic != ELF_MAGIC)
+  if(elf->magic != ELF_MAGIC)
     panic("load_icode: not an ELF binary");
 
   p->tf->eip = elf->entry;
 
   // Map and load segments as directed.
   ph = (struct proghdr*) (binary + elf->phoff);
-  for (i = 0; i < elf->phnum; i++, ph++) {
-    if (ph->type != ELF_PROG_LOAD)
+  for(i = 0; i < elf->phnum; i++, ph++) {
+    if(ph->type != ELF_PROG_LOAD)
       continue;
-    if (ph->va + ph->memsz < ph->va)
+    if(ph->va + ph->memsz < ph->va)
       panic("load_icode: overflow in elf header segment");
-    if (ph->va + ph->memsz >= p->sz)
+    if(ph->va + ph->memsz >= p->sz)
       panic("load_icode: icode wants to be above UTOP");
 
     // Load/clear the segment

@@ -28,7 +28,7 @@ pipe_alloc(struct fd **fd1, struct fd **fd2)
     goto oops;
   if((*fd2 = fd_alloc()) == 0)
     goto oops;
-  if((p = (struct pipe *) kalloc(PAGE)) == 0)
+  if((p = (struct pipe*) kalloc(PAGE)) == 0)
     goto oops;
   p->readopen = 1;
   p->writeopen = 1;
@@ -46,7 +46,7 @@ pipe_alloc(struct fd **fd1, struct fd **fd2)
   return 0;
  oops:
   if(p)
-    kfree((char *) p, PAGE);
+    kfree((char*) p, PAGE);
   if(*fd1){
     (*fd1)->type = FD_NONE;
     fd_close(*fd1);
@@ -70,11 +70,11 @@ pipe_close(struct pipe *p, int writeable)
     p->readopen = 0;
     wakeup(&p->writep);
   }
-  
+
   release(&p->lock);
 
   if(p->readopen == 0 && p->writeopen == 0)
-    kfree((char *) p, PAGE);
+    kfree((char*) p, PAGE);
 }
 
 int

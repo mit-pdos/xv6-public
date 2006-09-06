@@ -1,5 +1,5 @@
 // kalloc.c
-char *kalloc(int);
+char* kalloc(int);
 void kfree(char*, int);
 void kinit(void);
 
@@ -18,7 +18,7 @@ struct proc* copyproc(struct proc*);
 struct spinlock;
 uint growproc(int);
 void sleep(void*, struct spinlock*);
-void wakeup(void *);
+void wakeup(void*);
 void scheduler(void);
 void proc_exit(void);
 int proc_kill(int);
@@ -35,9 +35,9 @@ void tvinit(void);
 void idtinit(void);
 
 // string.c
-void * memset(void*, int, uint);
+void* memset(void*, int, uint);
 int memcmp(const void*, const void*, uint);
-void *memmove(void*, const void*, uint);
+void* memmove(void*, const void*, uint);
 int strncmp(const char*, const char*, uint);
 
 // syscall.c

@@ -15,7 +15,7 @@ alltraps:
   call    trap     #  and call trap()
   addl $4, %esp
   # return falls through to trapret...
-  
+
   /*
    * a forked process RETs here
    * expects ESP to point to a Trapframe
@@ -32,7 +32,7 @@ trapret:
 forkret1:
   movl 4(%esp), %esp
   jmp trapret
-          
+
 .globl  acpu
 acpu:
   .long 0

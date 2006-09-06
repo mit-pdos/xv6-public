@@ -5,7 +5,7 @@
 static void
 putc(int fd, char c)
 {
-  write (fd, &c, 1);
+  write(fd, &c, 1);
 }
 
 static void
@@ -15,7 +15,7 @@ printint(int fd, int xx, int base, int sgn)
   char digits[] = "0123456789ABCDEF";
   int i = 0, neg = 0;
   uint x;
-  
+
   if(sgn && xx < 0){
     neg = 1;
     x = 0 - xx;
@@ -40,7 +40,7 @@ void
 printf(int fd, char *fmt, ...)
 {
   int i, state = 0, c;
-  uint *ap = (uint *)(void*)&fmt + 1;
+  uint *ap = (uint*)(void*)&fmt + 1;
 
   for(i = 0; fmt[i]; i++){
     c = fmt[i] & 0xff;

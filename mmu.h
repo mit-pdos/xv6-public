@@ -84,21 +84,21 @@ struct taskstate {
   uint esp0;      // Stack pointers and segment selectors
   ushort ss0;     //   after an increase in privilege level
   ushort padding1;
-  uint * esp1;
+  uint *esp1;
   ushort ss1;
   ushort padding2;
-  uint * esp2;
+  uint *esp2;
   ushort ss2;
   ushort padding3;
-  void * cr3;     // Page directory base
-  uint * eip;     // Saved state from last task switch
+  void *cr3;     // Page directory base
+  uint *eip;     // Saved state from last task switch
   uint eflags;
   uint eax;       // More saved state (registers)
   uint ecx;
   uint edx;
   uint ebx;
-  uint * esp;
-  uint * ebp;
+  uint *esp;
+  uint *ebp;
   uint esi;
   uint edi;
   ushort es;              // Even more saved state (segment selectors)

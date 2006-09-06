@@ -29,7 +29,7 @@ getcallerpcs(void *v, uint pcs[])
 }
 
 void
-acquire(struct spinlock * lock)
+acquire(struct spinlock *lock)
 {
   if(holding(lock))
     panic("acquire");
@@ -37,7 +37,7 @@ acquire(struct spinlock * lock)
   if(cpus[cpu()].nlock == 0)
     cli();
   cpus[cpu()].nlock++;
-                
+
   while(cmpxchg(0, 1, &lock->locked) == 1)
     ;
   cpuid(0, 0, 0, 0, 0);  // memory barrier
@@ -46,7 +46,7 @@ acquire(struct spinlock * lock)
 }
 
 void
-release(struct spinlock * lock)
+release(struct spinlock *lock)
 {
 
   if(!holding(lock))

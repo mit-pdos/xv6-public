@@ -63,7 +63,7 @@ allocproc(void)
 {
   int i;
   struct proc *p;
-  
+
   for(i = 0; i < NPROC; i++){
     p = &proc[i];
     if(p->state == UNUSED){
@@ -75,11 +75,11 @@ allocproc(void)
 }
 
 // Create a new process copying p as the parent.
-// Does not copy the kernel stack.  
+// Does not copy the kernel stack.
 // Instead, sets up stack to return as if from system call.
 // Caller must arrange for process to run (set state to RUNNABLE).
-struct proc *
-copyproc(struct proc* p)
+struct proc*
+copyproc(struct proc *p)
 {
   int i;
   struct proc *np;
@@ -115,7 +115,7 @@ copyproc(struct proc* p)
   // Copy trapframe registers from parent.
   np->tf = (struct trapframe*)(np->kstack + KSTACKSIZE) - 1;
   memmove(np->tf, p->tf, sizeof(*np->tf));
-  
+
   // Clear %eax so that fork system call returns 0 in child.
   np->tf->eax = 0;
 
@@ -155,7 +155,7 @@ growproc(int n)
   return cp->sz - n;
 }
 
-// Per-CPU process scheduler. 
+// Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
 //  - choose a process to run
@@ -176,8 +176,8 @@ scheduler(void)
       p = &proc[i];
       if(p->state != RUNNABLE)
         continue;
-      
-      // Switch to chosen process.  It is the process's job 
+
+      // Switch to chosen process.  It is the process's job
       // to release proc_table_lock and then reacquire it
       // before jumping back to us.
 
@@ -186,11 +186,11 @@ scheduler(void)
       p->state = RUNNING;
       if(setjmp(&cpus[cpu()].jmpbuf) == 0)
         longjmp(&p->jmpbuf);
-    
-      // Process is done running for now. 
+
+      // Process is done running for now.
       // It should have changed its p->state before coming back.
       curproc[cpu()] = 0;
-      
+
       setupsegs(0);
     }
 
@@ -228,7 +228,7 @@ forkret(void)
 {
   // Still holding proc_table_lock from scheduler.
   release(&proc_table_lock);
-  
+
   // Jump into assembly, never to return.
   forkret1(curproc[cpu()]->tf);
 }
@@ -246,9 +246,9 @@ sleep(void *chan, struct spinlock *lk)
   if(lk == 0)
     panic("sleep without lk");
 
-  // Must acquire proc_table_lock in order to 
+  // Must acquire proc_table_lock in order to
   // change p->state and then call sched.
-  // Once we hold proc_table_lock, we can be 
+  // Once we hold proc_table_lock, we can be
   // guaranteed that we won't miss any wakeup
   // (wakeup runs with proc_table_lock locked),
   // so it's okay to release lk.
@@ -318,7 +318,7 @@ proc_kill(int pid)
 }
 
 // Exit the current process.  Does not return.
-// Exited processes remain in the zombie state 
+// Exited processes remain in the zombie state
 // until their parent calls wait() to find out they exited.
 void
 proc_exit(void)
@@ -334,7 +334,7 @@ proc_exit(void)
       cp->fds[fd] = 0;
     }
   }
-  
+
   idecref(cp->cwd);
   cp->cwd = 0;
 
@@ -349,7 +349,7 @@ proc_exit(void)
   for(p = proc; p < &proc[NPROC]; p++)
     if(p->ppid == cp->pid)
       p->ppid = 1;
-  
+
   // Jump into the scheduler, never to return.
   cp->killed = 0;
   cp->state = ZOMBIE;
@@ -392,7 +392,7 @@ proc_wait(void)
       release(&proc_table_lock);
       return -1;
     }
-    
+
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(cp, &proc_table_lock);
   }

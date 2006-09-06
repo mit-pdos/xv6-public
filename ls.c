@@ -12,10 +12,10 @@ pname(char *n)
 {
   int i;
 
-  for (i = 0; (i < DIRSIZ) && (n[i] != '\0') ; i++) {
+  for(i = 0; (i < DIRSIZ) && (n[i] != '\0') ; i++) {
       printf(1, "%c", n[i]);
   }
-  for (; i < DIRSIZ; i++)
+  for(; i < DIRSIZ; i++)
     printf(1, " ");
 }
 
@@ -31,12 +31,12 @@ main(int argc, char *argv[])
     exit();
   }
 
-  if (argc == 2) {
+  if(argc == 2) {
     fd = open(argv[1], 0);
     if(fd < 0){
       printf(2, "ls: cannot open %s\n", argv[1]);
       exit();
-    } 
+    }
   } else {
     fd = open(".", 0);
     if(fd < 0){
@@ -45,12 +45,12 @@ main(int argc, char *argv[])
     }
   }
 
-  if (fstat(fd, &st) < 0) {
+  if(fstat(fd, &st) < 0) {
     printf(2, "ls: cannot stat dir\n");
     exit();
   }
 
-  switch (st.st_type) {
+  switch(st.st_type) {
   case T_FILE:
     pname(argv[1]);
     printf(1, "%d %d %d\n", st.st_type, st.st_ino, st.st_size);
@@ -58,13 +58,13 @@ main(int argc, char *argv[])
   case T_DIR:
     sz = st.st_size;
     for(off = 0; off < sz; off += sizeof(struct dirent)) {
-      if (read(fd, &dirent, sizeof(struct dirent)) != sizeof(struct dirent)) {
+      if(read(fd, &dirent, sizeof(struct dirent)) != sizeof(struct dirent)) {
         printf(1, "ls: read error\n");
         break;
       }
-      if (dirent.inum != 0) {
+      if(dirent.inum != 0) {
         // xxx prepend to name the pathname supplied to ls (e.g. .. in ls ..)
-        if (stat (dirent.name, &st) < 0)  {
+        if(stat (dirent.name, &st) < 0)  {
           printf(1, "stat: failed %s\n", dirent.name);
           continue;
         }

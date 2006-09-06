@@ -34,7 +34,7 @@ opentest(void)
   }
 }
 
-void 
+void
 writetest(void)
 {
   int fd;
@@ -47,12 +47,12 @@ writetest(void)
     printf(stdout, "error: creat small failed!\n");
     exit();
   }
-  for (i = 0; i < 100; i++) {
-    if (write (fd, "aaaaaaaaaa", 10) != 10) {
+  for(i = 0; i < 100; i++) {
+    if(write(fd, "aaaaaaaaaa", 10) != 10) {
       printf(stdout, "error: write aa %d new file failed\n", i);
       exit();
     }
-    if (write (fd, "bbbbbbbbbb", 10) != 10) {
+    if(write(fd, "bbbbbbbbbb", 10) != 10) {
       printf(stdout, "error: write bb %d new file failed\n", i);
       exit();
     }
@@ -67,7 +67,7 @@ writetest(void)
     exit();
   }
   i = read(fd, buf, 2000);
-  if (i == 2000) {
+  if(i == 2000) {
     printf(stdout, "read succeeded\n");
   } else {
     printf(stdout, "read failed\n");
@@ -75,13 +75,13 @@ writetest(void)
   }
   close(fd);
 
-  if (unlink("small") < 0) {
+  if(unlink("small") < 0) {
     printf(stdout, "unlink small failed\n");
     exit();
   }
 }
 
-void 
+void
 writetest1(void)
 {
   int i, fd, n;
@@ -94,9 +94,9 @@ writetest1(void)
     exit();
   }
 
-  for (i = 0; i < MAXFILE; i++) {
-    ((int *) buf)[0] = i;
-    if (write (fd, buf, 512) != 512) {
+  for(i = 0; i < MAXFILE; i++) {
+    ((int*) buf)[0] = i;
+    if(write(fd, buf, 512) != 512) {
       printf(stdout, "error: write big file failed\n", i);
       exit();
     }
@@ -111,26 +111,26 @@ writetest1(void)
   }
 
   n = 0;
-  while (1) {
+  while(1) {
     i = read(fd, buf, 512);
-    if (i == 0) {
-      if (n == MAXFILE - 1) {
+    if(i == 0) {
+      if(n == MAXFILE - 1) {
         printf(stdout, "read only %d blocks from big", n);
         exit();
       }
       break;
-    } else if (i != 512) {
+    } else if(i != 512) {
       printf(stdout, "read failed %d\n", i);
       exit();
     }
-    if (((int *)buf)[0] != n) {
-      printf(stdout, "read content of block %d is %d\n", n, ((int *)buf)[0]);
+    if(((int*)buf)[0] != n) {
+      printf(stdout, "read content of block %d is %d\n", n, ((int*)buf)[0]);
       exit();
     }
     n++;
   }
   close(fd);
-  if (unlink("big") < 0) {
+  if(unlink("big") < 0) {
     printf(stdout, "unlink big failed\n");
     exit();
   }
@@ -145,14 +145,14 @@ createtest(void)
 
   name[0] = 'a';
   name[2] = '\0';
-  for (i = 0; i < 52; i++) {
+  for(i = 0; i < 52; i++) {
     name[1] = '0' + i;
     fd = open(name, O_CREATE|O_RDWR);
     close(fd);
   }
   name[0] = 'a';
   name[2] = '\0';
-  for (i = 0; i < 52; i++) {
+  for(i = 0; i < 52; i++) {
     name[1] = '0' + i;
     unlink(name);
   }
@@ -162,22 +162,22 @@ void dirtest(void)
 {
   printf(stdout, "mkdir\n");
 
-  if (mkdir("dir0") < 0)  {
+  if(mkdir("dir0") < 0)  {
     printf(stdout, "mkdir failed\n");
     exit();
   }
 
-  if (chdir("dir0") < 0)  {
+  if(chdir("dir0") < 0)  {
     printf(stdout, "chdir dir0 failed\n");
     exit();
   }
 
-  if (chdir("..") < 0)  {
+  if(chdir("..") < 0)  {
     printf(stdout, "chdir .. failed\n");
-    exit ();
+    exit();
   }
-  
-  if (unlink("dir0") < 0) {
+
+  if(unlink("dir0") < 0) {
     printf(stdout, "unlink dir0 failed\n");
     exit();
   }
@@ -186,11 +186,11 @@ void dirtest(void)
 void
 exectest(void)
 {
-  if (exec("echo", echo_args) < 0) {
+  if(exec("echo", echo_args) < 0) {
     printf(stdout, "exec echo failed\n");
     exit();
   }
-  if (exec("cat", cat_args) < 0) {
+  if(exec("cat", cat_args) < 0) {
     printf(stdout, "exec cat failed\n");
     exit();
   }
