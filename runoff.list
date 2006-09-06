@@ -32,19 +32,21 @@ traps.h
 trap.c
 vectors.pl
 syscall.c
+sysproc.c
 
 # file system
 buf.h
 dev.h
 fcntl.h
 stat.h
-fd.h
+file.h
 fs.h
 fsvar.h
-fd.c
-fs.c
-bio.c
 ide.c
+bio.c
+fs.c
+file.c
+sysfile.c
 
 # pipes
 pipe.c

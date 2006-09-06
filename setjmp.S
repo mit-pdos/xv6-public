@@ -32,4 +32,3 @@ longjmp:
 
   movl $1, %eax   /* return value (appears to come from setjmp!) */
   ret
-

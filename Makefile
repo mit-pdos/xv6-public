@@ -65,8 +65,8 @@ PRINT =	\
 	types.h param.h defs.h x86.h asm.h elf.h mmu.h spinlock.h\
 	bootasm.S bootother.S main.c init.c spinlock.c\
 	proc.h proc.c setjmp.S kalloc.c\
-	syscall.h trapasm.S traps.h trap.c vectors.pl syscall.c\
-	buf.h dev.h fcntl.h stat.h file.h fs.h fsvar.h fd.c fs.c bio.c ide.c\
+	syscall.h trapasm.S traps.h trap.c vectors.pl syscall.c sysproc.c\
+	buf.h dev.h fcntl.h stat.h file.h fs.h fsvar.h fd.c fs.c bio.c ide.c sysfile.c\
 	pipe.c\
 	mp.h ioapic.h mp.c lapic.c ioapic.c picirq.c\
 	console.c\
