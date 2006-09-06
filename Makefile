@@ -128,8 +128,8 @@ rm : rm.o $(ULIB)
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs userfs usertests echo cat readme init sh ls mkdir rm fstests
-	./mkfs fs.img userfs usertests echo cat readme init sh ls mkdir rm fstests
+fs.img : mkfs userfs usertests echo cat README init sh ls mkdir rm fstests
+	./mkfs fs.img userfs usertests echo cat README init sh ls mkdir rm fstests
 
 -include *.d
 

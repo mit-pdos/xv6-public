@@ -162,37 +162,24 @@ ioredirection(void)
   for (i = 0; i < nextnode; i++) {
     switch (list[i].token) {
     case '<':
+      if (close(0) < 0)
+	printf(2, "close 0 failed\n");
       if ((fd = open(list[i].s, O_RDONLY)) < 0) {
 	printf(2, "failed to open %s for read: %d", list[i].s, fd);
 	return -1;
       }
-
       if (debug)
 	printf(2, "redirect 0 from %s\n", list[i].s);
-
-      close(0);
-      if ((dfd = dup(fd)) < 0)
-	printf(2, "dup failed\n");
-      if (debug)
-	printf(2, "dup returns %d\n", dfd);
-      close(fd);
       break;
     case '>':
+      if (close(1) < 0)
+	printf(2, "close 1 failed\n");
       if ((fd = open(list[i].s, O_WRONLY|O_CREATE)) < 0) {
 	printf(2, "failed to open %s for write: %d", list[i].s, fd);
 	exit();
       }
-
       if (debug)
 	printf(2, "redirect 1 to %s\n", list[i].s);
-
-      if (close(1) < 0)
-	printf(2, "close 1 failed\n");
-      if ((dfd = dup(fd)) < 0)
-	printf(2, "dup failed\n");
-      if (debug)
-	printf(2, "dup returns %d\n", dfd);
-      close(fd);
       break;
     }
   }
