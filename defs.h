@@ -42,6 +42,11 @@ int strncmp(const char*, const char*, uint);
 
 // syscall.c
 void syscall(void);
+int fetchint(struct proc*, uint, int*);
+int fetchbyte(struct proc*, uint, char*);
+int fetcharg(int, void*);
+int checkstring(uint);
+int putint(struct proc*, uint, int);
 
 // picirq.c
 void pic_init(void);
