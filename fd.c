@@ -14,7 +14,7 @@
 struct spinlock fd_table_lock;
 struct devsw devsw[NDEV];
 
-struct fd fds[NFD];
+struct file file[NFILE];
 
 void
 fd_init(void)
@@ -29,24 +29,24 @@ fd_ualloc(void)
   int fd;
   struct proc *p = curproc[cpu()];
   for(fd = 0; fd < NOFILE; fd++)
-    if(p->fds[fd] == 0)
+    if(p->ofile[fd] == 0)
       return fd;
   return -1;
 }
 
 // Allocate a file descriptor structure
-struct fd*
+struct file*
 fd_alloc(void)
 {
   int i;
 
   acquire(&fd_table_lock);
-  for(i = 0; i < NFD; i++){
-    if(fds[i].type == FD_CLOSED){
-      fds[i].type = FD_NONE;
-      fds[i].ref = 1;
+  for(i = 0; i < NFILE; i++){
+    if(file[i].type == FD_CLOSED){
+      file[i].type = FD_NONE;
+      file[i].ref = 1;
       release(&fd_table_lock);
-      return fds + i;
+      return file + i;
     }
   }
   release(&fd_table_lock);
@@ -56,7 +56,7 @@ fd_alloc(void)
 // Write to file descriptor;
 // addr is a kernel address, pointing into some process's p->mem.
 int
-fd_write(struct fd *fd, char *addr, int n)
+fd_write(struct file *fd, char *addr, int n)
 {
   if(fd->writable == 0)
     return -1;
@@ -78,7 +78,7 @@ fd_write(struct fd *fd, char *addr, int n)
 
 // Read from file descriptor.
 int
-fd_read(struct fd *fd, char *addr, int n)
+fd_read(struct file *fd, char *addr, int n)
 {
   if(fd->readable == 0)
     return -1;
@@ -99,7 +99,7 @@ fd_read(struct fd *fd, char *addr, int n)
 
 // Close file descriptor.
 void
-fd_close(struct fd *fd)
+fd_close(struct file *fd)
 {
   acquire(&fd_table_lock);
 
@@ -107,7 +107,7 @@ fd_close(struct fd *fd)
     panic("fd_close");
 
   if(--fd->ref == 0){
-    struct fd dummy = *fd;
+    struct file dummy = *fd;
 
     fd->ref = 0;
     fd->type = FD_CLOSED;
@@ -127,7 +127,7 @@ fd_close(struct fd *fd)
 
 // Get metadata about file descriptor.
 int
-fd_stat(struct fd *fd, struct stat *st)
+fd_stat(struct file *fd, struct stat *st)
 {
   if(fd->type == FD_FILE){
     ilock(fd->ip);
@@ -140,7 +140,7 @@ fd_stat(struct fd *fd, struct stat *st)
 
 // Increment file descriptor reference count.
 void
-fd_incref(struct fd *fd)
+fd_incref(struct file *fd)
 {
   acquire(&fd_table_lock);
   if(fd->ref < 1 || fd->type == FD_CLOSED)

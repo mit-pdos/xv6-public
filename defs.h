@@ -84,8 +84,8 @@ void load_icode(struct proc*, uchar*, uint);
 
 // pipe.c
 struct pipe;
-struct fd;
-int pipe_alloc(struct fd**, struct fd**);
+struct file;
+int pipe_alloc(struct file**, struct file**);
 void pipe_close(struct pipe*, int);
 int pipe_write(struct pipe*, char*, int);
 int pipe_read(struct pipe*, char*, int);
@@ -94,12 +94,12 @@ int pipe_read(struct pipe*, char*, int);
 struct stat;
 void fd_init(void);
 int fd_ualloc(void);
-struct fd* fd_alloc(void);
-void fd_close(struct fd*);
-int fd_read(struct fd*, char*, int n);
-int fd_write(struct fd*, char*, int n);
-int fd_stat(struct fd*, struct stat*);
-void fd_incref(struct fd*);
+struct file* fd_alloc(void);
+void fd_close(struct file*);
+int fd_read(struct file*, char*, int n);
+int fd_write(struct file*, char*, int n);
+int fd_stat(struct file*, struct stat*);
+void fd_incref(struct file*);
 
 // ide.c
 void ide_init(void);

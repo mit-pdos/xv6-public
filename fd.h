@@ -1,4 +1,4 @@
-struct fd {
+struct file {
   enum { FD_CLOSED, FD_NONE, FD_PIPE, FD_FILE } type;
   int ref; // reference count
   char readable;
@@ -7,5 +7,3 @@ struct fd {
   struct inode *ip;
   uint off;
 };
-
-extern struct fd fds[NFD];

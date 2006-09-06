@@ -39,7 +39,7 @@ struct proc{
   int ppid;
   void *chan; // sleep
   int killed;
-  struct fd *fds[NOFILE];
+  struct file *ofile[NOFILE];
   struct inode *cwd;
   struct jmpbuf jmpbuf;
   struct trapframe *tf; // points into kstack, used to find user regs

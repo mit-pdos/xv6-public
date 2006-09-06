@@ -18,7 +18,7 @@
 int
 sys_pipe(void)
 {
-  struct fd *rfd = 0, *wfd = 0;
+  struct file *rfd = 0, *wfd = 0;
   int f1 = -1, f2 = -1;
   struct proc *p = curproc[cpu()];
   uint fdp;
@@ -27,10 +27,10 @@ sys_pipe(void)
     goto oops;
   if((f1 = fd_ualloc()) < 0)
     goto oops;
-  p->fds[f1] = rfd;
+  p->ofile[f1] = rfd;
   if((f2 = fd_ualloc()) < 0)
     goto oops;
-  p->fds[f2] = wfd;
+  p->ofile[f2] = wfd;
   if(fetcharg(0, &fdp) < 0)
     goto oops;
   if(putint(p, fdp, f1) < 0)
@@ -45,9 +45,9 @@ sys_pipe(void)
   if(wfd)
     fd_close(wfd);
   if(f1 >= 0)
-    p->fds[f1] = 0;
+    p->ofile[f1] = 0;
   if(f2 >= 0)
-    p->fds[f2] = 0;
+    p->ofile[f2] = 0;
   return -1;
 }
 
@@ -62,12 +62,12 @@ sys_write(void)
     return -1;
   if(fd < 0 || fd >= NOFILE)
     return -1;
-  if(p->fds[fd] == 0)
+  if(p->ofile[fd] == 0)
     return -1;
   if(addr + n > p->sz)
     return -1;
 
-  ret = fd_write(p->fds[fd], p->mem + addr, n);
+  ret = fd_write(p->ofile[fd], p->mem + addr, n);
   return ret;
 }
 
@@ -82,11 +82,11 @@ sys_read(void)
     return -1;
   if(fd < 0 || fd >= NOFILE)
     return -1;
-  if(p->fds[fd] == 0)
+  if(p->ofile[fd] == 0)
     return -1;
   if(addr + n > p->sz)
     return -1;
-  ret = fd_read(p->fds[fd], p->mem + addr, n);
+  ret = fd_read(p->ofile[fd], p->mem + addr, n);
   return ret;
 }
 
@@ -100,10 +100,10 @@ sys_close(void)
     return -1;
   if(fd < 0 || fd >= NOFILE)
     return -1;
-  if(p->fds[fd] == 0)
+  if(p->ofile[fd] == 0)
     return -1;
-  fd_close(p->fds[fd]);
-  p->fds[fd] = 0;
+  fd_close(p->ofile[fd]);
+  p->ofile[fd] = 0;
   return 0;
 }
 
@@ -114,7 +114,7 @@ sys_open(void)
   struct inode *ip, *dp;
   uint arg0, arg1;
   int ufd;
-  struct fd *fd;
+  struct file *fd;
   int l;
   char *last;
 
@@ -170,7 +170,7 @@ sys_open(void)
   }
   fd->ip = ip;
   fd->off = 0;
-  cp->fds[ufd] = fd;
+  cp->ofile[ufd] = fd;
 
   return ufd;
 }
@@ -306,11 +306,11 @@ sys_fstat(void)
     return -1;
   if(fd < 0 || fd >= NOFILE)
     return -1;
-  if(cp->fds[fd] == 0)
+  if(cp->ofile[fd] == 0)
     return -1;
   if(addr + sizeof(struct stat) > cp->sz)
     return -1;
-  r = fd_stat(cp->fds[fd], (struct stat*)(cp->mem + addr));
+  r = fd_stat(cp->ofile[fd], (struct stat*)(cp->mem + addr));
   return r;
 }
 
@@ -324,12 +324,12 @@ sys_dup(void)
     return -1;
   if(fd < 0 || fd >= NOFILE)
     return -1;
-  if(cp->fds[fd] == 0)
+  if(cp->ofile[fd] == 0)
     return -1;
   if((ufd1 = fd_ualloc()) < 0)
     return -1;
-  cp->fds[ufd1] = cp->fds[fd];
-  fd_incref(cp->fds[ufd1]);
+  cp->ofile[ufd1] = cp->ofile[fd];
+  fd_incref(cp->ofile[ufd1]);
   return ufd1;
 }
 

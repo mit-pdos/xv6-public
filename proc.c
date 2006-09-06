@@ -125,9 +125,9 @@ copyproc(struct proc *p)
 
   // Copy file descriptors
   for(i = 0; i < NOFILE; i++){
-    np->fds[i] = p->fds[i];
-    if(np->fds[i])
-      fd_incref(np->fds[i]);
+    np->ofile[i] = p->ofile[i];
+    if(np->ofile[i])
+      fd_incref(np->ofile[i]);
   }
 
   np->cwd = p->cwd;
@@ -328,9 +328,9 @@ proc_exit(void)
 
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
-    if(cp->fds[fd]){
-      fd_close(cp->fds[fd]);
-      cp->fds[fd] = 0;
+    if(cp->ofile[fd]){
+      fd_close(cp->ofile[fd]);
+      cp->ofile[fd] = 0;
     }
   }
 
