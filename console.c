@@ -129,9 +129,13 @@ cprintf(char *fmt, ...)
       } else if(c == 's'){
         char *s = (char*)*ap;
         ap++;
-        while(*s != 0){
-          cons_putc(*s);
-          s++;
+        if(s == 0){
+          cons_putc('0');
+        }else{
+          while(*s != 0){
+            cons_putc(*s);
+            s++;
+          }
         }
       } else if(c == '%'){
         cons_putc(c);
