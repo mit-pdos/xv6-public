@@ -41,7 +41,8 @@ getblk(uint dev, uint sector)
 
   for(;;){
     for(b = bufhead.next; b != &bufhead; b = b->next)
-      if((b->flags & (B_BUSY|B_VALID)) && b->dev == dev && b->sector == sector)
+      if((b->flags & (B_BUSY|B_VALID)) &&
+         b->dev == dev && b->sector == sector)
         break;
 
     if(b != &bufhead){

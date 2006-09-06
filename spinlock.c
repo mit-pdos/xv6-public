@@ -21,10 +21,13 @@ getcallerpcs(void *v, uint pcs[])
 {
   uint *ebp = (uint*)v - 2;
   int i;
-  for(i = 0; i < 10 && ebp && ebp != (uint*)0xffffffff; ebp = (uint*)*ebp, i++){
-    pcs[i] = *(ebp + 1);
+  for(i = 0; i < 10; i++){
+    if(ebp == 0 || ebp == (uint*)0xffffffff)
+      break;
+    pcs[i] = ebp[1];     // saved %eip
+    ebp = (uint*)ebp[0]; // saved %ebp
   }
-  for( ; i < 10; i++)
+  for(; i < 10; i++)
     pcs[i] = 0;
 }
 

@@ -1,5 +1,5 @@
-#define IO_APIC_BASE   0xFEC00000   // default physical locations of an IO APIC
-#define IOAPIC_WINDOW        0x10   // window register offset
+#define IO_APIC_BASE   0xFEC00000   // Default phys addr of IO APIC
+#define IOAPIC_WINDOW        0x10   // Window register offset
 
 // Constants relating to APIC ID registers
 #define APIC_ID_MASK            0xff000000

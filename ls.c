@@ -58,7 +58,7 @@ main(int argc, char *argv[])
   case T_DIR:
     sz = st.st_size;
     for(off = 0; off < sz; off += sizeof(struct dirent)) {
-      if(read(fd, &dirent, sizeof(struct dirent)) != sizeof(struct dirent)) {
+      if(read(fd, &dirent, sizeof dirent) != sizeof dirent) {
         printf(1, "ls: read error\n");
         break;
       }

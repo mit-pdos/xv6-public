@@ -106,7 +106,8 @@ void
 lapic_timerinit(void)
 {
   lapic_write(LAPIC_TDCR, LAPIC_X1);
-  lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
+  lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC |
+                           (IRQ_OFFSET + IRQ_TIMER));
   lapic_write(LAPIC_TCCR, 10000000);
   lapic_write(LAPIC_TICR, 10000000);
 }
@@ -122,17 +123,19 @@ lapic_init(int c)
 {
   uint r, lvt;
 
-  lapic_write(LAPIC_DFR, 0xFFFFFFFF); // set destination format register
-  r = (lapic_read(LAPIC_ID)>>24) & 0xFF; // read APIC ID
-  lapic_write(LAPIC_LDR, (1<<r)<<24);  // set logical destination register to r
-  lapic_write(LAPIC_TPR, 0xFF);  // no interrupts for now
-  lapic_write(LAPIC_SVR, LAPIC_ENABLE|(IRQ_OFFSET+IRQ_SPURIOUS));  // enable APIC
+  lapic_write(LAPIC_DFR, 0xFFFFFFFF);    // Set dst format register
+  r = (lapic_read(LAPIC_ID)>>24) & 0xFF; // Read APIC ID
+  lapic_write(LAPIC_LDR, (1<<r)<<24);    // Set logical dst register to r
+  lapic_write(LAPIC_TPR, 0xFF);          // No interrupts for now
+
+  // Enable APIC
+  lapic_write(LAPIC_SVR, LAPIC_ENABLE|(IRQ_OFFSET+IRQ_SPURIOUS));
 
   // In virtual wire mode, set up the LINT0 and LINT1 as follows:
   lapic_write(LAPIC_LINT0, APIC_IMASK | APIC_EXTINT);
   lapic_write(LAPIC_LINT1, APIC_IMASK | APIC_NMI);
 
-  lapic_write(LAPIC_EOI, 0); // acknowledge any outstanding interrupts.
+  lapic_write(LAPIC_EOI, 0); // Ack any outstanding interrupts.
 
   lvt = (lapic_read(LAPIC_VER)>>16) & 0xFF;
   if(lvt >= 4)
@@ -143,7 +146,8 @@ lapic_init(int c)
 
   // Issue an INIT Level De-Assert to synchronise arbitration ID's.
   lapic_write(LAPIC_ICRHI, 0);
-  lapic_write(LAPIC_ICRLO, LAPIC_ALLINC|APIC_LEVEL|LAPIC_DEASSERT|APIC_INIT);
+  lapic_write(LAPIC_ICRLO, LAPIC_ALLINC|APIC_LEVEL|
+                           LAPIC_DEASSERT|APIC_INIT);
   while(lapic_read(LAPIC_ICRLO) & APIC_DELIVS)
     ;
 }
@@ -181,10 +185,12 @@ lapic_startap(uchar apicid, int v)
 
   crhi = apicid<<24;
   lapic_write(LAPIC_ICRHI, crhi);
-  lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|LAPIC_ASSERT|APIC_INIT);
+  lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|
+                           LAPIC_ASSERT|APIC_INIT);
 
   while(j++ < 10000) {;}
-  lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|LAPIC_DEASSERT|APIC_INIT);
+  lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|
+                           LAPIC_DEASSERT|APIC_INIT);
 
   while(j++ < 1000000) {;}
 

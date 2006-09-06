@@ -450,7 +450,8 @@ writei(struct inode *ip, char *addr, uint off, uint n)
 // NAMEI_DELETE: return locked parent inode, offset of dirent in *ret_off.
 //   return 0 if name doesn't exist.
 struct inode*
-namei(char *path, int mode, uint *ret_off, char **ret_last, struct inode **ret_ip)
+namei(char *path, int mode, uint *ret_off,
+      char **ret_last, struct inode **ret_ip)
 {
   struct inode *dp;
   struct proc *p = curproc[cpu()];

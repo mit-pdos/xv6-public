@@ -4,7 +4,7 @@
 .set PROT_MODE_DSEG,0x10        # data segment selector
 .set CR0_PE_ON,0x1              # protected mode enable flag
 
-###################################################################################
+#########################################################################
 # ENTRY POINT
 #   This code should be stored in the first sector of the hard disk.
 #   After the BIOS initializes the hardware on startup or system reset,
@@ -15,7 +15,7 @@
 #
 # This code switches into 32-bit protected mode so that all of
 # memory can accessed, then calls into C.
-###################################################################################
+#########################################################################
 
 .globl start                      # Entry point
 start:
@@ -32,13 +32,13 @@ start:
   # Set up the stack pointer, growing downward from 0x7c00.
   movw    $start,%sp              # Stack Pointer
 
-#### Enable A20:
-####   For fascinating historical reasons (related to the fact that
-####   the earliest 8086-based PCs could only address 1MB of physical memory
-####   and subsequent 80286-based PCs wanted to retain maximum compatibility),
-####   physical address line 20 is tied to low when the machine boots.
-####   Obviously this a bit of a drag for us, especially when trying to
-####   address memory above 1MB.  This code undoes this.
+  # Enable A20:
+  #   For fascinating historical reasons (related to the fact that
+  #   the earliest 8086-based PCs could only address 1MB of physical
+  #   memory and subsequent 80286-based PCs wanted to retain maximum
+  #   compatibility), physical address line 20 is tied to low when the
+  #   machine boots.  Obviously this a bit of a drag for us, especially
+  #   when trying to address memory above 1MB.  This code undoes this.
 
 seta20.1:
   inb     $0x64,%al               # Get status
@@ -54,22 +54,22 @@ seta20.2:
   movb    $0xdf,%al               # Enable
   outb    %al,$0x60               #  A20
 
-#### Switch from real to protected mode
-####     The descriptors in our GDT allow all physical memory to be accessed.
-####     Furthermore, the descriptors have base addresses of 0, so that the
-####     segment translation is a NOP, ie. virtual addresses are identical to
-####     their physical addresses.  With this setup, immediately after
-####     enabling protected mode it will still appear to this code
-####     that it is running directly on physical memory with no translation.
-####     This initial NOP-translation setup is required by the processor
-####     to ensure that the transition to protected mode occurs smoothly.
+  # Switch from real to protected mode
+  #  The descriptors in our GDT allow all physical memory to be accessed.
+  #  Furthermore, the descriptors have base addresses of 0, so that the
+  #  segment translation is a NOP, ie. virtual addresses are identical to
+  #  their physical addresses.  With this setup, immediately after
+  #  enabling protected mode it will still appear to this code
+  #  that it is running directly on physical memory with no translation.
+  #  This initial NOP-translation setup is required by the processor
+  #  to ensure that the transition to protected mode occurs smoothly.
 
 real_to_prot:
-  cli                             # Mandatory since we dont set up an IDT
-  lgdt    gdtdesc                 # load GDT -- mandatory in protected mode
-  movl    %cr0, %eax              # turn on protected mode
-  orl     $CR0_PE_ON, %eax        #
-  movl    %eax, %cr0              #
+  cli                         # Mandatory since we dont set up an IDT
+  lgdt    gdtdesc             # load GDT -- mandatory in protected mode
+  movl    %cr0, %eax          # turn on protected mode
+  orl     $CR0_PE_ON, %eax    #
+  movl    %eax, %cr0          #
   ### CPU magic: jump to relocation, flush prefetch queue, and reload %cs
   ### Has the effect of just jmp to the next instruction, but simultaneous
   ### loads CS with $PROT_MODE_CSEG.

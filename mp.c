@@ -174,11 +174,12 @@ mp_init(void)
     }
   }
 
-  if(mp->imcrp) {  // it appears that bochs doesn't support IMCR, and code won't run
-    outb(0x22, 0x70);   // select IMCR
-    byte = inb(0x23);   // current contents
-    byte |= 0x01;       // mask external INTR
-    outb(0x23, byte);   // disconnect 8259s/NMI
+  if(mp->imcrp) {
+    // It appears that Bochs doesn't support IMCR, so code won't run.
+    outb(0x22, 0x70);   // Select IMCR
+    byte = inb(0x23);   // Current contents
+    byte |= 0x01;       // Mask external INTR
+    outb(0x23, byte);   // Disconnect 8259s/NMI
   }
 }
 
@@ -204,11 +205,20 @@ mp_startthem(void)
           (uint) _binary_bootother_size);
 
   for(c = 0; c < ncpu; c++){
+    // Our current cpu has already started.
     if(c == cpu())
       continue;
-    *(uint*)(APBOOTCODE-4) = (uint) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
-    *(uint*)(APBOOTCODE-8) = (uint)mpmain; // tell it where to jump to
+
+    // Set target %esp
+    *(uint*)(APBOOTCODE-4) = (uint) (cpus[c].mpstack) + MPSTACK;
+
+    // Set target %eip
+    *(uint*)(APBOOTCODE-8) = (uint)mpmain;
+
+    // Go!
     lapic_startap(cpus[c].apicid, (uint) APBOOTCODE);
+
+    // Wait for cpu to get through bootstrap.
     while(cpus[c].booted == 0)
       ;
   }

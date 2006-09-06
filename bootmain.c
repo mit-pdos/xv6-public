@@ -1,6 +1,3 @@
-#include "types.h"
-#include "elf.h"
-#include "x86.h"
 // This a dirt simple boot loader, whose sole job is to boot
 // an elf kernel image from the first IDE hard disk.
 //
@@ -25,7 +22,12 @@
 //  * control starts in bootloader.S -- which sets up protected mode,
 //    and a stack so C code then run, then calls cmain()
 //
-//  * cmain() in this file takes over, reads in the kernel and jumps to it.
+//  * cmain() in this file takes over, 
+//    reads in the kernel and jumps to it.
+
+#include "types.h"
+#include "elf.h"
+#include "x86.h"
 
 #define SECTSIZE  512
 #define ELFHDR    ((struct elfhdr*) 0x10000) // scratch space

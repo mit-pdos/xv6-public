@@ -8,7 +8,7 @@
 #include "syscall.h"
 
 struct gatedesc idt[256];
-extern uint vectors[];  // in vectors.S: array of 256 entry point addresses
+extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 
 extern void trapenter(void);
 extern void trapenter1(void);
@@ -85,7 +85,7 @@ trap(struct trapframe *tf)
   }
 
   if(curproc[cpu()]) {
-    cprintf("pid %d: unhandled trap %d on cpu %d eip %x---terminate process\n",
+    cprintf("pid %d: unhandled trap %d on cpu %d eip %x -- kill proc\n",
             curproc[cpu()]->pid, v, cpu(), tf->eip);
     proc_exit();
   }

@@ -58,7 +58,9 @@ sys_write(void)
   uint addr;
   struct proc *p = curproc[cpu()];
 
-  if(fetcharg(0, &fd) < 0 || fetcharg(1, &addr) < 0 || fetcharg(2, &n) < 0)
+  if(fetcharg(0, &fd) < 0 ||
+     fetcharg(1, &addr) < 0 ||
+     fetcharg(2, &n) < 0)
     return -1;
   if(fd < 0 || fd >= NOFILE)
     return -1;
@@ -78,7 +80,9 @@ sys_read(void)
   uint addr;
   struct proc *p = curproc[cpu()];
 
-  if(fetcharg(0, &fd) < 0 || fetcharg(1, &addr) < 0 || fetcharg(2, &n) < 0)
+  if(fetcharg(0, &fd) < 0 ||
+     fetcharg(1, &addr) < 0 ||
+     fetcharg(2, &n) < 0)
     return -1;
   if(fd < 0 || fd >= NOFILE)
     return -1;

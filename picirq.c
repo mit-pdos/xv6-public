@@ -41,8 +41,8 @@ pic_init(void)
   // ICW2:  Vector offset
   outb(IO_PIC1+1, IRQ_OFFSET);
 
-  // ICW3:  bit mask of IR lines connected to slave PICs (master PIC),
-  //        3-bit No of IR line at which slave connects to master(slave PIC).
+  // ICW3:  (master PIC) bit mask of IR lines connected to slaves
+  //        (slave PIC) 3-bit # of slave's connection to master
   outb(IO_PIC1+1, 1<<IRQ_SLAVE);
 
   // ICW4:  000nbmap
