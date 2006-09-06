@@ -22,9 +22,7 @@ fd_init(void)
   initlock(&fd_table_lock, "fd_table");
 }
 
-/*
- * allocate a file descriptor number for curproc.
- */
+// Allocate a file descriptor number for curproc.
 int
 fd_ualloc(void)
 {
@@ -36,9 +34,7 @@ fd_ualloc(void)
   return -1;
 }
 
-/*
- * allocate a file descriptor structure
- */
+// Allocate a file descriptor structure
 struct fd*
 fd_alloc(void)
 {
@@ -57,9 +53,8 @@ fd_alloc(void)
   return 0;
 }
 
-/*
- * addr is a kernel address, pointing into some process's p->mem.
- */
+// Write to file descriptor;
+// addr is a kernel address, pointing into some process's p->mem.
 int
 fd_write(struct fd *fd, char *addr, int n)
 {
@@ -81,6 +76,7 @@ fd_write(struct fd *fd, char *addr, int n)
   }
 }
 
+// Read from file descriptor.
 int
 fd_read(struct fd *fd, char *addr, int n)
 {
@@ -101,6 +97,7 @@ fd_read(struct fd *fd, char *addr, int n)
   }
 }
 
+// Close file descriptor.
 void
 fd_close(struct fd *fd)
 {
@@ -128,6 +125,7 @@ fd_close(struct fd *fd)
   }
 }
 
+// Get metadata about file descriptor.
 int
 fd_stat(struct fd *fd, struct stat *st)
 {
@@ -140,6 +138,7 @@ fd_stat(struct fd *fd, struct stat *st)
     return -1;
 }
 
+// Increment file descriptor reference count.
 void
 fd_incref(struct fd *fd)
 {

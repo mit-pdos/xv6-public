@@ -21,11 +21,10 @@ pinit(void)
   initlock(&proc_table_lock, "proc_table");
 }
 
-/*
- * set up CPU's segment descriptors and task state for a
- * given process. If p==0, set up for "idle" state for
- * when scheduler() isn't running any process.
- */
+// Set up CPU's segment descriptors and task state for a
+// given process.
+// If p==0, set up for "idle" state for when scheduler()
+// is idling, not running any process.
 void
 setupsegs(struct proc *p)
 {

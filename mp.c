@@ -55,6 +55,11 @@ mp_scan(uchar *addr, int len)
   return 0;
 }
 
+// Search for the MP Floating Pointer Structure, which according to the
+// spec is in one of the following three locations:
+// 1) in the first KB of the EBDA;
+// 2) in the last KB of system base memory;
+// 3) in the BIOS ROM between 0xE0000 and 0xFFFFF.
 static struct mp*
 mp_search(void)
 {
@@ -62,13 +67,6 @@ mp_search(void)
   uint p;
   struct mp *mp;
 
-  /*
-   * Search for the MP Floating Pointer Structure, which according to the
-   * spec is in one of the following three locations:
-   * 1) in the first KB of the EBDA;
-   * 2) in the last KB of system base memory;
-   * 3) in the BIOS ROM between 0xE0000 and 0xFFFFF.
-   */
   bda = (uchar*) 0x400;
   if((p = (bda[0x0F]<<8)|bda[0x0E])){
     if((mp = mp_scan((uchar*) p, 1024)))
@@ -82,6 +80,11 @@ mp_search(void)
   return mp_scan((uchar*)0xF0000, 0x10000);
 }
 
+// Search for an MP configuration table. For now,
+// don't accept the default configurations (physaddr == 0).
+// Check for correct signature, calculate the checksum and,
+// if correct, check the version.
+// To do: check extended table checksum.
 static int
 mp_detect(void)
 {
@@ -89,13 +92,6 @@ mp_detect(void)
   uchar *p, sum;
   uint length;
 
-  /*
-   * Search for an MP configuration table. For now,
-   * don't accept the default configurations (physaddr == 0).
-   * Check for correct signature, calculate the checksum and,
-   * if correct, check the version.
-   * To do: check extended table checksum.
-   */
   if((mp = mp_search()) == 0 || mp->physaddr == 0)
     return 1;
 
@@ -128,13 +124,13 @@ mp_init(void)
   uchar byte;
 
   ncpu = 0;
-  if((r = mp_detect()) != 0) return;
+  if((r = mp_detect()) != 0)
+    return;
 
-  /*
-   * Run through the table saving information needed for starting
-   * application processors and initialising any I/O APICs. The table
-   * is guaranteed to be in order such that only one pass is necessary.
-   */
+  // Run through the table saving information needed for starting
+  // application processors and initialising any I/O APICs. The table
+  // is guaranteed to be in order such that only one pass is necessary.
+
   mpctb = (struct mpctb*) mp->physaddr;
   lapicaddr = (uint*) mpctb->lapicaddr;
   p = ((uchar*)mpctb)+sizeof(struct mpctb);
@@ -179,10 +175,10 @@ mp_init(void)
   }
 
   if(mp->imcrp) {  // it appears that bochs doesn't support IMCR, and code won't run
-    outb(0x22, 0x70);   /* select IMCR */
-    byte = inb(0x23);   /* current contents */
-    byte |= 0x01;       /* mask external INTR */
-    outb(0x23, byte);   /* disconnect 8259s/NMI */
+    outb(0x22, 0x70);   // select IMCR
+    byte = inb(0x23);   // current contents
+    byte |= 0x01;       // mask external INTR
+    outb(0x23, byte);   // disconnect 8259s/NMI
   }
 }
 

@@ -1,11 +1,9 @@
-/*
- * physical memory allocator, intended to be used to allocate
- * memory for user processes. allocates in 4096-byte "pages".
- * free list is sorted and combines adjacent pages into
- * long runs, to make it easier to allocate big segments.
- * one reason the page size is 4k is that the x86 segment size
- * granularity is 4k.
- */
+// Physical memory allocator, intended to allocate
+// memory for user processes. Allocates in 4096-byte "pages".
+// Free list is kept sorted and combines adjacent pages into
+// long runs, to make it easier to allocate big segments.
+// One reason the page size is 4k is that the x86 segment size
+// granularity is 4k.
 
 #include "param.h"
 #include "types.h"
@@ -23,11 +21,10 @@ struct run {
 };
 struct run *freelist;
 
-/*
- * initialize free list of physical pages. this code
- * cheats by just considering the one megabyte of pages
- * after _end.
- */
+// Initialize free list of physical pages.
+// This code cheats by just considering one megabyte of
+// pages after _end.  Real systems would determine the
+// amount of memory available in the system and use it all.
 void
 kinit(void)
 {
@@ -95,11 +92,9 @@ kfree(char *cp, int len)
   release(&kalloc_lock);
 }
 
-/*
- * allocate n bytes of physical memory.
- * returns a kernel-segment pointer.
- * returns 0 if there's no run that's big enough.
- */
+// Allocate n bytes of physical memory.
+// Returns a kernel-segment pointer.
+// Returns 0 if the memory cannot be allocated.
 char*
 kalloc(int n)
 {

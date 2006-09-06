@@ -8,7 +8,7 @@
 #include "syscall.h"
 
 struct gatedesc idt[256];
-extern uint vectors[]; /* vectors.S, array of 256 entry point addresses */
+extern uint vectors[];  // in vectors.S: array of 256 entry point addresses
 
 extern void trapenter(void);
 extern void trapenter1(void);

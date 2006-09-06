@@ -22,7 +22,7 @@ irq_setmask_8259A(ushort mask)
   outb(IO_PIC2+1, (char)(mask >> 8));
 }
 
-/* Initialize the 8259A interrupt controllers. */
+// Initialize the 8259A interrupt controllers.
 void
 pic_init(void)
 {
@@ -67,11 +67,11 @@ pic_init(void)
   //   ef:  0x = NOP, 10 = clear specific mask, 11 = set specific mask
   //    p:  0 = no polling, 1 = polling mode
   //   rs:  0x = NOP, 10 = read IRR, 11 = read ISR
-  outb(IO_PIC1, 0x68);             /* clear specific mask */
-  outb(IO_PIC1, 0x0a);             /* read IRR by default */
+  outb(IO_PIC1, 0x68);             // clear specific mask
+  outb(IO_PIC1, 0x0a);             // read IRR by default
 
-  outb(IO_PIC2, 0x68);               /* OCW3 */
-  outb(IO_PIC2, 0x0a);               /* OCW3 */
+  outb(IO_PIC2, 0x68);             // OCW3
+  outb(IO_PIC2, 0x0a);             // OCW3
 
   if(irq_mask_8259A != 0xFFFF)
     irq_setmask_8259A(irq_mask_8259A);

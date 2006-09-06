@@ -15,18 +15,14 @@
 #include "fd.h"
 #include "fcntl.h"
 
-/*
- * User code makes a system call with INT T_SYSCALL.
- * System call number in %eax.
- * Arguments on the stack, from the user call to the C
- * library system call function. The saved user %esp points
- * to a saved program counter, and then the first argument.
- */
+// User code makes a system call with INT T_SYSCALL.
+// System call number in %eax.
+// Arguments on the stack, from the user call to the C
+// library system call function. The saved user %esp points
+// to a saved program counter, and then the first argument.
 
-/*
- * fetch 32 bits from a user-supplied pointer.
- * returns 0 if addr was OK, -1 if illegal.
- */
+// Fetch 32 bits from a user-supplied pointer.
+// Returns 0 if addr was OK, -1 if illegal.
 int
 fetchint(struct proc *p, uint addr, int *ip)
 {
@@ -58,8 +54,8 @@ fetcharg(int argno, void *ip)
   return fetchint(curproc[cpu()], esp + 4 + 4*argno, ip);
 }
 
-// check that an entire string is valid in user space.
-// returns the length, not including null, or -1.
+// Check that an entire string is valid in user space.
+// Returns the length, not including null, or -1.
 int
 checkstring(uint s)
 {

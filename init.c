@@ -4,7 +4,7 @@
 #include "fs.h"
 #include "fcntl.h"
 
-/* The initial user-level program */
+// init: The initial user-level program
 
 char *sh_args[] = { "sh", 0 };
 

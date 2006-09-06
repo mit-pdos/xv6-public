@@ -1,20 +1,10 @@
-/*
- * p->mem:
- *   text
- *   original data and bss
- *   fixed-size stack
- *   expandable heap
- */
-
-/*
- * segments in proc->gdt
- */
+// segments in proc->gdt
 #define SEG_KCODE 1 // kernel code
 #define SEG_KDATA 2 // kernel data+stack
 #define SEG_UCODE 3
 #define SEG_UDATA 4
-#define SEG_TSS 5   // this process's task state
-#define NSEGS 6
+#define SEG_TSS   5   // this process's task state
+#define NSEGS     6
 
 struct jmpbuf {
   // saved registers for kernel context switches
@@ -37,6 +27,11 @@ enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct proc{
   char *mem;    // start of process's memory (a kernel address)
+    // process memory is laid out contiguously:
+    //   text
+    //   original data and bss
+    //   fixed-size stack
+    //   expandable heap
   uint sz;      // user memory size
   char *kstack; // kernel stack
   enum proc_state state;

@@ -2,7 +2,7 @@
 // format of an ELF executable file
 //
 
-#define ELF_MAGIC 0x464C457FU	/* "\x7FELF" in little endian */
+#define ELF_MAGIC 0x464C457FU	// "\x7FELF" in little endian
 
 struct elfhdr {
   uint magic;  // must equal ELF_MAGIC

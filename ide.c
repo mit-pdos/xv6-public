@@ -1,6 +1,4 @@
-/*
- * Simple PIO-based (non-DMA) IDE driver code.
- */
+// Simple PIO-based (non-DMA) IDE driver code.
 
 #include "types.h"
 #include "param.h"
@@ -38,7 +36,7 @@ ide_wait_ready(int check_error)
   int r;
 
   while(((r = inb(0x1F7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY)
-    /* do nothing */;
+    ;
 
   if(check_error && (r & (IDE_DF|IDE_ERR)) != 0)
     return -1;
@@ -75,7 +73,7 @@ ide_probe_disk1(void)
 
   // check for Device 1 to be ready for a while
   for(x = 0; x < 1000 && (r = inb(0x1F7)) == 0; x++)
-    /* do nothing */;
+    ;
 
   // switch back to Device 0
   outb(0x1F6, 0xE0 | (0<<4));
