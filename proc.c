@@ -371,7 +371,7 @@ proc_wait(void)
     havekids = 0;
     for(i = 0; i < NPROC; i++){
       p = &proc[i];
-      if(p->ppid == cp->pid){
+      if(p->state != UNUSED && p->ppid == cp->pid){
         if(p->state == ZOMBIE){
           // Found one.
           kfree(p->mem, p->sz);
@@ -385,7 +385,7 @@ proc_wait(void)
         havekids = 1;
       }
     }
-    
+
     // No point waiting if we don't have any children.
     if(!havekids){
       release(&proc_table_lock);

@@ -27,17 +27,17 @@ main(int argc, char *argv[])
   if (argc <= 1) {
     rfile(0);
   } else {
-  for(i = 1; i < argc; i++){
-    fd = open(argv[i], 0);
-    if(fd < 0){
-      puts("cat: cannot open ");
-      puts(argv[i]);
-      puts("\n");
-      exit();
+    for(i = 1; i < argc; i++){
+      fd = open(argv[i], 0);
+      if(fd < 0){
+	puts("cat: cannot open ");
+	puts(argv[i]);
+	puts("\n");
+	exit();
+      }
+      rfile(fd);
+      close(fd);
     }
-    rfile(fd);
-    close(fd);
-  }
   }
 
   exit();
