@@ -37,11 +37,11 @@ pipe_alloc(struct fd **fd1, struct fd **fd2)
   initlock(&p->lock, "pipe");
   (*fd1)->type = FD_PIPE;
   (*fd1)->readable = 1;
-  (*fd1)->writeable = 0;
+  (*fd1)->writable = 0;
   (*fd1)->pipe = p;
   (*fd2)->type = FD_PIPE;
   (*fd2)->readable = 0;
-  (*fd2)->writeable = 1;
+  (*fd2)->writable = 1;
   (*fd2)->pipe = p;
   return 0;
  oops:
@@ -59,11 +59,11 @@ pipe_alloc(struct fd **fd1, struct fd **fd2)
 }
 
 void
-pipe_close(struct pipe *p, int writeable)
+pipe_close(struct pipe *p, int writable)
 {
   acquire(&p->lock);
 
-  if(writeable){
+  if(writable){
     p->writeopen = 0;
     wakeup(&p->readp);
   } else {

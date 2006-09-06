@@ -260,13 +260,13 @@ sys_open(void)
   fd->type = FD_FILE;
   if(arg1 & O_RDWR) {
     fd->readable = 1;
-    fd->writeable = 1;
+    fd->writable = 1;
   } else if(arg1 & O_WRONLY) {
     fd->readable = 0;
-    fd->writeable = 1;
+    fd->writable = 1;
   } else {
     fd->readable = 1;
-    fd->writeable = 0;
+    fd->writable = 0;
   }
   fd->ip = ip;
   fd->off = 0;
