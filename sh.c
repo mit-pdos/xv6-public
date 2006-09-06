@@ -149,7 +149,8 @@ runcmd(void)
     }
 
     if(strcmp(cmdlist[c].argv[0], "/cd") == 0) {
-      if(debug) printf (2, "/cd %s is build in\n", cmdlist[c].argv[1]);
+      if(debug)
+        printf (2, "/cd %s is build in\n", cmdlist[c].argv[1]);
       chdir(cmdlist[c].argv[1]);
       return;
     }

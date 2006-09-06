@@ -204,7 +204,8 @@ mp_startthem(void)
           (uint) _binary_bootother_size);
 
   for(c = 0; c < ncpu; c++){
-    if(c == cpu()) continue;
+    if(c == cpu())
+      continue;
     *(uint*)(APBOOTCODE-4) = (uint) (cpus[c].mpstack) + MPSTACK; // tell it what to use for %esp
     *(uint*)(APBOOTCODE-8) = (uint)mpmain; // tell it where to jump to
     lapic_startap(cpus[c].apicid, (uint) APBOOTCODE);

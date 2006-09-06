@@ -371,20 +371,23 @@ newblock(struct inode *ip, uint lbn)
   if(lbn < NDIRECT) {
     if(ip->addrs[lbn] == 0) {
       b = balloc(ip->dev);
-      if(b <= 0) return -1;
+      if(b <= 0)
+        return -1;
       ip->addrs[lbn] = b;
     }
   } else {
     if(ip->addrs[INDIRECT] == 0) {
       b = balloc(ip->dev);
-      if(b <= 0) return -1;
+      if(b <= 0)
+        return -1;
       ip->addrs[INDIRECT] = b;
     }
     inbp = bread(ip->dev, ip->addrs[INDIRECT]);
     inaddrs = (uint*) inbp->data;
     if(inaddrs[lbn - NDIRECT] == 0) {
       b = balloc(ip->dev);
-      if(b <= 0) return -1;
+      if(b <= 0)
+        return -1;
       inaddrs[lbn - NDIRECT] = b;
       bwrite(inbp, ip->addrs[INDIRECT]);
     }
@@ -407,7 +410,8 @@ writei(struct inode *ip, char *addr, uint off, uint n)
     int lbn;
     while(r < n) {
       lbn = off / BSIZE;
-      if(lbn >= MAXFILE) return r;
+      if(lbn >= MAXFILE)
+        return r;
       if(newblock(ip, lbn) < 0) {
         cprintf("newblock failed\n");
         return r;
@@ -422,8 +426,10 @@ writei(struct inode *ip, char *addr, uint off, uint n)
     }
     if(r > 0) {
       if(off > ip->size) {
-        if(ip->type == T_DIR) ip->size = ((off / BSIZE) + 1) * BSIZE;
-        else ip->size = off;
+        if(ip->type == T_DIR)
+          ip->size = ((off / BSIZE) + 1) * BSIZE;
+        else
+          ip->size = off;
       }
       iupdate(ip);
     }
@@ -462,7 +468,8 @@ namei(char *path, int mode, uint *ret_off, char **ret_last, struct inode **ret_i
   if(ret_ip)
     *ret_ip = 0;
 
-  if(*cp == '/') dp = iget(rootdev, 1);
+  if(*cp == '/')
+    dp = iget(rootdev, 1);
   else {
     dp = p->cwd;
     iincref(dp);
