@@ -90,7 +90,7 @@ void pipe_close(struct pipe*, int);
 int pipe_write(struct pipe*, char*, int);
 int pipe_read(struct pipe*, char*, int);
 
-// fd.c
+// file.c
 struct stat;
 void fileinit(void);
 int fdalloc(void);
