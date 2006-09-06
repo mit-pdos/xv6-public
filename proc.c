@@ -2,7 +2,7 @@
 #include "mmu.h"
 #include "x86.h"
 #include "param.h"
-#include "fd.h"
+#include "file.h"
 #include "proc.h"
 #include "defs.h"
 #include "spinlock.h"

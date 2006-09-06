@@ -12,7 +12,7 @@
 #include "fs.h"
 #include "fsvar.h"
 #include "elf.h"
-#include "fd.h"
+#include "file.h"
 #include "fcntl.h"
 
 // User code makes a system call with INT T_SYSCALL.

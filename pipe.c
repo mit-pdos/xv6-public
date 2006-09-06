@@ -4,7 +4,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "defs.h"
-#include "fd.h"
+#include "file.h"
 #include "spinlock.h"
 
 #define PIPESIZE 512

@@ -12,7 +12,7 @@
 #include "fs.h"
 #include "fsvar.h"
 #include "elf.h"
-#include "fd.h"
+#include "file.h"
 #include "fcntl.h"
 
 int
