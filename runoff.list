@@ -46,8 +46,10 @@ fs.c
 bio.c
 ide.c
 
-# pipe and string library
+# pipes
 pipe.c
+
+# string operations
 string.c
 
 # low-level PC
