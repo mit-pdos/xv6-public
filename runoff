@@ -42,44 +42,50 @@ pr -e8 -t runoff.list | awk '
 
 # make definition list
 cd fmt
-awk '
-	/^[0-9]+ [A-Za-z0-9_]+ .*[A-Za-z0-9_].*;/ {
-		s=$0;
-		sub(/\[.*/, "", s);
-		sub(/\(.*/, "", s);
-		sub(/ *=.*/, "", s);
-		sub(/.* \**/, "", s);
-		sub(/;.*/, "", s);
-		print $1, s
-	}
-	$2=="#define" { 
-		if($3 ~ /\(/){
-			sub(/\(.*/, "", $3); print $1, $3
-		} else {
-			s = ""
-			for(i=4; i<=NF; i++){
-				s = s $i
-			}
-			print $1, $3, s
+perl -e '
+	while(<>) {
+		chomp;
+
+		s!//.*!!;
+		s!/\*([^*]|[*][^/])*\*/!!g;
+		s!\s! !g;
+		s! +$!!;
+
+		# look for declarations like char* x;
+		if (/^[0-9]+ typedef .* u(int|short|long|char);/) {
+			next;
 		}
-	}
-	$2=="enum" { inenum = 1; v=-1; } 
-	$2 == "};" { inenum = 0; }
-	inenum && $2 ~ /^[A-Z][a-zA-Z0-9_]+$/ {
-		if($3 == "="){
-			s = ""
-			for(i=4; i<=NF; i++){
-				s = s " " $i
-			}
-			sub(/,$/, "", s);
-			sub(/^ /, "", s);
-			v = s;
-		}else
-			v++;
-		print $1, $2, v;
-	}
-	$2=="struct" && $3 ~ /^[A-Z][a-zA-Z0-9_]+$/ {
-		print $1, $3;
+		if (/^[0-9]+ extern/) {
+			next;
+		}
+		if (/^[0-9]+ struct [a-zA-Z0-9_]+;/) {
+			next;
+		}
+		if (/\(/) {
+			next;
+		}
+
+		if (/^([0-9]+) (((static|struct|extern|union|enum) +)*([A-Za-z0-9_]+))( .*)? +([A-Za-z_][A-Za-z0-9_]*)[,;]/) {
+		
+			print "$1 $7\n"
+		}
+		
+		elsif (/^([0-9]+) #define +([A-za-z0-9_]+) +?\(.*/) {
+			print "$1 $2\n"
+		}
+		
+		elsif (/^([0-9]+) #define +([A-Za-z0-9_]+) +([^ ]+)$/) {
+			print "$1 $2 $3\n";
+		}
+		
+		elsif (/^([0-9]+) #define +([A-Za-z0-9_]+)/) {
+			print "$1 $2\n";
+		}
+		
+		elsif(/^([0-9]+) (enum|struct|union) +([A-Za-z0-9_]+) +{/){ 
+			print "$1 $3\n";
+		}
+		# TODO: enum members
 	}
 ' $files >defs
 
@@ -110,12 +116,15 @@ awk '
 
 # format the whole thing
 (
-	pr -l60 -e4 README
-	pr -l60 -e4 toc
+	pr -l60 -e8 README
+	pr -l60 -e8 -2 toc
 	pr -l60 -h "definitions" -2 t.defs | pad
 	pr -l60 -h "cross-references" -2 refs | pad 
-	pr -l60 -e4 $files 
-) | mpage -m50t50b -o -bLetter -t -2 -FCourier -L60 >all.ps
+	for i in $files
+	do
+		cat $i | pr -l60 -e8 -h "xv6/$i"
+	done
+) | mpage -m50t50b -o -bLetter -T -t -2 -FCourier -L60 >all.ps
 grep Pages: all.ps
 
 # if we have the nice font, use it
