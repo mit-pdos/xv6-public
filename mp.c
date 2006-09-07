@@ -196,7 +196,8 @@ mp_bcpu(void)
 
 extern void mpmain(void);
 
-#define APBOOTCODE 0x7000 // XXX hack
+// Write bootstrap code to unused memory at 0x7000.
+#define APBOOTCODE 0x7000
 
 void
 mp_startthem(void)

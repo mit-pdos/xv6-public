@@ -168,7 +168,7 @@ syscall(void)
     break;
   default:
     cprintf("unknown sys call %d\n", num);
-    // XXX fault
+    // Maybe kill the process?
     break;
   }
   cp->tf->eax = ret;
