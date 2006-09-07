@@ -103,9 +103,10 @@ test: deadlock d/.. vs ../d, two processes.
 test: dup() shared fd->off
 test: does echo foo > x truncate x?
 
-sh: support pipes?  leave it for the class?
+sh: ioredirection incorrect now we have pipes
+sh: chain of pipes won't work, also ugly that parent closes fdarray entries too
 sh: dynamic memory allocation?
-sh: should sh support ; () &  --- need malloc
+sh: should sh support ; () &
 sh: stop stdin on ctrl-d (for cat > y)
 
 really should have bdwrite() for file content
