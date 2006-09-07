@@ -1,9 +1,8 @@
-//
-// format of an ELF executable file
-//
+// Format of an ELF executable file
 
 #define ELF_MAGIC 0x464C457FU  // "\x7FELF" in little endian
 
+// File header
 struct elfhdr {
   uint magic;  // must equal ELF_MAGIC
   uchar elf[12];
@@ -22,6 +21,7 @@ struct elfhdr {
   ushort shstrndx;
 };
 
+// Program section header
 struct proghdr {
   uint type;
   uint offset;

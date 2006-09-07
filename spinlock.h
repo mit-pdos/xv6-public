@@ -1,6 +1,10 @@
+// Mutual exclusion lock.
 struct spinlock {
-  char *name;
-  uint locked;
-  int cpu;
-  uint pcs[10];
+  uint locked;   // Is the lock held?
+  
+  // For debugging:
+  char *name;    // Name of lock.
+  int  cpu;      // The number of the cpu holding the lock.
+  uint pcs[10];  // The call stack (an array of program counters)
+                 // that locked the lock.
 };

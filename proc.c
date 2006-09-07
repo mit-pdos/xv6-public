@@ -136,7 +136,9 @@ copyproc(struct proc *p)
   return np;
 }
 
-uint
+// Grow current process's memory by n bytes.
+// Return old size on success, -1 on failure.
+int
 growproc(int n)
 {
   struct proc *cp = curproc[cpu()];
@@ -154,6 +156,7 @@ growproc(int n)
   return cp->sz - n;
 }
 
+//PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:

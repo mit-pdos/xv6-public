@@ -7,11 +7,11 @@
 #include "traps.h"
 #include "syscall.h"
 
+// Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
+
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 
-extern void trapenter(void);
-extern void trapenter1(void);
 
 void
 tvinit(void)
@@ -65,30 +65,34 @@ trap(struct trapframe *tf)
     return;
   }
 
-  if(v == (IRQ_OFFSET + IRQ_IDE)){
+  if(v == IRQ_OFFSET + IRQ_IDE){
     ide_intr();
     cli(); // prevent a waiting interrupt from overflowing stack
     lapic_eoi();
     return;
   }
 
-  if(v == (IRQ_OFFSET + IRQ_KBD)){
+  if(v == IRQ_OFFSET + IRQ_KBD){
     kbd_intr();
     cli(); // prevent a waiting interrupt from overflowing stack
     lapic_eoi();
     return;
   }
 
-  if(v == (IRQ_OFFSET + IRQ_SPURIOUS)){
+  if(v == IRQ_OFFSET + IRQ_SPURIOUS){
     cprintf("spurious interrupt from cpu %d eip %x\n", cpu(), tf->eip);
     return;  // no eoi for this one.
   }
 
   if(curproc[cpu()]) {
+    // assume process caused unexpected trap,
+    // for example by dividing by zero or dereferencing a bad pointer
     cprintf("pid %d: unhandled trap %d on cpu %d eip %x -- kill proc\n",
             curproc[cpu()]->pid, v, cpu(), tf->eip);
     proc_exit();
   }
+  
+  // otherwise it's our mistake
   cprintf("unexpected trap %d from cpu %d eip %x\n", v, cpu(), tf->eip);
   panic("trap");
 }

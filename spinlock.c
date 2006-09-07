@@ -1,3 +1,5 @@
+// Mutual exclusion spin locks.
+
 #include "types.h"
 #include "defs.h"
 #include "x86.h"
@@ -16,6 +18,7 @@ initlock(struct spinlock *lock, char *name)
   lock->cpu = 0xffffffff;
 }
 
+// Record the current call stack in pcs[] by following the %ebp chain.
 void
 getcallerpcs(void *v, uint pcs[])
 {
@@ -31,6 +34,10 @@ getcallerpcs(void *v, uint pcs[])
     pcs[i] = 0;
 }
 
+// Acquire the lock.
+// Loops (spins) until the lock is acquired.
+// (Because contention is handled by spinning, must not
+// go to sleep holding any locks.)
 void
 acquire(struct spinlock *lock)
 {
@@ -44,10 +51,16 @@ acquire(struct spinlock *lock)
   while(cmpxchg(0, 1, &lock->locked) == 1)
     ;
   cpuid(0, 0, 0, 0, 0);  // memory barrier
-  getcallerpcs(&lock, lock->pcs);
+  
+  // Record info about lock acquisition for debugging.
+  // The +10 is only so that we can tell the difference
+  // between forgetting to initialize lock->cpu
+  // and holding a lock on cpu 0.
   lock->cpu = cpu() + 10;
+  getcallerpcs(&lock, lock->pcs);
 }
 
+// Release the lock.
 void
 release(struct spinlock *lock)
 {
@@ -63,6 +76,7 @@ release(struct spinlock *lock)
     sti();
 }
 
+// Check whether this cpu is holding the lock.
 int
 holding(struct spinlock *lock)
 {

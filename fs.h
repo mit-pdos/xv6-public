@@ -1,12 +1,17 @@
-// on-disk file system format
+// On-disk file system format. 
+// This header is shared between kernel and user space.
+
+// Block 0 is unused.
+// Block 1 is super block.
+// Inodes start at block 2.
 
 #define BSIZE 512  // block size
 
-// sector 1 (2nd sector)
-struct superblock{
-  uint size;
-  uint nblocks;
-  uint ninodes;
+// File system super block
+struct superblock {
+  uint size;         // Size of file system (bytes???) xxx
+  uint nblocks;      // Number of blocks
+  uint ninodes;      // Number of inodes.
 };
 
 #define NADDRS (NDIRECT+1)
@@ -15,24 +20,31 @@ struct superblock{
 #define NINDIRECT (BSIZE / sizeof(uint))
 #define MAXFILE (NDIRECT  + NINDIRECT)
 
+// On-disk inode structure
 struct dinode {
-  short type;
-  short major;
-  short minor;
-  short nlink;
-  uint size;
-  uint addrs[NADDRS];
+  short type;           // File type
+  short major;          // Major device number (T_DEV only)
+  short minor;          // Minor device number (T_DEV only)
+  short nlink;          // Number of links to inode in file system
+  uint size;            // Size of file (bytes)
+  uint addrs[NADDRS];   // Data block addresses
 };
 
-#define T_DIR 1
-#define T_FILE 2
-#define T_DEV 3
+#define T_DIR  1   // Directory
+#define T_FILE 2   // File
+#define T_DEV  3   // Special device
 
-// sector 0 is unused, sector 1 is superblock, inodes start at sector 2
-#define IPB (BSIZE / sizeof(struct dinode))
-#define IBLOCK(inum) (inum / IPB + 2)   // start of inode
-#define BPB (BSIZE*8)
-#define BBLOCK(b,ninodes) (b/BPB + (ninodes/IPB) + 3)  // start of bitmap
+// Inodes per block.
+#define IPB           (BSIZE / sizeof(struct dinode))
+
+// Block containing inode i
+#define IBLOCK(i)     ((i) / IPB + 2)
+
+// Bitmap bits per block
+#define BPB           (BSIZE*8)
+
+// Block containing bit for block b
+#define BBLOCK(b, ninodes) (b/BPB + (ninodes)/IPB + 3)
 
 #define DIRSIZ 14
 
@@ -41,4 +53,5 @@ struct dirent {
   char name[DIRSIZ];
 };
 
+extern uint rootdev;  // Device number of root file system
 
