@@ -6,7 +6,7 @@
 
 #define BUFSIZ  512
 #define MAXARGS  10
-#define MAXNODE 2
+#define MAXIO 2
 #define MAXCMD  2
 
 // an embarrassingly naive shell
@@ -22,7 +22,7 @@ struct cmd {
   char argv0buf[BUFSIZ];
   int argc;
   int token;
-  struct ionode iolist[MAXNODE];
+  struct ionode iolist[MAXIO];
   struct ionode *io;
 };
 struct cmd cmdlist[MAXCMD];
@@ -75,30 +75,28 @@ parse(char *s)
       cmd->argv[cmd->argc++] = t;
       break;
 
-    case '<':   // Input redirection
-      // Grab the filename from the argument list
-      if(gettoken(0, &t) != 'w') {
-        printf(2, "syntax error: < not followed by word\n");
-        return -1;
-      }
-      cmd->io->token = '<';
-      cmd->io->s = t;
-      cmd->io++;
-      break;
-
-    case '>':   // Output redirection
+    case '>':   // Input and output redirection
+    case '<':
       // Grab the filename from the argument list
       if(gettoken(0, &t) != 'w') {
         printf(2, "syntax error: > not followed by word\n");
         return -1;
       }
-      cmd->io->token = '>';
+      if(cmd->io - cmd->iolist >= MAXIO) {
+        printf(2, "too many redirections\n");
+        return -1;
+      }
+      cmd->io->token = c;
       cmd->io->s = t;
       cmd->io++;
       break;
 
     case ';':  // command sequence
     case '|':  // pipe
+      if(cmd->io - cmd->iolist >= MAXIO) {
+        printf(2, "too many redirections\n");
+        return -1;
+      }
       cmd->token = c;
       cmd++;
       break;
@@ -113,7 +111,6 @@ parse(char *s)
     }
   }
 }
-
 
 void
 runcmd(void)
