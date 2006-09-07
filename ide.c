@@ -159,6 +159,9 @@ ide_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
     wakeup(&disk_queue);
   tail = (tail + 1) % NREQUEST;
 
+  // Start next request in queue, if any.
+  ide_start_request();
+
   release(&ide_lock);
 }
 
