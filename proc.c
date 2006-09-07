@@ -207,6 +207,11 @@ sched(void)
 {
   struct proc *p = curproc[cpu()];
 
+  if(!holding(&proc_table_lock))
+    panic("sched");
+  if(cpus[cpu()].nlock != 1)
+    panic("sched locks");
+
   if(setjmp(&p->jmpbuf) == 0)
     longjmp(&cpus[cpu()].jmpbuf);
 }
