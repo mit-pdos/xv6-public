@@ -23,5 +23,24 @@ email to Frans Kaashoek and Robert Morris
 ({kaashoek,rtm}@csail.mit.edu).  This version is the very first one,
 so don't be surprised if there are errors or the code is unclear.
 
-The code in the files that constitute xv6 are copyrighted, 2006, Frans
-Kaashoek, Robert Morris, and Russ Cox.
+The code in the files that constitute xv6 are 
+Copyright 2006 Frans Kaashoek, Robert Morris, and Russ Cox.
+
+
+To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run "make".
+On non-x86 or non-ELF machines (like OS X, even on x86), you will
+need to install a cross-compiler gcc suite capable of producing x86 ELF
+binaries.  See http://pdos.csail.mit.edu/6.828/2006/tools.html.
+Then run "make TOOLPREFIX=i386-jos-elf-".
+
+To run xv6, you can use Bochs or QEMU, both PC simulators.  Bochs makes
+debugging easier, but QEMU is much faster. 
+To run in Bochs, run "make bochs" and then type "c" at the bochs prompt.
+To run in QEMU, run "make qemu".  Both log the xv6 screen output to 
+standard output.
+
+To create a typeset version of the code, run "make xv6.pdf".
+This requires the "mpage" text formatting utility.
+See http://www.mesa.nl/pub/mpage/.
+
+Have fun!
