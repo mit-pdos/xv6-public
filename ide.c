@@ -31,15 +31,16 @@ struct ide_request {
   uint read;
 };
 
-struct ide_request request[NREQUEST];
-int head, tail;
-struct spinlock ide_lock;
+static struct ide_request request[NREQUEST];
+static int head, tail;
+static struct spinlock ide_lock;
 
-int disk_1_present;
-int disk_channel;
+static int disk_1_present;
+static int disk_queue;
 
-int ide_probe_disk1(void);
+static int ide_probe_disk1(void);
 
+// Wait for IDE disk to become ready.
 static int
 ide_wait_ready(int check_error)
 {
@@ -57,12 +58,13 @@ void
 ide_init(void)
 {
   initlock(&ide_lock, "ide");
-  irq_setmask_8259A(irq_mask_8259A & ~(1 << IRQ_IDE));
-  ioapic_enable (IRQ_IDE, ncpu - 1);
+  irq_enable(IRQ_IDE);
+  ioapic_enable(IRQ_IDE, ncpu - 1);
   ide_wait_ready(0);
   disk_1_present = ide_probe_disk1();
 }
 
+// Interrupt handler - wake up the request that just finished.
 void
 ide_intr(void)
 {
@@ -71,7 +73,8 @@ ide_intr(void)
   release(&ide_lock);
 }
 
-int
+// Probe to see if disk 1 exists (we assume disk 0 exists).
+static int
 ide_probe_disk1(void)
 {
   int r, x;
@@ -92,7 +95,8 @@ ide_probe_disk1(void)
   return x < 1000;
 }
 
-void
+// Start the next request in the queue.
+static void
 ide_start_request (void)
 {
   struct ide_request *r;
@@ -115,16 +119,20 @@ ide_start_request (void)
   }
 }
 
-void*
-ide_start_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
+// Run an entire disk operation.
+void
+ide_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
 {
   struct ide_request *r;
 
   if(diskno && !disk_1_present)
     panic("ide disk 1 not present");
 
+  acquire(&ide_lock);
+  
+  // Add request to queue.
   while((head + 1) % NREQUEST == tail)
-    sleep(&disk_channel, &ide_lock);
+    sleep(&disk_queue, &ide_lock);
 
   r = &request[head];
   r->secno = secno;
@@ -132,35 +140,29 @@ ide_start_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
   r->nsecs = nsecs;
   r->diskno = diskno;
   r->read = read;
-
   head = (head + 1) % NREQUEST;
 
+  // Start request if necessary.
   ide_start_request();
-
-  return r;
-}
-
-int
-ide_finish(void *c)
-{
-  int r;
-  struct ide_request *req = (struct ide_request*) c;
-
-  if(req->read) {
-    if((r = ide_wait_ready(1)) >= 0)
-      insl(0x1F0, req->addr, 512/4);
+  
+  // Wait for request to finish.
+  sleep(r, &ide_lock);
+  
+  // Finish request.
+  if(read){
+    if(ide_wait_ready(1) >= 0)
+      insl(0x1F0, addr, 512/4);
   }
 
-  if((head + 1) % NREQUEST == tail) {
-    wakeup(&disk_channel);
-  }
-
+  // Remove request from queue.
+  if((head + 1) % NREQUEST == tail)
+    wakeup(&disk_queue);
   tail = (tail + 1) % NREQUEST;
-  ide_start_request();
 
-  return 0;
+  release(&ide_lock);
 }
 
+// Synchronous disk write.
 int
 ide_write(int diskno, uint secno, const void *src, uint nsecs)
 {

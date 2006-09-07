@@ -42,5 +42,5 @@ pit8253_timerinit(void)
   outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
   outb(IO_TIMER1, TIMER_DIV(100) % 256);
   outb(IO_TIMER1, TIMER_DIV(100) / 256);
-  irq_setmask_8259A(irq_mask_8259A & ~(1<<IRQ_TIMER));
+  irq_enable(IRQ_TIMER);
 }

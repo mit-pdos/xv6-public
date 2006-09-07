@@ -49,9 +49,8 @@ int argptr(int, char**, int);
 int argstr(int, char**);
 
 // picirq.c
-extern ushort irq_mask_8259A;
 void pic_init(void);
-void irq_setmask_8259A(ushort);
+void irq_enable(int);
 
 // 8253pit.c
 void pit8253_timerinit(void);
@@ -109,8 +108,7 @@ void fileincref(struct file*);
 // ide.c
 void ide_init(void);
 void ide_intr(void);
-void* ide_start_rw(int, uint, void*, uint, int);
-int ide_finish(void*);
+void ide_rw(int, uint, void*, uint, int);
 
 // bio.c
 void binit(void);

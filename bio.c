@@ -102,37 +102,28 @@ bget(uint dev, uint sector)
 struct buf*
 bread(uint dev, uint sector)
 {
-  void *c;
   struct buf *b;
-  extern struct spinlock ide_lock;
 
   b = bget(dev, sector);
   if(b->flags & B_VALID)
     return b;
 
-  acquire(&ide_lock);
-  c = ide_start_rw(dev & 0xff, sector, b->data, 1, 1);
-  sleep(c, &ide_lock);
-  ide_finish(c);
+  ide_rw(dev & 0xff, sector, b->data, 1, 1);
   b->flags |= B_VALID;
-  release(&ide_lock);
 
   return b;
 }
 
 // Write buf's contents to disk.
+// Must be locked.
 void
 bwrite(struct buf *b, uint sector)
 {
-  void *c;
-  extern struct spinlock ide_lock;
+  if((b->flags & B_BUSY) == 0)
+    panic("bwrite");
 
-  acquire(&ide_lock);
-  c = ide_start_rw(b->dev & 0xff, sector, b->data, 1, 0);
-  sleep(c, &ide_lock);
-  ide_finish(c);
+  ide_rw(b->dev & 0xff, sector, b->data, 1, 0);
   b->flags |= B_VALID;
-  release(&ide_lock);
 }
 
 // Release the buffer buf.

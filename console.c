@@ -409,7 +409,7 @@ console_init()
   devsw[CONSOLE].write = console_write;
   devsw[CONSOLE].read = console_read;
 
-  irq_setmask_8259A(irq_mask_8259A & ~(1 << IRQ_KBD));
+  irq_enable(IRQ_KBD);
   ioapic_enable(IRQ_KBD, 0);
 
   use_console_lock = 1;
