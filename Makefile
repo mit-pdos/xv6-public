@@ -119,8 +119,8 @@ _rm : rm.o $(ULIB)
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs usertests _echo _cat README _init _sh _ls _mkdir _rm fstests
-	./mkfs fs.img usertests _echo _cat README _init _sh _ls _mkdir _rm fstests
+fs.img : mkfs usertests _echo _cat README _init _sh _ls _mkdir _rm 
+	./mkfs fs.img usertests _echo _cat README _init _sh _ls _mkdir _rm
 
 -include *.d
 
