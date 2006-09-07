@@ -71,6 +71,8 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  fd[0] = fd0;
+  fd[1] = fd1;
   return 0;
 }
 
