@@ -8,7 +8,7 @@
 #define FL_ZF           0x00000040      // Zero Flag
 #define FL_SF           0x00000080      // Sign Flag
 #define FL_TF           0x00000100      // Trap Flag
-#define FL_IF           0x00000200      // Interrupt Flag
+#define FL_IF           0x00000200      // Interrupt Enable
 #define FL_DF           0x00000400      // Direction Flag
 #define FL_OF           0x00000800      // Overflow Flag
 #define FL_IOPL_MASK    0x00003000      // I/O Privilege Level bitmask
