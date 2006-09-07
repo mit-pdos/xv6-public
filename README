@@ -2,6 +2,8 @@ xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
 Version 6 (v6).  xv6 loosely follows the structure and style of v6,
 but is implemented for a modern x86-based multiprocessor using ANSI C.
 
+ACKNOWLEDGEMENTS
+
 xv6 is inspired by John Lions' Commentary on UNIX 6th Edition (Peer
 to Peer Communications; ISBN: 1-57398-013-7; 1st edition (June 14,
 2000)). See also http://pdos.csail.mit.edu/6.828/2006/v6.html, which
@@ -18,14 +20,17 @@ The following people made contributions:
     Cliff Frey (MP)
     Xiao Yu (MP)
 
+The code in the files that constitute xv6 are 
+Copyright 2006 Frans Kaashoek, Robert Morris, and Russ Cox.
+
+ERROR REPORTS
+
 If you spot errors or have suggestions for improvement, please send
 email to Frans Kaashoek and Robert Morris
 ({kaashoek,rtm}@csail.mit.edu).  This version is the very first one,
 so don't be surprised if there are errors or the code is unclear.
 
-The code in the files that constitute xv6 are 
-Copyright 2006 Frans Kaashoek, Robert Morris, and Russ Cox.
-
+BUIDLING AND RUNNING XV6
 
 To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run "make".
 On non-x86 or non-ELF machines (like OS X, even on x86), you will
