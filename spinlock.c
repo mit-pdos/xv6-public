@@ -50,6 +50,10 @@ acquire(struct spinlock *lock)
 
   while(cmpxchg(0, 1, &lock->locked) == 1)
     ;
+
+  // Now that lock is acquired, make sure 
+  // we wait for all pending writes from other
+  // processors.
   cpuid(0, 0, 0, 0, 0);  // memory barrier
   
   // Record info about lock acquisition for debugging.
@@ -64,13 +68,16 @@ acquire(struct spinlock *lock)
 void
 release(struct spinlock *lock)
 {
-
   if(!holding(lock))
     panic("release");
 
   lock->pcs[0] = 0;
   lock->cpu = 0xffffffff;
+  
+  // Before unlocking the lock, make sure to flush
+  // any pending memory writes from this processor.
   cpuid(0, 0, 0, 0, 0);  // memory barrier
+
   lock->locked = 0;
   if(--cpus[cpu()].nlock == 0)
     sti();
