@@ -11,7 +11,7 @@
 #include "spinlock.h"
 
 extern char edata[], end[];
-extern uchar _binary_init_start[], _binary_init_size[];
+extern uchar _binary__init_start[], _binary__init_size[];
 
 void process0();
 
@@ -140,7 +140,7 @@ process0()
 
   p1 = copyproc(p0);
 
-  load_icode(p1, _binary_init_start, (uint) _binary_init_size);
+  load_icode(p1, _binary__init_start, (uint) _binary__init_size);
   p1->state = RUNNABLE;
 
   proc_wait();
@@ -166,9 +166,9 @@ load_icode(struct proc *p, uchar *binary, uint size)
     if(ph->type != ELF_PROG_LOAD)
       continue;
     if(ph->va + ph->memsz < ph->va)
-      panic("load_icode: overflow in elf header segment");
+      panic("load_icode: overflow in proghdr");
     if(ph->va + ph->memsz >= p->sz)
-      panic("load_icode: icode wants to be above UTOP");
+      panic("load_icode: icode too large");
 
     // Load/clear the segment
     memmove(p->mem + ph->va, binary + ph->offset, ph->filesz);

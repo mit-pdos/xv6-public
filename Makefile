@@ -49,22 +49,22 @@ bootblock : bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
-kernel : $(OBJS) bootother.S init
+kernel : $(OBJS) bootother.S _init
 	$(CC) -nostdinc -I. -c bootother.S
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
-	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother init
+	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother _init
 	$(OBJDUMP) -S kernel > kernel.asm
 
-tags: $(OBJS) bootother.S init
+tags: $(OBJS) bootother.S _init
 	etags *.S *.c
 
 PRINT =	\
 	runoff.list \
 	README\
 	types.h param.h defs.h x86.h asm.h elf.h mmu.h spinlock.h\
-	bootasm.S bootother.S main.c init.c spinlock.c\
+	bootasm.S bootother.S main.c _init.c spinlock.c\
 	proc.h proc.c setjmp.S kalloc.c\
 	syscall.h trapasm.S traps.h trap.c vectors.pl syscall.c sysproc.c\
 	buf.h dev.h fcntl.h stat.h file.h fs.h fsvar.h fd.c fs.c bio.c ide.c sysfile.c\
