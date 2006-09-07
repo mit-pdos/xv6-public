@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "dev.h"
 #include "param.h"
+#include "mmu.h"
 
 struct spinlock console_lock;
 int panicked = 0;
@@ -151,11 +152,17 @@ cprintf(char *fmt, ...)
 void
 panic(char *s)
 {
+  int i;
+  uint pcs[10];
+  
   __asm __volatile("cli");
   use_console_lock = 0;
   cprintf("panic (%d): ", cpu());
   cprintf(s, 0);
   cprintf("\n", 0);
+  getcallerpcs(&s, pcs);
+  for(i=0; i<10; i++)
+    cprintf(" %p", pcs[i]);
   panicked = 1; // freeze other CPU
   for(;;)
     ;
@@ -323,22 +330,18 @@ kbd_intr()
   acquire(&kbd_lock);
 
   st = inb(KBSTATP);
-  if((st & KBS_DIB) == 0){
-    release(&kbd_lock);
-    return;
-  }
+  if((st & KBS_DIB) == 0)
+    goto out;
   data = inb(KBDATAP);
 
   if(data == 0xE0) {
     shift |= E0ESC;
-    release(&kbd_lock);
-    return;
+    goto out;
   } else if(data & 0x80) {
     // Key released
     data = (shift & E0ESC ? data : data & 0x7F);
     shift &= ~(shiftcode[data] | E0ESC);
-    release(&kbd_lock);
-    return;
+    goto out;
   } else if(shift & E0ESC) {
     // Last character was an E0 escape; or with 0x80
     data |= 0x80;
@@ -375,12 +378,11 @@ kbd_intr()
       if(kbd_w >= KBD_BUF)
         kbd_w = 0;
       wakeup(&kbd_r);
-    } else {
-      cprintf("kbd overflow\n");
     }
     break;
   }
 
+out:
   release(&kbd_lock);
 }
 
