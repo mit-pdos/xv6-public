@@ -1,8 +1,6 @@
 struct devsw {
-  int (*d_open)(char*, int);
-  int (*d_read)(int, char*, int);
-  int (*d_write)(int, char*, int);
-  int (*d_close)(int);
+  int (*read)(int, char*, int);
+  int (*write)(int, char*, int);
 };
 
 extern struct devsw devsw[];

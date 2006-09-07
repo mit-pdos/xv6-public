@@ -50,13 +50,13 @@ main(int argc, char *argv[])
     exit();
   }
 
-  switch(st.st_type) {
+  switch(st.type) {
   case T_FILE:
     pname(argv[1]);
-    printf(1, "%d %d %d\n", st.st_type, st.st_ino, st.st_size);
+    printf(1, "%d %d %d\n", st.type, st.ino, st.size);
     break;
   case T_DIR:
-    sz = st.st_size;
+    sz = st.size;
     for(off = 0; off < sz; off += sizeof(struct dirent)) {
       if(read(fd, &dirent, sizeof dirent) != sizeof dirent) {
         printf(1, "ls: read error\n");
@@ -69,7 +69,7 @@ main(int argc, char *argv[])
           continue;
         }
         pname(dirent.name);
-        printf(1, "%d %d %d\n", st.st_type, dirent.inum, st.st_size);
+        printf(1, "%d %d %d\n", st.type, dirent.inum, st.size);
       }
     }
     break;

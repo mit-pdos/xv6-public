@@ -356,7 +356,7 @@ kbd_intr()
       c += 'a' - 'A';
   }
 
-  // xxx hack
+  // Ignore unknown keystrokes.
   if(c == 0x0) {
     release(&kbd_lock);
     return;
@@ -406,8 +406,8 @@ console_init()
   initlock(&console_lock, "console");
   initlock(&kbd_lock, "kbd");
 
-  devsw[CONSOLE].d_write = console_write;
-  devsw[CONSOLE].d_read = console_read;
+  devsw[CONSOLE].write = console_write;
+  devsw[CONSOLE].read = console_read;
 
   irq_setmask_8259A(irq_mask_8259A & ~(1 << IRQ_KBD));
   ioapic_enable(IRQ_KBD, 0);

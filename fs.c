@@ -326,11 +326,11 @@ iincref(struct inode *ip)
 void
 stati(struct inode *ip, struct stat *st)
 {
-  st->st_dev = ip->dev;
-  st->st_ino = ip->inum;
-  st->st_type = ip->type;
-  st->st_nlink = ip->nlink;
-  st->st_size = ip->size;
+  st->dev = ip->dev;
+  st->ino = ip->inum;
+  st->type = ip->type;
+  st->nlink = ip->nlink;
+  st->size = ip->size;
 }
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -342,9 +342,9 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   struct buf *bp;
 
   if(ip->type == T_DEV) {
-    if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].d_read)
+    if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
-    return devsw[ip->major].d_read(ip->minor, dst, n);
+    return devsw[ip->major].read(ip->minor, dst, n);
   }
 
   while(n > 0 && off < ip->size){
@@ -400,9 +400,9 @@ int
 writei(struct inode *ip, char *addr, uint off, uint n)
 {
   if(ip->type == T_DEV) {
-    if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].d_write)
+    if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
-    return devsw[ip->major].d_write(ip->minor, addr, n);
+    return devsw[ip->major].write(ip->minor, addr, n);
   } else if(ip->type == T_FILE || ip->type == T_DIR) {
     struct buf *bp;
     int r = 0;
