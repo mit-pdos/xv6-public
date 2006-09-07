@@ -363,7 +363,7 @@ sharedfd()
   }
   pid = fork();
   memset(buf, pid==0?'c':'p', sizeof(buf));
-  for(i = 0; i < 100; i++){
+  for(i = 0; i < 100000; i++){
     if(write(fd, buf, sizeof(buf)) != sizeof(buf)){
       printf(1, "fstests: write sharedfd failed\n");
       break;
@@ -1005,6 +1005,12 @@ fourteen()
     exit();
   }
   close(fd);
+  
+  fd = open("12345678901234555", 0);
+  if(fd >= 0){
+    printf(1, "open 12345678901234555 succeeded!\n");
+    exit();
+  }
 
   if(mkdir("12345678901234/12345678901234") == 0){
     printf(1, "mkdir 12345678901234/12345678901234 succeeded!\n");
