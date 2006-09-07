@@ -96,45 +96,43 @@ fstests : fstests.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o fstests fstests.o $(ULIB)
 	$(OBJDUMP) -S fstests > fstests.asm
 
-echo : echo.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o echo echo.o $(ULIB)
-	$(OBJDUMP) -S echo > echo.asm
+_echo : echo.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _echo echo.o $(ULIB)
+	$(OBJDUMP) -S _echo > echo.asm
 
-cat : cat.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o cat cat.o $(ULIB)
-	$(OBJDUMP) -S cat > cat.asm
+_cat : cat.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _cat cat.o $(ULIB)
+	$(OBJDUMP) -S _cat > cat.asm
 
 userfs : userfs.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o userfs userfs.o $(ULIB)
 	$(OBJDUMP) -S userfs > userfs.asm
 
-init : init.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o init init.o $(ULIB)
-	$(OBJDUMP) -S init > init.asm
+_init : init.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _init init.o $(ULIB)
+	$(OBJDUMP) -S _init > init.asm
 
-sh : sh.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o sh sh.o $(ULIB)
-	$(OBJDUMP) -S sh > sh.asm
+_sh : sh.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _sh sh.o $(ULIB)
+	$(OBJDUMP) -S _sh > sh.asm
 
-ls : ls.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o ls ls.o $(ULIB)
-	$(OBJDUMP) -S ls > ls.asm
+_ls : ls.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _ls ls.o $(ULIB)
+	$(OBJDUMP) -S _ls > ls.asm
 
-mkdir : mkdir.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o mkdir mkdir.o $(ULIB)
-	$(OBJDUMP) -S mkdir > mkdir.asm
+_mkdir : mkdir.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _mkdir mkdir.o $(ULIB)
+	$(OBJDUMP) -S _mkdir > mkdir.asm
 
-rm : rm.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o rm rm.o $(ULIB)
-	$(OBJDUMP) -S rm > rm.asm
+_rm : rm.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _rm rm.o $(ULIB)
+	$(OBJDUMP) -S _rm > rm.asm
 
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs userfs usertests echo cat README init sh ls mkdir rm fstests
-	./mkfs fs.img userfs usertests echo cat README init sh ls mkdir rm fstests
-	# Remove system binaries to avoid confusion.
-	/bin/rm -f echo cat sh ls mkdir rm
+fs.img : mkfs userfs usertests _echo _cat README _init _sh _ls _mkdir _rm fstests
+	./mkfs fs.img userfs usertests _echo _cat README _init _sh _ls _mkdir _rm fstests
 
 -include *.d
 
