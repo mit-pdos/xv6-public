@@ -44,7 +44,7 @@ sys_kill(void)
 {
   int pid;
 
-  if(fetcharg(0, &pid) < 0)
+  if(argint(0, &pid) < 0)
     return -1;
   return proc_kill(pid);
 }
@@ -52,20 +52,19 @@ sys_kill(void)
 int
 sys_getpid(void)
 {
-  struct proc *cp = curproc[cpu()];
-  return cp->pid;
+  return curproc[cpu()]->pid;
 }
 
 int
 sys_sbrk(void)
 {
-  uint addr;
+  int addr;
   int n;
   struct proc *cp = curproc[cpu()];
 
-  if(fetcharg(0, &n) < 0)
+  if(argint(0, &n) < 0)
     return -1;
-  if((addr = growproc(n)) == 0xffffffff)
+  if((addr = growproc(n)) < 0)
     return -1;
   setupsegs(cp);
   return addr;

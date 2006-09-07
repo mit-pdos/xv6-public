@@ -21,64 +21,71 @@
 // library system call function. The saved user %esp points
 // to a saved program counter, and then the first argument.
 
-// Fetch 32 bits from a user-supplied pointer.
-// Returns 0 if addr was OK, -1 if illegal.
+// Fetch the int at addr from process p.
 int
 fetchint(struct proc *p, uint addr, int *ip)
 {
-  *ip = 0;
-
-  if(addr > p->sz - 4)
+  if(addr >= p->sz || addr+4 > p->sz)
     return -1;
   *ip = *(int*)(p->mem + addr);
   return 0;
 }
 
-// Fetch byte from a user-supplied pointer.
-// Returns 0 on success, -1 if pointer is illegal.
+// Fetch the nul-terminated string at addr from process p.
+// Doesn't actually copy the string - just sets *pp to point at it.
+// Returns length of string, not including nul.
 int
-fetchbyte(struct proc *p, uint addr, char *c)
+fetchstr(struct proc *p, uint addr, char **pp)
 {
+  char *cp, *ep;
+
   if(addr >= p->sz)
     return -1;
-  *c = *(p->mem + addr);
-  return 0;
+  *pp = p->mem + addr;
+  ep = p->mem + p->sz;
+  for(cp = *pp; cp < ep; cp++)
+    if(*cp == 0)
+      return cp - *pp;
+  return -1;
 }
 
+// Fetch the argno'th word-sized system call argument as an integer.
 int
-fetcharg(int argno, void *ip)
+argint(int argno, int *ip)
 {
-  uint esp;
+  struct proc *p = curproc[cpu()];
 
-  esp = (uint) curproc[cpu()]->tf->esp;
-  return fetchint(curproc[cpu()], esp + 4 + 4*argno, ip);
+  return fetchint(p, p->tf->esp + 4 + 4*argno, ip);
 }
 
-// Check that an entire string is valid in user space.
-// Returns the length, not including null, or -1.
+// Fetch the nth word-sized system call argument as a pointer
+// to a block of memory of size n bytes.  Check that the pointer
+// lies within the process address space.
 int
-checkstring(uint s)
+argptr(int argno, char **pp, int size)
 {
-  char c;
-  int len = 0;
-
-  for(;;){
-    if(fetchbyte(curproc[cpu()], s, &c) < 0)
-      return -1;
-    if(c == '\0')
-      return len;
-    len++;
-    s++;
-  }
-}
-
-int
-putint(struct proc *p, uint addr, int x)
-{
-  if(addr > p->sz - 4)
+  int i;
+  struct proc *p = curproc[cpu()];
+  
+  if(argint(argno, &i) < 0)
     return -1;
-  memmove(p->mem + addr, &x, 4);
+  if((uint)i >= p->sz || (uint)i+size >= p->sz)
+    return -1;
+  *pp = p->mem + i;
   return 0;
+}
+
+// Fetch the nth word-sized system call argument as a string pointer.
+// Check that the pointer is valid and the string is nul-terminated.
+// (There is no shared writable memory, so the string can't change
+// between this check and being used by the kernel.)
+int
+argstr(int argno, char **pp)
+{
+  int addr;
+  if(argint(argno, &addr) < 0)
+    return -1;
+  return fetchstr(curproc[cpu()], addr, pp);
 }
 
 extern int sys_chdir(void);

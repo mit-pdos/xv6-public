@@ -16,7 +16,7 @@ struct jmpbuf;
 void setupsegs(struct proc*);
 struct proc* copyproc(struct proc*);
 struct spinlock;
-uint growproc(int);
+int growproc(int);
 void sleep(void*, struct spinlock*);
 void wakeup(void*);
 void scheduler(void);
@@ -43,10 +43,10 @@ int strncmp(const char*, const char*, uint);
 // syscall.c
 void syscall(void);
 int fetchint(struct proc*, uint, int*);
-int fetchbyte(struct proc*, uint, char*);
-int fetcharg(int, void*);
-int checkstring(uint);
-int putint(struct proc*, uint, int);
+int fetchstr(struct proc*, uint, char**);
+int argint(int, int*);
+int argptr(int, char**, int);
+int argstr(int, char**);
 
 // picirq.c
 extern ushort irq_mask_8259A;
@@ -99,7 +99,6 @@ int pipe_read(struct pipe*, char*, int);
 // file.c
 struct stat;
 void fileinit(void);
-int fdalloc(void);
 struct file* filealloc(void);
 void fileclose(struct file*);
 int fileread(struct file*, char*, int n);
