@@ -24,10 +24,10 @@ OBJS = \
 	8253pit.o\
 
 # Cross-compiling (e.g., on Mac OS X)
-TOOLPREFIX = i386-jos-elf-
+# TOOLPREFIX = i386-jos-elf-
 
 # Using native tools (e.g., on X86 Linux)
-# TOOLPREFIX = 
+TOOLPREFIX = 
 
 CC = $(TOOLPREFIX)gcc
 LD = $(TOOLPREFIX)ld
@@ -59,25 +59,6 @@ kernel : $(OBJS) bootother.S _init
 
 tags: $(OBJS) bootother.S _init
 	etags *.S *.c
-
-PRINT =	\
-	runoff.list \
-	README\
-	types.h param.h defs.h x86.h asm.h elf.h mmu.h spinlock.h\
-	bootasm.S bootother.S main.c _init.c spinlock.c\
-	proc.h proc.c setjmp.S kalloc.c\
-	syscall.h trapasm.S traps.h trap.c vectors.pl syscall.c sysproc.c\
-	buf.h dev.h fcntl.h stat.h file.h fs.h fsvar.h fd.c fs.c bio.c ide.c sysfile.c\
-	pipe.c\
-	mp.h ioapic.h mp.c lapic.c ioapic.c picirq.c\
-	console.c\
-	string.c\
-
-# make a printout
-xv6.pdf : $(PRINT)
-	./runoff
-
-print : xv6.pdf
 
 vectors.S : vectors.pl
 	perl vectors.pl > vectors.S
@@ -130,3 +111,32 @@ clean :
 	*.o *.d *.asm vectors.S parport.out \
 	bootblock kernel xv6.img usertests \
 	fs.img mkfs echo init
+
+# make a printout
+PRINT =	\
+	runoff.list \
+	README\
+	types.h param.h defs.h x86.h asm.h elf.h mmu.h spinlock.h\
+	bootasm.S bootother.S main.c _init.c spinlock.c\
+	proc.h proc.c setjmp.S kalloc.c\
+	syscall.h trapasm.S traps.h trap.c vectors.pl syscall.c sysproc.c\
+	buf.h dev.h fcntl.h stat.h file.h fs.h fsvar.h fd.c fs.c bio.c ide.c sysfile.c\
+	pipe.c\
+	mp.h ioapic.h mp.c lapic.c ioapic.c picirq.c\
+	console.c\
+	string.c\
+
+xv6.pdf : $(PRINT)
+	./runoff
+
+print : xv6.pdf
+
+# run in emulators
+
+bochs : fs.img xv6.img
+	if [ ! -e .bochsrc ]; then ln -s dot-bochsrc .bochsrc; fi
+	bochs -q
+
+qemu : fs.img xv6.img
+	qemu -parallel stdio -hdb fs.img xv6.img
+
