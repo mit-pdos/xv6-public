@@ -1,9 +1,201 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
+#include "fs.h"
 #include "fcntl.h"
 
 char buf[2048];
+char name[3];
+char *echo_args[] = { "echo", "hello", "goodbye", 0 };
+char *cat_args[] = { "cat", "README", 0 };
+int stdout = 1;
+
+// simple file system tests
+
+void
+opentest(void)
+{
+  int fd;
+
+  printf(stdout, "open test\n");
+  fd = open("echo", 0);
+  if(fd < 0){
+    printf(stdout, "open echo failed!\n");
+    exit();
+  }
+  close(fd);
+  fd = open("doesnotexist", 0);
+  if(fd >= 0){
+    printf(stdout, "open doesnotexist succeeded!\n");
+    exit();
+  }
+  printf(stdout, "open test ok\n");
+}
+
+void
+writetest(void)
+{
+  int fd;
+  int i;
+
+  printf(stdout, "small file test\n");
+  fd = open("small", O_CREATE|O_RDWR);
+  if(fd >= 0){
+    printf(stdout, "creat small succeeded; ok\n");
+  } else {
+    printf(stdout, "error: creat small failed!\n");
+    exit();
+  }
+  for(i = 0; i < 100; i++) {
+    if(write(fd, "aaaaaaaaaa", 10) != 10) {
+      printf(stdout, "error: write aa %d new file failed\n", i);
+      exit();
+    }
+    if(write(fd, "bbbbbbbbbb", 10) != 10) {
+      printf(stdout, "error: write bb %d new file failed\n", i);
+      exit();
+    }
+  }
+  printf(stdout, "writes ok\n");
+  close(fd);
+  fd = open("small", O_RDONLY);
+  if(fd >= 0){
+    printf(stdout, "open small succeeded ok\n");
+  } else {
+    printf(stdout, "error: open small failed!\n");
+    exit();
+  }
+  i = read(fd, buf, 2000);
+  if(i == 2000) {
+    printf(stdout, "read succeeded ok\n");
+  } else {
+    printf(stdout, "read failed\n");
+    exit();
+  }
+  close(fd);
+
+  if(unlink("small") < 0) {
+    printf(stdout, "unlink small failed\n");
+    exit();
+  }
+  printf(stdout, "small file test ok\n");
+}
+
+void
+writetest1(void)
+{
+  int i, fd, n;
+
+  printf(stdout, "big files test\n");
+
+  fd = open("big", O_CREATE|O_RDWR);
+  if(fd < 0){
+    printf(stdout, "error: creat big failed!\n");
+    exit();
+  }
+
+  for(i = 0; i < MAXFILE; i++) {
+    ((int*) buf)[0] = i;
+    if(write(fd, buf, 512) != 512) {
+      printf(stdout, "error: write big file failed\n", i);
+      exit();
+    }
+  }
+
+  close(fd);
+
+  fd = open("big", O_RDONLY);
+  if(fd < 0){
+    printf(stdout, "error: open big failed!\n");
+    exit();
+  }
+
+  n = 0;
+  for(;;) {
+    i = read(fd, buf, 512);
+    if(i == 0) {
+      if(n == MAXFILE - 1) {
+        printf(stdout, "read only %d blocks from big", n);
+        exit();
+      }
+      break;
+    } else if(i != 512) {
+      printf(stdout, "read failed %d\n", i);
+      exit();
+    }
+    if(((int*)buf)[0] != n) {
+      printf(stdout, "read content of block %d is %d\n",
+             n, ((int*)buf)[0]);
+      exit();
+    }
+    n++;
+  }
+  close(fd);
+  if(unlink("big") < 0) {
+    printf(stdout, "unlink big failed\n");
+    exit();
+  }
+  printf(stdout, "big files ok\n");
+}
+
+void
+createtest(void)
+{
+  int i, fd;
+
+  printf(stdout, "many creates, followed by unlink test\n");
+
+  name[0] = 'a';
+  name[2] = '\0';
+  for(i = 0; i < 52; i++) {
+    name[1] = '0' + i;
+    fd = open(name, O_CREATE|O_RDWR);
+    close(fd);
+  }
+  name[0] = 'a';
+  name[2] = '\0';
+  for(i = 0; i < 52; i++) {
+    name[1] = '0' + i;
+    unlink(name);
+  }
+  printf(stdout, "many creates, followed by unlink; ok\n");
+}
+
+void dirtest(void)
+{
+  printf(stdout, "mkdir test\n");
+
+  if(mkdir("dir0") < 0) {
+    printf(stdout, "mkdir failed\n");
+    exit();
+  }
+
+  if(chdir("dir0") < 0) {
+    printf(stdout, "chdir dir0 failed\n");
+    exit();
+  }
+
+  if(chdir("..") < 0) {
+    printf(stdout, "chdir .. failed\n");
+    exit();
+  }
+
+  if(unlink("dir0") < 0) {
+    printf(stdout, "unlink dir0 failed\n");
+    exit();
+  }
+  printf(stdout, "mkdir test\n");
+}
+
+void
+exectest(void)
+{
+  printf(stdout, "exec test\n");
+  if(exec("echo", echo_args) < 0) {
+    printf(stdout, "exec echo failed\n");
+    exit();
+  }
+}
 
 // simple fork and pipe read/write
 
@@ -14,7 +206,7 @@ pipe1(void)
   int seq = 0, i, n, cc, total;
 
   if(pipe(fds) != 0){
-    puts("pipe() failed\n");
+    printf(1, "pipe() failed\n");
     exit();
   }
   pid = fork();
@@ -50,10 +242,10 @@ pipe1(void)
     close(fds[0]);
     wait();
   } else {
-    puts("fork() failed\n");
+    printf(1, "fork() failed\n");
     exit();
   }
-  puts("pipe1 ok\n");
+  printf(1, "pipe1 ok\n");
 }
 
 // meant to be run w/ at most two CPUs
@@ -96,7 +288,7 @@ preempt(void)
   wait();
   wait();
   wait();
-  puts("preempt ok\n");
+  printf(1, "preempt ok\n");
 }
 
 // try to find any races between exit and wait
@@ -120,7 +312,7 @@ exitwait(void)
       exit();
     }
   }
-  puts("exitwait ok\n");
+  printf(1, "exitwait ok\n");
 }
 
 void
@@ -142,7 +334,7 @@ mem(void)
     }
     m1 = malloc(1024*20);
     if(m1 == 0) {
-      puts("couldn't allocate mem?!!\n");
+      printf(1, "couldn't allocate mem?!!\n");
       exit();
     }
     free(m1);
@@ -153,16 +345,706 @@ mem(void)
   }
 }
 
+// More file system tests
+
+// two processes write to the same file descriptor
+// is the offset shared? does inode locking work?
+void
+sharedfd()
+{
+  int fd, pid, i, n, nc, np;
+  char buf[10];
+
+  unlink("sharedfd");
+  fd = open("sharedfd", O_CREATE|O_RDWR);
+  if(fd < 0){
+    printf(1, "fstests: cannot open sharedfd for writing");
+    return;
+  }
+  pid = fork();
+  memset(buf, pid==0?'c':'p', sizeof(buf));
+  for(i = 0; i < 100; i++){
+    if(write(fd, buf, sizeof(buf)) != sizeof(buf)){
+      printf(1, "fstests: write sharedfd failed\n");
+      break;
+    }
+  }
+  if(pid == 0)
+    exit();
+  else
+    wait();
+  close(fd);
+  fd = open("sharedfd", 0);
+  if(fd < 0){
+    printf(1, "fstests: cannot open sharedfd for reading\n");
+    return;
+  }
+  nc = np = 0;
+  while((n = read(fd, buf, sizeof(buf))) > 0){
+    for(i = 0; i < sizeof(buf); i++){
+      if(buf[i] == 'c')
+        nc++;
+      if(buf[i] == 'p')
+        np++;
+    }
+  }
+  close(fd);
+  unlink("sharedfd");
+  if(nc == 1000 && np == 1000)
+    printf(1, "sharedfd ok\n");
+  else
+    printf(1, "sharedfd oops %d %d\n", nc, np);
+}
+
+// two processes write two different files at the same
+// time, to test block allocation.
+void
+twofiles()
+{
+  int fd, pid, i, j, n, total;
+  char *fname;
+
+  printf(1, "twofiles test\n");
+
+  unlink("f1");
+  unlink("f2");
+
+  pid = fork();
+  if(pid < 0){
+    printf(1, "fork failed\n");
+    return;
+  }
+
+  fname = pid ? "f1" : "f2";
+  fd = open(fname, O_CREATE | O_RDWR);
+  if(fd < 0){
+    printf(1, "create failed\n");
+    exit();
+  }
+
+  memset(buf, pid?'p':'c', 512);
+  for(i = 0; i < 12; i++){
+    if((n = write(fd, buf, 500)) != 500){
+      printf(1, "write failed %d\n", n);
+      exit();
+    }
+  }
+  close(fd);
+  if(pid)
+    wait();
+  else
+    exit();
+
+  for(i = 0; i < 2; i++){
+    fd = open(i?"f1":"f2", 0);
+    total = 0;
+    while((n = read(fd, buf, sizeof(buf))) > 0){
+      for(j = 0; j < n; j++){
+        if(buf[j] != (i?'p':'c')){
+          printf(1, "wrong char\n");
+          exit();
+        }
+      }
+      total += n;
+    }
+    close(fd);
+    if(total != 12*500){
+      printf(1, "wrong length %d\n", total);
+      exit();
+    }
+  }
+
+  unlink("f1");
+  unlink("f2");
+
+  printf(1, "twofiles ok\n");
+}
+
+// two processes create and delete files in same directory
+void
+createdelete()
+{
+  int pid, i, fd;
+  int n = 20;
+  char name[32];
+
+  printf(1, "createdelete test\n");
+  pid = fork();
+  if(pid < 0){
+    printf(1, "fork failed\n");
+    exit();
+  }
+
+  name[0] = pid ? 'p' : 'c';
+  name[2] = '\0';
+  for(i = 0; i < n; i++){
+    name[1] = '0' + i;
+    fd = open(name, O_CREATE | O_RDWR);
+    if(fd < 0){
+      printf(1, "create failed\n");
+      exit();
+    }
+    close(fd);
+    if(i > 0 && (i % 2 ) == 0){
+      name[1] = '0' + (i / 2);
+      if(unlink(name) < 0){
+        printf(1, "unlink failed\n");
+        exit();
+      }
+    }
+  }
+
+  if(pid==0)
+    exit();
+  //  else
+  //exit();
+
+  for(i = 0; i < n; i++){
+    name[0] = 'p';
+    name[1] = '0' + i;
+    fd = open(name, 0);
+    if((i == 0 || i >= n/2) && fd < 0){
+      printf(1, "oops createdelete %s didn't exist\n", name);
+      exit();
+    } else if((i >= 1 && i < n/2) && fd >= 0){
+      printf(1, "oops createdelete %s did exist\n", name);
+      exit();
+    }
+    if(fd >= 0)
+      close(fd);
+
+    name[0] = 'c';
+    name[1] = '0' + i;
+    fd = open(name, 0);
+    if((i == 0 || i >= n/2) && fd < 0){
+      printf(1, "oops createdelete %s didn't exist\n", name);
+      exit();
+    } else if((i >= 1 && i < n/2) && fd >= 0){
+      printf(1, "oops createdelete %s did exist\n", name);
+      exit();
+    }
+    if(fd >= 0)
+      close(fd);
+  }
+
+  for(i = 0; i < n; i++){
+    name[0] = 'p';
+    name[1] = '0' + i;
+    unlink(name);
+    name[0] = 'c';
+    unlink(name);
+  }
+
+  printf(1, "createdelete ok\n");
+}
+
+// can I unlink a file and still read it?
+void
+unlinkread()
+{
+  int fd, fd1;
+
+  printf(1, "unlinkread test\n");
+  fd = open("unlinkread", O_CREATE | O_RDWR);
+  if(fd < 0){
+    printf(1, "create unlinkread failed\n");
+    exit();
+  }
+  write(fd, "hello", 5);
+  close(fd);
+
+  fd = open("unlinkread", O_RDWR);
+  if(fd < 0){
+    printf(1, "open unlinkread failed\n");
+    exit();
+  }
+  if(unlink("unlinkread") != 0){
+    printf(1, "unlink unlinkread failed\n");
+    exit();
+  }
+
+  fd1 = open("unlinkread", O_CREATE | O_RDWR);
+  write(fd1, "yyy", 3);
+  close(fd1);
+
+  if(read(fd, buf, sizeof(buf)) != 5){
+    printf(1, "unlinkread read failed");
+    exit();
+  }
+  if(buf[0] != 'h'){
+    printf(1, "unlinkread wrong data\n");
+    exit();
+  }
+  if(write(fd, buf, 10) != 10){
+    printf(1, "unlinkread write failed\n");
+    exit();
+  }
+  close(fd);
+  unlink("unlinkread");
+  printf(1, "unlinkread ok\n");
+}
+
+void
+linktest()
+{
+  int fd;
+
+  printf(1, "linktest\n");
+
+  unlink("lf1");
+  unlink("lf2");
+
+  fd = open("lf1", O_CREATE|O_RDWR);
+  if(fd < 0){
+    printf(1, "create lf1 failed\n");
+    exit();
+  }
+  if(write(fd, "hello", 5) != 5){
+    printf(1, "write lf1 failed\n");
+    exit();
+  }
+  close(fd);
+
+  if(link("lf1", "lf2") < 0){
+    printf(1, "link lf1 lf2 failed\n");
+    exit();
+  }
+  unlink("lf1");
+
+  if(open("lf1", 0) >= 0){
+    printf(1, "unlinked lf1 but it is still there!\n");
+    exit();
+  }
+
+  fd = open("lf2", 0);
+  if(fd < 0){
+    printf(1, "open lf2 failed\n");
+    exit();
+  }
+  if(read(fd, buf, sizeof(buf)) != 5){
+    printf(1, "read lf2 failed\n");
+    exit();
+  }
+  close(fd);
+
+  if(link("lf2", "lf2") >= 0){
+    printf(1, "link lf2 lf2 succeeded! oops\n");
+    exit();
+  }
+
+  unlink("lf2");
+  if(link("lf2", "lf1") >= 0){
+    printf(1, "link non-existant succeeded! oops\n");
+    exit();
+  }
+
+  if(link(".", "lf1") >= 0){
+    printf(1, "link . lf1 succeeded! oops\n");
+    exit();
+  }
+
+  printf(1, "linktest ok\n");
+}
+
+// test concurrent create of the same file
+void
+concreate()
+{
+  char file[3];
+  int i, pid, n, fd;
+  char fa[40];
+  struct {
+    unsigned short inum;
+    char name[14];
+  } de;
+
+  printf(1, "concreate test\n");
+  file[0] = 'C';
+  file[2] = '\0';
+  for(i = 0; i < 40; i++){
+    file[1] = '0' + i;
+    unlink(file);
+    pid = fork();
+    if(pid && (i % 3) == 1){
+      link("C0", file);
+    } else if(pid == 0 && (i % 5) == 1){
+      link("C0", file);
+    } else {
+      fd = open(file, O_CREATE | O_RDWR);
+      if(fd < 0){
+        printf(1, "concreate create %s failed\n", file);
+        exit();
+      }
+      close(fd);
+    }
+    if(pid == 0)
+      exit();
+    else
+      wait();
+  }
+
+  memset(fa, 0, sizeof(fa));
+  fd = open(".", 0);
+  n = 0;
+  while(read(fd, &de, sizeof(de)) > 0){
+    if(de.inum == 0)
+      continue;
+    if(de.name[0] == 'C' && de.name[2] == '\0'){
+      i = de.name[1] - '0';
+      if(i < 0 || i >= sizeof(fa)){
+        printf(1, "concreate weird file %s\n", de.name);
+        exit();
+      }
+      if(fa[i]){
+        printf(1, "concreate duplicate file %s\n", de.name);
+        exit();
+      }
+      fa[i] = 1;
+      n++;
+    }
+  }
+  close(fd);
+
+  if(n != 40){
+    printf(1, "concreate not enough files in directory listing\n");
+    exit();
+  }
+
+  for(i = 0; i < 40; i++){
+    file[1] = '0' + i;
+    unlink(file);
+  }
+
+  printf(1, "concreate ok\n");
+}
+
+// directory that uses indirect blocks
+void
+bigdir()
+{
+  int i, fd;
+  char name[10];
+
+  printf(1, "bigdir test\n");
+  unlink("bd");
+
+  fd = open("bd", O_CREATE);
+  if(fd < 0){
+    printf(1, "bigdir create failed\n");
+    exit();
+  }
+  close(fd);
+
+  for(i = 0; i < 500; i++){
+    name[0] = 'x';
+    name[1] = '0' + (i / 64);
+    name[2] = '0' + (i % 64);
+    name[3] = '\0';
+    if(link("bd", name) != 0){
+      printf(1, "bigdir link failed\n");
+      exit();
+    }
+  }
+
+  unlink("bd");
+  for(i = 0; i < 500; i++){
+    name[0] = 'x';
+    name[1] = '0' + (i / 64);
+    name[2] = '0' + (i % 64);
+    name[3] = '\0';
+    if(unlink(name) != 0){
+      printf(1, "bigdir unlink failed");
+      exit();
+    }
+  }
+
+  printf(1, "bigdir ok\n");
+}
+
+void
+subdir()
+{
+  int fd, cc;
+
+  printf(1, "subdir test\n");
+
+  unlink("ff");
+  if(mkdir("dd") != 0){
+    printf(1, "subdir mkdir dd failed\n");
+    exit();
+  }
+
+  fd = open("dd/ff", O_CREATE | O_RDWR);
+  if(fd < 0){
+    printf(1, "create dd/ff failed\n");
+    exit();
+  }
+  write(fd, "ff", 2);
+  close(fd);
+
+  if(mkdir("/dd/dd") != 0){
+    printf(1, "subdir mkdir dd/dd failed\n");
+    exit();
+  }
+
+  fd = open("dd/dd/ff", O_CREATE | O_RDWR);
+  if(fd < 0){
+    printf(1, "create dd/dd/ff failed\n");
+    exit();
+  }
+  write(fd, "FF", 2);
+  close(fd);
+
+  fd = open("dd/dd/../ff", 0);
+  if(fd < 0){
+    printf(1, "open dd/dd/../ff failed\n");
+    exit();
+  }
+  cc = read(fd, buf, sizeof(buf));
+  if(cc != 2 || buf[0] != 'f'){
+    printf(1, "dd/dd/../ff wrong content\n");
+    exit();
+  }
+  close(fd);
+
+  if(link("dd/dd/ff", "dd/dd/ffff") != 0){
+    printf(1, "link dd/dd/ff dd/dd/ffff failed\n");
+    exit();
+  }
+
+  if(unlink("dd/dd/ff") != 0){
+    printf(1, "unlink dd/dd/ff failed\n");
+    exit();
+  }
+
+  if(chdir("dd") != 0){
+    printf(1, "chdir dd failed\n");
+    exit();
+  }
+  if(chdir("dd/../../dd") != 0){
+    printf(1, "chdir dd/../../dd failed\n");
+    exit();
+  }
+  if(chdir("./..") != 0){
+    printf(1, "chdir ./.. failed\n");
+    exit();
+  }
+
+  fd = open("dd/dd/ffff", 0);
+  if(fd < 0){
+    printf(1, "open dd/dd/ffff failed\n");
+    exit();
+  }
+  if(read(fd, buf, sizeof(buf)) != 2){
+    printf(1, "read dd/dd/ffff wrong len\n");
+    exit();
+  }
+  close(fd);
+
+  if(open("dd/dd/ff", 0) >= 0){
+    printf(1, "open dd/dd/ff succeeded!\n");
+    exit();
+  }
+
+  if(open("dd/ff/ff", O_CREATE|O_RDWR) >= 0){
+    printf(1, "create dd/ff/ff succeeded!\n");
+    exit();
+  }
+  if(open("dd/xx/ff", O_CREATE|O_RDWR) >= 0){
+    printf(1, "create dd/xx/ff succeeded!\n");
+    exit();
+  }
+  if(open("dd", O_CREATE) >= 0){
+    printf(1, "create dd succeeded!\n");
+    exit();
+  }
+  if(open("dd", O_RDWR) >= 0){
+    printf(1, "open dd rdwr succeeded!\n");
+    exit();
+  }
+  if(open("dd", O_WRONLY) >= 0){
+    printf(1, "open dd wronly succeeded!\n");
+    exit();
+  }
+  if(link("dd/ff/ff", "dd/dd/xx") == 0){
+    printf(1, "link dd/ff/ff dd/dd/xx succeeded!\n");
+    exit();
+  }
+  if(link("dd/xx/ff", "dd/dd/xx") == 0){
+    printf(1, "link dd/xx/ff dd/dd/xx succeeded!\n");
+    exit();
+  }
+  if(link("dd/ff", "dd/dd/ffff") == 0){
+    printf(1, "link dd/ff dd/dd/ffff succeeded!\n");
+    exit();
+  }
+  if(mkdir("dd/ff/ff") == 0){
+    printf(1, "mkdir dd/ff/ff succeeded!\n");
+    exit();
+  }
+  if(mkdir("dd/xx/ff") == 0){
+    printf(1, "mkdir dd/xx/ff succeeded!\n");
+    exit();
+  }
+  if(mkdir("dd/dd/ffff") == 0){
+    printf(1, "mkdir dd/dd/ffff succeeded!\n");
+    exit();
+  }
+  if(unlink("dd/xx/ff") == 0){
+    printf(1, "unlink dd/xx/ff succeeded!\n");
+    exit();
+  }
+  if(unlink("dd/ff/ff") == 0){
+    printf(1, "unlink dd/ff/ff succeeded!\n");
+    exit();
+  }
+  if(chdir("dd/ff") == 0){
+    printf(1, "chdir dd/ff succeeded!\n");
+    exit();
+  }
+  if(chdir("dd/xx") == 0){
+    printf(1, "chdir dd/xx succeeded!\n");
+    exit();
+  }
+
+  if(unlink("dd/dd/ffff") != 0){
+    printf(1, "unlink dd/dd/ff failed\n");
+    exit();
+  }
+  if(unlink("dd/ff") != 0){
+    printf(1, "unlink dd/ff failed\n");
+    exit();
+  }
+
+  // unlink dd/dd
+  // unlink dd
+
+  printf(1, "subdir ok\n");
+}
+
+void
+bigfile()
+{
+  int fd, i, total, cc;
+
+  printf(1, "bigfile test\n");
+
+  unlink("bigfile");
+  fd = open("bigfile", O_CREATE | O_RDWR);
+  if(fd < 0){
+    printf(1, "cannot create bigfile");
+    exit();
+  }
+  for(i = 0; i < 20; i++){
+    memset(buf, i, 600);
+    if(write(fd, buf, 600) != 600){
+      printf(1, "write bigfile failed\n");
+      exit();
+    }
+  }
+  close(fd);
+
+  fd = open("bigfile", 0);
+  if(fd < 0){
+    printf(1, "cannot open bigfile\n");
+    exit();
+  }
+  total = 0;
+  for(i = 0; ; i++){
+    cc = read(fd, buf, 300);
+    if(cc < 0){
+      printf(1, "read bigfile failed\n");
+      exit();
+    }
+    if(cc == 0)
+      break;
+    if(cc != 300){
+      printf(1, "short read bigfile\n");
+      exit();
+    }
+    if(buf[0] != i/2 || buf[299] != i/2){
+      printf(1, "read bigfile wrong data\n");
+      exit();
+    }
+    total += cc;
+  }
+  close(fd);
+  if(total != 20*600){
+    printf(1, "read bigfile wrong total\n");
+    exit();
+  }
+  unlink("bigfile");
+
+  printf(1, "bigfile test ok\n");
+}
+
+void
+fourteen()
+{
+  int fd;
+
+  printf(1, "fourteen test\n");
+
+  if(mkdir("12345678901234") != 0){
+    printf(1, "mkdir 12345678901234 failed\n");
+    exit();
+  }
+  if(mkdir("12345678901234/123456789012345") != 0){
+    printf(1, "mkdir 12345678901234/123456789012345 failed\n");
+    exit();
+  }
+  fd = open("123456789012345/123456789012345/123456789012345", O_CREATE);
+  if(fd < 0){
+    printf(1, "create 123456789012345/123456789012345/123456789012345 failed\n");
+    exit();
+  }
+  close(fd);
+  fd = open("12345678901234/12345678901234/12345678901234", 0);
+  if(fd < 0){
+    printf(1, "open 12345678901234/12345678901234/12345678901234 failed\n");
+    exit();
+  }
+  close(fd);
+
+  if(mkdir("12345678901234/12345678901234") == 0){
+    printf(1, "mkdir 12345678901234/12345678901234 succeeded!\n");
+    exit();
+  }
+  if(mkdir("123456789012345/12345678901234") == 0){
+    printf(1, "mkdir 12345678901234/123456789012345 succeeded!\n");
+    exit();
+  }
+
+  printf(1, "fourteen ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
-  puts("usertests starting\n");
+  printf(1, "usertests starting\n");
+
+  opentest();
+  writetest();
+  writetest1();
+  createtest();
 
   mem();
   pipe1();
   preempt();
   exitwait();
 
-  puts("usertests finished\n");
+  fourteen();
+  bigfile();
+  subdir();
+  bigdir(); // slow
+  concreate();
+  linktest();
+  unlinkread();
+  createdelete();
+  twofiles();
+  sharedfd();
+
+  exectest();
+
   exit();
 }

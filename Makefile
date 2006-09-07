@@ -84,17 +84,9 @@ vectors.S : vectors.pl
 
 ULIB = ulib.o usys.o printf.o umalloc.o
 
-user1 : user1.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o user1 user1.o $(ULIB)
-	$(OBJDUMP) -S user1 > user1.asm
-
 usertests : usertests.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o usertests usertests.o $(ULIB)
 	$(OBJDUMP) -S usertests > usertests.asm
-
-fstests : fstests.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o fstests fstests.o $(ULIB)
-	$(OBJDUMP) -S fstests > fstests.asm
 
 _echo : echo.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _echo echo.o $(ULIB)
@@ -103,10 +95,6 @@ _echo : echo.o $(ULIB)
 _cat : cat.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _cat cat.o $(ULIB)
 	$(OBJDUMP) -S _cat > cat.asm
-
-userfs : userfs.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o userfs userfs.o $(ULIB)
-	$(OBJDUMP) -S userfs > userfs.asm
 
 _init : init.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _init init.o $(ULIB)
@@ -131,8 +119,8 @@ _rm : rm.o $(ULIB)
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs userfs usertests _echo _cat README _init _sh _ls _mkdir _rm fstests
-	./mkfs fs.img userfs usertests _echo _cat README _init _sh _ls _mkdir _rm fstests
+fs.img : mkfs usertests _echo _cat README _init _sh _ls _mkdir _rm fstests
+	./mkfs fs.img usertests _echo _cat README _init _sh _ls _mkdir _rm fstests
 
 -include *.d
 
@@ -140,5 +128,5 @@ clean :
 	/bin/rm -f rm
 	rm -f *.ps *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm vectors.S parport.out \
-	bootblock kernel xv6.img user1 userfs usertests \
-	fs.img mkfs echo init fstests
+	bootblock kernel xv6.img usertests \
+	fs.img mkfs echo init
