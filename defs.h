@@ -84,6 +84,7 @@ void initlock(struct spinlock*, char*);
 void acquire(struct spinlock*);
 void release(struct spinlock*);
 int holding(struct spinlock*);
+void getcallerpcs(void*, uint*);
 
 // main.c
 void load_icode(struct proc*, uchar*, uint);
