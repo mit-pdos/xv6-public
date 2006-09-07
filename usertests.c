@@ -6,7 +6,7 @@
 
 char buf[2048];
 char name[3];
-char *echo_args[] = { "echo", "hello", "goodbye", 0 };
+char *echo_args[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
 char *cat_args[] = { "cat", "README", 0 };
 int stdout = 1;
 
@@ -363,7 +363,7 @@ sharedfd()
   }
   pid = fork();
   memset(buf, pid==0?'c':'p', sizeof(buf));
-  for(i = 0; i < 100000; i++){
+  for(i = 0; i < 1000; i++){
     if(write(fd, buf, sizeof(buf)) != sizeof(buf)){
       printf(1, "fstests: write sharedfd failed\n");
       break;
@@ -390,7 +390,7 @@ sharedfd()
   }
   close(fd);
   unlink("sharedfd");
-  if(nc == 1000 && np == 1000)
+  if(nc == 10000 && np == 10000)
     printf(1, "sharedfd ok\n");
   else
     printf(1, "sharedfd oops %d %d\n", nc, np);
@@ -1022,6 +1022,12 @@ int
 main(int argc, char *argv[])
 {
   printf(1, "usertests starting\n");
+  
+  if(open("usertests.ran", 0) >= 0){
+    printf(1, "already ran user tests -- rebuild fs.img\n");
+    exit();
+  }
+  close(open("usertests.ran", O_CREATE));
 
   opentest();
   writetest();
