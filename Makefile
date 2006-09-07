@@ -24,7 +24,7 @@ OBJS = \
 	8253pit.o\
 
 # Cross-compiling (e.g., on Mac OS X)
-# TOOLPREFIX = i386-jos-elf-
+#TOOLPREFIX = i386-jos-elf-
 
 # Using native tools (e.g., on X86 Linux)
 TOOLPREFIX = 
@@ -117,10 +117,10 @@ PRINT =	\
 	runoff.list \
 	README\
 	types.h param.h defs.h x86.h asm.h elf.h mmu.h spinlock.h\
-	bootasm.S bootother.S main.c _init.c spinlock.c\
+	bootasm.S bootother.S main.c init.c spinlock.c\
 	proc.h proc.c setjmp.S kalloc.c\
 	syscall.h trapasm.S traps.h trap.c vectors.pl syscall.c sysproc.c\
-	buf.h dev.h fcntl.h stat.h file.h fs.h fsvar.h fd.c fs.c bio.c ide.c sysfile.c\
+	buf.h dev.h fcntl.h stat.h file.h fs.h fsvar.h file.c fs.c bio.c ide.c sysfile.c\
 	pipe.c\
 	mp.h ioapic.h mp.c lapic.c ioapic.c picirq.c\
 	console.c\
