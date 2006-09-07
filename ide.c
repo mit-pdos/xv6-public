@@ -17,6 +17,12 @@
 #define IDE_CMD_READ  0x20
 #define IDE_CMD_WRITE 0x30
 
+// IDE request queue.
+// The next request will be stored in request[head],
+// and the request currently being served by the disk
+// is request[tail].
+// Must hold ide_lock while manipulating queue.
+
 struct ide_request {
   int diskno;
   uint secno;
@@ -28,6 +34,7 @@ struct ide_request {
 struct ide_request request[NREQUEST];
 int head, tail;
 struct spinlock ide_lock;
+
 int disk_1_present;
 int disk_channel;
 

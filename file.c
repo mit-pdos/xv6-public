@@ -41,8 +41,7 @@ filealloc(void)
   return 0;
 }
 
-// Write to file descriptor;
-// addr is a kernel address, pointing into some process's p->mem.
+// Write to file f.  Addr is kernel address.
 int
 filewrite(struct file *fd, char *addr, int n)
 {
@@ -64,7 +63,7 @@ filewrite(struct file *fd, char *addr, int n)
   }
 }
 
-// Read from file descriptor.
+// Read from file f.  Addr is kernel address.
 int
 fileread(struct file *fd, char *addr, int n)
 {
@@ -85,7 +84,7 @@ fileread(struct file *fd, char *addr, int n)
   }
 }
 
-// Close file descriptor.
+// Close file f.  (Decrement ref count, close when reaches 0.)
 void
 fileclose(struct file *fd)
 {
@@ -113,7 +112,7 @@ fileclose(struct file *fd)
   }
 }
 
-// Get metadata about file descriptor.
+// Get metadata about file f.
 int
 filestat(struct file *fd, struct stat *st)
 {
@@ -126,7 +125,7 @@ filestat(struct file *fd, struct stat *st)
     return -1;
 }
 
-// Increment file descriptor reference count.
+// Increment ref count for file f.
 void
 fileincref(struct file *fd)
 {

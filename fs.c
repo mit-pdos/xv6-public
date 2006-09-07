@@ -11,8 +11,24 @@
 #include "fsvar.h"
 #include "dev.h"
 
-// these are inodes currently in use
-// an entry is free if count == 0
+// Inode table.  The inode table is an in-memory cache of the 
+// on-disk inode structures.  If an inode in the table has a non-zero
+// reference count, then some open files refer to it and it must stay
+// in memory.  If an inode has a zero reference count, it is only in
+// memory as a cache in hopes of being used again (avoiding a disk read).
+// Any inode with reference count zero can be evicted from the table.
+// 
+// In addition to having a reference count, inodes can be marked busy
+// (just like bufs), meaning that some code has logically locked the 
+// inode, and others are not allowed to look at it. 
+// This locking can last for a long
+// time (for example, if the inode is busy during a disk access),
+// so we don't use spin locks.  Instead, if a process wants to use
+// a particular inode, it must sleep(ip) to wait for it to be not busy.
+// See iget below.
+//
+// XXX Inodes with dev == 0 exist only in memory.  They have no on-disk
+// representation.  This functionality is used to implement pipes.
 struct inode inode[NINODE];
 struct spinlock inode_table_lock;
 
@@ -61,6 +77,7 @@ balloc(uint dev)
   return b;
 }
 
+// Free a disk block.
 static void
 bfree(int dev, uint b)
 {
@@ -108,6 +125,10 @@ iget(uint dev, uint inum)
     if(ip->count > 0 && ip->dev == dev && ip->inum == inum){
       if(ip->busy){
         sleep(ip, &inode_table_lock);
+        // Since we droped inode_table_lock, ip might have been reused
+        // for some other inode entirely.  Must start the scan over,
+        // and hopefully this time we will find the inode we want 
+        // and it will not be busy.
         goto loop;
       }
       ip->count++;
@@ -142,6 +163,8 @@ iget(uint dev, uint inum)
   return nip;
 }
 
+// Copy ip->d, which has changed, to disk.
+// Caller must have locked ip.
 void
 iupdate(struct inode *ip)
 {
@@ -160,6 +183,8 @@ iupdate(struct inode *ip)
   brelse(bp);
 }
 
+// Allocate a new inode with the given type
+// from the file system on device dev.
 struct inode*
 ialloc(uint dev, short type)
 {
@@ -195,6 +220,7 @@ ialloc(uint dev, short type)
   return ip;
 }
 
+// Free the given inode from its file system.
 static void
 ifree(struct inode *ip)
 {
@@ -202,6 +228,11 @@ ifree(struct inode *ip)
   iupdate(ip);
 }
 
+// Lock the given inode (wait for it to be not busy,
+// and then ip->busy).  
+// Caller must already hold a reference to ip.
+// Otherwise, if all the references to ip go away,
+// it might be reused underfoot.
 void
 ilock(struct inode *ip)
 {
@@ -217,8 +248,9 @@ ilock(struct inode *ip)
   release(&inode_table_lock);
 }
 
-// caller is holding onto a reference to this inode, but no
-// longer needs to examine or change it, so clear ip->busy.
+// Caller holds reference to ip and has locked it.
+// Caller no longer needs to examine / change it.
+// Unlock it, but keep the reference.
 void
 iunlock(struct inode *ip)
 {
@@ -233,6 +265,7 @@ iunlock(struct inode *ip)
   release(&inode_table_lock);
 }
 
+// Return the disk block address of the nth block in inode ip.
 uint
 bmap(struct inode *ip, uint bn)
 {
@@ -259,6 +292,7 @@ bmap(struct inode *ip, uint bn)
   return x;
 }
 
+// Truncate the inode ip, discarding all its data blocks.
 void
 itrunc(struct inode *ip)
 {
@@ -286,8 +320,9 @@ itrunc(struct inode *ip)
   iupdate(ip);
 }
 
-// caller is releasing a reference to this inode.
-// you must have the inode lock.
+// Caller holds reference to ip and has locked it,
+// possibly editing it.
+// Release lock and drop the reference.
 void
 iput(struct inode *ip)
 {
@@ -308,6 +343,8 @@ iput(struct inode *ip)
   release(&inode_table_lock);
 }
 
+// Caller holds reference to ip but not lock.
+// Drop reference.
 void
 idecref(struct inode *ip)
 {
@@ -315,6 +352,7 @@ idecref(struct inode *ip)
   iput(ip);
 }
 
+// Increment reference count for ip.
 void
 iincref(struct inode *ip)
 {
@@ -323,6 +361,8 @@ iincref(struct inode *ip)
   iunlock(ip);
 }
 
+// Copy stat information from inode.
+// XXX Assumes inode is from disk file system.
 void
 stati(struct inode *ip, struct stat *st)
 {
@@ -335,6 +375,8 @@ stati(struct inode *ip, struct stat *st)
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
+// Read data from inode.
+// XXX Assumes inode is from disk file system.
 int
 readi(struct inode *ip, char *dst, uint off, uint n)
 {
@@ -361,6 +403,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   return target - n;
 }
 
+// Allocate the nth block in inode ip if necessary.
 static int
 newblock(struct inode *ip, uint lbn)
 {
@@ -396,6 +439,8 @@ newblock(struct inode *ip, uint lbn)
   return 0;
 }
 
+// Write data to inode.
+// XXX Assumes inode is from disk file system.
 int
 writei(struct inode *ip, char *addr, uint off, uint n)
 {
@@ -551,6 +596,8 @@ namei(char *path, int mode, uint *ret_off,
   }
 }
 
+// Write a new directory entry (name, ino) into the directory dp.
+// Caller must have locked dp.
 void
 wdir(struct inode *dp, char *name, uint ino)
 {
@@ -575,6 +622,8 @@ wdir(struct inode *dp, char *name, uint ino)
     panic("wdir write");
 }
 
+// Create the path cp and return its locked inode structure.
+// If cp already exists, return 0.
 struct inode*
 mknod(char *cp, short type, short major, short minor)
 {
@@ -591,6 +640,9 @@ mknod(char *cp, short type, short major, short minor)
   return ip;
 }
 
+// Create a new inode named name inside dp
+// and return its locked inode structure.
+// If name already exists, return 0.
 struct inode*
 mknod1(struct inode *dp, char *name, short type, short major, short minor)
 {
@@ -611,6 +663,7 @@ mknod1(struct inode *dp, char *name, short type, short major, short minor)
   return ip;
 }
 
+// Unlink the inode named cp.
 int
 unlink(char *cp)
 {
@@ -649,6 +702,7 @@ unlink(char *cp)
   return 0;
 }
 
+// Create the path new as a link to the same inode as old.
 int
 link(char *name1, char *name2)
 {
