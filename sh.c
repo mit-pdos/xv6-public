@@ -16,27 +16,26 @@ struct ionode {
   int token;
   char *s;
 };
-struct ionode iolist[MAXNODE];
-int nextio;
 
 struct cmd {
   char *argv[MAXARGS];
   char argv0buf[BUFSIZ];
   int argc;
   int token;
+  struct ionode iolist[MAXNODE];
+  struct ionode *io;
 };
 struct cmd cmdlist[MAXCMD];
-int nextcmd;
+struct cmd *cmd;
 
 char buf[BUFSIZ];
 int debug = 0;
 
 int parse(char *s);
 void runcmd(void);
-int ioredirection(void);
+int ioredirection(struct ionode *iolist, int nio);
 int gettoken(char *s, char **token);
 int _gettoken(char *s, char **p1, char **p2);
-void addio(int token, char *s);
 
 int
 main(void)
@@ -59,21 +58,21 @@ parse(char *s)
 
   gettoken(s, 0);
 
-  nextio = 0;
-  nextcmd = 0;
+  cmd = &cmdlist[0];;
   for(i = 0; i < MAXCMD; i++) {
     cmdlist[i].argc = 0;
     cmdlist[i].token = 0;
+    cmdlist[i].io = cmdlist[i].iolist;
   }
   while(1) {
     switch((c = gettoken(0, &t))) {
 
     case 'w':   // Add an argument
-      if(cmdlist[nextcmd].argc >= MAXARGS) {
+      if(cmd->argc >= MAXARGS) {
         printf(2, "too many arguments\n");
         return -1;
       }
-      cmdlist[nextcmd].argv[cmdlist[nextcmd].argc++] = t;
+      cmd->argv[cmd->argc++] = t;
       break;
 
     case '<':   // Input redirection
@@ -82,7 +81,9 @@ parse(char *s)
         printf(2, "syntax error: < not followed by word\n");
         return -1;
       }
-      addio('<', t);
+      cmd->io->token = '<';
+      cmd->io->s = t;
+      cmd->io++;
       break;
 
     case '>':   // Output redirection
@@ -91,13 +92,15 @@ parse(char *s)
         printf(2, "syntax error: > not followed by word\n");
         return -1;
       }
-      addio('>', t);
+      cmd->io->token = '>';
+      cmd->io->s = t;
+      cmd->io++;
       break;
 
     case ';':  // command sequence
     case '|':  // pipe
-      cmdlist[nextcmd].token = c;
-      nextcmd++;
+      cmd->token = c;
+      cmd++;
       break;
 
     case 0:             // String is complete
@@ -115,8 +118,10 @@ parse(char *s)
 void
 runcmd(void)
 {
-  int c, i, r, pid, tfd;
+  int i, r, pid, tfd;
   int fdarray[2];
+  struct cmd *c;
+  struct ionode *io;
 
   // Return immediately if command line was empty.
   if(cmdlist[0].argc == 0) {
@@ -125,43 +130,43 @@ runcmd(void)
     return;
   }
 
-  for(c = 0; c <= nextcmd; c++) {
+  for(c = &cmdlist[0]; c <= cmd; c++) {
     // Clean up command line.
     // Read all commands from the filesystem: add an initial '/' to
     // the command name.
     // This essentially acts like 'PATH=/'.
-    if(cmdlist[c].argv[0][0] != '/') {
-      cmdlist[c].argv0buf[0] = '/';
-      strcpy(cmdlist[c].argv0buf + 1, cmdlist[c].argv[0]);
-      cmdlist[c].argv[0] = cmdlist[c].argv0buf;
+    if(c->argv[0][0] != '/') {
+      c->argv0buf[0] = '/';
+      strcpy(c->argv0buf + 1, c->argv[0]);
+      c->argv[0] = c->argv0buf;
     }
-    cmdlist[c].argv[cmdlist[c].argc] = 0;
+    c->argv[c->argc] = 0;
 
     // Print the command.
     if(debug) {
       printf(2, "[%d] SPAWN:", getpid());
-      for(i = 0; cmdlist[c].argv[i]; i++)
-        printf(2, " %s", cmdlist[c].argv[i]);
-      for(i = 0; i < nextio; i++) {
-        printf(2, "%c %s", iolist[i].token, iolist[i].s);
+      for(i = 0; c->argv[i]; i++)
+        printf(2, " %s", c->argv[i]);
+      for(io = c->iolist; io <= c->io; io++) {
+        printf(2, "%c %s", io->token, io->s);
       }
       printf(2, "\n");
     }
 
-    if(strcmp(cmdlist[c].argv[0], "/cd") == 0) {
+    if(strcmp(c->argv[0], "/cd") == 0) {
       if(debug)
-        printf (2, "/cd %s is build in\n", cmdlist[c].argv[1]);
-      chdir(cmdlist[c].argv[1]);
+        printf (2, "/cd %s is build in\n", c->argv[1]);
+      chdir(c->argv[1]);
       return;
     }
 
-    if(cmdlist[c].token == '|')
+    if(c->token == '|')
       if(pipe(fdarray) < 0)
         printf(2, "cmd %d pipe failed\n", c);
 
     pid = fork();
     if(pid == 0) {
-      if(cmdlist[c].token == '|') {
+      if(c->token == '|') {
         if(close(1) < 0)
           printf(2, "close 1 failed\n");
         if((tfd = dup(fdarray[1])) < 0)
@@ -171,7 +176,7 @@ runcmd(void)
         if(close(fdarray[1]) < 0)
           printf(2, "close fdarray[1] failed\n");
       }
-      if(c > 0 && cmdlist[c-1].token == '|') {
+      if(c > cmdlist && (c-1)->token == '|') {
         if(close(0) < 0)
           printf(2, "close 0 failed\n");
         if((tfd = dup(fdarray[0])) < 0)
@@ -181,10 +186,10 @@ runcmd(void)
         if(close(fdarray[1]) < 0)
           printf(2, "close fdarray[1] failed\n");
       }
-      if(ioredirection() < 0)
+      if(ioredirection(c->iolist, c->io - c->iolist) < 0)
         exit();
-      if((r = exec(cmdlist[c].argv0buf, (char**) cmdlist[c].argv)) < 0) {
-        printf(2, "exec %s: %d\n", cmdlist[c].argv[0], r);
+      if((r = exec(c->argv0buf, (char**) c->argv)) < 0) {
+        printf(2, "exec %s: %d\n", c->argv[0], r);
         exit();
       }
     } else if(pid > 0) {
@@ -192,11 +197,11 @@ runcmd(void)
       if(debug)
         printf(2, "[%d] FORKED child %d\n", getpid(), pid);
 
-      if(c > 0 && cmdlist[c-1].token == '|') {
+      if(c > cmdlist && (c-1)->token == '|') {
         close(fdarray[0]);
         close(fdarray[1]);
       }
-      if(cmdlist[c].token != '|') {
+      if(c->token != '|') {
         if(debug)
           printf(2, "[%d] WAIT for children\n", getpid());
         do {
@@ -212,50 +217,37 @@ runcmd(void)
 }
 
 int
-ioredirection(void)
+ioredirection(struct ionode *iolist, int nio)
 {
-  int i, fd;
+  int fd;
+  struct ionode *io;
 
-  for(i = 0; i < nextio; i++) {
-    switch(iolist[i].token) {
+  for(io = iolist; io < &iolist[nio]; io++) {
+    switch(io->token) {
     case '<':
       if(close(0) < 0)
         printf(2, "close 0 failed\n");
-      if((fd = open(iolist[i].s, O_RDONLY)) < 0) {
-        printf(2, "failed to open %s for read: %d", iolist[i].s, fd);
+      if((fd = open(io->s, O_RDONLY)) < 0) {
+        printf(2, "failed to open %s for read: %d", io->s, fd);
         return -1;
       }
       if(debug)
-        printf(2, "redirect 0 from %s\n", iolist[i].s);
+        printf(2, "redirect 0 from %s\n", io->s);
       break;
     case '>':
       if(close(1) < 0)
         printf(2, "close 1 failed\n");
-      if((fd = open(iolist[i].s, O_WRONLY|O_CREATE)) < 0) {
-        printf(2, "failed to open %s for write: %d", iolist[i].s, fd);
+      if((fd = open(io->s, O_WRONLY|O_CREATE)) < 0) {
+        printf(2, "failed to open %s for write: %d", io->s, fd);
         exit();
       }
       if(debug)
-        printf(2, "redirect 1 to %s\n", iolist[i].s);
+        printf(2, "redirect 1 to %s\n", io->s);
       break;
     }
   }
   return 0;
 }
-
-void
-addio(int token, char *s)
-{
-  if(nextio >= MAXNODE) {
-    printf(2, "addio: ran out of nodes\n");
-    return;
-  }
-
-  iolist[nextio].token = token;
-  iolist[nextio].s = s;
-  nextio++;
-}
-
 
 // gettoken(s, 0) prepares gettoken for subsequent calls and returns 0.
 // gettoken(0, token) parses a shell token from the previously set string,
