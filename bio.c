@@ -80,6 +80,7 @@ bget(uint dev, uint sector)
         sleep(buf, &buf_table_lock);
       } else {
         b->flags |= B_BUSY;
+        // b->flags &= ~B_VALID; // Force reread from disk
         release(&buf_table_lock);
         return b;
       }
