@@ -63,7 +63,7 @@ binit(void)
 // If not found, allocate fresh block.
 // In either case, return locked buffer.
 static struct buf*
-getblk(uint dev, uint sector)
+bget(uint dev, uint sector)
 {
   struct buf *b;
 
