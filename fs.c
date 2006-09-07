@@ -122,7 +122,7 @@ iget(uint dev, uint inum)
  loop:
   nip = 0;
   for(ip = &inode[0]; ip < &inode[NINODE]; ip++){
-    if(ip->count > 0 && ip->dev == dev && ip->inum == inum){
+    if(ip->ref > 0 && ip->dev == dev && ip->inum == inum){
       if(ip->busy){
         sleep(ip, &inode_table_lock);
         // Since we droped inode_table_lock, ip might have been reused
@@ -131,12 +131,12 @@ iget(uint dev, uint inum)
         // and it will not be busy.
         goto loop;
       }
-      ip->count++;
+      ip->ref++;
       ip->busy = 1;
       release(&inode_table_lock);
       return ip;
     }
-    if(nip == 0 && ip->count == 0)
+    if(nip == 0 && ip->ref == 0)
       nip = ip;
   }
 
@@ -145,7 +145,7 @@ iget(uint dev, uint inum)
 
   nip->dev = dev;
   nip->inum = inum;
-  nip->count = 1;
+  nip->ref = 1;
   nip->busy = 1;
 
   release(&inode_table_lock);
@@ -236,7 +236,7 @@ ifree(struct inode *ip)
 void
 ilock(struct inode *ip)
 {
-  if(ip->count < 1)
+  if(ip->ref < 1)
     panic("ilock");
 
   acquire(&inode_table_lock);
@@ -254,7 +254,7 @@ ilock(struct inode *ip)
 void
 iunlock(struct inode *ip)
 {
-  if(ip->busy != 1 || ip->count < 1)
+  if(ip->busy != 1 || ip->ref < 1)
     panic("iunlock");
 
   acquire(&inode_table_lock);
@@ -326,17 +326,17 @@ itrunc(struct inode *ip)
 void
 iput(struct inode *ip)
 {
-  if(ip->count < 1 || ip->busy != 1)
+  if(ip->ref < 1 || ip->busy != 1)
     panic("iput");
 
-  if((ip->count == 1) && (ip->nlink == 0)) {
+  if((ip->ref == 1) && (ip->nlink == 0)) {
     itrunc(ip);
     ifree(ip);
   }
 
   acquire(&inode_table_lock);
 
-  ip->count -= 1;
+  ip->ref -= 1;
   ip->busy = 0;
   wakeup(ip);
 
@@ -357,7 +357,7 @@ void
 iincref(struct inode *ip)
 {
   ilock(ip);
-  ip->count++;
+  ip->ref++;
   iunlock(ip);
 }
 
@@ -522,10 +522,10 @@ namei(char *path, int mode, uint *ret_off,
     ilock(dp);
   }
 
-  while(*cp == '/')
-    cp++;
-
   for(;;){
+    while(*cp == '/')
+      cp++;
+
     if(*cp == '\0'){
       if(mode == NAMEI_LOOKUP)
         return dp;
@@ -542,6 +542,13 @@ namei(char *path, int mode, uint *ret_off,
       return 0;
     }
 
+    for(i = 0; cp[i] != 0 && cp[i] != '/'; i++)
+      ;
+    if(i > DIRSIZ){
+      iput(dp);
+      return 0;
+    }
+
     for(off = 0; off < dp->size; off += BSIZE){
       bp = bread(dp->dev, bmap(dp, off / BSIZE));
       for(ep = (struct dirent*) bp->data;
@@ -549,13 +556,9 @@ namei(char *path, int mode, uint *ret_off,
           ep++){
         if(ep->inum == 0)
           continue;
-        for(i = 0; i < DIRSIZ && cp[i] != '/' && cp[i]; i++)
-          if(cp[i] != ep->name[i])
-            break;
-        if((cp[i] == '\0' || cp[i] == '/' || i >= DIRSIZ) &&
-           (i >= DIRSIZ || ep->name[i] == '\0')){
-          while(cp[i] != '\0' && cp[i] != '/')
-            i++;
+        if(memcmp(cp, ep->name, i) == 0 &&
+           (i == DIRSIZ || ep->name[i]== 0)){
+          // entry matches path element
           off += (uchar*)ep - bp->data;
           ninum = ep->inum;
           brelse(bp);
@@ -591,8 +594,6 @@ namei(char *path, int mode, uint *ret_off,
     dp = iget(dev, ninum);
     if(dp->type == 0 || dp->nlink < 1)
       panic("namei");
-    while(*cp == '/')
-      cp++;
   }
 }
 
