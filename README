@@ -22,3 +22,6 @@ If you spot errors or have suggestions for improvement, please send
 email to Frans Kaashoek and Robert Morris
 ({kaashoek,rtm}@csail.mit.edu).  This version is the very first one,
 so don't be surprised if there are errors or the code is unclear.
+
+The code in the files that constitute xv6 are copyrighted, 2006, Frans
+Kaashoek, Robert Morris, and Russ Cox.
