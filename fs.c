@@ -504,8 +504,8 @@ namei(char *path, int mode, uint *ret_off,
   uint off, dev;
   struct buf *bp;
   struct dirent *ep;
-  int i, atend;
-  unsigned ninum;
+  int i, l, atend;
+  uint ninum;
 
   if(ret_off)
     *ret_off = 0xffffffff;
@@ -544,10 +544,9 @@ namei(char *path, int mode, uint *ret_off,
 
     for(i = 0; cp[i] != 0 && cp[i] != '/'; i++)
       ;
-    if(i > DIRSIZ){
-      iput(dp);
-      return 0;
-    }
+    l = i;
+    if(i > DIRSIZ)
+      l = DIRSIZ;
 
     for(off = 0; off < dp->size; off += BSIZE){
       bp = bread(dp->dev, bmap(dp, off / BSIZE));
@@ -556,8 +555,8 @@ namei(char *path, int mode, uint *ret_off,
           ep++){
         if(ep->inum == 0)
           continue;
-        if(memcmp(cp, ep->name, i) == 0 &&
-           (i == DIRSIZ || ep->name[i]== 0)){
+        if(memcmp(cp, ep->name, l) == 0 &&
+           (l == DIRSIZ || ep->name[l]== 0)){
           // entry matches path element
           off += (uchar*)ep - bp->data;
           ninum = ep->inum;
