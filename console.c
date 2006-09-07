@@ -356,19 +356,29 @@ kbd_intr()
       c += 'a' - 'A';
   }
 
-  // Ignore unknown keystrokes.
-  if(c == 0x0) {
-    release(&kbd_lock);
-    return;
-  }
+  switch(c){
+  case 0:
+    // Ignore unknown keystrokes.
+    break;
+  
+  case C('T'):
+    cprintf("#");  // Let user know we're still alive.
+    break;
+  
+  case C('P'):
+    procdump();
+    break;
 
-  if(((kbd_w + 1) % KBD_BUF) != kbd_r){
-    kbd_buf[kbd_w++] = c;
-    if(kbd_w >= KBD_BUF)
-      kbd_w = 0;
-    wakeup(&kbd_r);
-  } else {
-    cprintf("kbd overflow\n");
+  default:
+    if(((kbd_w + 1) % KBD_BUF) != kbd_r){
+      kbd_buf[kbd_w++] = c;
+      if(kbd_w >= KBD_BUF)
+        kbd_w = 0;
+      wakeup(&kbd_r);
+    } else {
+      cprintf("kbd overflow\n");
+    }
+    break;
   }
 
   release(&kbd_lock);

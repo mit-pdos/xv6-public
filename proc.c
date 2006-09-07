@@ -403,3 +403,19 @@ proc_wait(void)
   }
 }
 
+// Print a process listing to console.  For debugging.
+// Runs when user types ^P on console.
+// No lock to avoid wedging a stuck machine further.
+void
+procdump(void)
+{
+  int i;
+  struct proc *p;
+  
+  for(i = 0; i < NPROC; i++) {
+    p = &proc[i];
+    if(p->state == UNUSED)
+      continue;
+    cprintf("%d %d %p\n", p->pid, p->state);
+  }
+}

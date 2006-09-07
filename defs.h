@@ -24,6 +24,7 @@ void proc_exit(void);
 int proc_kill(int);
 int proc_wait(void);
 void yield(void);
+void procdump(void);
 
 // swtch.S
 struct jmpbuf;
