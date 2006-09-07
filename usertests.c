@@ -1005,12 +1005,6 @@ fourteen()
     exit();
   }
   close(fd);
-  
-  fd = open("12345678901234555", 0);
-  if(fd >= 0){
-    printf(1, "open 12345678901234555 succeeded!\n");
-    exit();
-  }
 
   if(mkdir("12345678901234/12345678901234") == 0){
     printf(1, "mkdir 12345678901234/12345678901234 succeeded!\n");
