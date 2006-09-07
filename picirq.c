@@ -11,9 +11,9 @@
 
 // Current IRQ mask.
 // Initial IRQ mask has interrupt 2 enabled (for slave 8259A).
-static ushort irq_mask_8259A = 0xFFFF & ~(1<<IRQ_SLAVE);
+ushort irq_mask_8259A = 0xFFFF & ~(1<<IRQ_SLAVE);
 
-static void
+void
 irq_setmask_8259A(ushort mask)
 {
   irq_mask_8259A = mask;

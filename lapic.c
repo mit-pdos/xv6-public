@@ -105,23 +105,29 @@ lapic_write(int r, int data)
 void
 lapic_timerinit(void)
 {
-  lapic_write(LAPIC_TDCR, LAPIC_X1);
-  lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC |
-                           (IRQ_OFFSET + IRQ_TIMER));
-  lapic_write(LAPIC_TCCR, 10000000);
-  lapic_write(LAPIC_TICR, 10000000);
+  if (lapicaddr) {
+    lapic_write(LAPIC_TDCR, LAPIC_X1);
+    lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC |
+		(IRQ_OFFSET + IRQ_TIMER));
+    lapic_write(LAPIC_TCCR, 10000000);
+    lapic_write(LAPIC_TICR, 10000000);
+  }
 }
 
 void
 lapic_timerintr(void)
 {
-  lapic_write(LAPIC_EOI, 0);
+  if (lapicaddr) 
+    lapic_write(LAPIC_EOI, 0);
 }
 
 void
 lapic_init(int c)
 {
   uint r, lvt;
+
+  if (lapicaddr == 0) 
+    return;
 
   lapic_write(LAPIC_DFR, 0xFFFFFFFF);    // Set dst format register
   r = (lapic_read(LAPIC_ID)>>24) & 0xFF; // Read APIC ID
@@ -155,25 +161,32 @@ lapic_init(int c)
 void
 lapic_enableintr(void)
 {
-  lapic_write(LAPIC_TPR, 0);
+  if (lapicaddr)
+    lapic_write(LAPIC_TPR, 0);
 }
 
 void
 lapic_disableintr(void)
 {
-  lapic_write(LAPIC_TPR, 0xFF);
+  if (lapicaddr)
+    lapic_write(LAPIC_TPR, 0xFF);
 }
 
 void
 lapic_eoi(void)
 {
-  lapic_write(LAPIC_EOI, 0);
+  if (lapicaddr)
+    lapic_write(LAPIC_EOI, 0);
 }
 
 int
 cpu(void)
 {
-  int x = (lapic_read(LAPIC_ID)>>24) & 0xFF;
+  int x;
+  if (lapicaddr) 
+    x = (lapic_read(LAPIC_ID)>>24) & 0xFF;
+  else 
+    x = 0;
   return x;
 }
 

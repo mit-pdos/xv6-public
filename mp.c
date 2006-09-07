@@ -30,6 +30,7 @@ static char *buses[] = {
 };
 
 struct cpu cpus[NCPU];
+int ismp;
 int ncpu;
 uchar ioapic_id;
 
@@ -124,8 +125,11 @@ mp_init(void)
   uchar byte;
 
   ncpu = 0;
-  if((r = mp_detect()) != 0)
+  if((r = mp_detect()) != 0) {
     return;
+  }
+
+  ismp = 1;
 
   // Run through the table saving information needed for starting
   // application processors and initialising any I/O APICs. The table
@@ -165,7 +169,7 @@ mp_init(void)
       p += sizeof(struct mpie);
       continue;
     default:
-      cprintf("mpinit: unknown PCMP type 0x%x (e-p 0x%x)\n", *p, e-p);
+      cprintf("mp_init: unknown PCMP type 0x%x (e-p 0x%x)\n", *p, e-p);
       while(p < e){
         cprintf("%uX ", *p);
         p++;

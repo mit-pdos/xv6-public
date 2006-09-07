@@ -71,8 +71,11 @@ main0(void)
   // start other CPUs
   mp_startthem();
 
-  // turn on timer and enable interrupts on the local APIC
-  lapic_timerinit();
+  // turn on timer
+  if (ismp) lapic_timerinit();
+  else pit8253_timerinit();
+
+  // enable interrupts on the local APIC
   lapic_enableintr();
 
   // Enable interrupts on this processor.

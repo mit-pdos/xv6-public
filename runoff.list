@@ -60,3 +60,4 @@ lapic.c
 ioapic.c
 picirq.c
 console.c
+8253pit.c

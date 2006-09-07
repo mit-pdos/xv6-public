@@ -49,9 +49,15 @@ int checkstring(uint);
 int putint(struct proc*, uint, int);
 
 // picirq.c
+extern ushort irq_mask_8259A;
 void pic_init(void);
+void irq_setmask_8259A(ushort);
+
+// 8253pit.c
+void pit8253_timerinit(void);
 
 // mp.c
+extern int ismp;
 void mp_init(void);
 void mp_startthem(void);
 int mp_bcpu(void);
