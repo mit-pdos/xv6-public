@@ -64,15 +64,6 @@ ide_init(void)
   disk_1_present = ide_probe_disk1();
 }
 
-// Interrupt handler - wake up the request that just finished.
-void
-ide_intr(void)
-{
-  acquire(&ide_lock);
-  wakeup(&request[tail]);
-  release(&ide_lock);
-}
-
 // Probe to see if disk 1 exists (we assume disk 0 exists).
 static int
 ide_probe_disk1(void)
@@ -93,6 +84,15 @@ ide_probe_disk1(void)
   outb(0x1F6, 0xE0 | (0<<4));
 
   return x < 1000;
+}
+
+// Interrupt handler - wake up the request that just finished.
+void
+ide_intr(void)
+{
+  acquire(&ide_lock);
+  wakeup(&request[tail]);
+  release(&ide_lock);
 }
 
 // Start the next request in the queue.
