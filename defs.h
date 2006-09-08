@@ -12,7 +12,6 @@ void kbd_intr(void);
 // proc.c
 void pinit(void);
 struct proc;
-struct jmpbuf;
 void setupsegs(struct proc*);
 struct proc* copyproc(struct proc*);
 struct spinlock;
