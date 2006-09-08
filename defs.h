@@ -26,7 +26,7 @@ int proc_wait(void);
 void yield(void);
 void procdump(void);
 
-// swtch.S
+// setjmp.S
 struct jmpbuf;
 int setjmp(struct jmpbuf*);
 void longjmp(struct jmpbuf*);
@@ -62,7 +62,7 @@ void mp_init(void);
 void mp_startthem(void);
 int mp_bcpu(void);
 
-// lapic
+// lapic.c
 extern uint *lapicaddr;
 void lapic_init(int);
 void lapic_startap(uchar, int);
@@ -73,7 +73,7 @@ void lapic_disableintr(void);
 void lapic_eoi(void);
 int cpu(void);
 
-// ioapic
+// ioapic.c
 extern uchar ioapic_id;
 void ioapic_init(void);
 void ioapic_enable(int irq, int cpu);
