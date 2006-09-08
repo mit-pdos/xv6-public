@@ -723,7 +723,7 @@ link(char *name1, char *name2)
   }
 
   ilock(ip);
-  ip->nlink += 1;
+  ip->nlink++;
   iupdate(ip);
 
   wdir(dp, last, ip->inum);
