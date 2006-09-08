@@ -19,14 +19,14 @@ struct pipe {
 };
 
 int
-pipe_alloc(struct file **fd1, struct file **fd2)
+pipe_alloc(struct file **f0, struct file **f1)
 {
-  *fd1 = *fd2 = 0;
+  *f0 = *f1 = 0;
   struct pipe *p = 0;
 
-  if((*fd1 = filealloc()) == 0)
+  if((*f0 = filealloc()) == 0)
     goto oops;
-  if((*fd2 = filealloc()) == 0)
+  if((*f1 = filealloc()) == 0)
     goto oops;
   if((p = (struct pipe*) kalloc(PAGE)) == 0)
     goto oops;
@@ -35,25 +35,25 @@ pipe_alloc(struct file **fd1, struct file **fd2)
   p->writep = 0;
   p->readp = 0;
   initlock(&p->lock, "pipe");
-  (*fd1)->type = FD_PIPE;
-  (*fd1)->readable = 1;
-  (*fd1)->writable = 0;
-  (*fd1)->pipe = p;
-  (*fd2)->type = FD_PIPE;
-  (*fd2)->readable = 0;
-  (*fd2)->writable = 1;
-  (*fd2)->pipe = p;
+  (*f0)->type = FD_PIPE;
+  (*f0)->readable = 1;
+  (*f0)->writable = 0;
+  (*f0)->pipe = p;
+  (*f1)->type = FD_PIPE;
+  (*f1)->readable = 0;
+  (*f1)->writable = 1;
+  (*f1)->pipe = p;
   return 0;
  oops:
   if(p)
     kfree((char*) p, PAGE);
-  if(*fd1){
-    (*fd1)->type = FD_NONE;
-    fileclose(*fd1);
+  if(*f0){
+    (*f0)->type = FD_NONE;
+    fileclose(*f0);
   }
-  if(*fd2){
-    (*fd2)->type = FD_NONE;
-    fileclose(*fd2);
+  if(*f1){
+    (*f1)->type = FD_NONE;
+    fileclose(*f1);
   }
   return -1;
 }
