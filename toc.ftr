@@ -1,0 +1,16 @@
+
+
+
+The source listing is preceded by a cross-reference listing every defined 
+constant, struct, global variable, and function in xv6.  Each entry gives,
+on the same line as the name, the line number (or, in a few cases, numbers)
+where the name is defined.  Successive lines in an entry list the line
+numbers where the name is used.  For example, this entry:
+
+    namei 4760
+        0333 4760 4859 4908
+        4958 5007 5016 5414
+        5427 5512 5560 5640
+
+indicates that namei is defined on line 4760 and is mentioned on twelve lines
+on sheets 03, 47, 48, 49, 50, 54, 55, and 56.
