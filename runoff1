@@ -42,7 +42,7 @@ for($i=0; $i<@lines; ){
 				$breakbefore = $j;
 				$lines[$j] = "";
 			}
-			if($lines[$j] =~ /^}$/){
+			if($lines[$j] =~ /^};?$/){
 				$breakbefore = $j+1;
 			}
 			if($lines[$j] =~ /^{$/){
