@@ -26,9 +26,6 @@
 // so we don't use spin locks.  Instead, if a process wants to use
 // a particular inode, it must sleep(ip) to wait for it to be not busy.
 // See iget below.
-//
-// XXX Inodes with dev == 0 exist only in memory.  They have no on-disk
-// representation.  This functionality is used to implement pipes.
 struct inode inode[NINODE];
 struct spinlock inode_table_lock;
 
@@ -362,7 +359,6 @@ iincref(struct inode *ip)
 }
 
 // Copy stat information from inode.
-// XXX Assumes inode is from disk file system.
 void
 stati(struct inode *ip, struct stat *st)
 {
@@ -376,7 +372,6 @@ stati(struct inode *ip, struct stat *st)
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
 // Read data from inode.
-// XXX Assumes inode is from disk file system.
 int
 readi(struct inode *ip, char *dst, uint off, uint n)
 {
@@ -440,7 +435,6 @@ newblock(struct inode *ip, uint lbn)
 }
 
 // Write data to inode.
-// XXX Assumes inode is from disk file system.
 int
 writei(struct inode *ip, char *addr, uint off, uint n)
 {

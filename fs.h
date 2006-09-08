@@ -9,8 +9,8 @@
 
 // File system super block
 struct superblock {
-  uint size;         // Size of file system (bytes???) xxx
-  uint nblocks;      // Number of blocks
+  uint size;         // Size of file system image (blocks)
+  uint nblocks;      // Number of data blocks
   uint ninodes;      // Number of inodes.
 };
 
