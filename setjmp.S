@@ -1,17 +1,15 @@
 #   int  setjmp(struct jmpbuf *jmp);
 #   void longjmp(struct jmpbuf *jmp);
 # 
-# Setjmp saves its stack environment in jmp
-# for later use by longjmp.  It returns 0.
+# Setjmp saves its stack environment in jmp for later use by longjmp.
+# It returns 0.
 # 
-# Longjmp restores the environment saved by
-# the last call of setjmp. It then causes 
-# execution to continue as if the call of setjmp
+# Longjmp restores the environment saved by the last call of setjmp.
+# It then causes execution to continue as if the call of setjmp
 # had just returned 1.
 # 
-# The caller of setjmp must not itself have
-# returned in the interim.  All accessible data
-# have values as of the time longjmp was called.
+# The caller of setjmp must not itself have returned in the interim.
+# All accessible data have values as of the time longjmp was called.
 #
 #    [Description, but not code, borrowed from Plan 9.]
 
