@@ -53,7 +53,7 @@ acquire(struct spinlock *lock)
 
   // Serialize instructions: now that lock is acquired, make sure 
   // we wait for all pending writes from other processors.
-  cpuid(0, 0, 0, 0, 0);  // memory barrier (see Ch 7 of IA-32 manual, vol 3)
+  cpuid(0, 0, 0, 0, 0);  // memory barrier (see Ch 7, IA-32 manual vol 3)
   
   // Record info about lock acquisition for debugging.
   // The +10 is only so that we can tell the difference
@@ -75,7 +75,7 @@ release(struct spinlock *lock)
   
   // Serialize instructions: before unlocking the lock, make sure
   // to flush any pending memory writes from this processor.
-  cpuid(0, 0, 0, 0, 0);  // memory barrier (see Ch 7 of IA-32 manual, vol 3)
+  cpuid(0, 0, 0, 0, 0);  // memory barrier (see Ch 7, IA-32 manual vol 3)
 
   lock->locked = 0;
   if(--cpus[cpu()].nlock == 0)
