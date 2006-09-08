@@ -106,11 +106,10 @@ fs.img : mkfs usertests _echo _cat README _init _sh _ls _mkdir _rm
 -include *.d
 
 clean : 
-	/bin/rm -f rm
 	rm -f *.ps *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm vectors.S parport.out \
 	bootblock kernel xv6.img usertests \
-	fs.img mkfs echo init
+	fs.img _cat _echo _init _sh _ls _rm _mkdir mkfs
 
 # make a printout
 PRINT =	\
@@ -139,4 +138,35 @@ bochs : fs.img xv6.img
 
 qemu : fs.img xv6.img
 	qemu -parallel stdio -hdb fs.img xv6.img
+
+# CUT HERE
+# prepare dist for students
+# after running make dist, probably want to
+# rename it to rev0 or rev1 or so on and then
+# check in that version.
+dist :
+	rm -rf dist
+	mkdir dist
+	for i in *.c *.h *.S; \
+	do \
+		grep -v PAGEBREAK $$i >dist/$$i; \
+	done
+	sed '/CUT HERE/,$$d' Makefile >dist/Makefile
+	cp README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list dist
+
+dist-test :
+	rm -rf dist-test
+	mkdir dist-test
+	cp dist/* dist-test
+	cd dist-test; ../m print
+	cd dist-test; ../m bochs || true
+	cd dist-test; ../m qemu
+
+# update this rule (change rev0) when it is time to
+# make a new revision.
+tar :
+	rm -rf /tmp/xv6
+	mkdir -p /tmp/xv6
+	cp dist/* /tmp/xv6
+	(cd /tmp; tar cf - xv6) | gzip >xv6-rev0.tar.gz
 
