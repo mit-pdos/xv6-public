@@ -43,6 +43,7 @@ trap(struct trapframe *tf)
     return;
   }
 
+  // PAGEBREAK: 10
   // Increment nlock to make sure interrupts stay off
   // during interrupt handler.  Decrement before returning.
   cpus[cpu()].nlock++;
