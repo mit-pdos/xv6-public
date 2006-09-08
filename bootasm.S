@@ -54,16 +54,15 @@ seta20.2:
   movb    $0xdf,%al               # Enable
   outb    %al,$0x60               #  A20
 
-  # Switch from real to protected mode
-  #  The descriptors in our GDT allow all physical memory to be accessed.
-  #  Furthermore, the descriptors have base addresses of 0, so that the
-  #  segment translation is a NOP, ie. virtual addresses are identical to
-  #  their physical addresses.  With this setup, immediately after
-  #  enabling protected mode it will still appear to this code
-  #  that it is running directly on physical memory with no translation.
-  #  This initial NOP-translation setup is required by the processor
-  #  to ensure that the transition to protected mode occurs smoothly.
-
+# Switch from real to protected mode
+#  The descriptors in our GDT allow all physical memory to be accessed.
+#  Furthermore, the descriptors have base addresses of 0, so that the
+#  segment translation is a NOP, ie. virtual addresses are identical to
+#  their physical addresses.  With this setup, immediately after
+#  enabling protected mode it will still appear to this code
+#  that it is running directly on physical memory with no translation.
+#  This initial NOP-translation setup is required by the processor
+#  to ensure that the transition to protected mode occurs smoothly.
 real_to_prot:
   cli                         # Mandatory since we dont set up an IDT
   lgdt    gdtdesc             # load GDT -- mandatory in protected mode
@@ -85,19 +84,16 @@ protcseg:
   movw    %ax, %fs                # -> FS
   movw    %ax, %gs                # -> GS
   movw    %ax, %ss                # -> SS: Stack Segment
-
   call cmain                      # finish the boot load from C.
                                   # cmain() should not return
 spin:
   jmp spin                        # ..but in case it does, spin
-
 
 .p2align 2                                # force 4 byte alignment
 gdt:
   SEG_NULLASM                             # null seg
   SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg
   SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg
-
 gdtdesc:
   .word   0x17                            # sizeof(gdt) - 1
   .long   gdt                             # address gdt
