@@ -15,7 +15,7 @@ extern uchar _binary__init_start[], _binary__init_size[];
 
 void process0();
 
-// CPU 0 starts running C code here.
+// Bootstrap processor starts running C code here.
 // This is called main0 not main so that it can have
 // a void return type.  Gcc can't handle functions named
 // main that don't return int.  Really.
@@ -28,7 +28,7 @@ main0(void)
   // clear BSS
   memset(edata, 0, end - edata);
 
-  // switch to cpu0's cpu stack
+  // switch to bootstrap processor's stack
   asm volatile("movl %0, %%esp" : : "r" (cpus[0].mpstack + MPSTACK - 32));
   asm volatile("movl %0, %%ebp" : : "r" (cpus[0].mpstack + MPSTACK));
 

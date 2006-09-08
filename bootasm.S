@@ -5,7 +5,7 @@
 .set CR0_PE_ON,0x1              # protected mode enable flag
 
 #########################################################################
-# ENTRY POINT
+# ENTRY POINT for the bootstrap processor
 #   This code should be stored in the first sector of the hard disk.
 #   After the BIOS initializes the hardware on startup or system reset,
 #   it loads this code at physical address 0x7c00 - 0x7d00 (512 bytes).

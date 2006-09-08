@@ -17,8 +17,8 @@ main(void)
     mknod("console", T_DEV, 1, 1);
     open("console", O_RDWR);
   }
-  dup(0);
-  dup(0);
+  dup(0);  // stdout
+  dup(0);  // stderr
 
   for(;;){
     pid = fork();

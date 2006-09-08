@@ -160,7 +160,7 @@ iget(uint dev, uint inum)
   return nip;
 }
 
-// Copy ip->d, which has changed, to disk.
+// Copy inode in memory, which has changed, to disk.
 // Caller must have locked ip.
 void
 iupdate(struct inode *ip)

@@ -35,7 +35,7 @@ kinit(void)
   initlock(&kalloc_lock, "kalloc");
   start = (char*) &end;
   start = (char*) (((uint)start + PAGE) & ~(PAGE-1));
-  mem = 256; // assume 256 pages of RAM
+  mem = 256; // assume computer has 256 pages of RAM
   cprintf("mem = %d\n", mem * PAGE);
   kfree(start, mem * PAGE);
 }
