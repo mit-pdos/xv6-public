@@ -10,7 +10,7 @@ pad()
 
 # create formatted (numbered) files
 mkdir -p fmt
-rm fmt/*
+rm -f fmt/*
 cp README fmt
 files=`grep -v '^#' runoff.list | awk '{print $1}'`
 n=99

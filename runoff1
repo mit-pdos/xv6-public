@@ -1,6 +1,11 @@
 #!/usr/bin/perl
 
 $n = 0;
+$v = 0;
+if($ARGV[0] eq "-v") {
+	$v = 1;
+	shift @ARGV;
+}
 if($ARGV[0] eq "-n") {
 	$n = $ARGV[1];
 	shift @ARGV;
@@ -38,12 +43,13 @@ for($i=0; $i<@lines; ){
 		$breaksize = 15;  # 15 lines to get to function
 		for($j=$i; $j<$i+50 && $j < @lines; $j++){
 			if($lines[$j] =~ /PAGEBREAK:\s*([0-9]+)/){
-				$breaksize = int($2);
+				$breaksize = $1;
 				$breakbefore = $j;
 				$lines[$j] = "";
 			}
 			if($lines[$j] =~ /^};?$/){
 				$breakbefore = $j+1;
+				$breaksize = 15;
 			}
 			if($lines[$j] =~ /^{$/){
 				$sawbrace = 1;
@@ -59,9 +65,12 @@ for($i=0; $i<@lines; ){
 		if($j<@lines && $lines[$j] =~ /^$/){
 			$lastblank = $j;
 		}
-		
+
 		# If we are not putting enough on a page, try a blank line.
 		if($breakbefore - $i < 50 - $breaksize && $lastblank > $breakbefore && $lastblank >= $i+50 - 5){
+			if($v){
+				print STDERR "breakbefore $breakbefore i $i breaksize $breaksize\n";
+			}
 			$breakbefore = $lastblank;
 			$breaksize = 5;  # only 5 lines to get to blank line
 		}
