@@ -105,13 +105,14 @@ lapic_write(int r, int data)
 void
 lapic_timerinit(void)
 {
-  if (lapicaddr) {
-    lapic_write(LAPIC_TDCR, LAPIC_X1);
-    lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC |
-		(IRQ_OFFSET + IRQ_TIMER));
-    lapic_write(LAPIC_TCCR, 10000000);
-    lapic_write(LAPIC_TICR, 10000000);
-  }
+  if (!lapicaddr) 
+    return;
+
+  lapic_write(LAPIC_TDCR, LAPIC_X1);
+  lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC |
+	      (IRQ_OFFSET + IRQ_TIMER));
+  lapic_write(LAPIC_TCCR, 10000000);
+  lapic_write(LAPIC_TICR, 10000000);
 }
 
 void
@@ -126,7 +127,7 @@ lapic_init(int c)
 {
   uint r, lvt;
 
-  if (lapicaddr == 0) 
+  if (!lapicaddr) 
     return;
 
   lapic_write(LAPIC_DFR, 0xFFFFFFFF);    // Set dst format register
