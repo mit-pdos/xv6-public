@@ -127,7 +127,7 @@ process0()
   iunlock(p0->cwd);
 
   // dummy user memory to make copyproc() happy
-  p0->sz = 4 * PAGE;
+  p0->sz = PAGE;
   p0->mem = kalloc(p0->sz);
 
   // fake a trap frame as if a user process had made a system
