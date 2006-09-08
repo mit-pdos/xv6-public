@@ -37,7 +37,7 @@ ioapic_init(void)
   uchar id;
   int i;
 
-  if (!ismp)
+  if(!ismp)
     return;
 
   io = (struct ioapic*) IO_APIC_BASE;
@@ -71,7 +71,7 @@ ioapic_enable (int irq, int cpunum)
   uint l, h;
   struct ioapic *io;
   
-  if (!ismp)
+  if(!ismp)
     return;
 
   io = (struct ioapic*) IO_APIC_BASE;

@@ -74,8 +74,10 @@ main0(void)
   mp_startthem();
 
   // turn on timer
-  if (ismp) lapic_timerinit();
-  else pit8253_timerinit();
+  if(ismp)
+    lapic_timerinit();
+  else
+    pit8253_timerinit();
 
   // enable interrupts on the local APIC
   lapic_enableintr();
@@ -126,7 +128,8 @@ process0()
   p0->cwd = iget(rootdev, 1);
   iunlock(p0->cwd);
 
-  // dummy user memory to make copyproc() happy
+  // dummy user memory to make copyproc() happy.
+  // must be big enough to hold the init binary.
   p0->sz = PAGE;
   p0->mem = kalloc(p0->sz);
 

@@ -105,7 +105,7 @@ lapic_write(int r, int data)
 void
 lapic_timerinit(void)
 {
-  if (!lapicaddr) 
+  if(!lapicaddr) 
     return;
 
   lapic_write(LAPIC_TDCR, LAPIC_X1);
@@ -118,7 +118,7 @@ lapic_timerinit(void)
 void
 lapic_timerintr(void)
 {
-  if (lapicaddr) 
+  if(lapicaddr) 
     lapic_write(LAPIC_EOI, 0);
 }
 
@@ -127,7 +127,7 @@ lapic_init(int c)
 {
   uint r, lvt;
 
-  if (!lapicaddr) 
+  if(!lapicaddr) 
     return;
 
   lapic_write(LAPIC_DFR, 0xFFFFFFFF);    // Set dst format register
@@ -162,21 +162,21 @@ lapic_init(int c)
 void
 lapic_enableintr(void)
 {
-  if (lapicaddr)
+  if(lapicaddr)
     lapic_write(LAPIC_TPR, 0);
 }
 
 void
 lapic_disableintr(void)
 {
-  if (lapicaddr)
+  if(lapicaddr)
     lapic_write(LAPIC_TPR, 0xFF);
 }
 
 void
 lapic_eoi(void)
 {
-  if (lapicaddr)
+  if(lapicaddr)
     lapic_write(LAPIC_EOI, 0);
 }
 
@@ -184,7 +184,7 @@ int
 cpu(void)
 {
   int x;
-  if (lapicaddr) 
+  if(lapicaddr) 
     x = (lapic_read(LAPIC_ID)>>24) & 0xFF;
   else 
     x = 0;
