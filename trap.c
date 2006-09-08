@@ -9,9 +9,7 @@
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
-
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
-
 
 void
 tvinit(void)
@@ -46,8 +44,7 @@ trap(struct trapframe *tf)
   }
 
   // Increment nlock to make sure interrupts stay off
-  // during interrupt handler.  Must decrement before
-  // returning.
+  // during interrupt handler.  Decrement before returning.
   cpus[cpu()].nlock++;
 
   switch(v){
@@ -55,11 +52,9 @@ trap(struct trapframe *tf)
     lapic_timerintr();
     cpus[cpu()].nlock--;
     if(cp){
-      // Force process exit if it has been killed
-      // and the interrupt came from user space.
-      // (If the kernel was executing at time of interrupt,
-      // don't kill the process.  Let the process get back
-      // out to its regular system call return.)
+      // Force process exit if it has been killed and is in user space.
+      // (If it is still executing in the kernel, let it keep running
+      // until it gets to the regular system call return.)
       if((tf->cs&3) == 3 && cp->killed)
         proc_exit();
 
@@ -85,14 +80,13 @@ trap(struct trapframe *tf)
     
   default:
     if(curproc[cpu()]) {
-      // assume process caused unexpected trap,
-      // for example by dividing by zero or dereferencing a bad pointer
+      // Assume process divided by zero or dereferenced null, etc.
       cprintf("pid %d: unhandled trap %d on cpu %d eip %x -- kill proc\n",
               curproc[cpu()]->pid, v, cpu(), tf->eip);
       proc_exit();
     }
     
-    // otherwise it's our mistake
+    // Otherwise it's our mistake.
     cprintf("unexpected trap %d from cpu %d eip %x\n", v, cpu(), tf->eip);
     panic("trap");
   }
