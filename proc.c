@@ -54,6 +54,26 @@ setupsegs(struct proc *p)
   ltr(SEG_TSS << 3);
 }
 
+// Grow current process's memory by n bytes.
+// Return old size on success, -1 on failure.
+int
+growproc(int n)
+{
+  struct proc *cp = curproc[cpu()];
+  char *newmem, *oldmem;
+
+  newmem = kalloc(cp->sz + n);
+  if(newmem == 0)
+    return 0xffffffff;
+  memmove(newmem, cp->mem, cp->sz);
+  memset(newmem + cp->sz, 0, n);
+  oldmem = cp->mem;
+  cp->mem = newmem;
+  kfree(oldmem, cp->sz);
+  cp->sz += n;
+  return cp->sz - n;
+}
+
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and return it.
 // Otherwise return 0.
@@ -134,26 +154,6 @@ copyproc(struct proc *p)
   iincref(p->cwd);
 
   return np;
-}
-
-// Grow current process's memory by n bytes.
-// Return old size on success, -1 on failure.
-int
-growproc(int n)
-{
-  struct proc *cp = curproc[cpu()];
-  char *newmem, *oldmem;
-
-  newmem = kalloc(cp->sz + n);
-  if(newmem == 0)
-    return 0xffffffff;
-  memmove(newmem, cp->mem, cp->sz);
-  memset(newmem + cp->sz, 0, n);
-  oldmem = cp->mem;
-  cp->mem = newmem;
-  kfree(oldmem, cp->sz);
-  cp->sz += n;
-  return cp->sz - n;
 }
 
 //PAGEBREAK: 42
@@ -424,3 +424,4 @@ procdump(void)
     cprintf("%d %d %p\n", p->pid, p->state);
   }
 }
+
