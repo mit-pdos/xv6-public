@@ -23,22 +23,24 @@ void
 main0(void)
 {
   int i;
+  int bcpu;
   struct proc *p;
 
   // clear BSS
   memset(edata, 0, end - edata);
-
-  // switch to bootstrap processor's stack
-  asm volatile("movl %0, %%esp" : : "r" (cpus[0].mpstack + MPSTACK - 32));
-  asm volatile("movl %0, %%ebp" : : "r" (cpus[0].mpstack + MPSTACK));
 
   // Prevent release() from enabling interrupts.
   for(i=0; i<NCPU; i++)
     cpus[i].nlock = 1;
 
   mp_init(); // collect info about this machine
+  bcpu = mp_bcpu();
 
-  lapic_init(mp_bcpu());
+  // switch to bootstrap processor's stack
+  asm volatile("movl %0, %%esp" : : "r" (cpus[0].mpstack + MPSTACK - 32));
+  asm volatile("movl %0, %%ebp" : : "r" (cpus[0].mpstack + MPSTACK));
+
+  lapic_init(bcpu);
 
   cprintf("\ncpu%d: starting xv6\n\n", cpu());
 
