@@ -260,11 +260,11 @@ iappend(uint inum, void *xp, int n)
       x = xint(din.addrs[fbn]);
     } else {
       if(xint(din.addrs[INDIRECT]) == 0) {
-        printf("allocate indirect block\n");
+        // printf("allocate indirect block\n");
         din.addrs[INDIRECT] = xint(freeblock++);
         usedblocks++;
       }
-      printf("read indirect block\n");
+      // printf("read indirect block\n");
       rsect(xint(din.addrs[INDIRECT]), (char*) indirect);
       if(indirect[fbn - NDIRECT] == 0) {
         indirect[fbn - NDIRECT] = xint(freeblock++);
