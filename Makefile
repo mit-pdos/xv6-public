@@ -56,6 +56,7 @@ kernel : $(OBJS) bootother.S _init
 	$(OBJDUMP) -S bootother.o > bootother.asm
 	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother _init
 	$(OBJDUMP) -S kernel > kernel.asm
+	$(OBJDUMP) -t kernel | awk '/SYMBOL TABLE/ { go=1; next } go {print $$1, $$NF}' >kernel.sym
 
 tags: $(OBJS) bootother.S _init
 	etags *.S *.c
