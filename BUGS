@@ -1,10 +1,15 @@
-missing bootmain.c from printout
-funny \ alignment in mmu.h
+runoff.list:
+	bootmain.c missing
+
+mmu.h:
+	funny \ alignment in mmu.h
 
 main.c:
 	should use static int bcpu to avoid having live
 	stack variable across the asm volatile that 
 	changes %esp and %ebp.
+
+	cpus[0] -> cpus[bcpu]
 
 init.c:
 	should while(wait() >= 0);
@@ -30,7 +35,12 @@ proc.c:
 	proc_exit should wake up proc[1] if any
 	reparenting was done.
 
+	sched ->  switch2scheduler?  or just switch?
+
 trap.c
 	if spin locks are ever held without cli,
 	trap should call yield() only if nlock == 0
+
+main.c, proc.c, trap.c:
+	use a constant for 3 (USER).
 
