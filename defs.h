@@ -135,6 +135,7 @@ int readi(struct inode*, char*, uint, uint);
 int writei(struct inode*, char*, uint, uint);
 struct inode* mknod(char*, short, short, short);
 struct inode* mknod1(struct inode*, char*, short, short, short);
+int symlink(char*, char*);
 int unlink(char*);
 void iupdate(struct inode*);
 int link(char*, char*);

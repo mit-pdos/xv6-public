@@ -98,11 +98,15 @@ _rm : rm.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _rm rm.o $(ULIB)
 	$(OBJDUMP) -S _rm > rm.asm
 
+_ln : ln.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _ln ln.o $(ULIB)
+	$(OBJDUMP) -S _ln > ln.asm
+
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs usertests _echo _cat README _init _sh _ls _mkdir _rm 
-	./mkfs fs.img usertests _echo _cat README _init _sh _ls _mkdir _rm
+fs.img : mkfs usertests _echo _cat README _init _sh _ls _mkdir _rm _ln
+	./mkfs fs.img usertests _echo _cat README _init _sh _ls _mkdir _rm _ln
 
 -include *.d
 

@@ -313,6 +313,16 @@ sys_link(void)
 }
 
 int
+sys_symlink(void)
+{
+  char *old, *new;
+  
+  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
+    return -1;
+  return symlink(old, new);
+}
+
+int
 sys_exec(void)
 {
   struct proc *cp = curproc[cpu()];

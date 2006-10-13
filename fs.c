@@ -442,7 +442,7 @@ writei(struct inode *ip, char *addr, uint off, uint n)
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
     return devsw[ip->major].write(ip->minor, addr, n);
-  } else if(ip->type == T_FILE || ip->type == T_DIR) {
+  } else if(ip->type == T_FILE || ip->type == T_DIR || ip->type == T_SYMLINK) {
     struct buf *bp;
     int r = 0;
     int m;
@@ -493,14 +493,16 @@ namei(char *path, int mode, uint *ret_off,
       char **ret_last, struct inode **ret_ip)
 {
   struct inode *dp;
+  char link[64];
   struct proc *p = curproc[cpu()];
-  char *cp = path, *cp1;
+  char *cp, *cp1;
   uint off, dev;
   struct buf *bp;
   struct dirent *ep;
-  int i, l, atend;
+  int i, l, atend, n, nlink;
   uint ninum;
 
+again:
   if(ret_off)
     *ret_off = 0xffffffff;
   if(ret_last)
@@ -508,6 +510,7 @@ namei(char *path, int mode, uint *ret_off,
   if(ret_ip)
     *ret_ip = 0;
 
+  cp = path;
   if(*cp == '/')
     dp = iget(rootdev, 1);
   else {
@@ -516,13 +519,29 @@ namei(char *path, int mode, uint *ret_off,
     ilock(dp);
   }
 
+  nlink = 0;
   for(;;){
     while(*cp == '/')
       cp++;
 
     if(*cp == '\0'){
-      if(mode == NAMEI_LOOKUP)
+      if(mode == NAMEI_LOOKUP){
+        if(dp->type == T_SYMLINK){
+          if((n=readi(dp, link, 0, sizeof link - 1)) <= 0){
+            iput(dp);
+            return 0;
+          }
+          link[n] = 0;
+          path = link;
+          iput(dp);
+          if(++nlink > 10){
+            cprintf("symlink max depth: %s\n", path);
+            return 0;
+          }
+          goto again;
+        }
         return dp;
+      }
       if(mode == NAMEI_CREATE && ret_ip){
         *ret_ip = dp;
         return 0;
@@ -698,12 +717,12 @@ unlink(char *cp)
 
 // Create the path new as a link to the same inode as old.
 int
-link(char *name1, char *name2)
+link(char *old, char *new)
 {
   struct inode *ip, *dp;
   char *last;
 
-  if((ip = namei(name1, NAMEI_LOOKUP, 0, 0, 0)) == 0)
+  if((ip = namei(old, NAMEI_LOOKUP, 0, 0, 0)) == 0)
     return -1;
   if(ip->type == T_DIR){
     iput(ip);
@@ -712,7 +731,7 @@ link(char *name1, char *name2)
 
   iunlock(ip);
 
-  if((dp = namei(name2, NAMEI_CREATE, 0, &last, 0)) == 0) {
+  if((dp = namei(new, NAMEI_CREATE, 0, &last, 0)) == 0) {
     idecref(ip);
     return -1;
   }
@@ -730,5 +749,32 @@ link(char *name1, char *name2)
   iput(dp);
   iput(ip);
 
+  return 0;
+}
+
+int
+strlen(char *s)
+{
+  int n = 0;
+  while(*s++ != 0)
+    n++;
+  return n;
+}
+
+// Create the path new as a symlink to old.
+int
+symlink(char *old, char *new)
+{
+  struct inode *ip, *dp;
+  char *last;
+  
+  if((dp = namei(new, NAMEI_CREATE, 0, &last, 0)) == 0)
+    return -1;
+  ip = mknod1(dp, last, T_SYMLINK, 0, 0);
+  iput(dp);
+  if(ip == 0)
+    return -1;
+  writei(ip, old, 0, strlen(old));
+  iput(ip);
   return 0;
 }

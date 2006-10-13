@@ -104,6 +104,7 @@ extern int sys_open(void);
 extern int sys_pipe(void);
 extern int sys_read(void);
 extern int sys_sbrk(void);
+extern int sys_symlink(void);
 extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
@@ -157,6 +158,9 @@ syscall(void)
     break;
   case SYS_link:
     ret = sys_link();
+    break;
+  case SYS_symlink:
+    ret = sys_symlink();
     break;
   case SYS_mkdir:
     ret = sys_mkdir();
