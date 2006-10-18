@@ -51,3 +51,5 @@ ide.c: synchronous disk write -> polling disk write.  search for
 
 fs.c: split all name operations off in name.c?  (starting with namei but move 
       wdir keep in fs.c)
+
+ls.c: apply tim's patch
