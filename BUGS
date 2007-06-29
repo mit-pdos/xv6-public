@@ -1,3 +1,6 @@
+index:
+	SEG_NULL, SEG_ASM not in the index
+
 runoff.list:
 	bootmain.c missing
 
