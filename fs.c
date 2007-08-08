@@ -266,8 +266,7 @@ iunlock(struct inode *ip)
 uint
 bmap(struct inode *ip, uint bn)
 {
-  unsigned x;
-  uint *a;
+  uint *a, x;
   struct buf *inbp;
 
   if(bn >= MAXFILE)
@@ -350,12 +349,14 @@ idecref(struct inode *ip)
 }
 
 // Increment reference count for ip.
-void
+// Returns ip to enable ip = iincref(ip1) idiom.
+struct inode*
 iincref(struct inode *ip)
 {
   ilock(ip);
   ip->ref++;
   iunlock(ip);
+  return ip;
 }
 
 // Copy stat information from inode.
@@ -511,8 +512,7 @@ namei(char *path, int mode, uint *ret_off,
   if(*cp == '/')
     dp = iget(rootdev, 1);
   else {
-    dp = p->cwd;
-    iincref(dp);
+    dp = iincref(p->cwd);
     ilock(dp);
   }
 

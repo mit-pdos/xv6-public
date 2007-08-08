@@ -128,7 +128,7 @@ void ilock(struct inode*);
 void iunlock(struct inode*);
 void itrunc(struct inode*);
 void idecref(struct inode*);
-void iincref(struct inode*);
+struct inode* iincref(struct inode*);
 void iput(struct inode*);
 struct inode* namei(char*, int, uint*, char**, struct inode**);
 void stati(struct inode*, struct stat*);
