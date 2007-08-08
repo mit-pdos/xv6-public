@@ -59,7 +59,7 @@ binit(void)
   }
 }
 
-// Look through buffer cache for block n on device dev.
+// Look through buffer cache for sector on device dev.
 // If not found, allocate fresh block.
 // In either case, return locked buffer.
 static struct buf*
@@ -69,34 +69,35 @@ bget(uint dev, uint sector)
 
   acquire(&buf_table_lock);
 
-  for(;;){
-    for(b = bufhead.next; b != &bufhead; b = b->next)
-      if((b->flags & (B_BUSY|B_VALID)) &&
-         b->dev == dev && b->sector == sector)
-        break;
+ loop:
+  // Try for cached block.
+  for(b = bufhead.next; b != &bufhead; b = b->next)
+    if((b->flags & (B_BUSY|B_VALID)) &&
+       b->dev == dev && b->sector == sector)
+      break;
 
-    if(b != &bufhead){
-      if(b->flags & B_BUSY){
-        sleep(buf, &buf_table_lock);
-      } else {
-        b->flags |= B_BUSY;
-        // b->flags &= ~B_VALID; // Force reread from disk
-        release(&buf_table_lock);
-        return b;
-      }
-    } else {
-      for(b = bufhead.prev; b != &bufhead; b = b->prev){
-        if((b->flags & B_BUSY) == 0){
-          b->flags = B_BUSY;
-          b->dev = dev;
-          b->sector = sector;
-          release(&buf_table_lock);
-          return b;
-        }
-      }
-      panic("bget: no buffers");
+  if(b != &bufhead){
+    if(b->flags & B_BUSY){
+      sleep(buf, &buf_table_lock);
+      goto loop;
+    }
+    b->flags |= B_BUSY;
+    // b->flags &= ~B_VALID; // Force reread from disk
+    release(&buf_table_lock);
+    return b;
+  }
+
+  // Allocate fresh block.
+  for(b = bufhead.prev; b != &bufhead; b = b->prev){
+    if((b->flags & B_BUSY) == 0){
+      b->flags = B_BUSY;
+      b->dev = dev;
+      b->sector = sector;
+      release(&buf_table_lock);
+      return b;
     }
   }
+  panic("bget: no buffers");
 }
 
 // Read buf's contents from disk.
