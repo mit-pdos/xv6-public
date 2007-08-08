@@ -31,3 +31,4 @@ unsigned int strlen(char*);
 void* memset(void*, int, unsigned int);
 void* malloc(uint);
 void free(void*);
+int atoi(const char*);
