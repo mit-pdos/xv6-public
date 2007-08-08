@@ -6,7 +6,7 @@ void kinit(void);
 // console.c
 void console_init(void);
 void cprintf(char*, ...);
-void panic(char*);
+void panic(char*) __attribute__((noreturn));
 void kbd_intr(void);
 
 // proc.c
