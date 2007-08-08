@@ -7,6 +7,6 @@
 int
 main(void)
 {
-	fork();
-	exit();
+  fork();
+  exit();
 }
