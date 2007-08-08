@@ -138,7 +138,7 @@ iget(uint dev, uint inum)
   }
 
   if(nip == 0)
-    panic("out of inodes");
+    panic("iget: no inodes");
 
   nip->dev = dev;
   nip->inum = inum;
