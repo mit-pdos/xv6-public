@@ -80,10 +80,10 @@ trap(struct trapframe *tf)
     break;
     
   default:
-    if(curproc[cpu()]) {
+    if(cp) {
       // Assume process divided by zero or dereferenced null, etc.
-      cprintf("pid %d: unhandled trap %d on cpu %d eip %x -- kill proc\n",
-              curproc[cpu()]->pid, v, cpu(), tf->eip);
+      cprintf("pid %d %s: unhandled trap %d on cpu %d eip %x -- kill proc\n",
+              cp->pid, cp->name, v, cpu(), tf->eip);
       proc_exit();
     }
     

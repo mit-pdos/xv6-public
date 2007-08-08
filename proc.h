@@ -40,6 +40,7 @@ struct proc {
   struct inode *cwd;        // Current directory
   struct jmpbuf jmpbuf;     // Jump here to run process
   struct trapframe *tf;     // Trap frame for current interrupt
+  char name[16];            // Process name (debugging)
 };
 
 // Process memory is laid out contiguously:
