@@ -11,10 +11,6 @@ main.c:
 
 	cpus[0] -> cpus[bcpu]
 
-init.c:
-	should while(wait() >= 0);
-	not just wait();
-
 proc.c:
 	comment at top of scheduler() should say
 		via longjmp back to the scheduler
