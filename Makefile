@@ -33,7 +33,8 @@ CC = $(TOOLPREFIX)gcc
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
-CFLAGS = -fno-builtin -O2 -Wall -MD
+# On newer gcc you may need to add -fno-stack-protector to $(CFLAGS)
+CFLAGS = -fno-builtin -O2 -Wall -MD -fno-stack-protector
 AS = $(TOOLPREFIX)gas
 
 xv6.img : bootblock kernel fs.img
@@ -99,19 +100,24 @@ _rm : rm.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _rm rm.o $(ULIB)
 	$(OBJDUMP) -S _rm > rm.asm
 
+_zombie: zombie.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _zombie zombie.o $(ULIB)
+	$(OBJDUMP) -S _zombie > zombie.asm
+
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-fs.img : mkfs usertests _echo _cat README _init _sh _ls _mkdir _rm 
-	./mkfs fs.img usertests _echo _cat README _init _sh _ls _mkdir _rm
+UPROGS=usertests _echo _cat _init _sh _ls _mkdir _rm _zombie
+fs.img : mkfs README $(UPROGS)
+	./mkfs fs.img README $(UPROGS)
 
 -include *.d
 
 clean : 
 	rm -f *.ps *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm vectors.S parport.out \
-	bootblock kernel xv6.img usertests \
-	fs.img _cat _echo _init _sh _ls _rm _mkdir mkfs
+	bootblock kernel xv6.img fs.img mkfs \
+	$(UPROGS)
 
 # make a printout
 PRINT =	\
