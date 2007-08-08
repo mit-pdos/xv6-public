@@ -139,3 +139,6 @@ struct inode* mknod1(struct inode*, char*, short, short, short);
 int unlink(char*);
 void iupdate(struct inode*);
 int link(char*, char*);
+
+// number of elements in fixed-size array
+#define NELEM(x) (sizeof(x)/sizeof((x)[0]))

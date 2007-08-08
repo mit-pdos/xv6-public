@@ -108,75 +108,39 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 
+static int (*syscalls[])(void) = {
+[SYS_chdir]   sys_chdir,
+[SYS_close]   sys_close,
+[SYS_dup]     sys_dup,
+[SYS_exec]    sys_exec,
+[SYS_exit]    sys_exit,
+[SYS_fork]    sys_fork,
+[SYS_fstat]   sys_fstat,
+[SYS_getpid]  sys_getpid,
+[SYS_kill]    sys_kill,
+[SYS_link]    sys_link,
+[SYS_mkdir]   sys_mkdir,
+[SYS_mknod]   sys_mknod,
+[SYS_open]    sys_open,
+[SYS_pipe]    sys_pipe,
+[SYS_read]    sys_read,
+[SYS_sbrk]    sys_sbrk,
+[SYS_unlink]  sys_unlink,
+[SYS_wait]    sys_wait,
+[SYS_write]   sys_write,
+};
+
 void
 syscall(void)
 {
   struct proc *cp = curproc[cpu()];
   int num = cp->tf->eax;
-  int ret = -1;
 
-  switch(num){
-  case SYS_fork:
-    ret = sys_fork();
-    break;
-  case SYS_exit:
-    ret = sys_exit();
-    break;
-  case SYS_wait:
-    ret = sys_wait();
-    break;
-  case SYS_pipe:
-    ret = sys_pipe();
-    break;
-  case SYS_write:
-    ret = sys_write();
-    break;
-  case SYS_read:
-    ret = sys_read();
-    break;
-  case SYS_close:
-    ret = sys_close();
-    break;
-  case SYS_kill:
-    ret = sys_kill();
-    break;
-  case SYS_exec:
-    ret = sys_exec();
-    break;
-  case SYS_open:
-    ret = sys_open();
-    break;
-  case SYS_mknod:
-    ret = sys_mknod();
-    break;
-  case SYS_unlink:
-    ret = sys_unlink();
-    break;
-  case SYS_fstat:
-    ret = sys_fstat();
-    break;
-  case SYS_link:
-    ret = sys_link();
-    break;
-  case SYS_mkdir:
-    ret = sys_mkdir();
-    break;
-  case SYS_chdir:
-    ret = sys_chdir();
-    break;
-  case SYS_dup:
-    ret = sys_dup();
-    break;
-  case SYS_getpid:
-    ret = sys_getpid();
-    break;
-  case SYS_sbrk:
-    ret = sys_sbrk();
-    break;
-  default:
-    cprintf("unknown sys call %d\n", num);
-    // Maybe kill the process?
-    break;
+  if(num >= 0 && num < NELEM(syscalls) && syscalls[num])
+    cp->tf->eax = syscalls[num]();
+  else {
+    cprintf("%d %s: unknown sys call %d\n",
+            cp->pid, cp->name, num);
+    cp->tf->eax = -1;
   }
-  cp->tf->eax = ret;
 }
