@@ -422,12 +422,12 @@ void
 procdump(void)
 {
   static char *states[] = {
-    "unused",
-    "embryo",
-    "sleep ",
-    "runble",
-    "run   ",
-    "zombie"
+  [UNUSED]    "unused",
+  [EMBRYO]    "embryo",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
   };
   int i;
   struct proc *p;
@@ -437,10 +437,10 @@ procdump(void)
     p = &proc[i];
     if(p->state == UNUSED)
       continue;
-    if(p->state < 0 || p->state > ZOMBIE)
-      state = "???";
-    else
+    if(p->state >= 0 && p->state < NELEM(states))
       state = states[p->state];
+    else
+      state = "???";
     cprintf("%d %s %s\n", p->pid, state, p->name);
   }
 }
