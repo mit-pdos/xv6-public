@@ -11,6 +11,7 @@ mp.h
 # startup
 bootasm.S
 bootother.S
+bootmain.c
 main.c
 mp.c
 init.c
