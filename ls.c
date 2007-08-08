@@ -25,6 +25,7 @@ main(int argc, char *argv[])
   int fd;
   uint off;
   uint sz;
+  char *p;
 
   if(argc > 2){
     puts("Usage: ls [dir]\n");
@@ -63,8 +64,15 @@ main(int argc, char *argv[])
         break;
       }
       if(dirent.inum != 0) {
-        // xxx prepend to name the pathname supplied to ls (e.g. .. in ls ..)
-        if(stat (dirent.name, &st) < 0) {
+        p = buf;
+        if(argc == 2) {			  
+          strcpy(p, argv[1]);
+          p += strlen(p);
+          if(*(p-1) != '/')
+            *p++ = '/';
+        }
+        strcpy(p, dirent.name);
+        if(stat(buf, &st) < 0) {
           printf(1, "stat: failed %s\n", dirent.name);
           continue;
         }
