@@ -39,6 +39,7 @@ void* memset(void*, int, uint);
 int memcmp(const void*, const void*, uint);
 void* memmove(void*, const void*, uint);
 int strncmp(const char*, const char*, uint);
+char* safestrcpy(char*, const char*, int);
 
 // syscall.c
 void syscall(void);
