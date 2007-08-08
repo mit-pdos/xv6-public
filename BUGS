@@ -4,13 +4,6 @@ index:
 mmu.h:
 	funny \ alignment in mmu.h
 
-main.c:
-	should use static int bcpu to avoid having live
-	stack variable across the asm volatile that 
-	changes %esp and %ebp.
-
-	cpus[0] -> cpus[bcpu]
-
 proc.c:
 	as a consequence of the implementation of proc_kill,
 	any loop calling sleep should check for p->killed
