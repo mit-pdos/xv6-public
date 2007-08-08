@@ -405,7 +405,7 @@ proc_wait(void)
     }
 
     // No point waiting if we don't have any children.
-    if(!havekids){
+    if(!havekids || cp->killed){
       release(&proc_table_lock);
       return -1;
     }

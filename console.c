@@ -6,6 +6,7 @@
 #include "dev.h"
 #include "param.h"
 #include "mmu.h"
+#include "proc.h"
 
 struct spinlock console_lock;
 int panicked = 0;
@@ -395,8 +396,13 @@ console_read(int minor, char *dst, int n)
   target = n;
   acquire(&kbd_lock);
   while(n > 0){
-    while(kbd_r == kbd_w)
+    while(kbd_r == kbd_w){
+      if(curproc[cpu()]->killed){
+        release(&kbd_lock);
+        return -1;
+      }
       sleep(&kbd_r, &kbd_lock);
+    }
     c = kbd_buf[kbd_r++];
     if(c == C('D')){  // EOF
       if(n < target){
