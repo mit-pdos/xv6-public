@@ -201,20 +201,16 @@ ialloc(uint dev, short type)
     bp = bread(dev, IBLOCK(inum));
     dip = &((struct dinode*)(bp->data))[inum % IPB];
     if(dip->type == 0) {  // a free inode
-      break;
+      memset(dip, 0, sizeof(*dip));
+      dip->type = type;
+      bwrite(bp, IBLOCK(inum));   // mark it allocated on the disk
+      brelse(bp);
+      ip = iget(dev, inum);
+      return ip;
     }
     brelse(bp);
   }
-
-  if(inum >= ninodes)
-    panic("ialloc: no inodes left");
-
-  memset(dip, 0, sizeof(*dip));
-  dip->type = type;
-  bwrite(bp, IBLOCK(inum));   // mark it allocated on the disk
-  brelse(bp);
-  ip = iget(dev, inum);
-  return ip;
+  panic("ialloc: no inodes");
 }
 
 // Free the given inode from its file system.
