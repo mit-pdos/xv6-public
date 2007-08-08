@@ -81,6 +81,7 @@ _cat : cat.o $(ULIB)
 _init : init.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _init init.o $(ULIB)
 	$(OBJDUMP) -S _init > init.asm
+	$(OBJDUMP) -t _init | awk '/SYMBOL TABLE/ { go=1; next } go {print $$1, $$NF}' >init.sym
 
 _sh : sh.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _sh sh.o $(ULIB)
