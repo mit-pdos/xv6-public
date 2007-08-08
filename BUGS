@@ -27,9 +27,6 @@ trap.c
 	if spin locks are ever held without cli,
 	trap should call yield() only if nlock == 0
 
-main.c, proc.c, trap.c:
-	use a constant for 3 (USER).
-
 ide.c: synchronous disk write -> polling disk write.  search for
        (a)synchronous; xv6 doesn't have asynchronous writes.
 
