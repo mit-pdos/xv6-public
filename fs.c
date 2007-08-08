@@ -579,6 +579,12 @@ namei(char *path, int mode, uint *ret_off,
 
   found:
     if(mode == NAMEI_DELETE && *cp == '\0'){
+      // can't unlink . and ..
+      if((i == 1 && memcmp(cp-1, ".", 1) == 0) ||
+         (i == 2 && memcmp(cp-2, "..", 2) == 0)){
+        iput(dp);
+        return 0;
+      }
       *ret_off = off;
       return dp;
     }
