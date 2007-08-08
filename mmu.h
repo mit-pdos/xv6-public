@@ -55,6 +55,8 @@ struct segdesc {
     type, 1, dpl, 1, (uint) (lim) >> 16, 0, 0, 1, 0,            \
     (uint) (base) >> 24 }
 
+#define DPL_USER    0x3     // User DPL
+
 // Application segment type bits
 #define STA_X       0x8     // Executable segment
 #define STA_E       0x4     // Expand down (non-executable segments)

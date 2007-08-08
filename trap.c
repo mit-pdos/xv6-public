@@ -18,7 +18,7 @@ tvinit(void)
 
   for(i = 0; i < 256; i++)
     SETGATE(idt[i], 0, SEG_KCODE << 3, vectors[i], 0);
-  SETGATE(idt[T_SYSCALL], 0, SEG_KCODE << 3, vectors[T_SYSCALL], 3);
+  SETGATE(idt[T_SYSCALL], 0, SEG_KCODE << 3, vectors[T_SYSCALL], DPL_USER);
 }
 
 void
@@ -56,7 +56,7 @@ trap(struct trapframe *tf)
       // Force process exit if it has been killed and is in user space.
       // (If it is still executing in the kernel, let it keep running
       // until it gets to the regular system call return.)
-      if((tf->cs&3) == 3 && cp->killed)
+      if((tf->cs&3) == DPL_USER && cp->killed)
         proc_exit();
 
       // Force process to give up CPU and let others run.

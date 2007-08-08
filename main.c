@@ -138,8 +138,8 @@ process0()
   // process to return to.
   p0->tf = &tf;
   memset(p0->tf, 0, sizeof(struct trapframe));
-  p0->tf->es = p0->tf->ds = p0->tf->ss = (SEG_UDATA << 3) | 3;
-  p0->tf->cs = (SEG_UCODE << 3) | 3;
+  p0->tf->es = p0->tf->ds = p0->tf->ss = (SEG_UDATA << 3) | DPL_USER;
+  p0->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p0->tf->eflags = FL_IF;
   p0->tf->esp = p0->sz;
 
