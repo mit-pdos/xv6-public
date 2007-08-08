@@ -147,6 +147,7 @@ process0()
 
   load_icode(p1, _binary__init_start, (uint) _binary__init_size);
   p1->state = RUNNABLE;
+  safestrcpy(p1->name, "init", sizeof p1->name);
 
   proc_wait();
   panic("init exited");
