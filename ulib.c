@@ -25,10 +25,10 @@ strcmp(const char *p, const char *q)
 {
   while(*p && *p == *q)
     p++, q++;
-  return (int) ((unsigned char) *p - (unsigned char) *q);
+  return (uchar)*p - (uchar)*q;
 }
 
-unsigned int
+uint
 strlen(char *s)
 {
   int n = 0;
@@ -38,7 +38,7 @@ strlen(char *s)
 }
 
 void*
-memset(void *dst, int c, unsigned int n)
+memset(void *dst, int c, uint n)
 {
   char *d = (char*) dst;
 
