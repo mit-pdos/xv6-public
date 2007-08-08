@@ -42,12 +42,15 @@ main(void)
 {
   while(1){
     puts("$ ");
-    memset(buf, '\0', sizeof(buf));
-    gets(buf, sizeof(buf));
+    memset(buf, 0, sizeof buf);
+    gets(buf, sizeof buf);
+    if(buf[0] == 0)  // EOF
+      break;
     if(parse(buf) < 0)
       continue;
     runcmd();
   }
+  exit();
 }
 
 int
