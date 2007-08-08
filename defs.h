@@ -115,7 +115,6 @@ void ide_rw(int, uint, void*, uint, int);
 // bio.c
 void binit(void);
 struct buf;
-struct buf* getblk(uint dev, uint sector);
 struct buf* bread(uint, uint);
 void bwrite(struct buf*, uint);
 void brelse(struct buf*);
