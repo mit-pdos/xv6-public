@@ -84,9 +84,9 @@ _init : init.o $(ULIB)
 	$(OBJDUMP) -S _init > init.asm
 	$(OBJDUMP) -t _init | awk '/SYMBOL TABLE/ { go=1; next } go {print $$1, $$NF}' >init.sym
 
-_sh : sh.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _sh sh.o $(ULIB)
-	$(OBJDUMP) -S _sh > sh.asm
+_kill : kill.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _kill kill.o $(ULIB)
+	$(OBJDUMP) -S _kill > kill.asm
 
 _ls : ls.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _ls ls.o $(ULIB)
@@ -100,6 +100,10 @@ _rm : rm.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _rm rm.o $(ULIB)
 	$(OBJDUMP) -S _rm > rm.asm
 
+_sh : sh.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _sh sh.o $(ULIB)
+	$(OBJDUMP) -S _sh > sh.asm
+
 _zombie: zombie.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _zombie zombie.o $(ULIB)
 	$(OBJDUMP) -S _zombie > zombie.asm
@@ -107,7 +111,7 @@ _zombie: zombie.o $(ULIB)
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-UPROGS=usertests _echo _cat _init _sh _ls _mkdir _rm _zombie
+UPROGS=usertests _echo _cat _init _kill _ls _mkdir _rm _sh _zombie
 fs.img : mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
 
