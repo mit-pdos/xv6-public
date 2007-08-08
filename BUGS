@@ -2,6 +2,7 @@ proc.c:
 	as a consequence of the implementation of proc_kill,
 	any loop calling sleep should check for p->killed
 	and be able to break out with an error return.
+	it is better if you check *before* sleep.
 
 	can swap procdump up after proc_kill
 	and then have proc_exit and proc_wait on same sheet
@@ -19,3 +20,15 @@ ide.c: synchronous disk write -> polling disk write.  search for
 
 fs.c: split all name operations off in name.c?  (starting with namei but move 
       wdir keep in fs.c)
+
+pipe.c:
+	more comments?
+	comment how functions get called?
+
+sysfile.c:
+	is the sys_exec picture upside down?
+	can sys_open and sys_exec be simplified any?
+
+general:
+	sizeof parens?
+
