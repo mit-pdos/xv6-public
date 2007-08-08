@@ -34,7 +34,7 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 # On newer gcc you may need to add -fno-stack-protector to $(CFLAGS)
-CFLAGS = -fno-builtin -O2 -Wall -MD -fno-stack-protector
+CFLAGS = -fno-builtin -O2 -Wall -MD
 AS = $(TOOLPREFIX)gas
 
 xv6.img : bootblock kernel fs.img
