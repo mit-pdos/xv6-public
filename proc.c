@@ -163,7 +163,7 @@ copyproc(struct proc *p)
 //  - choose a process to run
 //  - longjmp to start running that process
 //  - eventually that process transfers control back
-//      via longjmp back to the top of scheduler.
+//      via longjmp back to the scheduler.
 void
 scheduler(void)
 {
@@ -229,7 +229,7 @@ yield(void)
 }
 
 // A fork child's very first scheduling by scheduler()
-// will longjmp here. "return" to user space.
+// will longjmp here.  "Return" to user space.
 void
 forkret(void)
 {
@@ -390,6 +390,7 @@ proc_wait(void)
           p->state = UNUSED;
           p->pid = 0;
           p->ppid = 0;
+          p->name[0] = 0;
           release(&proc_table_lock);
           return pid;
         }
@@ -414,14 +415,27 @@ proc_wait(void)
 void
 procdump(void)
 {
+  static char *states[] = {
+    "unused",
+    "embryo",
+    "sleep ",
+    "runble",
+    "run   ",
+    "zombie"
+  };
   int i;
   struct proc *p;
+  char *state;
   
   for(i = 0; i < NPROC; i++) {
     p = &proc[i];
     if(p->state == UNUSED)
       continue;
-    cprintf("%d %d %p\n", p->pid, p->state);
+    if(p->state < 0 || p->state > ZOMBIE)
+      state = "???";
+    else
+      state = states[p->state];
+    cprintf("%d %s %s\n", p->pid, state, p->name);
   }
 }
 
