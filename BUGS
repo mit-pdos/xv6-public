@@ -1,6 +1,3 @@
-index:
-	SEG_NULL, SEG_ASM not in the index
-
 proc.c:
 	as a consequence of the implementation of proc_kill,
 	any loop calling sleep should check for p->killed

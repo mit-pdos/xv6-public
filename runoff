@@ -2,6 +2,8 @@
 
 echo This script takes a minute to run.  Be patient. 1>&2
 
+LC_CTYPE=C export LC_CTYPE
+
 # pad stdin to multiple of 120 lines
 pad()
 {
@@ -61,6 +63,18 @@ perl -e '
 		if (/^[0-9]+ struct [a-zA-Z0-9_]+;/) {
 			next;
 		}
+		if (/^([0-9]+) #define +([A-za-z0-9_]+) +?\(.*/) {
+			print "$1 $2\n"
+		}
+		
+		elsif (/^([0-9]+) #define +([A-Za-z0-9_]+) +([^ ]+)/) {
+			print "$1 $2 $3\n";
+		}
+		
+		elsif (/^([0-9]+) #define +([A-Za-z0-9_]+)/) {
+			print "$1 $2\n";
+		}
+		
 		if (/\(/) {
 			next;
 		}
@@ -68,18 +82,6 @@ perl -e '
 		if (/^([0-9]+) (((static|struct|extern|union|enum) +)*([A-Za-z0-9_]+))( .*)? +([A-Za-z_][A-Za-z0-9_]*)[,;]/) {
 		
 			print "$1 $7\n"
-		}
-		
-		elsif (/^([0-9]+) #define +([A-za-z0-9_]+) +?\(.*/) {
-			print "$1 $2\n"
-		}
-		
-		elsif (/^([0-9]+) #define +([A-Za-z0-9_]+) +([^ ]+)$/) {
-			print "$1 $2 $3\n";
-		}
-		
-		elsif (/^([0-9]+) #define +([A-Za-z0-9_]+)/) {
-			print "$1 $2\n";
 		}
 		
 		elsif(/^([0-9]+) (enum|struct|union) +([A-Za-z0-9_]+) +{/){ 
@@ -130,7 +132,7 @@ awk '
 grep Pages: all.ps
 
 # if we have the nice font, use it
-nicefont=~rsc/plan9/sys/lib/postscript/font/LucidaSans-Typewriter83
+nicefont=~rsc/lib/postscript/LucidaSans-Typewriter83
 if [ -f $nicefont ]
 then
 	(sed 1q all.ps; cat $nicefont; sed '1d; s/Courier/LucidaSans-Typewriter83/' all.ps) >allf.ps
