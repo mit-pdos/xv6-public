@@ -207,8 +207,10 @@ sched(void)
 {
   struct proc *p = curproc[cpu()];
 
+  if(p->state == RUNNING)
+    panic("sched running");
   if(!holding(&proc_table_lock))
-    panic("sched");
+    panic("sched proc_table_lock");
   if(cpus[cpu()].nlock != 1)
     panic("sched locks");
 
@@ -334,6 +336,9 @@ proc_exit(void)
   struct proc *cp = curproc[cpu()];
   int fd;
 
+  if(cp->pid == 1)
+    panic("init exiting");
+
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
     if(cp->ofile[fd]){
@@ -354,8 +359,10 @@ proc_exit(void)
 
   // Reparent our children to process 1.
   for(p = proc; p < &proc[NPROC]; p++)
-    if(p->ppid == cp->pid)
+    if(p->ppid == cp->pid){
       p->ppid = 1;
+      wakeup1(&proc[1]);  // init
+    }
 
   // Jump into the scheduler, never to return.
   cp->killed = 0;
