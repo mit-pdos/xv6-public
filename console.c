@@ -316,7 +316,7 @@ static uchar *charcode[4] = {
 };
 
 #define KBD_BUF 64
-char kbd_buf[KBD_BUF];
+uchar kbd_buf[KBD_BUF];
 int kbd_r;
 int kbd_w;
 struct spinlock kbd_lock;
@@ -389,24 +389,29 @@ out:
 int
 console_read(int minor, char *dst, int n)
 {
-  uint target = n;
+  uint target;
+  int c;
 
+  target = n;
   acquire(&kbd_lock);
-
-  while(kbd_w == kbd_r) {
-    sleep(&kbd_r, &kbd_lock);
-  }
-
-  while(n > 0 && kbd_w != kbd_r){
-    *dst = (kbd_buf[kbd_r]) & 0xff;
-    cons_putc(*dst & 0xff);
-    dst++;
+  while(n > 0){
+    while(kbd_r == kbd_w)
+      sleep(&kbd_r, &kbd_lock);
+    c = kbd_buf[kbd_r++];
+    if(c == C('D')){  // EOF
+      if(n < target){
+        // Save ^D for next time, to make sure
+        // caller gets a 0-byte result.
+        kbd_r--;
+      }
+      break;
+    }
+    *dst++ = c;
+    cons_putc(c);
     --n;
-    kbd_r++;
     if(kbd_r >= KBD_BUF)
       kbd_r = 0;
   }
-
   release(&kbd_lock);
 
   return target - n;
