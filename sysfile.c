@@ -252,7 +252,7 @@ sys_chdir(void)
   if((ip = namei(path, NAMEI_LOOKUP, 0, 0, 0)) == 0)
     return -1;
 
-  if(ip == p->cwd) {
+  if(ip == cp->cwd) {
     iput(ip);
     return 0;
   }
