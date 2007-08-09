@@ -10,10 +10,10 @@
 #define PIPESIZE 512
 
 struct pipe {
-  int readopen; // read fd is still open
-  int writeopen; // write fd is still open
-  int writep; // next index to write
-  int readp;  // next index to read
+  int readopen;   // read fd is still open
+  int writeopen;  // write fd is still open
+  int writep;     // next index to write
+  int readp;      // next index to read
   struct spinlock lock;
   char data[PIPESIZE];
 };
