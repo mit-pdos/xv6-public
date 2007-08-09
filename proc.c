@@ -204,9 +204,9 @@ scheduler(void)
 void
 sched(void)
 {
-  struct proc *p = curproc[cpu()];
+  struct proc *cp = curproc[cpu()];
 
-  if(p->state == RUNNING)
+  if(cp->state == RUNNING)
     panic("sched running");
   if(!holding(&proc_table_lock))
     panic("sched proc_table_lock");
@@ -221,10 +221,10 @@ sched(void)
 void
 yield(void)
 {
-  struct proc *p = curproc[cpu()];
+  struct proc *cp = curproc[cpu()];
 
   acquire(&proc_table_lock);
-  p->state = RUNNABLE;
+  cp->state = RUNNABLE;
   sched();
   release(&proc_table_lock);
 }
@@ -246,9 +246,9 @@ forkret(void)
 void
 sleep(void *chan, struct spinlock *lk)
 {
-  struct proc *p = curproc[cpu()];
+  struct proc *cp = curproc[cpu()];
 
-  if(p == 0)
+  if(cp == 0)
     panic("sleep");
 
   if(lk == 0)
@@ -266,12 +266,12 @@ sleep(void *chan, struct spinlock *lk)
   }
 
   // Go to sleep.
-  p->chan = chan;
-  p->state = SLEEPING;
+  cp->chan = chan;
+  cp->state = SLEEPING;
   sched();
 
   // Tidy up.
-  p->chan = 0;
+  cp->chan = 0;
 
   // Reacquire original lock.
   if(lk != &proc_table_lock){

@@ -46,17 +46,17 @@ free(void *ap)
 static Header*
 morecore(uint nu)
 {
-  char *cp;
-  Header *up;
+  char *p;
+  Header *hp;
 
   if(nu < PAGE)
     nu = PAGE;
-  cp = sbrk(nu * sizeof(Header));
-  if(cp == (char*) -1)
+  p = sbrk(nu * sizeof(Header));
+  if(p == (char*) -1)
     return 0;
-  up = (Header*) cp;
-  up->s.size = nu;
-  free((void*)(up + 1));
+  hp = (Header*)p;
+  hp->s.size = nu;
+  free((void*)(hp + 1));
   return freep;
 }
 
