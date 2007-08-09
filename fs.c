@@ -476,6 +476,73 @@ writei(struct inode *ip, char *addr, uint off, uint n)
   }
 }
 
+// Skip over the next path element in path, 
+// saving it in *name and its length in *len.
+// Return a pointer to the element after that
+// (after any trailing slashes).
+// Thus the caller can check whether *path=='\0'
+// to see whether the name just removed was
+// the last one.  
+// If there is no name to remove, return 0.
+//
+// Examples:
+//   skipelem("a/bb/c") = "bb/c", with *name = "a/bb/c", len=1
+//   skipelem("///a/bb") = "b", with *name="a/bb", len=1
+//   skipelem("") = skipelem("////") = 0
+//
+static char*
+skipelem(char *path, char **name, int *len)
+{
+  while(*path == '/')
+    path++;
+  if(*path == 0)
+    return 0;
+  *name = path;
+  while(*path != '/' && *path != 0)
+    path++;
+  *len = path - *name;
+  while(*path == '/')
+    path++;
+  return path;
+}
+
+// Look for a directory entry in a directory.
+// If not found, return -1.
+// If found:
+//   set *poff to the byte offset of the directory entry
+//   set *pinum to the inode number
+//   return 0.
+static int
+lookup(struct inode *dp, char *name, int namelen, uint *poff, uint *pinum)
+{
+  uint off;
+  struct buf *bp;
+  struct dirent *de;
+
+  if(dp->type != T_DIR)
+    return -1;
+
+  for(off = 0; off < dp->size; off += BSIZE){
+    bp = bread(dp->dev, bmap(dp, off / BSIZE));
+    for(de = (struct dirent*) bp->data;
+        de < (struct dirent*) (bp->data + BSIZE);
+        de++){
+      if(de->inum == 0)
+        continue;
+      if(memcmp(name, de->name, namelen) == 0 &&
+         (namelen == DIRSIZ || de->name[namelen]== 0)){
+        // entry matches path element
+        *poff = off + (uchar*)de - bp->data;
+        *pinum = de->inum;
+        brelse(bp);
+        return 0;
+      }
+    }
+    brelse(bp);
+  }
+  return -1;
+}
+
 // look up a path name, in one of three modes.
 // NAMEI_LOOKUP: return locked target inode.
 // NAMEI_CREATE: return locked parent inode.
@@ -491,12 +558,10 @@ namei(char *path, int mode, uint *ret_off,
 {
   struct inode *dp;
   struct proc *p = curproc[cpu()];
-  char *cp = path, *cp1;
+  char *name;
+  int namelen;
   uint off, dev;
-  struct buf *bp;
-  struct dirent *ep;
-  int i, l, atend;
-  uint ninum;
+  uint inum;
 
   if(ret_off)
     *ret_off = 0xffffffff;
@@ -505,91 +570,57 @@ namei(char *path, int mode, uint *ret_off,
   if(ret_ip)
     *ret_ip = 0;
 
-  if(*cp == '/')
+  if(*path == '/')
     dp = iget(rootdev, 1);
   else {
     dp = iincref(p->cwd);
     ilock(dp);
   }
 
-  for(;;){
-    while(*cp == '/')
-      cp++;
+  while((path = skipelem(path, &name, &namelen)) != 0){
+    // Truncate names in path to DIRSIZ chars.
+    if(namelen > DIRSIZ)
+      namelen = DIRSIZ;
 
-    if(*cp == '\0'){
-      if(mode == NAMEI_LOOKUP)
+    if(dp->type != T_DIR)
+      goto fail;
+
+    if(lookup(dp, name, namelen, &off, &inum) < 0){
+      if(mode == NAMEI_CREATE && *path == '\0'){
+        *ret_last = name;
         return dp;
-      if(mode == NAMEI_CREATE && ret_ip){
-        *ret_ip = dp;
-        return 0;
       }
-      iput(dp);
-      return 0;
+      goto fail;
     }
 
-    if(dp->type != T_DIR){
-      iput(dp);
-      return 0;
-    }
-
-    for(i = 0; cp[i] != 0 && cp[i] != '/'; i++)
-      ;
-    l = i;
-    if(i > DIRSIZ)
-      l = DIRSIZ;
-
-    for(off = 0; off < dp->size; off += BSIZE){
-      bp = bread(dp->dev, bmap(dp, off / BSIZE));
-      for(ep = (struct dirent*) bp->data;
-          ep < (struct dirent*) (bp->data + BSIZE);
-          ep++){
-        if(ep->inum == 0)
-          continue;
-        if(memcmp(cp, ep->name, l) == 0 &&
-           (l == DIRSIZ || ep->name[l]== 0)){
-          // entry matches path element
-          off += (uchar*)ep - bp->data;
-          ninum = ep->inum;
-          brelse(bp);
-          cp += i;
-          goto found;
-        }
-      }
-      brelse(bp);
-    }
-    atend = 1;
-    for(cp1 = cp; *cp1; cp1++)
-      if(*cp1 == '/')
-        atend = 0;
-    if(mode == NAMEI_CREATE && atend){
-      if(*cp == '\0'){
-        iput(dp);
-        return 0;
-      }
-      *ret_last = cp;
-      return dp;
-    }
-
-    iput(dp);
-    return 0;
-
-  found:
-    if(mode == NAMEI_DELETE && *cp == '\0'){
+    if(mode == NAMEI_DELETE && *path == '\0'){
       // can't unlink . and ..
-      if((i == 1 && memcmp(cp-1, ".", 1) == 0) ||
-         (i == 2 && memcmp(cp-2, "..", 2) == 0)){
-        iput(dp);
-        return 0;
+      if((namelen == 1 && memcmp(name, ".", 1) == 0) ||
+         (namelen == 2 && memcmp(name, "..", 2) == 0)){
+        goto fail;
       }
       *ret_off = off;
       return dp;
     }
+
     dev = dp->dev;
     iput(dp);
-    dp = iget(dev, ninum);
+    dp = iget(dev, inum);
     if(dp->type == 0 || dp->nlink < 1)
       panic("namei");
   }
+
+  if(mode == NAMEI_LOOKUP)
+    return dp;
+  if(mode == NAMEI_CREATE && ret_ip){
+    *ret_ip = dp;
+    return 0;
+  }
+  goto fail;
+
+fail:
+  iput(dp);
+  return 0;
 }
 
 // Write a new directory entry (name, ino) into the directory dp.
@@ -675,6 +706,12 @@ unlink(char *cp)
 
   if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de) || de.inum == 0)
     panic("unlink no entry");
+  
+  // Cannot remove "." or ".." - the 2 and 3 count the trailing NUL.
+  if(memcmp(de.name, ".", 2) == 0 || memcmp(de.name, "..", 3) == 0){
+    iput(dp);
+    return -1;
+  }
 
   inum = de.inum;
 
