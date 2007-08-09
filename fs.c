@@ -557,11 +557,10 @@ namei(char *path, int mode, uint *ret_off,
       char **ret_last, struct inode **ret_ip)
 {
   struct inode *dp;
-  struct proc *p = curproc[cpu()];
+  struct proc *cp = curproc[cpu()];
   char *name;
   int namelen;
-  uint off, dev;
-  uint inum;
+  uint off, dev, inum;
 
   if(ret_off)
     *ret_off = 0xffffffff;
@@ -573,7 +572,7 @@ namei(char *path, int mode, uint *ret_off,
   if(*path == '/')
     dp = iget(rootdev, 1);
   else {
-    dp = iincref(p->cwd);
+    dp = iincref(cp->cwd);
     ilock(dp);
   }
 
