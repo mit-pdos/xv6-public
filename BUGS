@@ -31,9 +31,6 @@ sysfile.c:
 general:
 	sizeof parens?
 
-usertests.c:
-	check for rm of . or ..
-
 L=$HOME/mit/l
 (for i in *.c; do xoc -x xgnu -x ./nodecleq.zeta --typesonly $i; done) 2>&1 | grep warning
 
