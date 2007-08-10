@@ -201,17 +201,15 @@ lapic_startap(uchar apicid, int v)
   lapic_write(LAPIC_ICRHI, crhi);
   lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|
                            LAPIC_ASSERT|APIC_INIT);
-
-  while(j++ < 10000) {;}
+  for(j=0; j<10000; j++);  // 200us
   lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|
                            LAPIC_DEASSERT|APIC_INIT);
-
-  while(j++ < 1000000) {;}
+  for(j=0; j<1000000; j++);  // 10ms
 
   // in p9 code, this was i < 2, which is what the spec says on page B-3
   for(i = 0; i < 1; i++){
     lapic_write(LAPIC_ICRHI, crhi);
     lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_EDGE|APIC_STARTUP|(v/4096));
-    while(j++ < 100000) {;}
+    for(j=0; j<10000; j++);  // 200us
   }
 }
