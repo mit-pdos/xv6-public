@@ -59,7 +59,6 @@ setupsegs(struct proc *p)
 int
 growproc(int n)
 {
-  struct proc *cp = curproc[cpu()];
   char *newmem, *oldmem;
 
   newmem = kalloc(cp->sz + n);
@@ -183,14 +182,14 @@ scheduler(void)
       // before jumping back to us.
 
       setupsegs(p);
-      curproc[cpu()] = p;
+      cp = p;
       p->state = RUNNING;
       if(setjmp(&cpus[cpu()].jmpbuf) == 0)
         longjmp(&p->jmpbuf);
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
-      curproc[cpu()] = 0;
+      cp = 0;
 
       setupsegs(0);
     }
@@ -204,7 +203,6 @@ scheduler(void)
 void
 sched(void)
 {
-  struct proc *cp = curproc[cpu()];
 
   if(cp->state == RUNNING)
     panic("sched running");
@@ -213,7 +211,7 @@ sched(void)
   if(cpus[cpu()].nlock != 1)
     panic("sched locks");
 
-  if(setjmp(&p->jmpbuf) == 0)
+  if(setjmp(&cp->jmpbuf) == 0)
     longjmp(&cpus[cpu()].jmpbuf);
 }
 
@@ -221,7 +219,6 @@ sched(void)
 void
 yield(void)
 {
-  struct proc *cp = curproc[cpu()];
 
   acquire(&proc_table_lock);
   cp->state = RUNNABLE;
@@ -238,7 +235,7 @@ forkret(void)
   release(&proc_table_lock);
 
   // Jump into assembly, never to return.
-  forkret1(curproc[cpu()]->tf);
+  forkret1(cp->tf);
 }
 
 // Atomically release lock and sleep on chan.
@@ -246,7 +243,6 @@ forkret(void)
 void
 sleep(void *chan, struct spinlock *lk)
 {
-  struct proc *cp = curproc[cpu()];
 
   if(cp == 0)
     panic("sleep");
@@ -332,7 +328,6 @@ void
 proc_exit(void)
 {
   struct proc *p;
-  struct proc *cp = curproc[cpu()];
   int fd;
 
   if(cp->pid == 1)
@@ -376,7 +371,6 @@ int
 proc_wait(void)
 {
   struct proc *p;
-  struct proc *cp = curproc[cpu()];
   int i, havekids, pid;
 
   acquire(&proc_table_lock);

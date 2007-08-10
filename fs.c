@@ -557,7 +557,6 @@ namei(char *path, int mode, uint *ret_off,
       char **ret_last, struct inode **ret_ip)
 {
   struct inode *dp;
-  struct proc *cp = curproc[cpu()];
   char *name;
   int namelen;
   uint off, dev, inum;
@@ -648,15 +647,15 @@ wdir(struct inode *dp, char *name, uint ino)
     panic("wdir write");
 }
 
-// Create the path cp and return its locked inode structure.
+// Create the path and return its locked inode structure.
 // If cp already exists, return 0.
 struct inode*
-mknod(char *cp, short type, short major, short minor)
+mknod(char *path, short type, short major, short minor)
 {
   struct inode *ip, *dp;
   char *last;
 
-  if((dp = namei(cp, NAMEI_CREATE, 0, &last, 0)) == 0)
+  if((dp = namei(path, NAMEI_CREATE, 0, &last, 0)) == 0)
     return 0;
 
   ip = mknod1(dp, last, type, major, minor);
@@ -691,13 +690,13 @@ mknod1(struct inode *dp, char *name, short type, short major, short minor)
 
 // Unlink the inode named cp.
 int
-unlink(char *cp)
+unlink(char *path)
 {
   struct inode *ip, *dp;
   struct dirent de;
   uint off, inum, dev;
 
-  dp = namei(cp, NAMEI_DELETE, &off, 0, 0);
+  dp = namei(path, NAMEI_DELETE, &off, 0, 0);
   if(dp == 0)
     return -1;
 

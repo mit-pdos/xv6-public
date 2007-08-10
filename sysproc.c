@@ -20,7 +20,7 @@ sys_fork(void)
 {
   struct proc *np;
 
-  if((np = copyproc(curproc[cpu()])) == 0)
+  if((np = copyproc(cp)) == 0)
     return -1;
   np->state = RUNNABLE;
   return np->pid;
@@ -52,7 +52,7 @@ sys_kill(void)
 int
 sys_getpid(void)
 {
-  return curproc[cpu()]->pid;
+  return cp->pid;
 }
 
 int
@@ -60,7 +60,6 @@ sys_sbrk(void)
 {
   int addr;
   int n;
-  struct proc *cp = curproc[cpu()];
 
   if(argint(0, &n) < 0)
     return -1;

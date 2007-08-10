@@ -22,7 +22,6 @@ argfd(int argno, int *pfd, struct file **pf)
 {
   int fd;
   struct file *f;
-  struct proc *cp = curproc[cpu()];
 
   if(argint(argno, &fd) < 0)
     return -1;
@@ -41,7 +40,6 @@ static int
 fdalloc(struct file *f)
 {
   int fd;
-  struct proc *cp = curproc[cpu()];
 
   for(fd = 0; fd < NOFILE; fd++){
     if(cp->ofile[fd] == 0){
@@ -58,7 +56,6 @@ sys_pipe(void)
   int *fd;
   struct file *rf = 0, *wf = 0;
   int fd0, fd1;
-  struct proc *cp = curproc[cpu()];
 
   if(argptr(0, (void*)&fd, 2*sizeof fd[0]) < 0)
     return -1;
@@ -109,7 +106,7 @@ sys_close(void)
   
   if(argfd(0, &fd, &f) < 0)
     return -1;
-  curproc[cpu()]->ofile[fd] = 0;
+  cp->ofile[fd] = 0;
   fileclose(f);
   return 0;
 }
@@ -242,7 +239,6 @@ sys_mkdir(void)
 int
 sys_chdir(void)
 {
-  struct proc *cp = curproc[cpu()];
   struct inode *ip;
   char *path;
 
@@ -316,7 +312,6 @@ sys_link(void)
 int
 sys_exec(void)
 {
-  struct proc *cp = curproc[cpu()];
   uint sz=0, ap, sp, p1, p2;
   int i, nargs, argbytes, len;
   struct inode *ip;

@@ -50,7 +50,17 @@ struct proc {
 //   expandable heap
 
 extern struct proc proc[];
+
+// If xv6 was only for uniprocessors, this could be
+//   struct proc *cp;
+// Instead we have an array curproc, one per
+// processor, and #define cp to the right element
+// in the array.  In general such preprocessor 
+// subterfuge is to be avoided, but cp is used 
+// so often that having the shorthand is worth the ugliness.
 extern struct proc *curproc[NCPU];  // Current (running) process per CPU
+#define cp (curproc[cpu()])  // Current process on this CPU
+
 
 #define MPSTACK 512
 

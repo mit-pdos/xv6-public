@@ -40,24 +40,22 @@ kinit(void)
   kfree(start, mem * PAGE);
 }
 
-// Free the len bytes of memory pointed at by cp,
+// Free the len bytes of memory pointed at by v,
 // which normally should have been returned by a
-// call to kalloc(cp).  (The exception is when
+// call to kalloc(len).  (The exception is when
 // initializing the allocator; see kinit above.)
 void
-kfree(char *cp, int len)
+kfree(char *v, int len)
 {
   struct run **rr;
-  struct run *p = (struct run*) cp;
-  struct run *pend = (struct run*) (cp + len);
-  int i;
+  struct run *p = (struct run*)v;
+  struct run *pend = (struct run*)(v + len);
 
   if(len % PAGE)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
-  for(i = 0; i < len; i++)
-    cp[i] = 1;
+  memset(v, 1, len);
 
   acquire(&kalloc_lock);
 
