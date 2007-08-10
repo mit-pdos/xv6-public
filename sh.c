@@ -29,10 +29,11 @@ struct cmd cmdlist[MAXCMD];
 struct cmd *cmd;
 
 char buf[BUFSIZ];
-int debug = 0;
+int debug;
 
 int parse(char *s);
 void runcmd(void);
+int getcmd(char *buf, int nbuf);
 int ioredirection(struct ionode *iolist, int nio);
 int gettoken(char *s, char **token);
 int _gettoken(char *s, char **p1, char **p2);
@@ -40,17 +41,22 @@ int _gettoken(char *s, char **p1, char **p2);
 int
 main(void)
 {
-  while(1){
-    puts("$ ");
-    memset(buf, 0, sizeof buf);
-    gets(buf, sizeof buf);
-    if(buf[0] == 0)  // EOF
-      break;
-    if(parse(buf) < 0)
-      continue;
-    runcmd();
+  while(getcmd(buf, sizeof buf) >= 0) {
+    if(parse(buf) >= 0)
+      runcmd();
   }
   exit();
+}
+
+int
+getcmd(char *buf, int nbuf)
+{
+  puts("$ ");
+  memset(buf, 0, nbuf);
+  gets(buf, nbuf);
+  if(buf[0] == 0) // EOF
+    return -1;
+  return 0;
 }
 
 int
@@ -61,13 +67,13 @@ parse(char *s)
 
   gettoken(s, 0);
 
-  cmd = &cmdlist[0];;
+  cmd = &cmdlist[0];
   for(i = 0; i < MAXCMD; i++) {
     cmdlist[i].argc = 0;
     cmdlist[i].token = 0;
     cmdlist[i].io = cmdlist[i].iolist;
   }
-  while(1) {
+  for(;;){
     switch((c = gettoken(0, &t))) {
 
     case 'w':   // Add an argument
