@@ -21,9 +21,10 @@ struct pipe {
 int
 pipe_alloc(struct file **f0, struct file **f1)
 {
-  *f0 = *f1 = 0;
-  struct pipe *p = 0;
+  struct pipe *p;
 
+  p = 0;
+  *f0 = *f1 = 0;
   if((*f0 = filealloc()) == 0)
     goto oops;
   if((*f1 = filealloc()) == 0)
