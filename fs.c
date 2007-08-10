@@ -41,13 +41,9 @@ iinit(void)
 static uint
 balloc(uint dev)
 {
-  int b;
+  int b, bi, m, ninodes, size;
   struct buf *bp;
   struct superblock *sb;
-  int bi = 0;
-  int size;
-  int ninodes;
-  uchar m;
 
   bp = bread(dev, 1);
   sb = (struct superblock*) bp->data;
@@ -62,16 +58,13 @@ balloc(uint dev)
     bi = b % BPB;
     m = 0x1 << (bi % 8);
     if((bp->data[bi/8] & m) == 0) {  // is block free?
-      break;
+      bp->data[bi/8] |= 0x1 << (bi % 8);
+      bwrite(bp, BBLOCK(b, ninodes));  // mark it allocated on disk
+      brelse(bp);
+      return b;
     }
   }
-  if(b >= size)
-    panic("balloc: out of blocks");
-
-  bp->data[bi/8] |= 0x1 << (bi % 8);
-  bwrite(bp, BBLOCK(b, ninodes));  // mark it allocated on disk
-  brelse(bp);
-  return b;
+  panic("balloc: out of blocks");
 }
 
 // Free a disk block.
@@ -80,9 +73,7 @@ bfree(int dev, uint b)
 {
   struct buf *bp;
   struct superblock *sb;
-  int bi;
-  int ninodes;
-  uchar m;
+  int bi, m, ninodes;
 
   bp = bread(dev, 1);
   sb = (struct superblock*) bp->data;
@@ -96,8 +87,8 @@ bfree(int dev, uint b)
 
   bp = bread(dev, BBLOCK(b, ninodes));
   bi = b % BPB;
-  m = ~(0x1 << (bi %8));
-  bp->data[bi/8] &= m;
+  m = 0x1 << (bi % 8);
+  bp->data[bi/8] &= ~m;
   bwrite(bp, BBLOCK(b, ninodes));  // mark it free on disk
   brelse(bp);
 }
@@ -176,7 +167,7 @@ iupdate(struct inode *ip)
   dip->nlink = ip->nlink;
   dip->size = ip->size;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
-  bwrite(bp, IBLOCK(ip->inum));   // mark it allocated on the disk
+  bwrite(bp, IBLOCK(ip->inum));
   brelse(bp);
 }
 
@@ -186,7 +177,7 @@ struct inode*
 ialloc(uint dev, short type)
 {
   struct inode *ip;
-  struct dinode *dip = 0;
+  struct dinode *dip;
   struct superblock *sb;
   int ninodes;
   int inum;
@@ -290,12 +281,13 @@ itrunc(struct inode *ip)
 {
   int i, j;
   struct buf *inbp;
+  uint *a;
 
   for(i = 0; i < NADDRS; i++) {
     if(ip->addrs[i] != 0) {
       if(i == INDIRECT) {
         inbp = bread(ip->dev, ip->addrs[INDIRECT]);
-        uint *a = (uint*) inbp->data;
+        a = (uint*)inbp->data;
         for(j = 0; j < NINDIRECT; j++) {
           if(a[j] != 0) {
             bfree(ip->dev, a[j]);
@@ -372,7 +364,7 @@ stati(struct inode *ip, struct stat *st)
 int
 readi(struct inode *ip, char *dst, uint off, uint n)
 {
-  uint target = n, n1;
+  uint target, n1;
   struct buf *bp;
 
   if(ip->type == T_DEV) {
@@ -381,6 +373,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     return devsw[ip->major].read(ip->minor, dst, n);
   }
 
+  target = n;
   while(n > 0 && off < ip->size){
     bp = bread(ip->dev, bmap(ip, off / BSIZE));
     n1 = min(n, ip->size - off);
@@ -435,45 +428,39 @@ newblock(struct inode *ip, uint lbn)
 int
 writei(struct inode *ip, char *addr, uint off, uint n)
 {
+  struct buf *bp;
+  int r, m, lbn;
+
   if(ip->type == T_DEV) {
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
     return devsw[ip->major].write(ip->minor, addr, n);
-  } else if(ip->type == T_FILE || ip->type == T_DIR) {
-    struct buf *bp;
-    int r = 0;
-    int m;
-    int lbn;
-    while(r < n) {
-      lbn = off / BSIZE;
-      if(lbn >= MAXFILE)
-        return r;
-      if(newblock(ip, lbn) < 0) {
-        cprintf("newblock failed\n");
-        return r;
-      }
-      m = min(BSIZE - off % BSIZE, n-r);
-      bp = bread(ip->dev, bmap(ip, lbn));
-      memmove(bp->data + off % BSIZE, addr, m);
-      bwrite(bp, bmap(ip, lbn));
-      brelse(bp);
-      r += m;
-      off += m;
-    }
-    if(r > 0) {
-      if(off > ip->size) {
-        if(ip->type == T_DIR)
-          ip->size = ((off / BSIZE) + 1) * BSIZE;
-        else
-          ip->size = off;
-      }
-      iupdate(ip);
-    }
-    return r;
-  } else {
-    panic("writei: unknown type");
-    return 0;
   }
+
+  for(r=0; r<n; ) {
+    lbn = off / BSIZE;
+    if(lbn >= MAXFILE)
+      return r;
+    if(newblock(ip, lbn) < 0) {
+      cprintf("newblock failed\n");
+      return r;
+    }
+    m = min(BSIZE - off % BSIZE, n-r);
+    bp = bread(ip->dev, bmap(ip, lbn));
+    memmove(bp->data + off % BSIZE, addr, m);
+    bwrite(bp, bmap(ip, lbn));
+    brelse(bp);
+    r += m;
+    off += m;
+  }
+  if(r > 0 && off > ip->size) {
+    if(ip->type == T_DIR)
+      ip->size = ((off / BSIZE) + 1) * BSIZE;
+    else
+      ip->size = off;
+    iupdate(ip);
+  }
+  return r;
 }
 
 // Skip over the next path element in path, 
