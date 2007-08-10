@@ -30,9 +30,7 @@ idtinit(void)
 void
 trap(struct trapframe *tf)
 {
-  int v = tf->trapno;
-
-  if(v == T_SYSCALL){
+  if(tf->trapno == T_SYSCALL){
     if(cp->killed)
       proc_exit();
     cp->tf = tf;
@@ -47,7 +45,7 @@ trap(struct trapframe *tf)
   // during interrupt handler.  Decrement before returning.
   cpus[cpu()].nlock++;
 
-  switch(v){
+  switch(tf->trapno){
   case IRQ_OFFSET + IRQ_TIMER:
     lapic_timerintr();
     cpus[cpu()].nlock--;
@@ -82,12 +80,13 @@ trap(struct trapframe *tf)
     if(cp) {
       // Assume process divided by zero or dereferenced null, etc.
       cprintf("pid %d %s: unhandled trap %d on cpu %d eip %x -- kill proc\n",
-              cp->pid, cp->name, v, cpu(), tf->eip);
+              cp->pid, cp->name, tf->trapno, cpu(), tf->eip);
       proc_exit();
     }
     
     // Otherwise it's our mistake.
-    cprintf("unexpected trap %d from cpu %d eip %x\n", v, cpu(), tf->eip);
+    cprintf("unexpected trap %d from cpu %d eip %x\n",
+            tf->trapno, cpu(), tf->eip);
     panic("trap");
   }
   

@@ -4,8 +4,9 @@
 void*
 memset(void *dst, int c, uint n)
 {
-  char *d = (char*) dst;
+  char *d;
 
+  d = (char*)dst;
   while(n-- > 0)
     *d++ = c;
 
@@ -15,12 +16,13 @@ memset(void *dst, int c, uint n)
 int
 memcmp(const void *v1, const void *v2, uint n)
 {
-  const uchar *s1 = (const uchar*) v1;
-  const uchar *s2 = (const uchar*) v2;
-
+  const uchar *s1, *s2;
+  
+  s1 = v1;
+  s2 = v2;
   while(n-- > 0) {
     if(*s1 != *s2)
-      return (int) *s1 - (int) *s2;
+      return *s1 - *s2;
     s1++, s2++;
   }
 

@@ -118,13 +118,13 @@ mpmain(void)
 void
 process0(void)
 {
-  struct proc *p0 = &proc[0];
-  struct proc *p1;
   extern struct spinlock proc_table_lock;
+  struct proc *p0, *p1;
   struct trapframe tf;
 
   release(&proc_table_lock);
 
+  p0 = &proc[0];
   p0->cwd = iget(rootdev, 1);
   iunlock(p0->cwd);
 

@@ -19,7 +19,7 @@ union header {
 typedef union header Header;
 
 static Header base;
-static Header *freep = 0;
+static Header *freep;
 
 void
 free(void *ap)

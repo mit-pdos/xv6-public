@@ -11,18 +11,20 @@ putc(int fd, char c)
 static void
 printint(int fd, int xx, int base, int sgn)
 {
+  static char digits[] = "0123456789ABCDEF";
   char buf[16];
-  char digits[] = "0123456789ABCDEF";
-  int i = 0, neg = 0;
+  int i, neg;
   uint x;
 
+  neg = 0;
   if(sgn && xx < 0){
     neg = 1;
-    x = 0 - xx;
+    x = -xx;
   } else {
     x = xx;
   }
 
+  i = 0;
   do {
     buf[i++] = digits[x % base];
   } while((x /= base) != 0);
@@ -37,9 +39,12 @@ printint(int fd, int xx, int base, int sgn)
 void
 printf(int fd, char *fmt, ...)
 {
-  int i, state = 0, c;
-  uint *ap = (uint*)(void*)&fmt + 1;
+  char *s;
+  int c, i, state;
+  uint *ap;
 
+  state = 0;
+  ap = (uint*)(void*)&fmt + 1;
   for(i = 0; fmt[i]; i++){
     c = fmt[i] & 0xff;
     if(state == 0){
@@ -56,7 +61,7 @@ printf(int fd, char *fmt, ...)
         printint(fd, *ap, 16, 0);
         ap++;
       } else if(c == 's'){
-        char *s = (char*)*ap;
+        s = (char*)*ap;
         ap++;
         while(*s != 0){
           putc(fd, *s);

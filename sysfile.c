@@ -54,7 +54,7 @@ int
 sys_pipe(void)
 {
   int *fd;
-  struct file *rf = 0, *wf = 0;
+  struct file *rf, *wf;
   int fd0, fd1;
 
   if(argptr(0, (void*)&fd, 2*sizeof fd[0]) < 0)

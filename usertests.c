@@ -203,13 +203,14 @@ void
 pipe1(void)
 {
   int fds[2], pid;
-  int seq = 0, i, n, cc, total;
+  int seq, i, n, cc, total;
 
   if(pipe(fds) != 0){
     printf(1, "pipe() failed\n");
     exit();
   }
   pid = fork();
+  seq = 0;
   if(pid == 0){
     close(fds[0]);
     for(n = 0; n < 5; n++){
@@ -464,8 +465,8 @@ twofiles(void)
 void
 createdelete(void)
 {
+  enum { N = 20 };
   int pid, i, fd;
-  int n = 20;
   char name[32];
 
   printf(1, "createdelete test\n");
@@ -477,7 +478,7 @@ createdelete(void)
 
   name[0] = pid ? 'p' : 'c';
   name[2] = '\0';
-  for(i = 0; i < n; i++){
+  for(i = 0; i < N; i++){
     name[1] = '0' + i;
     fd = open(name, O_CREATE | O_RDWR);
     if(fd < 0){
@@ -499,14 +500,14 @@ createdelete(void)
   //  else
   //exit();
 
-  for(i = 0; i < n; i++){
+  for(i = 0; i < N; i++){
     name[0] = 'p';
     name[1] = '0' + i;
     fd = open(name, 0);
-    if((i == 0 || i >= n/2) && fd < 0){
+    if((i == 0 || i >= N/2) && fd < 0){
       printf(1, "oops createdelete %s didn't exist\n", name);
       exit();
-    } else if((i >= 1 && i < n/2) && fd >= 0){
+    } else if((i >= 1 && i < N/2) && fd >= 0){
       printf(1, "oops createdelete %s did exist\n", name);
       exit();
     }
@@ -516,10 +517,10 @@ createdelete(void)
     name[0] = 'c';
     name[1] = '0' + i;
     fd = open(name, 0);
-    if((i == 0 || i >= n/2) && fd < 0){
+    if((i == 0 || i >= N/2) && fd < 0){
       printf(1, "oops createdelete %s didn't exist\n", name);
       exit();
-    } else if((i >= 1 && i < n/2) && fd >= 0){
+    } else if((i >= 1 && i < N/2) && fd >= 0){
       printf(1, "oops createdelete %s did exist\n", name);
       exit();
     }
@@ -527,7 +528,7 @@ createdelete(void)
       close(fd);
   }
 
-  for(i = 0; i < n; i++){
+  for(i = 0; i < N; i++){
     name[0] = 'p';
     name[1] = '0' + i;
     unlink(name);

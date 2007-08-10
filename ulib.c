@@ -31,7 +31,8 @@ strcmp(const char *p, const char *q)
 uint
 strlen(char *s)
 {
-  int n = 0;
+  int n;
+
   for(n = 0; s[n]; n++)
     ;
   return n;
@@ -40,11 +41,11 @@ strlen(char *s)
 void*
 memset(void *dst, int c, uint n)
 {
-  char *d = (char*) dst;
-
+  char *d;
+  
+  d = dst;
   while(n-- > 0)
     *d++ = c;
-
   return dst;
 }
 
@@ -60,10 +61,10 @@ strchr(const char *s, char c)
 char*
 gets(char *buf, int max)
 {
-  int i = 0, cc;
+  int i, cc;
   char c;
 
-  while(i+1 < max){
+  for(i=0; i+1 < max; ){
     cc = read(0, &c, 1);
     if(cc < 1)
       break;
