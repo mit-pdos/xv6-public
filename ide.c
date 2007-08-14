@@ -29,6 +29,7 @@ struct ide_request {
   void *addr;
   uint nsecs;
   uint read;
+  int done;
 };
 
 static struct ide_request request[NREQUEST];
@@ -40,6 +41,7 @@ static int disk_queue;
 
 static int ide_probe_disk1(void);
 
+//PAGEBREAK: 10
 // Wait for IDE disk to become ready.
 static int
 ide_wait_ready(int check_error)
@@ -91,6 +93,7 @@ void
 ide_intr(void)
 {
   acquire(&ide_lock);
+  request[tail].done = 1;
   wakeup(&request[tail]);
   release(&ide_lock);
 }
@@ -119,6 +122,7 @@ ide_start_request (void)
   }
 }
 
+//PAGEBREAK: 30
 // Run an entire disk operation.
 void
 ide_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
@@ -140,13 +144,15 @@ ide_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
   r->nsecs = nsecs;
   r->diskno = diskno;
   r->read = read;
+  r->done = 0;
   head = (head + 1) % NREQUEST;
 
   // Start request if necessary.
   ide_start_request();
   
   // Wait for request to finish.
-  sleep(r, &ide_lock);
+  while(!r->done)
+    sleep(r, &ide_lock);
   
   // Finish request.
   if(read){
