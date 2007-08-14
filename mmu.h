@@ -79,6 +79,7 @@ struct segdesc {
 #define STS_IG32    0xE     // 32-bit Interrupt Gate
 #define STS_TG32    0xF     // 32-bit Trap Gate
 
+// PAGEBREAK: 40
 // Task state segment format
 struct taskstate {
   uint link;         // Old ts selector
@@ -120,6 +121,7 @@ struct taskstate {
   ushort iomb;       // I/O map base address
 };
 
+// PAGEBREAK: 12
 // Gate descriptors for interrupts and traps
 struct gatedesc {
   uint off_15_0 : 16;   // low 16 bits of offset in segment
