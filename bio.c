@@ -71,20 +71,18 @@ bget(uint dev, uint sector)
 
  loop:
   // Try for cached block.
-  for(b = bufhead.next; b != &bufhead; b = b->next)
+  for(b = bufhead.next; b != &bufhead; b = b->next){
     if((b->flags & (B_BUSY|B_VALID)) &&
-       b->dev == dev && b->sector == sector)
-      break;
-
-  if(b != &bufhead){
-    if(b->flags & B_BUSY){
-      sleep(buf, &buf_table_lock);
-      goto loop;
+       b->dev == dev && b->sector == sector){
+      if(b->flags & B_BUSY){
+        sleep(buf, &buf_table_lock);
+        goto loop;
+      }
+      b->flags |= B_BUSY;
+      // b->flags &= ~B_VALID; // Force reread from disk
+      release(&buf_table_lock);
+      return b;
     }
-    b->flags |= B_BUSY;
-    // b->flags &= ~B_VALID; // Force reread from disk
-    release(&buf_table_lock);
-    return b;
   }
 
   // Allocate fresh block.
