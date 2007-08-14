@@ -47,9 +47,9 @@ kinit(void)
 void
 kfree(char *v, int len)
 {
-  struct run **rr, *p, *pend;
+  struct run *r, *rend, **rp, *p, *pend;
 
-  if(len % PAGE)
+  if(len <= 0 || len % PAGE)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
@@ -58,36 +58,29 @@ kfree(char *v, int len)
   acquire(&kalloc_lock);
   p = (struct run*)v;
   pend = (struct run*)(v + len);
-  rr = &freelist;
-  while(*rr){
-    struct run *rend = (struct run*) ((char*)(*rr) + (*rr)->len);
-    if(p >= *rr && p < rend)
+  for(rp=&freelist; (r=*rp) != 0 && r <= pend; rp=&r->next){
+    rend = (struct run*)((char*)r + r->len);
+    if(r <= p && p < rend)
       panic("freeing free page");
-    if(pend == *rr){
-      p->len = len + (*rr)->len;
-      p->next = (*rr)->next;
-      *rr = p;
+    if(pend == r){  // p next to r: replace r with p
+      p->len = len + r->len;
+      p->next = r->next;
+      *rp = p;
       goto out;
     }
-    if(pend < *rr){
-      p->len = len;
-      p->next = *rr;
-      *rr = p;
-      goto out;
-    }
-    if(p == rend){
-      (*rr)->len += len;
-      if((*rr)->next && (*rr)->next == pend){
-        (*rr)->len += (*rr)->next->len;
-        (*rr)->next = (*rr)->next->next;
+    if(rend == p){  // r next to p: replace p with r
+      r->len += len;
+      if(r->next && r->next == pend){  // r now next to r->next?
+        r->len += r->next->len;
+        r->next = r->next->next;
       }
       goto out;
     }
-    rr = &((*rr)->next);
   }
+  // Insert p before r in list.
   p->len = len;
-  p->next = 0;
-  *rr = p;
+  p->next = r;
+  *rp = p;
 
  out:
   release(&kalloc_lock);
