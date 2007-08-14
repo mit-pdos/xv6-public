@@ -164,30 +164,3 @@ ide_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
 
   release(&ide_lock);
 }
-
-// Synchronous disk write.
-int
-ide_write(int diskno, uint secno, const void *src, uint nsecs)
-{
-  int r;
-
-  if(nsecs > 256)
-    panic("ide_write");
-
-  ide_wait_ready(0);
-
-  outb(0x1F2, nsecs);
-  outb(0x1F3, secno & 0xFF);
-  outb(0x1F4, (secno >> 8) & 0xFF);
-  outb(0x1F5, (secno >> 16) & 0xFF);
-  outb(0x1F6, 0xE0 | ((diskno&1)<<4) | ((secno>>24)&0x0F));
-  outb(0x1F7, 0x30);    // CMD 0x30 means write sector
-
-  for(; nsecs > 0; nsecs--, src += 512) {
-    if((r = ide_wait_ready(1)) < 0)
-      return r;
-    outsl(0x1F0, src, 512/4);
-  }
-
-  return 0;
-}
