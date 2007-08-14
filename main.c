@@ -128,12 +128,12 @@ process0(void)
   p0->cwd = iget(rootdev, 1);
   iunlock(p0->cwd);
 
-  // dummy user memory to make copyproc() happy.
-  // must be big enough to hold the init binary.
-  p0->sz = PAGE;
+  // Dummy user memory to make copyproc() happy.
+  // Must be big enough to hold the init binary and stack.
+  p0->sz = 2*PAGE;
   p0->mem = kalloc(p0->sz);
 
-  // fake a trap frame as if a user process had made a system
+  // Fake a trap frame as if a user process had made a system
   // call, so that copyproc will have a place for the new
   // process to return to.
   p0->tf = &tf;
@@ -142,6 +142,13 @@ process0(void)
   p0->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p0->tf->eflags = FL_IF;
   p0->tf->esp = p0->sz;
+  
+  // Push bogus return address, both to cause problems
+  // if main returns and also because gcc can generate
+  // function prologs that expect to be able to read the
+  // return address off the stack without causing a fault.
+  p0->tf->esp -= 4;
+  *(uint*)(p0->mem + p0->tf->esp) = 0xefefefef;
 
   p1 = copyproc(p0);
 
