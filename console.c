@@ -207,7 +207,7 @@ kbd_intr(void)
   };
   uint st, data, c;
 
-  acquire(&kbd_lock);
+  acquire(&kbd.lock);
 
   st = inb(KBSTATP);
   if((st & KBS_DIB) == 0)
@@ -253,17 +253,17 @@ kbd_intr(void)
     break;
 
   default:
-    if(((kbd_w + 1) % KBD_BUF) != kbd_r){
-      kbd_buf[kbd_w++] = c;
-      if(kbd_w >= KBD_BUF)
-        kbd_w = 0;
-      wakeup(&kbd_r);
+    if(((kbd.w + 1) % KBD_BUF) != kbd.r){
+      kbd.buf[kbd.w++] = c;
+      if(kbd.w >= KBD_BUF)
+        kbd.w = 0;
+      wakeup(&kbd.r);
     }
     break;
   }
 
 out:
-  release(&kbd_lock);
+  release(&kbd.lock);
 }
 
 //PAGEBREAK: 25
