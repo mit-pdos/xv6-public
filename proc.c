@@ -38,13 +38,13 @@ setupsegs(struct proc *p)
   }
 
   c->gdt[0] = SEG_NULL;
-  c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024, 0);
+  c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
   c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint) &c->ts, sizeof(c->ts), 0);
+  c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint)&c->ts, sizeof(c->ts)-1, 0);
   c->gdt[SEG_TSS].s = 0;
   if(p){
-    c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz, DPL_USER);
-    c->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz, DPL_USER);
+    c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz-1, DPL_USER);
+    c->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz-1, DPL_USER);
   } else {
     c->gdt[SEG_UCODE] = SEG_NULL;
     c->gdt[SEG_UDATA] = SEG_NULL;
