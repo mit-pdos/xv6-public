@@ -7,6 +7,7 @@
 #include "param.h"
 #include "mmu.h"
 #include "proc.h"
+#include "kbd.h"
 
 struct spinlock console_lock;
 int panicked = 0;
@@ -49,7 +50,6 @@ cons_putc(int c)
   ind |= inb(crtport + 1);
 
   c &= 0xff;
-
   if(c == '\n'){
     ind -= (ind % 80);
     ind += 80;
@@ -101,48 +101,53 @@ printint(int xx, int base, int sgn)
 void
 cprintf(char *fmt, ...)
 {
-  int i, state = 0, c, locking = 0;
-  uint *ap = (uint*)(void*)&fmt + 1;
+  int i, c, state, locking;
+  uint *argp;
+  char *s;
 
-  if(use_console_lock){
-    locking = 1;
+  locking = use_console_lock;
+  if(locking)
     acquire(&console_lock);
-  }
 
+  argp = (uint*)(void*)&fmt + 1;
+  state = 0;
   for(i = 0; fmt[i]; i++){
     c = fmt[i] & 0xff;
-    if(state == 0){
-      if(c == '%'){
+    switch(state){
+    case 0:
+      if(c == '%')
         state = '%';
-      } else {
+      else
         cons_putc(c);
-      }
-    } else if(state == '%'){
-      if(c == 'd'){
-        printint(*ap, 10, 1);
-        ap++;
-      } else if(c == 'x' || c == 'p'){
-        printint(*ap, 16, 0);
-        ap++;
-      } else if(c == 's'){
-        char *s = (char*)*ap;
-        ap++;
-        if(s == 0){
-          cons_putc('0');
-        }else{
-          while(*s != 0){
-            cons_putc(*s);
-            s++;
-          }
-        }
-      } else if(c == '%'){
-        cons_putc(c);
-      } else {
-        // Unknown % sequence.  Print it to draw attention.
+      break;
+    
+    case '%':
+      switch(c){
+      case 'd':
+        printint(*argp++, 10, 1);
+        break;
+      case 'x':
+      case 'p':
+        printint(*argp++, 16, 0);
+        break;
+      case 's':
+        s = (char*)*argp++;
+        if(s == 0)
+          s = "(null)";
+        for(; *s; s++)
+          cons_putc(*s);
+        break;
+      case '%':
+        cons_putc('%');
+        break;
+      default:
+        // Print unknown % sequence to draw attention.
         cons_putc('%');
         cons_putc(c);
+        break;
       }
       state = 0;
+      break;
     }
   }
 
@@ -175,157 +180,31 @@ console_write(int minor, char *buf, int n)
   int i;
 
   acquire(&console_lock);
-
-  for(i = 0; i < n; i++) {
+  for(i = 0; i < n; i++)
     cons_putc(buf[i] & 0xff);
-  }
-
   release(&console_lock);
 
   return n;
 }
 
-
-#define KBSTATP         0x64    // kbd controller status port(I)
-#define KBS_DIB         0x01    // kbd data in buffer
-#define KBDATAP         0x60    // kbd data port(I)
-
-#define NO              0
-
-#define SHIFT           (1<<0)
-#define CTL             (1<<1)
-#define ALT             (1<<2)
-
-#define CAPSLOCK        (1<<3)
-#define NUMLOCK         (1<<4)
-#define SCROLLLOCK      (1<<5)
-
-#define E0ESC           (1<<6)
-
-// Special keycodes
-#define KEY_HOME        0xE0
-#define KEY_END         0xE1
-#define KEY_UP          0xE2
-#define KEY_DN          0xE3
-#define KEY_LF          0xE4
-#define KEY_RT          0xE5
-#define KEY_PGUP        0xE6
-#define KEY_PGDN        0xE7
-#define KEY_INS         0xE8
-#define KEY_DEL         0xE9
-
-static uchar shiftcode[256] =
-{
-  [0x1D] CTL,
-  [0x2A] SHIFT,
-  [0x36] SHIFT,
-  [0x38] ALT,
-  [0x9D] CTL,
-  [0xB8] ALT
-};
-
-static uchar togglecode[256] =
-{
-  [0x3A] CAPSLOCK,
-  [0x45] NUMLOCK,
-  [0x46] SCROLLLOCK
-};
-
-static uchar normalmap[256] =
-{
-  NO,   0x1B, '1',  '2',  '3',  '4',  '5',  '6',  // 0x00
-  '7',  '8',  '9',  '0',  '-',  '=',  '\b', '\t',
-  'q',  'w',  'e',  'r',  't',  'y',  'u',  'i',  // 0x10
-  'o',  'p',  '[',  ']',  '\n', NO,   'a',  's',
-  'd',  'f',  'g',  'h',  'j',  'k',  'l',  ';',  // 0x20
-  '\'', '`',  NO,   '\\', 'z',  'x',  'c',  'v',
-  'b',  'n',  'm',  ',',  '.',  '/',  NO,   '*',  // 0x30
-  NO,   ' ',  NO,   NO,   NO,   NO,   NO,   NO,
-  NO,   NO,   NO,   NO,   NO,   NO,   NO,   '7',  // 0x40
-  '8',  '9',  '-',  '4',  '5',  '6',  '+',  '1',
-  '2',  '3',  '0',  '.',  NO,   NO,   NO,   NO,   // 0x50
-  [0x97] KEY_HOME,
-  [0x9C] '\n',      // KP_Enter
-  [0xB5] '/',       // KP_Div
-  [0xC8] KEY_UP,
-  [0xC9] KEY_PGUP,
-  [0xCB] KEY_LF,
-  [0xCD] KEY_RT,
-  [0xCF] KEY_END,
-  [0xD0] KEY_DN,
-  [0xD1] KEY_PGDN,
-  [0xD2] KEY_INS,
-  [0xD3] KEY_DEL
-};
-
-static uchar shiftmap[256] =
-{
-  NO,   033,  '!',  '@',  '#',  '$',  '%',  '^',  // 0x00
-  '&',  '*',  '(',  ')',  '_',  '+',  '\b', '\t',
-  'Q',  'W',  'E',  'R',  'T',  'Y',  'U',  'I',  // 0x10
-  'O',  'P',  '{',  '}',  '\n', NO,   'A',  'S',
-  'D',  'F',  'G',  'H',  'J',  'K',  'L',  ':',  // 0x20
-  '"',  '~',  NO,   '|',  'Z',  'X',  'C',  'V',
-  'B',  'N',  'M',  '<',  '>',  '?',  NO,   '*',  // 0x30
-  NO,   ' ',  NO,   NO,   NO,   NO,   NO,   NO,
-  NO,   NO,   NO,   NO,   NO,   NO,   NO,   '7',  // 0x40
-  '8',  '9',  '-',  '4',  '5',  '6',  '+',  '1',
-  '2',  '3',  '0',  '.',  NO,   NO,   NO,   NO,   // 0x50
-  [0x97] KEY_HOME,
-  [0x9C] '\n',      // KP_Enter
-  [0xB5] '/',       // KP_Div
-  [0xC8] KEY_UP,
-  [0xC9] KEY_PGUP,
-  [0xCB] KEY_LF,
-  [0xCD] KEY_RT,
-  [0xCF] KEY_END,
-  [0xD0] KEY_DN,
-  [0xD1] KEY_PGDN,
-  [0xD2] KEY_INS,
-  [0xD3] KEY_DEL
-};
-
-#define C(x) (x - '@')
-
-static uchar ctlmap[256] =
-{
-  NO,      NO,      NO,      NO,      NO,      NO,      NO,      NO,
-  NO,      NO,      NO,      NO,      NO,      NO,      NO,      NO,
-  C('Q'),  C('W'),  C('E'),  C('R'),  C('T'),  C('Y'),  C('U'),  C('I'),
-  C('O'),  C('P'),  NO,      NO,      '\r',    NO,      C('A'),  C('S'),
-  C('D'),  C('F'),  C('G'),  C('H'),  C('J'),  C('K'),  C('L'),  NO,
-  NO,      NO,      NO,      C('\\'), C('Z'),  C('X'),  C('C'),  C('V'),
-  C('B'),  C('N'),  C('M'),  NO,      NO,      C('/'),  NO,      NO,
-  [0x97] KEY_HOME,
-  [0xB5] C('/'),    // KP_Div
-  [0xC8] KEY_UP,
-  [0xC9] KEY_PGUP,
-  [0xCB] KEY_LF,
-  [0xCD] KEY_RT,
-  [0xCF] KEY_END,
-  [0xD0] KEY_DN,
-  [0xD1] KEY_PGDN,
-  [0xD2] KEY_INS,
-  [0xD3] KEY_DEL
-};
-
-static uchar *charcode[4] = {
-  normalmap,
-  shiftmap,
-  ctlmap,
-  ctlmap
-};
-
 #define KBD_BUF 64
-uchar kbd_buf[KBD_BUF];
-int kbd_r;
-int kbd_w;
-struct spinlock kbd_lock;
-static uint shift;
+struct {
+  uchar buf[KBD_BUF];
+  int r;
+  int w;
+  struct spinlock lock;
+} kbd;
 
 void
 kbd_intr(void)
 {
+  static uint shift;
+  static uchar *charcode[4] = {
+    normalmap,
+    shiftmap,
+    ctlmap,
+    ctlmap
+  };
   uint st, data, c;
 
   acquire(&kbd_lock);
@@ -387,6 +266,7 @@ out:
   release(&kbd_lock);
 }
 
+//PAGEBREAK: 25
 int
 console_read(int minor, char *dst, int n)
 {
@@ -394,31 +274,31 @@ console_read(int minor, char *dst, int n)
   int c;
 
   target = n;
-  acquire(&kbd_lock);
+  acquire(&kbd.lock);
   while(n > 0){
-    while(kbd_r == kbd_w){
+    while(kbd.r == kbd.w){
       if(cp->killed){
-        release(&kbd_lock);
+        release(&kbd.lock);
         return -1;
       }
-      sleep(&kbd_r, &kbd_lock);
+      sleep(&kbd.r, &kbd.lock);
     }
-    c = kbd_buf[kbd_r++];
+    c = kbd.buf[kbd.r++];
     if(c == C('D')){  // EOF
       if(n < target){
         // Save ^D for next time, to make sure
         // caller gets a 0-byte result.
-        kbd_r--;
+        kbd.r--;
       }
       break;
     }
     *dst++ = c;
     cons_putc(c);
     --n;
-    if(kbd_r >= KBD_BUF)
-      kbd_r = 0;
+    if(kbd.r >= KBD_BUF)
+      kbd.r = 0;
   }
-  release(&kbd_lock);
+  release(&kbd.lock);
 
   return target - n;
 }
@@ -427,13 +307,13 @@ void
 console_init(void)
 {
   initlock(&console_lock, "console");
-  initlock(&kbd_lock, "kbd");
+  initlock(&kbd.lock, "kbd");
 
   devsw[CONSOLE].write = console_write;
   devsw[CONSOLE].read = console_read;
+  use_console_lock = 1;
 
   irq_enable(IRQ_KBD);
   ioapic_enable(IRQ_KBD, 0);
-
-  use_console_lock = 1;
 }
+

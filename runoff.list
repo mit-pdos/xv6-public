@@ -60,5 +60,6 @@ ioapic.h
 lapic.c
 ioapic.c
 picirq.c
+kbd.h
 console.c
 8253pit.c
