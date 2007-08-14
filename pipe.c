@@ -64,7 +64,6 @@ void
 pipe_close(struct pipe *p, int writable)
 {
   acquire(&p->lock);
-
   if(writable){
     p->writeopen = 0;
     wakeup(&p->readp);
@@ -72,7 +71,6 @@ pipe_close(struct pipe *p, int writable)
     p->readopen = 0;
     wakeup(&p->writep);
   }
-
   release(&p->lock);
 
   if(p->readopen == 0 && p->writeopen == 0)
@@ -86,7 +84,6 @@ pipe_write(struct pipe *p, char *addr, int n)
   int i;
 
   acquire(&p->lock);
-
   for(i = 0; i < n; i++){
     while(((p->writep + 1) % PIPESIZE) == p->readp){
       if(p->readopen == 0 || cp->killed){
@@ -99,9 +96,8 @@ pipe_write(struct pipe *p, char *addr, int n)
     p->data[p->writep] = addr[i];
     p->writep = (p->writep + 1) % PIPESIZE;
   }
-
-  release(&p->lock);
   wakeup(&p->readp);
+  release(&p->lock);
   return i;
 }
 
@@ -111,7 +107,6 @@ pipe_read(struct pipe *p, char *addr, int n)
   int i;
 
   acquire(&p->lock);
-
   while(p->readp == p->writep){
     if(p->writeopen == 0 || cp->killed){
       release(&p->lock);
@@ -125,8 +120,7 @@ pipe_read(struct pipe *p, char *addr, int n)
     addr[i] = p->data[p->readp];
     p->readp = (p->readp + 1) % PIPESIZE;
   }
-
-  release(&p->lock);
   wakeup(&p->writep);
+  release(&p->lock);
   return i;
 }
