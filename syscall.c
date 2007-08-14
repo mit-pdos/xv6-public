@@ -98,6 +98,7 @@ extern int sys_kill(void);
 extern int sys_link(void);
 extern int sys_mkdir(void);
 extern int sys_mknod(void);
+//PAGEBREAK: 0
 extern int sys_open(void);
 extern int sys_pipe(void);
 extern int sys_read(void);

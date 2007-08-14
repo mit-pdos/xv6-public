@@ -35,12 +35,55 @@ pr -e8 -t runoff.list | awk '
 	close(f)
 	n=$1
 	printf("%02d %s\n", n/100, s);
+	printf("TOC: %04d %s\n", n, s) >"fmt/tocdata"
 	next
 }
 {
 	print
 }' | pr -3 -t >>fmt/toc
 cat toc.ftr >>fmt/toc
+
+# check for bad alignments
+perl -e '
+	while(<>){
+		chomp;
+		s!#.*!!;
+		s!\s+! !g;
+		s! +$!!;
+		next if /^$/;
+		
+		if(/TOC: (\d+) (.*)/){
+			$toc{$2} = $1;
+			next;
+		}
+		
+		if(/even: (.*)/){
+			$file = $1;
+			if(!defined($toc{$file})){
+				print STDERR "Have no toc for $file\n";
+				next;
+			}
+			if($toc{$file} =~ /^\d\d[^0]/){
+				print STDERR "$file does not start on a fresh page.\n";
+			}
+			next;
+		}
+		
+		if(/odd: (.*)/){
+			$file = $1;
+			if(!defined($toc{$file})){
+				print STDERR "Have no toc for $file\n";
+				next;
+			}
+			if($toc{$file} =~ /^\d\d[^5]/){
+				print STDERR "$file does not start on a second half page.\n";
+			}
+			next;
+		}
+		
+		print STDERR "Unknown spec: $_\n";
+	}
+' fmt/tocdata runoff.spec
 
 # make definition list
 cd fmt

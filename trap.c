@@ -40,11 +40,11 @@ trap(struct trapframe *tf)
     return;
   }
 
-  // PAGEBREAK: 10
   // Increment nlock to make sure interrupts stay off
   // during interrupt handler.  Decrement before returning.
   cpus[cpu()].nlock++;
 
+  // PAGEBREAK: 10
   switch(tf->trapno){
   case IRQ_OFFSET + IRQ_TIMER:
     lapic_timerintr();
@@ -80,8 +80,8 @@ trap(struct trapframe *tf)
   default:
     if(cp) {
       // Assume process divided by zero or dereferenced null, etc.
-      cprintf("pid %d %s: unhandled trap %d on cpu %d eip %x -- kill proc\n",
-              cp->pid, cp->name, tf->trapno, cpu(), tf->eip);
+      cprintf("pid %d %s: unhandled trap %d err %d on cpu %d eip %x -- kill proc\n",
+              cp->pid, cp->name, tf->trapno, tf->err, cpu(), tf->eip);
       proc_exit();
     }
     

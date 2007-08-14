@@ -45,6 +45,7 @@ pipe_alloc(struct file **f0, struct file **f1)
   (*f1)->writable = 1;
   (*f1)->pipe = p;
   return 0;
+
  oops:
   if(p)
     kfree((char*) p, PAGE);
@@ -78,6 +79,7 @@ pipe_close(struct pipe *p, int writable)
     kfree((char*) p, PAGE);
 }
 
+//PAGEBREAK: 20
 int
 pipe_write(struct pipe *p, char *addr, int n)
 {
@@ -117,7 +119,6 @@ pipe_read(struct pipe *p, char *addr, int n)
     }
     sleep(&p->readp, &p->lock);
   }
-
   for(i = 0; i < n; i++){
     if(p->readp == p->writep)
       break;
