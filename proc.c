@@ -243,7 +243,6 @@ forkret(void)
 void
 sleep(void *chan, struct spinlock *lk)
 {
-
   if(cp == 0)
     panic("sleep");
 
