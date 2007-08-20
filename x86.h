@@ -2,10 +2,10 @@
 // hardware instructions.
 
 static __inline uchar
-inb(int port)
+inb(ushort port)
 {
   uchar data;
-  __asm __volatile("inb %w1,%0" : "=a" (data) : "d" (port));
+  __asm __volatile("in %1,%0" : "=a" (data) : "d" (port));
   return data;
 }
 
@@ -19,15 +19,15 @@ insl(int port, void *addr, int cnt)
 }
 
 static __inline void
-outb(int port, uchar data)
+outb(ushort port, uchar data)
 {
-  __asm __volatile("outb %0,%w1" : : "a" (data), "d" (port));
+  __asm __volatile("out %0,%1" : : "a" (data), "d" (port));
 }
 
 static __inline void
-outw(int port, ushort data)
+outw(ushort port, ushort data)
 {
-  __asm __volatile("outw %0,%w1" : : "a" (data), "d" (port));
+  __asm __volatile("out %0,%1" : : "a" (data), "d" (port));
 }
 
 static __inline void
