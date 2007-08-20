@@ -115,34 +115,41 @@ int
 sys_open(void)
 {
   struct inode *ip, *dp;
-  char *path;
+  char *path, *name;
+  int namelen;
   int omode;
-  int fd;
+  int fd, dev;
+  uint inum;
   struct file *f;
-  char *last;
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
 
-  if(omode & O_CREATE){
-    dp = namei(path, NAMEI_CREATE, 0, &last, &ip);
-    if(dp){
-      ip = mknod1(dp, last, T_FILE, 0, 0);
+  switch(omode & O_CREATE){
+  default:
+  case 0: // regular open
+    if((ip = namei(path)) == 0)
+      return -1;
+    break;
+  
+  case O_CREATE:
+    if((dp = nameiparent(path, &name, &namelen)) == 0)
+      return -1;
+    if(dirlookup(dp, name, namelen, 0, &inum) >= 0){
+      dev = dp->dev;
       iput(dp);
-      if(ip == 0)
+      ip = iget(dev, inum);
+    }else{
+      if((ip = dircreat(dp, name, namelen, T_FILE, 0, 0)) == 0){
+        iput(dp);
         return -1;
-    } else if(ip == 0){
-      return -1;
-    } else if(ip->type == T_DIR){
-      iput(ip);
-      return -1;
+      }
+      iput(dp);
     }
-  } else {
-    ip = namei(path, NAMEI_LOOKUP, 0, 0, 0);
-    if(ip == 0)
-      return -1;
+    break;
   }
-  if(ip->type == T_DIR && ((omode & O_RDWR) || (omode & O_WRONLY))){
+
+  if(ip->type == T_DIR && (omode & (O_RDWR|O_WRONLY|O_CREATE))){
     iput(ip);
     return -1;
   }
@@ -201,18 +208,22 @@ sys_mkdir(void)
 {
   struct inode *nip;
   struct inode *dp;
-  char *path;
+  char *name, *path;
   struct dirent de;
-  char *last;
+  int namelen;
 
   if(argstr(0, &path) < 0)
     return -1;
 
-  dp = namei(path, NAMEI_CREATE, 0, &last, 0);
+  dp = nameiparent(path, &name, &namelen);
   if(dp == 0)
     return -1;
+  if(dirlookup(dp, name, namelen, 0, 0) >= 0){
+    iput(dp);
+    return -1;
+  }
 
-  nip = mknod1(dp, last, T_DIR, 0, 0);
+  nip = dircreat(dp, name, namelen, T_DIR, 0, 0);
   if(nip == 0){
     iput(dp);
     return -1;
@@ -245,22 +256,17 @@ sys_chdir(void)
   if(argstr(0, &path) < 0)
     return -1;
 
-  if((ip = namei(path, NAMEI_LOOKUP, 0, 0, 0)) == 0)
+  if((ip = namei(path)) == 0)
     return -1;
-
-  if(ip == cp->cwd) {
-    iput(ip);
-    return 0;
-  }
 
   if(ip->type != T_DIR) {
     iput(ip);
     return -1;
   }
 
+  iunlock(ip);
   idecref(cp->cwd);
   cp->cwd = ip;
-  iunlock(cp->cwd);
   return 0;
 }
 
@@ -324,8 +330,7 @@ sys_exec(void)
   if(argstr(0, &path) < 0 || argint(1, (int*)&argv) < 0)
     return -1;
 
-  ip = namei(path, NAMEI_LOOKUP, 0, 0, 0);
-  if(ip == 0)
+  if((ip = namei(path)) == 0)
     return -1;
 
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))

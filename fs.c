@@ -465,7 +465,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
 //   set *poff to the byte offset of the directory entry
 //   set *pinum to the inode number
 //   return 0.
-static int
+int
 dirlookup(struct inode *dp, char *name, int namelen, uint *poff, uint *pinum)
 {
   uint off;
@@ -485,8 +485,10 @@ dirlookup(struct inode *dp, char *name, int namelen, uint *poff, uint *pinum)
       if(memcmp(name, de->name, namelen) == 0 &&
          (namelen == DIRSIZ || de->name[namelen]== 0)){
         // entry matches path element
-        *poff = off + (uchar*)de - bp->data;
-        *pinum = de->inum;
+        if(poff)
+          *poff = off + (uchar*)de - bp->data;
+        if(pinum)
+          *pinum = de->inum;
         brelse(bp);
         return 0;
       }
@@ -499,9 +501,9 @@ dirlookup(struct inode *dp, char *name, int namelen, uint *poff, uint *pinum)
 // Write a new directory entry (name, ino) into the directory dp.
 // Caller must have locked dp.
 void
-dirwrite(struct inode *dp, char *name, uint ino)
+dirwrite(struct inode *dp, char *name, int namelen, uint ino)
 {
-  int i, off;
+  int off;
   struct dirent de;
 
   // Look for an empty dirent.
@@ -513,13 +515,35 @@ dirwrite(struct inode *dp, char *name, uint ino)
   }
 
   de.inum = ino;
-  for(i = 0; i < DIRSIZ && name[i]; i++)
-    de.name[i] = name[i];
-  for(; i < DIRSIZ; i++)
-    de.name[i] = '\0';
+  if(namelen > DIRSIZ)
+    namelen = DIRSIZ;
+  memmove(de.name, name, namelen);
+  memset(de.name+namelen, 0, DIRSIZ-namelen);
 
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("dirwrite");
+}
+
+// Create a new inode named name inside dp
+// and return its locked inode structure.
+// If name already exists, return 0.
+struct inode*
+dircreat(struct inode *dp, char *name, int namelen, short type, short major, short minor)
+{
+  struct inode *ip;
+
+  ip = ialloc(dp->dev, type);
+  if(ip == 0)
+    return 0;
+  ip->major = major;
+  ip->minor = minor;
+  ip->size = 0;
+  ip->nlink = 1;
+  iupdate(ip);
+
+  dirwrite(dp, name, namelen, ip->inum);
+
+  return ip;
 }
 
 // Paths
@@ -564,20 +588,12 @@ skipelem(char *path, char **name, int *len)
 // NAMEI_DELETE: return locked parent inode, offset of dirent in *ret_off.
 //   return 0 if name doesn't exist.
 struct inode*
-namei(char *path, int mode, uint *ret_off,
-      char **ret_last, struct inode **ret_ip)
+_namei(char *path, int parent, char **pname, int *pnamelen)
 {
   struct inode *dp;
   char *name;
   int namelen;
   uint off, dev, inum;
-
-  if(ret_off)
-    *ret_off = 0xffffffff;
-  if(ret_last)
-    *ret_last = 0;
-  if(ret_ip)
-    *ret_ip = 0;
 
   if(*path == '/')
     dp = igetroot();
@@ -593,24 +609,16 @@ namei(char *path, int mode, uint *ret_off,
 
     if(dp->type != T_DIR)
       goto fail;
-
-    if(dirlookup(dp, name, namelen, &off, &inum) < 0){
-      if(mode == NAMEI_CREATE && *path == '\0'){
-        *ret_last = name;
-        return dp;
-      }
-      goto fail;
-    }
-
-    if(mode == NAMEI_DELETE && *path == '\0'){
-      // can't unlink . and ..
-      if((namelen == 1 && memcmp(name, ".", 1) == 0) ||
-         (namelen == 2 && memcmp(name, "..", 2) == 0)){
-        goto fail;
-      }
-      *ret_off = off;
+    
+    if(parent && *path == '\0'){
+      // Stop one level early.
+      *pname = name;
+      *pnamelen = namelen;
       return dp;
     }
+
+    if(dirlookup(dp, name, namelen, &off, &inum) < 0)
+      goto fail;
 
     dev = dp->dev;
     iput(dp);
@@ -618,19 +626,28 @@ namei(char *path, int mode, uint *ret_off,
     if(dp->type == 0 || dp->nlink < 1)
       panic("namei");
   }
-
-  if(mode == NAMEI_LOOKUP)
-    return dp;
-  if(mode == NAMEI_CREATE && ret_ip){
-    *ret_ip = dp;
+  if(parent)
     return 0;
-  }
-  goto fail;
+  return dp;
 
 fail:
   iput(dp);
   return 0;
 }
+
+struct inode*
+namei(char *path)
+{
+  return _namei(path, 0, 0, 0);
+}
+
+struct inode*
+nameiparent(char *path, char **name, int *namelen)
+{
+  return _namei(path, 1, name, namelen);
+}
+
+
 
 // Create the path and return its locked inode structure.
 // If cp already exists, return 0.
@@ -638,38 +655,17 @@ struct inode*
 mknod(char *path, short type, short major, short minor)
 {
   struct inode *ip, *dp;
-  char *last;
+  char *name;
+  int namelen;
 
-  if((dp = namei(path, NAMEI_CREATE, 0, &last, 0)) == 0)
+  if((dp = nameiparent(path, &name, &namelen)) == 0)
     return 0;
-
-  ip = mknod1(dp, last, type, major, minor);
-
+  if(dirlookup(dp, name, namelen, 0, 0) >= 0){
+    iput(dp);
+    return 0;
+  }
+  ip = dircreat(dp, name, namelen, type, major, minor);
   iput(dp);
-
-  return ip;
-}
-
-// Create a new inode named name inside dp
-// and return its locked inode structure.
-// If name already exists, return 0.
-struct inode*
-mknod1(struct inode *dp, char *name, short type, short major, short minor)
-{
-  struct inode *ip;
-
-  ip = ialloc(dp->dev, type);
-  if(ip == 0)
-    return 0;
-  ip->major = major;
-  ip->minor = minor;
-  ip->size = 0;
-  ip->nlink = 1;
-
-  iupdate(ip);  // write new inode to disk
-
-  dirwrite(dp, name, ip->inum);
-
   return ip;
 }
 
@@ -680,12 +676,15 @@ unlink(char *path)
   struct inode *ip, *dp;
   struct dirent de;
   uint off, inum, dev;
+  char *name;
+  int namelen;
 
-  dp = namei(path, NAMEI_DELETE, &off, 0, 0);
-  if(dp == 0)
+  if((dp = nameiparent(path, &name, &namelen)) == 0)
     return -1;
-
-  dev = dp->dev;
+  if(dirlookup(dp, name, namelen, &off, 0) < 0){
+    iput(dp);
+    return -1;
+  }
 
   if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de) || de.inum == 0)
     panic("unlink no entry");
@@ -702,16 +701,13 @@ unlink(char *path)
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("unlink dir write");
 
-  iupdate(dp);
+  dev = dp->dev;
   iput(dp);
 
   ip = iget(dev, inum);
-
   if(ip->nlink < 1)
     panic("unlink nlink < 1");
-
   ip->nlink--;
-
   iupdate(ip);
   iput(ip);
 
@@ -720,21 +716,26 @@ unlink(char *path)
 
 // Create the path new as a link to the same inode as old.
 int
-link(char *name1, char *name2)
+link(char *old, char *new)
 {
   struct inode *ip, *dp;
-  char *last;
+  char *name;
+  int namelen;
 
-  if((ip = namei(name1, NAMEI_LOOKUP, 0, 0, 0)) == 0)
+  if((ip = namei(old)) == 0)
     return -1;
   if(ip->type == T_DIR){
     iput(ip);
     return -1;
   }
-
   iunlock(ip);
-
-  if((dp = namei(name2, NAMEI_CREATE, 0, &last, 0)) == 0) {
+  
+  if((dp = nameiparent(new, &name, &namelen)) == 0){
+    idecref(ip);
+    return -1;
+  }
+  if(dirlookup(dp, name, namelen, 0, 0) >= 0){
+    iput(dp);
     idecref(ip);
     return -1;
   }
@@ -744,11 +745,12 @@ link(char *name1, char *name2)
     return -1;
   }
 
+  // LOCKING ERROR HERE!  TWO LOCKS HELD AT ONCE.
   ilock(ip);
   ip->nlink++;
   iupdate(ip);
 
-  dirwrite(dp, last, ip->inum);
+  dirwrite(dp, name, namelen, ip->inum);
   iput(dp);
   iput(ip);
 
