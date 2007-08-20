@@ -55,5 +55,3 @@ struct dirent {
   char name[DIRSIZ];
 };
 
-extern uint rootdev;  // Device number of root file system
-

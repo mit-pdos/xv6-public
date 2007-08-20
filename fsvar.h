@@ -14,7 +14,7 @@ struct inode {
   uint addrs[NADDRS];
 };
 
-extern uint rootdev;
+#define ROOTDEV  1   // Device number of root file system
 
 #define NAMEI_LOOKUP 1
 #define NAMEI_CREATE 2
