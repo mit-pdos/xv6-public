@@ -109,47 +109,43 @@ copyproc(struct proc *p)
     return 0;
   }
   np->pid = next_pid++;
-  np->ppid = p->pid;
   release(&proc_table_lock);
 
-  // Copy user memory.
-  np->sz = p->sz;
-  np->mem = kalloc(np->sz);
-  if(np->mem == 0){
-    np->state = UNUSED;
-    return 0;
-  }
-  memmove(np->mem, p->mem, np->sz);
-
   // Allocate kernel stack.
-  np->kstack = kalloc(KSTACKSIZE);
-  if(np->kstack == 0){
-    kfree(np->mem, np->sz);
-    np->mem = 0;
+  if((np->kstack = kalloc(KSTACKSIZE)) == 0){
     np->state = UNUSED;
     return 0;
   }
-
-  // Copy trapframe registers from parent.
   np->tf = (struct trapframe*)(np->kstack + KSTACKSIZE) - 1;
-  memmove(np->tf, p->tf, sizeof(*np->tf));
 
-  // Clear %eax so that fork system call returns 0 in child.
-  np->tf->eax = 0;
+  if(p){  // Copy process state from p.
+    np->ppid = p->pid;
+    memmove(np->tf, p->tf, sizeof *np->tf);
+  
+    np->sz = p->sz;
+    if((np->mem = kalloc(np->sz)) == 0){
+      kfree(np->kstack, KSTACKSIZE);
+      np->kstack = 0;
+      np->state = UNUSED;
+      return 0;
+    }
+    memmove(np->mem, p->mem, np->sz);
+
+    for(i = 0; i < NOFILE; i++){
+      np->ofile[i] = p->ofile[i];
+      if(np->ofile[i])
+        fileincref(np->ofile[i]);
+    }
+    np->cwd = iincref(p->cwd);
+  }
 
   // Set up new jmpbuf to start executing at forkret (see below).
   memset(&np->jmpbuf, 0, sizeof np->jmpbuf);
   np->jmpbuf.eip = (uint)forkret;
   np->jmpbuf.esp = (uint)np->tf - 4;
 
-  // Copy file descriptors
-  for(i = 0; i < NOFILE; i++){
-    np->ofile[i] = p->ofile[i];
-    if(np->ofile[i])
-      fileincref(np->ofile[i]);
-  }
-
-  np->cwd = iincref(p->cwd);
+  // Clear %eax so that fork system call returns 0 in child.
+  np->tf->eax = 0;
 
   return np;
 }

@@ -40,6 +40,7 @@ int memcmp(const void*, const void*, uint);
 void* memmove(void*, const void*, uint);
 int strncmp(const char*, const char*, uint);
 char* safestrcpy(char*, const char*, int);
+int strlen(const char*);
 
 // syscall.c
 void syscall(void);
@@ -135,11 +136,16 @@ int readi(struct inode*, char*, uint, uint);
 int writei(struct inode*, char*, uint, uint);
 struct inode* mknod(char*, short, short, short);
 struct inode* dircreat(struct inode*, char*, int, short, short, short);
-int dirlookup(struct inode*, char*, int, uint*, uint*);
+struct inode* dirlookup(struct inode*, char*, int, uint*);
 int unlink(char*);
 void iupdate(struct inode*);
 int link(char*, char*);
 struct inode* igetroot(void);
+int mkdir(char *path);
+struct inode* create(char *path);
+
+// exec.c
+int exec(char*, char**);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

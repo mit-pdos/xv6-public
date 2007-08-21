@@ -114,42 +114,22 @@ sys_close(void)
 int
 sys_open(void)
 {
-  struct inode *ip, *dp;
-  char *path, *name;
-  int namelen;
-  int omode;
-  int fd, dev;
-  uint inum;
+  char *path;
+  int fd, omode;
   struct file *f;
+  struct inode *ip;
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
 
-  switch(omode & O_CREATE){
-  default:
-  case 0: // regular open
-    if((ip = namei(path)) == 0)
-      return -1;
-    break;
-  
-  case O_CREATE:
-    if((dp = nameiparent(path, &name, &namelen)) == 0)
-      return -1;
-    if(dirlookup(dp, name, namelen, 0, &inum) >= 0){
-      dev = dp->dev;
-      iput(dp);
-      ip = iget(dev, inum);
-    }else{
-      if((ip = dircreat(dp, name, namelen, T_FILE, 0, 0)) == 0){
-        iput(dp);
-        return -1;
-      }
-      iput(dp);
-    }
-    break;
-  }
+  if(omode & O_CREATE)
+    ip = create(path);
+  else
+    ip = namei(path);
+  if(ip == 0)
+    return -1;
 
-  if(ip->type == T_DIR && (omode & (O_RDWR|O_WRONLY|O_CREATE))){
+  if(ip->type == T_DIR && (omode & (O_RDWR|O_WRONLY))){
     iput(ip);
     return -1;
   }
@@ -194,6 +174,7 @@ sys_mknod(void)
      argint(2, &major) < 0 || argint(3, &minor) < 0)
     return -1;
 
+  // XXX why this check?
   if(len >= DIRSIZ)
     return -1;
 
@@ -206,45 +187,11 @@ sys_mknod(void)
 int
 sys_mkdir(void)
 {
-  struct inode *nip;
-  struct inode *dp;
-  char *name, *path;
-  struct dirent de;
-  int namelen;
+  char *path;
 
   if(argstr(0, &path) < 0)
     return -1;
-
-  dp = nameiparent(path, &name, &namelen);
-  if(dp == 0)
-    return -1;
-  if(dirlookup(dp, name, namelen, 0, 0) >= 0){
-    iput(dp);
-    return -1;
-  }
-
-  nip = dircreat(dp, name, namelen, T_DIR, 0, 0);
-  if(nip == 0){
-    iput(dp);
-    return -1;
-  }
-
-  dp->nlink++;
-  iupdate(dp);
-
-  memset(de.name, '\0', DIRSIZ);
-  de.name[0] = '.';
-  de.inum = nip->inum;
-  writei(nip, (char*) &de, 0, sizeof(de));
-
-  de.inum = dp->inum;
-  de.name[1] = '.';
-  writei(nip, (char*) &de, sizeof(de), sizeof(de));
-
-  iput(dp);
-  iput(nip);
-
-  return 0;
+  return mkdir(path);
 }
 
 int
@@ -315,132 +262,30 @@ sys_link(void)
   return link(old, new);
 }
 
+#define ARGMAX 10
+
 int
 sys_exec(void)
 {
-  uint sz=0, ap, sp, p1, p2;
-  int i, nargs, argbytes, len;
-  struct inode *ip;
-  struct elfhdr elf;
-  struct proghdr ph;
-  char *mem = 0;
-  char *path, *s, *last;
-  uint argv;
-  
-  if(argstr(0, &path) < 0 || argint(1, (int*)&argv) < 0)
+  char *path, *argv[ARGMAX];
+  int i;
+  uint uargv, uarg;
+
+  if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0)
     return -1;
-
-  if((ip = namei(path)) == 0)
-    return -1;
-
-  if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
-    goto bad;
-
-  if(elf.magic != ELF_MAGIC)
-    goto bad;
-
-  sz = 0;
-  for(i = 0; i < elf.phnum; i++){
-    if(readi(ip, (char*)&ph, elf.phoff + i * sizeof(ph),
-             sizeof(ph)) != sizeof(ph))
-      goto bad;
-    if(ph.type != ELF_PROG_LOAD)
-      continue;
-    if(ph.memsz < ph.filesz)
-      goto bad;
-    sz += ph.memsz;
-  }
-
-  sz += 4096 - (sz % 4096);
-  sz += 4096;
-
-  mem = kalloc(sz);
-  if(mem == 0)
-    goto bad;
-  memset(mem, 0, sz);
-
-  nargs = 0;
-  argbytes = 0;
-  for(i = 0;; i++){
-    if(fetchint(cp, argv + 4*i, (int*)&ap) < 0)
-      goto bad;
-    if(ap == 0)
+  memset(argv, 0, sizeof argv);
+  for(i=0;; i++){
+    if(i >= ARGMAX)
+      return -1;
+    if(fetchint(cp, uargv+4*i, (int*)&uarg) < 0)
+      return -1;
+    if(uarg == 0){
+      argv[i] = 0;
       break;
-    len = fetchstr(cp, ap, &s);
-    if(len < 0)
-      goto bad;
-    nargs++;
-    argbytes += len + 1;
+    }
+    if(fetchstr(cp, uarg, &argv[i]) < 0)
+      return -1;
   }
-
-  // argn\0
-  // ...
-  // arg0\0
-  // 0
-  // ptr to argn
-  // ...
-  // 12: ptr to arg0
-  //  8: argv (points to ptr to arg0)
-  //  4: argc
-  //  0: fake return pc
-  sp = sz - argbytes - (nargs+1)*4 - 4 - 4 - 4;
-  *(uint*)(mem + sp) = 0xffffffff;
-  *(uint*)(mem + sp + 4) = nargs;
-  *(uint*)(mem + sp + 8) = (uint)(sp + 12);
-
-  p1 = sp + 12;
-  p2 = sp + 12 + (nargs + 1) * 4;
-  for(i = 0; i < nargs; i++){
-    fetchint(cp, argv + 4*i, (int*)&ap);
-    len = fetchstr(cp, ap, &s);
-    memmove(mem + p2, s, len + 1);
-    *(uint*)(mem + p1) = p2;
-    p1 += 4;
-    p2 += len + 1;
-  }
-  *(uint*)(mem + p1) = 0;
-
-  // Save name for debugging.
-  for(last=s=path; *s; s++)
-    if(*s == '/')
-      last = s+1;
-  safestrcpy(cp->name, last, sizeof cp->name);
-
-  // commit to the new image.
-  kfree(cp->mem, cp->sz);
-  cp->sz = sz;
-  cp->mem = mem;
-  mem = 0;
-
-  for(i = 0; i < elf.phnum; i++){
-    if(readi(ip, (char*)&ph, elf.phoff + i * sizeof(ph),
-             sizeof(ph)) != sizeof(ph))
-      goto bad2;
-    if(ph.type != ELF_PROG_LOAD)
-      continue;
-    if(ph.va + ph.memsz > sz)
-      goto bad2;
-    if(readi(ip, cp->mem + ph.va, ph.offset, ph.filesz) != ph.filesz)
-      goto bad2;
-    memset(cp->mem + ph.va + ph.filesz, 0, ph.memsz - ph.filesz);
-  }
-
-  iput(ip);
-  
-  cp->tf->eip = elf.entry;
-  cp->tf->esp = sp;
-  setupsegs(cp);
-
-  return 0;
-
- bad:
-  if(mem)
-    kfree(mem, sz);
-  iput(ip);
-  return -1;
-
- bad2:
-  iput(ip);
-  proc_exit();
-  return 0;
+  return exec(path, argv);
 }
+

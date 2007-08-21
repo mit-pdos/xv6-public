@@ -11,14 +11,15 @@ proc.c:
 
 	factor out switching and scheduling code from process code
 
-kalloc.c
-	more cleanups
+	shuffle for formatting
 
-ide.c: synchronous disk write -> polling disk write.  search for
-       (a)synchronous; xv6 doesn't have asynchronous writes.
+syscall.c:
+	cannot convince runoff1 to split the extern lists to fill previous page completely.
 
-fs.c: split all name operations off in name.c?  (starting with namei but move 
+fs.c: split all name operations off in name.c?  (starting with namei but
       wdir keep in fs.c)
+	locking?
+	shuffle for formatting
 
 pipe.c:
 	more comments?
@@ -31,6 +32,19 @@ sysfile.c:
 general:
 	sizeof parens?
 
+bio.c:
+	decide odd or even
+	bwrite doesn't need a second argument
+
+file.c:
+	move fileincref onto page 1?
+
 L=$HOME/mit/l
 (for i in *.c; do xoc -x xgnu -x ./nodecleq.zeta --typesonly $i; done) 2>&1 | grep warning
+
+saw random sharedfd failure.
+
+why does fdalloc consume reference?
+
+why mkdir and create?
 

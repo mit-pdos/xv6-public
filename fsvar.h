@@ -4,7 +4,7 @@ struct inode {
   uint dev;           // Device number
   uint inum;          // Inode number
   int ref;            // Reference count
-  int busy;           // Is the inode "locked"?
+  int flags;           // I_BUSY, I_VALID
 
   short type;         // copy of disk inode
   short major;
@@ -16,6 +16,5 @@ struct inode {
 
 #define ROOTDEV  1   // Device number of root file system
 
-#define NAMEI_LOOKUP 1
-#define NAMEI_CREATE 2
-#define NAMEI_DELETE 3
+#define I_BUSY 0x1
+#define I_VALID 0x2

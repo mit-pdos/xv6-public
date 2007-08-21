@@ -11,9 +11,8 @@
 #include "spinlock.h"
 
 extern char edata[], end[];
-extern uchar _binary__init_start[], _binary__init_size[];
 
-void process0();
+void proc0init();
 
 // Bootstrap processor starts running C code here.
 // This is called main0 not main so that it can have
@@ -24,7 +23,6 @@ main0(void)
 {
   int i;
   static int bcpu;  // cannot be on stack
-  struct proc *p;
 
   // clear BSS
   memset(edata, 0, end - edata);
@@ -54,15 +52,6 @@ main0(void)
   fileinit();
   iinit(); // i-node table
 
-  // initialize process 0
-  p = &proc[0];
-  p->state = RUNNABLE;
-  p->kstack = kalloc(KSTACKSIZE);
-
-  // cause proc[0] to start in kernel at process0
-  p->jmpbuf.eip = (uint) process0;
-  p->jmpbuf.esp = (uint) (p->kstack + KSTACKSIZE - 4);
-
   // make sure there's a TSS
   setupsegs(0);
 
@@ -85,6 +74,9 @@ main0(void)
   // enable interrupts on this processor.
   cpus[cpu()].nlock--;
   sti();
+
+  // initialize process 0
+  proc0init();
 
   scheduler();
 }
@@ -114,77 +106,45 @@ mpmain(void)
   scheduler();
 }
 
-// proc[0] starts here, called by scheduler() in the ordinary way.
-void
-process0(void)
-{
-  extern struct spinlock proc_table_lock;
-  struct proc *p0, *p1;
-  struct trapframe tf;
-
-  release(&proc_table_lock);
-
-  p0 = &proc[0];
-  p0->cwd = igetroot();
-  iunlock(p0->cwd);
-
-  // Dummy user memory to make copyproc() happy.
-  // Must be big enough to hold the init binary and stack.
-  p0->sz = 2*PAGE;
-  p0->mem = kalloc(p0->sz);
-
-  // Fake a trap frame as if a user process had made a system
-  // call, so that copyproc will have a place for the new
-  // process to return to.
-  p0->tf = &tf;
-  memset(p0->tf, 0, sizeof(struct trapframe));
-  p0->tf->es = p0->tf->ds = p0->tf->ss = (SEG_UDATA << 3) | DPL_USER;
-  p0->tf->cs = (SEG_UCODE << 3) | DPL_USER;
-  p0->tf->eflags = FL_IF;
-  p0->tf->esp = p0->sz;
+char initcode[] = {
+  /* push ptr to argv */     0x6a, 0x1c,
+  /* push ptr to "/init" */  0x6a, 0x16,
+  /* push fake ret addr */   0x6a, 0x00,
+  /* mov $SYS_exec, %eax */  0xb8, 0x09, 0x00, 0x00, 0x00,
+  /* int $0x30 */            0xcd, 0x30,
+  /* Lx: */
+  /* mov $SYS_exit, %eax */  0xb8, 0x02, 0x00, 0x00, 0x00,
+  /* int $0x30 */            0xcd, 0x30,
+  /* jmp Lx */               0xeb, 0xf7,
   
-  // Push bogus return address, both to cause problems
-  // if main returns and also because gcc can generate
-  // function prologs that expect to be able to read the
-  // return address off the stack without causing a fault.
-  p0->tf->esp -= 4;
-  *(uint*)(p0->mem + p0->tf->esp) = 0xefefefef;
-
-  p1 = copyproc(p0);
-
-  load_icode(p1, _binary__init_start, (uint) _binary__init_size);
-  p1->state = RUNNABLE;
-  safestrcpy(p1->name, "init", sizeof p1->name);
-
-  proc_wait();
-  panic("init exited");
-}
+  /* "/init\0" */            0x2f, 0x69, 0x6e, 0x69, 0x74, 0x00,
+  /* ptr to "/init" */       0x16, 0x00, 0x00, 0x00,
+  /* 0 */                    0x00, 0x00, 0x00, 0x00
+};
 
 void
-load_icode(struct proc *p, uchar *binary, uint size)
+proc0init(void)
 {
-  int i;
-  struct elfhdr *elf;
-  struct proghdr *ph;
+  struct proc *p;
+  extern uchar _binary_initcode_start[], _binary_initcode_size[];
+  
+  p = copyproc(0);
+  p->sz = PAGE;
+  p->mem = kalloc(p->sz);
+  p->cwd = igetroot();
+  memset(&p->tf, 0, sizeof p->tf);
+  p->tf->es = p->tf->ds = p->tf->ss = (SEG_UDATA << 3) | DPL_USER;
+  p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
+  p->tf->eflags = FL_IF;
+  p->tf->esp = p->sz;
+  
+  // Push dummy return address to placate gcc.
+  p->tf->esp -= 4;
+  *(uint*)(p->mem + p->tf->esp) = 0xefefefef;
 
-  elf = (struct elfhdr*) binary;
-  if(elf->magic != ELF_MAGIC)
-    panic("load_icode: not an ELF binary");
-
-  p->tf->eip = elf->entry;
-
-  // Map and load segments as directed.
-  ph = (struct proghdr*) (binary + elf->phoff);
-  for(i = 0; i < elf->phnum; i++, ph++) {
-    if(ph->type != ELF_PROG_LOAD)
-      continue;
-    if(ph->va + ph->memsz < ph->va)
-      panic("load_icode: overflow in proghdr");
-    if(ph->va + ph->memsz >= p->sz)
-      panic("load_icode: icode too large");
-
-    // Load/clear the segment
-    memmove(p->mem + ph->va, binary + ph->offset, ph->filesz);
-    memset(p->mem + ph->va + ph->filesz, 0, ph->memsz - ph->filesz);
-  }
+  p->tf->eip = 0;
+  memmove(p->mem, _binary_initcode_start, (int)_binary_initcode_size);
+  safestrcpy(p->name, "initcode", sizeof p->name);
+  p->state = RUNNABLE;
 }
+

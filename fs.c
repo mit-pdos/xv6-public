@@ -25,8 +25,6 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-static void ifree(struct inode*);
-
 // Blocks. 
 
 // Allocate a disk block.
@@ -116,30 +114,25 @@ iinit(void)
 }
 
 // Find the inode with number inum on device dev
-// and return an in-memory copy.  Loads the inode
-// from disk into the in-core table if necessary.
-// The returned inode is locked and has its ref count incremented.
-// Caller must iput the return value when done with it.
+// and return the in-memory copy.  The returned inode
+// has its reference count incremented (and thus must be
+// idecref'ed), but is *unlocked*, meaning that none of the fields
+// except dev and inum are guaranteed to be initialized.
+// This convention gives the caller maximum control over blocking;
+// it also guarantees that iget will not sleep, which is useful in 
+// the early igetroot and when holding other locked inodes.
 struct inode*
 iget(uint dev, uint inum)
 {
   struct inode *ip, *empty;
-  struct dinode *dip;
-  struct buf *bp;
 
   acquire(&icache.lock);
 
- loop:
   // Try for cached inode.
   empty = 0;
   for(ip = &icache.inode[0]; ip < &icache.inode[NINODE]; ip++){
     if(ip->ref > 0 && ip->dev == dev && ip->inum == inum){
-      if(ip->busy){
-        sleep(ip, &icache.lock);
-        goto loop;
-      }
       ip->ref++;
-      ip->busy = 1;
       release(&icache.lock);
       return ip;
     }
@@ -155,52 +148,61 @@ iget(uint dev, uint inum)
   ip->dev = dev;
   ip->inum = inum;
   ip->ref = 1;
-  ip->busy = 1;
+  ip->flags = 0;
   release(&icache.lock);
-
-  bp = bread(dev, IBLOCK(inum));
-  dip = &((struct dinode*)(bp->data))[inum % IPB];
-  ip->type = dip->type;
-  ip->major = dip->major;
-  ip->minor = dip->minor;
-  ip->nlink = dip->nlink;
-  ip->size = dip->size;
-  memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
-  brelse(bp);
 
   return ip;
 }
 
 // Iget the inode for the file system root (/).
+// This gets called before there is a current process: it cannot sleep!
 struct inode*
 igetroot(void)
 {
-  return iget(ROOTDEV, 1);
+  struct inode *ip;
+  ip = iget(ROOTDEV, 1);
+  return ip;
 }
 
 // Lock the given inode.
 void
 ilock(struct inode *ip)
 {
+  struct buf *bp;
+  struct dinode *dip;
+
   if(ip->ref < 1)
     panic("ilock");
 
   acquire(&icache.lock);
-  while(ip->busy)
+  while(ip->flags & I_BUSY)
     sleep(ip, &icache.lock);
-  ip->busy = 1;
+  ip->flags |= I_BUSY;
   release(&icache.lock);
+
+  if(!(ip->flags & I_VALID)){
+    bp = bread(ip->dev, IBLOCK(ip->inum));
+    dip = &((struct dinode*)(bp->data))[ip->inum % IPB];
+    ip->type = dip->type;
+    ip->major = dip->major;
+    ip->minor = dip->minor;
+    ip->nlink = dip->nlink;
+    ip->size = dip->size;
+    memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+    brelse(bp);
+    ip->flags |= I_VALID;
+  }
 }
 
 // Unlock the given inode.
 void
 iunlock(struct inode *ip)
 {
-  if(ip->busy != 1 || ip->ref < 1)
+  if(!(ip->flags & I_BUSY) || ip->ref < 1)
     panic("iunlock");
 
   acquire(&icache.lock);
-  ip->busy = 0;
+  ip->flags &= ~I_BUSY;
   wakeup(ip);
   release(&icache.lock);
 }
@@ -209,19 +211,8 @@ iunlock(struct inode *ip)
 void
 iput(struct inode *ip)
 {
-  if(ip->ref < 1 || ip->busy != 1)
-    panic("iput");
-
-  if((ip->ref == 1) && (ip->nlink == 0)) {
-    itrunc(ip);
-    ifree(ip);
-  }
-
-  acquire(&icache.lock);
-  ip->ref -= 1;
-  ip->busy = 0;
-  wakeup(ip);
-  release(&icache.lock);
+  iunlock(ip);
+  idecref(ip);
 }
 
 // Increment reference count for ip.
@@ -229,31 +220,42 @@ iput(struct inode *ip)
 struct inode*
 iincref(struct inode *ip)
 {
-  ilock(ip);
+  acquire(&icache.lock);
   ip->ref++;
-  iunlock(ip);
+  release(&icache.lock);
   return ip;
 }
 
-// Caller holds reference to unlocked ip.
-// Drop reference.
+// Caller holds reference to unlocked ip.  Drop reference.
 void
 idecref(struct inode *ip)
 {
-  ilock(ip);
-  iput(ip);
+  acquire(&icache.lock);
+  if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0) {
+    // inode is no longer used: truncate and free inode.
+    if(ip->flags & I_BUSY)
+      panic("idecref busy");
+    ip->flags |= I_BUSY;
+    release(&icache.lock);
+    // XXX convince rsc that no one will come find this inode.
+    itrunc(ip);
+    ip->type = 0;
+    iupdate(ip);
+    acquire(&icache.lock);
+    ip->flags &= ~I_BUSY;
+  }
+  ip->ref--;
+  release(&icache.lock);
 }
 
 // Allocate a new inode with the given type on device dev.
 struct inode*
 ialloc(uint dev, short type)
 {
-  struct inode *ip;
+  int inum, ninodes;
+  struct buf *bp;
   struct dinode *dip;
   struct superblock *sb;
-  int ninodes;
-  int inum;
-  struct buf *bp;
 
   bp = bread(dev, 1);
   sb = (struct superblock*)bp->data;
@@ -268,8 +270,7 @@ ialloc(uint dev, short type)
       dip->type = type;
       bwrite(bp, IBLOCK(inum));   // mark it allocated on the disk
       brelse(bp);
-      ip = iget(dev, inum);
-      return ip;
+      return iget(dev, inum);
     }
     brelse(bp);
   }
@@ -293,15 +294,6 @@ iupdate(struct inode *ip)
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   bwrite(bp, IBLOCK(ip->inum));
   brelse(bp);
-}
-
-// Free (delete) the given inode.
-// Caller must have ip locked.
-static void
-ifree(struct inode *ip)
-{
-  ip->type = 0;
-  iupdate(ip);
 }
 
 // Inode contents
@@ -465,15 +457,15 @@ writei(struct inode *ip, char *src, uint off, uint n)
 //   set *poff to the byte offset of the directory entry
 //   set *pinum to the inode number
 //   return 0.
-int
-dirlookup(struct inode *dp, char *name, int namelen, uint *poff, uint *pinum)
+struct inode*
+dirlookup(struct inode *dp, char *name, int namelen, uint *poff)
 {
-  uint off;
+  uint off, inum;
   struct buf *bp;
   struct dirent *de;
 
   if(dp->type != T_DIR)
-    return -1;
+    return 0;
 
   for(off = 0; off < dp->size; off += BSIZE){
     bp = bread(dp->dev, bmap(dp, off / BSIZE, 0));
@@ -487,24 +479,30 @@ dirlookup(struct inode *dp, char *name, int namelen, uint *poff, uint *pinum)
         // entry matches path element
         if(poff)
           *poff = off + (uchar*)de - bp->data;
-        if(pinum)
-          *pinum = de->inum;
+        inum = de->inum;
         brelse(bp);
-        return 0;
+        return iget(dp->dev, inum);
       }
     }
     brelse(bp);
   }
-  return -1;
+  return 0;
 }
 
 // Write a new directory entry (name, ino) into the directory dp.
 // Caller must have locked dp.
-void
-dirwrite(struct inode *dp, char *name, int namelen, uint ino)
+int
+dirlink(struct inode *dp, char *name, int namelen, uint ino)
 {
   int off;
   struct dirent de;
+  struct inode *ip;
+
+  // Double-check that name is not present.
+  if((ip = dirlookup(dp, name, namelen, 0)) != 0){
+    idecref(ip);
+    return -1;
+  }
 
   // Look for an empty dirent.
   for(off = 0; off < dp->size; off += sizeof(de)){
@@ -519,9 +517,10 @@ dirwrite(struct inode *dp, char *name, int namelen, uint ino)
     namelen = DIRSIZ;
   memmove(de.name, name, namelen);
   memset(de.name+namelen, 0, DIRSIZ-namelen);
-
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("dirwrite");
+  
+  return 0;
 }
 
 // Create a new inode named name inside dp
@@ -535,13 +534,19 @@ dircreat(struct inode *dp, char *name, int namelen, short type, short major, sho
   ip = ialloc(dp->dev, type);
   if(ip == 0)
     return 0;
+  ilock(ip);
   ip->major = major;
   ip->minor = minor;
   ip->size = 0;
   ip->nlink = 1;
   iupdate(ip);
-
-  dirwrite(dp, name, namelen, ip->inum);
+  
+  if(dirlink(dp, name, namelen, ip->inum) < 0){
+    ip->nlink = 0;
+    iupdate(ip);
+    iput(ip);
+    return 0;
+  }
 
   return ip;
 }
@@ -590,17 +595,16 @@ skipelem(char *path, char **name, int *len)
 struct inode*
 _namei(char *path, int parent, char **pname, int *pnamelen)
 {
-  struct inode *dp;
+  struct inode *dp, *ip;
   char *name;
   int namelen;
-  uint off, dev, inum;
+  uint off;
 
   if(*path == '/')
     dp = igetroot();
-  else {
+  else
     dp = iincref(cp->cwd);
-    ilock(dp);
-  }
+  ilock(dp);
 
   while((path = skipelem(path, &name, &namelen)) != 0){
     // Truncate names in path to DIRSIZ chars.
@@ -617,12 +621,12 @@ _namei(char *path, int parent, char **pname, int *pnamelen)
       return dp;
     }
 
-    if(dirlookup(dp, name, namelen, &off, &inum) < 0)
+    if((ip = dirlookup(dp, name, namelen, &off)) == 0)
       goto fail;
 
-    dev = dp->dev;
     iput(dp);
-    dp = iget(dev, inum);
+    ilock(ip);
+    dp = ip;
     if(dp->type == 0 || dp->nlink < 1)
       panic("namei");
   }
@@ -660,10 +664,6 @@ mknod(char *path, short type, short major, short minor)
 
   if((dp = nameiparent(path, &name, &namelen)) == 0)
     return 0;
-  if(dirlookup(dp, name, namelen, 0, 0) >= 0){
-    iput(dp);
-    return 0;
-  }
   ip = dircreat(dp, name, namelen, type, major, minor);
   iput(dp);
   return ip;
@@ -675,13 +675,13 @@ unlink(char *path)
 {
   struct inode *ip, *dp;
   struct dirent de;
-  uint off, inum, dev;
+  uint off;
   char *name;
   int namelen;
 
   if((dp = nameiparent(path, &name, &namelen)) == 0)
     return -1;
-  if(dirlookup(dp, name, namelen, &off, 0) < 0){
+  if((ip = dirlookup(dp, name, namelen, &off)) == 0){
     iput(dp);
     return -1;
   }
@@ -691,20 +691,17 @@ unlink(char *path)
   
   // Cannot remove "." or ".." - the 2 and 3 count the trailing NUL.
   if(memcmp(de.name, ".", 2) == 0 || memcmp(de.name, "..", 3) == 0){
+    idecref(ip);
     iput(dp);
     return -1;
   }
 
-  inum = de.inum;
-
   memset(&de, 0, sizeof(de));
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("unlink dir write");
-
-  dev = dp->dev;
   iput(dp);
 
-  ip = iget(dev, inum);
+  ilock(ip);
   if(ip->nlink < 1)
     panic("unlink nlink < 1");
   ip->nlink--;
@@ -729,30 +726,76 @@ link(char *old, char *new)
     return -1;
   }
   iunlock(ip);
-  
+
   if((dp = nameiparent(new, &name, &namelen)) == 0){
     idecref(ip);
     return -1;
   }
-  if(dirlookup(dp, name, namelen, 0, 0) >= 0){
-    iput(dp);
-    idecref(ip);
-    return -1;
-  }
-  if(dp->dev != ip->dev){
+  if(dp->dev != ip->dev || dirlink(dp, name, namelen, ip->inum) < 0){
     idecref(ip);
     iput(dp);
     return -1;
   }
+  iput(dp);
 
-  // LOCKING ERROR HERE!  TWO LOCKS HELD AT ONCE.
+  // XXX write ordering wrong here too.
   ilock(ip);
   ip->nlink++;
   iupdate(ip);
+  iput(ip);
+  return 0;
+}
 
-  dirwrite(dp, name, namelen, ip->inum);
+int
+mkdir(char *path)
+{
+  struct inode *dp, *ip;
+  char *name;
+  int namelen;
+  
+  // XXX write ordering is screwy here- do we care?
+  if((dp = nameiparent(path, &name, &namelen)) == 0)
+    return -1;
+  
+  if((ip = dircreat(dp, name, namelen, T_DIR, 0, 0)) == 0){
+    iput(dp);
+    return -1;
+  }
+  dp->nlink++;
+  iupdate(dp);
+
+  if(dirlink(ip, ".", 1, ip->inum) < 0 || dirlink(ip, "..", 2, dp->inum) < 0)
+    panic("mkdir");
   iput(dp);
   iput(ip);
 
   return 0;
 }
+
+struct inode*
+create(char *path)
+{
+  struct inode *dp, *ip;
+  char *name;
+  int namelen;
+  
+  if((dp = nameiparent(path, &name, &namelen)) == 0)
+    return 0;
+  
+  if((ip = dirlookup(dp, name, namelen, 0)) != 0){
+    iput(dp);
+    ilock(ip);
+    if(ip->type == T_DIR){
+      iput(ip);
+      return 0;
+    }
+    return ip;
+  }
+  if((ip = dircreat(dp, name, namelen, T_FILE, 0, 0)) == 0){
+    iput(dp);
+    return 0;
+  }
+  iput(dp);
+  return ip;
+}
+

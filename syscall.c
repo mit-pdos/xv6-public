@@ -53,7 +53,6 @@ fetchstr(struct proc *p, uint addr, char **pp)
 int
 argint(int argno, int *ip)
 {
-
   return fetchint(cp, cp->tf->esp + 4 + 4*argno, ip);
 }
 

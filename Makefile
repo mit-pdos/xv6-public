@@ -21,6 +21,7 @@ OBJS = \
 	vectors.o\
 	bio.o\
 	fs.o\
+	exec.o\
 	8253pit.o\
 
 # Cross-compiling (e.g., on Mac OS X)
@@ -34,7 +35,7 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 # On newer gcc you may need to add -fno-stack-protector to $(CFLAGS)
-CFLAGS = -fno-builtin -O2 -Wall -MD
+CFLAGS = -fno-builtin -O2 -Wall -MD -ggdb -fno-stack-protector
 AS = $(TOOLPREFIX)gas
 
 xv6.img : bootblock kernel fs.img
@@ -50,12 +51,16 @@ bootblock : bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
-kernel : $(OBJS) bootother.S _init
+kernel : $(OBJS) bootother.S initcode.S
 	$(CC) -nostdinc -I. -c bootother.S
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
-	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary bootother _init
+	$(CC) -nostdinc -I. -c initcode.S
+	$(LD) -N -e start -Ttext 0 -o initcode.out initcode.o
+	$(OBJCOPY) -S -O binary initcode.out initcode
+	$(OBJDUMP) -S initcode.o > initcode.asm
+	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary initcode bootother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | awk '/SYMBOL TABLE/ { go=1; next } go {print $$1, $$NF}' >kernel.sym
 
@@ -132,7 +137,7 @@ PRINT =	\
 	proc.h proc.c setjmp.S kalloc.c\
 	syscall.h trapasm.S traps.h trap.c vectors.pl syscall.c sysproc.c\
 	buf.h dev.h fcntl.h stat.h file.h fs.h fsvar.h file.c fs.c bio.c ide.c sysfile.c\
-	pipe.c\
+	pipe.c exec.c\
 	mp.h ioapic.h mp.c lapic.c ioapic.c picirq.c\
 	console.c\
 	string.c\
