@@ -121,24 +121,19 @@ void bwrite(struct buf*, uint);
 void brelse(struct buf*);
 
 // fs.c
+struct inode;
 void iinit(void);
-struct inode* iget(uint, uint);
 void ilock(struct inode*);
 void iunlock(struct inode*);
-void itrunc(struct inode*);
 void idecref(struct inode*);
 struct inode* iincref(struct inode*);
 void iput(struct inode*);
 struct inode* namei(char*);
-struct inode* nameiparent(char*, char**, int*);
 void stati(struct inode*, struct stat*);
 int readi(struct inode*, char*, uint, uint);
 int writei(struct inode*, char*, uint, uint);
 struct inode* mknod(char*, short, short, short);
-struct inode* dircreat(struct inode*, char*, int, short, short, short);
-struct inode* dirlookup(struct inode*, char*, int, uint*);
 int unlink(char*);
-void iupdate(struct inode*);
 int link(char*, char*);
 struct inode* igetroot(void);
 int mkdir(char *path);
