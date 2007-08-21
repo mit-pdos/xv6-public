@@ -262,12 +262,12 @@ sys_link(void)
   return link(old, new);
 }
 
-#define ARGMAX 10
+#define MAXARGS 20
 
 int
 sys_exec(void)
 {
-  char *path, *argv[ARGMAX];
+  char *path, *argv[MAXARGS];
   int i;
   uint uargv, uarg;
 
@@ -275,7 +275,7 @@ sys_exec(void)
     return -1;
   memset(argv, 0, sizeof argv);
   for(i=0;; i++){
-    if(i >= ARGMAX)
+    if(i >= MAXARGS)
       return -1;
     if(fetchint(cp, uargv+4*i, (int*)&uarg) < 0)
       return -1;
