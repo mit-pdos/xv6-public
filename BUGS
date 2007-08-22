@@ -12,3 +12,7 @@ formatting:
 	file.c filewrite leaks onto next page
 	need to fix PAGEBREAK mechanism
 
+fs.c: grep XXX
+
+sysfile.c: why does mknod take a type argument?
+

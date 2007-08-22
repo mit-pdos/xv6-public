@@ -46,9 +46,9 @@ fsvar.h
 ide.c
 bio.c
 fs.c
-exec.c
 file.c
 sysfile.c
+exec.c
 
 # pipes
 pipe.c
