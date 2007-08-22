@@ -782,6 +782,11 @@ subdir(void)
   }
   write(fd, "ff", 2);
   close(fd);
+  
+  if(unlink("dd") >= 0){
+    printf(1, "unlink dd (non-empty dir) succeeded!\n");
+    exit();
+  }
 
   if(mkdir("/dd/dd") != 0){
     printf(1, "subdir mkdir dd/dd failed\n");
@@ -817,12 +822,20 @@ subdir(void)
     printf(1, "unlink dd/dd/ff failed\n");
     exit();
   }
+  if(open("dd/dd/ff", O_RDONLY) >= 0){
+    printf(1, "open (unlinked) dd/dd/ff succeeded\n");
+    exit();
+  }
 
   if(chdir("dd") != 0){
     printf(1, "chdir dd failed\n");
     exit();
   }
   if(chdir("dd/../../dd") != 0){
+    printf(1, "chdir dd/../../dd failed\n");
+    exit();
+  }
+  if(chdir("dd/../../../dd") != 0){
     printf(1, "chdir dd/../../dd failed\n");
     exit();
   }
@@ -842,8 +855,8 @@ subdir(void)
   }
   close(fd);
 
-  if(open("dd/dd/ff", 0) >= 0){
-    printf(1, "open dd/dd/ff succeeded!\n");
+  if(open("dd/dd/ff", O_RDONLY) >= 0){
+    printf(1, "open (unlinked) dd/dd/ff succeeded!\n");
     exit();
   }
 
@@ -916,9 +929,18 @@ subdir(void)
     printf(1, "unlink dd/ff failed\n");
     exit();
   }
-
-  // unlink dd/dd
-  // unlink dd
+  if(unlink("dd") == 0){
+    printf(1, "unlink non-empty dd succeeded!\n");
+    exit();
+  }
+  if(unlink("dd/dd") < 0){
+    printf(1, "unlink dd/dd failed\n");
+    exit();
+  }
+  if(unlink("dd") < 0){
+    printf(1, "unlink dd failed\n");
+    exit();
+  }
 
   printf(1, "subdir ok\n");
 }
