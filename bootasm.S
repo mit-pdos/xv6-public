@@ -33,13 +33,9 @@ start:
   movw    $start,%sp              # Stack Pointer
 
   # Enable A20:
-  #   For fascinating historical reasons (related to the fact that
-  #   the earliest 8086-based PCs could only address 1MB of physical
-  #   memory and subsequent 80286-based PCs wanted to retain maximum
-  #   compatibility), physical address line 20 is tied to low when the
-  #   machine boots.  Obviously this a bit of a drag for us, especially
-  #   when trying to address memory above 1MB.  This code undoes this.
-
+  #   For backwards compatibility with the earliest PCs, physical
+  #   address line 20 is tied low, so that addresses higher than
+  #   1MB wrap around to zero by default.  This code undoes this.
 seta20.1:
   inb     $0x64,%al               # Get status
   testb   $0x2,%al                # Busy?
