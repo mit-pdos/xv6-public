@@ -105,6 +105,10 @@ _rm : rm.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _rm rm.o $(ULIB)
 	$(OBJDUMP) -S _rm > rm.asm
 
+_ln : ln.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _ln ln.o $(ULIB)
+	$(OBJDUMP) -S _ln > ln.asm
+
 _sh : sh.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _sh sh.o $(ULIB)
 	$(OBJDUMP) -S _sh > sh.asm
@@ -116,7 +120,7 @@ _zombie: zombie.o $(ULIB)
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-UPROGS=usertests _echo _cat _init _kill _ls _mkdir _rm _sh _zombie
+UPROGS=usertests _echo _cat _init _kill _ln _ls _mkdir _rm _sh _zombie
 fs.img : mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
 
