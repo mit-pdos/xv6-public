@@ -4,47 +4,11 @@ proc.c:
 	and be able to break out with an error return.
 	it is better if you check *before* sleep.
 
-	can swap procdump up after proc_kill
-	and then have proc_exit and proc_wait on same sheet
-
-	sched ->  switch2scheduler?  or just switch?
-
-	factor out switching and scheduling code from process code
-
-	shuffle for formatting
-
 syscall.c:
-	cannot convince runoff1 to split the extern lists to fill previous page completely.
+	cannot convince runoff1 to split the extern lists 
+	  to fill previous page completely.
 
-fs.c: split all name operations off in name.c?  (starting with namei but
-      wdir keep in fs.c)
-	locking?
-	shuffle for formatting
-
-pipe.c:
-	more comments?
-	comment how functions get called?
-
-sysfile.c:
-	is the sys_exec picture upside down?
-	can sys_open and sys_exec be simplified any?
-
-general:
-	sizeof parens?
-
-bio.c:
-	decide odd or even
-	bwrite doesn't need a second argument
-
-file.c:
-	move fileincref onto page 1?
-
-L=$HOME/mit/l
-(for i in *.c; do xoc -x xgnu -x ./nodecleq.zeta --typesonly $i; done) 2>&1 | grep warning
-
-saw random sharedfd failure.
-
-why does fdalloc consume reference?
-
-why mkdir and create?
+formatting:
+	file.c filewrite leaks onto next page
+	need to fix PAGEBREAK mechanism
 

@@ -19,7 +19,7 @@ int
 exec(char *path, char **argv)
 {
   uint sz, sp, p1, p2;
-  int i, nargs, argbytes, len;
+  int i, nargs, argbytes, len, off;
   struct inode *ip;
   struct elfhdr elf;
   struct proghdr ph;
@@ -29,7 +29,7 @@ exec(char *path, char **argv)
   sz = 0;
   mem = 0;
 
-  if((ip = namei(path)) == 0)
+  if((ip = ilock(namei(path))) == 0)
     return -1;
 
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
@@ -38,9 +38,8 @@ exec(char *path, char **argv)
   if(elf.magic != ELF_MAGIC)
     goto bad;
 
-  for(i = 0; i < elf.phnum; i++){
-    if(readi(ip, (char*)&ph, elf.phoff + i * sizeof(ph),
-             sizeof(ph)) != sizeof(ph))
+  for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
+    if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
     if(ph.type != ELF_PROG_LOAD)
       continue;
@@ -94,7 +93,7 @@ exec(char *path, char **argv)
   for(last=s=path; *s; s++)
     if(*s == '/')
       last = s+1;
-  safestrcpy(cp->name, last, sizeof cp->name);
+  safestrcpy(cp->name, last, sizeof(cp->name));
 
   // commit to the new image.
   kfree(cp->mem, cp->sz);
@@ -102,9 +101,8 @@ exec(char *path, char **argv)
   cp->mem = mem;
   mem = 0;
 
-  for(i = 0; i < elf.phnum; i++){
-    if(readi(ip, (char*)&ph, elf.phoff + i * sizeof(ph),
-             sizeof(ph)) != sizeof(ph))
+  for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
+    if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad2;
     if(ph.type != ELF_PROG_LOAD)
       continue;
@@ -115,7 +113,7 @@ exec(char *path, char **argv)
     memset(cp->mem + ph.va + ph.filesz, 0, ph.memsz - ph.filesz);
   }
 
-  iput(ip);
+  iput(iunlock(ip));
   
   cp->tf->eip = elf.entry;
   cp->tf->esp = sp;
@@ -126,11 +124,11 @@ exec(char *path, char **argv)
  bad:
   if(mem)
     kfree(mem, sz);
-  iput(ip);
+  iput(iunlock(ip));
   return -1;
 
  bad2:
-  iput(ip);
+  iput(iunlock(ip));
   proc_exit();
   return 0;
 }

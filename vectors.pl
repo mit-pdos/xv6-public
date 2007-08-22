@@ -26,3 +26,24 @@ print "vectors:\n";
 for(my $i = 0; $i < 256; $i++){
     print "  .long vector$i\n";
 }
+
+# sample output:
+#   # handlers
+#   .text
+#   .globl alltraps
+#   .globl vector0
+#   vector0:
+#     pushl $0
+#     pushl $0
+#     jmp alltraps
+#   ...
+#   
+#   # vector table
+#   .data
+#   .globl vectors
+#   vectors:
+#     .long vector0
+#     .long vector1
+#     .long vector2
+#   ...
+

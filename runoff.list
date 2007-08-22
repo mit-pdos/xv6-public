@@ -13,7 +13,7 @@ bootasm.S
 bootother.S
 bootmain.c
 main.c
-mp.c
+initcode.S
 init.c
 
 # locks
@@ -27,11 +27,11 @@ setjmp.S
 kalloc.c
 
 # system calls
-syscall.h
-trapasm.S
 traps.h
-trap.c
 vectors.pl
+trapasm.S
+trap.c
+syscall.h
 syscall.c
 sysproc.c
 
@@ -46,6 +46,7 @@ fsvar.h
 ide.c
 bio.c
 fs.c
+exec.c
 file.c
 sysfile.c
 
@@ -56,6 +57,7 @@ pipe.c
 string.c
 
 # low-level PC
+mp.c
 ioapic.h
 lapic.c
 ioapic.c

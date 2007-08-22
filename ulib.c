@@ -100,3 +100,15 @@ atoi(const char *s)
     n = n*10 + *s++ - '0';
   return n;
 }
+
+void*
+memmove(void *vdst, void *vsrc, int n)
+{
+  char *dst, *src;
+  
+  dst = vdst;
+  src = vsrc;
+  while(n-- > 0)
+    *dst++ = *src++;
+  return vdst;
+}

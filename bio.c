@@ -117,12 +117,11 @@ bread(uint dev, uint sector)
 // Write buf's contents to disk.
 // Must be locked.
 void
-bwrite(struct buf *b, uint sector)
+bwrite(struct buf *b)
 {
   if((b->flags & B_BUSY) == 0)
     panic("bwrite");
-
-  ide_rw(b->dev & 0xff, sector, b->data, 1, 0);
+  ide_rw(b->dev & 0xff, b->sector, b->data, 1, 0);
   b->flags |= B_VALID;
 }
 

@@ -37,7 +37,7 @@ struct proc {
   void *chan;               // If non-zero, sleeping on chan
   int killed;               // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
-  struct inode *cwd;        // Current directory
+  struct uinode *cwd;       // Current directory
   struct jmpbuf jmpbuf;     // Jump here to run process
   struct trapframe *tf;     // Trap frame for current interrupt
   char name[16];            // Process name (debugging)
@@ -48,8 +48,6 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
-
-extern struct proc proc[];
 
 // If xv6 was only for uniprocessors, this could be
 //   struct proc *cp;

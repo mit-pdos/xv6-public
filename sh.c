@@ -41,7 +41,7 @@ int _gettoken(char *s, char **p1, char **p2);
 int
 main(void)
 {
-  while(getcmd(buf, sizeof buf) >= 0) {
+  while(getcmd(buf, sizeof(buf)) >= 0) {
     if(parse(buf) >= 0)
       runcmd();
   }

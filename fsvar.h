@@ -14,7 +14,11 @@ struct inode {
   uint addrs[NADDRS];
 };
 
-#define ROOTDEV  1   // Device number of root file system
+// unlocked inode - only dev and inum are available
+struct uinode {
+  uint dev;
+  uint inum;
+};
 
 #define I_BUSY 0x1
 #define I_VALID 0x2

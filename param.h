@@ -8,3 +8,4 @@
 #define NBUF         10  // size of disk block cache
 #define NINODE      100  // maximum number of active i-nodes
 #define NDEV         10  // maximum major device number
+#define ROOTDEV       1  // device number of file system root disk

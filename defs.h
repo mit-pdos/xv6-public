@@ -24,6 +24,7 @@ int proc_kill(int);
 int proc_wait(void);
 void yield(void);
 void procdump(void);
+void userinit(void);
 
 // setjmp.S
 struct jmpbuf;
@@ -117,30 +118,31 @@ void ide_rw(int, uint, void*, uint, int);
 void binit(void);
 struct buf;
 struct buf* bread(uint, uint);
-void bwrite(struct buf*, uint);
+void bwrite(struct buf*);
 void brelse(struct buf*);
 
 // fs.c
 struct inode;
+struct uinode;
 void iinit(void);
-void ilock(struct inode*);
-void iunlock(struct inode*);
-void idecref(struct inode*);
-struct inode* iincref(struct inode*);
-void iput(struct inode*);
-struct inode* namei(char*);
+struct inode* ilock(struct uinode*);
+struct uinode* iunlock(struct inode*);
+void iput(struct uinode*);
+struct uinode* idup(struct uinode*);
+struct uinode* namei(char*);
 void stati(struct inode*, struct stat*);
 int readi(struct inode*, char*, uint, uint);
 int writei(struct inode*, char*, uint, uint);
-struct inode* mknod(char*, short, short, short);
-int unlink(char*);
-int link(char*, char*);
-struct inode* igetroot(void);
-int mkdir(char *path);
-struct inode* create(char *path);
+int dirlink(struct inode *dp, char *name, uint ino);
+struct uinode* dirlookup(struct inode *dp, char *name, uint *poff);
+void iupdate(struct inode *ip);
+int namecmp(const char *s, const char *t);
+struct uinode* ialloc(uint, short);
+struct uinode* nameiparent(char *path, char *name);
 
 // exec.c
 int exec(char*, char**);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+

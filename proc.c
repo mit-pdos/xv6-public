@@ -11,7 +11,7 @@ struct spinlock proc_table_lock;
 
 struct proc proc[NPROC];
 struct proc *curproc[NCPU];
-int next_pid = 1;
+int nextpid = 1;
 extern void forkret(void);
 extern void forkret1(struct trapframe*);
 
@@ -21,37 +21,27 @@ pinit(void)
   initlock(&proc_table_lock, "proc_table");
 }
 
-// Set up CPU's segment descriptors and task state for a
-// given process.
-// If p==0, set up for "idle" state for when scheduler()
-// is idling, not running any process.
-void
-setupsegs(struct proc *p)
+// Look in the process table for an UNUSED proc.
+// If found, change state to EMBRYO and return it.
+// Otherwise return 0.
+static struct proc*
+allocproc(void)
 {
-  struct cpu *c = &cpus[cpu()];
+  int i;
+  struct proc *p;
 
-  c->ts.ss0 = SEG_KDATA << 3;
-  if(p){
-    c->ts.esp0 = (uint)(p->kstack + KSTACKSIZE);
-  } else {
-    c->ts.esp0 = 0xffffffff;
+  acquire(&proc_table_lock);
+  for(i = 0; i < NPROC; i++){
+    p = &proc[i];
+    if(p->state == UNUSED){
+      p->state = EMBRYO;
+      p->pid = nextpid++;
+      release(&proc_table_lock);
+      return p;
+    }
   }
-
-  c->gdt[0] = SEG_NULL;
-  c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
-  c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint)&c->ts, sizeof(c->ts)-1, 0);
-  c->gdt[SEG_TSS].s = 0;
-  if(p){
-    c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz-1, DPL_USER);
-    c->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz-1, DPL_USER);
-  } else {
-    c->gdt[SEG_UCODE] = SEG_NULL;
-    c->gdt[SEG_UDATA] = SEG_NULL;
-  }
-
-  lgdt(c->gdt, sizeof c->gdt);
-  ltr(SEG_TSS << 3);
+  release(&proc_table_lock);
+  return 0;
 }
 
 // Grow current process's memory by n bytes.
@@ -73,29 +63,41 @@ growproc(int n)
   return cp->sz - n;
 }
 
-// Look in the process table for an UNUSED proc.
-// If found, change state to EMBRYO and return it.
-// Otherwise return 0.
-struct proc*
-allocproc(void)
+// Set up CPU's segment descriptors and task state for a
+// given process.
+// If p==0, set up for "idle" state for when scheduler()
+// is idling, not running any process.
+void
+setupsegs(struct proc *p)
 {
-  int i;
-  struct proc *p;
+  struct cpu *c = &cpus[cpu()];
 
-  for(i = 0; i < NPROC; i++){
-    p = &proc[i];
-    if(p->state == UNUSED){
-      p->state = EMBRYO;
-      return p;
-    }
+  c->ts.ss0 = SEG_KDATA << 3;
+  if(p)
+    c->ts.esp0 = (uint)(p->kstack + KSTACKSIZE);
+  else
+    c->ts.esp0 = 0xffffffff;
+
+  c->gdt[0] = SEG_NULL;
+  c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
+  c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
+  c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint)&c->ts, sizeof(c->ts)-1, 0);
+  c->gdt[SEG_TSS].s = 0;
+  if(p){
+    c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz-1, DPL_USER);
+    c->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz-1, DPL_USER);
+  } else {
+    c->gdt[SEG_UCODE] = SEG_NULL;
+    c->gdt[SEG_UDATA] = SEG_NULL;
   }
-  return 0;
+
+  lgdt(c->gdt, sizeof(c->gdt));
+  ltr(SEG_TSS << 3);
 }
 
 // Create a new process copying p as the parent.
-// Does not copy the kernel stack.
-// Instead, sets up stack to return as if from system call.
-// Caller must arrange for process to run (set state to RUNNABLE).
+// Sets up stack to return as if from system call.
+// Caller must set state of returned proc to RUNNABLE.
 struct proc*
 copyproc(struct proc *p)
 {
@@ -103,13 +105,8 @@ copyproc(struct proc *p)
   struct proc *np;
 
   // Allocate process.
-  acquire(&proc_table_lock);
-  if((np = allocproc()) == 0){
-    release(&proc_table_lock);
+  if((np = allocproc()) == 0)
     return 0;
-  }
-  np->pid = next_pid++;
-  release(&proc_table_lock);
 
   // Allocate kernel stack.
   if((np->kstack = kalloc(KSTACKSIZE)) == 0){
@@ -120,7 +117,7 @@ copyproc(struct proc *p)
 
   if(p){  // Copy process state from p.
     np->ppid = p->pid;
-    memmove(np->tf, p->tf, sizeof *np->tf);
+    memmove(np->tf, p->tf, sizeof(*np->tf));
   
     np->sz = p->sz;
     if((np->mem = kalloc(np->sz)) == 0){
@@ -132,22 +129,47 @@ copyproc(struct proc *p)
     memmove(np->mem, p->mem, np->sz);
 
     for(i = 0; i < NOFILE; i++){
-      np->ofile[i] = p->ofile[i];
-      if(np->ofile[i])
+      if((np->ofile[i] = p->ofile[i]) != 0)
         fileincref(np->ofile[i]);
     }
-    np->cwd = iincref(p->cwd);
+    np->cwd = idup(p->cwd);
   }
 
   // Set up new jmpbuf to start executing at forkret (see below).
-  memset(&np->jmpbuf, 0, sizeof np->jmpbuf);
+  memset(&np->jmpbuf, 0, sizeof(np->jmpbuf));
   np->jmpbuf.eip = (uint)forkret;
   np->jmpbuf.esp = (uint)np->tf - 4;
 
   // Clear %eax so that fork system call returns 0 in child.
   np->tf->eax = 0;
-
   return np;
+}
+
+// Set up first user process.
+void
+userinit(void)
+{
+  struct proc *p;
+  extern uchar _binary_initcode_start[], _binary_initcode_size[];
+  
+  p = copyproc(0);
+  p->sz = PAGE;
+  p->mem = kalloc(p->sz);
+  p->cwd = namei("/");
+  memset(&p->tf, 0, sizeof(p->tf));
+  p->tf->es = p->tf->ds = p->tf->ss = (SEG_UDATA << 3) | DPL_USER;
+  p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
+  p->tf->eflags = FL_IF;
+  p->tf->esp = p->sz;
+  
+  // Push dummy return address to placate gcc.
+  p->tf->esp -= 4;
+  *(uint*)(p->mem + p->tf->esp) = 0xefefefef;
+
+  p->tf->eip = 0;
+  memmove(p->mem, _binary_initcode_start, (int)_binary_initcode_size);
+  safestrcpy(p->name, "initcode", sizeof(p->name));
+  p->state = RUNNABLE;
 }
 
 //PAGEBREAK: 42
@@ -269,6 +291,7 @@ sleep(void *chan, struct spinlock *lk)
   }
 }
 
+//PAGEBREAK!
 // Wake up all processes sleeping on chan.
 // Proc_table_lock must be held.
 void
@@ -334,7 +357,7 @@ proc_exit(void)
     }
   }
 
-  idecref(cp->cwd);
+  iput(cp->cwd);
   cp->cwd = 0;
 
   acquire(&proc_table_lock);

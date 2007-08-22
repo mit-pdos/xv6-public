@@ -25,6 +25,7 @@
 //  * cmain() in this file takes over, 
 //    reads in the kernel and jumps to it.
 
+//PAGEBREAK!
 #include "types.h"
 #include "elf.h"
 #include "x86.h"
@@ -32,7 +33,6 @@
 #define SECTSIZE  512
 #define ELFHDR    ((struct elfhdr*) 0x10000) // scratch space
 
-void readsect(void*, uint);
 void readseg(uint, uint, uint);
 
 void
@@ -64,8 +64,37 @@ bad:
     ;
 }
 
+void
+waitdisk(void)
+{
+  // wait for disk reaady
+  while((inb(0x1F7) & 0xC0) != 0x40)
+    ;
+}
+
+// Read a single sector at offset into dst.
+void
+readsect(void *dst, uint offset)
+{
+  // wait for disk to be ready
+  waitdisk();
+
+  outb(0x1F2, 1);   // count = 1
+  outb(0x1F3, offset);
+  outb(0x1F4, offset >> 8);
+  outb(0x1F5, offset >> 16);
+  outb(0x1F6, (offset >> 24) | 0xE0);
+  outb(0x1F7, 0x20);  // cmd 0x20 - read sectors
+
+  // wait for disk to be ready
+  waitdisk();
+
+  // read a sector
+  insl(0x1F0, dst, SECTSIZE/4);
+}
+
 // Read 'count' bytes at 'offset' from kernel into virtual address 'va'.
-// Might copy more than asked
+// Might copy more than asked.
 void
 readseg(uint va, uint count, uint offset)
 {
@@ -88,33 +117,5 @@ readseg(uint va, uint count, uint offset)
     va += SECTSIZE;
     offset++;
   }
-}
-
-void
-waitdisk(void)
-{
-  // wait for disk reaady
-  while((inb(0x1F7) & 0xC0) != 0x40)
-    ;
-}
-
-void
-readsect(void *dst, uint offset)
-{
-  // wait for disk to be ready
-  waitdisk();
-
-  outb(0x1F2, 1);   // count = 1
-  outb(0x1F3, offset);
-  outb(0x1F4, offset >> 8);
-  outb(0x1F5, offset >> 16);
-  outb(0x1F6, (offset >> 24) | 0xE0);
-  outb(0x1F7, 0x20);  // cmd 0x20 - read sectors
-
-  // wait for disk to be ready
-  waitdisk();
-
-  // read a sector
-  insl(0x1F0, dst, SECTSIZE/4);
 }
 

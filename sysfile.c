@@ -11,7 +11,6 @@
 #include "buf.h"
 #include "fs.h"
 #include "fsvar.h"
-#include "elf.h"
 #include "file.h"
 #include "fcntl.h"
 
@@ -51,27 +50,15 @@ fdalloc(struct file *f)
 }
 
 int
-sys_pipe(void)
+sys_read(void)
 {
-  int *fd;
-  struct file *rf, *wf;
-  int fd0, fd1;
+  struct file *f;
+  int n;
+  char *cp;
 
-  if(argptr(0, (void*)&fd, 2*sizeof fd[0]) < 0)
+  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &cp, n) < 0)
     return -1;
-  if(pipe_alloc(&rf, &wf) < 0)
-    return -1;
-  fd0 = -1;
-  if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
-    if(fd0 >= 0)
-      cp->ofile[fd0] = 0;
-    fileclose(rf);
-    fileclose(wf);
-    return -1;
-  }
-  fd[0] = fd0;
-  fd[1] = fd1;
-  return 0;
+  return fileread(f, cp, n);
 }
 
 int
@@ -87,15 +74,14 @@ sys_write(void)
 }
 
 int
-sys_read(void)
+sys_fstat(void)
 {
   struct file *f;
-  int n;
-  char *cp;
-
-  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &cp, n) < 0)
+  struct stat *st;
+  
+  if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
     return -1;
-  return fileread(f, cp, n);
+  return filestat(f, st);
 }
 
 int
@@ -111,6 +97,150 @@ sys_close(void)
   return 0;
 }
 
+// Create the path new as a link to the same inode as old.
+int
+sys_link(void)
+{
+  char name[DIRSIZ], *new, *old;
+  struct inode *dp, *ip;
+  struct uinode *ipu;
+
+  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
+    return -1;
+  if((ip = ilock(namei(old))) == 0)
+    return -1;
+  if(ip->type == T_DIR){
+    iput(iunlock(ip));
+    return -1;
+  }
+  ip->nlink++;
+  iupdate(ip);
+  ipu = iunlock(ip);  ip = 0;
+
+  if((dp = ilock(nameiparent(new, name))) == 0 ||
+     dp->dev != ipu->dev || dirlink(dp, name, ipu->inum) < 0){
+    if(dp)
+      iput(iunlock(dp));
+    ip = ilock(ipu);
+    ip->nlink--;
+    iupdate(ip);
+    iput(iunlock(ip));
+    return -1;
+  }
+  iput(iunlock(dp));
+  iput(ipu);
+  return 0;
+}
+
+// Is the directory dp empty except for "." and ".." ?
+static int
+isdirempty(struct inode *dp)
+{
+  int off;
+  struct dirent de;
+
+  for(off=2*sizeof(de); off<dp->size; off+=sizeof(de)){
+    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+      panic("isdirempty: readi");
+    if(de.inum != 0)
+      return 0;
+  }
+  return 1;
+}
+
+int
+sys_unlink(void)
+{
+  struct inode *ip, *dp;
+  struct dirent de;
+  char name[DIRSIZ], *path;
+  uint off;
+
+  if(argstr(0, &path) < 0)
+    return -1;
+  if((dp = ilock(nameiparent(path, name))) == 0)
+    return -1;
+
+  // Cannot unlink "." or "..".
+  if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0){
+    iput(iunlock(dp));
+    return -1;
+  }
+
+  if((ip = ilock(dirlookup(dp, name, &off))) == 0){
+    iput(iunlock(dp));
+    return -1;
+  }
+
+  if(ip->nlink < 1)
+    panic("unlink: nlink < 1");
+  if(ip->type == T_DIR && !isdirempty(ip)){
+    iput(iunlock(ip));
+    iput(iunlock(dp));
+    return -1;
+  }
+
+  memset(&de, 0, sizeof(de));
+  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+    panic("unlink: writei");
+  iput(iunlock(dp));
+  
+  ip->nlink--;
+  iupdate(ip);
+  iput(iunlock(ip));
+  return 0;
+}
+
+// Create the path and return its unlocked inode structure.
+static struct inode*
+mkpath(char *path, int canexist, short type, short major, short minor)
+{
+  uint off;
+  struct inode *ip, *dp;
+  struct uinode *ipu;
+  char name[DIRSIZ];
+
+  if((dp = ilock(nameiparent(path, name))) == 0)
+    return 0;
+
+  if(canexist && (ipu = dirlookup(dp, name, &off)) != 0){
+    iput(iunlock(dp));
+    ip = ilock(ipu);
+    if(ip->type != type || ip->major != major || ip->minor != minor){
+      iput(iunlock(ip));
+      return 0;
+    }
+    return ip;
+  }
+
+  if((ip = ilock(ialloc(dp->dev, type))) == 0){
+    iput(iunlock(dp));
+    return 0;
+  }
+  ip->major = major;
+  ip->minor = minor;
+  ip->size = 0;
+  ip->nlink = 1;
+  iupdate(ip);
+  
+  if(dirlink(dp, name, ip->inum) < 0){
+    ip->nlink = 0;
+    iput(iunlock(ip));
+    iput(iunlock(dp));
+    return 0;
+  }
+
+  if(type == T_DIR){  // Create . and .. entries.
+    dp->nlink++;  // for ".."
+    iupdate(dp);
+    // No ip->nlink++ for ".": avoid cyclic ref count.
+    if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
+      panic("mkpath dots");
+  }
+  iput(iunlock(dp));
+  return ip;
+}
+
 int
 sys_open(void)
 {
@@ -122,30 +252,28 @@ sys_open(void)
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
 
-  if(omode & O_CREATE)
-    ip = create(path);
-  else
-    ip = namei(path);
-  if(ip == 0)
-    return -1;
+  if(omode & O_CREATE){
+    if((ip = mkpath(path, 1, T_FILE, 0, 0)) == 0)
+      return -1;
+  }else{
+    if((ip = ilock(namei(path))) == 0)
+      return -1;
+    if(ip->type == T_DIR && (omode & (O_RDWR|O_WRONLY))){
+      iput(iunlock(ip));
+      return -1;
+    }
+  }
 
-  if(ip->type == T_DIR && (omode & (O_RDWR|O_WRONLY))){
-    iput(ip);
+  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
+    if(f)
+      fileclose(f);
+    iput(iunlock(ip));
     return -1;
   }
 
-  if((f = filealloc()) == 0){
-    iput(ip);
-    return -1;
-  }
-  if((fd = fdalloc(f)) < 0){
-    iput(ip);
-    fileclose(f);
-    return -1;
-  }
-
-  iunlock(ip);
-  f->type = FD_FILE;
+  f->type = FD_INODE;
+  f->ip = iunlock(ip);
+  f->off = 0;
   if(omode & O_RDWR) {
     f->readable = 1;
     f->writable = 1;
@@ -156,8 +284,6 @@ sys_open(void)
     f->readable = 1;
     f->writable = 0;
   }
-  f->ip = ip;
-  f->off = 0;
 
   return fd;
 }
@@ -165,7 +291,7 @@ sys_open(void)
 int
 sys_mknod(void)
 {
-  struct inode *nip;
+  struct inode *ip;
   char *path;
   int len;
   int type, major, minor;
@@ -173,14 +299,10 @@ sys_mknod(void)
   if((len=argstr(0, &path)) < 0 || argint(1, &type) < 0 ||
      argint(2, &major) < 0 || argint(3, &minor) < 0)
     return -1;
-
-  // XXX why this check?
-  if(len >= DIRSIZ)
+  // XXX check that type == T_DEV or eliminate type arg?
+  if((ip = mkpath(path, 0, type, major, minor)) == 0)
     return -1;
-
-  if((nip = mknod(path, type, major, minor)) == 0)
-    return -1;
-  iput(nip);
+  iput(iunlock(ip));
   return 0;
 }
 
@@ -188,54 +310,29 @@ int
 sys_mkdir(void)
 {
   char *path;
+  struct inode *ip;
 
-  if(argstr(0, &path) < 0)
+  if(argstr(0, &path) < 0 || (ip = mkpath(path, 0, T_DIR, 0, 0)) == 0)
     return -1;
-  return mkdir(path);
+  iput(iunlock(ip));
+  return 0;
 }
 
 int
 sys_chdir(void)
 {
-  struct inode *ip;
   char *path;
+  struct inode *ip;
 
-  if(argstr(0, &path) < 0)
+  if(argstr(0, &path) < 0 || (ip = ilock(namei(path))) == 0)
     return -1;
-
-  if((ip = namei(path)) == 0)
-    return -1;
-
   if(ip->type != T_DIR) {
-    iput(ip);
+    iput(iunlock(ip));
     return -1;
   }
-
-  iunlock(ip);
-  idecref(cp->cwd);
-  cp->cwd = ip;
+  iput(cp->cwd);
+  cp->cwd = iunlock(ip);
   return 0;
-}
-
-int
-sys_unlink(void)
-{
-  char *path;
-  
-  if(argstr(0, &path) < 0)
-    return -1;
-  return unlink(path);
-}
-
-int
-sys_fstat(void)
-{
-  struct file *f;
-  struct stat *st;
-  
-  if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof *st) < 0)
-    return -1;
-  return filestat(f, st);
 }
 
 int
@@ -253,29 +350,17 @@ sys_dup(void)
 }
 
 int
-sys_link(void)
-{
-  char *old, *new;
-  
-  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
-    return -1;
-  return link(old, new);
-}
-
-#define MAXARGS 20
-
-int
 sys_exec(void)
 {
-  char *path, *argv[MAXARGS];
+  char *path, *argv[20];
   int i;
   uint uargv, uarg;
 
   if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0)
     return -1;
-  memset(argv, 0, sizeof argv);
+  memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
-    if(i >= MAXARGS)
+    if(i >= NELEM(argv))
       return -1;
     if(fetchint(cp, uargv+4*i, (int*)&uarg) < 0)
       return -1;
@@ -289,3 +374,26 @@ sys_exec(void)
   return exec(path, argv);
 }
 
+int
+sys_pipe(void)
+{
+  int *fd;
+  struct file *rf, *wf;
+  int fd0, fd1;
+
+  if(argptr(0, (void*)&fd, 2*sizeof(fd[0])) < 0)
+    return -1;
+  if(pipe_alloc(&rf, &wf) < 0)
+    return -1;
+  fd0 = -1;
+  if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
+    if(fd0 >= 0)
+      cp->ofile[fd0] = 0;
+    fileclose(rf);
+    fileclose(wf);
+    return -1;
+  }
+  fd[0] = fd0;
+  fd[1] = fd1;
+  return 0;
+}

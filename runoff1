@@ -45,6 +45,12 @@ for($i=0; $i<@lines; ){
 		$sawbrace = 0;
 		$breaksize = 15;  # 15 lines to get to function
 		for($j=$i; $j<$i+50 && $j < @lines; $j++){
+			if($lines[$j] =~ /PAGEBREAK!/){
+				$lines[$j] = "";
+				$breakbefore = $j;
+				$breaksize = 100;
+				last;
+			}
 			if($lines[$j] =~ /PAGEBREAK:\s*([0-9]+)/){
 				$breaksize = $1;
 				$breakbefore = $j;

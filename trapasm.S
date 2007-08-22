@@ -33,6 +33,3 @@ forkret1:
   movl 4(%esp), %esp
   jmp trapret
 
-.globl  acpu
-acpu:
-  .long 0
