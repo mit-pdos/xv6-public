@@ -156,7 +156,7 @@ userinit(void)
   p->sz = PAGE;
   p->mem = kalloc(p->sz);
   p->cwd = namei("/");
-  memset(&p->tf, 0, sizeof(p->tf));
+  memset(p->tf, 0, sizeof(*p->tf));
   p->tf->es = p->tf->ds = p->tf->ss = (SEG_UDATA << 3) | DPL_USER;
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->eflags = FL_IF;
