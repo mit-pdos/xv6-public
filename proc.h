@@ -33,7 +33,7 @@ struct proc {
   char *kstack;             // Bottom of kernel stack for this process
   enum proc_state state;    // Process state
   int pid;                  // Process ID
-  int ppid;                 // Parent pid
+  struct proc *parent;      // Parent process
   void *chan;               // If non-zero, sleeping on chan
   int killed;               // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
