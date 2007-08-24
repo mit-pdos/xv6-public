@@ -6,7 +6,7 @@
 //   + Directories: inode with special contents (list of other inodes!)
 //   + Names: paths like /usr/rtm/xv6/fs.c for convenient naming.
 //
-// Disk layout is: superblock, inodes, disk bitmap, data blocks.
+// Disk layout is: superblock, inodes, block not-free bitmap, data blocks.
 //
 // This file contains the low-level file system manipulation 
 // routines.  The (higher-level) system call implementations
@@ -51,7 +51,7 @@ balloc(uint dev)
     bi = b % BPB;
     m = 0x1 << (bi % 8);
     if((bp->data[bi/8] & m) == 0) {  // is block free?
-      bp->data[bi/8] |= 0x1 << (bi % 8);
+      bp->data[bi/8] |= m;
       bwrite(bp);  // mark it allocated on disk
       brelse(bp);
       return b;
@@ -81,6 +81,8 @@ bfree(int dev, uint b)
   bp = bread(dev, BBLOCK(b, ninodes));
   bi = b % BPB;
   m = 0x1 << (bi % 8);
+  if((bp->data[bi/8] & m) == 0)
+    panic("freeing free block");
   bp->data[bi/8] &= ~m;
   bwrite(bp);  // mark it free on disk
   brelse(bp);
@@ -93,18 +95,17 @@ bfree(int dev, uint b)
 // on-disk structures to provide a place for synchronizing access
 // to inodes shared between multiple processes.
 // 
-// ip->ref counts the number of references to this
+// ip->ref counts the number of pointer references to this cached
 // inode; references are typically kept in struct file and in cp->cwd.
 // When ip->ref falls to zero, the inode is no longer cached.
 // It is an error to use an inode without holding a reference to it.
 //
-// Inodes can be marked busy, just like bufs, meaning
-// that some process has exclusive use of the inode.
+// Inodes can be locked with I_BUSY (like bufs and B_BUSY).
 // Processes are only allowed to read and write inode
 // metadata and contents when holding the inode's lock.
-// Because inodes locks are held during disk accesses, 
-// they are implemented using a flag, as in the buffer cache,
-// not using spin locks.  Callers are responsible for locking
+// Because inode locks are held during disk accesses, 
+// they are implemented using a flag rather than with
+// spin locks.  Callers are responsible for locking
 // inodes before passing them to routines in this file; leaving
 // this responsibility with the caller makes it possible for them
 // to create arbitrarily-sized atomic operations.
@@ -112,7 +113,8 @@ bfree(int dev, uint b)
 // To give maximum control over locking to the callers, 
 // the routines in this file that return inode pointers 
 // return pointers to *unlocked* inodes.  It is the callers'
-// responsibility to lock them before using them.
+// responsibility to lock them before using them. A non-zero
+// ip->ref keeps these unlocked inodes in the cache.
 
 struct {
   struct spinlock lock;

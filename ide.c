@@ -8,6 +8,7 @@
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
+#include "buf.h"
 
 #define IDE_BSY       0x80
 #define IDE_DRDY      0x40
@@ -18,28 +19,17 @@
 #define IDE_CMD_WRITE 0x30
 
 // IDE request queue.
-// The next request will be stored in request[head],
-// and the request currently being served by the disk
-// is request[tail].
+// ide_queue points to the buf now being read/written to the disk.
+// ide_queue->qnext points to the next buf to be processed.
 // Must hold ide_lock while manipulating queue.
 
-struct ide_request {
-  int diskno;
-  uint secno;
-  void *addr;
-  uint nsecs;
-  uint read;
-  int done;
-};
-
-static struct ide_request request[NREQUEST];
-static int head, tail;
 static struct spinlock ide_lock;
+static struct buf *ide_queue;
 
 static int disk_1_present;
-static int disk_queue;
 
 static int ide_probe_disk1(void);
+static void ide_start_request();
 
 //PAGEBREAK: 10
 // Wait for IDE disk to become ready.
@@ -93,80 +83,75 @@ void
 ide_intr(void)
 {
   acquire(&ide_lock);
-  request[tail].done = 1;
-  wakeup(&request[tail]);
+  if(ide_queue){
+    //cprintf("intr %x\n", ide_queue);
+    if((ide_queue->flags & B_WRITE) == 0)
+      if(ide_wait_ready(1) >= 0)
+        insl(0x1F0, ide_queue->data, 512/4);
+    ide_queue->done = 1;
+    wakeup(ide_queue);
+    ide_queue = ide_queue->qnext;
+    ide_start_request();
+  } else {
+    cprintf("stray ide interrupt\n");
+  }
   release(&ide_lock);
 }
 
 // Start the next request in the queue.
+// Caller must hold ide_lock.
 static void
 ide_start_request (void)
 {
-  struct ide_request *r;
-
-  if(head != tail) {
-    r = &request[tail];
+  if(ide_queue){
     ide_wait_ready(0);
+    //cprintf("start %x\n", ide_queue);
     outb(0x3f6, 0);  // generate interrupt
-    outb(0x1F2, r->nsecs);
-    outb(0x1F3, r->secno & 0xFF);
-    outb(0x1F4, (r->secno >> 8) & 0xFF);
-    outb(0x1F5, (r->secno >> 16) & 0xFF);
-    outb(0x1F6, 0xE0 | ((r->diskno&1)<<4) | ((r->secno>>24)&0x0F));
-    if(r->read)
-      outb(0x1F7, IDE_CMD_READ);
-    else {
+    outb(0x1F2, 1);  // number of sectors
+    outb(0x1F3, ide_queue->sector & 0xFF);
+    outb(0x1F4, (ide_queue->sector >> 8) & 0xFF);
+    outb(0x1F5, (ide_queue->sector >> 16) & 0xFF);
+    outb(0x1F6, 0xE0 |
+         ((ide_queue->dev & 1)<<4) |
+         ((ide_queue->sector>>24)&0x0F));
+    if(ide_queue->flags & B_WRITE){
       outb(0x1F7, IDE_CMD_WRITE);
-      outsl(0x1F0, r->addr, 512/4);
+      outsl(0x1F0, ide_queue->data, 512/4);
+    } else {
+      outb(0x1F7, IDE_CMD_READ);
     }
   }
 }
 
 //PAGEBREAK: 30
-// Run an entire disk operation.
+// Queue up a disk operation and wait for it to finish.
+// b must have B_BUSY set.
 void
-ide_rw(int diskno, uint secno, void *addr, uint nsecs, int read)
+ide_rw(struct buf *b)
 {
-  struct ide_request *r;
+  struct buf **pp;
 
-  if(diskno && !disk_1_present)
+  if((b->dev & 0xff) && !disk_1_present)
     panic("ide disk 1 not present");
 
   acquire(&ide_lock);
+
+  b->done = 0;
+  b->qnext = 0;
+
+  // cprintf("enqueue %x %x\n", b, ide_queue);
+
+  // append b to ide_queue
+  pp = &ide_queue;
+  while(*pp)
+    pp = &(*pp)->qnext;
+  *pp = b;
   
-  // Add request to queue.
-  while((head + 1) % NREQUEST == tail)
-    sleep(&disk_queue, &ide_lock);
-
-  r = &request[head];
-  r->secno = secno;
-  r->addr = addr;
-  r->nsecs = nsecs;
-  r->diskno = diskno;
-  r->read = read;
-  r->done = 0;
-  head = (head + 1) % NREQUEST;
-
-  // Start request if necessary.
-  ide_start_request();
+  if(ide_queue == b)
+    ide_start_request();
   
-  // Wait for request to finish.
-  while(!r->done)
-    sleep(r, &ide_lock);
+  while(!b->done)
+    sleep(b, &ide_lock);
   
-  // Finish request.
-  if(read){
-    if(ide_wait_ready(1) >= 0)
-      insl(0x1F0, addr, 512/4);
-  }
-
-  // Remove request from queue.
-  if((head + 1) % NREQUEST == tail)
-    wakeup(&disk_queue);
-  tail = (tail + 1) % NREQUEST;
-
-  // Start next request in queue, if any.
-  ide_start_request();
-
   release(&ide_lock);
 }

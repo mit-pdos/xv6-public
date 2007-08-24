@@ -4,15 +4,14 @@
 // holding cached copies of disk block contents.
 // Each buf has two state bits B_BUSY and B_VALID.
 // If B_BUSY is set, it means that some code is currently
-// editing buf, so other code is not allowed to look at it.
+// modifying buf, so other code is not allowed to look at it.
 // To wait for a buffer that is B_BUSY, sleep on buf.
 // (See bget below.)
 // 
-// If B_VALID is set, it means that the memory contents
-// have been initialized by reading them off the disk.
-// (Conversely, if B_VALID is not set, the memory contents
+// If B_VALID is set, it means that the sector in b->data is
+// the same as on the disk. If B_VALID is not set, the contents
 // of buf must be initialized, often by calling bread,
-// before being used.)
+// before being used.
 // 
 // After making changes to a buf's memory, call bwrite to flush
 // the changes out to disk, to keep the disk and memory copies
@@ -79,7 +78,6 @@ bget(uint dev, uint sector)
         goto loop;
       }
       b->flags |= B_BUSY;
-      // b->flags &= ~B_VALID; // Force reread from disk
       release(&buf_table_lock);
       return b;
     }
@@ -98,7 +96,8 @@ bget(uint dev, uint sector)
   panic("bget: no buffers");
 }
 
-// Read buf's contents from disk.
+// Return a B_BUSY buf with the contents of the indicated
+// disk sector.
 struct buf*
 bread(uint dev, uint sector)
 {
@@ -108,7 +107,8 @@ bread(uint dev, uint sector)
   if(b->flags & B_VALID)
     return b;
 
-  ide_rw(dev & 0xff, sector, b->data, 1, 1);
+  b->flags &= ~B_WRITE;
+  ide_rw(b);
   b->flags |= B_VALID;
 
   return b;
@@ -121,7 +121,8 @@ bwrite(struct buf *b)
 {
   if((b->flags & B_BUSY) == 0)
     panic("bwrite");
-  ide_rw(b->dev & 0xff, b->sector, b->data, 1, 0);
+  b->flags |= B_WRITE;
+  ide_rw(b);
   b->flags |= B_VALID;
 }
 
