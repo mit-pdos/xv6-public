@@ -3,12 +3,6 @@
 #include "fcntl.h"
 #include "user.h"
 
-int
-puts(char *s)
-{
-  return write(1, s, strlen(s));
-}
-
 char*
 strcpy(char *s, char *t)
 {

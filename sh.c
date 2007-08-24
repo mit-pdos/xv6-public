@@ -51,7 +51,7 @@ main(void)
 int
 getcmd(char *buf, int nbuf)
 {
-  puts("$ ");
+  printf(2, "$ ");
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
   if(buf[0] == 0) // EOF

@@ -21,7 +21,6 @@ char* sbrk(int);
 
 // ulib.c
 int stat(char*, struct stat*);
-int puts(char*);
 char* strcpy(char*, char*);
 void *memmove(void*, void*, int);
 char* strchr(const char*, char c);

@@ -2,19 +2,17 @@
 #include "stat.h"
 #include "user.h"
 
-char buf[513];
+char buf[512];
 
 void
 rfile(int fd)
 {
-  int cc;
+  int n;
 
-  while((cc = read(fd, buf, sizeof(buf) - 1)) > 0){
-    buf[cc] = '\0';
-    puts(buf);
-  }
-  if(cc < 0){
-    puts("cat: read error\n");
+  while((n = read(fd, buf, sizeof(buf))) > 0)
+    write(1, buf, n);
+  if(n < 0){
+    printf(1, "cat: read error\n");
     exit();
   }
 }
@@ -26,19 +24,16 @@ main(int argc, char *argv[])
 
   if(argc <= 1) {
     rfile(0);
-  } else {
-    for(i = 1; i < argc; i++){
-      fd = open(argv[i], 0);
-      if(fd < 0){
-        puts("cat: cannot open ");
-        puts(argv[i]);
-        puts("\n");
-        exit();
-      }
-      rfile(fd);
-      close(fd);
-    }
+    exit();
   }
 
+  for(i = 1; i < argc; i++){
+    if((fd = open(argv[i], 0)) < 0){
+      printf(1, "cat: cannot open %s\n", argv[i]);
+      exit();
+    }
+    rfile(fd);
+    close(fd);
+  }
   exit();
 }
