@@ -1,27 +1,18 @@
 #include "asm.h"
 
-.set PROT_MODE_CSEG,0x8         # code segment selector
-.set PROT_MODE_DSEG,0x10        # data segment selector
-.set CR0_PE_ON,0x1              # protected mode enable flag
+# Start the first CPU: switch to 32-bit protected mode, jump into C.
+# The BIOS loads this code from the first sector of the hard disk into
+# memory at physical address 0x7c00 and starts executing in real mode
+# with %cs=0 %ip=7c00.
 
-#########################################################################
-# ENTRY POINT for the bootstrap processor
-#   This code should be stored in the first sector of the hard disk.
-#   After the BIOS initializes the hardware on startup or system reset,
-#   it loads this code at physical address 0x7c00 - 0x7d00 (512 bytes).
-#   Then the BIOS jumps to the beginning of it, address 0x7c00,
-#   while running in 16-bit real-mode (8086 compatibility mode).
-#   The Code Segment register (CS) is initially zero on entry.
-#
-# This code switches into 32-bit protected mode so that all of
-# memory can accessed, then calls into C.
-#########################################################################
+.set PROT_MODE_CSEG, 0x8         # kernel code segment selector
+.set PROT_MODE_DSEG, 0x10        # kernel data segment selector
+.set CR0_PE_ON,      0x1         # protected mode enable flag
 
 .globl start                      # Entry point
 start:
 .code16                           # This runs in real mode
   cli                             # Disable interrupts
-  cld                             # String operations increment
 
   # Set up the important data segment registers (DS, ES, SS).
   xorw    %ax,%ax                 # Segment number zero
@@ -29,26 +20,25 @@ start:
   movw    %ax,%es                 # -> Extra Segment
   movw    %ax,%ss                 # -> Stack Segment
 
-  # Set up the stack pointer, growing downward from 0x7c00.
-  movw    $start,%sp              # Stack Pointer
-
   # Enable A20:
   #   For backwards compatibility with the earliest PCs, physical
   #   address line 20 is tied low, so that addresses higher than
   #   1MB wrap around to zero by default.  This code undoes this.
 seta20.1:
-  inb     $0x64,%al               # Get status
-  testb   $0x2,%al                # Busy?
-  jnz     seta20.1                # Yes
-  movb    $0xd1,%al               # Command: Write
-  outb    %al,$0x64               #  output port
+  inb     $0x64,%al               # Wait for not busy
+  testb   $0x2,%al
+  jnz     seta20.1
+
+  movb    $0xd1,%al               # 0xd1 -> port 0x64
+  outb    %al,$0x64
 
 seta20.2:
-  inb     $0x64,%al               # Get status
-  testb   $0x2,%al                # Busy?
-  jnz     seta20.2                # Yes
-  movb    $0xdf,%al               # Enable
-  outb    %al,$0x60               #  A20
+  inb     $0x64,%al               # Wait for not busy
+  testb   $0x2,%al
+  jnz     seta20.2
+
+  movb    $0xdf,%al               # 0xdf -> port 0x60
+  outb    %al,$0x60
 
 # Switch from real to protected mode
 #  The descriptors in our GDT allow all physical memory to be accessed.
@@ -80,16 +70,22 @@ protcseg:
   movw    %ax, %fs                # -> FS
   movw    %ax, %gs                # -> GS
   movw    %ax, %ss                # -> SS: Stack Segment
+  
+  # Set up the stack pointer, growing downward from 0x7c00.
+  movl    $start, %esp
+
   call cmain                      # finish the boot load from C.
                                   # cmain() should not return
 spin:
   jmp spin                        # ..but in case it does, spin
 
+# Bootstrap GDT
 .p2align 2                                # force 4 byte alignment
 gdt:
   SEG_NULLASM                             # null seg
   SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg
   SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg
+
 gdtdesc:
   .word   0x17                            # sizeof(gdt) - 1
   .long   gdt                             # address gdt
