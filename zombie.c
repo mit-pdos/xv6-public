@@ -7,6 +7,10 @@
 int
 main(void)
 {
-  fork();
+  int i;
+
+  if(fork() > 0)
+    for(i=0; i<10; i++)
+      yield();
   exit();
 }
