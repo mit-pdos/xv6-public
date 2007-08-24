@@ -8,8 +8,8 @@
 #include "param.h"
 #include "fs.h"
 
-int nblocks = 1008;
-int ninodes = 100;
+int nblocks = 995;
+int ninodes = 200;
 int size = 1024;
 
 int fsfd;

@@ -18,7 +18,7 @@ files=`grep -v '^#' runoff.list | awk '{print $1}'`
 n=99
 for i in $files
 do
-	runoff1 -n $n $i >fmt/$i
+	./runoff1 -n $n $i >fmt/$i
 	nn=`tail -1 fmt/$i | sed 's/ .*//; s/^0*//'`
 	if [ "x$nn" != x ]; then
 		n=$nn

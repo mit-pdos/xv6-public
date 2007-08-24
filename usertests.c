@@ -1096,6 +1096,99 @@ rmdot(void)
   printf(1, "rmdot ok\n");
 }
 
+void
+dirfile(void)
+{
+  int fd;
+
+  printf(1, "dir vs file\n");
+
+  fd = open("dirfile", O_CREATE);
+  if(fd < 0){
+    printf(1, "create dirfile failed\n");
+    exit();
+  }
+  close(fd);
+  if(chdir("dirfile") == 0){
+    printf(1, "chdir dirfile succeeded!\n");
+    exit();
+  }
+  fd = open("dirfile/xx", 0);
+  if(fd >= 0){
+    printf(1, "create dirfile/xx succeeded!\n");
+    exit();
+  }
+  fd = open("dirfile/xx", O_CREATE);
+  if(fd >= 0){
+    printf(1, "create dirfile/xx succeeded!\n");
+    exit();
+  }
+  if(mkdir("dirfile/xx") == 0){
+    printf(1, "mkdir dirfile/xx succeeded!\n");
+    exit();
+  }
+  if(unlink("dirfile/xx") == 0){
+    printf(1, "unlink dirfile/xx succeeded!\n");
+    exit();
+  }
+  if(link("README", "dirfile/xx") == 0){
+    printf(1, "link to dirfile/xx succeeded!\n");
+    exit();
+  }
+  if(unlink("dirfile") != 0){
+    printf(1, "unlink dirfile failed!\n");
+    exit();
+  }
+
+  fd = open(".", O_RDWR);
+  if(fd >= 0){
+    printf(1, "open . for writing succeeded!\n");
+    exit();
+  }
+  fd = open(".", 0);
+  if(write(fd, "x", 1) > 0){
+    printf(1, "write . succeeded!\n");
+    exit();
+  }
+  close(fd);
+
+  printf(1, "dir vs file OK\n");
+}
+
+// test that iput() is called at the end of _namei()
+void
+iref(void)
+{
+  int i, fd;
+
+  printf(1, "empty file name\n");
+
+  // the 50 is NINODE
+  for(i = 0; i < 50 + 1; i++){
+    if(mkdir("irefd") != 0){
+      printf(1, "mkdir irefd failed\n");
+      exit();
+    }
+    if(chdir("irefd") != 0){
+      printf(1, "chdir irefd failed\n");
+      exit();
+    }
+
+    mkdir("");
+    link("README", "");
+    fd = open("", O_CREATE);
+    if(fd >= 0)
+      close(fd);
+    fd = open("xx", O_CREATE);
+    if(fd >= 0)
+      close(fd);
+    unlink("xx");
+  }
+
+  chdir("/");
+  printf(1, "empty file name OK\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1128,6 +1221,8 @@ main(int argc, char *argv[])
   createdelete();
   twofiles();
   sharedfd();
+  dirfile();
+  iref();
 
   exectest();
 

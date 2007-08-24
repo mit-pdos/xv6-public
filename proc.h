@@ -43,19 +43,15 @@ struct proc {
   char name[16];            // Process name (debugging)
 };
 
-// Process memory is laid out contiguously:
+// Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
 
-// If xv6 was only for uniprocessors, this could be
-//   struct proc *cp;
-// Instead we have an array curproc, one per
-// processor, and #define cp to the right element
-// in the array.  In general such preprocessor 
-// subterfuge is to be avoided, but cp is used 
-// so often that having the shorthand is worth the ugliness.
+// Arrange that cp point to the struct proc that this
+// CPU is currently running.  Such preprocessor 
+// subterfuge can be confusing, but saves a lot of typing.
 extern struct proc *curproc[NCPU];  // Current (running) process per CPU
 #define cp (curproc[cpu()])  // Current process on this CPU
 

@@ -475,6 +475,7 @@ namecmp(const char *s, const char *t)
 
 // Look for a directory entry in a directory.
 // If found, set *poff to byte offset of entry.
+// Caller must have already locked dp.
 struct uinode*
 dirlookup(struct inode *dp, char *name, uint *poff)
 {
@@ -483,7 +484,7 @@ dirlookup(struct inode *dp, char *name, uint *poff)
   struct dirent *de;
 
   if(dp->type != T_DIR)
-    return 0;
+    panic("dirlookup not DIR");
 
   for(off = 0; off < dp->size; off += BSIZE){
     bp = bread(dp->dev, bmap(dp, off / BSIZE, 0));
@@ -558,7 +559,7 @@ dirlink(struct inode *dp, char *name, uint ino)
 //
 // Examples:
 //   skipelem("a/bb/c", name) = "bb/c", setting name = "a"
-//   skipelem("///a/bb", name) = "b", setting name="a"
+//   skipelem("///a/bb", name) = "bb", setting name="a"
 //   skipelem("", name) = skipelem("////", name) = 0
 //
 static char*
@@ -617,14 +618,15 @@ _namei(char *path, int parent, char *name)
 
     if((ipu = dirlookup(dp, name, &off)) == 0){
       iput(iunlock(dp));
-      iput(ipu);
       return 0;
     }
     iput(iunlock(dp));
     dpu = ipu;
   }
-  if(parent)
+  if(parent){
+    iput(dpu);
     return 0;
+  }
   return dpu;
 }
 
