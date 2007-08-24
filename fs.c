@@ -6,7 +6,7 @@
 //   + Directories: inode with special contents (list of other inodes!)
 //   + Names: paths like /usr/rtm/xv6/fs.c for convenient naming.
 //
-// Disk layout is: superblock, inodes, block not-free bitmap, data blocks.
+// Disk layout is: superblock, inodes, block in-use bitmap, data blocks.
 //
 // This file contains the low-level file system manipulation 
 // routines.  The (higher-level) system call implementations

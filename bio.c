@@ -4,7 +4,7 @@
 // holding cached copies of disk block contents.
 // Each buf has two state bits B_BUSY and B_VALID.
 // If B_BUSY is set, it means that some code is currently
-// modifying buf, so other code is not allowed to look at it.
+// using buf, so other code is not allowed to use it.
 // To wait for a buffer that is B_BUSY, sleep on buf.
 // (See bget below.)
 // 
