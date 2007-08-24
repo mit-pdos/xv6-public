@@ -9,7 +9,11 @@
 #include "proc.h"
 #include "kbd.h"
 
-struct spinlock console_lock;
+#define CRTPORT 0x3d4
+#define LPTPORT 0x378
+static ushort *crt = (ushort*)0xb8000;  // CGA memory
+
+static struct spinlock console_lock;
 int panicked = 0;
 int use_console_lock = 0;
 
@@ -21,18 +25,16 @@ lpt_putc(int c)
 {
   int i;
 
-  for(i = 0; !(inb(0x378+1) & 0x80) && i < 12800; i++)
+  for(i = 0; !(inb(LPTPORT+1) & 0x80) && i < 12800; i++)
     ;
-  outb(0x378+0, c);
-  outb(0x378+2, 0x08|0x04|0x01);
-  outb(0x378+2, 0x08);
+  outb(LPTPORT+0, c);
+  outb(LPTPORT+2, 0x08|0x04|0x01);
+  outb(LPTPORT+2, 0x08);
 }
 
 static void
 cons_putc(int c)
 {
-  int crtport = 0x3d4; // io port of CGA
-  ushort *crt = (ushort*) 0xB8000; // base of CGA memory
   int ind;
 
   if(panicked){
@@ -44,10 +46,10 @@ cons_putc(int c)
   lpt_putc(c);
 
   // cursor position, 16 bits, col + 80*row
-  outb(crtport, 14);
-  ind = inb(crtport + 1) << 8;
-  outb(crtport, 15);
-  ind |= inb(crtport + 1);
+  outb(CRTPORT, 14);
+  ind = inb(CRTPORT + 1) << 8;
+  outb(CRTPORT, 15);
+  ind |= inb(CRTPORT + 1);
 
   c &= 0xff;
   if(c == '\n'){
@@ -66,17 +68,17 @@ cons_putc(int c)
     memset(crt + ind, 0, sizeof(crt[0]) * ((24 * 80) - ind));
   }
 
-  outb(crtport, 14);
-  outb(crtport + 1, ind >> 8);
-  outb(crtport, 15);
-  outb(crtport + 1, ind);
+  outb(CRTPORT, 14);
+  outb(CRTPORT + 1, ind >> 8);
+  outb(CRTPORT, 15);
+  outb(CRTPORT + 1, ind);
 }
 
 void
 printint(int xx, int base, int sgn)
 {
+  static char digits[] = "0123456789ABCDEF";
   char buf[16];
-  char digits[] = "0123456789ABCDEF";
   int i = 0, neg = 0;
   uint x;
 

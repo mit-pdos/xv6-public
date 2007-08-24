@@ -133,8 +133,9 @@ static int (*syscalls[])(void) = {
 void
 syscall(void)
 {
-  int num = cp->tf->eax;
-
+  int num;
+  
+  num = cp->tf->eax;
   if(num >= 0 && num < NELEM(syscalls) && syscalls[num])
     cp->tf->eax = syscalls[num]();
   else {

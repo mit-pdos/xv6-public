@@ -12,7 +12,7 @@
 // Save all the regular registers so we don't need to care
 // which are caller save.
 // Don't save %eax, because that's the return register.
-// The layout of jmpbuf is known to setjmp.S.
+// The layout of jmpbuf must match code in setjmp.S.
 struct jmpbuf {
   int ebx;
   int ecx;

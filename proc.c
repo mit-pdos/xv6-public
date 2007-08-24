@@ -65,15 +65,14 @@ growproc(int n)
   return cp->sz - n;
 }
 
-// Set up CPU's segment descriptors and task state for a
-// given process.
-// If p==0, set up for "idle" state for when scheduler()
-// is idling, not running any process.
+// Set up CPU's segment descriptors and task state for a given process.
+// If p==0, set up for "idle" state for when scheduler() is running.
 void
 setupsegs(struct proc *p)
 {
-  struct cpu *c = &cpus[cpu()];
-
+  struct cpu *c;
+  
+  c = &cpus[cpu()];
   c->ts.ss0 = SEG_KDATA << 3;
   if(p)
     c->ts.esp0 = (uint)(p->kstack + KSTACKSIZE);

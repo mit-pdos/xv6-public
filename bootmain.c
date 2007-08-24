@@ -31,31 +31,35 @@
 #include "x86.h"
 
 #define SECTSIZE  512
-#define ELFHDR    ((struct elfhdr*) 0x10000) // scratch space
 
 void readseg(uint, uint, uint);
 
 void
 cmain(void)
 {
+  struct elfhdr *elf;
   struct proghdr *ph, *eph;
+  void (*entry)(void);
 
-  // read 1st page off disk
-  readseg((uint) ELFHDR, SECTSIZE*8, 0);
+  elf = (struct elfhdr*)0x10000;  // scratch space
 
-  // is this a valid ELF?
-  if(ELFHDR->magic != ELF_MAGIC)
+  // Read 1st page off disk
+  readseg((uint)elf, SECTSIZE*8, 0);
+
+  // Is this an ELF executable?
+  if(elf->magic != ELF_MAGIC)
     goto bad;
 
-  // load each program segment (ignores ph flags)
-  ph = (struct proghdr*) ((uchar*) ELFHDR + ELFHDR->phoff);
-  eph = ph + ELFHDR->phnum;
+  // Load each program segment (ignores ph flags).
+  ph = (struct proghdr*)((uchar*)elf + elf->phoff);
+  eph = ph + elf->phnum;
   for(; ph < eph; ph++)
     readseg(ph->va, ph->memsz, ph->offset);
 
-  // call the entry point from the ELF header
-  // note: does not return!
-  ((void(*)(void)) (ELFHDR->entry & 0xFFFFFF))();
+  // Call the entry point from the ELF header.
+  // Does not return!
+  entry = (void(*)(void))(elf->entry & 0xFFFFFF);
+  entry();
 
 bad:
   outw(0x8A00, 0x8A00);
@@ -67,7 +71,7 @@ bad:
 void
 waitdisk(void)
 {
-  // wait for disk reaady
+  // Wait for disk ready.
   while((inb(0x1F7) & 0xC0) != 0x40)
     ;
 }
@@ -76,9 +80,8 @@ waitdisk(void)
 void
 readsect(void *dst, uint offset)
 {
-  // wait for disk to be ready
+  // Issue command.
   waitdisk();
-
   outb(0x1F2, 1);   // count = 1
   outb(0x1F3, offset);
   outb(0x1F4, offset >> 8);
@@ -86,10 +89,8 @@ readsect(void *dst, uint offset)
   outb(0x1F6, (offset >> 24) | 0xE0);
   outb(0x1F7, 0x20);  // cmd 0x20 - read sectors
 
-  // wait for disk to be ready
+  // Read data.
   waitdisk();
-
-  // read a sector
   insl(0x1F0, dst, SECTSIZE/4);
 }
 
@@ -98,24 +99,20 @@ readsect(void *dst, uint offset)
 void
 readseg(uint va, uint count, uint offset)
 {
-  uint end_va;
+  uint eva;
 
   va &= 0xFFFFFF;
-  end_va = va + count;
+  eva = va + count;
 
-  // round down to sector boundary
+  // Round down to sector boundary.
   va &= ~(SECTSIZE - 1);
 
-  // translate from bytes to sectors, and kernel starts at sector 1
+  // Translate from bytes to sectors; kernel starts at sector 1.
   offset = (offset / SECTSIZE) + 1;
 
   // If this is too slow, we could read lots of sectors at a time.
   // We'd write more to memory than asked, but it doesn't matter --
   // we load in increasing order.
-  while(va < end_va) {
-    readsect((uchar*) va, offset);
-    va += SECTSIZE;
-    offset++;
-  }
+  for(; va < eva; va += SECTSIZE, offset++)
+    readsect((uchar*)va, offset);
 }
-
