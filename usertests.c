@@ -139,76 +139,6 @@ writetest1(void)
 }
 
 void
-writetest2(void)
-{
-  int fd, fd1, n;
-
-  printf(stdout, "files with holes\n");
-
-  fd = open("hole", O_CREATE|O_RDWR);
-  if(fd < 0){
-    printf(stdout, "error: creat hole failed!\n");
-    exit();
-  }
-
-  buf[0] = 1;
-  if(write(fd, buf, 512) != 512) {
-    printf(stdout, "error: write hole file failed\n");
-    exit();
-  }
-
-  // now truncate, while fd is still open
-  fd1 = open("hole", O_CREATE | O_RDWR);
-  if(fd < 0){
-    printf(stdout, "error: 2nd creat hole failed!\n");
-    exit();
-  }
-  close(fd1);
-
-  // now write another block, should be 2nd in file
-  buf[0] = 2;
-  if(write(fd, buf, 512) != 512) {
-    printf(stdout, "error: 2nd write hole file failed\n");
-    exit();
-  }
-
-  close(fd);
-
-  fd = open("hole", O_RDONLY);
-  if(fd < 0){
-    printf(stdout, "error: open hole failed!\n");
-    exit();
-  }
-
-  n = read(fd, buf, 512);
-  if(n != 512){
-    printf(stdout, "error: 1st hole read failed\n");
-    exit();
-  }
-  if(buf[0] != 0){
-    printf(stdout, "error: 1st hole block didn't have zeros\n");
-    exit();
-  }
-
-  n = read(fd, buf, 512);
-  if(n != 512){
-    printf(stdout, "error: 2nd hole read failed\n");
-    exit();
-  }
-  if(buf[0] != 1){
-    printf(stdout, "error: 2nd hole block wrong content\n");
-    exit();
-  }
-
-  close(fd);
-  if(unlink("hole") < 0) {
-    printf(stdout, "unlink hole failed\n");
-    exit();
-  }
-  printf(stdout, "hole files ok\n");
-}
-
-void
 createtest(void)
 {
   int i, fd;
@@ -1180,7 +1110,6 @@ main(int argc, char *argv[])
   opentest();
   writetest();
   writetest1();
-  writetest2();
   createtest();
 
   mem();
