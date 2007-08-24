@@ -127,6 +127,7 @@ void*           memset(void*, int, uint);
 char*           safestrcpy(char*, const char*, int);
 int             strlen(const char*);
 int             strncmp(const char*, const char*, uint);
+char*           strncpy(char*, const char*, int);
 
 // syscall.c
 int             argint(int, int*);

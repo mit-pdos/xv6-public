@@ -455,15 +455,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
 int
 namecmp(const char *s, const char *t)
 {
-  int i;
-  
-  for(i=0; i<DIRSIZ; i++){
-    if(s[i] != t[i])
-      return s[i] - t[i];
-    if(s[i] == 0)
-      break;
-  }
-  return 0;
+  return strncmp(s, t, DIRSIZ);
 }
 
 // Look for a directory entry in a directory.
@@ -500,18 +492,6 @@ dirlookup(struct inode *dp, char *name, uint *poff)
   return 0;
 }
 
-// Copy one name to another.
-static void
-namecpy(char *s, const char *t)
-{
-  int i;
-  
-  for(i=0; i<DIRSIZ && t[i]; i++)
-    s[i] = t[i];
-  for(; i<DIRSIZ; i++)
-    s[i] = 0;
-}
-
 // Write a new directory entry (name, ino) into the directory dp.
 int
 dirlink(struct inode *dp, char *name, uint ino)
@@ -534,7 +514,7 @@ dirlink(struct inode *dp, char *name, uint ino)
       break;
   }
 
-  namecpy(de.name, name);
+  strncpy(de.name, name, DIRSIZ);
   de.inum = ino;
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("dirwrite");

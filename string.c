@@ -56,8 +56,20 @@ strncmp(const char *p, const char *q, uint n)
     n--, p++, q++;
   if(n == 0)
     return 0;
-  else
-    return (int) ((uchar) *p - (uchar) *q);
+  return (uchar)*p - (uchar)*q;
+}
+
+char*
+strncpy(char *s, const char *t, int n)
+{
+  char *os;
+  
+  os = s;
+  while(n-- > 0 && (*s++ = *t++) != 0)
+    ;
+  while(n-- > 0)
+    *s++ = 0;
+  return os;
 }
 
 // Like strncpy but guaranteed to NUL-terminate.
