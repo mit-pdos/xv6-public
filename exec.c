@@ -29,8 +29,9 @@ exec(char *path, char **argv)
   sz = 0;
   mem = 0;
 
-  if((ip = ilock(namei(path))) == 0)
+  if((ip = namei(path)) == 0)
     return -1;
+  ilock(ip);
 
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
     goto bad;
@@ -112,8 +113,7 @@ exec(char *path, char **argv)
       goto bad2;
     memset(cp->mem + ph.va + ph.filesz, 0, ph.memsz - ph.filesz);
   }
-
-  iput(iunlock(ip));
+  iunlockput(ip);
   
   cp->tf->eip = elf.entry;
   cp->tf->esp = sp;
@@ -124,11 +124,11 @@ exec(char *path, char **argv)
  bad:
   if(mem)
     kfree(mem, sz);
-  iput(iunlock(ip));
+  iunlockput(ip);
   return -1;
 
  bad2:
-  iput(iunlock(ip));
+  iunlockput(ip);
   proc_exit();
   return 0;
 }

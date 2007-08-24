@@ -103,33 +103,37 @@ sys_link(void)
 {
   char name[DIRSIZ], *new, *old;
   struct inode *dp, *ip;
-  struct uinode *ipu;
 
   if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
     return -1;
-  if((ip = ilock(namei(old))) == 0)
+  if((ip = namei(old)) == 0)
     return -1;
+  ilock(ip);
   if(ip->type == T_DIR){
-    iput(iunlock(ip));
+    iunlockput(ip);
     return -1;
   }
   ip->nlink++;
   iupdate(ip);
-  ipu = iunlock(ip);  ip = 0;
+  iunlock(ip);
 
-  if((dp = ilock(nameiparent(new, name))) == 0 ||
-     dp->dev != ipu->dev || dirlink(dp, name, ipu->inum) < 0){
-    if(dp)
-      iput(iunlock(dp));
-    ip = ilock(ipu);
-    ip->nlink--;
-    iupdate(ip);
-    iput(iunlock(ip));
-    return -1;
-  }
-  iput(iunlock(dp));
-  iput(ipu);
+  if((dp = nameiparent(new, name)) == 0)
+    goto  bad;
+  ilock(dp);
+  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0)
+    goto bad;
+  iunlockput(dp);
+  iput(ip);
   return 0;
+
+bad:
+  if(dp)
+    iunlockput(dp);
+  ilock(ip);
+  ip->nlink--;
+  iupdate(ip);
+  iunlockput(ip);
+  return -1;
 }
 
 // Is the directory dp empty except for "." and ".." ?
@@ -158,65 +162,67 @@ sys_unlink(void)
 
   if(argstr(0, &path) < 0)
     return -1;
-  if((dp = ilock(nameiparent(path, name))) == 0)
+  if((dp = nameiparent(path, name)) == 0)
     return -1;
+  ilock(dp);
 
   // Cannot unlink "." or "..".
   if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0){
-    iput(iunlock(dp));
+    iunlockput(dp);
     return -1;
   }
 
-  if((ip = ilock(dirlookup(dp, name, &off))) == 0){
-    iput(iunlock(dp));
+  if((ip = dirlookup(dp, name, &off)) == 0){
+    iunlockput(dp);
     return -1;
   }
+  ilock(ip);
 
   if(ip->nlink < 1)
     panic("unlink: nlink < 1");
   if(ip->type == T_DIR && !isdirempty(ip)){
-    iput(iunlock(ip));
-    iput(iunlock(dp));
+    iunlockput(ip);
+    iunlockput(dp);
     return -1;
   }
 
   memset(&de, 0, sizeof(de));
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("unlink: writei");
-  iput(iunlock(dp));
-  
+  iunlockput(dp);
+
   ip->nlink--;
   iupdate(ip);
-  iput(iunlock(ip));
+  iunlockput(ip);
   return 0;
 }
 
-// Create the path and return its unlocked inode structure.
 static struct inode*
 mkpath(char *path, int canexist, short type, short major, short minor)
 {
   uint off;
   struct inode *ip, *dp;
-  struct uinode *ipu;
   char name[DIRSIZ];
 
-  if((dp = ilock(nameiparent(path, name))) == 0)
+  if((dp = nameiparent(path, name)) == 0)
     return 0;
+  ilock(dp);
 
-  if(canexist && (ipu = dirlookup(dp, name, &off)) != 0){
-    iput(iunlock(dp));
-    ip = ilock(ipu);
+  if(canexist && (ip = dirlookup(dp, name, &off)) != 0){
+    iunlockput(dp);
+    ilock(ip);
     if(ip->type != type || ip->major != major || ip->minor != minor){
-      iput(iunlock(ip));
+      iunlockput(ip);
       return 0;
     }
     return ip;
   }
 
-  if((ip = ilock(ialloc(dp->dev, type))) == 0){
-    iput(iunlock(dp));
+  if((ip = ialloc(dp->dev, type)) == 0){
+    iunlockput(dp);
     return 0;
   }
+  ilock(ip);
   ip->major = major;
   ip->minor = minor;
   ip->size = 0;
@@ -225,8 +231,8 @@ mkpath(char *path, int canexist, short type, short major, short minor)
   
   if(dirlink(dp, name, ip->inum) < 0){
     ip->nlink = 0;
-    iput(iunlock(ip));
-    iput(iunlock(dp));
+    iunlockput(ip);
+    iunlockput(dp);
     return 0;
   }
 
@@ -237,7 +243,7 @@ mkpath(char *path, int canexist, short type, short major, short minor)
     if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
       panic("mkpath dots");
   }
-  iput(iunlock(dp));
+  iunlockput(dp);
   return ip;
 }
 
@@ -256,10 +262,11 @@ sys_open(void)
     if((ip = mkpath(path, 1, T_FILE, 0, 0)) == 0)
       return -1;
   }else{
-    if((ip = ilock(namei(path))) == 0)
+    if((ip = namei(path)) == 0)
       return -1;
+    ilock(ip);
     if(ip->type == T_DIR && (omode & (O_RDWR|O_WRONLY))){
-      iput(iunlock(ip));
+      iunlockput(ip);
       return -1;
     }
   }
@@ -267,12 +274,13 @@ sys_open(void)
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
       fileclose(f);
-    iput(iunlock(ip));
+    iunlockput(ip);
     return -1;
   }
+  iunlock(ip);
 
   f->type = FD_INODE;
-  f->ip = iunlock(ip);
+  f->ip = ip;
   f->off = 0;
   if(omode & O_RDWR) {
     f->readable = 1;
@@ -296,13 +304,12 @@ sys_mknod(void)
   int len;
   int type, major, minor;
   
-  if((len=argstr(0, &path)) < 0 || argint(1, &type) < 0 ||
-     argint(2, &major) < 0 || argint(3, &minor) < 0)
+  if((len=argstr(0, &path)) < 0 ||
+     argint(1, &major) < 0 ||
+     argint(2, &minor) < 0 ||
+     (ip = mkpath(path, 0, T_DEV, major, minor)) == 0)
     return -1;
-  // XXX check that type == T_DEV or eliminate type arg?
-  if((ip = mkpath(path, 0, type, major, minor)) == 0)
-    return -1;
-  iput(iunlock(ip));
+  iunlockput(ip);
   return 0;
 }
 
@@ -314,7 +321,7 @@ sys_mkdir(void)
 
   if(argstr(0, &path) < 0 || (ip = mkpath(path, 0, T_DIR, 0, 0)) == 0)
     return -1;
-  iput(iunlock(ip));
+  iunlockput(ip);
   return 0;
 }
 
@@ -324,14 +331,16 @@ sys_chdir(void)
   char *path;
   struct inode *ip;
 
-  if(argstr(0, &path) < 0 || (ip = ilock(namei(path))) == 0)
+  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0)
     return -1;
+  ilock(ip);
   if(ip->type != T_DIR) {
-    iput(iunlock(ip));
+    iunlockput(ip);
     return -1;
   }
+  iunlock(ip);
   iput(cp->cwd);
-  cp->cwd = iunlock(ip);
+  cp->cwd = ip;
   return 0;
 }
 

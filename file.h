@@ -4,6 +4,6 @@ struct file {
   char readable;
   char writable;
   struct pipe *pipe;
-  struct uinode *ip;
+  struct inode *ip;
   uint off;
 };

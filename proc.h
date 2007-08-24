@@ -37,7 +37,7 @@ struct proc {
   void *chan;               // If non-zero, sleeping on chan
   int killed;               // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
-  struct uinode *cwd;       // Current directory
+  struct inode *cwd;        // Current directory
   struct jmpbuf jmpbuf;     // Jump here to run process
   struct trapframe *tf;     // Trap frame for current interrupt
   char name[16];            // Process name (debugging)

@@ -14,11 +14,5 @@ struct inode {
   uint addrs[NADDRS];
 };
 
-// unlocked inode - only dev and inum are available
-struct uinode {
-  uint dev;
-  uint inum;
-};
-
 #define I_BUSY 0x1
 #define I_VALID 0x2

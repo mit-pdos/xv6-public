@@ -9,7 +9,7 @@ int close(int);
 int kill(int);
 int exec(char*, char**);
 int open(char*, int);
-int mknod(char*, short, short, short);
+int mknod(char*, short, short);
 int unlink(char*);
 int fstat(int fd, struct stat*);
 int link(char*, char*);
