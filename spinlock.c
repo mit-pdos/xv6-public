@@ -18,31 +18,6 @@ initlock(struct spinlock *lock, char *name)
   lock->cpu = 0xffffffff;
 }
 
-// Record the current call stack in pcs[] by following the %ebp chain.
-void
-getcallerpcs(void *v, uint pcs[])
-{
-  uint *ebp;
-  int i;
-  
-  ebp = (uint*)v - 2;
-  for(i = 0; i < 10; i++){
-    if(ebp == 0 || ebp == (uint*)0xffffffff)
-      break;
-    pcs[i] = ebp[1];     // saved %eip
-    ebp = (uint*)ebp[0]; // saved %ebp
-  }
-  for(; i < 10; i++)
-    pcs[i] = 0;
-}
-
-// Check whether this cpu is holding the lock.
-int
-holding(struct spinlock *lock)
-{
-  return lock->locked && lock->cpu == cpu() + 10;
-}
-
 // Acquire the lock.
 // Loops (spins) until the lock is acquired.
 // (Because contention is handled by spinning,
@@ -90,3 +65,29 @@ release(struct spinlock *lock)
   if(--cpus[cpu()].nlock == 0)
     sti();
 }
+
+// Record the current call stack in pcs[] by following the %ebp chain.
+void
+getcallerpcs(void *v, uint pcs[])
+{
+  uint *ebp;
+  int i;
+  
+  ebp = (uint*)v - 2;
+  for(i = 0; i < 10; i++){
+    if(ebp == 0 || ebp == (uint*)0xffffffff)
+      break;
+    pcs[i] = ebp[1];     // saved %eip
+    ebp = (uint*)ebp[0]; // saved %ebp
+  }
+  for(; i < 10; i++)
+    pcs[i] = 0;
+}
+
+// Check whether this cpu is holding the lock.
+int
+holding(struct spinlock *lock)
+{
+  return lock->locked && lock->cpu == cpu() + 10;
+}
+
