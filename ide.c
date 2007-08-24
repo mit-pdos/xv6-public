@@ -18,10 +18,9 @@
 #define IDE_CMD_READ  0x20
 #define IDE_CMD_WRITE 0x30
 
-// IDE request queue.
 // ide_queue points to the buf now being read/written to the disk.
 // ide_queue->qnext points to the next buf to be processed.
-// Must hold ide_lock while manipulating queue.
+// You must hold ide_lock while manipulating queue.
 
 static struct spinlock ide_lock;
 static struct buf *ide_queue;
@@ -84,7 +83,6 @@ ide_intr(void)
 {
   acquire(&ide_lock);
   if(ide_queue){
-    //cprintf("intr %x\n", ide_queue);
     if((ide_queue->flags & B_WRITE) == 0)
       if(ide_wait_ready(1) >= 0)
         insl(0x1F0, ide_queue->data, 512/4);
@@ -105,7 +103,6 @@ ide_start_request (void)
 {
   if(ide_queue){
     ide_wait_ready(0);
-    //cprintf("start %x\n", ide_queue);
     outb(0x3f6, 0);  // generate interrupt
     outb(0x1F2, 1);  // number of sectors
     outb(0x1F3, ide_queue->sector & 0xFF);
@@ -138,8 +135,6 @@ ide_rw(struct buf *b)
 
   b->done = 0;
   b->qnext = 0;
-
-  // cprintf("enqueue %x %x\n", b, ide_queue);
 
   // append b to ide_queue
   pp = &ide_queue;

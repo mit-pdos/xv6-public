@@ -1,5 +1,5 @@
 // On-disk file system format. 
-// This header is shared between kernel and user space.
+// Both the kernel and user programs use this header file.
 
 // Block 0 is unused.
 // Block 1 is super block.
