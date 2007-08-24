@@ -35,7 +35,7 @@ int ncpu;
 uchar ioapic_id;
 
 static struct cpu *bcpu;
-static struct mp *mp;  // The MP floating point structure
+static struct mp *mp;  // The floating MP structure
 
 static struct mp*
 mp_scan(uchar *addr, int len)
