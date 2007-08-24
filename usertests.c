@@ -1189,6 +1189,44 @@ iref(void)
   printf(1, "empty file name OK\n");
 }
 
+// test that fork fails gracefully
+// the forktest binary also does this, but it runs out of proc entries first.
+// inside the bigger usertests binary, we run out of memory first.
+void
+forktest(void)
+{
+  int n, pid;
+
+  printf(1, "fork test\n");
+
+  for(n=0; n<1000; n++){
+    pid = fork();
+    if(pid < 0)
+      break;
+    if(pid == 0)
+      exit();
+  }
+  
+  if(n == 1000){
+    printf(1, "fork claimed to work 1000 times!\n");
+    exit();
+  }
+  
+  for(; n > 0; n--){
+    if(wait() < 0){
+      printf(1, "wait stopped early\n");
+      exit();
+    }
+  }
+  
+  if(wait() != -1){
+    printf(1, "wait got too many\n");
+    exit();
+  }
+  
+  printf(1, "fork test OK\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1223,6 +1261,7 @@ main(int argc, char *argv[])
   sharedfd();
   dirfile();
   iref();
+  forktest();
 
   exectest();
 

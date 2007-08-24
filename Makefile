@@ -72,9 +72,9 @@ vectors.S : vectors.pl
 
 ULIB = ulib.o usys.o printf.o umalloc.o
 
-usertests : usertests.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o usertests usertests.o $(ULIB)
-	$(OBJDUMP) -S usertests > usertests.asm
+_usertests : usertests.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o _usertests usertests.o $(ULIB)
+	$(OBJDUMP) -S _usertests > usertests.asm
 
 _echo : echo.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _echo echo.o $(ULIB)
@@ -117,10 +117,16 @@ _zombie: zombie.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _zombie zombie.o $(ULIB)
 	$(OBJDUMP) -S _zombie > zombie.asm
 
+_forktest: forktest.o $(ULIB)
+	# forktest has less library code linked in - needs to be small
+	# in order to be able to max out the proc table.
+	$(LD) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
+	$(OBJDUMP) -S _forktest > forktest.asm
+
 mkfs : mkfs.c fs.h
 	cc -o mkfs mkfs.c
 
-UPROGS=usertests _echo _cat _init _kill _ln _ls _mkdir _rm _sh _zombie
+UPROGS=_usertests _echo _cat _init _kill _ln _ls _mkdir _rm _sh _zombie _forktest
 fs.img : mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
 
