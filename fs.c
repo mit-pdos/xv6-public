@@ -247,6 +247,7 @@ iunlockput(struct inode *ip)
   iput(ip);
 }
 
+//PAGEBREAK!
 // Allocate a new inode with the given type on device dev.
 struct inode*
 ialloc(uint dev, short type)
@@ -295,6 +296,7 @@ iupdate(struct inode *ip)
   brelse(bp);
 }
 
+//PAGEBREAK!
 // Inode contents
 //
 // The contents (data) associated with each inode is stored
@@ -522,6 +524,7 @@ dirlink(struct inode *dp, char *name, uint ino)
   return 0;
 }
 
+//PAGEBREAK!
 // Paths
 
 // Copy the next path element from path into name.
@@ -558,6 +561,21 @@ skipelem(char *path, char *name)
   while(*path == '/')
     path++;
   return path;
+}
+
+static struct inode* _namei(char*, int, char*);
+
+struct inode*
+namei(char *path)
+{
+  char name[DIRSIZ];
+  return _namei(path, 0, name);
+}
+
+struct inode*
+nameiparent(char *path, char *name)
+{
+  return _namei(path, 1, name);
 }
 
 // Look up and return the inode for a path name.
@@ -602,15 +620,3 @@ _namei(char *path, int parent, char *name)
   return ip;
 }
 
-struct inode*
-namei(char *path)
-{
-  char name[DIRSIZ];
-  return _namei(path, 0, name);
-}
-
-struct inode*
-nameiparent(char *path, char *name)
-{
-  return _namei(path, 1, name);
-}

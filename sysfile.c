@@ -74,14 +74,17 @@ sys_write(void)
 }
 
 int
-sys_fstat(void)
+sys_dup(void)
 {
   struct file *f;
-  struct stat *st;
+  int fd;
   
-  if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
+  if(argfd(0, 0, &f) < 0)
     return -1;
-  return filestat(f, st);
+  if((fd=fdalloc(f)) < 0)
+    return -1;
+  fileincref(f);
+  return fd;
 }
 
 int
@@ -95,6 +98,17 @@ sys_close(void)
   cp->ofile[fd] = 0;
   fileclose(f);
   return 0;
+}
+
+int
+sys_fstat(void)
+{
+  struct file *f;
+  struct stat *st;
+  
+  if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
+    return -1;
+  return filestat(f, st);
 }
 
 // Create the path new as a link to the same inode as old.
@@ -152,6 +166,7 @@ isdirempty(struct inode *dp)
   return 1;
 }
 
+//PAGEBREAK!
 int
 sys_unlink(void)
 {
@@ -342,20 +357,6 @@ sys_chdir(void)
   iput(cp->cwd);
   cp->cwd = ip;
   return 0;
-}
-
-int
-sys_dup(void)
-{
-  struct file *f;
-  int fd;
-  
-  if(argfd(0, 0, &f) < 0)
-    return -1;
-  if((fd=fdalloc(f)) < 0)
-    return -1;
-  fileincref(f);
-  return fd;
 }
 
 int
