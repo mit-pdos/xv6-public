@@ -20,15 +20,14 @@ The following people made contributions:
     Cliff Frey (MP)
     Xiao Yu (MP)
 
-The code in the files that constitute xv6 are 
+The code in the files that constitute xv6 is
 Copyright 2006-2007 Frans Kaashoek, Robert Morris, and Russ Cox.
 
 ERROR REPORTS
 
 If you spot errors or have suggestions for improvement, please send
 email to Frans Kaashoek and Robert Morris
-({kaashoek,rtm}@csail.mit.edu).  This version is the very first one,
-so don't be surprised if there are errors or the code is unclear.
+({kaashoek,rtm}@csail.mit.edu). 
 
 BUIDLING AND RUNNING XV6
 
