@@ -9,16 +9,17 @@
 .set PROT_MODE_DSEG, 0x10        # kernel data segment selector
 .set CR0_PE_ON,      0x1         # protected mode enable flag
 
-.globl start                      # Entry point
+.globl start
 start:
-.code16                           # This runs in real mode
-  cli                             # Disable interrupts
+  .code16                     # Assemble for 16-bit mode
+  cli                         # Disable interrupts
+  cld                         # String operations increment
 
   # Set up the important data segment registers (DS, ES, SS).
-  xorw    %ax,%ax                 # Segment number zero
-  movw    %ax,%ds                 # -> Data Segment
-  movw    %ax,%es                 # -> Extra Segment
-  movw    %ax,%ss                 # -> Stack Segment
+  xorw    %ax,%ax             # Segment number zero
+  movw    %ax,%ds             # -> Data Segment
+  movw    %ax,%es             # -> Extra Segment
+  movw    %ax,%ss             # -> Stack Segment
 
   # Enable A20:
   #   For backwards compatibility with the earliest PCs, physical
@@ -40,28 +41,21 @@ seta20.2:
   movb    $0xdf,%al               # 0xdf -> port 0x60
   outb    %al,$0x60
 
-# Switch from real to protected mode
-#  The descriptors in our GDT allow all physical memory to be accessed.
-#  Furthermore, the descriptors have base addresses of 0, so that the
-#  segment translation is a NOP, ie. virtual addresses are identical to
-#  their physical addresses.  With this setup, immediately after
-#  enabling protected mode it will still appear to this code
-#  that it is running directly on physical memory with no translation.
-#  This initial NOP-translation setup is required by the processor
-#  to ensure that the transition to protected mode occurs smoothly.
-real_to_prot:
-  cli                         # Mandatory since we dont set up an IDT
-  lgdt    gdtdesc             # load GDT -- mandatory in protected mode
-  movl    %cr0, %eax          # turn on protected mode
-  orl     $CR0_PE_ON, %eax    #
-  movl    %eax, %cr0          #
-  ### CPU magic: jump to relocation, flush prefetch queue, and reload %cs
-  ### Has the effect of just jmp to the next instruction, but simultaneous
-  ### loads CS with $PROT_MODE_CSEG.
+//PAGEBREAK!
+  # Switch from real to protected mode, using a bootstrap GDT
+  # and segment translation that makes virtual addresses 
+  # identical to their physical addresses, so that the 
+  # effective memory map does not change during the switch.
+  lgdt    gdtdesc
+  movl    %cr0, %eax
+  orl     $CR0_PE_ON, %eax
+  movl    %eax, %cr0
+  
+  # Jump to next instruction, but in 32-bit code segment.
+  # Switches processor into 32-bit mode.
   ljmp    $PROT_MODE_CSEG, $protcseg
 
-#### we are in 32-bit protected mode (hence the .code32)
-.code32
+  .code32                     # Assemble for 32-bit mode
 protcseg:
   # Set up the protected-mode data segment registers
   movw    $PROT_MODE_DSEG, %ax    # Our data segment selector
@@ -71,13 +65,13 @@ protcseg:
   movw    %ax, %gs                # -> GS
   movw    %ax, %ss                # -> SS: Stack Segment
   
-  # Set up the stack pointer, growing downward from 0x7c00.
+  # Set up the stack pointer and call into C.
   movl    $start, %esp
+  call cmain
 
-  call cmain                      # finish the boot load from C.
-                                  # cmain() should not return
+  # If cmain returns (it shouldn't), loop.
 spin:
-  jmp spin                        # ..but in case it does, spin
+  jmp spin
 
 # Bootstrap GDT
 .p2align 2                                # force 4 byte alignment

@@ -12,14 +12,19 @@
 # mp.c causes each non-boot CPU in turn to jump to start.
 # mp.c puts the correct %esp in start-4, and the place to jump
 # to in start-8.
+#
+# This code is identical to bootasm.S except:
+#   - it does not need to enable A20
+#   - it uses 0(start-4) for the %esp
+#   - it jumps to 0(start-8) instead of calling cmain
 
-.set PROT_MODE_CSEG,0x8         # code segment selector
-.set PROT_MODE_DSEG,0x10        # data segment selector
-.set CR0_PE_ON,0x1              # protected mode enable flag
+.set PROT_MODE_CSEG, 0x8         # kernel code segment selector
+.set PROT_MODE_DSEG, 0x10        # kernel data segment selector
+.set CR0_PE_ON,      0x1         # protected mode enable flag
 
 .globl start
 start:
-  .code16                     # This runs in real mode
+  .code16                     # Assemble for 16-bit mode
   cli                         # Disable interrupts
   cld                         # String operations increment
 
@@ -29,31 +34,21 @@ start:
   movw    %ax,%es             # -> Extra Segment
   movw    %ax,%ss             # -> Stack Segment
 
-  # Set up the stack pointer, growing downward from 0x7000-8.
-  movw    $start-8,%sp        # Stack Pointer
+//PAGEBREAK!
+  # Switch from real to protected mode, using a bootstrap GDT
+  # and segment translation that makes virtual addresses 
+  # identical to their physical addresses, so that the 
+  # effective memory map does not change during the switch.
+  lgdt    gdtdesc
+  movl    %cr0, %eax
+  orl     $CR0_PE_ON, %eax
+  movl    %eax, %cr0
 
-  # Switch from real to protected mode
-  #  The descriptors in our GDT allow all physical memory to be accessed.
-  #  Furthermore, the descriptors have base addresses of 0, so that the
-  #  segment translation is a NOP, ie. virtual addresses are identical to
-  #  their physical addresses.  With this setup, immediately after
-  #  enabling protected mode it will still appear to this code
-  #  that it is running directly on physical memory with no translation.
-  #  This initial NOP-translation setup is required by the processor
-  #  to ensure that the transition to protected mode occurs smoothly.
-
-  lgdt    gdtdesc             # load GDT -- mandatory in protected mode
-  movl    %cr0, %eax          # turn on protected mode
-  orl     $CR0_PE_ON, %eax    #
-  movl    %eax, %cr0          #
-
-  # CPU magic: jump to relocation, flush prefetch queue, and reload %cs
-  # Has the effect of just jmp to the next instruction, but simultaneous
-  # loads CS with $PROT_MODE_CSEG.
+  # Jump to next instruction, but in 32-bit code segment.
+  # Switches processor into 32-bit mode.
   ljmp    $PROT_MODE_CSEG, $protcseg
 
-# We are now in 32-bit protected mode (hence the .code32)
-.code32
+  .code32                     # Assemble for 32-bit mode
 protcseg:
   # Set up the protected-mode data segment registers
   movw    $PROT_MODE_DSEG, %ax    # Our data segment selector
@@ -63,10 +58,11 @@ protcseg:
   movw    %ax, %gs                # -> GS
   movw    %ax, %ss                # -> SS: Stack Segment
 
-  movl    start-8, %eax
   movl    start-4, %esp
+  movl    start-8, %eax
   jmp     *%eax
 
+# Bootstrap GDT
 .p2align 2                                # force 4 byte alignment
 gdt:
   SEG_NULLASM                             # null seg
