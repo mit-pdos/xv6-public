@@ -98,7 +98,12 @@ bfree(int dev, uint b)
   brelse(bp);
 }
 
-// Inodes
+// Inodes.
+//
+// An inode is a single, unnamed file in the file system.
+// The inode disk structure holds metadata (the type, device numbers,
+// and data size) along with a list of blocks where the associated
+// data can be found.
 //
 // The inodes are laid out sequentially on disk immediately after
 // the superblock.  The kernel keeps a cache of the in-use
@@ -110,9 +115,9 @@ bfree(int dev, uint b)
 // When ip->ref falls to zero, the inode is no longer cached.
 // It is an error to use an inode without holding a reference to it.
 //
-// Inodes can be locked with I_BUSY (like bufs and B_BUSY).
 // Processes are only allowed to read and write inode
-// metadata and contents when holding the inode's lock.
+// metadata and contents when holding the inode's lock,
+// represented by the I_BUSY flag in the in-memory copy.
 // Because inode locks are held during disk accesses, 
 // they are implemented using a flag rather than with
 // spin locks.  Callers are responsible for locking
@@ -123,7 +128,7 @@ bfree(int dev, uint b)
 // To give maximum control over locking to the callers, 
 // the routines in this file that return inode pointers 
 // return pointers to *unlocked* inodes.  It is the callers'
-// responsibility to lock them before using them. A non-zero
+// responsibility to lock them before using them.  A non-zero
 // ip->ref keeps these unlocked inodes in the cache.
 
 struct {
