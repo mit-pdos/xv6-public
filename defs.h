@@ -23,7 +23,7 @@ void            kbd_intr(void);
 void            panic(char*) __attribute__((noreturn));
 
 // exec.c
-int            exec(char*, char**);
+int             exec(char*, char**);
 
 // file.c
 struct file*    filealloc(void);
