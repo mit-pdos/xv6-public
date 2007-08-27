@@ -1,33 +1,38 @@
 .text
 .globl trap
 .globl trapret1
-
 .globl alltraps
-alltraps:
-  /* vectors.S sends all traps here */
-  pushl   %ds      # build
-  pushl   %es      #  trap
-  pushal           #  frame
-  movl $16,%eax    # SEG_KDATA << 3
-  movw %ax,%ds     #  kernel
-  movw %ax,%es     #  segments
-  pushl %esp       # pass pointer to this trapframe
-  call    trap     #  and call trap()
-  addl $4, %esp
-  # return falls through to trapret...
 
-  /*
-   * a forked process RETs here
-   * expects ESP to point to a Trapframe
-   */
+.set SEG_KDATA_SEL  0x10   # selector for SEG_KDATA
+
+  # vectors.S sends all traps here.
+alltraps:
+  # Build trap frame.
+  pushl %ds
+  pushl %es
+  pushal
+  
+  # Set up data segments.
+  movl $SEG_KDATA_SEL, %eax
+  movw %ax,%ds
+  movw %ax,%es
+
+  # Call trap(tf), where tf=%esp
+  pushl %esp
+  call trap
+  addl $4, %esp
+
+  # Return falls through to trapret...
 .globl trapret
 trapret:
   popal
   popl %es
   popl %ds
-  addl $0x8, %esp /* trapno and errcode */
+  addl $0x8, %esp  # trapno and errcode
   iret
 
+  # A forked process switches to user mode by calling
+  # forkret1(tf), where tf is the trap frame to use.
 .globl forkret1
 forkret1:
   movl 4(%esp), %esp
