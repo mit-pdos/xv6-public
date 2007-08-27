@@ -1,27 +1,25 @@
 // Buffer cache.
 //
-// The buffer cache is a linked list of buf structures
-// holding cached copies of disk block contents.
-// Each buf has two state bits B_BUSY and B_VALID.
-// If B_BUSY is set, it means that some code is currently
-// using buf, so other code is not allowed to use it.
-// To wait for a buffer that is B_BUSY, sleep on buf.
-// (See bget below.)
+// The buffer cache is a linked list of buf structures holding
+// cached copies of disk block contents.  Caching disk blocks
+// in memory reduces the number of disk reads and also provides
+// a synchronization point for disk blocks used by multiple processes.
 // 
-// If B_VALID is set, it means that the sector in b->data is
-// the same as on the disk. If B_VALID is not set, the contents
-// of buf must be initialized, often by calling bread,
-// before being used.
+// Interface:
+// * To get a buffer for a particular disk block, call bread.
+// * After changing buffer data, call bwrite to flush it to disk.
+// * When done with the buffer, call brelse.
+// * Do not use the buffer after calling brelse.
+// * Only one process at a time can use a buffer,
+//     so do not keep them longer than necessary.
 // 
-// After making changes to a buf's memory, call bwrite to flush
-// the changes out to disk, to keep the disk and memory copies
-// in sync.
-//
-// When finished with a buffer, call brelse to release the buffer
-// (i.e., clear B_BUSY), so that others can access it.
-//
-// Bufs that are not B_BUSY are fair game for reuse for other
-// disk blocks.  It is not allowed to use a buf after calling brelse.
+// The implementation uses three state flags internally:
+// * B_BUSY: the block has been returned from bread
+//     and has not been passed back to brelse.  
+// * B_VALID: the buffer data has been initialized
+//     with the associated disk block contents.
+// * B_DIRTY: the buffer data has been modified
+//     and needs to be written to disk.
 
 #include "types.h"
 #include "param.h"
@@ -103,13 +101,8 @@ bread(uint dev, uint sector)
   struct buf *b;
 
   b = bget(dev, sector);
-  if(b->flags & B_VALID)
-    return b;
-
-  b->flags &= ~B_WRITE;
-  ide_rw(b);
-  b->flags |= B_VALID;
-
+  if(!(b->flags & B_VALID))
+    ide_rw(b);
   return b;
 }
 
@@ -119,9 +112,8 @@ bwrite(struct buf *b)
 {
   if((b->flags & B_BUSY) == 0)
     panic("bwrite");
-  b->flags |= B_WRITE;
+  b->flags |= B_DIRTY;
   ide_rw(b);
-  b->flags |= B_VALID;
 }
 
 // Release the buffer buf.

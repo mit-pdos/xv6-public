@@ -78,7 +78,7 @@ ide_start_request(struct buf *b)
   outb(0x1f4, (b->sector >> 8) & 0xff);
   outb(0x1f5, (b->sector >> 16) & 0xff);
   outb(0x1f6, 0xE0 | ((b->dev&1)<<4) | ((b->sector>>24)&0x0f));
-  if(b->flags & B_WRITE){
+  if(b->flags & B_DIRTY){
     outb(0x1f7, IDE_CMD_WRITE);
     outsl(0x1f0, b->data, 512/4);
   }else{
@@ -100,11 +100,12 @@ ide_intr(void)
   }
 
   // Read data if needed.
-  if((b->flags & B_WRITE) == 0 && ide_wait_ready(1) >= 0)
+  if(!(b->flags & B_DIRTY) && ide_wait_ready(1) >= 0)
     insl(0x1f0, b->data, 512/4);
   
   // Wake process waiting for this buf.
-  b->done = 1;
+  b->flags |= B_VALID;
+  b->flags &= ~B_DIRTY;
   wakeup(b);
   
   // Start disk on next buf in queue.
@@ -115,7 +116,9 @@ ide_intr(void)
 }
 
 //PAGEBREAK!
-// Queue a disk operation and wait for it to finish.
+// Sync buf with disk. 
+// If B_DIRTY is set, write buf to disk, clear B_DIRTY, set B_VALID.
+// Else if B_VALID is not set, read buf from disk, set B_VALID.
 void
 ide_rw(struct buf *b)
 {
@@ -123,13 +126,14 @@ ide_rw(struct buf *b)
 
   if(!(b->flags & B_BUSY))
     panic("ide_rw: buf not busy");
+  if((b->flags & (B_VALID|B_DIRTY)) == B_VALID)
+    panic("ide_rw: nothing to do");
   if(b->dev != 0 && !disk_1_present)
     panic("ide disk 1 not present");
 
   acquire(&ide_lock);
 
   // Append b to ide_queue.
-  b->done = 0;
   b->qnext = 0;
   for(pp=&ide_queue; *pp; pp=&(*pp)->qnext)
     ;
@@ -140,7 +144,8 @@ ide_rw(struct buf *b)
     ide_start_request(b);
   
   // Wait for request to finish.
-  while(!b->done)
+  while((b->flags & (B_VALID|B_DIRTY)) != B_VALID)
     sleep(b, &ide_lock);
+
   release(&ide_lock);
 }
