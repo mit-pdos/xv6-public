@@ -6,10 +6,13 @@
 #include "x86.h"
 #include "traps.h"
 #include "syscall.h"
+#include "spinlock.h"
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
+struct spinlock tickslock;
+int ticks;
 
 void
 tvinit(void)
@@ -19,6 +22,8 @@ tvinit(void)
   for(i = 0; i < 256; i++)
     SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0);
   SETGATE(idt[T_SYSCALL], 0, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER);
+  
+  initlock(&tickslock, "time");
 }
 
 void
@@ -47,21 +52,14 @@ trap(struct trapframe *tf)
   // PAGEBREAK: 10
   switch(tf->trapno){
   case IRQ_OFFSET + IRQ_TIMER:
-    lapic_timerintr();
-    cpus[cpu()].nlock--;
-    if(cp){
-      // Force process exit if it has been killed and is in user space.
-      // (If it is still executing in the kernel, let it keep running
-      // until it gets to the regular system call return.)
-      if((tf->cs&3) == DPL_USER && cp->killed)
-        proc_exit();
-
-      // Force process to give up CPU and let others run.
-      // If locks were held with interrupts on, would need to check nlock.
-      if(cp->state == RUNNING)
-        yield();
+    if(cpu() == 0){
+      acquire(&tickslock);
+      ticks++;
+      wakeup(&ticks);
+      release(&tickslock);
     }
-    return;
+    lapic_eoi();
+    break;
 
   case IRQ_OFFSET + IRQ_IDE:
     ide_intr();
@@ -75,6 +73,7 @@ trap(struct trapframe *tf)
   
   case IRQ_OFFSET + IRQ_SPURIOUS:
     cprintf("spurious interrupt from cpu %d eip %x\n", cpu(), tf->eip);
+    lapic_eoi();
     break;
     
   default:
@@ -84,12 +83,23 @@ trap(struct trapframe *tf)
               cp->pid, cp->name, tf->trapno, tf->err, cpu(), tf->eip);
       proc_exit();
     }
-    
     // Otherwise it's our mistake.
     cprintf("unexpected trap %d from cpu %d eip %x\n",
             tf->trapno, cpu(), tf->eip);
     panic("trap");
   }
-  
   cpus[cpu()].nlock--;
+
+  if(tf->trapno == IRQ_OFFSET + IRQ_TIMER && cp != 0){
+    // Force process exit if it has been killed and is in user space.
+    // (If it is still executing in the kernel, let it keep running
+    // until it gets to the regular system call return.)
+    if((tf->cs&3) == DPL_USER && cp->killed)
+      proc_exit();
+
+    // Force process to give up CPU and let others run.
+    // If locks were held with interrupts on, would need to check nlock.
+    if(cp->state == RUNNING)
+      yield();
+  }
 }

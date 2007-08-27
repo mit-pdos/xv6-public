@@ -18,6 +18,7 @@ int chdir(char*);
 int dup(int);
 int getpid();
 char* sbrk(int);
+int sleep(int);
 
 // ulib.c
 int stat(char*, struct stat*);

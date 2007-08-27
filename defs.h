@@ -139,7 +139,9 @@ void            syscall(void);
 
 // trap.c
 void            idtinit(void);
+extern int      ticks;
 void            tvinit(void);
+extern struct spinlock tickslock;
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

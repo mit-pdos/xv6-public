@@ -70,8 +70,21 @@ sys_sbrk(void)
 }
 
 int
-sys_yield(void)
+sys_sleep(void)
 {
-  yield();
+  int n, ticks0;
+  
+  if(argint(0, &n) < 0)
+    return -1;
+  acquire(&tickslock);
+  ticks0 = ticks;
+  while(ticks - ticks0 < n){
+    if(cp->killed){
+      release(&tickslock);
+      return -1;
+    }
+    sleep(&ticks, &tickslock);
+  }
+  release(&tickslock);
   return 0;
 }

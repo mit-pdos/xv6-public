@@ -3,7 +3,7 @@
 .globl trapret1
 .globl alltraps
 
-.set SEG_KDATA_SEL  0x10   # selector for SEG_KDATA
+.set SEG_KDATA_SEL, 0x10   # selector for SEG_KDATA
 
   # vectors.S sends all traps here.
 alltraps:

@@ -1,4 +1,5 @@
-// Create a zombie process.
+// Create a zombie process that 
+// must be reparented at exit.
 
 #include "types.h"
 #include "stat.h"
@@ -10,7 +11,6 @@ main(void)
   int i;
 
   if(fork() > 0)
-    for(i=0; i<10; i++)
-      yield();
+    sleep(5);  // Let child exit before parent.
   exit();
 }

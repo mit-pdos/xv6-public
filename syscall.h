@@ -18,4 +18,4 @@
 #define SYS_dup    17
 #define SYS_getpid 18
 #define SYS_sbrk   19
-#define SYS_yield  20
+#define SYS_sleep  20
