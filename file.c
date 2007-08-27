@@ -52,6 +52,45 @@ filedup(struct file *f)
   return f;
 }
 
+// Close file f.  (Decrement ref count, close when reaches 0.)
+void
+fileclose(struct file *f)
+{
+  struct file ff;
+
+  acquire(&file_table_lock);
+  if(f->ref < 1 || f->type == FD_CLOSED)
+    panic("fileclose");
+  if(--f->ref > 0){
+    release(&file_table_lock);
+    return;
+  }
+  ff = *f;
+  f->ref = 0;
+  f->type = FD_CLOSED;
+  release(&file_table_lock);
+  
+  if(ff.type == FD_PIPE)
+    pipe_close(ff.pipe, ff.writable);
+  else if(ff.type == FD_INODE)
+    iput(ff.ip);
+  else
+    panic("fileclose");
+}
+
+// Get metadata about file f.
+int
+filestat(struct file *f, struct stat *st)
+{
+  if(f->type == FD_INODE){
+    ilock(f->ip);
+    stati(f->ip, st);
+    iunlock(f->ip);
+    return 0;
+  }
+  return -1;
+}
+
 // Read from file f.  Addr is kernel address.
 int
 fileread(struct file *f, char *addr, int n)
@@ -90,47 +129,5 @@ filewrite(struct file *f, char *addr, int n)
     return r;
   }
   panic("filewrite");
-}
-
-// Get metadata about file f.
-int
-filestat(struct file *f, struct stat *st)
-{
-  if(f->type == FD_INODE){
-    ilock(f->ip);
-    stati(f->ip, st);
-    iunlock(f->ip);
-    return 0;
-  }
-  return -1;
-}
-
-// Close file f.  (Decrement ref count, close when reaches 0.)
-void
-fileclose(struct file *f)
-{
-  struct file ff;
-
-  acquire(&file_table_lock);
-
-  if(f->ref < 1 || f->type == FD_CLOSED)
-    panic("fileclose");
-
-  if(--f->ref > 0){
-    release(&file_table_lock);
-    return;
-  }
-  
-  ff = *f;
-  f->ref = 0;
-  f->type = FD_CLOSED;
-  release(&file_table_lock);
-  
-  if(ff.type == FD_PIPE)
-    pipe_close(ff.pipe, ff.writable);
-  else if(ff.type == FD_INODE)
-    iput(ff.ip);
-  else
-    panic("fileclose");
 }
 
