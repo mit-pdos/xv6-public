@@ -53,15 +53,32 @@ exec.c
 # pipes
 pipe.c
 
+
 # string operations
 string.c
 
 # low-level PC
 mp.c
-ioapic.h
 lapic.c
 ioapic.c
 picirq.c
 kbd.h
 console.c
 8253pit.c
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
