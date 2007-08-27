@@ -41,14 +41,15 @@ filealloc(void)
 }
 
 // Increment ref count for file f.
-void
-fileincref(struct file *f)
+struct file*
+filedup(struct file *f)
 {
   acquire(&file_table_lock);
   if(f->ref < 1 || f->type == FD_CLOSED)
-    panic("fileincref");
+    panic("filedup");
   f->ref++;
   release(&file_table_lock);
+  return f;
 }
 
 // Read from file f.  Addr is kernel address.

@@ -129,10 +129,9 @@ copyproc(struct proc *p)
     }
     memmove(np->mem, p->mem, np->sz);
 
-    for(i = 0; i < NOFILE; i++){
-      if((np->ofile[i] = p->ofile[i]) != 0)
-        fileincref(np->ofile[i]);
-    }
+    for(i = 0; i < NOFILE; i++)
+      if(p->ofile[i])
+        np->ofile[i] = filedup(p->ofile[i]);
     np->cwd = idup(p->cwd);
   }
 
