@@ -10,8 +10,8 @@ extern char edata[], end[];
 void bootothers(void);
 
 // Bootstrap processor starts running C code here.
-void
-main0(void)
+int
+main(void)
 {
   int i;
   static volatile int bcpu;  // cannot be on stack

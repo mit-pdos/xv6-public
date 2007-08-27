@@ -60,7 +60,7 @@ kernel : $(OBJS) bootother.S initcode.S
 	$(LD) -N -e start -Ttext 0 -o initcode.out initcode.o
 	$(OBJCOPY) -S -O binary initcode.out initcode
 	$(OBJDUMP) -S initcode.o > initcode.asm
-	$(LD) -Ttext 0x100000 -e main0 -o kernel $(OBJS) -b binary initcode bootother
+	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary initcode bootother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | awk '/SYMBOL TABLE/ { go=1; next } go {print $$1, $$NF}' >kernel.sym
 

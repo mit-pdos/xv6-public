@@ -102,7 +102,7 @@ void            proc_exit(void);
 int             proc_kill(int);
 int             proc_wait(void);
 void            procdump(void);
-void            scheduler(void);
+void            scheduler(void) __attribute__((noreturn));
 void            setupsegs(struct proc*);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);

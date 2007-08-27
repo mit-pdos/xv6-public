@@ -4,6 +4,7 @@
 #include "traps.h"
 
 # exec(init, argv)
+.globl start
 start:
   pushl $argv
   pushl $init
