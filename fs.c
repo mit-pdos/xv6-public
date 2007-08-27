@@ -1,6 +1,4 @@
-// File system implementation.
-// 
-// Four layers: 
+// File system implementation.  Four layers:
 //   + Blocks: allocator for raw disk blocks.
 //   + Files: inode allocator, reading, writing, metadata.
 //   + Directories: inode with special contents (list of other inodes!)
@@ -28,34 +26,53 @@
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
 
+// Read the super block.
+static void
+readsb(int dev, struct superblock *sb)
+{
+  struct buf *bp;
+  
+  bp = bread(dev, 1);
+  memmove(sb, bp->data, sizeof(*sb));
+  brelse(bp);
+}
+
+// Zero a block.
+static void
+bzero(int dev, int bno)
+{
+  struct buf *bp;
+  
+  bp = bread(dev, bno);
+  memset(bp->data, 0, BSIZE);
+  bwrite(bp);
+  brelse(bp);
+}
+
 // Blocks. 
 
 // Allocate a disk block.
 static uint
 balloc(uint dev)
 {
-  int b, bi, m, ninodes, size;
+  int b, bi, m;
   struct buf *bp;
-  struct superblock *sb;
+  struct superblock sb;
 
-  bp = bread(dev, 1);
-  sb = (struct superblock*) bp->data;
-  size = sb->size;
-  ninodes = sb->ninodes;
-
-  for(b = 0; b < size; b++) {
-    if(b % BPB == 0) {
-      brelse(bp);
-      bp = bread(dev, BBLOCK(b, ninodes));
+  bp = 0;
+  readsb(dev, &sb);
+  for(b = 0; b < sb.size; b += BPB){
+    bp = bread(dev, BBLOCK(b, sb.ninodes));
+    for(bi = 0; bi < BPB; bi++){
+      m = 1 << (bi % 8);
+      if((bp->data[bi/8] & m) == 0){  // Is block free?
+        bp->data[bi/8] |= m;  // Mark block in use on disk.
+        bwrite(bp);
+        brelse(bp);
+        return b + bi;
+      }
     }
-    bi = b % BPB;
-    m = 0x1 << (bi % 8);
-    if((bp->data[bi/8] & m) == 0) {  // is block free?
-      bp->data[bi/8] |= m;
-      bwrite(bp);  // mark it allocated on disk
-      brelse(bp);
-      return b;
-    }
+    brelse(bp);
   }
   panic("balloc: out of blocks");
 }
@@ -65,26 +82,19 @@ static void
 bfree(int dev, uint b)
 {
   struct buf *bp;
-  struct superblock *sb;
-  int bi, m, ninodes;
+  struct superblock sb;
+  int bi, m;
 
-  bp = bread(dev, 1);
-  sb = (struct superblock*) bp->data;
-  ninodes = sb->ninodes;
-  brelse(bp);
+  bzero(dev, b);
 
-  bp = bread(dev, b);
-  memset(bp->data, 0, BSIZE);
-  bwrite(bp);
-  brelse(bp);
-
-  bp = bread(dev, BBLOCK(b, ninodes));
+  readsb(dev, &sb);
+  bp = bread(dev, BBLOCK(b, sb.ninodes));
   bi = b % BPB;
-  m = 0x1 << (bi % 8);
+  m = 1 << (bi % 8);
   if((bp->data[bi/8] & m) == 0)
     panic("freeing free block");
-  bp->data[bi/8] &= ~m;
-  bwrite(bp);  // mark it free on disk
+  bp->data[bi/8] &= ~m;  // Mark block free on disk.
+  bwrite(bp);
   brelse(bp);
 }
 
@@ -252,17 +262,13 @@ iunlockput(struct inode *ip)
 struct inode*
 ialloc(uint dev, short type)
 {
-  int inum, ninodes;
+  int inum;
   struct buf *bp;
   struct dinode *dip;
-  struct superblock *sb;
+  struct superblock sb;
 
-  bp = bread(dev, 1);
-  sb = (struct superblock*)bp->data;
-  ninodes = sb->ninodes;
-  brelse(bp);
-
-  for(inum = 1; inum < ninodes; inum++) {  // loop over inode blocks
+  readsb(dev, &sb);
+  for(inum = 1; inum < sb.ninodes; inum++) {  // loop over inode blocks
     bp = bread(dev, IBLOCK(inum));
     dip = &((struct dinode*)(bp->data))[inum % IPB];
     if(dip->type == 0) {  // a free inode
