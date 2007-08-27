@@ -42,20 +42,20 @@ fetchstr(struct proc *p, uint addr, char **pp)
 
 // Fetch the argno'th 32-bit system call argument.
 int
-argint(int argno, int *ip)
+argint(int n, int *ip)
 {
-  return fetchint(cp, cp->tf->esp + 4 + 4*argno, ip);
+  return fetchint(cp, cp->tf->esp + 4 + 4*n, ip);
 }
 
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size n bytes.  Check that the pointer
 // lies within the process address space.
 int
-argptr(int argno, char **pp, int size)
+argptr(int n, char **pp, int size)
 {
   int i;
   
-  if(argint(argno, &i) < 0)
+  if(argint(n, &i) < 0)
     return -1;
   if((uint)i >= cp->sz || (uint)i+size >= cp->sz)
     return -1;
@@ -68,10 +68,10 @@ argptr(int argno, char **pp, int size)
 // (There is no shared writable memory, so the string can't change
 // between this check and being used by the kernel.)
 int
-argstr(int argno, char **pp)
+argstr(int n, char **pp)
 {
   int addr;
-  if(argint(argno, &addr) < 0)
+  if(argint(n, &addr) < 0)
     return -1;
   return fetchstr(cp, addr, pp);
 }
@@ -88,7 +88,6 @@ extern int sys_kill(void);
 extern int sys_link(void);
 extern int sys_mkdir(void);
 extern int sys_mknod(void);
-//PAGEBREAK: 0
 extern int sys_open(void);
 extern int sys_pipe(void);
 extern int sys_read(void);

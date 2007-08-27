@@ -17,7 +17,7 @@ argfd(int n, int *pfd, struct file **pf)
   int fd;
   struct file *f;
 
-  if(argint(argno, &fd) < 0)
+  if(argint(n, &fd) < 0)
     return -1;
   if(fd < 0 || fd >= NOFILE || (f=cp->ofile[fd]) == 0)
     return -1;
