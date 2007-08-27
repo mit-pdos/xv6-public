@@ -240,6 +240,7 @@ create(char *path, int canexist, short type, short major, short minor)
   ilock(ip);
   ip->major = major;
   ip->minor = minor;
+  ip->nlink = 1;
   iupdate(ip);
   
   if(dirlink(dp, name, ip->inum) < 0){
