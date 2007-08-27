@@ -114,7 +114,7 @@ mp_detect(void)
 void
 mp_init(void)
 {
-  int i, r;
+  int i;
   uchar *p, *e;
   struct mpctb *mpctb;
   struct mppe *proc;
@@ -132,10 +132,10 @@ mp_init(void)
   // application processors and initialising any I/O APICs. The table
   // is guaranteed to be in order such that only one pass is necessary.
 
-  mpctb = (struct mpctb*) mp->physaddr;
-  lapicaddr = (uint*) mpctb->lapicaddr;
-  p = ((uchar*)mpctb)+sizeof(struct mpctb);
-  e = ((uchar*)mpctb)+mpctb->length;
+  mpctb = (struct mpctb*)mp->physaddr;
+  lapic = (uint*)mpctb->lapicaddr;
+  p = (uchar*)mpctb + sizeof(*mpctb);
+  e = (uchar*)mpctb + mpctb->length;
 
   while(p < e) {
     switch(*p){
@@ -219,7 +219,7 @@ mp_startthem(void)
     *(uint*)(APBOOTCODE-8) = (uint)mpmain;
 
     // Go!
-    lapic_startap(cpus[c].apicid, (uint) APBOOTCODE);
+    lapic_startap(cpus[c].apicid, (uint)APBOOTCODE);
 
     // Wait for cpu to get through bootstrap.
     while(cpus[c].booted == 0)
