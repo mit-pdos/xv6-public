@@ -6,7 +6,6 @@ x86.h
 asm.h
 mmu.h
 elf.h
-mp.h
 
 # startup
 bootasm.S
@@ -53,11 +52,11 @@ exec.c
 # pipes
 pipe.c
 
-
 # string operations
 string.c
 
 # low-level PC
+mp.h
 mp.c
 lapic.c
 ioapic.c
@@ -65,8 +64,6 @@ picirq.c
 kbd.h
 console.c
 8253pit.c
-
-
 
 
 
