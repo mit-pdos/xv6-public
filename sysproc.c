@@ -1,19 +1,8 @@
 #include "types.h"
-#include "stat.h"
+#include "defs.h"
 #include "param.h"
 #include "mmu.h"
 #include "proc.h"
-#include "defs.h"
-#include "x86.h"
-#include "traps.h"
-#include "syscall.h"
-#include "spinlock.h"
-#include "buf.h"
-#include "fs.h"
-#include "fsvar.h"
-#include "elf.h"
-#include "file.h"
-#include "fcntl.h"
 
 int
 sys_fork(void)

@@ -4,7 +4,6 @@
 #include "proc.h"
 #include "defs.h"
 #include "x86.h"
-#include "fs.h"
 #include "elf.h"
 
 int

@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <assert.h>
 #include "types.h"
-#include "param.h"
 #include "fs.h"
 
 int nblocks = 995;
@@ -55,7 +54,7 @@ int
 main(int argc, char *argv[])
 {
   int i, cc, fd;
-  uint bn, rootino, inum, off;
+  uint rootino, inum, off;
   struct dirent de;
   char buf[512];
   struct dinode din;

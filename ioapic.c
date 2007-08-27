@@ -2,9 +2,7 @@
 // http://www.intel.com/design/chipsets/datashts/29056601.pdf
 
 #include "types.h"
-#include "mp.h"
 #include "defs.h"
-#include "x86.h"
 #include "traps.h"
 
 #define IOAPIC  0xFEC00000   // Default physical address of IO APIC

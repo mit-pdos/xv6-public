@@ -5,12 +5,9 @@
 // One reason the page size is 4k is that the x86 segment size
 // granularity is 4k.
 
-#include "param.h"
 #include "types.h"
 #include "defs.h"
 #include "param.h"
-#include "mmu.h"
-#include "proc.h"
 #include "spinlock.h"
 
 struct spinlock kalloc_lock;

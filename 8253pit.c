@@ -1,7 +1,7 @@
 #include "types.h"
-#include "x86.h"
 #include "defs.h"
 #include "traps.h"
+#include "x86.h"
 
 // Register definitions for the Intel
 // 8253/8254/82C54 Programmable Interval Timer (PIT).

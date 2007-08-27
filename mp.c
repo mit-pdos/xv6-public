@@ -1,11 +1,10 @@
 // http://developer.intel.com/design/pentium/datashts/24201606.pdf
 
 #include "types.h"
-#include "mp.h"
 #include "defs.h"
 #include "param.h"
+#include "mp.h"
 #include "x86.h"
-#include "traps.h"
 #include "mmu.h"
 #include "proc.h"
 

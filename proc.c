@@ -1,10 +1,9 @@
 #include "types.h"
+#include "defs.h"
+#include "param.h"
 #include "mmu.h"
 #include "x86.h"
-#include "param.h"
-#include "file.h"
 #include "proc.h"
-#include "defs.h"
 #include "spinlock.h"
 
 struct spinlock proc_table_lock;

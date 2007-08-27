@@ -11,12 +11,11 @@
 // are in sysfile.c.
 
 #include "types.h"
-#include "stat.h"
+#include "defs.h"
 #include "param.h"
-#include "x86.h"
+#include "stat.h"
 #include "mmu.h"
 #include "proc.h"
-#include "defs.h"
 #include "spinlock.h"
 #include "buf.h"
 #include "fs.h"

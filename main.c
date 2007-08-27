@@ -1,23 +1,15 @@
 #include "types.h"
+#include "defs.h"
 #include "param.h"
 #include "mmu.h"
 #include "proc.h"
-#include "defs.h"
 #include "x86.h"
-#include "traps.h"
-#include "syscall.h"
-#include "elf.h"
-#include "param.h"
-#include "spinlock.h"
 
 extern char edata[], end[];
 
 void bootothers(void);
 
 // Bootstrap processor starts running C code here.
-// This is called main0 not main so that it can have
-// a void return type.  Gcc can't handle functions named
-// main that don't return int.  Really.
 void
 main0(void)
 {
@@ -39,7 +31,7 @@ main0(void)
   asm volatile("movl %0, %%ebp" : : "r" (cpus[bcpu].mpstack+MPSTACK));
 
   lapic_init(bcpu);
-  cprintf("\\ncpu%d: starting xv6\\n\\n", cpu());
+  cprintf("\ncpu%d: starting xv6\n\n", cpu());
 
   pinit();         // process table
   binit();         // buffer cache
@@ -69,7 +61,7 @@ main0(void)
 void
 mpmain(void)
 {
-  cprintf("cpu%d: starting\\n", cpu());
+  cprintf("cpu%d: starting\n", cpu());
   idtinit();
   lapic_init(cpu());
   setupsegs(0);

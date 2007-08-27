@@ -22,11 +22,8 @@
 //     and needs to be written to disk.
 
 #include "types.h"
-#include "param.h"
-#include "x86.h"
-#include "mmu.h"
-#include "proc.h"
 #include "defs.h"
+#include "param.h"
 #include "spinlock.h"
 #include "buf.h"
 

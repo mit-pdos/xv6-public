@@ -1,11 +1,10 @@
 #include "types.h"
+#include "defs.h"
 #include "param.h"
 #include "mmu.h"
 #include "proc.h"
-#include "defs.h"
 #include "x86.h"
 #include "traps.h"
-#include "syscall.h"
 #include "spinlock.h"
 
 // Interrupt descriptor table (shared by all CPUs).

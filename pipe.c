@@ -1,9 +1,8 @@
 #include "types.h"
+#include "defs.h"
 #include "param.h"
-#include "x86.h"
 #include "mmu.h"
 #include "proc.h"
-#include "defs.h"
 #include "file.h"
 #include "spinlock.h"
 

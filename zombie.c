@@ -8,8 +8,6 @@
 int
 main(void)
 {
-  int i;
-
   if(fork() > 0)
     sleep(5);  // Let child exit before parent.
   exit();
