@@ -6,210 +6,162 @@
 #include "traps.h"
 #include "mmu.h"
 #include "proc.h"
+#include "lapic.h"
 
-enum {  // Local APIC registers
-  LAPIC_ID  = 0x0020,   // ID
-  LAPIC_VER = 0x0030,   // Version
-  LAPIC_TPR = 0x0080,   // Task Priority
-  LAPIC_APR = 0x0090,   // Arbitration Priority
-  LAPIC_PPR = 0x00A0,   // Processor Priority
-  LAPIC_EOI = 0x00B0,   // EOI
-  LAPIC_LDR = 0x00D0,   // Logical Destination
-  LAPIC_DFR = 0x00E0,   // Destination Format
-  LAPIC_SVR = 0x00F0,   // Spurious Interrupt Vector
-  LAPIC_ISR = 0x0100,   // Interrupt Status (8 registers)
-  LAPIC_TMR = 0x0180,   // Trigger Mode (8 registers)
-  LAPIC_IRR = 0x0200,   // Interrupt Request (8 registers)
-  LAPIC_ESR = 0x0280,   // Error Status
-  LAPIC_ICRLO = 0x0300, // Interrupt Command
-  LAPIC_ICRHI = 0x0310, // Interrupt Command [63:32]
-  LAPIC_TIMER = 0x0320, // Local Vector Table 0 (TIMER)
-  LAPIC_PCINT = 0x0340, // Performance Counter LVT
-  LAPIC_LINT0 = 0x0350, // Local Vector Table 1 (LINT0)
-  LAPIC_LINT1 = 0x0360, // Local Vector Table 2 (LINT1)
-  LAPIC_ERROR = 0x0370, // Local Vector Table 3 (ERROR)
-  LAPIC_TICR = 0x0380,  // Timer Initial Count
-  LAPIC_TCCR = 0x0390,  // Timer Current Count
-  LAPIC_TDCR = 0x03E0,  // Timer Divide Configuration
-};
+// Local APIC registers, divided by 4 for use as uint[] indices.
+#define ID      (0x0020/4)   // ID
+#define VER     (0x0030/4)   // Version
+#define TPR     (0x0080/4)   // Task Priority
+#define APR     (0x0090/4)   // Arbitration Priority
+#define PPR     (0x00A0/4)   // Processor Priority
+#define EOI     (0x00B0/4)   // EOI
+#define LDR     (0x00D0/4)   // Logical Destination
+#define DFR     (0x00E0/4)   // Destination Format
+#define SVR     (0x00F0/4)   // Spurious Interrupt Vector
+#define ISR     (0x0100/4)   // Interrupt Status (8 registers)
+#define TMR     (0x0180/4)   // Trigger Mode (8 registers)
+#define IRR     (0x0200/4)   // Interrupt Request (8 registers)
+#define ESR     (0x0280/4)   // Error Status
+#define ICRLO   (0x0300/4)   // Interrupt Command
+#define ICRHI   (0x0310/4)   // Interrupt Command [63:32]
+#define TIMER   (0x0320/4)   // Local Vector Table 0 (TIMER)
+#define PCINT   (0x0340/4)   // Performance Counter LVT
+#define LINT0   (0x0350/4)   // Local Vector Table 1 (LINT0)
+#define LINT1   (0x0360/4)   // Local Vector Table 2 (LINT1)
+#define ERROR   (0x0370/4)   // Local Vector Table 3 (ERROR)
+#define TICR    (0x0380/4)   // Timer Initial Count
+#define TCCR    (0x0390/4)   // Timer Current Count
+#define TDCR    (0x03E0/4)   // Timer Divide Configuration
 
-enum {  // LAPIC_SVR
-  LAPIC_ENABLE  = 0x00000100,   // Unit Enable
-  LAPIC_FOCUS   = 0x00000200,   // Focus Processor Checking Disable
-};
+// SVR  
+#define ENABLE     0x00000100   // Unit Enable
+#define FOCUS      0x00000200   // Focus Processor Checking Disable
 
-enum {  // LAPIC_ICRLO
-  // [14] IPI Trigger Mode Level (RW)
-  LAPIC_DEASSERT = 0x00000000,  // Deassert level-sensitive interrupt
-  LAPIC_ASSERT  = 0x00004000,   // Assert level-sensitive interrupt
+// ICRLO
+// [14] IPI Trigger Mode Level (RW)
+#define DEASSERT   0x00000000   // Deassert level-sensitive interrupt
+#define ASSERT     0x00004000   // Assert level-sensitive interrupt
 
-  // [17:16] Remote Read Status
-  LAPIC_INVALID = 0x00000000,   // Invalid
-  LAPIC_WAIT    = 0x00010000,   // In-Progress
-  LAPIC_VALID   = 0x00020000,   // Valid
+// [17:16] Remote Read Status
+#define INVALID    0x00000000   // Invalid
+#define WAIT       0x00010000   // In-Progress
+#define VALID      0x00020000   // Valid
 
-  // [19:18] Destination Shorthand
-  LAPIC_FIELD   = 0x00000000,   // No shorthand
-  LAPIC_SELF    = 0x00040000,   // Self is single destination
-  LAPIC_ALLINC  = 0x00080000,   // All including self
-  LAPIC_ALLEXC  = 0x000C0000,   // All Excluding self
-};
+// [19:18] Destination Shorthand
+#define FIELD      0x00000000   // No shorthand
+#define SELF       0x00040000   // Self is single destination
+#define ALLINC     0x00080000   // All including self
+#define ALLEXC     0x000C0000   // All Excluding self
 
-enum {  // LAPIC_ESR
-  LAPIC_SENDCS  = 0x00000001,     // Send CS Error
-  LAPIC_RCVCS   = 0x00000002,     // Receive CS Error
-  LAPIC_SENDACCEPT = 0x00000004,  // Send Accept Error
-  LAPIC_RCVACCEPT = 0x00000008,   // Receive Accept Error
-  LAPIC_SENDVECTOR = 0x00000020,  // Send Illegal Vector
-  LAPIC_RCVVECTOR = 0x00000040,   // Receive Illegal Vector
-  LAPIC_REGISTER = 0x00000080,    // Illegal Register Address
-};
+// ESR
+#define SENDCS     0x00000001   // Send CS Error
+#define RCVCS      0x00000002   // Receive CS Error
+#define SENDACCEPT 0x00000004   // Send Accept Error
+#define RCVACCEPT  0x00000008   // Receive Accept Error
+#define SENDVECTOR 0x00000020   // Send Illegal Vector
+#define RCVVECTOR  0x00000040   // Receive Illegal Vector
+#define REGISTER   0x00000080   // Illegal Register Address
 
-enum {  // LAPIC_TIMER
-  // [17] Timer Mode (RW)
-  LAPIC_ONESHOT = 0x00000000,   // One-shot
-  LAPIC_PERIODIC = 0x00020000,  // Periodic
+// [17] Timer Mode (RW)
+#define ONESHOT    0x00000000   // One-shot
+#define PERIODIC   0x00020000   // Periodic
 
-  // [19:18] Timer Base (RW)
-  LAPIC_CLKIN   = 0x00000000,   // use CLKIN as input
-  LAPIC_TMBASE  = 0x00040000,   // use TMBASE
-  LAPIC_DIVIDER = 0x00080000,   // use output of the divider
-};
+// [19:18] Timer Base (RW)
+#define CLKIN      0x00000000   // use CLKIN as input
+#define TMBASE     0x00040000   // use TMBASE
+#define DIVIDER    0x00080000   // use output of the divider
 
-enum {  // LAPIC_TDCR
-  LAPIC_X2 = 0x00000000,        // divide by 2
-  LAPIC_X4 = 0x00000001,        // divide by 4
-  LAPIC_X8 = 0x00000002,        // divide by 8
-  LAPIC_X16 = 0x00000003,       // divide by 16
-  LAPIC_X32 = 0x00000008,       // divide by 32
-  LAPIC_X64 = 0x00000009,       // divide by 64
-  LAPIC_X128 = 0x0000000A,      // divide by 128
-  LAPIC_X1 = 0x0000000B,        // divide by 1
-};
+#define X2         0x00000000   // divide by 2
+#define X4         0x00000001   // divide by 4
+#define X8         0x00000002   // divide by 8
+#define X16        0x00000003   // divide by 16
+#define X32        0x00000008   // divide by 32
+#define X64        0x00000009   // divide by 64
+#define X128       0x0000000A   // divide by 128
+#define X1         0x0000000B   // divide by 1
 
-uint *lapicaddr;
-
-static int
-lapic_read(int r)
-{
-  return *(lapicaddr+(r/sizeof(*lapicaddr)));
-}
-
-static void
-lapic_write(int r, int data)
-{
-  *(lapicaddr+(r/sizeof(*lapicaddr))) = data;
-}
-
-
-void
-lapic_timerinit(void)
-{
-  if(!lapicaddr) 
-    return;
-
-  lapic_write(LAPIC_TDCR, LAPIC_X1);
-  lapic_write(LAPIC_TIMER, LAPIC_CLKIN | LAPIC_PERIODIC |
-	      (IRQ_OFFSET + IRQ_TIMER));
-  lapic_write(LAPIC_TCCR, 10000000);
-  lapic_write(LAPIC_TICR, 10000000);
-}
-
-void
-lapic_timerintr(void)
-{
-  if(lapicaddr) 
-    lapic_write(LAPIC_EOI, 0);
-}
+//PAGEBREAK!
+volatile uint *lapic;  // Initialized in mp.c
 
 void
 lapic_init(int c)
 {
   uint r, lvt;
 
-  if(!lapicaddr) 
+  if(!lapic) 
     return;
 
-  lapic_write(LAPIC_DFR, 0xFFFFFFFF);    // Set dst format register
-  r = (lapic_read(LAPIC_ID)>>24) & 0xFF; // Read APIC ID
-  lapic_write(LAPIC_LDR, (1<<r)<<24);    // Set logical dst register to r
-  lapic_write(LAPIC_TPR, 0xFF);          // No interrupts for now
+  lapic[DFR] = 0xFFFFFFFF;    // Set dst format register
+  r = (lapic[ID]>>24) & 0xFF; // Read APIC ID
+  lapic[LDR] = (1<<r) << 24;
+  lapic[TPR] = 0xFF;          // No interrupts for now
 
   // Enable APIC
-  lapic_write(LAPIC_SVR, LAPIC_ENABLE|(IRQ_OFFSET+IRQ_SPURIOUS));
+  lapic[SVR] = ENABLE | (IRQ_OFFSET+IRQ_SPURIOUS);
 
   // In virtual wire mode, set up the LINT0 and LINT1 as follows:
-  lapic_write(LAPIC_LINT0, APIC_IMASK | APIC_EXTINT);
-  lapic_write(LAPIC_LINT1, APIC_IMASK | APIC_NMI);
+  lapic[LINT0] = APIC_IMASK | APIC_EXTINT;
+  lapic[LINT1] = APIC_IMASK | APIC_NMI;
 
-  lapic_write(LAPIC_EOI, 0); // Ack any outstanding interrupts.
+  lapic[EOI] = 0; // Ack any outstanding interrupts.
 
-  lvt = (lapic_read(LAPIC_VER)>>16) & 0xFF;
+  lvt = (lapic[VER]>>16) & 0xFF;
   if(lvt >= 4)
-    lapic_write(LAPIC_PCINT, APIC_IMASK);
-  lapic_write(LAPIC_ERROR, IRQ_OFFSET+IRQ_ERROR);
-  lapic_write(LAPIC_ESR, 0);
-  lapic_read(LAPIC_ESR);
+    lapic[PCINT] = APIC_IMASK;
+  lapic[ERROR] = IRQ_OFFSET+IRQ_ERROR;
+  lapic[ESR] = 0;
+  lapic[ESR];
 
   // Issue an INIT Level De-Assert to synchronise arbitration ID's.
-  lapic_write(LAPIC_ICRHI, 0);
-  lapic_write(LAPIC_ICRLO, LAPIC_ALLINC|APIC_LEVEL|
-                           LAPIC_DEASSERT|APIC_INIT);
-  while(lapic_read(LAPIC_ICRLO) & APIC_DELIVS)
+  lapic[ICRHI] = 0;
+  lapic[ICRLO] = ALLINC | APIC_LEVEL |
+                       DEASSERT | APIC_INIT;
+  while(lapic[ICRLO] & APIC_DELIVS)
     ;
-}
 
-void
-lapic_enableintr(void)
-{
-  if(lapicaddr)
-    lapic_write(LAPIC_TPR, 0);
-}
+  // Initialize the interrupt timer.
+  // On real hardware would need to do more XXX.
+  lapic[TDCR] = X1;
+  lapic[TIMER] = CLKIN | PERIODIC | (IRQ_OFFSET + IRQ_TIMER);
+  lapic[TCCR] = 10000000;
+  lapic[TICR] = 10000000;
 
-void
-lapic_disableintr(void)
-{
-  if(lapicaddr)
-    lapic_write(LAPIC_TPR, 0xFF);
-}
-
-void
-lapic_eoi(void)
-{
-  if(lapicaddr)
-    lapic_write(LAPIC_EOI, 0);
+  // Enable interrupts on the APIC (but not on processor).
+  lapic[TPR] = 0;
 }
 
 int
 cpu(void)
 {
-  int x;
-  if(lapicaddr) 
-    x = (lapic_read(LAPIC_ID)>>24) & 0xFF;
-  else 
-    x = 0;
-  return x;
+  if(lapic)
+    return lapic[ID]>>24;
+  return 0;
 }
 
+// Acknowledge interrupt.
 void
-lapic_startap(uchar apicid, int v)
+lapic_eoi(void)
 {
-  int crhi, i;
+  if(lapic)
+    lapic[EOI] = 0;
+}
+
+// Start additional processor running bootstrap code at addr.
+void
+lapic_startap(uchar apicid, uint addr)
+{
+  int i;
   volatile int j = 0;
 
-  crhi = apicid<<24;
-  lapic_write(LAPIC_ICRHI, crhi);
-  lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|
-                           LAPIC_ASSERT|APIC_INIT);
+  lapic[ICRHI] = apicid<<24;
+  lapic[ICRLO] = FIELD | APIC_LEVEL | ASSERT | APIC_INIT;
   for(j=0; j<10000; j++);  // 200us
-  lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_LEVEL|
-                           LAPIC_DEASSERT|APIC_INIT);
+  lapic[ICRLO] = FIELD | APIC_LEVEL | DEASSERT | APIC_INIT;
   for(j=0; j<1000000; j++);  // 10ms
 
-  // in p9 code, this was i < 2, which is what the spec says on page B-3
-  for(i = 0; i < 1; i++){
-    lapic_write(LAPIC_ICRHI, crhi);
-    lapic_write(LAPIC_ICRLO, LAPIC_FIELD|APIC_EDGE|APIC_STARTUP|(v/4096));
+  for(i = 0; i < 2; i++){
+    lapic[ICRHI] = apicid<<24;
+    lapic[ICRLO] = FIELD | APIC_EDGE | APIC_STARTUP | (addr/4096);
     for(j=0; j<10000; j++);  // 200us
   }
 }
