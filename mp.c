@@ -1,3 +1,5 @@
+// http://developer.intel.com/design/pentium/datashts/24201606.pdf
+
 #include "types.h"
 #include "mp.h"
 #include "defs.h"
@@ -7,52 +9,39 @@
 #include "mmu.h"
 #include "proc.h"
 
-static char *buses[] = {
-  "CBUSI ",
-  "CBUSII",
-  "EISA  ",
-  "FUTURE",
-  "INTERN",
-  "ISA   ",
-  "MBI   ",
-  "MBII  ",
-  "MCA   ",
-  "MPI   ",
-  "MPSA  ",
-  "NUBUS ",
-  "PCI   ",
-  "PCMCIA",
-  "TC    ",
-  "VL    ",
-  "VME   ",
-  "XPRESS",
-  0,
-};
-
 struct cpu cpus[NCPU];
+static struct cpu *bcpu;
 int ismp;
 int ncpu;
 uchar ioapic_id;
 
-static struct cpu *bcpu;
-static struct mp *mp;  // The floating MP structure
-
-static struct mp*
-mp_scan(uchar *addr, int len)
+int
+mp_bcpu(void)
 {
-  uchar *e, *p, sum;
-  int i;
+  return bcpu-cpus;
+}
+
+static uchar
+sum(uchar *addr, int len)
+{
+  int i, sum;
+  
+  sum = 0;
+  for(i=0; i<len; i++)
+    sum += addr[i];
+  return sum;
+}
+
+// Look for an MP structure in the len bytes at addr.
+static struct mp*
+mp_search1(uchar *addr, int len)
+{
+  uchar *e, *p;
 
   e = addr+len;
-  for(p = addr; p < e; p += sizeof(struct mp)){
-    if(memcmp(p, "_MP_", 4))
-      continue;
-    sum = 0;
-    for(i = 0; i < sizeof(struct mp); i++)
-      sum += p[i];
-    if(sum == 0)
+  for(p = addr; p < e; p += sizeof(struct mp))
+    if(memcmp(p, "_MP_", 4) == 0 && sum(p, sizeof(struct mp)) == 0)
       return (struct mp*)p;
-  }
   return 0;
 }
 
@@ -68,110 +57,81 @@ mp_search(void)
   uint p;
   struct mp *mp;
 
-  bda = (uchar*) 0x400;
+  bda = (uchar*)0x400;
   if((p = (bda[0x0F]<<8)|bda[0x0E])){
-    if((mp = mp_scan((uchar*) p, 1024)))
+    if((mp = mp_search1((uchar*)p, 1024)))
       return mp;
   }else{
     p = ((bda[0x14]<<8)|bda[0x13])*1024;
-    if((mp = mp_scan((uchar*)p-1024, 1024)))
+    if((mp = mp_search1((uchar*)p-1024, 1024)))
       return mp;
   }
-  return mp_scan((uchar*)0xF0000, 0x10000);
+  return mp_search1((uchar*)0xF0000, 0x10000);
 }
 
-// Search for an MP configuration table. For now,
+// Search for an MP configuration table.  For now,
 // don't accept the default configurations (physaddr == 0).
 // Check for correct signature, calculate the checksum and,
 // if correct, check the version.
 // To do: check extended table checksum.
-static int
-mp_detect(void)
+static struct mpconf*
+mp_config(struct mp **pmp)
 {
-  struct mpctb *pcmp;
-  uchar *p, sum;
-  uint length;
+  struct mpconf *conf;
+  struct mp *mp;
 
   if((mp = mp_search()) == 0 || mp->physaddr == 0)
-    return -1;
-
-  pcmp = (struct mpctb*) mp->physaddr;
-  if(memcmp(pcmp, "PCMP", 4) != 0)
-    return -1;
-  if(pcmp->version != 1 && pcmp->version != 4)
-    return -1;
-
-  length = pcmp->length;
-  sum = 0;
-  for(p = (uchar*)pcmp; length; length--)
-    sum += *p++;
-  if(sum != 0)
-    return -1;
-
-  return 0;
+    return 0;
+  conf = (struct mpconf*)mp->physaddr;
+  if(memcmp(conf, "PCMP", 4) != 0)
+    return 0;
+  if(conf->version != 1 && conf->version != 4)
+    return 0;
+  if(sum((uchar*)conf, conf->length) != 0)
+    return 0;
+  *pmp = mp;
+  return conf;
 }
 
 void
 mp_init(void)
 {
-  int i;
   uchar *p, *e;
-  struct mpctb *mpctb;
-  struct mppe *proc;
-  struct mpbe *bus;
+  struct mp *mp;
+  struct mpconf *conf;
+  struct mpproc *proc;
   struct mpioapic *ioapic;
-  struct mpie *intr;
 
-  ncpu = 0;
-  if(mp_detect() < 0)
+  bcpu = &cpus[ncpu];
+  if((conf = mp_config(&mp)) == 0)
     return;
 
   ismp = 1;
+  lapic = (uint*)conf->lapicaddr;
 
-  // Run through the table saving information needed for starting
-  // application processors and initialising any I/O APICs. The table
-  // is guaranteed to be in order such that only one pass is necessary.
-
-  mpctb = (struct mpctb*)mp->physaddr;
-  lapic = (uint*)mpctb->lapicaddr;
-  p = (uchar*)mpctb + sizeof(*mpctb);
-  e = (uchar*)mpctb + mpctb->length;
-
-  while(p < e) {
+  for(p=(uchar*)(conf+1), e=(uchar*)conf+conf->length; p<e; ){
     switch(*p){
-    case MPPROCESSOR:
-      proc = (struct mppe*) p;
+    case MPPROC:
+      proc = (struct mpproc*)p;
       cpus[ncpu].apicid = proc->apicid;
-      if(proc->flags & MPBP) {
+      if(proc->flags & MPBOOT)
         bcpu = &cpus[ncpu];
-      }
       ncpu++;
-      p += sizeof(struct mppe);
-      continue;
-    case MPBUS:
-      bus = (struct mpbe*) p;
-      for(i = 0; buses[i]; i++){
-        if(strncmp(buses[i], bus->string, sizeof(bus->string)) == 0)
-          break;
-      }
-      p += sizeof(struct mpbe);
+      p += sizeof(struct mpproc);
       continue;
     case MPIOAPIC:
-      ioapic = (struct mpioapic*) p;
+      ioapic = (struct mpioapic*)p;
       ioapic_id = ioapic->apicno;
       p += sizeof(struct mpioapic);
       continue;
+    case MPBUS:
     case MPIOINTR:
-      intr = (struct mpie*) p;
-      p += sizeof(struct mpie);
+    case MPLINTR:
+      p += 8;
       continue;
     default:
-      cprintf("mp_init: unknown PCMP type 0x%x (e-p 0x%x)\n", *p, e-p);
-      while(p < e){
-        cprintf("%uX ", *p);
-        p++;
-      }
-      break;
+      cprintf("mp_init: unknown config type %x\n", *p);
+      panic("mp_init");
     }
   }
 
@@ -180,49 +140,5 @@ mp_init(void)
     // But it would on real hardware.
     outb(0x22, 0x70);   // Select IMCR
     outb(0x23, inb(0x23) | 1);  // Mask external interrupts.
-  }
-}
-
-
-int
-mp_bcpu(void)
-{
-  if(ismp)
-    return bcpu-cpus;
-  return 0;
-}
-
-extern void mpmain(void);
-
-// Write bootstrap code to unused memory at 0x7000.
-#define APBOOTCODE 0x7000
-
-void
-mp_startthem(void)
-{
-  extern uchar _binary_bootother_start[], _binary_bootother_size[];
-  extern int main();
-  int c;
-
-  memmove((void*) APBOOTCODE,_binary_bootother_start,
-          (uint) _binary_bootother_size);
-
-  for(c = 0; c < ncpu; c++){
-    // Our current cpu has already started.
-    if(c == cpu())
-      continue;
-
-    // Set target %esp
-    *(uint*)(APBOOTCODE-4) = (uint) (cpus[c].mpstack) + MPSTACK;
-
-    // Set target %eip
-    *(uint*)(APBOOTCODE-8) = (uint)mpmain;
-
-    // Go!
-    lapic_startap(cpus[c].apicid, (uint)APBOOTCODE);
-
-    // Wait for cpu to get through bootstrap.
-    while(cpus[c].booted == 0)
-      ;
   }
 }

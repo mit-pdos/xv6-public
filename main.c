@@ -12,6 +12,8 @@
 
 extern char edata[], end[];
 
+void bootothers(void);
+
 // Bootstrap processor starts running C code here.
 // This is called main0 not main so that it can have
 // a void return type.  Gcc can't handle functions named
@@ -37,7 +39,7 @@ main0(void)
   asm volatile("movl %0, %%ebp" : : "r" (cpus[bcpu].mpstack+MPSTACK));
 
   lapic_init(bcpu);
-  cprintf("\ncpu%d: starting xv6\n\n", cpu());
+  cprintf("\\ncpu%d: starting xv6\\n\\n", cpu());
 
   pinit();         // process table
   binit();         // buffer cache
@@ -51,7 +53,7 @@ main0(void)
   setupsegs(0);    // segments & TSS
   console_init();  // I/O devices & their interrupts
   ide_init();      // disk
-  mp_startthem();  // other CPUs
+  bootothers();    // boot other CPUs
   if(!ismp)
     pit8253_timerinit(); // uniprocessor timer
   userinit();      // first user process
@@ -67,7 +69,7 @@ main0(void)
 void
 mpmain(void)
 {
-  cprintf("cpu%d: starting\n", cpu());
+  cprintf("cpu%d: starting\\n", cpu());
   idtinit();
   lapic_init(cpu());
   setupsegs(0);
@@ -80,5 +82,31 @@ mpmain(void)
   sti();
 
   scheduler();
+}
+
+void
+bootothers(void)
+{
+  extern uchar _binary_bootother_start[], _binary_bootother_size[];
+  uchar *code;
+  struct cpu *c;
+
+  // Write bootstrap code to unused memory at 0x7000.
+  code = (uchar*)0x7000;
+  memmove(code, _binary_bootother_start, (uint)_binary_bootother_size);
+
+  for(c = cpus; c < cpus+ncpu; c++){
+    if(c == cpus+cpu())  // We've started already.
+      continue;
+
+    // Set target %esp, %eip
+    *(void**)(code-4) = c->mpstack + MPSTACK;
+    *(void**)(code-8) = mpmain;
+    lapic_startap(c->apicid, (uint)code);
+
+    // Wait for cpu to get through bootstrap.
+    while(c->booted == 0)
+      ;
+  }
 }
 
