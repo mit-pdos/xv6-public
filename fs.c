@@ -243,12 +243,12 @@ iput(struct inode *ip)
       panic("iput busy");
     ip->flags |= I_BUSY;
     release(&icache.lock);
-    // XXX convince rsc that no one will come find this inode.
     itrunc(ip);
     ip->type = 0;
     iupdate(ip);
     acquire(&icache.lock);
     ip->flags &= ~I_BUSY;
+    wakeup(ip);
   }
   ip->ref--;
   release(&icache.lock);
