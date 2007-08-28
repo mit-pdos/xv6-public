@@ -72,7 +72,7 @@ exec(char *path, char **argv)
   
   // Initialize stack.
   sp = sz;
-  argp = sz - arglen;
+  argp = sz - arglen - 4*(argc+1);
 
   // Copy argv strings and pointers to stack.
   *(uint*)(mem+argp + 4*argc) = 0;  // argv[argc]
