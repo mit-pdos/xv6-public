@@ -12,8 +12,6 @@ bootasm.S
 bootother.S
 bootmain.c
 main.c
-initcode.S
-init.c
 
 # locks
 spinlock.h
@@ -55,7 +53,7 @@ pipe.c
 # string operations
 string.c
 
-# low-level PC
+# low-level hardware
 mp.h
 mp.c
 lapic.c
@@ -67,14 +65,9 @@ console.c
 timer.c
 
 # user-level
+initcode.S
+init.c
 usys.S
 sh.c
-
-
-
-
-
-
-
 
 
