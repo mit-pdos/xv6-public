@@ -46,5 +46,5 @@ odd: fs.c   # VERY important
 
 even: pipe.c  # mild preference
 # string.c either
-# even: console.c
-
+even: console.c
+odd: sh.c

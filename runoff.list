@@ -62,12 +62,13 @@ lapic.c
 ioapic.c
 picirq.c
 kbd.h
+kbd.c
 console.c
 8253pit.c
 
-
-
-
+# user-level
+usys.S
+sh.c
 
 
 
