@@ -18,7 +18,7 @@ struct pipe {
 };
 
 int
-pipe_alloc(struct file **f0, struct file **f1)
+pipealloc(struct file **f0, struct file **f1)
 {
   struct pipe *p;
 
@@ -58,7 +58,7 @@ pipe_alloc(struct file **f0, struct file **f1)
 }
 
 void
-pipe_close(struct pipe *p, int writable)
+pipeclose(struct pipe *p, int writable)
 {
   acquire(&p->lock);
   if(writable){
@@ -76,7 +76,7 @@ pipe_close(struct pipe *p, int writable)
 
 //PAGEBREAK: 20
 int
-pipe_write(struct pipe *p, char *addr, int n)
+pipewrite(struct pipe *p, char *addr, int n)
 {
   int i;
 
@@ -99,7 +99,7 @@ pipe_write(struct pipe *p, char *addr, int n)
 }
 
 int
-pipe_read(struct pipe *p, char *addr, int n)
+piperead(struct pipe *p, char *addr, int n)
 {
   int i;
 

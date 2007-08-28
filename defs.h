@@ -92,10 +92,10 @@ void            irq_enable(int);
 void            pic_init(void);
 
 // pipe.c
-int             pipe_alloc(struct file**, struct file**);
-void            pipe_close(struct pipe*, int);
-int             pipe_read(struct pipe*, char*, int);
-int             pipe_write(struct pipe*, char*, int);
+int             pipealloc(struct file**, struct file**);
+void            pipeclose(struct pipe*, int);
+int             piperead(struct pipe*, char*, int);
+int             pipewrite(struct pipe*, char*, int);
 
 // proc.c
 struct proc*    copyproc(struct proc*);

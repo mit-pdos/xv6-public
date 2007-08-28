@@ -65,7 +65,7 @@ fileclose(struct file *f)
   release(&file_table_lock);
   
   if(ff.type == FD_PIPE)
-    pipe_close(ff.pipe, ff.writable);
+    pipeclose(ff.pipe, ff.writable);
   else if(ff.type == FD_INODE)
     iput(ff.ip);
   else
@@ -94,7 +94,7 @@ fileread(struct file *f, char *addr, int n)
   if(f->readable == 0)
     return -1;
   if(f->type == FD_PIPE)
-    return pipe_read(f->pipe, addr, n);
+    return piperead(f->pipe, addr, n);
   if(f->type == FD_INODE){
     ilock(f->ip);
     if((r = readi(f->ip, addr, f->off, n)) > 0)
@@ -114,7 +114,7 @@ filewrite(struct file *f, char *addr, int n)
   if(f->writable == 0)
     return -1;
   if(f->type == FD_PIPE)
-    return pipe_write(f->pipe, addr, n);
+    return pipewrite(f->pipe, addr, n);
   if(f->type == FD_INODE){
     ilock(f->ip);
     if((r = writei(f->ip, addr, f->off, n)) > 0)
