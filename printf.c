@@ -63,6 +63,8 @@ printf(int fd, char *fmt, ...)
       } else if(c == 's'){
         s = (char*)*ap;
         ap++;
+        if(s == 0)
+          s = "(null)";
         while(*s != 0){
           putc(fd, *s);
           s++;
