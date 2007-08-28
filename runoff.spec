@@ -44,7 +44,7 @@ odd: fs.c   # VERY important
 # exec.c either
 # sysfile.c either
 
-even: pipe.c  # mild preference
+# even: pipe.c  # mild preference
 # string.c either
 even: console.c
 odd: sh.c
