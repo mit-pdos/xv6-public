@@ -43,6 +43,7 @@ pipealloc(struct file **f0, struct file **f1)
   (*f1)->pipe = p;
   return 0;
 
+//PAGEBREAK: 20
  bad:
   if(p)
     kfree((char*)p, PAGE);
@@ -74,7 +75,7 @@ pipeclose(struct pipe *p, int writable)
     kfree((char*)p, PAGE);
 }
 
-//PAGEBREAK: 20
+//PAGEBREAK: 30
 int
 pipewrite(struct pipe *p, char *addr, int n)
 {
