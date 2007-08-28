@@ -202,16 +202,14 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release proc_table_lock and then reacquire it
       // before jumping back to us.
-
-      setupsegs(p);
       cp = p;
+      setupsegs(p);
       p->state = RUNNING;
       swtch(&cpus[cpu()].context, &p->context);
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       cp = 0;
-
       setupsegs(0);
     }
 
