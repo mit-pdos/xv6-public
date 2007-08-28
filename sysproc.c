@@ -18,14 +18,14 @@ sys_fork(void)
 int
 sys_exit(void)
 {
-  proc_exit();
+  exit();
   return 0;  // not reached
 }
 
 int
 sys_wait(void)
 {
-  return proc_wait();
+  return wait();
 }
 
 int
@@ -35,7 +35,7 @@ sys_kill(void)
 
   if(argint(0, &pid) < 0)
     return -1;
-  return proc_kill(pid);
+  return kill(pid);
 }
 
 int
