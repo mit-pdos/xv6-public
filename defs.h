@@ -7,9 +7,6 @@ struct proc;
 struct spinlock;
 struct stat;
 
-// 8253pit.c
-void            pit8253_timerinit(void);
-
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -139,6 +136,9 @@ int             argstr(int, char**);
 int             fetchint(struct proc*, uint, int*);
 int             fetchstr(struct proc*, uint, char**);
 void            syscall(void);
+
+// timer.c
+void            timer_init(void);
 
 // trap.c
 void            idtinit(void);

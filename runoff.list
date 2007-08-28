@@ -64,7 +64,7 @@ picirq.c
 kbd.h
 kbd.c
 console.c
-8253pit.c
+timer.c
 
 # user-level
 usys.S

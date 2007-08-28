@@ -46,7 +46,7 @@ main(void)
   ide_init();      // disk
   bootothers();    // boot other CPUs
   if(!ismp)
-    pit8253_timerinit(); // uniprocessor timer
+    timer_init(); // uniprocessor timer
   userinit();      // first user process
 
   // enable interrupts on this processor.
@@ -74,7 +74,7 @@ mpmain(void)
   scheduler();
 }
 
-void
+static void
 bootothers(void)
 {
   extern uchar _binary_bootother_start[], _binary_bootother_size[];
