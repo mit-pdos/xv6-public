@@ -1,10 +1,15 @@
 OBJS = \
+	8253pit.o\
+	bio.o\
 	console.o\
+	exec.o\
 	file.o\
+	fs.o\
 	ide.o\
-	kalloc.o\
-	lapic.o\
 	ioapic.o\
+	kalloc.o\
+	kbd.o\
+	lapic.o\
 	main.o\
 	mp.o\
 	picirq.o\
@@ -19,32 +24,27 @@ OBJS = \
 	trapasm.o\
 	trap.o\
 	vectors.o\
-	bio.o\
-	fs.o\
-	exec.o\
-	8253pit.o\
-	kbd.o\
 
 # Cross-compiling (e.g., on Mac OS X)
-#TOOLPREFIX = i386-jos-elf-
+TOOLPREFIX = i386-jos-elf-
 
 # Using native tools (e.g., on X86 Linux)
-TOOLPREFIX = 
+#TOOLPREFIX = 
 
 CC = $(TOOLPREFIX)gcc
+AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
-# On newer gcc you may need to add -fno-stack-protector to $(CFLAGS)
-CFLAGS = -fno-builtin -O2 -Wall -MD -ggdb -fno-stack-protector
-AS = $(TOOLPREFIX)gas
+CFLAGS = -fno-builtin -O2 -Wall -MD -ggdb
+CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
-xv6.img : bootblock kernel fs.img
+xv6.img: bootblock kernel fs.img
 	dd if=/dev/zero of=xv6.img count=10000
 	dd if=bootblock of=xv6.img conv=notrunc
 	dd if=kernel of=xv6.img seek=1 conv=notrunc
 
-bootblock : bootasm.S bootmain.c
+bootblock: bootasm.S bootmain.c
 	$(CC) -O -nostdinc -I. -c bootmain.c
 	$(CC) -nostdinc -I. -c bootasm.S
 	$(LD) -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
@@ -52,71 +52,35 @@ bootblock : bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
-kernel : $(OBJS) bootother.S initcode.S
-	$(CC) -nostdinc -I. -c bootother.S
+bootother: bootother.S
+	$(CC) -nostdinc -I. -c $*.S
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
-	$(CC) -nostdinc -I. -c initcode.S
+
+initcode: initcode.S
+	$(CC) -nostdinc -I. -c $*.S
 	$(LD) -N -e start -Ttext 0 -o initcode.out initcode.o
 	$(OBJCOPY) -S -O binary initcode.out initcode
 	$(OBJDUMP) -S initcode.o > initcode.asm
+
+kernel: $(OBJS) bootother initcode
 	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary initcode bootother
 	$(OBJDUMP) -S kernel > kernel.asm
-	$(OBJDUMP) -t kernel | awk '/SYMBOL TABLE/ { go=1; next } go {print $$1, $$NF}' >kernel.sym
+	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* //' > kernel.sym
 
 tags: $(OBJS) bootother.S _init
 	etags *.S *.c
 
-vectors.S : vectors.pl
+vectors.S: vectors.pl
 	perl vectors.pl > vectors.S
 
 ULIB = ulib.o usys.o printf.o umalloc.o
 
-_usertests : usertests.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _usertests usertests.o $(ULIB)
-	$(OBJDUMP) -S _usertests > usertests.asm
-
-_echo : echo.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _echo echo.o $(ULIB)
-	$(OBJDUMP) -S _echo > echo.asm
-
-_cat : cat.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _cat cat.o $(ULIB)
-	$(OBJDUMP) -S _cat > cat.asm
-
-_init : init.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _init init.o $(ULIB)
-	$(OBJDUMP) -S _init > init.asm
-	$(OBJDUMP) -t _init | awk '/SYMBOL TABLE/ { go=1; next } go {print $$1, $$NF}' >init.sym
-
-_kill : kill.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _kill kill.o $(ULIB)
-	$(OBJDUMP) -S _kill > kill.asm
-
-_ls : ls.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _ls ls.o $(ULIB)
-	$(OBJDUMP) -S _ls > ls.asm
-
-_mkdir : mkdir.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _mkdir mkdir.o $(ULIB)
-	$(OBJDUMP) -S _mkdir > mkdir.asm
-
-_rm : rm.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _rm rm.o $(ULIB)
-	$(OBJDUMP) -S _rm > rm.asm
-
-_ln : ln.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _ln ln.o $(ULIB)
-	$(OBJDUMP) -S _ln > ln.asm
-
-_sh : sh.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _sh sh.o $(ULIB)
-	$(OBJDUMP) -S _sh > sh.asm
-
-_zombie: zombie.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o _zombie zombie.o $(ULIB)
-	$(OBJDUMP) -S _zombie > zombie.asm
+_%: %.o $(ULIB)
+	$(LD) -N -e main -Ttext 0 -o $@ $^
+	$(OBJDUMP) -S $@ > $*.asm
+	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* //' > $*.sym
 
 _forktest: forktest.o $(ULIB)
 	# forktest has less library code linked in - needs to be small
@@ -124,18 +88,31 @@ _forktest: forktest.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
 
-mkfs : mkfs.c fs.h
-	cc -o mkfs mkfs.c
+mkfs: mkfs.c fs.h
+	gcc -Wall -o mkfs mkfs.c
 
-UPROGS=_usertests _echo _cat _init _kill _ln _ls _mkdir _rm _sh _zombie _forktest
-fs.img : mkfs README $(UPROGS)
+UPROGS=\
+	_cat\
+	_forktest\
+	_init\
+	_kill\
+	_ln\
+	_ls\
+	_mkdir\
+	_rm\
+	_sh\
+	_usertests\
+	_wc\
+	_zombie\
+
+fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
 
 -include *.d
 
-clean : 
+clean: 
 	rm -f *.ps *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
-	*.o *.d *.asm vectors.S parport.out \
+	*.o *.d *.asm *.sym vectors.S parport.out \
 	bootblock kernel xv6.img fs.img mkfs \
 	$(UPROGS)
 
@@ -153,10 +130,10 @@ PRINT =	\
 	console.c\
 	string.c\
 
-xv6.pdf : $(PRINT)
+xv6.pdf: $(PRINT)
 	./runoff
 
-print : xv6.pdf
+print: xv6.pdf
 
 # run in emulators
 
@@ -164,7 +141,7 @@ bochs : fs.img xv6.img
 	if [ ! -e .bochsrc ]; then ln -s dot-bochsrc .bochsrc; fi
 	bochs -q
 
-qemu : fs.img xv6.img
+qemu: fs.img xv6.img
 	qemu -parallel stdio -hdb fs.img xv6.img
 
 # CUT HERE
@@ -172,7 +149,7 @@ qemu : fs.img xv6.img
 # after running make dist, probably want to
 # rename it to rev0 or rev1 or so on and then
 # check in that version.
-dist :
+dist:
 	rm -rf dist
 	mkdir dist
 	for i in *.c *.h *.S; \
@@ -182,7 +159,7 @@ dist :
 	sed '/CUT HERE/,$$d' Makefile >dist/Makefile
 	cp README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list dist
 
-dist-test :
+dist-test:
 	rm -rf dist-test
 	mkdir dist-test
 	cp dist/* dist-test
@@ -190,11 +167,11 @@ dist-test :
 	cd dist-test; ../m bochs || true
 	cd dist-test; ../m qemu
 
-# update this rule (change rev0) when it is time to
+# update this rule (change rev1) when it is time to
 # make a new revision.
-tar :
+tar:
 	rm -rf /tmp/xv6
 	mkdir -p /tmp/xv6
 	cp dist/* /tmp/xv6
-	(cd /tmp; tar cf - xv6) | gzip >xv6-rev0.tar.gz
+	(cd /tmp; tar cf - xv6) | gzip >xv6-rev1.tar.gz
 
