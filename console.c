@@ -1,3 +1,7 @@
+// Console input and output.
+// Input is from the keyboard only.
+// Output is written to the screen and the printer port.
+
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -278,7 +282,7 @@ console_init(void)
   devsw[CONSOLE].read = console_read;
   //use_console_lock = 1;
 
-  irq_enable(IRQ_KBD);
+  pic_enable(IRQ_KBD);
   ioapic_enable(IRQ_KBD, 0);
 }
 

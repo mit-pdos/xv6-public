@@ -48,4 +48,3 @@ kbd_intr(void)
 {
   console_intr(kbd_getc);
 }
-

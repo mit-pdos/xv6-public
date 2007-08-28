@@ -47,7 +47,7 @@ ide_init(void)
   int i;
 
   initlock(&ide_lock, "ide");
-  irq_enable(IRQ_IDE);
+  pic_enable(IRQ_IDE);
   ioapic_enable(IRQ_IDE, ncpu - 1);
   ide_wait_ready(0);
   
