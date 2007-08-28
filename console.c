@@ -105,7 +105,7 @@ printint(int xx, int base, int sgn)
     cons_putc(buf[i]);
 }
 
-// Print to the input. only understands %d, %x, %p, %s.
+// Print to the console. only understands %d, %x, %p, %s.
 void
 cprintf(char *fmt, ...)
 {
@@ -200,7 +200,6 @@ console_intr(int (*getc)(void))
     case C('P'):  // Process listing.
       procdump();
       break;
-    
     case C('U'):  // Kill line.
       while(input.e > input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
@@ -208,14 +207,12 @@ console_intr(int (*getc)(void))
         cons_putc(BACKSPACE);
       }
       break;
-  
     case C('H'):  // Backspace
       if(input.e > input.w){
         input.e--;
         cons_putc(BACKSPACE);
       }
       break;
-  
     default:
       if(c != 0 && input.e < input.r+INPUT_BUF){
         input.buf[input.e++] = c;

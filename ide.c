@@ -52,7 +52,7 @@ ide_init(void)
   ide_wait_ready(0);
   
   // Check if disk 1 is present
-  outb(0x1f6, 0xE0 | (1<<4));
+  outb(0x1f6, 0xe0 | (1<<4));
   for(i=0; i<1000; i++){
     if(inb(0x1f7) != 0){
       disk_1_present = 1;
@@ -61,7 +61,7 @@ ide_init(void)
   }
   
   // Switch back to disk 0.
-  outb(0x1f6, 0xE0 | (0<<4));
+  outb(0x1f6, 0xe0 | (0<<4));
 }
 
 // Start the request for b.  Caller must hold ide_lock.
@@ -77,7 +77,7 @@ ide_start_request(struct buf *b)
   outb(0x1f3, b->sector & 0xff);
   outb(0x1f4, (b->sector >> 8) & 0xff);
   outb(0x1f5, (b->sector >> 16) & 0xff);
-  outb(0x1f6, 0xE0 | ((b->dev&1)<<4) | ((b->sector>>24)&0x0f));
+  outb(0x1f6, 0xe0 | ((b->dev&1)<<4) | ((b->sector>>24)&0x0f));
   if(b->flags & B_DIRTY){
     outb(0x1f7, IDE_CMD_WRITE);
     outsl(0x1f0, b->data, 512/4);

@@ -57,7 +57,7 @@ main(void)
 }
 
 // Additional processors start here.
-void
+static void
 mpmain(void)
 {
   cprintf("cpu%d: starting\n", cpu());

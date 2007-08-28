@@ -134,7 +134,19 @@ perl -e '
 	}
 ' $files >defs
 
-perl -n -e 'print if s/^([0-9]+ [a-zA-Z0-9_]+)\(.*$/\1/;' $files |
+(for i in $files
+do
+	case "$i" in
+	*.S)
+		cat $i | sed 's;#.*;;; s;//.*;;;'
+		;;
+	*)
+		cat $i | sed 's;//.*;;; s;"([^"\\]|\\.)*";;;'
+	esac
+done
+) >alltext
+
+perl -n -e 'print if s/^([0-9]+ [a-zA-Z0-9_]+)\(.*$/\1/;' alltext |
 	egrep -v ' (usage|main|if|for)$' >>defs
 (
 >s.defs
@@ -144,9 +156,11 @@ for i in `awk '{print $2}' defs | sort -fu`
 do
 	defs=`egrep '^[0-9]+ '$i'( |$)' defs | awk '{print $1}'`
 	echo $i $defs >>s.defs
-	uses=`egrep -h '([^a-zA-Z_0-9])'$i'($|[^a-zA-Z_0-9])' $files | awk '{print $1}'`
-	echo $i $defs
-	echo $uses |fmt -24 | sed 's/^/    /'
+	uses=`egrep -h '([^a-zA-Z_0-9])'$i'($|[^a-zA-Z_0-9])' alltext | awk '{print $1}'`
+	if [ "x$defs" != "x$uses" ]; then
+		echo $i $defs
+		echo $uses |fmt -24 | sed 's/^/    /'
+	fi
 done
 ) >refs
 

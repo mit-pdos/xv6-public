@@ -1,11 +1,9 @@
 .text
-.globl trap
-.globl trapret1
-.globl alltraps
 
 .set SEG_KDATA_SEL, 0x10   # selector for SEG_KDATA
 
   # vectors.S sends all traps here.
+.globl alltraps
 alltraps:
   # Build trap frame.
   pushl %ds
