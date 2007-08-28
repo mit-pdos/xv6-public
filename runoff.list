@@ -22,7 +22,7 @@ spinlock.c
 # processes
 proc.h
 proc.c
-setjmp.S
+swtch.S
 kalloc.c
 
 # system calls

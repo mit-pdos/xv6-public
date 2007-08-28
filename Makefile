@@ -14,9 +14,9 @@ OBJS = \
 	picirq.o\
 	pipe.o\
 	proc.o\
-	setjmp.o\
 	spinlock.o\
 	string.o\
+	swtch.o\
 	syscall.o\
 	sysfile.o\
 	sysproc.o\
@@ -67,7 +67,7 @@ initcode: initcode.S
 kernel: $(OBJS) bootother initcode
 	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary initcode bootother
 	$(OBJDUMP) -S kernel > kernel.asm
-	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* //' > kernel.sym
+	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernel.sym
 
 tags: $(OBJS) bootother.S _init
 	etags *.S *.c
@@ -80,7 +80,7 @@ ULIB = ulib.o usys.o printf.o umalloc.o
 _%: %.o $(ULIB)
 	$(LD) -N -e main -Ttext 0 -o $@ $^
 	$(OBJDUMP) -S $@ > $*.asm
-	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* //' > $*.sym
+	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $*.sym
 
 _forktest: forktest.o $(ULIB)
 	# forktest has less library code linked in - needs to be small
@@ -119,18 +119,7 @@ clean:
 	$(UPROGS)
 
 # make a printout
-PRINT =	\
-	runoff.list \
-	README\
-	types.h param.h defs.h x86.h asm.h elf.h mmu.h spinlock.h\
-	bootasm.S bootother.S main.c init.c spinlock.c\
-	proc.h proc.c setjmp.S kalloc.c\
-	syscall.h trapasm.S traps.h trap.c vectors.pl syscall.c sysproc.c\
-	buf.h dev.h fcntl.h stat.h file.h fs.h fsvar.h file.c fs.c bio.c ide.c sysfile.c\
-	pipe.c exec.c\
-	mp.h ioapic.h mp.c lapic.c ioapic.c picirq.c\
-	console.c\
-	string.c\
+PRINT = runoff.list $(shell grep -v '^\#' runoff.list)
 
 xv6.pdf: $(PRINT)
 	./runoff

@@ -1,7 +1,7 @@
 struct buf;
+struct context;
 struct file;
 struct inode;
-struct jmpbuf;
 struct pipe;
 struct proc;
 struct spinlock;
@@ -109,9 +109,8 @@ void            userinit(void);
 void            wakeup(void*);
 void            yield(void);
 
-// setjmp.S
-void            longjmp(struct jmpbuf*);
-int             setjmp(struct jmpbuf*);
+// swtch.S
+void            swtch(struct context*, struct context*);
 
 // spinlock.c
 void            acquire(struct spinlock*);

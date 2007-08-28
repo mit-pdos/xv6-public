@@ -134,10 +134,10 @@ copyproc(struct proc *p)
     np->cwd = idup(p->cwd);
   }
 
-  // Set up new jmpbuf to start executing at forkret (see below).
-  memset(&np->jmpbuf, 0, sizeof(np->jmpbuf));
-  np->jmpbuf.eip = (uint)forkret;
-  np->jmpbuf.esp = (uint)np->tf - 4;
+  // Set up new context to start executing at forkret (see below).
+  memset(&np->context, 0, sizeof(np->context));
+  np->context.eip = (uint)forkret;
+  np->context.esp = (uint)np->tf;
 
   // Clear %eax so that fork system call returns 0 in child.
   np->tf->eax = 0;
@@ -206,8 +206,7 @@ scheduler(void)
       setupsegs(p);
       cp = p;
       p->state = RUNNING;
-      if(setjmp(&cpus[cpu()].jmpbuf) == 0)
-        longjmp(&p->jmpbuf);
+      swtch(&cpus[cpu()].context, &p->context);
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
@@ -232,8 +231,7 @@ sched(void)
   if(cpus[cpu()].nlock != 1)
     panic("sched locks");
 
-  if(setjmp(&cp->jmpbuf) == 0)
-    longjmp(&cpus[cpu()].jmpbuf);
+  swtch(&cp->context, &cpus[cpu()].context);
 }
 
 // Give up the CPU for one scheduling round.
@@ -458,7 +456,7 @@ procdump(void)
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
     if(p->state == SLEEPING) {
-      getcallerpcs((uint*)p->jmpbuf.ebp+2, pc);
+      getcallerpcs((uint*)p->context.ebp+2, pc);
       for(j=0; j<10 && pc[j] != 0; j++)
         cprintf(" %p", pc[j]);
     }
