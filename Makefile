@@ -1,5 +1,4 @@
 OBJS = \
-	8253pit.o\
 	bio.o\
 	console.o\
 	exec.o\
@@ -21,6 +20,7 @@ OBJS = \
 	syscall.o\
 	sysfile.o\
 	sysproc.o\
+	timer.o\
 	trapasm.o\
 	trap.o\
 	vectors.o\
