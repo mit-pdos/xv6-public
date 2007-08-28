@@ -255,7 +255,6 @@ console_read(int minor, char *dst, int n)
       break;
     }
     *dst++ = c;
-    cons_putc(c);
     --n;
     if(c == '\n')
       break;
