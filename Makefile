@@ -53,13 +53,13 @@ bootblock: bootasm.S bootmain.c
 	./sign.pl bootblock
 
 bootother: bootother.S
-	$(CC) -nostdinc -I. -c $*.S
+	$(CC) -nostdinc -I. -c bootother.S
 	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
 
 initcode: initcode.S
-	$(CC) -nostdinc -I. -c $*.S
+	$(CC) -nostdinc -I. -c initcode.S
 	$(LD) -N -e start -Ttext 0 -o initcode.out initcode.o
 	$(OBJCOPY) -S -O binary initcode.out initcode
 	$(OBJDUMP) -S initcode.o > initcode.asm
