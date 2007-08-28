@@ -67,11 +67,11 @@ protcseg:
   
   # Set up the stack pointer and call into C.
   movl    $start, %esp
-  call bootmain
+  call    bootmain
 
   # If bootmain returns (it shouldn't), loop.
 spin:
-  jmp spin
+  jmp     spin
 
 # Bootstrap GDT
 .p2align 2                                # force 4 byte alignment

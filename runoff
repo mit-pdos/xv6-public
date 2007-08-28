@@ -109,12 +109,17 @@ perl -e '
 		if (/^([0-9]+) #define +([A-za-z0-9_]+) +?\(.*/) {
 			print "$1 $2\n"
 		}
-		
 		elsif (/^([0-9]+) #define +([A-Za-z0-9_]+) +([^ ]+)/) {
 			print "$1 $2 $3\n";
 		}
-		
 		elsif (/^([0-9]+) #define +([A-Za-z0-9_]+)/) {
+			print "$1 $2\n";
+		}
+		
+		if(/^^([0-9]+) \.globl ([a-zA-Z0-9_]+)/){
+			$isglobl{$2} = 1;
+		}
+		if(/^^([0-9]+) ([a-zA-Z0-9_]+):$/ && $isglobl{$2}){
 			print "$1 $2\n";
 		}
 		

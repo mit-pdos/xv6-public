@@ -6,10 +6,9 @@ on the same line as the name, the line number (or, in a few cases, numbers)
 where the name is defined.  Successive lines in an entry list the line
 numbers where the name is used.  For example, this entry:
 
-    namei 4610
-        0333 4610 4709 4758
-        4808 4857 4866 5264
-        5277 5362 5410 5490
+    swtch 2256
+        0311 1928 1962 2255
+        2256
 
-indicates that namei is defined on line 4610 and is mentioned on twelve lines
-on sheets 03, 46, 47, 48, 52, 53, and 54.
+indicates that swtch is defined on line 2256 and is mentioned on five lines
+on sheets 03, 19, and 22.

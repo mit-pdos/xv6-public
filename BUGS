@@ -1,18 +1,2 @@
-proc.c:
-	as a consequence of the implementation of proc_kill,
-	any loop calling sleep should check for p->killed
-	and be able to break out with an error return.
-	it is better if you check *before* sleep.
-
-syscall.c:
-	cannot convince runoff1 to split the extern lists 
-	  to fill previous page completely.
-
 formatting:
-	file.c filewrite leaks onto next page
 	need to fix PAGEBREAK mechanism
-
-fs.c: grep XXX
-
-sysfile.c: why does mknod take a type argument?
-

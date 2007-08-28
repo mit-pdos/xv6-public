@@ -96,16 +96,16 @@ int             pipewrite(struct pipe*, char*, int);
 
 // proc.c
 struct proc*    copyproc(struct proc*);
+void            exit(void);
 int             growproc(int);
+int             kill(int);
 void            pinit(void);
 void            procdump(void);
-void            exit(void);
-int             kill(int);
-int             wait(void);
 void            scheduler(void) __attribute__((noreturn));
 void            setupsegs(struct proc*);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
+int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 
