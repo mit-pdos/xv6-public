@@ -76,29 +76,27 @@ trap(struct trapframe *tf)
     break;
     
   default:
-    if(cp) {
-      // Assume process divided by zero or dereferenced null, etc.
-      cprintf("pid %d %s: trap %d err %d on cpu %d eip %x -- kill proc\n",
-              cp->pid, cp->name, tf->trapno, tf->err, cpu(), tf->eip);
-      proc_exit();
+    if(cp == 0) {
+      // Otherwise it's our mistake.
+      cprintf("unexpected trap %d from cpu %d eip %x\n",
+              tf->trapno, cpu(), tf->eip);
+      panic("trap");
     }
-    // Otherwise it's our mistake.
-    cprintf("unexpected trap %d from cpu %d eip %x\n",
-            tf->trapno, cpu(), tf->eip);
-    panic("trap");
+    // Assume process divided by zero or dereferenced null, etc.
+    cprintf("pid %d %s: trap %d err %d on cpu %d eip %x -- kill proc\n",
+            cp->pid, cp->name, tf->trapno, tf->err, cpu(), tf->eip);
+    cp->killed = 1;
   }
   cpus[cpu()].nlock--;
 
-  if(tf->trapno == IRQ_OFFSET + IRQ_TIMER && cp != 0){
-    // Force process exit if it has been killed and is in user space.
-    // (If it is still executing in the kernel, let it keep running
-    // until it gets to the regular system call return.)
-    if((tf->cs&3) == DPL_USER && cp->killed)
-      proc_exit();
+  // Force process exit if it has been killed and is in user space.
+  // (If it is still executing in the kernel, let it keep running 
+  // until it gets to the regular system call return.)
+  if(cp && cp->killed && (tf->cs&3) == DPL_USER)
+    proc_exit();
 
-    // Force process to give up CPU and let others run.
-    // If locks were held with interrupts on, would need to check nlock.
-    if(cp->state == RUNNING)
-      yield();
-  }
+  // Force process to give up CPU on clock tick.
+  // If interrupts were on while locks held, would need to check nlock.
+  if(cp && cp->state == RUNNING && tf->trapno == IRQ_OFFSET+IRQ_TIMER)
+    yield();
 }
