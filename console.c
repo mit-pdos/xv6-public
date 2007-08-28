@@ -7,7 +7,6 @@
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
-#include "kbd.h"
 
 #define CRTPORT 0x3d4
 #define LPTPORT 0x378
@@ -185,6 +184,8 @@ struct {
   int w;  // Write index
   int e;  // Edit index
 } input;
+
+#define C(x)  ((x)-'@')  // Control-x
 
 void
 console_intr(int (*getc)(void))
