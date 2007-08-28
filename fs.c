@@ -358,7 +358,6 @@ bmap(struct inode *ip, uint bn, int alloc)
   panic("bmap: out of range");
 }
 
-// PAGEBREAK: 30
 // Truncate inode (discard contents).
 static void
 itrunc(struct inode *ip)
@@ -565,7 +564,7 @@ skipelem(char *path, char *name)
   len = path - s;
   if(len >= DIRSIZ)
     memmove(name, s, DIRSIZ);
-  else{
+  else {
     memmove(name, s, len);
     name[len] = 0;
   }

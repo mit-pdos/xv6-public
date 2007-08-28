@@ -65,7 +65,7 @@ pipeclose(struct pipe *p, int writable)
   if(writable){
     p->writeopen = 0;
     wakeup(&p->readp);
-  }else{
+  } else {
     p->readopen = 0;
     wakeup(&p->writep);
   }

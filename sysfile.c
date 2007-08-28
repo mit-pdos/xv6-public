@@ -270,7 +270,7 @@ sys_open(void)
   if(omode & O_CREATE){
     if((ip = create(path, 1, T_FILE, 0, 0)) == 0)
       return -1;
-  }else{
+  } else {
     if((ip = namei(path)) == 0)
       return -1;
     ilock(ip);

@@ -51,7 +51,7 @@ cga_putc(int c)
   else if(c == BACKSPACE){
     if(pos > 0)
       crt[--pos] = ' ' | 0x0700;
-  }else
+  } else
     crt[pos++] = (c&0xff) | 0x0700;  // black on white
   
   if((pos/80) >= 24){  // Scroll up.
@@ -91,7 +91,7 @@ printint(int xx, int base, int sgn)
   if(sgn && xx < 0){
     neg = 1;
     x = 0 - xx;
-  }else{
+  } else {
     x = xx;
   }
 

@@ -20,7 +20,7 @@ printint(int fd, int xx, int base, int sgn)
   if(sgn && xx < 0){
     neg = 1;
     x = -xx;
-  }else{
+  } else {
     x = xx;
   }
 
@@ -50,17 +50,17 @@ printf(int fd, char *fmt, ...)
     if(state == 0){
       if(c == '%'){
         state = '%';
-      }else{
+      } else {
         putc(fd, c);
       }
-    }else if(state == '%'){
+    } else if(state == '%'){
       if(c == 'd'){
         printint(fd, *ap, 10, 1);
         ap++;
-      }else if(c == 'x' || c == 'p'){
+      } else if(c == 'x' || c == 'p'){
         printint(fd, *ap, 16, 0);
         ap++;
-      }else if(c == 's'){
+      } else if(c == 's'){
         s = (char*)*ap;
         ap++;
         if(s == 0)
@@ -69,12 +69,12 @@ printf(int fd, char *fmt, ...)
           putc(fd, *s);
           s++;
         }
-      }else if(c == 'c'){
+      } else if(c == 'c'){
         putc(fd, *ap);
         ap++;
-      }else if(c == '%'){
+      } else if(c == '%'){
         putc(fd, c);
-      }else{
+      } else {
         // Unknown % sequence.  Print it to draw attention.
         putc(fd, '%');
         putc(fd, c);

@@ -33,12 +33,12 @@ free(void *ap)
   if(bp + bp->s.size == p->s.ptr){
     bp->s.size += p->s.ptr->s.size;
     bp->s.ptr = p->s.ptr->s.ptr;
-  }else
+  } else
     bp->s.ptr = p->s.ptr;
   if(p + p->s.size == bp){
     p->s.size += bp->s.size;
     p->s.ptr = bp->s.ptr;
-  }else
+  } else
     p->s.ptr = bp;
   freep = p;
 }
@@ -75,7 +75,7 @@ malloc(uint nbytes)
     if(p->s.size >= nunits){
       if(p->s.size == nunits)
         prevp->s.ptr = p->s.ptr;
-      else{
+      else {
         p->s.size -= nunits;
         p += p->s.size;
         p->s.size = nunits;

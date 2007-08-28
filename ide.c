@@ -81,7 +81,7 @@ ide_start_request(struct buf *b)
   if(b->flags & B_DIRTY){
     outb(0x1f7, IDE_CMD_WRITE);
     outsl(0x1f0, b->data, 512/4);
-  }else{
+  } else {
     outb(0x1f7, IDE_CMD_READ);
   }
 }

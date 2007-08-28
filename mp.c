@@ -60,7 +60,7 @@ mp_search(void)
   if((p = (bda[0x0F]<<8)|bda[0x0E])){
     if((mp = mp_search1((uchar*)p, 1024)))
       return mp;
-  }else{
+  } else {
     p = ((bda[0x14]<<8)|bda[0x13])*1024;
     if((mp = mp_search1((uchar*)p-1024, 1024)))
       return mp;

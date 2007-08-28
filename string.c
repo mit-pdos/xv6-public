@@ -41,7 +41,7 @@ memmove(void *dst, const void *src, uint n)
     d += n;
     while(n-- > 0)
       *--d = *--s;
-  }else
+  } else
     while(n-- > 0)
       *d++ = *s++;
 
