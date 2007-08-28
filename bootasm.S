@@ -67,9 +67,9 @@ protcseg:
   
   # Set up the stack pointer and call into C.
   movl    $start, %esp
-  call cmain
+  call bootmain
 
-  # If cmain returns (it shouldn't), loop.
+  # If bootmain returns (it shouldn't), loop.
 spin:
   jmp spin
 
