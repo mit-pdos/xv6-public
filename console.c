@@ -164,14 +164,16 @@ cprintf(char *fmt, ...)
 }
 
 int
-console_write(int minor, char *buf, int n)
+console_write(struct inode *ip, char *buf, int n)
 {
   int i;
 
+  iunlock(ip);
   acquire(&console_lock);
   for(i = 0; i < n; i++)
     cons_putc(buf[i] & 0xff);
   release(&console_lock);
+  ilock(ip);
 
   return n;
 }
@@ -230,17 +232,19 @@ console_intr(int (*getc)(void))
 }
 
 int
-console_read(int minor, char *dst, int n)
+console_read(struct inode *ip, char *dst, int n)
 {
   uint target;
   int c;
 
+  iunlock(ip);
   target = n;
   acquire(&input.lock);
   while(n > 0){
     while(input.r == input.w){
       if(cp->killed){
         release(&input.lock);
+        ilock(ip);
         return -1;
       }
       sleep(&input.r, &input.lock);
@@ -262,6 +266,7 @@ console_read(int minor, char *dst, int n)
       input.r = 0;
   }
   release(&input.lock);
+  ilock(ip);
 
   return target - n;
 }
@@ -274,7 +279,7 @@ console_init(void)
 
   devsw[CONSOLE].write = console_write;
   devsw[CONSOLE].read = console_read;
-  use_console_lock = 1;
+  //use_console_lock = 1;
 
   irq_enable(IRQ_KBD);
   ioapic_enable(IRQ_KBD, 0);

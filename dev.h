@@ -1,6 +1,6 @@
 struct devsw {
-  int (*read)(int, char*, int);
-  int (*write)(int, char*, int);
+  int (*read)(struct inode*, char*, int);
+  int (*write)(struct inode*, char*, int);
 };
 
 extern struct devsw devsw[];
