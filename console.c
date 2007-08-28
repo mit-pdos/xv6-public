@@ -11,6 +11,8 @@
 
 #define CRTPORT 0x3d4
 #define LPTPORT 0x378
+#define BACKSPACE 0x100
+
 static ushort *crt = (ushort*)0xb8000;  // CGA memory
 
 static struct spinlock console_lock;
@@ -27,16 +29,48 @@ lpt_putc(int c)
 
   for(i = 0; !(inb(LPTPORT+1) & 0x80) && i < 12800; i++)
     ;
+  if(c == BACKSPACE)
+    c = '\b';
   outb(LPTPORT+0, c);
   outb(LPTPORT+2, 0x08|0x04|0x01);
   outb(LPTPORT+2, 0x08);
 }
 
 static void
+cga_putc(int c)
+{
+  int pos;
+  
+  // Cursor position: col + 80*row.
+  outb(CRTPORT, 14);
+  pos = inb(CRTPORT+1) << 8;
+  outb(CRTPORT, 15);
+  pos |= inb(CRTPORT+1);
+
+  if(c == '\n')
+    pos += 80 - pos%80;
+  else if(c == BACKSPACE){
+    if(pos > 0)
+      crt[--pos] = ' ' | 0x0700;
+  }else
+    crt[pos++] = (c&0xff) | 0x0700;  // black on white
+  
+  if((pos/80) >= 24){  // Scroll up.
+    memmove(crt, crt+80, sizeof(crt[0])*23*80);
+    pos -= 80;
+    memset(crt+pos, 0, sizeof(crt[0])*(24*80 - pos));
+  }
+  
+  outb(CRTPORT, 14);
+  outb(CRTPORT+1, pos>>8);
+  outb(CRTPORT, 15);
+  outb(CRTPORT+1, pos);
+  crt[pos] = ' ' | 0x0700;
+}
+
+static void
 cons_putc(int c)
 {
-  int ind;
-
   if(panicked){
     cli();
     for(;;)
@@ -44,34 +78,7 @@ cons_putc(int c)
   }
 
   lpt_putc(c);
-
-  // cursor position, 16 bits, col + 80*row
-  outb(CRTPORT, 14);
-  ind = inb(CRTPORT + 1) << 8;
-  outb(CRTPORT, 15);
-  ind |= inb(CRTPORT + 1);
-
-  c &= 0xff;
-  if(c == '\n'){
-    ind -= (ind % 80);
-    ind += 80;
-  } else {
-    c |= 0x0700; // black on white
-    crt[ind] = c;
-    ind++;
-  }
-
-  if((ind / 80) >= 24){
-    // scroll up
-    memmove(crt, crt + 80, sizeof(crt[0]) * (23 * 80));
-    ind -= 80;
-    memset(crt + ind, 0, sizeof(crt[0]) * ((24 * 80) - ind));
-  }
-
-  outb(CRTPORT, 14);
-  outb(CRTPORT + 1, ind >> 8);
-  outb(CRTPORT, 15);
-  outb(CRTPORT + 1, ind);
+  cga_putc(c);
 }
 
 void
@@ -99,7 +106,7 @@ printint(int xx, int base, int sgn)
     cons_putc(buf[i]);
 }
 
-// Print to the console. only understands %d, %x, %p, %s.
+// Print to the input. only understands %d, %x, %p, %s.
 void
 cprintf(char *fmt, ...)
 {
@@ -157,6 +164,122 @@ cprintf(char *fmt, ...)
     release(&console_lock);
 }
 
+int
+console_write(int minor, char *buf, int n)
+{
+  int i;
+
+  acquire(&console_lock);
+  for(i = 0; i < n; i++)
+    cons_putc(buf[i] & 0xff);
+  release(&console_lock);
+
+  return n;
+}
+
+#define INPUT_BUF 128
+struct {
+  struct spinlock lock;
+  char buf[INPUT_BUF];
+  int r;  // Read index
+  int w;  // Write index
+  int e;  // Edit index
+} input;
+
+void
+console_intr(int (*getc)(void))
+{
+  int c;
+
+  acquire(&input.lock);
+  while((c = getc()) >= 0){
+    switch(c){
+    case C('P'):  // Process listing.
+      procdump();
+      break;
+    
+    case C('U'):  // Kill line.
+      while(input.e > input.w &&
+            input.buf[(input.e-1) % INPUT_BUF] != '\n'){
+        input.e--;
+        cons_putc(BACKSPACE);
+      }
+      break;
+  
+    case C('H'):  // Backspace
+      if(input.e > input.w){
+        input.e--;
+        cons_putc(BACKSPACE);
+      }
+      break;
+  
+    default:
+      if(c != 0 && input.e < input.r+INPUT_BUF){
+        input.buf[input.e++] = c;
+        cons_putc(c);
+        if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
+          input.w = input.e;
+          wakeup(&input.r);
+        }
+      }
+      break;
+    }
+  }
+  release(&input.lock);
+}
+
+int
+console_read(int minor, char *dst, int n)
+{
+  uint target;
+  int c;
+
+  target = n;
+  acquire(&input.lock);
+  while(n > 0){
+    while(input.r == input.w){
+      if(cp->killed){
+        release(&input.lock);
+        return -1;
+      }
+      sleep(&input.r, &input.lock);
+    }
+    c = input.buf[input.r++];
+    if(c == C('D')){  // EOF
+      if(n < target){
+        // Save ^D for next time, to make sure
+        // caller gets a 0-byte result.
+        input.r--;
+      }
+      break;
+    }
+    *dst++ = c;
+    cons_putc(c);
+    --n;
+    if(c == '\n')
+      break;
+    if(input.r >= INPUT_BUF)
+      input.r = 0;
+  }
+  release(&input.lock);
+
+  return target - n;
+}
+
+void
+console_init(void)
+{
+  initlock(&console_lock, "console");
+  initlock(&input.lock, "console input");
+
+  devsw[CONSOLE].write = console_write;
+  devsw[CONSOLE].read = console_read;
+  use_console_lock = 1;
+
+  irq_enable(IRQ_KBD);
+  ioapic_enable(IRQ_KBD, 0);
+}
+
 void
 panic(char *s)
 {
@@ -174,148 +297,5 @@ panic(char *s)
   panicked = 1; // freeze other CPU
   for(;;)
     ;
-}
-
-int
-console_write(int minor, char *buf, int n)
-{
-  int i;
-
-  acquire(&console_lock);
-  for(i = 0; i < n; i++)
-    cons_putc(buf[i] & 0xff);
-  release(&console_lock);
-
-  return n;
-}
-
-#define KBD_BUF 64
-struct {
-  uchar buf[KBD_BUF];
-  int r;
-  int w;
-  struct spinlock lock;
-} kbd;
-
-void
-kbd_intr(void)
-{
-  static uint shift;
-  static uchar *charcode[4] = {
-    normalmap,
-    shiftmap,
-    ctlmap,
-    ctlmap
-  };
-  uint st, data, c;
-
-  acquire(&kbd.lock);
-
-  st = inb(KBSTATP);
-  if((st & KBS_DIB) == 0)
-    goto out;
-  data = inb(KBDATAP);
-
-  if(data == 0xE0) {
-    shift |= E0ESC;
-    goto out;
-  } else if(data & 0x80) {
-    // Key released
-    data = (shift & E0ESC ? data : data & 0x7F);
-    shift &= ~(shiftcode[data] | E0ESC);
-    goto out;
-  } else if(shift & E0ESC) {
-    // Last character was an E0 escape; or with 0x80
-    data |= 0x80;
-    shift &= ~E0ESC;
-  }
-
-  shift |= shiftcode[data];
-  shift ^= togglecode[data];
-
-  c = charcode[shift & (CTL | SHIFT)][data];
-  if(shift & CAPSLOCK) {
-    if('a' <= c && c <= 'z')
-      c += 'A' - 'a';
-    else if('A' <= c && c <= 'Z')
-      c += 'a' - 'A';
-  }
-
-  switch(c){
-  case 0:
-    // Ignore unknown keystrokes.
-    break;
-  
-  case C('T'):
-    cprintf("#");  // Let user know we're still alive.
-    break;
-  
-  case C('P'):
-    procdump();
-    break;
-
-  default:
-    if(((kbd.w + 1) % KBD_BUF) != kbd.r){
-      kbd.buf[kbd.w++] = c;
-      if(kbd.w >= KBD_BUF)
-        kbd.w = 0;
-      wakeup(&kbd.r);
-    }
-    break;
-  }
-
-out:
-  release(&kbd.lock);
-}
-
-//PAGEBREAK: 25
-int
-console_read(int minor, char *dst, int n)
-{
-  uint target;
-  int c;
-
-  target = n;
-  acquire(&kbd.lock);
-  while(n > 0){
-    while(kbd.r == kbd.w){
-      if(cp->killed){
-        release(&kbd.lock);
-        return -1;
-      }
-      sleep(&kbd.r, &kbd.lock);
-    }
-    c = kbd.buf[kbd.r++];
-    if(c == C('D')){  // EOF
-      if(n < target){
-        // Save ^D for next time, to make sure
-        // caller gets a 0-byte result.
-        kbd.r--;
-      }
-      break;
-    }
-    *dst++ = c;
-    cons_putc(c);
-    --n;
-    if(kbd.r >= KBD_BUF)
-      kbd.r = 0;
-  }
-  release(&kbd.lock);
-
-  return target - n;
-}
-
-void
-console_init(void)
-{
-  initlock(&console_lock, "console");
-  initlock(&kbd.lock, "kbd");
-
-  devsw[CONSOLE].write = console_write;
-  devsw[CONSOLE].read = console_read;
-  use_console_lock = 1;
-
-  irq_enable(IRQ_KBD);
-  ioapic_enable(IRQ_KBD, 0);
 }
 

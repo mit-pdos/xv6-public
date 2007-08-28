@@ -23,6 +23,7 @@ OBJS = \
 	fs.o\
 	exec.o\
 	8253pit.o\
+	kbd.o\
 
 # Cross-compiling (e.g., on Mac OS X)
 #TOOLPREFIX = i386-jos-elf-

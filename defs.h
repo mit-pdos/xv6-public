@@ -19,7 +19,7 @@ void            bwrite(struct buf*);
 // console.c
 void            console_init(void);
 void            cprintf(char*, ...);
-void            kbd_intr(void);
+void            console_intr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 
 // exec.c
@@ -66,6 +66,9 @@ void            ioapic_init(void);
 char*           kalloc(int);
 void            kfree(char*, int);
 void            kinit(void);
+
+// kbd.c
+void            kbd_intr(void);
 
 // lapic.c
 int             cpu(void);
