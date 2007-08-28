@@ -49,19 +49,9 @@ struct backcmd {
   struct cmd *cmd;
 };
 
-struct cmd *parsecmd(char*);
+int fork1(void);  // Fork but panics on failure.
 void panic(char*);
-
-int
-fork1(void)
-{
-  int pid;
-  
-  pid = fork();
-  if(pid == -1)
-    panic("fork");
-  return pid;
-}
+struct cmd *parsecmd(char*);
 
 // Execute cmd.  Never returns.
 void
@@ -99,6 +89,14 @@ runcmd(struct cmd *cmd)
     runcmd(rcmd->cmd);
     break;
 
+  case LIST:
+    lcmd = (struct listcmd*)cmd;
+    if(fork1() == 0)
+      runcmd(lcmd->left);
+    wait();
+    runcmd(lcmd->right);
+    break;
+
   case PIPE:
     pcmd = (struct pipecmd*)cmd;
     if(pipe(p) < 0)
@@ -123,14 +121,6 @@ runcmd(struct cmd *cmd)
     wait();
     break;
     
-  case LIST:
-    lcmd = (struct listcmd*)cmd;
-    if(fork1() == 0)
-      runcmd(lcmd->left);
-    wait();
-    runcmd(lcmd->right);
-    break;
-
   case BACK:
     bcmd = (struct backcmd*)cmd;
     if(fork1() == 0)
@@ -155,7 +145,17 @@ int
 main(void)
 {
   static char buf[100];
-
+  int fd;
+  
+  // Assumes three file descriptors open.
+  while((fd = open("console", O_RDWR)) >= 0){
+    if(fd >= 3){
+      close(fd);
+      break;
+    }
+  }
+  
+  // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0) {
     if(fork1() == 0)
       runcmd(parsecmd(buf));
@@ -171,6 +171,18 @@ panic(char *s)
   exit();
 }
 
+int
+fork1(void)
+{
+  int pid;
+  
+  pid = fork();
+  if(pid == -1)
+    panic("fork");
+  return pid;
+}
+
+//PAGEBREAK!
 // Constructors
 
 struct cmd*
@@ -237,23 +249,11 @@ backcmd(struct cmd *subcmd)
   cmd->cmd = subcmd;
   return (struct cmd*)cmd;
 }
-
+//PAGEBREAK!
 // Parsing
 
 char whitespace[] = " \t\r\n\v";
 char symbols[] = "<|>&;()";
-
-int
-peek(char **ps, char *es, char *toks)
-{
-  char *s;
-  
-  s = *ps;
-  while(s < es && strchr(whitespace, *s))
-    s++;
-  *ps = s;
-  return *s && strchr(toks, *s);
-}
 
 int
 gettoken(char **ps, char *es, char **q, char **eq)
@@ -300,12 +300,22 @@ gettoken(char **ps, char *es, char **q, char **eq)
   return ret;
 }
 
-void nulterminate(struct cmd*);
+int
+peek(char **ps, char *es, char *toks)
+{
+  char *s;
+  
+  s = *ps;
+  while(s < es && strchr(whitespace, *s))
+    s++;
+  *ps = s;
+  return *s && strchr(toks, *s);
+}
+
 struct cmd *parseline(char**, char*);
 struct cmd *parsepipe(char**, char*);
-struct cmd *parseredirs(struct cmd*, char**, char*);
-struct cmd *parseblock(char**, char*);
 struct cmd *parseexec(char**, char*);
+struct cmd *nulterminate(struct cmd*);
 
 struct cmd*
 parsecmd(char *s)
@@ -355,22 +365,6 @@ parsepipe(char **ps, char *es)
 }
 
 struct cmd*
-parseblock(char **ps, char *es)
-{
-  struct cmd *cmd;
-
-  if(!peek(ps, es, "("))
-    panic("parseblock");
-  gettoken(ps, es, 0, 0);
-  cmd = parseline(ps, es);
-  if(!peek(ps, es, ")"))
-    panic("syntax - missing )");
-  gettoken(ps, es, 0, 0);
-  cmd = parseredirs(cmd, ps, es);
-  return cmd;
-}
-
-struct cmd*
 parseredirs(struct cmd *cmd, char **ps, char *es)
 {
   int tok;
@@ -392,6 +386,22 @@ parseredirs(struct cmd *cmd, char **ps, char *es)
       break;
     }
   }
+  return cmd;
+}
+
+struct cmd*
+parseblock(char **ps, char *es)
+{
+  struct cmd *cmd;
+
+  if(!peek(ps, es, "("))
+    panic("parseblock");
+  gettoken(ps, es, 0, 0);
+  cmd = parseline(ps, es);
+  if(!peek(ps, es, ")"))
+    panic("syntax - missing )");
+  gettoken(ps, es, 0, 0);
+  cmd = parseredirs(cmd, ps, es);
   return cmd;
 }
 
@@ -429,7 +439,7 @@ parseexec(char **ps, char *es)
 }
 
 // NUL-terminate all the counted strings.
-void
+struct cmd:
 nulterminate(struct cmd *cmd)
 {
   int i;
@@ -440,7 +450,7 @@ nulterminate(struct cmd *cmd)
   struct redircmd *rcmd;
 
   if(cmd == 0)
-    return;
+    return 0;
   
   switch(cmd->type){
   case EXEC:
@@ -472,4 +482,5 @@ nulterminate(struct cmd *cmd)
     nulterminate(bcmd->cmd);
     break;
   }
+  return cmd;
 }
