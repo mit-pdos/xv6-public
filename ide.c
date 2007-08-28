@@ -144,6 +144,7 @@ ide_rw(struct buf *b)
     ide_start_request(b);
   
   // Wait for request to finish.
+  // Assuming will not sleep too long: ignore cp->killed.
   while((b->flags & (B_VALID|B_DIRTY)) != B_VALID)
     sleep(b, &ide_lock);
 
