@@ -16,7 +16,7 @@
 # This code is identical to bootasm.S except:
 #   - it does not need to enable A20
 #   - it uses the address at start-4 for the %esp
-#   - it jumps to the address at start-8 instead of calling cmain
+#   - it jumps to the address at start-8 instead of calling bootmain
 
 .set PROT_MODE_CSEG, 0x8         # kernel code segment selector
 .set PROT_MODE_DSEG, 0x10        # kernel data segment selector

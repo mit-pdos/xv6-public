@@ -2,7 +2,7 @@
 // 
 // The BIOS loads boot sector (bootasm.S) from sector 1 of the disk
 // into memory and executes it.  The boot sector puts the processor
-// in 32-bit mode and calls cmain below, which loads an ELF kernel
+// in 32-bit mode and calls bootmain below, which loads an ELF kernel
 // image from the disk starting at sector 2 and then jumps to the
 // kernel entry routine.
 
