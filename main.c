@@ -74,7 +74,7 @@ mpmain(void)
   scheduler();
 }
 
-static void
+void
 bootothers(void)
 {
   extern uchar _binary_bootother_start[], _binary_bootother_size[];
