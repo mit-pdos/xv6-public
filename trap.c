@@ -72,7 +72,7 @@ trap(struct trapframe *tf)
     break;
     
   default:
-    if(cp == 0) {
+    if(cp == 0){
       // Otherwise it's our mistake.
       cprintf("unexpected trap %d from cpu %d eip %x\n",
               tf->trapno, cpu(), tf->eip);

@@ -134,7 +134,7 @@ mp_init(void)
     }
   }
 
-  if(mp->imcrp) {
+  if(mp->imcrp){
     // Bochs doesn't support IMCR, so this doesn't run on Bochs.
     // But it would on real hardware.
     outb(0x22, 0x70);   // Select IMCR

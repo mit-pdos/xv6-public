@@ -128,7 +128,7 @@ syscall(void)
   num = cp->tf->eax;
   if(num >= 0 && num < NELEM(syscalls) && syscalls[num])
     cp->tf->eax = syscalls[num]();
-  else {
+  else{
     cprintf("%d %s: unknown sys call %d\n",
             cp->pid, cp->name, num);
     cp->tf->eax = -1;

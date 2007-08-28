@@ -335,7 +335,7 @@ sys_chdir(void)
   if(argstr(0, &path) < 0 || (ip = namei(path)) == 0)
     return -1;
   ilock(ip);
-  if(ip->type != T_DIR) {
+  if(ip->type != T_DIR){
     iunlockput(ip);
     return -1;
   }

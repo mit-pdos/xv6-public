@@ -22,7 +22,7 @@ main(int argc, char *argv[])
 {
   int fd, i;
 
-  if(argc <= 1) {
+  if(argc <= 1){
     cat(0);
     exit();
   }

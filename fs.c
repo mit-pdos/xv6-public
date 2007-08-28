@@ -237,7 +237,7 @@ void
 iput(struct inode *ip)
 {
   acquire(&icache.lock);
-  if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0) {
+  if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0){
     // inode is no longer used: truncate and free inode.
     if(ip->flags & I_BUSY)
       panic("iput busy");
@@ -273,10 +273,10 @@ ialloc(uint dev, short type)
   struct superblock sb;
 
   readsb(dev, &sb);
-  for(inum = 1; inum < sb.ninodes; inum++) {  // loop over inode blocks
+  for(inum = 1; inum < sb.ninodes; inum++){  // loop over inode blocks
     bp = bread(dev, IBLOCK(inum));
     dip = (struct dinode*)bp->data + inum%IPB;
-    if(dip->type == 0) {  // a free inode
+    if(dip->type == 0){  // a free inode
       memset(dip, 0, sizeof(*dip));
       dip->type = type;
       bwrite(bp);   // mark it allocated on the disk
@@ -323,8 +323,8 @@ bmap(struct inode *ip, uint bn, int alloc)
   uint addr, *a;
   struct buf *bp;
 
-  if(bn < NDIRECT) {
-    if((addr = ip->addrs[bn]) == 0) {
+  if(bn < NDIRECT){
+    if((addr = ip->addrs[bn]) == 0){
       if(!alloc)
         return -1;
       ip->addrs[bn] = addr = balloc(ip->dev);
@@ -333,9 +333,9 @@ bmap(struct inode *ip, uint bn, int alloc)
   }
   bn -= NDIRECT;
 
-  if(bn < NINDIRECT) {
+  if(bn < NINDIRECT){
     // Load indirect block, allocating if necessary.
-    if((addr = ip->addrs[INDIRECT]) == 0) {
+    if((addr = ip->addrs[INDIRECT]) == 0){
       if(!alloc)
         return -1;
       ip->addrs[INDIRECT] = addr = balloc(ip->dev);
@@ -343,8 +343,8 @@ bmap(struct inode *ip, uint bn, int alloc)
     bp = bread(ip->dev, addr);
     a = (uint*)bp->data;
   
-    if((addr = a[bn]) == 0) {
-      if(!alloc) {
+    if((addr = a[bn]) == 0){
+      if(!alloc){
         brelse(bp);
         return -1;
       }
@@ -367,17 +367,17 @@ itrunc(struct inode *ip)
   struct buf *bp;
   uint *a;
 
-  for(i = 0; i < NDIRECT; i++) {
-    if(ip->addrs[i]) {
+  for(i = 0; i < NDIRECT; i++){
+    if(ip->addrs[i]){
       bfree(ip->dev, ip->addrs[i]);
       ip->addrs[i] = 0;
     }
   }
   
-  if(ip->addrs[INDIRECT]) {
+  if(ip->addrs[INDIRECT]){
     bp = bread(ip->dev, ip->addrs[INDIRECT]);
     a = (uint*)bp->data;
-    for(j = 0; j < NINDIRECT; j++) {
+    for(j = 0; j < NINDIRECT; j++){
       if(a[j])
         bfree(ip->dev, a[j]);
     }
@@ -408,7 +408,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   uint tot, m;
   struct buf *bp;
 
-  if(ip->type == T_DEV) {
+  if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
     return devsw[ip->major].read(ip, dst, n);
@@ -419,7 +419,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   if(off + n > ip->size)
     n = ip->size - off;
 
-  for(tot=0; tot<n; tot+=m, off+=m, dst+=m) {
+  for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE, 0));
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(dst, bp->data + off%BSIZE, m);
@@ -436,7 +436,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
   uint tot, m;
   struct buf *bp;
 
-  if(ip->type == T_DEV) {
+  if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
     return devsw[ip->major].write(ip, src, n);
@@ -447,7 +447,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
   if(off + n > MAXFILE*BSIZE)
     n = MAXFILE*BSIZE - off;
 
-  for(tot=0; tot<n; tot+=m, off+=m, src+=m) {
+  for(tot=0; tot<n; tot+=m, off+=m, src+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE, 1));
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(bp->data + off%BSIZE, src, m);
@@ -455,7 +455,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
     brelse(bp);
   }
 
-  if(n > 0 && off > ip->size) {
+  if(n > 0 && off > ip->size){
     ip->size = off;
     iupdate(ip);
   }

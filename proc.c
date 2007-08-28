@@ -86,7 +86,7 @@ setupsegs(struct proc *p)
   if(p){
     c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz-1, DPL_USER);
     c->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz-1, DPL_USER);
-  } else {
+  }else{
     c->gdt[SEG_UCODE] = SEG_NULL;
     c->gdt[SEG_UDATA] = SEG_NULL;
   }
@@ -444,7 +444,7 @@ procdump(void)
   char *state;
   uint pc[10];
   
-  for(i = 0; i < NPROC; i++) {
+  for(i = 0; i < NPROC; i++){
     p = &proc[i];
     if(p->state == UNUSED)
       continue;
@@ -453,7 +453,7 @@ procdump(void)
     else
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
-    if(p->state == SLEEPING) {
+    if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context.ebp+2, pc);
       for(j=0; j<10 && pc[j] != 0; j++)
         cprintf(" %p", pc[j]);

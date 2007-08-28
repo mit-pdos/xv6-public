@@ -19,7 +19,7 @@ memcmp(const void *v1, const void *v2, uint n)
   
   s1 = v1;
   s2 = v2;
-  while(n-- > 0) {
+  while(n-- > 0){
     if(*s1 != *s2)
       return *s1 - *s2;
     s1++, s2++;
@@ -36,12 +36,12 @@ memmove(void *dst, const void *src, uint n)
 
   s = src;
   d = dst;
-  if(s < d && s + n > d) {
+  if(s < d && s + n > d){
     s += n;
     d += n;
     while(n-- > 0)
       *--d = *--s;
-  } else
+  }else
     while(n-- > 0)
       *d++ = *s++;
 

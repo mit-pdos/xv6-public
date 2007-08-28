@@ -91,13 +91,13 @@ printint(int xx, int base, int sgn)
   if(sgn && xx < 0){
     neg = 1;
     x = 0 - xx;
-  } else {
+  }else{
     x = xx;
   }
 
-  do {
+  do{
     buf[i++] = digits[x % base];
-  } while((x /= base) != 0);
+  }while((x /= base) != 0);
   if(neg)
     buf[i++] = '-';
 
