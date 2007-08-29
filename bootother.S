@@ -9,9 +9,9 @@
 #   CS limit set to 64KB;
 #   CPL and IP set to 0.
 #
-# mp.c causes each non-boot CPU in turn to jump to start.
-# mp.c puts the correct %esp in start-4, and the place to jump
-# to in start-8.
+# Bootothers (in main.c) starts each non-boot CPU in turn.
+# It puts the correct %esp in start-4,
+# and the place to jump to in start-8.
 #
 # This code is identical to bootasm.S except:
 #   - it does not need to enable A20
