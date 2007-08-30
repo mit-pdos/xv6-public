@@ -94,7 +94,6 @@ ide_intr(void)
 
   acquire(&ide_lock);
   if((b = ide_queue) == 0){
-    cprintf("stray ide interrupt\n");
     release(&ide_lock);
     return;
   }

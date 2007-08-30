@@ -71,7 +71,7 @@ cga_putc(int c)
   crt[pos] = ' ' | 0x0700;
 }
 
-static void
+void
 cons_putc(int c)
 {
   if(panicked){
