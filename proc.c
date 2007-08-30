@@ -181,9 +181,9 @@ userinit(void)
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
 //  - choose a process to run
-//  - longjmp to start running that process
-//  - eventually that process transfers control back
-//      via longjmp back to the scheduler.
+//  - swtch to start running that process
+//  - eventually that process transfers control
+//      via swtch back to the scheduler.
 void
 scheduler(void)
 {
@@ -243,7 +243,7 @@ yield(void)
 }
 
 // A fork child's very first scheduling by scheduler()
-// will longjmp here.  "Return" to user space.
+// will swtch here.  "Return" to user space.
 void
 forkret(void)
 {
