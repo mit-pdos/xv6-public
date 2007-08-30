@@ -42,7 +42,7 @@ exec(char *path, char **argv)
   // Arguments.
   arglen = 0;
   for(argc=0; argv[argc]; argc++)
-    arglen += strlen(argv[i]) + 1;
+    arglen += strlen(argv[argc]) + 1;
   arglen = (arglen+3) & ~3;
   sz += arglen + 4*(argc+1);
 
