@@ -219,7 +219,7 @@ console_intr(int (*getc)(void))
       break;
     default:
       if(c != 0 && input.e < input.r+INPUT_BUF){
-        input.buf[input.e++] = c;
+        input.buf[input.e++ % INPUT_BUF] = c;
         cons_putc(c);
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
           input.w = input.e;
@@ -250,7 +250,7 @@ console_read(struct inode *ip, char *dst, int n)
       }
       sleep(&input.r, &input.lock);
     }
-    c = input.buf[input.r++];
+    c = input.buf[input.r++ % INPUT_BUF];
     if(c == C('D')){  // EOF
       if(n < target){
         // Save ^D for next time, to make sure
@@ -263,8 +263,6 @@ console_read(struct inode *ip, char *dst, int n)
     --n;
     if(c == '\n')
       break;
-    if(input.r >= INPUT_BUF)
-      input.r = 0;
   }
   release(&input.lock);
   ilock(ip);
