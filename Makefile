@@ -119,7 +119,8 @@ clean:
 	$(UPROGS)
 
 # make a printout
-PRINT = runoff.list $(shell grep -v '^\#' runoff.list)
+FILES = $(shell grep -v '^\#' runoff.list)
+PRINT = runoff.list $(FILES)
 
 xv6.pdf: $(PRINT)
 	./runoff
@@ -140,17 +141,27 @@ qemu: fs.img xv6.img
 # after running make dist, probably want to
 # rename it to rev0 or rev1 or so on and then
 # check in that version.
+
+EXTRA=\
+	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c\
+	kill.c ln.c ls.c mkdir.c rm.c usertests.c wc.c zombie.c\
+	printf.c umalloc.c \
+	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
+
 dist:
 	rm -rf dist
 	mkdir dist
-	for i in *.c *.h *.S; \
+	for i in $(FILES); \
 	do \
 		grep -v PAGEBREAK $$i >dist/$$i; \
 	done
 	sed '/CUT HERE/,$$d' Makefile >dist/Makefile
-	cp README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list dist
+	echo >dist/runoff.spec
+	cp $(EXTRA) dist
 
 dist-test:
+	rm -rf dist
+	make dist
 	rm -rf dist-test
 	mkdir dist-test
 	cp dist/* dist-test
