@@ -44,7 +44,7 @@ seta20.2:
 //PAGEBREAK!
   # Switch from real to protected mode, using a bootstrap GDT
   # and segment translation that makes virtual addresses 
-  # identical to their physical addresses, so that the 
+  # identical to physical addresses, so that the 
   # effective memory map does not change during the switch.
   lgdt    gdtdesc
   movl    %cr0, %eax

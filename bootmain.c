@@ -1,10 +1,9 @@
 // Boot loader.
 // 
-// The BIOS loads boot sector (bootasm.S) from sector 0 of the disk
-// into memory and executes it.  The boot sector puts the processor
-// in 32-bit mode and calls bootmain below, which loads an ELF kernel
-// image from the disk starting at sector 1 and then jumps to the
-// kernel entry routine.
+// Part of the boot sector, along with bootasm.S, which calls bootmain().
+// bootasm.S has put the processor into protected 32-bit mode.
+// bootmain() loads an ELF kernel image from the disk starting at
+// sector 1 and then jumps to the kernel entry routine.
 
 #include "types.h"
 #include "elf.h"
@@ -34,7 +33,7 @@ bootmain(void)
   ph = (struct proghdr*)((uchar*)elf + elf->phoff);
   eph = ph + elf->phnum;
   for(; ph < eph; ph++)
-    readseg(ph->va, ph->memsz, ph->offset);
+    readseg(ph->va & 0xFFFFFF, ph->memsz, ph->offset);
 
   // Call the entry point from the ELF header.
   // Does not return!
@@ -81,7 +80,6 @@ readseg(uint va, uint count, uint offset)
 {
   uint eva;
 
-  va &= 0xFFFFFF;
   eva = va + count;
 
   // Round down to sector boundary.
