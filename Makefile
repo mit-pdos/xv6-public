@@ -36,8 +36,10 @@ AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
-CFLAGS = -fno-builtin -O2 -Wall -MD -ggdb
+CFLAGS = -fno-builtin -O2 -Wall -MD -ggdb -m32
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+ASFLAGS = -m32
+LDFLAGS = -m elf_i386
 
 xv6.img: bootblock kernel fs.img
 	dd if=/dev/zero of=xv6.img count=10000
@@ -45,27 +47,27 @@ xv6.img: bootblock kernel fs.img
 	dd if=kernel of=xv6.img seek=1 conv=notrunc
 
 bootblock: bootasm.S bootmain.c
-	$(CC) -O -nostdinc -I. -c bootmain.c
-	$(CC) -nostdinc -I. -c bootasm.S
-	$(LD) -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
+	$(CC) $(CFLAGS) -O -nostdinc -I. -c bootmain.c
+	$(CC) $(CFLAGS) -nostdinc -I. -c bootasm.S
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
 	$(OBJDUMP) -S bootblock.o > bootblock.asm
 	$(OBJCOPY) -S -O binary bootblock.o bootblock
 	./sign.pl bootblock
 
 bootother: bootother.S
-	$(CC) -nostdinc -I. -c bootother.S
-	$(LD) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
+	$(CC) $(CFLAGS) -nostdinc -I. -c bootother.S
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
 	$(OBJDUMP) -S bootother.o > bootother.asm
 
 initcode: initcode.S
-	$(CC) -nostdinc -I. -c initcode.S
-	$(LD) -N -e start -Ttext 0 -o initcode.out initcode.o
+	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o initcode.out initcode.o
 	$(OBJCOPY) -S -O binary initcode.out initcode
 	$(OBJDUMP) -S initcode.o > initcode.asm
 
 kernel: $(OBJS) bootother initcode
-	$(LD) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary initcode bootother
+	$(LD) $(LDFLAGS) -Ttext 0x100000 -e main -o kernel $(OBJS) -b binary initcode bootother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernel.sym
 
@@ -78,18 +80,18 @@ vectors.S: vectors.pl
 ULIB = ulib.o usys.o printf.o umalloc.o
 
 _%: %.o $(ULIB)
-	$(LD) -N -e main -Ttext 0 -o $@ $^
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
 	$(OBJDUMP) -S $@ > $*.asm
 	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $*.sym
 
 _forktest: forktest.o $(ULIB)
 	# forktest has less library code linked in - needs to be small
 	# in order to be able to max out the proc table.
-	$(LD) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
 
 mkfs: mkfs.c fs.h
-	gcc -Wall -o mkfs mkfs.c
+	gcc $(CFLAGS) -Wall -o mkfs mkfs.c
 
 UPROGS=\
 	_cat\
