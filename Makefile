@@ -39,7 +39,8 @@ OBJDUMP = $(TOOLPREFIX)objdump
 CFLAGS = -fno-builtin -O2 -Wall -MD -ggdb -m32
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ASFLAGS = -m32
-LDFLAGS = -m elf_i386
+# FreeBSD ld wants ``elf_i386_fbsd''
+LDFLAGS += -m $(shell $(LD) -V | grep elf_i386 2>/dev/null)
 
 xv6.img: bootblock kernel fs.img
 	dd if=/dev/zero of=xv6.img count=10000
