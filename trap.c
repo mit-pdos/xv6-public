@@ -20,7 +20,7 @@ tvinit(void)
 
   for(i = 0; i < 256; i++)
     SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0);
-  SETGATE(idt[T_SYSCALL], 0, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER);
+  SETGATE(idt[T_SYSCALL], 1, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER);
   
   initlock(&tickslock, "time");
 }
@@ -72,7 +72,7 @@ trap(struct trapframe *tf)
     break;
     
   default:
-    if(cp == 0){
+    if(cp == 0 || (tf->cs & 3) == 0){
       // Otherwise it's our mistake.
       cprintf("unexpected trap %d from cpu %d eip %x\n",
               tf->trapno, cpu(), tf->eip);
