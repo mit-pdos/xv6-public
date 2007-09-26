@@ -44,8 +44,7 @@ trap(struct trapframe *tf)
     return;
   }
 
-  // Increment nlock to make sure interrupts stay off
-  // during interrupt handler.  Decrement before returning.
+  // Make sure interrupts stay off during handler.
   cpus[cpu()].nlock++;
 
   switch(tf->trapno){
@@ -67,22 +66,24 @@ trap(struct trapframe *tf)
     lapic_eoi();
     break;
   case IRQ_OFFSET + IRQ_SPURIOUS:
-    cprintf("spurious interrupt from cpu %d eip %x\n", cpu(), tf->eip);
+    cprintf("cpu%d: spurious interrupt at %x:%x\n",
+            cpu(), tf->cs, tf->eip);
     lapic_eoi();
     break;
     
   default:
-    if(cp == 0 || (tf->cs & 3) == 0){
-      // Otherwise it's our mistake.
+    if(cp == 0 || (tf->cs&3) == 0){
+      // In kernel, it must be our mistake.
       cprintf("unexpected trap %d from cpu %d eip %x\n",
               tf->trapno, cpu(), tf->eip);
       panic("trap");
     }
-    // Assume process divided by zero or dereferenced null, etc.
+    // In user space, assume process misbehaved.
     cprintf("pid %d %s: trap %d err %d on cpu %d eip %x -- kill proc\n",
             cp->pid, cp->name, tf->trapno, tf->err, cpu(), tf->eip);
     cp->killed = 1;
   }
+  
   cpus[cpu()].nlock--;
 
   // Force process exit if it has been killed and is in user space.
