@@ -46,14 +46,11 @@ lapic_init(int c)
 
   // The timer repeatedly counts down at bus frequency
   // from lapic[TICR] and then issues an interrupt.  
-  // Lapic[TCCR] is the current counter value.
-  // If xv6 cared more about precise timekeeping, the
-  // values of TICR and TCCR would be calibrated using
-  // an external time source.
+  // If xv6 cared more about precise timekeeping,
+  // TICR would be calibrated using an external time source.
   lapic[TDCR] = X1;
-  lapic[TICR] = 10000000;
-  lapic[TCCR] = 10000000;
   lapic[TIMER] = PERIODIC | (IRQ_OFFSET + IRQ_TIMER);
+  lapic[TICR] = 10000000; 
 
   // Disable logical interrupt lines.
   lapic[LINT0] = MASKED;

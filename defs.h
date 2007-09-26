@@ -70,13 +70,9 @@ void            kbd_intr(void);
 // lapic.c
 int             cpu(void);
 extern volatile uint*    lapic;
-void            lapic_disableintr(void);
-void            lapic_enableintr(void);
 void            lapic_eoi(void);
 void            lapic_init(int);
 void            lapic_startap(uchar, uint);
-void            lapic_timerinit(void);
-void            lapic_timerintr(void);
 
 // mp.c
 extern int      ismp;
