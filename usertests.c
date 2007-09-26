@@ -256,6 +256,7 @@ preempt(void)
   int pid1, pid2, pid3;
   int pfds[2];
 
+  printf(1, "preempt: ");
   pid1 = fork();
   if(pid1 == 0)
     for(;;)
@@ -283,9 +284,11 @@ preempt(void)
     return;
   }
   close(pfds[0]);
+  printf(1, "kill... ");
   kill(pid1);
   kill(pid2);
   kill(pid3);
+  printf(1, "wait... ");
   wait();
   wait();
   wait();
