@@ -60,7 +60,6 @@ mpmain(void)
   if(cpu() != mp_bcpu())
     lapic_init(cpu());
   setupsegs(0);
-  asm volatile("movl %0, %%ss" :: "r" (SEG_CPUSTACK << 3));
   cpuid(0, 0, 0, 0, 0);  // memory barrier
   cpus[cpu()].booted = 1;
   popcli();

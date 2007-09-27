@@ -16,14 +16,10 @@ swtch:
   movl %esi, 20(%eax)
   movl %edi, 24(%eax)
   movl %ebp, 28(%eax)
-  movl %ss, %ebx
-  movl %ebx, 32(%eax)
 
   # Load new registers
   movl 4(%esp), %eax  # not 8(%esp) - popped return address above
 
-  movl 32(%eax), %ebx
-  movl %ebx, %ss
   movl 28(%eax), %ebp
   movl 24(%eax), %edi
   movl 20(%eax), %esi

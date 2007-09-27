@@ -4,9 +4,7 @@
 #define SEG_UCODE 3
 #define SEG_UDATA 4
 #define SEG_TSS   5  // this process's task state
-#define SEG_CPUSTACK 6
-#define SEG_PROCSTACK 7
-#define NSEGS     8
+#define NSEGS     6
 
 // Saved registers for kernel context switches.
 // Don't need to save all the %fs etc. segment registers,
@@ -24,7 +22,6 @@ struct context {
   int esi;
   int edi;
   int ebp;
-  int ss;
 };
 
 enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
