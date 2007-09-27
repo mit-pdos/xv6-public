@@ -101,16 +101,8 @@ cpu(void)
   // through acquire and release.
   if(read_eflags()&FL_IF){
     static int n;
-    int i;
-    uint pcs[10];
-
-    if(n++%999 == 0){
-      getcallerpcs((uint*)read_ebp() + 2, pcs);
-      cprintf("cpu called from %x with interrupts enabled: stk");
-      for(i=0; i<10 && pcs[i] && pcs[i] != -1; i++)
-        cprintf(" %x", pcs[i]);
-      cprintf("\n");
-    }
+    if(n++ == 0)
+      cprintf("cpu called from %x with interrupts enabled\n", ((uint*)read_ebp())[1]);
   }
 
   if(lapic)
