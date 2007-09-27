@@ -49,11 +49,11 @@ sys_read(void)
 {
   struct file *f;
   int n;
-  char *cp;
+  char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &cp, n) < 0)
+  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
-  return fileread(f, cp, n);
+  return fileread(f, p, n);
 }
 
 int
@@ -61,11 +61,11 @@ sys_write(void)
 {
   struct file *f;
   int n;
-  char *cp;
+  char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &cp, n) < 0)
+  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
-  return filewrite(f, cp, n);
+  return filewrite(f, p, n);
 }
 
 int

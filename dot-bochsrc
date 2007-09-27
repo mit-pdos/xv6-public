@@ -74,7 +74,8 @@
 # now supported, but we still recommend to use the BIOS distributed with
 # Bochs. Now the start address can be calculated from image size.
 #=======================================================================
-romimage: file=$BXSHARE/BIOS-bochs-latest, address=0xf0000
+#romimage: file=$BXSHARE/BIOS-bochs-latest
+romimage: file=/home/rsc/pub/bochs/bios/BIOS-bochs-latest
 #romimage: file=mybios.bin, address=0xfff80000 # 512k at memory top
 #romimage: file=mybios.bin # calculate start address from image size
 
@@ -107,7 +108,7 @@ romimage: file=$BXSHARE/BIOS-bochs-latest, address=0xf0000
 #  650Mhz Athlon K-7 with Linux 2.4.4/egcs-2.91.66  2 to  2.5 Mips
 #  400Mhz Pentium II with Linux 2.0.36/egcs-1.0.3   1 to  1.8 Mips
 #=======================================================================
-cpu: count=2, ips=10000000
+cpu: count=2, ips=10000000, quantum=1
 
 #=======================================================================
 # MEGS
@@ -403,7 +404,7 @@ debug: action=ignore
 #=======================================================================
 #debugger_log: /dev/null
 #debugger_log: debugger.out
-debugger_log: -
+debugger_log: bochsout.txt
 
 #=======================================================================
 # COM1, COM2, COM3, COM4:
@@ -675,6 +676,7 @@ keyboard_mapping: enabled=0, map=
 #   i440fxsupport: enabled=1, slot1=pcivga, slot2=ne2k
 #=======================================================================
 #i440fxsupport: enabled=1
+i440fxsupport: enabled=1
 
 #=======================================================================
 # USB1:
