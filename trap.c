@@ -83,14 +83,8 @@ trap(struct trapframe *tf)
             cp->pid, cp->name, tf->trapno, tf->err, cpu(), tf->eip);
     cp->killed = 1;
   }
-  
-  // Undo splhi but do not enable interrupts.
-  // If you change this to spllo() you can get a 
-  // triple fault by just typing too fast at the prompt.
-  // An interrupt stops us right here, and when that
-  // interrupt tries to return, somehow the segment
-  // registers are all invalid.
-  --cpus[cpu()].nsplhi;
+
+  spllo();
 
   // Force process exit if it has been killed and is in user space.
   // (If it is still executing in the kernel, let it keep running 
