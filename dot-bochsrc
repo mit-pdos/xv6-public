@@ -74,8 +74,7 @@
 # now supported, but we still recommend to use the BIOS distributed with
 # Bochs. Now the start address can be calculated from image size.
 #=======================================================================
-#romimage: file=$BXSHARE/BIOS-bochs-latest
-romimage: file=/home/rsc/pub/bochs/bios/BIOS-bochs-latest
+romimage: file=$BXSHARE/BIOS-bochs-latest
 #romimage: file=mybios.bin, address=0xfff80000 # 512k at memory top
 #romimage: file=mybios.bin # calculate start address from image size
 
