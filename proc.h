@@ -46,10 +46,6 @@ struct proc {
   char name[16];            // Process name (debugging)
 };
 
-// The word at kstack + KSTACKTOP is a pointer to the struct proc.
-#define KSTACKTOP (KSTACKSIZE-4)
-
-
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss
@@ -59,6 +55,7 @@ struct proc {
 // Per-CPU state
 struct cpu {
   uchar apicid;               // Local APIC ID
+  struct proc *curproc;       // Process currently running.
   struct context context;     // Switch here to enter scheduler
   struct taskstate ts;        // Used by x86 to find stack for interrupt
   struct segdesc gdt[NSEGS];  // x86 global descriptor table
