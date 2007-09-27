@@ -292,7 +292,7 @@ panic(char *s)
   
   __asm __volatile("cli");
   use_console_lock = 0;
-  cprintf("panic (%d): ", cpu());
+  cprintf("cpu%d: panic: ", cpu());
   cprintf(s, 0);
   cprintf("\n", 0);
   getcallerpcs(&s, pcs);
