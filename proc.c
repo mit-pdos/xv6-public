@@ -73,7 +73,7 @@ setupsegs(struct proc *p)
   
   splhi();
   c = &cpus[cpu()];
-  c->ts.ss0 = SEG_KDATA << 3;
+  c->ts.ss0 = SEG_PROCSTACK << 3;
   if(p)
     c->ts.esp0 = (uint)(p->kstack + KSTACKSIZE);
   else
@@ -84,12 +84,15 @@ setupsegs(struct proc *p)
   c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
   c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint)&c->ts, sizeof(c->ts)-1, 0);
   c->gdt[SEG_TSS].s = 0;
+  c->gdt[SEG_CPUSTACK] = SEG(STA_W|STA_E, 0, (uint)c->stack, 0);
   if(p){
     c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz-1, DPL_USER);
     c->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz-1, DPL_USER);
+    c->gdt[SEG_PROCSTACK] = SEG(STA_W|STA_E, 0, (uint)p->kstack, 0);
   } else {
     c->gdt[SEG_UCODE] = SEG_NULL;
     c->gdt[SEG_UDATA] = SEG_NULL;
+    c->gdt[SEG_PROCSTACK] = SEG_NULL;
   }
 
   lgdt(c->gdt, sizeof(c->gdt));
@@ -140,6 +143,7 @@ copyproc(struct proc *p)
   memset(&np->context, 0, sizeof(np->context));
   np->context.eip = (uint)forkret;
   np->context.esp = (uint)np->tf;
+  np->context.ss = SEG_PROCSTACK<<3;
 
   // Clear %eax so that fork system call returns 0 in child.
   np->tf->eax = 0;
