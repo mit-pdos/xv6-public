@@ -6,13 +6,13 @@
 #include "x86.h"
 
 static void bootothers(void);
+static void mpmain(void) __attribute__((noreturn));
 
 // Bootstrap processor starts running C code here.
 int
 main(void)
 {
-  int i;
-  static volatile int bcpu;  // cannot be on stack
+  int bcpu, i;
   extern char edata[], end[];
 
   // clear BSS
@@ -20,15 +20,10 @@ main(void)
 
   // splhi() every processor during bootstrap.
   for(i=0; i<NCPU; i++)
-    cpus[i].nsplhi = 1;
+    cpus[i].nsplhi = 1;  // no interrupts during bootstrap
 
   mp_init(); // collect info about this machine
   bcpu = mp_bcpu();
-
-  // Switch to bootstrap processor's stack
-  asm volatile("movl %0, %%esp" : : "r" (cpus[bcpu].mpstack+MPSTACK-32));
-  asm volatile("movl %0, %%ebp" : : "r" (cpus[bcpu].mpstack+MPSTACK));
-
   lapic_init(bcpu);
   cprintf("\ncpu%d: starting xv6\n\n", cpu());
 
@@ -38,34 +33,34 @@ main(void)
   ioapic_init();   // another interrupt controller
   kinit();         // physical memory allocator
   tvinit();        // trap vectors
-  idtinit();       // interrupt descriptor table
   fileinit();      // file table
   iinit();         // inode cache
-  setupsegs(0);    // segments & TSS
   console_init();  // I/O devices & their interrupts
   ide_init();      // disk
-  bootothers();    // boot other CPUs
   if(!ismp)
     timer_init(); // uniprocessor timer
-  cprintf("ismp %d\n", ismp);
-  cprintf("userinit\n");
   userinit();      // first user process
 
-  // enable interrupts on this processor.
-  spllo();
+  // Allocate scheduler stacks and boot the other CPUs.
+  for(i=0; i<ncpu; i++)
+    cpus[i].stack = kalloc(KSTACKSIZE);
+  bootothers();
 
-  cprintf("scheduler\n");
-  scheduler();
+  // Switch to our scheduler stack and continue with mpmain.
+  asm volatile("movl %0, %%esp" : : "r" (cpus[bcpu].stack+KSTACKSIZE));
+  mpmain();
 }
 
 // Additional processors start here.
 static void
 mpmain(void)
 {
-  cprintf("cpu%d: starting\n", cpu());
+  cprintf("cpu%d: mpmain\n", cpu());
   idtinit();
-  lapic_init(cpu());
+  if(cpu() != mp_bcpu())
+    lapic_init(cpu());
   setupsegs(0);
+  asm volatile("movl %0, %%ss" :: "r" (SEG_CPUSTACK << 3));
   cpuid(0, 0, 0, 0, 0);  // memory barrier
   cpus[cpu()].booted = 1;
   spllo();
@@ -89,7 +84,7 @@ bootothers(void)
       continue;
 
     // Fill in %esp, %eip and start code on cpu.
-    *(void**)(code-4) = c->mpstack + MPSTACK;
+    *(void**)(code-4) = c->stack + KSTACKSIZE;
     *(void**)(code-8) = mpmain;
     lapic_startap(c->apicid, (uint)code);
 

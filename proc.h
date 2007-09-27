@@ -49,8 +49,6 @@ struct proc {
 //   fixed-size stack
 //   expandable heap
 
-#define MPSTACK 512
-
 // Per-CPU state
 struct cpu {
   uchar apicid;               // Local APIC ID
@@ -58,7 +56,7 @@ struct cpu {
   struct context context;     // Switch here to enter scheduler
   struct taskstate ts;        // Used by x86 to find stack for interrupt
   struct segdesc gdt[NSEGS];  // x86 global descriptor table
-  char mpstack[MPSTACK];      // Per-CPU startup stack
+  char *stack;
   volatile int booted;        // Has the CPU started?
   int nsplhi;                 // Depth of splhi nesting.
 };
