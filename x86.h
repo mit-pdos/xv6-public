@@ -39,6 +39,15 @@ outsl(int port, const void *addr, int cnt)
                    "cc");
 }
 
+static inline uint
+read_ebp(void)
+{
+  uint ebp;
+  
+  asm volatile("movl %%ebp, %0" : "=a" (ebp));
+  return ebp;
+}
+
 struct segdesc;
 
 static inline void

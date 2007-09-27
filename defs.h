@@ -92,6 +92,7 @@ int             pipewrite(struct pipe*, char*, int);
 
 // proc.c
 struct proc*    copyproc(struct proc*);
+struct proc*    curproc();
 void            exit(void);
 int             growproc(int);
 int             kill(int);
@@ -114,6 +115,8 @@ void            getcallerpcs(void*, uint*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
+void            splhi();
+void            spllo();
 
 // string.c
 int             memcmp(const void*, const void*, uint);

@@ -49,25 +49,23 @@ struct proc {
 //   fixed-size stack
 //   expandable heap
 
-// Arrange that cp point to the struct proc that this
-// CPU is currently running.  Such preprocessor 
-// subterfuge can be confusing, but saves a lot of typing.
-extern struct proc *curproc[NCPU];  // Current (running) process per CPU
-#define cp (curproc[cpu()])  // Current process on this CPU
-
-
 #define MPSTACK 512
 
 // Per-CPU state
 struct cpu {
   uchar apicid;               // Local APIC ID
+  struct proc *curproc;       // Process currently running.
   struct context context;     // Switch here to enter scheduler
   struct taskstate ts;        // Used by x86 to find stack for interrupt
   struct segdesc gdt[NSEGS];  // x86 global descriptor table
   char mpstack[MPSTACK];      // Per-CPU startup stack
   volatile int booted;        // Has the CPU started?
-  int nlock;                  // Number of locks currently held
+  int nsplhi;                 // Depth of splhi nesting.
 };
 
 extern struct cpu cpus[NCPU];
 extern int ncpu;
+
+// "cp" is a short alias for curproc().
+// It gets used enough to make this worthwhile.
+#define cp curproc()

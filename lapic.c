@@ -2,7 +2,10 @@
 // See Chapter 8 & Appendix C of Intel processor manual volume 3.
 
 #include "types.h"
+#include "defs.h"
 #include "traps.h"
+#include "mmu.h"
+#include "x86.h"
 
 // Local APIC registers, divided by 4 for use as uint[] indices.
 #define ID      (0x0020/4)   // ID
@@ -84,6 +87,25 @@ lapic_init(int c)
 int
 cpu(void)
 {
+  // Cannot call cpu when interrupts are enabled:
+  // result not guaranteed to last long enough to be used!
+  // Would prefer to panic but even printing is chancy here:
+  // everything, including cprintf, calls cpu, at least indirectly
+  // through acquire and release.
+  if(read_eflags()&FL_IF){
+    static int n;
+    int i;
+    uint pcs[10];
+
+    if(n++%999 == 0){
+      getcallerpcs((uint*)read_ebp() + 2, pcs);
+      cprintf("cpu called from %x with interrupts enabled: stk");
+      for(i=0; i<10 && pcs[i] && pcs[i] != -1; i++)
+        cprintf(" %x", pcs[i]);
+      cprintf("\n");
+    }
+  }
+
   if(lapic)
     return lapic[ID]>>24;
   return 0;

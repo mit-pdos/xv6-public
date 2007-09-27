@@ -44,8 +44,8 @@ trap(struct trapframe *tf)
     return;
   }
 
-  // Make sure interrupts stay off during handler.
-  cpus[cpu()].nlock++;
+  // No interrupts during interrupt handling.
+  splhi();
 
   switch(tf->trapno){
   case IRQ_OFFSET + IRQ_TIMER:
@@ -84,7 +84,13 @@ trap(struct trapframe *tf)
     cp->killed = 1;
   }
   
-  cpus[cpu()].nlock--;
+  // Undo splhi but do not enable interrupts.
+  // If you change this to spllo() you can get a 
+  // triple fault by just typing too fast at the prompt.
+  // An interrupt stops us right here, and when that
+  // interrupt tries to return, somehow the segment
+  // registers are all invalid.
+  --cpus[cpu()].nsplhi;
 
   // Force process exit if it has been killed and is in user space.
   // (If it is still executing in the kernel, let it keep running 

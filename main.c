@@ -18,9 +18,9 @@ main(void)
   // clear BSS
   memset(edata, 0, end - edata);
 
-  // Prevent release() from enabling interrupts.
+  // splhi() every processor during bootstrap.
   for(i=0; i<NCPU; i++)
-    cpus[i].nlock = 1;
+    cpus[i].nsplhi = 1;
 
   mp_init(); // collect info about this machine
   bcpu = mp_bcpu();
@@ -47,12 +47,14 @@ main(void)
   bootothers();    // boot other CPUs
   if(!ismp)
     timer_init(); // uniprocessor timer
+  cprintf("ismp %d\n", ismp);
+  cprintf("userinit\n");
   userinit();      // first user process
 
   // enable interrupts on this processor.
-  cpus[cpu()].nlock--;
-  sti();
+  spllo();
 
+  cprintf("scheduler\n");
   scheduler();
 }
 
@@ -66,10 +68,7 @@ mpmain(void)
   setupsegs(0);
   cpuid(0, 0, 0, 0, 0);  // memory barrier
   cpus[cpu()].booted = 1;
-
-  // Enable interrupts on this processor.
-  cpus[cpu()].nlock--;
-  sti();
+  spllo();
 
   scheduler();
 }
