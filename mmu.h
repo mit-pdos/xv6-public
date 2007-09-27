@@ -125,7 +125,7 @@ struct taskstate {
 // Gate descriptors for interrupts and traps
 struct gatedesc {
   uint off_15_0 : 16;   // low 16 bits of offset in segment
-  uint ss : 16;         // segment selector
+  uint cs : 16;         // code segment selector
   uint args : 5;        // # args, 0 for interrupt/trap gates
   uint rsv1 : 3;        // reserved(should be zero I guess)
   uint type : 4;        // type(STS_{TG,IG32,TG32})
@@ -146,7 +146,7 @@ struct gatedesc {
 #define SETGATE(gate, istrap, sel, off, d)                \
 {                                                         \
   (gate).off_15_0 = (uint) (off) & 0xffff;                \
-  (gate).ss = (sel);                                      \
+  (gate).cs = (sel);                                      \
   (gate).args = 0;                                        \
   (gate).rsv1 = 0;                                        \
   (gate).type = (istrap) ? STS_TG32 : STS_IG32;           \
