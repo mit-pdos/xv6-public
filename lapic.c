@@ -37,6 +37,13 @@
 
 volatile uint *lapic;  // Initialized in mp.c
 
+static void
+lapicw(int index, int value)
+{
+  lapic[index] = value;
+  lapic[ID];  // wait for write to finish, by reading
+}
+
 //PAGEBREAK!
 void
 lapic_init(int c)
@@ -45,43 +52,43 @@ lapic_init(int c)
     return;
 
   // Enable local APIC; set spurious interrupt vector.
-  lapic[SVR] = ENABLE | (IRQ_OFFSET+IRQ_SPURIOUS);
+  lapicw(SVR, ENABLE | (IRQ_OFFSET+IRQ_SPURIOUS));
 
   // The timer repeatedly counts down at bus frequency
   // from lapic[TICR] and then issues an interrupt.  
   // If xv6 cared more about precise timekeeping,
   // TICR would be calibrated using an external time source.
-  lapic[TDCR] = X1;
-  lapic[TIMER] = PERIODIC | (IRQ_OFFSET + IRQ_TIMER);
-  lapic[TICR] = 10000000; 
+  lapicw(TDCR, X1);
+  lapicw(TIMER, PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
+  lapicw(TICR, 10000000); 
 
   // Disable logical interrupt lines.
-  lapic[LINT0] = MASKED;
-  lapic[LINT1] = MASKED;
+  lapicw(LINT0, MASKED);
+  lapicw(LINT1, MASKED);
 
   // Disable performance counter overflow interrupts
   // on machines that provide that interrupt entry.
   if(((lapic[VER]>>16) & 0xFF) >= 4)
-    lapic[PCINT] = MASKED;
+    lapicw(PCINT, MASKED);
 
   // Map error interrupt to IRQ_ERROR.
-  lapic[ERROR] = IRQ_OFFSET+IRQ_ERROR;
+  lapicw(ERROR, IRQ_OFFSET+IRQ_ERROR);
 
   // Clear error status register (requires back-to-back writes).
-  lapic[ESR] = 0;
-  lapic[ESR] = 0;
+  lapicw(ESR, 0);
+  lapicw(ESR, 0);
 
   // Ack any outstanding interrupts.
-  lapic[EOI] = 0;
+  lapicw(EOI, 0);
 
   // Send an Init Level De-Assert to synchronise arbitration ID's.
-  lapic[ICRHI] = 0;
-  lapic[ICRLO] = BCAST | INIT | LEVEL;
+  lapicw(ICRHI, 0);
+  lapicw(ICRLO, BCAST | INIT | LEVEL);
   while(lapic[ICRLO] & DELIVS)
     ;
 
   // Enable interrupts on the APIC (but not on the processor).
-  lapic[TPR] = 0;
+  lapicw(TPR, 0);
 }
 
 int
@@ -116,7 +123,7 @@ void
 lapic_eoi(void)
 {
   if(lapic)
-    lapic[EOI] = 0;
+    lapicw(EOI, 0);
 }
 
 // Spin for a given number of microseconds.
@@ -139,16 +146,16 @@ lapic_startap(uchar apicid, uint addr)
   volatile int j = 0;
 
   // Send INIT interrupt to reset other CPU.
-  lapic[ICRHI] = apicid<<24;
-  lapic[ICRLO] = INIT | LEVEL;
+  lapicw(ICRHI, apicid<<24);
+  lapicw(ICRLO, INIT | LEVEL);
   microdelay(10);
   
   // Send startup IPI (twice!) to enter bootstrap code.
   // Regular hardware wants it twice, but Bochs complains.
   // Too bad for Bochs.
   for(i = 0; i < 2; i++){
-    lapic[ICRHI] = apicid<<24;
-    lapic[ICRLO] = STARTUP | (addr>>12);
+    lapicw(ICRHI, apicid<<24);
+    lapicw(ICRLO, STARTUP | (addr>>12));
     for(j=0; j<10000; j++);  // 200us
   }
 }
