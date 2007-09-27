@@ -45,7 +45,7 @@ trap(struct trapframe *tf)
   }
 
   // No interrupts during interrupt handling.
-  splhi();
+  pushcli();
 
   switch(tf->trapno){
   case IRQ_OFFSET + IRQ_TIMER:
@@ -84,7 +84,7 @@ trap(struct trapframe *tf)
     cp->killed = 1;
   }
 
-  spllo();
+  popcli();
 
   // Force process exit if it has been killed and is in user space.
   // (If it is still executing in the kernel, let it keep running 

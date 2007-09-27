@@ -61,7 +61,7 @@ struct cpu {
   struct segdesc gdt[NSEGS];  // x86 global descriptor table
   char *stack;
   volatile int booted;        // Has the CPU started?
-  int nsplhi;                 // Depth of splhi nesting.
+  int ncli;                 // Depth of pushcli nesting.
 };
 
 extern struct cpu cpus[NCPU];

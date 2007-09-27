@@ -115,8 +115,8 @@ void            getcallerpcs(void*, uint*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
-void            splhi();
-void            spllo();
+void            pushcli();
+void            popcli();
 
 // string.c
 int             memcmp(const void*, const void*, uint);

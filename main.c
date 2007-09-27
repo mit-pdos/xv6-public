@@ -18,9 +18,9 @@ main(void)
   // clear BSS
   memset(edata, 0, end - edata);
 
-  // splhi() every processor during bootstrap.
+  // pushcli() every processor during bootstrap.
   for(i=0; i<NCPU; i++)
-    cpus[i].nsplhi = 1;  // no interrupts during bootstrap
+    cpus[i].ncli = 1;  // no interrupts during bootstrap
 
   mp_init(); // collect info about this machine
   bcpu = mp_bcpu();
@@ -63,7 +63,7 @@ mpmain(void)
   asm volatile("movl %0, %%ss" :: "r" (SEG_CPUSTACK << 3));
   cpuid(0, 0, 0, 0, 0);  // memory barrier
   cpus[cpu()].booted = 1;
-  spllo();
+  popcli();
 
   scheduler();
 }
