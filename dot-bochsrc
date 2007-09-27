@@ -403,7 +403,7 @@ debug: action=ignore
 #=======================================================================
 #debugger_log: /dev/null
 #debugger_log: debugger.out
-debugger_log: bochsout.txt
+debugger_log: -
 
 #=======================================================================
 # COM1, COM2, COM3, COM4:
@@ -675,7 +675,6 @@ keyboard_mapping: enabled=0, map=
 #   i440fxsupport: enabled=1, slot1=pcivga, slot2=ne2k
 #=======================================================================
 #i440fxsupport: enabled=1
-i440fxsupport: enabled=1
 
 #=======================================================================
 # USB1:
