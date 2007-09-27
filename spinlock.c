@@ -88,15 +88,19 @@ holding(struct spinlock *lock)
 }
 
 
-
-// XXX!
-// Better names?  Better functions?  
+// Pushcli/popcli are like cli/sti except that they are matched:
+// it takes two popcli to undo two pushcli.  Also, if interrupts
+// are off, then pushcli, popcli leaves them off.
 
 void
 pushcli(void)
 {
+  int eflags;
+  
+  eflags = read_eflags();
   cli();
-  cpus[cpu()].ncli++;
+  if(cpus[cpu()].ncli++ == 0)
+    cpus[cpu()].intena = eflags & FL_IF;
 }
 
 void
@@ -106,7 +110,7 @@ popcli(void)
     panic("popcli - interruptible");
   if(--cpus[cpu()].ncli < 0)
     panic("popcli");
-  if(cpus[cpu()].ncli == 0)
+  if(cpus[cpu()].ncli == 0 && cpus[cpu()].intena)
     sti();
 }
 

@@ -12,19 +12,13 @@ static void mpmain(void) __attribute__((noreturn));
 int
 main(void)
 {
-  int bcpu, i;
   extern char edata[], end[];
 
   // clear BSS
   memset(edata, 0, end - edata);
 
-  // pushcli() every processor during bootstrap.
-  for(i=0; i<NCPU; i++)
-    cpus[i].ncli = 1;  // no interrupts during bootstrap
-
   mp_init(); // collect info about this machine
-  bcpu = mp_bcpu();
-  lapic_init(bcpu);
+  lapic_init(mp_bcpu());
   cprintf("\ncpu%d: starting xv6\n\n", cpu());
 
   pinit();         // process table
@@ -38,19 +32,15 @@ main(void)
   console_init();  // I/O devices & their interrupts
   ide_init();      // disk
   if(!ismp)
-    timer_init(); // uniprocessor timer
+    timer_init();  // uniprocessor timer
   userinit();      // first user process
+  bootothers();    // start other processors
 
-  // Allocate scheduler stacks and boot the other CPUs.
-  for(i=0; i<ncpu; i++)
-    cpus[i].stack = kalloc(KSTACKSIZE);
-  bootothers();
-
-  // Switch to our scheduler stack and continue with mpmain.
-  asm volatile("movl %0, %%esp" : : "r" (cpus[bcpu].stack+KSTACKSIZE));
+  // Finish setting up this processor in mpmain.
   mpmain();
 }
 
+// Bootstrap processor gets here after setting up the hardware.
 // Additional processors start here.
 static void
 mpmain(void)
@@ -62,7 +52,6 @@ mpmain(void)
   setupsegs(0);
   cpuid(0, 0, 0, 0, 0);  // memory barrier
   cpus[cpu()].booted = 1;
-  popcli();
 
   scheduler();
 }
@@ -73,6 +62,7 @@ bootothers(void)
   extern uchar _binary_bootother_start[], _binary_bootother_size[];
   uchar *code;
   struct cpu *c;
+  char *stack;
 
   // Write bootstrap code to unused memory at 0x7000.
   code = (uchar*)0x7000;
@@ -83,7 +73,8 @@ bootothers(void)
       continue;
 
     // Fill in %esp, %eip and start code on cpu.
-    *(void**)(code-4) = c->stack + KSTACKSIZE;
+    stack = kalloc(KSTACKSIZE);
+    *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpmain;
     lapic_startap(c->apicid, (uint)code);
 
