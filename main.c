@@ -50,7 +50,6 @@ mpmain(void)
   if(cpu() != mp_bcpu())
     lapic_init(cpu());
   setupsegs(0);
-  cpuid(0, 0, 0, 0, 0);  // memory barrier
   cpus[cpu()].booted = 1;
 
   scheduler();
