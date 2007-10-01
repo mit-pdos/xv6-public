@@ -10,12 +10,6 @@
 
 extern int use_console_lock;
 
-// Barrier to gcc's instruction reordering.
-static void inline gccbarrier(void)
-{
-  asm volatile("" : : : "memory");
-}
-
 void
 initlock(struct spinlock *lock, char *name)
 {
@@ -35,7 +29,10 @@ acquire(struct spinlock *lock)
   if(holding(lock))
     panic("acquire");
 
-  while(cmpxchg(0, 1, &lock->locked) == 1)
+  // The xchg is atomic.
+  // It also serializes, so that reads after acquire are not
+  // reordered before it.  
+  while(xchg(&lock->locked, 1) == 1)
     ;
 
   // Record info about lock acquisition for debugging.
@@ -56,8 +53,12 @@ release(struct spinlock *lock)
   lock->pcs[0] = 0;
   lock->cpu = 0xffffffff;
 
-  gccbarrier();  // Keep gcc from moving lock->locked = 0 earlier.
-  lock->locked = 0;
+  // The xchg serializes, so that reads before release are 
+  // not reordered after it.  (This reordering would be allowed
+  // by the Intel manuals, but does not happen on current 
+  // Intel processors.  The xchg being asm volatile also keeps
+  // gcc from delaying the above assignments.)
+  xchg(&lock->locked, 0);
 
   popcli();
 }

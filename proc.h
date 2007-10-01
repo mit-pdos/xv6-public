@@ -56,7 +56,7 @@ struct cpu {
   struct context context;     // Switch here to enter scheduler
   struct taskstate ts;        // Used by x86 to find stack for interrupt
   struct segdesc gdt[NSEGS];  // x86 global descriptor table
-  volatile int booted;        // Has the CPU started?
+  volatile uint booted;        // Has the CPU started?
   int ncli;                   // Depth of pushcli nesting.
   int intena;                 // Were interrupts enabled before pushcli? 
 };

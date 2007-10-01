@@ -50,8 +50,9 @@ mpmain(void)
   if(cpu() != mp_bcpu())
     lapic_init(cpu());
   setupsegs(0);
-  cpus[cpu()].booted = 1;
+  xchg(&cpus[cpu()].booted, 1);
 
+  cprintf("cpu%d: scheduling\n");
   scheduler();
 }
 

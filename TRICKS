@@ -102,5 +102,11 @@ after observing the earlier writes by CPU0.
 So any reads in B are guaranteed to observe the
 effects of writes in A.
 
-Not sure about the second one yet.
+According to the Intel manual behavior spec, the
+second condition requires a serialization instruction
+in release, to avoid reads in A happening after giving
+up lk.  No Intel SMP processor in existence actually
+moves reads down after writes, but the language in
+the spec allows it.  There is no telling whether future
+processors will need it.
 

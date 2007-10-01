@@ -96,35 +96,16 @@ write_eflags(uint eflags)
   asm volatile("pushl %0; popfl" : : "r" (eflags));
 }
 
-// XXX: Kill this if not used.
-static inline void
-cpuid(uint info, uint *eaxp, uint *ebxp, uint *ecxp, uint *edxp)
-{
-  uint eax, ebx, ecx, edx;
-
-  asm volatile("cpuid" :
-               "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx) :
-               "a" (info));
-  if(eaxp)
-    *eaxp = eax;
-  if(ebxp)
-    *ebxp = ebx;
-  if(ecxp)
-    *ecxp = ecx;
-  if(edxp)
-    *edxp = edx;
-}
-
 static inline uint
-cmpxchg(uint oldval, uint newval, volatile uint* lock_addr)
+xchg(volatile uint *addr, uint newval)
 {
   uint result;
   
   // The + in "+m" denotes a read-modify-write operand.
-  asm volatile("lock; cmpxchgl %2, %0" :
-                       "+m" (*lock_addr), "=a" (result) :
-                       "r"(newval), "1"(oldval) :
-                       "cc");
+  asm volatile("lock; xchgl %0, %1" :
+               "+m" (*addr), "=a" (result) :
+               "1" (newval) :
+               "cc");
   return result;
 }
 
