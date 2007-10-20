@@ -382,7 +382,7 @@ exit(void)
 
   acquire(&proc_table_lock);
 
-  // Parent might be sleeping in proc_wait.
+  // Parent might be sleeping in wait().
   wakeup1(cp->parent);
 
   // Pass abandoned children to init.
