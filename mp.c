@@ -59,7 +59,7 @@ mp_search(void)
   struct mp *mp;
 
   bda = (uchar*)0x400;
-  if((p = (bda[0x0F]<<8)|bda[0x0E])){
+  if((p = ((bda[0x0F]<<8)|bda[0x0E]) << 4)){
     if((mp = mp_search1((uchar*)p, 1024)))
       return mp;
   } else {
