@@ -102,7 +102,8 @@ cpu(void)
   if(read_eflags()&FL_IF){
     static int n;
     if(n++ == 0)
-      cprintf("cpu called from %x with interrupts enabled\n", ((uint*)read_ebp())[1]);
+      cprintf("cpu called from %x with interrupts enabled\n",
+        ((uint*)read_ebp())[1]);
   }
 
   if(lapic)
@@ -129,25 +130,42 @@ microdelay(int us)
     for(j=0; j<10000; j++);
 }
 
+
+#define IO_RTC  0x70
+
 // Start additional processor running bootstrap code at addr.
 // See Appendix B of MultiProcessor Specification.
 void
 lapic_startap(uchar apicid, uint addr)
 {
   int i;
-  volatile int j = 0;
+  ushort *wrv;
+  
+  // "The BSP must initialize CMOS shutdown code to 0AH
+  // and the warm reset vector (DWORD based at 40:67) to point at
+  // the AP startup code prior to the [universal startup algorithm]."
+  outb(IO_RTC, 0xF);  // offset 0xF is shutdown code
+  outb(IO_RTC+1, 0x0A);
+  wrv = (ushort*)(0x40<<4 | 0x67);  // Warm reset vector
+  wrv[0] = 0;
+  wrv[1] = addr >> 4;
 
-  // Send INIT interrupt to reset other CPU.
+  // "Universal startup algorithm."
+  // Send INIT (level-triggered) interrupt to reset other CPU.
   lapicw(ICRHI, apicid<<24);
+  lapicw(ICRLO, INIT | LEVEL | ASSERT);
+  microdelay(200);
   lapicw(ICRLO, INIT | LEVEL);
-  microdelay(10);
+  microdelay(100);	// should be 10ms, but too slow in Bochs!
   
   // Send startup IPI (twice!) to enter bootstrap code.
-  // Regular hardware wants it twice, but Bochs complains.
-  // Too bad for Bochs.
+  // Regular hardware is supposed to only accept a STARTUP
+  // when it is in the halted state due to an INIT.  So the second
+  // should be ignored, but it is part of the official Intel algorithm.
+  // Bochs complains about the second one.  Too bad for Bochs.
   for(i = 0; i < 2; i++){
     lapicw(ICRHI, apicid<<24);
     lapicw(ICRLO, STARTUP | (addr>>12));
-    for(j=0; j<10000; j++);  // 200us
+    microdelay(200);
   }
 }
