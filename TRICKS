@@ -110,3 +110,27 @@ moves reads down after writes, but the language in
 the spec allows it.  There is no telling whether future
 processors will need it.
 
+---
+
+The code in sys_fork needs to read np->pid before
+setting np->state to RUNNABLE.  
+
+	int
+	sys_fork(void)
+	{
+	  int pid;
+	  struct proc *np;
+	
+	  if((np = copyproc(cp)) == 0)
+	    return -1;
+	  pid = np->pid;
+	  np->state = RUNNABLE;
+	  return pid;
+	}
+
+After setting np->state to RUNNABLE, some other CPU
+might run the process, it might exit, and then it might
+get reused for a different process (with a new pid), all
+before the return statement.  So it's not safe to just do
+"return np->pid;".
+
