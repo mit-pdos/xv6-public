@@ -178,5 +178,5 @@ tar:
 	rm -rf /tmp/xv6
 	mkdir -p /tmp/xv6
 	cp dist/* /tmp/xv6
-	(cd /tmp; tar cf - xv6) | gzip >xv6-rev1.tar.gz
+	(cd /tmp; tar cf - xv6) | gzip >xv6-rev2.tar.gz
 
