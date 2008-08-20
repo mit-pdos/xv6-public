@@ -194,11 +194,13 @@ awk '
 grep Pages: all.ps
 
 # if we have the nice font, use it
-nicefont=~rsc/lib/postscript/LucidaSans-Typewriter83
+nicefont=../LucidaSans-Typewriter83
 if [ -f $nicefont ]
 then
+	echo nicefont
 	(sed 1q all.ps; cat $nicefont; sed '1d; s/Courier/LucidaSans-Typewriter83/' all.ps) >allf.ps
 else
+	echo ugly font!
 	cp all.ps allf.ps
 fi
 ps2pdf allf.ps ../xv6.pdf
