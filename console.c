@@ -294,7 +294,7 @@ panic(char *s)
   use_console_lock = 0;
   cprintf("cpu%d: panic: ", cpu());
   cprintf(s, 0);
-  cprintf("\n", 0);
+  cprintf("\n");
   getcallerpcs(&s, pcs);
   for(i=0; i<10; i++)
     cprintf(" %p", pcs[i]);
