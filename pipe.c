@@ -11,8 +11,8 @@
 struct pipe {
   int readopen;   // read fd is still open
   int writeopen;  // write fd is still open
-  int writep;     // next index to write
-  int readp;      // next index to read
+  uint writep;    // next index to write
+  uint readp;     // next index to read
   struct spinlock lock;
   char data[PIPESIZE];
 };
@@ -83,7 +83,7 @@ pipewrite(struct pipe *p, char *addr, int n)
 
   acquire(&p->lock);
   for(i = 0; i < n; i++){
-    while(((p->writep + 1) % PIPESIZE) == p->readp){
+    while(p->writep == p->readp + PIPESIZE) {
       if(p->readopen == 0 || cp->killed){
         release(&p->lock);
         return -1;
@@ -91,8 +91,7 @@ pipewrite(struct pipe *p, char *addr, int n)
       wakeup(&p->readp);
       sleep(&p->writep, &p->lock);
     }
-    p->data[p->writep] = addr[i];
-    p->writep = (p->writep + 1) % PIPESIZE;
+    p->data[p->writep++ % PIPESIZE] = addr[i];
   }
   wakeup(&p->readp);
   release(&p->lock);
@@ -115,8 +114,7 @@ piperead(struct pipe *p, char *addr, int n)
   for(i = 0; i < n; i++){
     if(p->readp == p->writep)
       break;
-    addr[i] = p->data[p->readp];
-    p->readp = (p->readp + 1) % PIPESIZE;
+    addr[i] = p->data[p->readp++ % PIPESIZE];
   }
   wakeup(&p->writep);
   release(&p->lock);

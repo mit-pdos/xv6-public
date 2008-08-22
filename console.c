@@ -186,9 +186,9 @@ console_write(struct inode *ip, char *buf, int n)
 struct {
   struct spinlock lock;
   char buf[INPUT_BUF];
-  int r;  // Read index
-  int w;  // Write index
-  int e;  // Edit index
+  uint r;  // Read index
+  uint w;  // Write index
+  uint e;  // Edit index
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
@@ -205,20 +205,20 @@ console_intr(int (*getc)(void))
       procdump();
       break;
     case C('U'):  // Kill line.
-      while(input.e > input.w &&
+      while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
         input.e--;
         cons_putc(BACKSPACE);
       }
       break;
     case C('H'):  // Backspace
-      if(input.e > input.w){
+      if(input.e != input.w){
         input.e--;
         cons_putc(BACKSPACE);
       }
       break;
     default:
-      if(c != 0 && input.e < input.r+INPUT_BUF){
+      if(c != 0 && input.e-input.r < INPUT_BUF){
         input.buf[input.e++ % INPUT_BUF] = c;
         cons_putc(c);
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
@@ -293,7 +293,7 @@ panic(char *s)
   __asm __volatile("cli");
   use_console_lock = 0;
   cprintf("cpu%d: panic: ", cpu());
-  cprintf(s, 0);
+  cprintf(s);
   cprintf("\n");
   getcallerpcs(&s, pcs);
   for(i=0; i<10; i++)
