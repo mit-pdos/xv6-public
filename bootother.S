@@ -1,15 +1,16 @@
 #include "asm.h"
 
-# Start an Application Processor. This must be placed on a 4KB boundary
-# somewhere in the 1st MB of conventional memory (APBOOTSTRAP). However,
-# due to some shortcuts below it's restricted further to within the 1st
-# 64KB. The AP starts in real-mode, with
-#   CS selector set to the startup memory address/16;
-#   CS base set to startup memory address;
-#   CS limit set to 64KB;
-#   CPL and IP set to 0.
+# Each non-boot CPU ("AP") is started up in response to a STARTUP
+# IPI from the boot CPU.  Section B.4.2 of the Multi-Processor
+# Specification says that the AP will start in real mode with CS:IP
+# set to XY00:0000, where XY is an 8-bit value sent with the
+# STARTUP. Thus this code must start at a 4096-byte boundary.
 #
-# Bootothers (in main.c) starts each non-boot CPU in turn.
+# Because this code sets DS to zero, it must sit
+# at an address in the low 2^16 bytes.
+#
+# Bootothers (in main.c) sends the STARTUPs, one at a time.
+# It puts this code (start) at 0x7000.
 # It puts the correct %esp in start-4,
 # and the place to jump to in start-8.
 #
