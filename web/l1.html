@@ -1,0 +1,288 @@
+<title>L1</title>
+<html>
+<head>
+</head>
+<body>
+
+<h1>OS overview</h1>
+
+<h2>Overview</h2>
+
+<ul>
+<li>Goal of course:
+
+<ul>
+<li>Understand operating systems in detail by designing and
+implementing miminal OS
+<li>Hands-on experience with building systems  ("Applying 6.033")
+</ul>
+
+<li>What is an operating system?
+<ul>
+<li>a piece of software that turns the hardware into something useful
+<li>layered picture: hardware, OS, applications
+<li>Three main functions: fault isolate applications, abstract hardware, 
+manage hardware
+</ul>
+
+<li>Examples:
+<ul>
+<li>OS-X, Windows, Linux, *BSD, ... (desktop, server)
+<li>PalmOS Windows/CE (PDA)
+<li>Symbian, JavaOS (Cell phones)
+<li>VxWorks, pSOS (real-time)
+<li> ...
+</ul>
+
+<li>OS Abstractions
+<ul>
+<li>processes: fork, wait, exec, exit, kill, getpid, brk, nice, sleep,
+trace
+<li>files:  open, close, read, write, lseek, stat, sync
+<li>directories: mkdir, rmdir, link, unlink, mount, umount
+<li>users + security: chown, chmod, getuid, setuid
+<li>interprocess communication: signals, pipe
+<li>networking: socket, accept, snd, recv, connect
+<li>time: gettimeofday
+<li>terminal:
+</ul>
+
+<li>Sample Unix System calls (mostly POSIX)
+<ul>
+	<li> int read(int fd, void*, int)
+	<li> int write(int fd, void*, int)
+	<li> off_t lseek(int fd, off_t, int [012])
+	<li> int close(int fd)
+	<li> int fsync(int fd)
+	<li> int open(const char*, int flags [, int mode])
+	  <ul>
+		<li> O_RDONLY, O_WRONLY, O_RDWR, O_CREAT
+	  </ul>
+	<li> mode_t umask(mode_t cmask)
+	<li> int mkdir(char *path, mode_t mode);
+	<li> DIR *opendir(char *dirname)
+	<li> struct dirent *readdir(DIR *dirp)
+	<li> int closedir(DIR *dirp)
+	<li> int chdir(char *path)
+	<li> int link(char *existing, char *new)
+	<li> int unlink(char *path)
+	<li> int rename(const char*, const char*)
+	<li> int rmdir(char *path)
+	<li> int stat(char *path, struct stat *buf)
+	<li> int mknod(char *path, mode_t mode, dev_t dev)
+	<li> int fork()
+          <ul>
+		<li> returns childPID in parent, 0 in child; only
+		difference
+           </ul>
+	<li>int getpid()
+	<li> int waitpid(int pid, int* stat, int opt)
+           <ul>
+		<li> pid==-1: any; opt==0||WNOHANG
+		<li> returns pid or error
+	   </ul>
+	<li> void _exit(int status)
+	<li> int kill(int pid, int signal)
+	<li> int sigaction(int sig, struct sigaction *, struct sigaction *)
+	<li> int sleep (int sec)
+	<li> int execve(char* prog, char** argv, char** envp)
+	<li> void *sbrk(int incr)
+	<li> int dup2(int oldfd, int newfd)
+	<li> int fcntl(int fd, F_SETFD, int val)
+	<li> int pipe(int fds[2])
+	  <ul>
+		<li> writes on fds[1] will be read on fds[0]
+		<li> when last fds[1] closed, read fds[0] retursn EOF
+		<li> when last fds[0] closed, write fds[1] kills SIGPIPE/fails
+		EPIPE
+           </ul>
+	<li> int fchown(int fd, uind_t owner, gid_t group)
+	<li> int fchmod(int fd, mode_t mode)
+	<li> int socket(int domain, int type, int protocol)
+	<li> int accept(int socket_fd, struct sockaddr*, int* namelen)
+	  <ul>
+		<li> returns new fd
+          </ul>
+	<li> int listen(int fd, int backlog)
+	<li> int connect(int fd, const struct sockaddr*, int namelen)
+	<li> void* mmap(void* addr, size_t len, int prot, int flags, int fd,
+	off_t offset)
+	<li> int munmap(void* addr, size_t len)
+	<li> int gettimeofday(struct timeval*)
+</ul>
+</ul>
+
+<p>See the <a href="../reference.html">reference page</a> for links to
+the early Unix papers.
+
+<h2>Class structure</h2>
+
+<ul>
+<li>Lab: minimal OS for x86 in an exokernel style (50%)
+<ul>
+<li>kernel interface: hardware + protection
+<li>libOS implements fork, exec, pipe, ...
+<li>applications: file system, shell, ..
+<li>development environment: gcc, bochs
+<li>lab 1 is out
+</ul>
+
+<li>Lecture structure (20%)
+<ul>
+<li>homework
+<li>45min lecture
+<li>45min case study
+</ul>
+
+<li>Two quizzes (30%)
+<ul>
+<li>mid-term
+<li>final's exam week
+</ul>
+
+</ul>
+
+<h2>Case study: the shell (simplified)</h2>
+
+<ul>
+<li>interactive command execution and a programming language
+<li>Nice example that uses various OS abstractions. See  <a
+href="../readings/ritchie74unix.pdf">Unix
+paper</a> if you are unfamiliar with the shell.
+<li>Final lab is a simple shell.
+<li>Basic structure:
+<pre>
+      
+       while (1) {
+	    printf ("$");
+	    readcommand (command, args);   // parse user input
+	    if ((pid = fork ()) == 0) {  // child?
+	       exec (command, args, 0);
+	    } else if (pid > 0) {   // parent?
+	       wait (0);   // wait for child to terminate
+	    } else {
+	       perror ("Failed to fork\n");
+            }
+        }
+</pre>
+<p>The split of creating a process with a new program in fork and exec
+is mostly a historical accident.  See the  <a
+href="../readings/ritchie79evolution.html">assigned paper</a> for today.
+<li>Example:
+<pre>
+        $ ls
+</pre>
+<li>why call "wait"?  to wait for the child to terminate and collect
+its exit status.  (if child finishes, child becomes a zombie until
+parent calls wait.)
+<li>I/O: file descriptors.  Child inherits open file descriptors
+from parent. By convention:
+<ul>
+<li>file descriptor 0 for input (e.g., keyboard). read_command: 
+<pre>
+     read (1, buf, bufsize)
+</pre>
+<li>file descriptor 1 for output (e.g., terminal)
+<pre>
+     write (1, "hello\n", strlen("hello\n")+1)
+</pre>
+<li>file descriptor 2 for error (e.g., terminal)
+</ul>
+<li>How does the shell implement:
+<pre>
+     $ls > tmp1
+</pre>
+just before exec insert:
+<pre>
+    	   close (1);
+	   fd = open ("tmp1", O_CREAT|O_WRONLY);   // fd will be 1!
+</pre>
+<p>The kernel will return the first free file descriptor, 1 in this case.
+<li>How does the shell implement sharing an output file:
+<pre>
+     $ls 2> tmp1 > tmp1
+</pre>
+replace last code with:
+<pre>
+
+	   close (1);
+	   close (2);
+	   fd1 = open ("tmp1", O_CREAT|O_WRONLY);   // fd will be 1!
+	   fd2 = dup (fd1);
+</pre>
+both file descriptors share offset
+<li>how do programs communicate?
+<pre>
+        $ sort file.txt | uniq | wc
+</pre>
+or
+<pre>
+	$ sort file.txt > tmp1
+	$ uniq tmp1 > tmp2
+	$ wc tmp2
+	$ rm tmp1 tmp2
+</pre>
+or 
+<pre>
+        $ kill -9
+</pre>
+<li>A pipe is an one-way communication channel.  Here is an example
+where the parent is the writer and the child is the reader:
+<pre>
+
+	int fdarray[2];
+	
+	if (pipe(fdarray) < 0) panic ("error");
+	if ((pid = fork()) < 0) panic ("error");
+	else if (pid > 0) {
+	  close(fdarray[0]);
+	  write(fdarray[1], "hello world\n", 12);
+        } else {
+	  close(fdarray[1]);
+	  n = read (fdarray[0], buf, MAXBUF);
+	  write (1, buf, n);
+        }
+</pre>
+<li>How does the shell implement pipelines (i.e., cmd 1 | cmd 2 |..)?
+We want to arrange that the output of cmd 1 is the input of cmd 2.
+The way to achieve this goal is to manipulate stdout and stdin.
+<li>The shell creates processes for each command in
+the pipeline, hooks up their stdin and stdout correctly.  To do it
+correct, and waits for the last process of the
+pipeline to exit.  A sketch of the core modifications to our shell for
+setting up a pipe is:
+<pre>	    
+	    int fdarray[2];
+
+  	    if (pipe(fdarray) < 0) panic ("error");
+	    if ((pid = fork ()) == 0) {  child (left end of pipe)
+	       close (1);
+	       tmp = dup (fdarray[1]);   // fdarray[1] is the write end, tmp will be 1
+	       close (fdarray[0]);       // close read end
+	       close (fdarray[1]);       // close fdarray[1]
+	       exec (command1, args1, 0);
+	    } else if (pid > 0) {        // parent (right end of pipe)
+	       close (0);
+	       tmp = dup (fdarray[0]);   // fdarray[0] is the read end, tmp will be 0
+	       close (fdarray[0]);
+	       close (fdarray[1]);       // close write end
+	       exec (command2, args2, 0);
+	    } else {
+	       printf ("Unable to fork\n");
+            }
+</pre>
+<li>Why close read-end and write-end? multiple reasons: maintain that
+every process starts with 3 file descriptors and reading from an empty
+pipe blocks reader, while reading from a closed pipe returns end of
+file.
+<li>How do you  background jobs?
+<pre>
+        $ compute &
+</pre>
+<li>How does the shell implement "&", backgrounding?  (Don't call wait
+immediately).
+<li>More details in the shell lecture later in the term.
+
+</body>
+
+

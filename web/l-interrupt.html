@@ -1,0 +1,174 @@
+<html>
+<head><title>Lecture 6: Interrupts &amp; Exceptions</title></head>
+<body>
+
+<h1>Interrupts &amp; Exceptions</h1>
+
+<p>
+Required reading: xv6 <code>trapasm.S</code>, <code>trap.c</code>, <code>syscall.c</code>, <code>usys.S</code>.
+<br>
+You will need to consult
+<a href="../readings/ia32/IA32-3.pdf">IA32 System
+Programming Guide</a> chapter 5 (skip 5.7.1, 5.8.2, 5.12.2).
+
+<h2>Overview</h2>
+
+<p>
+Big picture: kernel is trusted third-party that runs the machine.
+Only the kernel can execute privileged instructions (e.g.,
+changing MMU state).
+The processor enforces this protection through the ring bits
+in the code segment.
+If a user application needs to carry out a privileged operation
+or other kernel-only service,
+it must ask the kernel nicely.
+How can a user program change to the kernel address space?
+How can the kernel transfer to a user address space?
+What happens when a device attached to the computer 
+needs attention?
+These are the topics for today's lecture.
+
+<p>
+There are three kinds of events that must be handled
+by the kernel, not user programs:
+(1) a system call invoked by a user program,
+(2) an illegal instruction or other kind of bad processor state (memory fault, etc.).
+and 
+(3) an interrupt from a hardware device.
+
+<p>
+Although these three events are different, they all use the same
+mechanism to transfer control to the kernel.
+This mechanism consists of three steps that execute as one atomic unit.
+(a) change the processor to kernel mode;
+(b) save the old processor somewhere (usually the kernel stack);
+and (c) change the processor state to the values set up as
+the &ldquo;official kernel entry values.&rdquo;
+The exact implementation of this mechanism differs
+from processor to processor, but the idea is the same.
+
+<p>
+We'll work through examples of these today in lecture.
+You'll see all three in great detail in the labs as well.
+
+<p>
+A note on terminology: sometimes we'll
+use interrupt (or trap) to mean both interrupts and exceptions.
+
+<h2>
+Setting up traps on the x86
+</h2>
+
+<p>
+See handout Table 5-1, Figure 5-1, Figure 5-2.
+
+<p>
+xv6 Sheet 07: <code>struct gatedesc</code> and <code>SETGATE</code>.
+
+<p>
+xv6 Sheet 28: <code>tvinit</code> and <code>idtinit</code>.
+Note setting of gate for <code>T_SYSCALL</code>
+
+<p>
+xv6 Sheet 29: <code>vectors.pl</code> (also see generated <code>vectors.S</code>).
+
+<h2>
+System calls
+</h2>
+
+<p>
+xv6 Sheet 16: <code>init.c</code> calls <code>open("console")</code>.
+How is that implemented?
+
+<p>
+xv6 <code>usys.S</code> (not in book).
+(No saving of registers.  Why?)
+
+<p>
+Breakpoint <code>0x1b:"open"</code>,
+step past <code>int</code> instruction into kernel.
+
+<p>
+See handout Figure 9-4 [sic].
+
+<p>
+xv6 Sheet 28: in <code>vectors.S</code> briefly, then in <code>alltraps</code>.
+Step through to <code>call trap</code>, examine registers and stack.
+How will the kernel find the argument to <code>open</code>?
+
+<p>
+xv6 Sheet 29: <code>trap</code>, on to <code>syscall</code>.
+
+<p>
+xv6 Sheet 31: <code>syscall</code> looks at <code>eax</code>,
+calls <code>sys_open</code>.
+
+<p>
+(Briefly)
+xv6 Sheet 52: <code>sys_open</code> uses <code>argstr</code> and <code>argint</code>
+to get its arguments.  How do they work?
+
+<p>
+xv6 Sheet 30: <code>fetchint</code>, <code>fetcharg</code>, <code>argint</code>,
+<code>argptr</code>, <code>argstr</code>.
+
+<p>
+What happens if a user program divides by zero
+or accesses unmapped memory?
+Exception.  Same path as system call until <code>trap</code>.
+
+<p>
+What happens if kernel divides by zero or accesses unmapped memory?
+
+<h2>
+Interrupts
+</h2>
+
+<p>
+Like system calls, except:
+devices generate them at any time,
+there are no arguments in CPU registers,
+nothing to return to,
+usually can't ignore them.
+
+<p>
+How do they get generated?
+Device essentially phones up the 
+interrupt controller and asks to talk to the CPU.
+Interrupt controller then buzzes the CPU and
+tells it, &ldquo;keyboard on line 1.&rdquo;
+Interrupt controller is essentially the CPU's
+<strike>secretary</strike> administrative assistant,
+managing the phone lines on the CPU's behalf.
+
+<p>
+Have to set up interrupt controller.
+
+<p>
+(Briefly) xv6 Sheet 63: <code>pic_init</code> sets up the interrupt controller,
+<code>irq_enable</code> tells the interrupt controller to let the given
+interrupt through. 
+
+<p>
+(Briefly) xv6 Sheet 68: <code>pit8253_init</code> sets up the clock chip,
+telling it to interrupt on <code>IRQ_TIMER</code> 100 times/second.
+<code>console_init</code> sets up the keyboard, enabling <code>IRQ_KBD</code>.
+
+<p>
+In Bochs, set breakpoint at 0x8:"vector0"
+and continue, loading kernel.
+Step through clock interrupt, look at 
+stack, registers.
+
+<p>
+Was the processor executing in kernel or user mode
+at the time of the clock interrupt?
+Why?  (Have any user-space instructions executed at all?)
+
+<p>
+Can the kernel get an interrupt at any time?
+Why or why not?  <code>cli</code> and <code>sti</code>,
+<code>irq_enable</code>.
+
+</body>
+</html>
