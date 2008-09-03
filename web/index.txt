@@ -36,11 +36,10 @@ Intel x86 machines.
 Xv6's use of the x86 makes it more relevant to
 students' experience than V6 was
 and unifies the course around a single architecture.
-Adding multiprocessor support also helps relevance
-and makes it easier to discuss threads and concurrency.
-(In a single processor operating system, concurrency--which only
-happens because of interrupts--is too easy to view as a special case.
-A multiprocessor operating system must attack the problem head on.)
+Adding multiprocessor support requires handling concurrency head on with
+locks and threads (instead of using special-case solutions for
+uniprocessors such as
+enabling/disabling interrupts) and helps relevance.
 Finally, writing a new system allowed us to write cleaner versions
 of the rougher parts of V6, like the scheduler and file system.
 
@@ -51,7 +50,8 @@ Since then, xv6 has stabilized, so we are making it
 available in the hopes that others will find it useful too.
 
 6.828 uses both xv6 and Jos.  
-Courses taught at UCLA, NYU, and Stanford have used
+Courses taught at UCLA, NYU, Peking University, Stanford, Tsinghua,
+and University Texas (Austin) have used
 Jos without xv6; we believe other courses could use
 xv6 without Jos, though we are not aware of any that have.
 
@@ -101,6 +101,7 @@ Jos labs, students implement a Unix-like interface
 and culminating in a Unix shell.
 
 [l1.html | lecture notes]
+[os-lab-1.pdf | OS abstractions slides]
 
 
 Lecture 2.  PC hardware and x86 programming
@@ -115,6 +116,7 @@ Reading: PC Assembly Language
 Homework: familiarize with Bochs
 
 [l2.html | lecture notes]
+[os-lab-2.pdf | x86 intro slides]
 [x86-intro.html | homework]
 
 
@@ -154,6 +156,7 @@ xv6: bootasm.S, bootother.S, bootmain.c, main.c, init.c, and setupsegs in proc.c
 Homework: Bochs stack introduction
 
 [l4.html | lecture notes]
+[os-lab-3.pdf | x86 virtual memory slides]
 [xv6-intro.html | homework]
  
 

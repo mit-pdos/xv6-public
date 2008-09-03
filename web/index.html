@@ -70,11 +70,10 @@ Intel x86 machines.
 Xv6's use of the x86 makes it more relevant to
 students' experience than V6 was
 and unifies the course around a single architecture.
-Adding multiprocessor support also helps relevance
-and makes it easier to discuss threads and concurrency.
-(In a single processor operating system, concurrency&ndash;which only
-happens because of interrupts&ndash;is too easy to view as a special case.
-A multiprocessor operating system must attack the problem head on.)
+Adding multiprocessor support requires handling concurrency head on with
+locks and threads (instead of using special-case solutions for
+uniprocessors such as
+enabling/disabling interrupts) and helps relevance.
 Finally, writing a new system allowed us to write cleaner versions
 of the rougher parts of V6, like the scheduler and file system.
 <br><br>
@@ -85,7 +84,8 @@ Since then, xv6 has stabilized, so we are making it
 available in the hopes that others will find it useful too.
 <br><br>
 6.828 uses both xv6 and Jos.
-Courses taught at UCLA, NYU, and Stanford have used
+Courses taught at UCLA, NYU, Peking University, Stanford, Tsinghua,
+and University Texas (Austin) have used
 Jos without xv6; we believe other courses could use
 xv6 without Jos, though we are not aware of any that have.
 
@@ -130,6 +130,7 @@ Jos labs, students implement a Unix-like interface
 and culminating in a Unix shell.
 <br><br>
 <a href="l1.html">lecture notes</a>
+<a href="os-lab-1.pdf">OS abstractions slides</a>
 
 <br><br><b><i>Lecture 2.  PC hardware and x86 programming</i></b>
 <br><br>
@@ -143,6 +144,7 @@ Reading: PC Assembly Language
 Homework: familiarize with Bochs
 <br><br>
 <a href="l2.html">lecture notes</a>
+<a href="os-lab-2.pdf">x86 intro slides</a>
 <a href="x86-intro.html">homework</a>
 
 <br><br><b><i>Lecture 3.  Operating system organization</i></b>
@@ -180,6 +182,7 @@ xv6: bootasm.S, bootother.S, <a href="src/bootmain.c.html">bootmain.c</a>, <a hr
 Homework: Bochs stack introduction
 <br><br>
 <a href="l4.html">lecture notes</a>
+<a href="os-lab-3.pdf">x86 virtual memory slides</a>
 <a href="xv6-intro.html">homework</a>
 
 <br><br><b><i>Lecture 5.  Address spaces using page tables</i></b>
