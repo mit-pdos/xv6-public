@@ -335,4 +335,5 @@ Robert Morris (rtm@mit.edu)
 
 You can reach all of us at 6.828-staff@pdos.csail.mit.edu.
 
-
+xv6 and lecture notes are copyright &copy; 2006-present by Russ Cox,
+Frans Kaashoek, and Robert Morris.
