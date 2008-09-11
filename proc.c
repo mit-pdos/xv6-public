@@ -325,7 +325,6 @@ wakeup1(void *chan)
 }
 
 // Wake up all processes sleeping on chan.
-// Proc_table_lock is acquired and released.
 void
 wakeup(void *chan)
 {
