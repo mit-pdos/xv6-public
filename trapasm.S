@@ -8,6 +8,8 @@ alltraps:
   # Build trap frame.
   pushl %ds
   pushl %es
+  pushl %fs
+  pushl %gs
   pushal
   
   # Set up data segments.
@@ -24,6 +26,8 @@ alltraps:
 .globl trapret
 trapret:
   popal
+  popl %gs
+  popl %fs
   popl %es
   popl %ds
   addl $0x8, %esp  # trapno and errcode

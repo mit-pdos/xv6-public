@@ -135,21 +135,25 @@ struct trapframe {
   uint eax;
 
   // rest of trap frame
-  ushort es;
+  ushort gs;
   ushort padding1;
-  ushort ds;
+  ushort fs;
   ushort padding2;
+  ushort es;
+  ushort padding3;
+  ushort ds;
+  ushort padding4;
   uint trapno;
 
   // below here defined by x86 hardware
   uint err;
   uint eip;
   ushort cs;
-  ushort padding3;
+  ushort padding5;
   uint eflags;
 
   // below here only when crossing rings, such as from user to kernel
   uint esp;
   ushort ss;
-  ushort padding4;
+  ushort padding6;
 };
