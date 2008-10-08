@@ -5,6 +5,7 @@
 // Block 1 is super block.
 // Inodes start at block 2.
 
+#define ROOTINO 1  // root i-number
 #define BSIZE 512  // block size
 
 // File system super block
