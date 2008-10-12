@@ -157,7 +157,7 @@ perl -n -e 'print if s/^([0-9]+ [a-zA-Z0-9_]+)\(.*$/\1/;' alltext |
 >s.defs
 
 # make reference list
-for i in `awk '{print $2}' defs | sort -fu`
+for i in `awk '{print $2}' defs | sort -f | uniq`
 do
 	defs=`egrep '^[0-9]+ '$i'( |$)' defs | awk '{print $1}'`
 	echo $i $defs >>s.defs
