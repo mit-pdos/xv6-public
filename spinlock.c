@@ -8,8 +8,6 @@
 #include "proc.h"
 #include "spinlock.h"
 
-extern int use_console_lock;
-
 void
 initlock(struct spinlock *lock, char *name)
 {
