@@ -290,7 +290,7 @@ panic(char *s)
   int i;
   uint pcs[10];
   
-  __asm __volatile("cli");
+  cli();
   use_console_lock = 0;
   cprintf("cpu%d: panic: ", cpu());
   cprintf(s);
