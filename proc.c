@@ -137,9 +137,9 @@ copyproc(struct proc *p)
   }
 
   // Set up new context to start executing at forkret (see below).
-  memset(&np->context, 0, sizeof(np->context));
-  np->context.eip = (uint)forkret;
-  np->context.esp = (uint)np->tf;
+  np->context = (struct context *)np->tf - 1;
+  memset(np->context, 0, sizeof(*np->context));
+  np->context->eip = (uint)forkret;
 
   // Clear %eax so that fork system call returns 0 in child.
   np->tf->eax = 0;
@@ -477,7 +477,7 @@ procdump(void)
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
     if(p->state == SLEEPING){
-      getcallerpcs((uint*)p->context.ebp+2, pc);
+      getcallerpcs((uint*)p->context->ebp+2, pc);
       for(j=0; j<10 && pc[j] != 0; j++)
         cprintf(" %p", pc[j]);
     }

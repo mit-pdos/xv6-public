@@ -7,21 +7,17 @@
 #define NSEGS     6
 
 // Saved registers for kernel context switches.
-// Don't need to save all the %fs etc. segment registers,
+// Don't need to save all the segment registers (%cs, etc),
 // because they are constant across kernel contexts.
-// Save all the regular registers so we don't need to care
-// which are caller save, but not the return register %eax.
-// (Not saving %eax just simplifies the switching code.)
+// Stack pointer is encoded in the address of context,
+// which must be placed at the bottom of the stack.
 // The layout of context must match code in swtch.S.
 struct context {
-  int eip;
-  int esp;
-  int ebx;
-  int ecx;
-  int edx;
-  int esi;
-  int edi;
-  int ebp;
+  uint edi;
+  uint esi;
+  uint ebx;
+  uint ebp;
+  uint eip;
 };
 
 enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
@@ -38,8 +34,8 @@ struct proc {
   int killed;               // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;        // Current directory
-  struct context context;   // Switch here to run process
-  struct trapframe *tf;     // Trap frame for current interrupt
+  struct context *context;  // Switch here to run process
+  struct trapframe *tf;     // Trap frame for current syscall
   char name[16];            // Process name (debugging)
 };
 
@@ -53,7 +49,7 @@ struct proc {
 struct cpu {
   uchar apicid;               // Local APIC ID
   struct proc *curproc;       // Process currently running.
-  struct context context;     // Switch here to enter scheduler
+  struct context *context;    // Switch here to enter scheduler
   struct taskstate ts;        // Used by x86 to find stack for interrupt
   struct segdesc gdt[NSEGS];  // x86 global descriptor table
   volatile uint booted;        // Has the CPU started?
