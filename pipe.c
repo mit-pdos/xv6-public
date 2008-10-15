@@ -69,10 +69,11 @@ pipeclose(struct pipe *p, int writable)
     p->readopen = 0;
     wakeup(&p->writep);
   }
-  release(&p->lock);
-
-  if(p->readopen == 0 && p->writeopen == 0)
+  if(p->readopen == 0 && p->writeopen == 0) {
+    release(&p->lock);
     kfree((char*)p, PAGE);
+  } else
+    release(&p->lock);
 }
 
 //PAGEBREAK: 30
