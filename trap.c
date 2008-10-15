@@ -91,4 +91,8 @@ trap(struct trapframe *tf)
   // If interrupts were on while locks held, would need to check nlock.
   if(cp && cp->state == RUNNING && tf->trapno == IRQ_OFFSET+IRQ_TIMER)
     yield();
+
+  // Check if the process has been killed since we yielded
+  if(cp && cp->killed && (tf->cs&3) == DPL_USER)
+    exit();
 }
