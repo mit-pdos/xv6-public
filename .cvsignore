@@ -1,5 +1,7 @@
 *.asm
 *.d
+*.sym
+_*
 kernel
 user1
 userfs
