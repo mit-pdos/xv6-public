@@ -207,7 +207,7 @@ scheduler(void)
 
   c = &cpus[cpu()];
   for(;;){
-    // Enable interrupts on this processor.
+    // Enable interrupts on this processor, in lieu of saving intena.
     sti();
 
     // Loop over process table looking for process to run.
@@ -240,6 +240,8 @@ scheduler(void)
 void
 sched(void)
 {
+  int intena;
+
   if(read_eflags()&FL_IF)
     panic("sched interruptible");
   if(cp->state == RUNNING)
@@ -249,7 +251,9 @@ sched(void)
   if(cpus[cpu()].ncli != 1)
     panic("sched locks");
 
+  intena = cpus[cpu()].intena;
   swtch(&cp->context, &cpus[cpu()].context);
+  cpus[cpu()].intena = intena;
 }
 
 // Give up the CPU for one scheduling round.
