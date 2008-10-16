@@ -237,13 +237,6 @@ create(char *path, int canexist, short type, short major, short minor)
   ip->minor = minor;
   ip->nlink = 1;
   iupdate(ip);
-  
-  if(dirlink(dp, name, ip->inum) < 0){
-    ip->nlink = 0;
-    iunlockput(ip);
-    iunlockput(dp);
-    return 0;
-  }
 
   if(type == T_DIR){  // Create . and .. entries.
     dp->nlink++;  // for ".."
@@ -252,6 +245,17 @@ create(char *path, int canexist, short type, short major, short minor)
     if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
       panic("create dots");
   }
+
+  if(dirlink(dp, name, ip->inum) < 0){
+    dp->nlink--;
+    iupdate(dp);
+    iunlockput(dp);
+
+    ip->nlink = 0;
+    iunlockput(ip);
+    return 0;
+  }
+
   iunlockput(dp);
   return ip;
 }
