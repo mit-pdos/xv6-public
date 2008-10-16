@@ -381,6 +381,7 @@ itrunc(struct inode *ip)
         bfree(ip->dev, a[j]);
     }
     brelse(bp);
+    bfree(ip->dev, ip->addrs[INDIRECT]);
     ip->addrs[INDIRECT] = 0;
   }
 
