@@ -4,7 +4,7 @@
 #include "kbd.h"
 
 int
-kbd_getc(void)
+kbdgetc(void)
 {
   static uint shift;
   static uchar *charcode[4] = {
@@ -44,7 +44,7 @@ kbd_getc(void)
 }
 
 void
-kbd_intr(void)
+kbdintr(void)
 {
-  console_intr(kbd_getc);
+  consoleintr(kbdgetc);
 }

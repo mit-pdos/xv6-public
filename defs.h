@@ -14,9 +14,9 @@ void            brelse(struct buf*);
 void            bwrite(struct buf*);
 
 // console.c
-void            console_init(void);
+void            consoleinit(void);
 void            cprintf(char*, ...);
-void            console_intr(int(*)(void));
+void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 
 // exec.c
@@ -50,14 +50,14 @@ void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
 
 // ide.c
-void            ide_init(void);
-void            ide_intr(void);
-void            ide_rw(struct buf *);
+void            ideinit(void);
+void            ideintr(void);
+void            iderw(struct buf *);
 
 // ioapic.c
-void            ioapic_enable(int irq, int cpu);
-extern uchar    ioapic_id;
-void            ioapic_init(void);
+void            ioapicenable(int irq, int cpu);
+extern uchar    ioapicid;
+void            ioapicinit(void);
 
 // kalloc.c
 char*           kalloc(int);
@@ -65,24 +65,24 @@ void            kfree(char*, int);
 void            kinit(void);
 
 // kbd.c
-void            kbd_intr(void);
+void            kbdintr(void);
 
 // lapic.c
 int             cpu(void);
 extern volatile uint*    lapic;
-void            lapic_eoi(void);
-void            lapic_init(int);
-void            lapic_startap(uchar, uint);
+void            lapiceoi(void);
+void            lapicinit(int);
+void            lapicstartap(uchar, uint);
 
 // mp.c
 extern int      ismp;
-int             mp_bcpu(void);
-void            mp_init(void);
-void            mp_startthem(void);
+int             mpbcpu(void);
+void            mpinit(void);
+void            mpstartthem(void);
 
 // picirq.c
-void            pic_enable(int);
-void            pic_init(void);
+void            picenable(int);
+void            picinit(void);
 
 // pipe.c
 int             pipealloc(struct file**, struct file**);
@@ -136,7 +136,7 @@ int             fetchstr(struct proc*, uint, char**);
 void            syscall(void);
 
 // timer.c
-void            timer_init(void);
+void            timerinit(void);
 
 // trap.c
 void            idtinit(void);

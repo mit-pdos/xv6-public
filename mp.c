@@ -14,10 +14,10 @@ struct cpu cpus[NCPU];
 static struct cpu *bcpu;
 int ismp;
 int ncpu;
-uchar ioapic_id;
+uchar ioapicid;
 
 int
-mp_bcpu(void)
+mpbcpu(void)
 {
   return bcpu-cpus;
 }
@@ -35,7 +35,7 @@ sum(uchar *addr, int len)
 
 // Look for an MP structure in the len bytes at addr.
 static struct mp*
-mp_search1(uchar *addr, int len)
+mpsearch1(uchar *addr, int len)
 {
   uchar *e, *p;
 
@@ -52,7 +52,7 @@ mp_search1(uchar *addr, int len)
 // 2) in the last KB of system base memory;
 // 3) in the BIOS ROM between 0xE0000 and 0xFFFFF.
 static struct mp*
-mp_search(void)
+mpsearch(void)
 {
   uchar *bda;
   uint p;
@@ -60,14 +60,14 @@ mp_search(void)
 
   bda = (uchar*)0x400;
   if((p = ((bda[0x0F]<<8)|bda[0x0E]) << 4)){
-    if((mp = mp_search1((uchar*)p, 1024)))
+    if((mp = mpsearch1((uchar*)p, 1024)))
       return mp;
   } else {
     p = ((bda[0x14]<<8)|bda[0x13])*1024;
-    if((mp = mp_search1((uchar*)p-1024, 1024)))
+    if((mp = mpsearch1((uchar*)p-1024, 1024)))
       return mp;
   }
-  return mp_search1((uchar*)0xF0000, 0x10000);
+  return mpsearch1((uchar*)0xF0000, 0x10000);
 }
 
 // Search for an MP configuration table.  For now,
@@ -76,12 +76,12 @@ mp_search(void)
 // if correct, check the version.
 // To do: check extended table checksum.
 static struct mpconf*
-mp_config(struct mp **pmp)
+mpconfig(struct mp **pmp)
 {
   struct mpconf *conf;
   struct mp *mp;
 
-  if((mp = mp_search()) == 0 || mp->physaddr == 0)
+  if((mp = mpsearch()) == 0 || mp->physaddr == 0)
     return 0;
   conf = (struct mpconf*)mp->physaddr;
   if(memcmp(conf, "PCMP", 4) != 0)
@@ -95,7 +95,7 @@ mp_config(struct mp **pmp)
 }
 
 void
-mp_init(void)
+mpinit(void)
 {
   uchar *p, *e;
   struct mp *mp;
@@ -104,7 +104,7 @@ mp_init(void)
   struct mpioapic *ioapic;
 
   bcpu = &cpus[ncpu];
-  if((conf = mp_config(&mp)) == 0)
+  if((conf = mpconfig(&mp)) == 0)
     return;
 
   ismp = 1;
@@ -122,7 +122,7 @@ mp_init(void)
       continue;
     case MPIOAPIC:
       ioapic = (struct mpioapic*)p;
-      ioapic_id = ioapic->apicno;
+      ioapicid = ioapic->apicno;
       p += sizeof(struct mpioapic);
       continue;
     case MPBUS:
@@ -131,8 +131,8 @@ mp_init(void)
       p += 8;
       continue;
     default:
-      cprintf("mp_init: unknown config type %x\n", *p);
-      panic("mp_init");
+      cprintf("mpinit: unknown config type %x\n", *p);
+      panic("mpinit");
     }
   }
 

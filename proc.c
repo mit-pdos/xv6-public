@@ -242,7 +242,7 @@ sched(void)
 {
   int intena;
 
-  if(read_eflags()&FL_IF)
+  if(readeflags()&FL_IF)
     panic("sched interruptible");
   if(cp->state == RUNNING)
     panic("sched running");

@@ -15,7 +15,7 @@
 static ushort irqmask = 0xFFFF & ~(1<<IRQ_SLAVE);
 
 static void
-pic_setmask(ushort mask)
+picsetmask(ushort mask)
 {
   irqmask = mask;
   outb(IO_PIC1+1, mask);
@@ -23,14 +23,14 @@ pic_setmask(ushort mask)
 }
 
 void
-pic_enable(int irq)
+picenable(int irq)
 {
-  pic_setmask(irqmask & ~(1<<irq));
+  picsetmask(irqmask & ~(1<<irq));
 }
 
 // Initialize the 8259A interrupt controllers.
 void
-pic_init(void)
+picinit(void)
 {
   // mask all interrupts
   outb(IO_PIC1+1, 0xFF);
@@ -80,5 +80,5 @@ pic_init(void)
   outb(IO_PIC2, 0x0a);             // OCW3
 
   if(irqmask != 0xFFFF)
-    pic_setmask(irqmask);
+    picsetmask(irqmask);
 }

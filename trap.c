@@ -52,20 +52,20 @@ trap(struct trapframe *tf)
       wakeup(&ticks);
       release(&tickslock);
     }
-    lapic_eoi();
+    lapiceoi();
     break;
   case IRQ_OFFSET + IRQ_IDE:
-    ide_intr();
-    lapic_eoi();
+    ideintr();
+    lapiceoi();
     break;
   case IRQ_OFFSET + IRQ_KBD:
-    kbd_intr();
-    lapic_eoi();
+    kbdintr();
+    lapiceoi();
     break;
   case IRQ_OFFSET + IRQ_SPURIOUS:
     cprintf("cpu%d: spurious interrupt at %x:%x\n",
             cpu(), tf->cs, tf->eip);
-    lapic_eoi();
+    lapiceoi();
     break;
     
   default:
