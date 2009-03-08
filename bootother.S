@@ -61,7 +61,17 @@ protcseg:
 
   movl    start-4, %esp
   movl    start-8, %eax
-  jmp     *%eax
+  call    *%eax
+
+  # If bootmain returns (it shouldn't), trigger a Bochs
+  # breakpoint if running under Bochs, then loop.
+  movw    $0x8a00, %ax            # 0x8a00 -> port 0x8a00
+  movw    %ax, %dx
+  outw    %ax, %dx
+  movw    $0x8e00, %ax            # 0x8e00 -> port 0x8a00
+  outw    %ax, %dx
+spin:
+  jmp     spin
 
 # Bootstrap GDT
 .p2align 2                                # force 4 byte alignment

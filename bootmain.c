@@ -11,7 +11,7 @@
 
 #define SECTSIZE  512
 
-void readseg(uint, uint, uint);
+void readseg(uchar*, uint, uint);
 
 void
 bootmain(void)
@@ -19,32 +19,31 @@ bootmain(void)
   struct elfhdr *elf;
   struct proghdr *ph, *eph;
   void (*entry)(void);
+  uchar* va;
 
   elf = (struct elfhdr*)0x10000;  // scratch space
 
   // Read 1st page off disk
-  readseg((uint)elf, SECTSIZE*8, 0);
+  readseg((uchar*)elf, 4096, 0);
 
   // Is this an ELF executable?
   if(elf->magic != ELF_MAGIC)
-    goto bad;
+    return;  // let bootasm.S handle error
 
   // Load each program segment (ignores ph flags).
   ph = (struct proghdr*)((uchar*)elf + elf->phoff);
   eph = ph + elf->phnum;
-  for(; ph < eph; ph++)
-    readseg(ph->va & 0xFFFFFF, ph->memsz, ph->offset);
+  for(; ph < eph; ph++) {
+    va = (uchar*)(ph->va & 0xFFFFFF);
+    readseg(va, ph->filesz, ph->offset);
+    if(ph->memsz > ph->filesz)
+      stosb(va + ph->filesz, 0, ph->memsz - ph->filesz);
+  }
 
   // Call the entry point from the ELF header.
   // Does not return!
   entry = (void(*)(void))(elf->entry & 0xFFFFFF);
   entry();
-
-bad:
-  outw(0x8A00, 0x8A00);
-  outw(0x8A00, 0x8E00);
-  for(;;)
-    ;
 }
 
 void
@@ -76,14 +75,14 @@ readsect(void *dst, uint offset)
 // Read 'count' bytes at 'offset' from kernel into virtual address 'va'.
 // Might copy more than asked.
 void
-readseg(uint va, uint count, uint offset)
+readseg(uchar* va, uint count, uint offset)
 {
-  uint eva;
+  uchar* eva;
 
   eva = va + count;
 
   // Round down to sector boundary.
-  va &= ~(SECTSIZE - 1);
+  va -= offset % SECTSIZE;
 
   // Translate from bytes to sectors; kernel starts at sector 1.
   offset = (offset / SECTSIZE) + 1;
@@ -92,5 +91,5 @@ readseg(uint va, uint count, uint offset)
   // We'd write more to memory than asked, but it doesn't matter --
   // we load in increasing order.
   for(; va < eva; va += SECTSIZE, offset++)
-    readsect((uchar*)va, offset);
+    readsect(va, offset);
 }
