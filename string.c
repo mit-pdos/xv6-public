@@ -1,14 +1,10 @@
 #include "types.h"
+#include "x86.h"
 
 void*
 memset(void *dst, int c, uint n)
 {
-  char *d;
-
-  d = (char*)dst;
-  while(n-- > 0)
-    *d++ = c;
-
+  stosb(dst, c, n);
   return dst;
 }
 
