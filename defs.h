@@ -94,6 +94,7 @@ int             pipewrite(struct pipe*, char*, int);
 // proc.c
 struct proc*    copyproc(struct proc*);
 void            exit(void);
+int             fork(void);
 int             growproc(int);
 int             kill(int);
 void            pinit(void);
@@ -146,9 +147,9 @@ void            tvinit(void);
 extern struct spinlock tickslock;
 
 // uart.c
-void		uartinit(void);
-void		uartintr(void);
-void		uartputc(int);
+void            uartinit(void);
+void            uartintr(void);
+void            uartputc(int);
 
 
 // number of elements in fixed-size array

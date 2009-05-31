@@ -130,34 +130,40 @@ usegment(void)
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
-struct proc*
-copyproc(struct proc *p)
+int
+fork(void)
 {
-  int i;
+  int i, pid;
   struct proc *np;
 
   // Allocate process.
   if((np = allocproc()) == 0)
-    return 0;
+    return -1;
 
   // Copy process state from p.
-  np->sz = p->sz;
+  np->sz = cp->sz;
   if((np->mem = kalloc(np->sz)) == 0){
     kfree(np->kstack, KSTACKSIZE);
     np->kstack = 0;
     np->state = UNUSED;
-    return 0;
+    return -1;
   }
-  memmove(np->mem, p->mem, np->sz);
-  np->parent = p;
-  *np->tf = *p->tf;
+  memmove(np->mem, cp->mem, np->sz);
+  np->parent = cp;
+  *np->tf = *cp->tf;
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->eax = 0;
 
   for(i = 0; i < NOFILE; i++)
-    if(p->ofile[i])
-      np->ofile[i] = filedup(p->ofile[i]);
-  np->cwd = idup(p->cwd);
+    if(cp->ofile[i])
+      np->ofile[i] = filedup(cp->ofile[i]);
+  np->cwd = idup(cp->cwd);
+ 
+  pid = np->pid;
+  np->state = RUNNABLE;
 
-  return np;
+  return pid;
 }
 
 // Set up first user process.

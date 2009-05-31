@@ -8,17 +8,7 @@
 int
 sys_fork(void)
 {
-  int pid;
-  struct proc *np;
-
-  if((np = copyproc(cp)) == 0)
-    return -1;
-  pid = np->pid;
-
-  // Clear %eax so that fork returns 0 in the child.
-  np->tf->eax = 0;
-  np->state = RUNNABLE;
-  return pid;
+  return fork();
 }
 
 int
