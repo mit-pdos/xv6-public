@@ -66,8 +66,8 @@ timer.c
 
 # user-level
 initcode.S
-init.c
 usys.S
+init.c
 sh.c
 
 
