@@ -227,7 +227,7 @@ iunlock(struct inode *ip)
     panic("iunlock");
 
   acquire(&icache.lock);
-  ip->flags &= ~I_BUSY;
+  ip->flags = 0;
   wakeup(ip);
   release(&icache.lock);
 }
