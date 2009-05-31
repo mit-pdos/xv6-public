@@ -138,7 +138,7 @@ struct {
 void
 iinit(void)
 {
-  initlock(&icache.lock, "icache.lock");
+  initlock(&icache.lock, "icache");
 }
 
 // Find the inode with number inum on device dev

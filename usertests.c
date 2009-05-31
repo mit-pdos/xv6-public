@@ -6,8 +6,7 @@
 
 char buf[2048];
 char name[3];
-char *echo_args[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
-char *cat_args[] = { "cat", "README", 0 };
+char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
 int stdout = 1;
 
 // simple file system tests
@@ -191,7 +190,7 @@ void
 exectest(void)
 {
   printf(stdout, "exec test\n");
-  if(exec("echo", echo_args) < 0) {
+  if(exec("echo", echoargv) < 0) {
     printf(stdout, "exec echo failed\n");
     exit();
   }

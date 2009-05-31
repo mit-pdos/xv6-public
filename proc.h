@@ -24,14 +24,14 @@ struct context {
   uint eip;
 };
 
-enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
   char *mem;                   // Start of process memory (kernel address)
   uint sz;                     // Size of process memory (bytes)
   char *kstack;                // Bottom of kernel stack for this process
-  enum proc_state state;       // Process state
+  enum procstate state;       // Process state
   volatile int pid;            // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall

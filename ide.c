@@ -30,13 +30,13 @@ static void idestart(struct buf*);
 
 // Wait for IDE disk to become ready.
 static int
-idewait(int check_error)
+idewait(int checkerr)
 {
   int r;
 
   while(((r = inb(0x1f7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY) 
     ;
-  if(check_error && (r & (IDE_DF|IDE_ERR)) != 0)
+  if(checkerr && (r & (IDE_DF|IDE_ERR)) != 0)
     return -1;
   return 0;
 }
