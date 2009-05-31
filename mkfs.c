@@ -6,6 +6,7 @@
 #include <assert.h>
 #include "types.h"
 #include "fs.h"
+#include "stat.h"
 
 int nblocks = 995;
 int ninodes = 200;
