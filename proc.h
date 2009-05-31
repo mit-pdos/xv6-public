@@ -32,7 +32,7 @@ struct proc {
   uint sz;                     // Size of process memory (bytes)
   char *kstack;                // Bottom of kernel stack for this process
   enum proc_state state;       // Process state
-  int pid;                     // Process ID
+  volatile int pid;            // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // Switch here to run process

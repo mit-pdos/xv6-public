@@ -156,7 +156,7 @@ lapicstartap(uchar apicid, uint addr)
   lapicw(ICRLO, INIT | LEVEL | ASSERT);
   microdelay(200);
   lapicw(ICRLO, INIT | LEVEL);
-  microdelay(100);	// should be 10ms, but too slow in Bochs!
+  microdelay(100);    // should be 10ms, but too slow in Bochs!
   
   // Send startup IPI (twice!) to enter bootstrap code.
   // Regular hardware is supposed to only accept a STARTUP
