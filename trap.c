@@ -62,6 +62,11 @@ trap(struct trapframe *tf)
     kbdintr();
     lapiceoi();
     break;
+  case IRQ_OFFSET + IRQ_COM1:
+    uartintr();
+    lapiceoi();
+    break;
+  case IRQ_OFFSET + 7:
   case IRQ_OFFSET + IRQ_SPURIOUS:
     cprintf("cpu%d: spurious interrupt at %x:%x\n",
             cpu(), tf->cs, tf->eip);

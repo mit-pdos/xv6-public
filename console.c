@@ -1,6 +1,6 @@
 // Console input and output.
-// Input is from the keyboard only.
-// Output is written to the screen and the printer port.
+// Input is from the keyboard or serial port.
+// Output is written to the screen and serial port.
 
 #include "types.h"
 #include "defs.h"
@@ -13,31 +13,13 @@
 #include "x86.h"
 
 #define CRTPORT 0x3d4
-#define LPTPORT 0x378
 #define BACKSPACE 0x100
 
 static ushort *crt = (ushort*)0xb8000;  // CGA memory
 
 static struct spinlock console_lock;
 int panicked = 0;
-int use_console_lock = 0;
-
-// Copy console output to parallel port, which you can tell
-// .bochsrc to copy to the stdout:
-//   parport1: enabled=1, file="/dev/stdout"
-static void
-lptputc(int c)
-{
-  int i;
-
-  for(i = 0; !(inb(LPTPORT+1) & 0x80) && i < 12800; i++)
-    ;
-  if(c == BACKSPACE)
-    c = '\b';
-  outb(LPTPORT+0, c);
-  outb(LPTPORT+2, 0x08|0x04|0x01);
-  outb(LPTPORT+2, 0x08);
-}
+volatile int use_console_lock = 0;
 
 static void
 cgaputc(int c)
@@ -80,14 +62,14 @@ consputc(int c)
       ;
   }
 
-  lptputc(c);
+  uartputc(c);
   cgaputc(c);
 }
 
 void
 printint(int xx, int base, int sgn)
 {
-  static char digits[] = "0123456789ABCDEF";
+  static char digits[] = "0123456789abcdef";
   char buf[16];
   int i = 0, neg = 0;
   uint x;
