@@ -127,17 +127,17 @@ sys_link(void)
   iunlock(ip);
 
   if((dp = nameiparent(new, name)) == 0)
-    goto  bad;
-  ilock(dp);
-  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0)
     goto bad;
+  ilock(dp);
+  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
+    iunlockput(dp);
+    goto bad;
+  }
   iunlockput(dp);
   iput(ip);
   return 0;
 
 bad:
-  if(dp)
-    iunlockput(dp);
   ilock(ip);
   ip->nlink--;
   iupdate(ip);
@@ -212,7 +212,7 @@ sys_unlink(void)
 }
 
 static struct inode*
-create(char *path, int canexist, short type, short major, short minor)
+create(char *path, short type, short major, short minor)
 {
   uint off;
   struct inode *ip, *dp;
@@ -222,10 +222,10 @@ create(char *path, int canexist, short type, short major, short minor)
     return 0;
   ilock(dp);
 
-  if(canexist && (ip = dirlookup(dp, name, &off)) != 0){
+  if((ip = dirlookup(dp, name, &off)) != 0){
     iunlockput(dp);
     ilock(ip);
-    if(ip->type != type || ip->major != major || ip->minor != minor){
+    if(ip->type != type || type != T_FILE){
       iunlockput(ip);
       return 0;
     }
@@ -250,17 +250,8 @@ create(char *path, int canexist, short type, short major, short minor)
       panic("create dots");
   }
 
-  if(dirlink(dp, name, ip->inum) < 0){
-    if(type == T_DIR){
-      dp->nlink--;
-      iupdate(dp);
-    }
-    iunlockput(dp);
-
-    ip->nlink = 0;
-    iunlockput(ip);
-    return 0;
-  }
+  if(dirlink(dp, name, ip->inum) < 0)
+    panic("create: dirlink");
 
   iunlockput(dp);
   return ip;
@@ -278,13 +269,13 @@ sys_open(void)
     return -1;
 
   if(omode & O_CREATE){
-    if((ip = create(path, 1, T_FILE, 0, 0)) == 0)
+    if((ip = create(path, T_FILE, 0, 0)) == 0)
       return -1;
   } else {
     if((ip = namei(path)) == 0)
       return -1;
     ilock(ip);
-    if(ip->type == T_DIR && (omode & (O_RDWR|O_WRONLY))){
+    if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       return -1;
     }
@@ -318,7 +309,7 @@ sys_mknod(void)
   if((len=argstr(0, &path)) < 0 ||
      argint(1, &major) < 0 ||
      argint(2, &minor) < 0 ||
-     (ip = create(path, 0, T_DEV, major, minor)) == 0)
+     (ip = create(path, T_DEV, major, minor)) == 0)
     return -1;
   iunlockput(ip);
   return 0;
@@ -330,7 +321,7 @@ sys_mkdir(void)
   char *path;
   struct inode *ip;
 
-  if(argstr(0, &path) < 0 || (ip = create(path, 0, T_DIR, 0, 0)) == 0)
+  if(argstr(0, &path) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0)
     return -1;
   iunlockput(ip);
   return 0;
