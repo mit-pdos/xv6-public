@@ -13,10 +13,7 @@ alltraps:
   pushal
   
   # Set up data and per-cpu segments.
-  # Can find out KDATA from %ss.
-  # Assume that KCPU is KDATA+1.
   movw $(SEG_KDATA<<3), %ax
-  movw %ss, %ax
   movw %ax, %ds
   movw %ax, %es
   movw $(SEG_KCPU<<3), %ax

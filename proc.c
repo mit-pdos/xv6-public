@@ -93,9 +93,9 @@ ksegment(void)
   c1->gdt[SEG_UDATA] = SEG_NULL;
   c1->gdt[SEG_TSS] = SEG_NULL;
   lgdt(c1->gdt, sizeof(c1->gdt));
+  loadfsgs(SEG_KCPU << 3);
   
   // Initialize cpu-local variables.
-  setgs(SEG_KCPU << 3);
   c = c1;
   cp = 0;
 }

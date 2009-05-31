@@ -7,7 +7,6 @@
 
 #define SEG_KCODE 1  // kernel code
 #define SEG_KDATA 2  // kernel data+stack
-#define SEG_KCPU  3  // kernel per-cpu data
 
 #define CR0_PE    1  // protected mode enable bit
 
@@ -63,7 +62,7 @@ start32:
   movw    %ax, %ds                # -> DS: Data Segment
   movw    %ax, %es                # -> ES: Extra Segment
   movw    %ax, %ss                # -> SS: Stack Segment
-  movw    $(SEG_KCPU<<3), %ax     # Our per-cpu segment selector
+  movw    $0, %ax                 # Zero segments not ready for use
   movw    %ax, %fs                # -> FS
   movw    %ax, %gs                # -> GS
 
