@@ -36,16 +36,31 @@ allocproc(void)
     if(p->state == UNUSED){
       p->state = EMBRYO;
       p->pid = nextpid++;
-      release(&proc_table_lock);
-      return p;
+      goto found;
     }
   }
   release(&proc_table_lock);
   return 0;
+
+found:
+  release(&proc_table_lock);
+
+  // Allocate kernel stack if necessary.
+  if((p->kstack = kalloc(KSTACKSIZE)) == 0){
+    p->state = UNUSED;
+    return 0;
+  }
+  p->tf = (struct trapframe*)(p->kstack + KSTACKSIZE) - 1;
+
+  // Set up new context to start executing at forkret (see below).
+  p->context = (struct context *)p->tf - 1;
+  memset(p->context, 0, sizeof(*p->context));
+  p->context->eip = (uint)forkret;
+  return p;
 }
 
 // Grow current process's memory by n bytes.
-// Return old size on success, -1 on failure.
+// Return 0 on success, -1 on failure.
 int
 growproc(int n)
 {
@@ -59,37 +74,53 @@ growproc(int n)
   kfree(cp->mem, cp->sz);
   cp->mem = newmem;
   cp->sz += n;
-  setupsegs(cp);
-  return cp->sz - n;
+  usegment();
+  return 0;
 }
 
-// Set up CPU's segment descriptors and task state for a given process.
-// If p==0, set up for "idle" state for when scheduler() is running.
+// Set up CPU's kernel segment descriptors.
 void
-setupsegs(struct proc *p)
+ksegment(void)
 {
-  struct cpu *c;
+  struct cpu *c1;
+
+  c1 = &cpus[cpu()];
+  c1->gdt[0] = SEG_NULL;
+  c1->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
+  c1->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
+  c1->gdt[SEG_KCPU] = SEG(STA_W, (uint)&c1->tls+sizeof(c1->tls), 0xffffffff, 0);
+  c1->gdt[SEG_UCODE] = SEG_NULL;
+  c1->gdt[SEG_UDATA] = SEG_NULL;
+  c1->gdt[SEG_TSS] = SEG_NULL;
+  lgdt(c1->gdt, sizeof(c1->gdt));
   
+  // Initialize cpu-local variables.
+  setgs(SEG_KCPU << 3);
+  c = c1;
+  cp = 0;
+}
+
+// Set up CPU's segment descriptors and task state for the current process.
+// If cp==0, set up for "idle" state for when scheduler() is running.
+void
+usegment(void)
+{
   pushcli();
-  c = &cpus[cpu()];
   c->ts.ss0 = SEG_KDATA << 3;
-  if(p)
-    c->ts.esp0 = (uint)(p->kstack + KSTACKSIZE);
+  if(cp)
+    c->ts.esp0 = (uint)(cp->kstack + KSTACKSIZE);
   else
     c->ts.esp0 = 0xffffffff;
 
-  c->gdt[0] = SEG_NULL;
-  c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
-  c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint)&c->ts, sizeof(c->ts)-1, 0);
-  c->gdt[SEG_TSS].s = 0;
-  if(p){
-    c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)p->mem, p->sz-1, DPL_USER);
-    c->gdt[SEG_UDATA] = SEG(STA_W, (uint)p->mem, p->sz-1, DPL_USER);
+  if(cp){
+    c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)cp->mem, cp->sz-1, DPL_USER);
+    c->gdt[SEG_UDATA] = SEG(STA_W, (uint)cp->mem, cp->sz-1, DPL_USER);
   } else {
     c->gdt[SEG_UCODE] = SEG_NULL;
     c->gdt[SEG_UDATA] = SEG_NULL;
   }
+  c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint)&c->ts, sizeof(c->ts)-1, 0);
+  c->gdt[SEG_TSS].s = 0;
 
   lgdt(c->gdt, sizeof(c->gdt));
   ltr(SEG_TSS << 3);
@@ -109,40 +140,23 @@ copyproc(struct proc *p)
   if((np = allocproc()) == 0)
     return 0;
 
-  // Allocate kernel stack.
-  if((np->kstack = kalloc(KSTACKSIZE)) == 0){
+  // Copy process state from p.
+  np->sz = p->sz;
+  if((np->mem = kalloc(np->sz)) == 0){
+    kfree(np->kstack, KSTACKSIZE);
+    np->kstack = 0;
     np->state = UNUSED;
     return 0;
   }
-  np->tf = (struct trapframe*)(np->kstack + KSTACKSIZE) - 1;
+  memmove(np->mem, p->mem, np->sz);
+  np->parent = p;
+  *np->tf = *p->tf;
 
-  if(p){  // Copy process state from p.
-    np->parent = p;
-    memmove(np->tf, p->tf, sizeof(*np->tf));
-  
-    np->sz = p->sz;
-    if((np->mem = kalloc(np->sz)) == 0){
-      kfree(np->kstack, KSTACKSIZE);
-      np->kstack = 0;
-      np->state = UNUSED;
-      np->parent = 0;
-      return 0;
-    }
-    memmove(np->mem, p->mem, np->sz);
+  for(i = 0; i < NOFILE; i++)
+    if(p->ofile[i])
+      np->ofile[i] = filedup(p->ofile[i]);
+  np->cwd = idup(p->cwd);
 
-    for(i = 0; i < NOFILE; i++)
-      if(p->ofile[i])
-        np->ofile[i] = filedup(p->ofile[i]);
-    np->cwd = idup(p->cwd);
-  }
-
-  // Set up new context to start executing at forkret (see below).
-  np->context = (struct context *)np->tf - 1;
-  memset(np->context, 0, sizeof(*np->context));
-  np->context->eip = (uint)forkret;
-
-  // Clear %eax so that fork system call returns 0 in child.
-  np->tf->eax = 0;
   return np;
 }
 
@@ -153,10 +167,14 @@ userinit(void)
   struct proc *p;
   extern uchar _binary_initcode_start[], _binary_initcode_size[];
   
-  p = copyproc(0);
+  p = allocproc();
+  initproc = p;
+
+  // Initialize memory from initcode.S
   p->sz = PAGE;
   p->mem = kalloc(p->sz);
-  p->cwd = namei("/");
+  memmove(p->mem, _binary_initcode_start, (int)_binary_initcode_size);
+
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -164,30 +182,12 @@ userinit(void)
   p->tf->ss = p->tf->ds;
   p->tf->eflags = FL_IF;
   p->tf->esp = p->sz;
-  
-  // Make return address readable; needed for some gcc.
-  p->tf->esp -= 4;
-  *(uint*)(p->mem + p->tf->esp) = 0xefefefef;
+  p->tf->eip = 0;  // beginning of initcode.S
 
-  // On entry to user space, start executing at beginning of initcode.S.
-  p->tf->eip = 0;
-  memmove(p->mem, _binary_initcode_start, (int)_binary_initcode_size);
   safestrcpy(p->name, "initcode", sizeof(p->name));
+  p->cwd = namei("/");
+
   p->state = RUNNABLE;
-  
-  initproc = p;
-}
-
-// Return currently running process.
-struct proc*
-curproc(void)
-{
-  struct proc *p;
-
-  pushcli();
-  p = cpus[cpu()].curproc;
-  popcli();
-  return p;
 }
 
 //PAGEBREAK: 42
@@ -202,10 +202,8 @@ void
 scheduler(void)
 {
   struct proc *p;
-  struct cpu *c;
   int i;
 
-  c = &cpus[cpu()];
   for(;;){
     // Enable interrupts on this processor, in lieu of saving intena.
     sti();
@@ -220,15 +218,15 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release proc_table_lock and then reacquire it
       // before jumping back to us.
-      c->curproc = p;
-      setupsegs(p);
+      cp = p;
+      usegment();
       p->state = RUNNING;
       swtch(&c->context, &p->context);
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
-      c->curproc = 0;
-      setupsegs(0);
+      cp = 0;
+      usegment();
     }
     release(&proc_table_lock);
 
@@ -236,7 +234,7 @@ scheduler(void)
 }
 
 // Enter scheduler.  Must already hold proc_table_lock
-// and have changed curproc[cpu()]->state.
+// and have changed cp->state.
 void
 sched(void)
 {
@@ -248,12 +246,12 @@ sched(void)
     panic("sched running");
   if(!holding(&proc_table_lock))
     panic("sched proc_table_lock");
-  if(cpus[cpu()].ncli != 1)
+  if(c->ncli != 1)
     panic("sched locks");
 
-  intena = cpus[cpu()].intena;
-  swtch(&cp->context, &cpus[cpu()].context);
-  cpus[cpu()].intena = intena;
+  intena = c->intena;
+  swtch(&cp->context, &c->context);
+  c->intena = intena;
 }
 
 // Give up the CPU for one scheduling round.
@@ -421,6 +419,7 @@ wait(void)
       if(p->state == UNUSED)
         continue;
       if(p->parent == cp){
+        havekids = 1;
         if(p->state == ZOMBIE){
           // Found one.
           kfree(p->mem, p->sz);
@@ -433,7 +432,6 @@ wait(void)
           release(&proc_table_lock);
           return pid;
         }
-        havekids = 1;
       }
     }
 

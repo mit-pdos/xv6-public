@@ -104,6 +104,12 @@ xchg(volatile uint *addr, uint newval)
 }
 
 static inline void
+setgs(ushort gs)
+{
+  asm volatile("movw %0, %%gs" : : "r" (gs));
+}
+
+static inline void
 cli(void)
 {
   asm volatile("cli");

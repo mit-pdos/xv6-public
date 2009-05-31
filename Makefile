@@ -23,6 +23,7 @@ OBJS = \
 	timer.o\
 	trapasm.o\
 	trap.o\
+	uart.o\
 	vectors.o\
 
 # Cross-compiling (e.g., on Mac OS X)
@@ -138,6 +139,9 @@ bochs : fs.img xv6.img
 
 qemu: fs.img xv6.img
 	qemu -parallel stdio -hdb fs.img xv6.img
+
+qemutty: fs.img xv6.img
+	qemu -nographic -smp 2 -hdb fs.img xv6.img
 
 # CUT HERE
 # prepare dist for students

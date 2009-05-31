@@ -102,8 +102,8 @@ pushcli(void)
   
   eflags = readeflags();
   cli();
-  if(cpus[cpu()].ncli++ == 0)
-    cpus[cpu()].intena = eflags & FL_IF;
+  if(c->ncli++ == 0)
+    c->intena = eflags & FL_IF;
 }
 
 void
@@ -111,9 +111,9 @@ popcli(void)
 {
   if(readeflags()&FL_IF)
     panic("popcli - interruptible");
-  if(--cpus[cpu()].ncli < 0)
+  if(--c->ncli < 0)
     panic("popcli");
-  if(cpus[cpu()].ncli == 0 && cpus[cpu()].intena)
+  if(c->ncli == 0 && c->intena)
     sti();
 }
 
