@@ -69,22 +69,22 @@ bget(uint dev, uint sector)
   for(b = bufhead.next; b != &bufhead; b = b->next){
     if((b->flags & (B_BUSY|B_VALID)) &&
        b->dev == dev && b->sector == sector){
-      if(b->flags & B_BUSY){
-        sleep(buf, &buf_table_lock);
-        goto loop;
+      if(!(b->flags & B_BUSY)){
+        b->flags |= B_BUSY;
+        release(&buf_table_lock);
+        return b;
       }
-      b->flags |= B_BUSY;
-      release(&buf_table_lock);
-      return b;
+      sleep(b, &buf_table_lock);
+      goto loop;
     }
   }
 
   // Allocate fresh block.
   for(b = bufhead.prev; b != &bufhead; b = b->prev){
     if((b->flags & B_BUSY) == 0){
-      b->flags = B_BUSY;
       b->dev = dev;
       b->sector = sector;
+      b->flags = B_BUSY;
       release(&buf_table_lock);
       return b;
     }
@@ -131,7 +131,7 @@ brelse(struct buf *b)
   bufhead.next = b;
 
   b->flags &= ~B_BUSY;
-  wakeup(buf);
+  wakeup(b);
 
   release(&buf_table_lock);
 }
