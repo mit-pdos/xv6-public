@@ -5,15 +5,16 @@
 # memory at physical address 0x7c00 and starts executing in real mode
 # with %cs=0 %ip=7c00.
 
-.set CSEG32, 0x8         # kernel code segment selector
-.set DSEG32, 0x10        # kernel data segment selector
-.set CR0_PE, 0x1         # protected mode enable flag
+#define SEG_KCODE 1  // kernel code
+#define SEG_KDATA 2  // kernel data+stack
+#define SEG_KCPU  3  // kernel per-cpu data
+
+#define CR0_PE    1  // protected mode enable bit
 
 .code16                       # Assemble for 16-bit mode
 .globl start
 start:
   cli                         # Disable interrupts
-  cld                         # String operations increment
 
   # Set up the important data segment registers (DS, ES, SS).
   xorw    %ax,%ax             # Segment number zero
@@ -53,18 +54,19 @@ seta20.2:
   
   # Jump to next instruction, but in 32-bit code segment.
   # Switches processor into 32-bit mode.
-  ljmp    $CSEG32, $start32
+  ljmp    $(SEG_KCODE<<3), $start32
 
 .code32                       # Assemble for 32-bit mode
 start32:
   # Set up the protected-mode data segment registers
-  movw    $DSEG32, %ax            # Our data segment selector
+  movw    $(SEG_KDATA<<3), %ax    # Our data segment selector
   movw    %ax, %ds                # -> DS: Data Segment
   movw    %ax, %es                # -> ES: Extra Segment
+  movw    %ax, %ss                # -> SS: Stack Segment
+  movw    $(SEG_KCPU<<3), %ax     # Our per-cpu segment selector
   movw    %ax, %fs                # -> FS
   movw    %ax, %gs                # -> GS
-  movw    %ax, %ss                # -> SS: Stack Segment
-  
+
   # Set up the stack pointer and call into C.
   movl    $start, %esp
   call    bootmain
@@ -85,7 +87,8 @@ gdt:
   SEG_NULLASM                             # null seg
   SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg
   SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg
+  SEG_ASM(STA_W, 0x100, 0xffffffff)       # per-cpu data seg; 0x100 is okay for now
 
 gdtdesc:
-  .word   0x17                            # sizeof(gdt) - 1
+  .word   0x1f                            # sizeof(gdt) - 1
   .long   gdt                             # address gdt

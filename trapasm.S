@@ -1,6 +1,6 @@
-.text
-
-.set SEG_KDATA_SEL, 0x10   # selector for SEG_KDATA
+#define SEG_KCODE 1  // kernel code
+#define SEG_KDATA 2  // kernel data+stack
+#define SEG_KCPU  3  // kernel per-cpu data
 
   # vectors.S sends all traps here.
 .globl alltraps
@@ -12,10 +12,16 @@ alltraps:
   pushl %gs
   pushal
   
-  # Set up data segments.
-  movl $SEG_KDATA_SEL, %eax
-  movw %ax,%ds
-  movw %ax,%es
+  # Set up data and per-cpu segments.
+  # Can find out KDATA from %ss.
+  # Assume that KCPU is KDATA+1.
+  movw $(SEG_KDATA<<3), %ax
+  movw %ss, %ax
+  movw %ax, %ds
+  movw %ax, %es
+  movw $(SEG_KCPU<<3), %ax
+  movw %ax, %fs
+  movw %ax, %gs
 
   # Call trap(tf), where tf=%esp
   pushl %esp
