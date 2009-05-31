@@ -62,7 +62,7 @@ exec(char *path, char **argv)
       goto bad;
     if(ph.type != ELF_PROG_LOAD)
       continue;
-    if(ph.va + ph.memsz > sz)
+    if(ph.va + ph.memsz < ph.va || ph.va + ph.memsz > sz || ph.memsz < ph.filesz)
       goto bad;
     if(readi(ip, mem + ph.va, ph.offset, ph.filesz) != ph.filesz)
       goto bad;
