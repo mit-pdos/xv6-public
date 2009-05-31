@@ -18,14 +18,14 @@
 #define IDE_CMD_READ  0x20
 #define IDE_CMD_WRITE 0x30
 
-// ide_queue points to the buf now being read/written to the disk.
-// ide_queue->qnext points to the next buf to be processed.
-// You must hold ide_lock while manipulating queue.
+// idequeue points to the buf now being read/written to the disk.
+// idequeue->qnext points to the next buf to be processed.
+// You must hold idelock while manipulating queue.
 
-static struct spinlock ide_lock;
-static struct buf *ide_queue;
+static struct spinlock idelock;
+static struct buf *idequeue;
 
-static int disk_1_present;
+static int havedisk1;
 static void idestart(struct buf*);
 
 // Wait for IDE disk to become ready.
@@ -34,7 +34,7 @@ idewait(int check_error)
 {
   int r;
 
-  while(((r = inb(0x1f7)) & IDE_BSY) || !(r & IDE_DRDY))
+  while(((r = inb(0x1f7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY) 
     ;
   if(check_error && (r & (IDE_DF|IDE_ERR)) != 0)
     return -1;
@@ -46,7 +46,7 @@ ideinit(void)
 {
   int i;
 
-  initlock(&ide_lock, "ide");
+  initlock(&idelock, "ide");
   picenable(IRQ_IDE);
   ioapicenable(IRQ_IDE, ncpu - 1);
   idewait(0);
@@ -55,7 +55,7 @@ ideinit(void)
   outb(0x1f6, 0xe0 | (1<<4));
   for(i=0; i<1000; i++){
     if(inb(0x1f7) != 0){
-      disk_1_present = 1;
+      havedisk1 = 1;
       break;
     }
   }
@@ -64,7 +64,7 @@ ideinit(void)
   outb(0x1f6, 0xe0 | (0<<4));
 }
 
-// Start the request for b.  Caller must hold ide_lock.
+// Start the request for b.  Caller must hold idelock.
 static void
 idestart(struct buf *b)
 {
@@ -92,11 +92,14 @@ ideintr(void)
 {
   struct buf *b;
 
-  acquire(&ide_lock);
-  if((b = ide_queue) == 0){
-    release(&ide_lock);
+  // Take first buffer off queue.
+  acquire(&idelock);
+  if((b = idequeue) == 0){
+    release(&idelock);
+    cprintf("Spurious IDE interrupt.\n");
     return;
   }
+  idequeue = b->qnext;
 
   // Read data if needed.
   if(!(b->flags & B_DIRTY) && idewait(1) >= 0)
@@ -108,10 +111,10 @@ ideintr(void)
   wakeup(b);
   
   // Start disk on next buf in queue.
-  if((ide_queue = b->qnext) != 0)
-    idestart(ide_queue);
+  if(idequeue != 0)
+    idestart(idequeue);
 
-  release(&ide_lock);
+  release(&idelock);
 }
 
 //PAGEBREAK!
@@ -127,25 +130,25 @@ iderw(struct buf *b)
     panic("iderw: buf not busy");
   if((b->flags & (B_VALID|B_DIRTY)) == B_VALID)
     panic("iderw: nothing to do");
-  if(b->dev != 0 && !disk_1_present)
+  if(b->dev != 0 && !havedisk1)
     panic("idrw: ide disk 1 not present");
 
-  acquire(&ide_lock);
+  acquire(&idelock);
 
-  // Append b to ide_queue.
+  // Append b to idequeue.
   b->qnext = 0;
-  for(pp=&ide_queue; *pp; pp=&(*pp)->qnext)
+  for(pp=&idequeue; *pp; pp=&(*pp)->qnext)
     ;
   *pp = b;
   
   // Start disk if necessary.
-  if(ide_queue == b)
+  if(idequeue == b)
     idestart(b);
   
   // Wait for request to finish.
   // Assuming will not sleep too long: ignore cp->killed.
   while((b->flags & (B_VALID|B_DIRTY)) != B_VALID)
-    sleep(b, &ide_lock);
+    sleep(b, &idelock);
 
-  release(&ide_lock);
+  release(&idelock);
 }
