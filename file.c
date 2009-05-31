@@ -6,31 +6,32 @@
 #include "dev.h"
 
 struct devsw devsw[NDEV];
-struct spinlock file_table_lock;
-struct file file[NFILE];
+struct {
+  struct spinlock lock;
+  struct file file[NFILE];
+} ftable;
 
 void
 fileinit(void)
 {
-  initlock(&file_table_lock, "file_table");
+  initlock(&ftable.lock, "file_table");
 }
 
 // Allocate a file structure.
 struct file*
 filealloc(void)
 {
-  int i;
+  struct file *f;
 
-  acquire(&file_table_lock);
-  for(i = 0; i < NFILE; i++){
-    if(file[i].type == FD_CLOSED){
-      file[i].type = FD_NONE;
-      file[i].ref = 1;
-      release(&file_table_lock);
-      return file + i;
+  acquire(&ftable.lock);
+  for(f = ftable.file; f < ftable.file + NFILE; f++){
+    if(f->ref == 0){
+      f->ref = 1;
+      release(&ftable.lock);
+      return f;
     }
   }
-  release(&file_table_lock);
+  release(&ftable.lock);
   return 0;
 }
 
@@ -38,11 +39,11 @@ filealloc(void)
 struct file*
 filedup(struct file *f)
 {
-  acquire(&file_table_lock);
-  if(f->ref < 1 || f->type == FD_CLOSED)
+  acquire(&ftable.lock);
+  if(f->ref < 1)
     panic("filedup");
   f->ref++;
-  release(&file_table_lock);
+  release(&ftable.lock);
   return f;
 }
 
@@ -52,24 +53,22 @@ fileclose(struct file *f)
 {
   struct file ff;
 
-  acquire(&file_table_lock);
-  if(f->ref < 1 || f->type == FD_CLOSED)
+  acquire(&ftable.lock);
+  if(f->ref < 1)
     panic("fileclose");
   if(--f->ref > 0){
-    release(&file_table_lock);
+    release(&ftable.lock);
     return;
   }
   ff = *f;
   f->ref = 0;
-  f->type = FD_CLOSED;
-  release(&file_table_lock);
+  f->type = FD_NONE;
+  release(&ftable.lock);
   
   if(ff.type == FD_PIPE)
     pipeclose(ff.pipe, ff.writable);
   else if(ff.type == FD_INODE)
     iput(ff.ip);
-  else
-    panic("fileclose");
 }
 
 // Get metadata about file f.
