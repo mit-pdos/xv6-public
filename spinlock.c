@@ -9,11 +9,11 @@
 #include "spinlock.h"
 
 void
-initlock(struct spinlock *lock, char *name)
+initlock(struct spinlock *lk, char *name)
 {
-  lock->name = name;
-  lock->locked = 0;
-  lock->cpu = 0xffffffff;
+  lk->name = name;
+  lk->locked = 0;
+  lk->cpu = 0xffffffff;
 }
 
 // Acquire the lock.
@@ -21,35 +21,35 @@ initlock(struct spinlock *lock, char *name)
 // Holding a lock for a long time may cause
 // other CPUs to waste time spinning to acquire it.
 void
-acquire(struct spinlock *lock)
+acquire(struct spinlock *lk)
 {
   pushcli();
-  if(holding(lock))
+  if(holding(lk))
     panic("acquire");
 
   // The xchg is atomic.
   // It also serializes, so that reads after acquire are not
-  // reordered before it.  
-  while(xchg(&lock->locked, 1) == 1)
+  // reordered before it. 
+  while(xchg(&lk->locked, 1) != 0)
     ;
 
   // Record info about lock acquisition for debugging.
   // The +10 is only so that we can tell the difference
   // between forgetting to initialize lock->cpu
   // and holding a lock on cpu 0.
-  lock->cpu = cpu() + 10;
-  getcallerpcs(&lock, lock->pcs);
+  lk->cpu = cpu() + 10;
+  getcallerpcs(&lk, lk->pcs);
 }
 
 // Release the lock.
 void
-release(struct spinlock *lock)
+release(struct spinlock *lk)
 {
-  if(!holding(lock))
+  if(!holding(lk))
     panic("release");
 
-  lock->pcs[0] = 0;
-  lock->cpu = 0xffffffff;
+  lk->pcs[0] = 0;
+  lk->cpu = 0xffffffff;
 
   // The xchg serializes, so that reads before release are 
   // not reordered after it.  The 1996 PentiumPro manual (Volume 3,
@@ -60,7 +60,7 @@ release(struct spinlock *lock)
   // after a store. So lock->locked = 0 would work here.
   // The xchg being asm volatile ensures gcc emits it after
   // the above assignments (and after the critical section).
-  xchg(&lock->locked, 0);
+  xchg(&lk->locked, 0);
 
   popcli();
 }
