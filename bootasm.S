@@ -86,8 +86,7 @@ gdt:
   SEG_NULLASM                             # null seg
   SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg
   SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg
-  SEG_ASM(STA_W, 0x100, 0xffffffff)       # per-cpu data seg; 0x100 is okay for now
 
 gdtdesc:
-  .word   0x1f                            # sizeof(gdt) - 1
+  .word   (gdtdesc - gdt - 1)                            # sizeof(gdt) - 1
   .long   gdt                             # address gdt
