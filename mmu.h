@@ -41,9 +41,6 @@ struct segdesc {
   uint base_31_24 : 8; // High bits of segment base address
 };
 
-// Null segment
-#define SEG_NULL        (struct segdesc){ 0,0,0,0,0,0,0,0,0,0,0,0,0 }
-
 // Normal segment
 #define SEG(type, base, lim, dpl) (struct segdesc)                      \
 { ((lim) >> 12) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,       \
