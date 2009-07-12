@@ -45,7 +45,7 @@ trap(struct trapframe *tf)
   }
 
   switch(tf->trapno){
-  case IRQ_OFFSET + IRQ_TIMER:
+  case T_IRQ0 + IRQ_TIMER:
     if(cpu() == 0){
       acquire(&tickslock);
       ticks++;
@@ -54,20 +54,20 @@ trap(struct trapframe *tf)
     }
     lapiceoi();
     break;
-  case IRQ_OFFSET + IRQ_IDE:
+  case T_IRQ0 + IRQ_IDE:
     ideintr();
     lapiceoi();
     break;
-  case IRQ_OFFSET + IRQ_KBD:
+  case T_IRQ0 + IRQ_KBD:
     kbdintr();
     lapiceoi();
     break;
-  case IRQ_OFFSET + IRQ_COM1:
+  case T_IRQ0 + IRQ_COM1:
     uartintr();
     lapiceoi();
     break;
-  case IRQ_OFFSET + 7:
-  case IRQ_OFFSET + IRQ_SPURIOUS:
+  case T_IRQ0 + 7:
+  case T_IRQ0 + IRQ_SPURIOUS:
     cprintf("cpu%d: spurious interrupt at %x:%x\n",
             cpu(), tf->cs, tf->eip);
     lapiceoi();
@@ -94,7 +94,7 @@ trap(struct trapframe *tf)
 
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
-  if(cp && cp->state == RUNNING && tf->trapno == IRQ_OFFSET+IRQ_TIMER)
+  if(cp && cp->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER)
     yield();
 
   // Check if the process has been killed since we yielded
