@@ -52,14 +52,14 @@ lapicinit(int c)
     return;
 
   // Enable local APIC; set spurious interrupt vector.
-  lapicw(SVR, ENABLE | (IRQ_OFFSET+IRQ_SPURIOUS));
+  lapicw(SVR, ENABLE | (T_IRQ0 + IRQ_SPURIOUS));
 
   // The timer repeatedly counts down at bus frequency
   // from lapic[TICR] and then issues an interrupt.  
   // If xv6 cared more about precise timekeeping,
   // TICR would be calibrated using an external time source.
   lapicw(TDCR, X1);
-  lapicw(TIMER, PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
+  lapicw(TIMER, PERIODIC | (T_IRQ0 + IRQ_TIMER));
   lapicw(TICR, 10000000); 
 
   // Disable logical interrupt lines.
@@ -72,7 +72,7 @@ lapicinit(int c)
     lapicw(PCINT, MASKED);
 
   // Map error interrupt to IRQ_ERROR.
-  lapicw(ERROR, IRQ_OFFSET+IRQ_ERROR);
+  lapicw(ERROR, T_IRQ0 + IRQ_ERROR);
 
   // Clear error status register (requires back-to-back writes).
   lapicw(ESR, 0);
