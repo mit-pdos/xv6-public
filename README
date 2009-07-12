@@ -45,3 +45,4 @@ standard output.
 To create a typeset version of the code, run "make xv6.pdf".
 This requires the "mpage" text formatting utility.
 See http://www.mesa.nl/pub/mpage/.
+
