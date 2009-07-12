@@ -35,11 +35,3 @@ trapret:
   popl %ds
   addl $0x8, %esp  # trapno and errcode
   iret
-
-  # A forked process switches to user mode by calling
-  # forkret1(tf), where tf is the trap frame to use.
-.globl forkret1
-forkret1:
-  movl 4(%esp), %esp
-  jmp trapret
-

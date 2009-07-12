@@ -52,7 +52,7 @@ int             writei(struct inode*, char*, uint, uint);
 // ide.c
 void            ideinit(void);
 void            ideintr(void);
-void            iderw(struct buf *);
+void            iderw(struct buf*);
 
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
@@ -109,7 +109,7 @@ void            wakeup(void*);
 void            yield(void);
 
 // swtch.S
-void            swtch(struct context**, struct context**);
+void            swtch(struct context**, struct context*);
 
 // spinlock.c
 void            acquire(struct spinlock*);
@@ -150,7 +150,6 @@ extern struct spinlock tickslock;
 void            uartinit(void);
 void            uartintr(void);
 void            uartputc(int);
-
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

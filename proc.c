@@ -15,7 +15,7 @@ static struct proc *initproc;
 
 int nextpid = 1;
 extern void forkret(void);
-extern void forkret1(struct trapframe*);
+extern void trapret(void);
 
 void
 pinit(void)
@@ -30,19 +30,18 @@ static struct proc*
 allocproc(void)
 {
   struct proc *p;
+  char *sp;
 
   acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state == UNUSED){
-      p->state = EMBRYO;
-      p->pid = nextpid++;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if(p->state == UNUSED)
       goto found;
-    }
-  }
   release(&ptable.lock);
   return 0;
 
 found:
+  p->state = EMBRYO;
+  p->pid = nextpid++;
   release(&ptable.lock);
 
   // Allocate kernel stack if necessary.
@@ -50,11 +49,20 @@ found:
     p->state = UNUSED;
     return 0;
   }
-  p->tf = (struct trapframe*)(p->kstack + KSTACKSIZE) - 1;
+  sp = p->kstack + KSTACKSIZE;
+  
+  // Leave room for trap frame.
+  sp -= sizeof *p->tf;
+  p->tf = (struct trapframe*)sp;
+  
+  // Set up new context to start executing at forkret,
+  // which returns to trapret (see below).
+  sp -= 4;
+  *(uint*)sp = (uint)trapret;
 
-  // Set up new context to start executing at forkret (see below).
-  p->context = (struct context *)p->tf - 1;
-  memset(p->context, 0, sizeof(*p->context));
+  sp -= sizeof *p->context;
+  p->context = (struct context*)sp;
+  memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
   return p;
 }
@@ -79,19 +87,16 @@ growproc(int n)
 }
 
 // Set up CPU's kernel segment descriptors.
+// Run once at boot time on each CPU.
 void
 ksegment(void)
 {
   struct cpu *c1;
 
   c1 = &cpus[cpu()];
-  c1->gdt[0] = SEG_NULL;
   c1->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
   c1->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c1->gdt[SEG_KCPU] = SEG(STA_W, (uint)&c1->tls+sizeof(c1->tls), 0xffffffff, 0);
-  c1->gdt[SEG_UCODE] = SEG_NULL;
-  c1->gdt[SEG_UDATA] = SEG_NULL;
-  c1->gdt[SEG_TSS] = SEG_NULL;
+  c1->gdt[SEG_KCPU] = SEG(STA_W, (uint)(&c1->tls+1), 0xffffffff, 0);
   lgdt(c1->gdt, sizeof(c1->gdt));
   loadfsgs(SEG_KCPU << 3);
   
@@ -106,23 +111,12 @@ void
 usegment(void)
 {
   pushcli();
-  c->ts.ss0 = SEG_KDATA << 3;
-  if(cp)
-    c->ts.esp0 = (uint)(cp->kstack + KSTACKSIZE);
-  else
-    c->ts.esp0 = 0xffffffff;
-
-  if(cp){
-    c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)cp->mem, cp->sz-1, DPL_USER);
-    c->gdt[SEG_UDATA] = SEG(STA_W, (uint)cp->mem, cp->sz-1, DPL_USER);
-  } else {
-    c->gdt[SEG_UCODE] = SEG_NULL;
-    c->gdt[SEG_UDATA] = SEG_NULL;
-  }
+  c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)cp->mem, cp->sz-1, DPL_USER);
+  c->gdt[SEG_UDATA] = SEG(STA_W, (uint)cp->mem, cp->sz-1, DPL_USER);
   c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint)&c->ts, sizeof(c->ts)-1, 0);
   c->gdt[SEG_TSS].s = 0;
-
-  lgdt(c->gdt, sizeof(c->gdt));
+  c->ts.ss0 = SEG_KDATA << 3;
+  c->ts.esp0 = (uint)cp->kstack + KSTACKSIZE;
   ltr(SEG_TSS << 3);
   popcli();
 }
@@ -171,7 +165,7 @@ void
 userinit(void)
 {
   struct proc *p;
-  extern uchar _binary_initcode_start[], _binary_initcode_size[];
+  extern char _binary_initcode_start[], _binary_initcode_size[];
   
   p = allocproc();
   initproc = p;
@@ -179,6 +173,7 @@ userinit(void)
   // Initialize memory from initcode.S
   p->sz = PAGE;
   p->mem = kalloc(p->sz);
+  memset(p->mem, 0, p->sz);
   memmove(p->mem, _binary_initcode_start, (int)_binary_initcode_size);
 
   memset(p->tf, 0, sizeof(*p->tf));
@@ -210,7 +205,7 @@ scheduler(void)
   struct proc *p;
 
   for(;;){
-    // Enable interrupts on this processor, in lieu of saving intena.
+    // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
@@ -225,36 +220,35 @@ scheduler(void)
       cp = p;
       usegment();
       p->state = RUNNING;
-      swtch(&c->context, &p->context);
+      swtch(&c->context, p->context);
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       cp = 0;
-      usegment();
     }
     release(&ptable.lock);
 
   }
 }
 
-// Enter scheduler.  Must already hold ptable.lock
+// Enter scheduler.  Must hold only ptable.lock
 // and have changed cp->state.
 void
 sched(void)
 {
   int intena;
 
-  if(readeflags()&FL_IF)
-    panic("sched interruptible");
-  if(cp->state == RUNNING)
-    panic("sched running");
   if(!holding(&ptable.lock))
     panic("sched ptable.lock");
   if(c->ncli != 1)
     panic("sched locks");
+  if(cp->state == RUNNING)
+    panic("sched running");
+  if(readeflags()&FL_IF)
+    panic("sched interruptible");
 
   intena = c->intena;
-  swtch(&cp->context, &c->context);
+  swtch(&cp->context, c->context);
   c->intena = intena;
 }
 
@@ -262,7 +256,7 @@ sched(void)
 void
 yield(void)
 {
-  acquire(&ptable.lock);
+  acquire(&ptable.lock);  //DOC: yieldlock
   cp->state = RUNNABLE;
   sched();
   release(&ptable.lock);
@@ -275,9 +269,8 @@ forkret(void)
 {
   // Still holding ptable.lock from scheduler.
   release(&ptable.lock);
-
-  // Jump into assembly, never to return.
-  forkret1(cp->tf);
+  
+  // Return to "caller", actually trapret (see allocproc).
 }
 
 // Atomically release lock and sleep on chan.
