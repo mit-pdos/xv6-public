@@ -22,21 +22,20 @@ struct {
 
 // Initialize free list of physical pages.
 // This code cheats by just considering one megabyte of
-// pages after _end.  Real systems would determine the
+// pages after end.  Real systems would determine the
 // amount of memory available in the system and use it all.
 void
 kinit(void)
 {
-  extern int end;
-  uint mem;
-  char *start;
+  extern char end[];
+  uint len;
+  char *p;
 
   initlock(&kmem.lock, "kmem");
-  start = (char*) &end;
-  start = (char*) (((uint)start + PAGE) & ~(PAGE-1));
-  mem = 256; // assume computer has 256 pages of RAM
-  cprintf("mem = %d\n", mem * PAGE);
-  kfree(start, mem * PAGE);
+  p = (char*)(((uint)end + PAGE) & ~(PAGE-1));
+  len = 256*PAGE; // assume computer has 256 pages of RAM, 1 MB
+  cprintf("mem = %d\n", len);
+  kfree(p, len);
 }
 
 // Free the len bytes of memory pointed at by v,
@@ -61,18 +60,18 @@ kfree(char *v, int len)
     rend = (struct run*)((char*)r + r->len);
     if(r <= p && p < rend)
       panic("freeing free page");
-    if(pend == r){  // p next to r: replace r with p
-      p->len = len + r->len;
-      p->next = r->next;
-      *rp = p;
-      goto out;
-    }
-    if(rend == p){  // r next to p: replace p with r
+    if(rend == p){  // r before p: expand r to include p
       r->len += len;
       if(r->next && r->next == pend){  // r now next to r->next?
         r->len += r->next->len;
         r->next = r->next->next;
       }
+      goto out;
+    }
+    if(pend == r){  // p before r: expand p to include, replace r
+      p->len = len + r->len;
+      p->next = r->next;
+      *rp = p;
       goto out;
     }
   }
@@ -99,14 +98,11 @@ kalloc(int n)
 
   acquire(&kmem.lock);
   for(rp=&kmem.freelist; (r=*rp) != 0; rp=&r->next){
-    if(r->len == n){
-      *rp = r->next;
-      release(&kmem.lock);
-      return (char*)r;
-    }
-    if(r->len > n){
+    if(r->len >= n){
       r->len -= n;
       p = (char*)r + r->len;
+      if(r->len == 0)
+        *rp = r->next;
       release(&kmem.lock);
       return p;
     }
