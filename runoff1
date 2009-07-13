@@ -19,6 +19,7 @@ $linenum = 0;
 foreach (@lines) {
 	$linenum++;
 	chomp;
+	s!//DOC.*!!;
 	s/\s+$//;
 	if(length() >= 75){
 		print STDERR "$file:$linenum: line too long\n";
