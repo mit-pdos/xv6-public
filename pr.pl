@@ -20,6 +20,7 @@ for($i=0; $i<@lines; $i+=50){
 	print "$now  $h  Page $page\n";
 	print "\n\n";
 	for($j=$i; $j<@lines && $j<$i +50; $j++){
+		$lines[$j] =~ s!//DOC.*!!;
 		print $lines[$j];
 	}
 	for(; $j<$i+50; $j++){
