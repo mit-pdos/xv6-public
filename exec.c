@@ -16,19 +16,21 @@ exec(char *path, char **argv)
   struct inode *ip;
   struct proghdr ph;
 
+  mem = 0;
+  sz = 0;
+
   if((ip = namei(path)) == 0)
     return -1;
   ilock(ip);
 
-  // Compute memory size of new process.
-  mem = 0;
-  sz = 0;
-
-  // Program segments.
+  // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
     goto bad;
   if(elf.magic != ELF_MAGIC)
     goto bad;
+
+  // Compute memory size of new process.
+  // Program segments.
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -44,7 +46,10 @@ exec(char *path, char **argv)
   for(argc=0; argv[argc]; argc++)
     arglen += strlen(argv[argc]) + 1;
   arglen = (arglen+3) & ~3;
-  sz += arglen + 4*(argc+1);
+  sz += arglen;
+  sz += 4*(argc+1);  // argv data
+  sz += 4;  // argv
+  sz += 4;  // argc
 
   // Stack.
   sz += PAGE;
