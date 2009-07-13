@@ -290,8 +290,8 @@ sleep(void *chan, struct spinlock *lk)
   // guaranteed that we won't miss any wakeup
   // (wakeup runs with ptable.lock locked),
   // so it's okay to release lk.
-  if(lk != &ptable.lock){
-    acquire(&ptable.lock);
+  if(lk != &ptable.lock){  //DOC: sleeplock0
+    acquire(&ptable.lock);  //DOC: sleeplock1
     release(lk);
   }
 
@@ -304,7 +304,7 @@ sleep(void *chan, struct spinlock *lk)
   cp->chan = 0;
 
   // Reacquire original lock.
-  if(lk != &ptable.lock){
+  if(lk != &ptable.lock){  //DOC: sleeplock2
     release(&ptable.lock);
     acquire(lk);
   }
@@ -393,7 +393,6 @@ exit(void)
   }
 
   // Jump into the scheduler, never to return.
-  cp->killed = 0;
   cp->state = ZOMBIE;
   sched();
   panic("zombie exit");
@@ -412,22 +411,21 @@ wait(void)
     // Scan through table looking for zombie children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state == UNUSED)
+      if(p->parent != cp)
         continue;
-      if(p->parent == cp){
-        havekids = 1;
-        if(p->state == ZOMBIE){
-          // Found one.
-          kfree(p->mem, p->sz);
-          kfree(p->kstack, KSTACKSIZE);
-          pid = p->pid;
-          p->state = UNUSED;
-          p->pid = 0;
-          p->parent = 0;
-          p->name[0] = 0;
-          release(&ptable.lock);
-          return pid;
-        }
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        pid = p->pid;
+        kfree(p->mem, p->sz);
+        kfree(p->kstack, KSTACKSIZE);
+        p->state = UNUSED;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        release(&ptable.lock);
+        return pid;
       }
     }
 
@@ -438,7 +436,7 @@ wait(void)
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    sleep(cp, &ptable.lock);
+    sleep(cp, &ptable.lock);  //DOC: wait-sleep
   }
 }
 

@@ -9,12 +9,12 @@
 #define PIPESIZE 512
 
 struct pipe {
-  int readopen;   // read fd is still open
-  int writeopen;  // write fd is still open
-  uint writep;    // next index to write
-  uint readp;     // next index to read
   struct spinlock lock;
   char data[PIPESIZE];
+  uint nread;     // number of bytes read
+  uint nwrite;    // number of bytes written
+  int readopen;   // read fd is still open
+  int writeopen;  // write fd is still open
 };
 
 int
@@ -30,8 +30,8 @@ pipealloc(struct file **f0, struct file **f1)
     goto bad;
   p->readopen = 1;
   p->writeopen = 1;
-  p->writep = 0;
-  p->readp = 0;
+  p->nwrite = 0;
+  p->nread = 0;
   initlock(&p->lock, "pipe");
   (*f0)->type = FD_PIPE;
   (*f0)->readable = 1;
@@ -60,10 +60,10 @@ pipeclose(struct pipe *p, int writable)
   acquire(&p->lock);
   if(writable){
     p->writeopen = 0;
-    wakeup(&p->readp);
+    wakeup(&p->nread);
   } else {
     p->readopen = 0;
-    wakeup(&p->writep);
+    wakeup(&p->nwrite);
   }
   if(p->readopen == 0 && p->writeopen == 0) {
     release(&p->lock);
@@ -80,19 +80,19 @@ pipewrite(struct pipe *p, char *addr, int n)
 
   acquire(&p->lock);
   for(i = 0; i < n; i++){
-    while(p->writep == p->readp + PIPESIZE) {
+    while(p->nwrite == p->nread + PIPESIZE) {  //DOC: pipewrite-full
       if(p->readopen == 0 || cp->killed){
         release(&p->lock);
         return -1;
       }
-      wakeup(&p->readp);
-      sleep(&p->writep, &p->lock);
+      wakeup(&p->nread);
+      sleep(&p->nwrite, &p->lock);  //DOC: pipewrite-sleep
     }
-    p->data[p->writep++ % PIPESIZE] = addr[i];
+    p->data[p->nwrite++ % PIPESIZE] = addr[i];
   }
-  wakeup(&p->readp);
+  wakeup(&p->nread);  //DOC: pipewrite-wakeup1
   release(&p->lock);
-  return i;
+  return n;
 }
 
 int
@@ -101,19 +101,19 @@ piperead(struct pipe *p, char *addr, int n)
   int i;
 
   acquire(&p->lock);
-  while(p->readp == p->writep && p->writeopen){
+  while(p->nread == p->nwrite && p->writeopen){  //DOC: pipe-empty
     if(cp->killed){
       release(&p->lock);
       return -1;
     }
-    sleep(&p->readp, &p->lock);
+    sleep(&p->nread, &p->lock); //DOC: piperead-sleep
   }
-  for(i = 0; i < n; i++){
-    if(p->readp == p->writep)
+  for(i = 0; i < n; i++){  //DOC: piperead-copy
+    if(p->nread == p->nwrite)
       break;
-    addr[i] = p->data[p->readp++ % PIPESIZE];
+    addr[i] = p->data[p->nread++ % PIPESIZE];
   }
-  wakeup(&p->writep);
+  wakeup(&p->nwrite);  //DOC: piperead-wakeup
   release(&p->lock);
   return i;
 }

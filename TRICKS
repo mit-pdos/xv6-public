@@ -4,6 +4,9 @@ might be worth pointing out in a longer explanation or in class.
 
 ---
 
+[2009/07/12: No longer relevant; forkret1 changed
+and this is now cleaner.]
+
 forkret1 in trapasm.S is called with a tf argument.
 In order to use it, forkret1 copies the tf pointer into
 %esp and then jumps to trapret, which pops the 
@@ -45,21 +48,21 @@ always.
 
 There is a (harmless) race in pushcli, which does
 
-	eflags = read_eflags();
+	eflags = readeflags();
 	cli();
-	if(cpus[cpu()].ncli++ == 0)
-		cpus[cpu()].intena = eflags & FL_IF;
+	if(c->ncli++ == 0)
+		c->intena = eflags & FL_IF;
 
 Consider a bottom-level pushcli.  
 If interrupts are disabled already, then the right thing
 happens: read_eflags finds that FL_IF is not set,
-and intena = 1.  If interrupts are enabled, then
+and intena = 0.  If interrupts are enabled, then
 it is less clear that the right thing happens:
-the read_eflags can execute, then the process
+the readeflags can execute, then the process
 can get preempted and rescheduled on another cpu,
 and then once it starts running, perhaps with 
 interrupts disabled (can happen since the scheduler
-only disables interrupts once per scheduling loop,
+only enables interrupts once per scheduling loop,
 not every time it schedules a process), it will 
 incorrectly record that interrupts *were* enabled.
 This doesn't matter, because if it was safe to be
@@ -112,17 +115,13 @@ processors will need it.
 
 ---
 
-The code in sys_fork needs to read np->pid before
+The code in fork needs to read np->pid before
 setting np->state to RUNNABLE.  
 
 	int
-	sys_fork(void)
+	fork(void)
 	{
-	  int pid;
-	  struct proc *np;
-	
-	  if((np = copyproc(cp)) == 0)
-	    return -1;
+	  ...
 	  pid = np->pid;
 	  np->state = RUNNABLE;
 	  return pid;
@@ -134,3 +133,4 @@ get reused for a different process (with a new pid), all
 before the return statement.  So it's not safe to just do
 "return np->pid;".
 
+This works because proc.h marks the pid as volatile.
