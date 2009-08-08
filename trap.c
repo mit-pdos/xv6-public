@@ -31,6 +31,7 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
+//PAGEBREAK: 41
 void
 trap(struct trapframe *tf)
 {

@@ -45,6 +45,7 @@ cat toc.ftr >>fmt/toc
 
 # check for bad alignments
 perl -e '
+	$leftwarn = 0;
 	while(<>){
 		chomp;
 		s!#.*!!;
@@ -75,8 +76,31 @@ perl -e '
 				print STDERR "Have no toc for $file\n";
 				next;
 			}
-			if($toc{$file} =~ /^\d\d[^5]/){
+			if($toc{$file} !~ /^\d\d5/){
 				print STDERR "$file does not start on a second half page.\n";
+			}
+			next;
+		}
+		
+		if(/(left|right): (.*)/){
+			$what = $1;
+			$file = $2;
+			if(!defined($toc{$file})){
+				print STDERR "Have no toc for $file\n";
+				next;
+			}
+			# this assumes that sheet 1 of code is a left page
+			# double-check the PDF
+			if(!$leftwarn++) {
+				print STDERR "assuming that sheet 1 is a left page.  double-check!\n";
+			}
+			if($what eq "left" && !($toc{$file} =~ /^\d[13579]0/)){
+				print STDERR "$file does not start on a fresh left page [$toc{$file}]\n";
+			}
+			# why does this not work if I inline $x in the if?
+			$x = ($toc{$file} =~ /^\d[02468]0/);
+			if($what eq "right" && !$x){
+				print STDERR "$file does not start on a fresh right page [$toc{$file}] [$x]\n";
 			}
 			next;
 		}

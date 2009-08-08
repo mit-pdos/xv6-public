@@ -38,7 +38,7 @@ start:
 //PAGEBREAK!
   # Switch from real to protected mode, using a bootstrap GDT
   # and segment translation that makes virtual addresses 
-  # identical to their physical addresses, so that the 
+  # identical to physical addresses, so that the 
   # effective memory map does not change during the switch.
   lgdt    gdtdesc
   movl    %cr0, %eax
@@ -47,10 +47,10 @@ start:
 
   # Jump to next instruction, but in 32-bit code segment.
   # Switches processor into 32-bit mode.
-  ljmp    $(SEG_KCODE<<3), $protcseg
+  ljmp    $(SEG_KCODE<<3), $start32
 
-  .code32                     # Assemble for 32-bit mode
-protcseg:
+.code32                       # Assemble for 32-bit mode
+start32:
   # Set up the protected-mode data segment registers
   movw    $(SEG_KDATA<<3), %ax    # Our data segment selector
   movw    %ax, %ds                # -> DS: Data Segment
@@ -60,11 +60,11 @@ protcseg:
   movw    %ax, %fs                # -> FS
   movw    %ax, %gs                # -> GS
 
+  # Set up the stack pointer and call into C.
   movl    start-4, %esp
-  movl    start-8, %eax
-  call    *%eax
+  call	*(start-8)
 
-  # If bootmain returns (it shouldn't), trigger a Bochs
+  # If the call returns (it shouldn't), trigger a Bochs
   # breakpoint if running under Bochs, then loop.
   movw    $0x8a00, %ax            # 0x8a00 -> port 0x8a00
   movw    %ax, %dx

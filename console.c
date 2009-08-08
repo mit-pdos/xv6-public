@@ -7,22 +7,120 @@
 #include "param.h"
 #include "traps.h"
 #include "spinlock.h"
-#include "dev.h"
+#include "fs.h"
+#include "file.h"
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
 
-#define CRTPORT 0x3d4
-#define BACKSPACE 0x100
+static void consputc(int);
 
-static ushort *crt = (ushort*)0xb8000;  // CGA memory
+static int panicked = 0;
 
 static struct {
 	struct spinlock lock;
 	int locking;
 } cons;
 
-static int panicked = 0;
+static void
+printint(int xx, int base, int sgn)
+{
+  static char digits[] = "0123456789abcdef";
+  char buf[16];
+  int i = 0, neg = 0;
+  uint x;
+
+  if(sgn && xx < 0){
+    neg = 1;
+    x = -xx;
+  } else
+    x = xx;
+
+  do{
+    buf[i++] = digits[x % base];
+  }while((x /= base) != 0);
+  if(neg)
+    buf[i++] = '-';
+
+  while(--i >= 0)
+    consputc(buf[i]);
+}
+
+//PAGEBREAK: 50
+// Print to the console. only understands %d, %x, %p, %s.
+void
+cprintf(char *fmt, ...)
+{
+  int i, c, state, locking;
+  uint *argp;
+  char *s;
+
+  locking = cons.locking;
+  if(locking)
+    acquire(&cons.lock);
+
+  argp = (uint*)(void*)&fmt + 1;
+  state = 0;
+  for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
+    if(c != '%'){
+      consputc(c);
+      continue;
+    }
+    c = fmt[++i] & 0xff;
+    if(c == 0)
+      break;
+    switch(c){
+    case 'd':
+      printint(*argp++, 10, 1);
+      break;
+    case 'x':
+    case 'p':
+      printint(*argp++, 16, 0);
+      break;
+    case 's':
+      if((s = (char*)*argp++) == 0)
+        s = "(null)";
+      for(; *s; s++)
+        consputc(*s);
+      break;
+    case '%':
+      consputc('%');
+      break;
+    default:
+      // Print unknown % sequence to draw attention.
+      consputc('%');
+      consputc(c);
+      break;
+    }
+  }
+
+  if(locking)
+    release(&cons.lock);
+}
+
+void
+panic(char *s)
+{
+  int i;
+  uint pcs[10];
+  
+  cli();
+  cons.locking = 0;
+  cprintf("cpu%d: panic: ", cpu());
+  cprintf(s);
+  cprintf("\n");
+  getcallerpcs(&s, pcs);
+  for(i=0; i<10; i++)
+    cprintf(" %p", pcs[i]);
+  panicked = 1; // freeze other CPU
+  for(;;)
+    ;
+}
+
+//PAGEBREAK: 50
+#define BACKSPACE 0x100
+#define CRTPORT 0x3d4
+static ushort *crt = (ushort*)0xb8000;  // CGA memory
 
 static void
 cgaputc(int c)
@@ -69,104 +167,7 @@ consputc(int c)
   cgaputc(c);
 }
 
-void
-printint(int xx, int base, int sgn)
-{
-  static char digits[] = "0123456789abcdef";
-  char buf[16];
-  int i = 0, neg = 0;
-  uint x;
-
-  if(sgn && xx < 0){
-    neg = 1;
-    x = 0 - xx;
-  } else {
-    x = xx;
-  }
-
-  do{
-    buf[i++] = digits[x % base];
-  }while((x /= base) != 0);
-  if(neg)
-    buf[i++] = '-';
-
-  while(--i >= 0)
-    consputc(buf[i]);
-}
-
-// Print to the console. only understands %d, %x, %p, %s.
-void
-cprintf(char *fmt, ...)
-{
-  int i, c, state, locking;
-  uint *argp;
-  char *s;
-
-  locking = cons.locking;
-  if(locking)
-    acquire(&cons.lock);
-
-  argp = (uint*)(void*)&fmt + 1;
-  state = 0;
-  for(i = 0; fmt[i]; i++){
-    c = fmt[i] & 0xff;
-    switch(state){
-    case 0:
-      if(c == '%')
-        state = '%';
-      else
-        consputc(c);
-      break;
-    
-    case '%':
-      switch(c){
-      case 'd':
-        printint(*argp++, 10, 1);
-        break;
-      case 'x':
-      case 'p':
-        printint(*argp++, 16, 0);
-        break;
-      case 's':
-        s = (char*)*argp++;
-        if(s == 0)
-          s = "(null)";
-        for(; *s; s++)
-          consputc(*s);
-        break;
-      case '%':
-        consputc('%');
-        break;
-      default:
-        // Print unknown % sequence to draw attention.
-        consputc('%');
-        consputc(c);
-        break;
-      }
-      state = 0;
-      break;
-    }
-  }
-
-  if(locking)
-    release(&cons.lock);
-}
-
-int
-consolewrite(struct inode *ip, char *buf, int n)
-{
-  int i;
-
-  iunlock(ip);
-  acquire(&cons.lock);
-  for(i = 0; i < n; i++)
-    consputc(buf[i] & 0xff);
-  release(&cons.lock);
-  ilock(ip);
-
-  return n;
-}
-
+//PAGEBREAK: 50
 #define INPUT_BUF 128
 struct {
   struct spinlock lock;
@@ -255,6 +256,21 @@ consoleread(struct inode *ip, char *dst, int n)
   return target - n;
 }
 
+int
+consolewrite(struct inode *ip, char *buf, int n)
+{
+  int i;
+
+  iunlock(ip);
+  acquire(&cons.lock);
+  for(i = 0; i < n; i++)
+    consputc(buf[i] & 0xff);
+  release(&cons.lock);
+  ilock(ip);
+
+  return n;
+}
+
 void
 consoleinit(void)
 {
@@ -267,24 +283,5 @@ consoleinit(void)
 
   picenable(IRQ_KBD);
   ioapicenable(IRQ_KBD, 0);
-}
-
-void
-panic(char *s)
-{
-  int i;
-  uint pcs[10];
-  
-  cli();
-  cons.locking = 0;
-  cprintf("cpu%d: panic: ", cpu());
-  cprintf(s);
-  cprintf("\n");
-  getcallerpcs(&s, pcs);
-  for(i=0; i<10; i++)
-    cprintf(" %p", pcs[i]);
-  panicked = 1; // freeze other CPU
-  for(;;)
-    ;
 }
 

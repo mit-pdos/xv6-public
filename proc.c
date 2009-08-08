@@ -23,6 +23,79 @@ pinit(void)
   initlock(&ptable.lock, "ptable");
 }
 
+//PAGEBREAK: 36
+// Print a process listing to console.  For debugging.
+// Runs when user types ^P on console.
+// No lock to avoid wedging a stuck machine further.
+void
+procdump(void)
+{
+  static char *states[] = {
+  [UNUSED]    "unused",
+  [EMBRYO]    "embryo",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
+  };
+  int i;
+  struct proc *p;
+  char *state;
+  uint pc[10];
+  
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == UNUSED)
+      continue;
+    if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+      state = states[p->state];
+    else
+      state = "???";
+    cprintf("%d %s %s", p->pid, state, p->name);
+    if(p->state == SLEEPING){
+      getcallerpcs((uint*)p->context->ebp+2, pc);
+      for(i=0; i<10 && pc[i] != 0; i++)
+        cprintf(" %p", pc[i]);
+    }
+    cprintf("\n");
+  }
+}
+
+// Set up CPU's kernel segment descriptors.
+// Run once at boot time on each CPU.
+void
+ksegment(void)
+{
+  struct cpu *c1;
+
+  c1 = &cpus[cpu()];
+  c1->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
+  c1->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
+  c1->gdt[SEG_KCPU] = SEG(STA_W, (uint)(&c1->tls+1), 0xffffffff, 0);
+  lgdt(c1->gdt, sizeof(c1->gdt));
+  loadfsgs(SEG_KCPU << 3);
+  
+  // Initialize cpu-local variables.
+  c = c1;
+  cp = 0;
+}
+
+// Set up CPU's segment descriptors and current process task state.
+// If cp==0, set up for "idle" state for when scheduler() is running.
+void
+usegment(void)
+{
+  pushcli();
+  c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)cp->mem, cp->sz-1, DPL_USER);
+  c->gdt[SEG_UDATA] = SEG(STA_W, (uint)cp->mem, cp->sz-1, DPL_USER);
+  c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint)&c->ts, sizeof(c->ts)-1, 0);
+  c->gdt[SEG_TSS].s = 0;
+  c->ts.ss0 = SEG_KDATA << 3;
+  c->ts.esp0 = (uint)cp->kstack + KSTACKSIZE;
+  ltr(SEG_TSS << 3);
+  popcli();
+}
+
+//PAGEBREAK: 15
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and return it.
 // Otherwise return 0.
@@ -67,6 +140,37 @@ found:
   return p;
 }
 
+// Set up first user process.
+void
+userinit(void)
+{
+  struct proc *p;
+  extern char _binary_initcode_start[], _binary_initcode_size[];
+  
+  p = allocproc();
+  initproc = p;
+
+  // Initialize memory from initcode.S
+  p->sz = PAGE;
+  p->mem = kalloc(p->sz);
+  memset(p->mem, 0, p->sz);
+  memmove(p->mem, _binary_initcode_start, (int)_binary_initcode_size);
+
+  memset(p->tf, 0, sizeof(*p->tf));
+  p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
+  p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
+  p->tf->es = p->tf->ds;
+  p->tf->ss = p->tf->ds;
+  p->tf->eflags = FL_IF;
+  p->tf->esp = p->sz;
+  p->tf->eip = 0;  // beginning of initcode.S
+
+  safestrcpy(p->name, "initcode", sizeof(p->name));
+  p->cwd = namei("/");
+
+  p->state = RUNNABLE;
+}
+
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
 int
@@ -84,41 +188,6 @@ growproc(int n)
   cp->sz += n;
   usegment();
   return 0;
-}
-
-// Set up CPU's kernel segment descriptors.
-// Run once at boot time on each CPU.
-void
-ksegment(void)
-{
-  struct cpu *c1;
-
-  c1 = &cpus[cpu()];
-  c1->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
-  c1->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c1->gdt[SEG_KCPU] = SEG(STA_W, (uint)(&c1->tls+1), 0xffffffff, 0);
-  lgdt(c1->gdt, sizeof(c1->gdt));
-  loadfsgs(SEG_KCPU << 3);
-  
-  // Initialize cpu-local variables.
-  c = c1;
-  cp = 0;
-}
-
-// Set up CPU's segment descriptors and task state for the current process.
-// If cp==0, set up for "idle" state for when scheduler() is running.
-void
-usegment(void)
-{
-  pushcli();
-  c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, (uint)cp->mem, cp->sz-1, DPL_USER);
-  c->gdt[SEG_UDATA] = SEG(STA_W, (uint)cp->mem, cp->sz-1, DPL_USER);
-  c->gdt[SEG_TSS] = SEG16(STS_T32A, (uint)&c->ts, sizeof(c->ts)-1, 0);
-  c->gdt[SEG_TSS].s = 0;
-  c->ts.ss0 = SEG_KDATA << 3;
-  c->ts.esp0 = (uint)cp->kstack + KSTACKSIZE;
-  ltr(SEG_TSS << 3);
-  popcli();
 }
 
 // Create a new process copying p as the parent.
@@ -158,37 +227,6 @@ fork(void)
   np->state = RUNNABLE;
 
   return pid;
-}
-
-// Set up first user process.
-void
-userinit(void)
-{
-  struct proc *p;
-  extern char _binary_initcode_start[], _binary_initcode_size[];
-  
-  p = allocproc();
-  initproc = p;
-
-  // Initialize memory from initcode.S
-  p->sz = PAGE;
-  p->mem = kalloc(p->sz);
-  memset(p->mem, 0, p->sz);
-  memmove(p->mem, _binary_initcode_start, (int)_binary_initcode_size);
-
-  memset(p->tf, 0, sizeof(*p->tf));
-  p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
-  p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
-  p->tf->es = p->tf->ds;
-  p->tf->ss = p->tf->ds;
-  p->tf->eflags = FL_IF;
-  p->tf->esp = p->sz;
-  p->tf->eip = 0;  // beginning of initcode.S
-
-  safestrcpy(p->name, "initcode", sizeof(p->name));
-  p->cwd = namei("/");
-
-  p->state = RUNNABLE;
 }
 
 //PAGEBREAK: 42
@@ -437,42 +475,6 @@ wait(void)
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(cp, &ptable.lock);  //DOC: wait-sleep
-  }
-}
-
-// Print a process listing to console.  For debugging.
-// Runs when user types ^P on console.
-// No lock to avoid wedging a stuck machine further.
-void
-procdump(void)
-{
-  static char *states[] = {
-  [UNUSED]    "unused",
-  [EMBRYO]    "embryo",
-  [SLEEPING]  "sleep ",
-  [RUNNABLE]  "runble",
-  [RUNNING]   "run   ",
-  [ZOMBIE]    "zombie"
-  };
-  int i;
-  struct proc *p;
-  char *state;
-  uint pc[10];
-  
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state == UNUSED)
-      continue;
-    if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
-      state = states[p->state];
-    else
-      state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
-    if(p->state == SLEEPING){
-      getcallerpcs((uint*)p->context->ebp+2, pc);
-      for(i=0; i<10 && pc[i] != 0; i++)
-        cprintf(" %p", pc[i]);
-    }
-    cprintf("\n");
   }
 }
 

@@ -34,12 +34,10 @@ sysproc.c
 
 # file system
 buf.h
-dev.h
 fcntl.h
 stat.h
-file.h
 fs.h
-fsvar.h
+file.h
 ide.c
 bio.c
 fs.c

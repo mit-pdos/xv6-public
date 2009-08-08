@@ -12,20 +12,27 @@ even: bootother.S  # mild preference
 # bootmain.c either
 even: main.c
 # mp.c don't care at all
-even: initcode.S
-odd: init.c
+# even: initcode.S
+# odd: init.c
 
 # spinlock.h either
 # spinlock.c either
 even: proc.h  # mild preference
-even: proc.c  # VERY important
+
+# goal is to have two action-packed 2-page spreads,
+# one with
+#     ksegment usegment allocproc userinit growproc fork
+# and another with
+#     scheduler sched yield forkret sleep wakeup1 wakeup
+right: proc.c   # VERY important
+
 # setjmp.S either
 # kalloc.c either
 
 # syscall.h either
 # trapasm.S either
 # traps.h either
-even: trap.c  # important
+# even: trap.c
 # vectors.pl either
 # syscall.c either
 # sysproc.c either
@@ -37,7 +44,7 @@ even: trap.c  # important
 # file.h either
 # fs.h either
 # fsvar.h either
-# even: ide.c
+left: ide.c
 # odd: bio.c
 odd: fs.c   # VERY important
 # file.c either
@@ -46,5 +53,6 @@ odd: fs.c   # VERY important
 
 # even: pipe.c  # mild preference
 # string.c either
+left: kbd.h
 even: console.c
 odd: sh.c
