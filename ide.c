@@ -146,7 +146,7 @@ iderw(struct buf *b)
     idestart(b);
   
   // Wait for request to finish.
-  // Assuming will not sleep too long: ignore cp->killed.
+  // Assuming will not sleep too long: ignore proc->killed.
   while((b->flags & (B_VALID|B_DIRTY)) != B_VALID)
     sleep(b, &idelock);
 

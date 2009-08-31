@@ -11,7 +11,7 @@ exec(char *path, char **argv)
 {
   char *mem, *s, *last;
   int i, argc, arglen, len, off;
-  uint sz, sp, argp, x;
+  uint sz, sp, argp;
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
@@ -103,14 +103,14 @@ exec(char *path, char **argv)
   for(last=s=path; *s; s++)
     if(*s == '/')
       last = s+1;
-  safestrcpy(cp->name, last, sizeof(cp->name));
+  safestrcpy(proc->name, last, sizeof(proc->name));
 
   // Commit to the new image.
-  kfree(cp->mem, cp->sz);
-  cp->mem = mem;
-  cp->sz = sz;
-  cp->tf->eip = elf.entry;  // main
-  cp->tf->esp = sp;
+  kfree(proc->mem, proc->sz);
+  proc->mem = mem;
+  proc->sz = sz;
+  proc->tf->eip = elf.entry;  // main
+  proc->tf->esp = sp;
   usegment();
   return 0;
 

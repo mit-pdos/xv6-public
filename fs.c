@@ -109,7 +109,7 @@ bfree(int dev, uint b)
 // to inodes shared between multiple processes.
 // 
 // ip->ref counts the number of pointer references to this cached
-// inode; references are typically kept in struct file and in cp->cwd.
+// inode; references are typically kept in struct file and in proc->cwd.
 // When ip->ref falls to zero, the inode is no longer cached.
 // It is an error to use an inode without holding a reference to it.
 //
@@ -578,7 +578,7 @@ namex(char *path, int nameiparent, char *name)
   if(*path == '/')
     ip = iget(ROOTDEV, ROOTINO);
   else
-    ip = idup(cp->cwd);
+    ip = idup(proc->cwd);
 
   while((path = skipelem(path, name)) != 0){
     ilock(ip);

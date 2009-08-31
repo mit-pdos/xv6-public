@@ -68,7 +68,7 @@ void            kinit(void);
 void            kbdintr(void);
 
 // lapic.c
-int             cpu(void);
+int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
 void            lapicinit(int);

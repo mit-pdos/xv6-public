@@ -103,20 +103,22 @@ mpinit(void)
   struct mpproc *proc;
   struct mpioapic *ioapic;
 
-  bcpu = &cpus[ncpu];
+  bcpu = &cpus[0];
   if((conf = mpconfig(&mp)) == 0)
     return;
-
   ismp = 1;
   lapic = (uint*)conf->lapicaddr;
-
   for(p=(uchar*)(conf+1), e=(uchar*)conf+conf->length; p<e; ){
     switch(*p){
     case MPPROC:
       proc = (struct mpproc*)p;
-      cpus[ncpu].apicid = proc->apicid;
+      if(ncpu != proc->apicid) {
+        cprintf("mpinit: ncpu=%d apicpid=%d", ncpu, proc->apicid);
+        panic("mpinit");
+      }
       if(proc->flags & MPBOOT)
         bcpu = &cpus[ncpu];
+      cpus[ncpu].id = ncpu;
       ncpu++;
       p += sizeof(struct mpproc);
       continue;
@@ -135,7 +137,6 @@ mpinit(void)
       panic("mpinit");
     }
   }
-
   if(mp->imcrp){
     // Bochs doesn't support IMCR, so this doesn't run on Bochs.
     // But it would on real hardware.

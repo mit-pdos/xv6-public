@@ -59,7 +59,7 @@ cprintf(char *fmt, ...)
   if(locking)
     acquire(&cons.lock);
 
-  argp = (uint*)(void*)&fmt + 1;
+  argp = (uint*)(void*)(&fmt + 1);
   state = 0;
   for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
     if(c != '%'){
@@ -106,7 +106,7 @@ panic(char *s)
   
   cli();
   cons.locking = 0;
-  cprintf("cpu%d: panic: ", cpu());
+  cprintf("cpu%d: panic: ", cpu->id);
   cprintf(s);
   cprintf("\n");
   getcallerpcs(&s, pcs);
@@ -229,7 +229,7 @@ consoleread(struct inode *ip, char *dst, int n)
   acquire(&input.lock);
   while(n > 0){
     while(input.r == input.w){
-      if(cp->killed){
+      if(proc->killed){
         release(&input.lock);
         ilock(ip);
         return -1;

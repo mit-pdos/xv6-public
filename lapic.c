@@ -92,7 +92,7 @@ lapicinit(int c)
 }
 
 int
-cpu(void)
+cpunum(void)
 {
   // Cannot call cpu when interrupts are enabled:
   // result not guaranteed to last long enough to be used!

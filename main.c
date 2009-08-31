@@ -5,8 +5,8 @@
 #include "proc.h"
 #include "x86.h"
 
-__thread struct cpu *c;
-__thread struct proc *cp;
+__thread struct cpu *cpu;
+__thread struct proc *proc;
 
 static void bootothers(void);
 static void mpmain(void) __attribute__((noreturn));
@@ -22,7 +22,7 @@ main(void)
   ioapicinit();    // another interrupt controller
   consoleinit();   // I/O devices & their interrupts
   uartinit();      // serial port
-  cprintf("\ncpu%d: starting xv6\n\n", cpu());
+  cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
 
   kinit();         // physical memory allocator
   pinit();         // process table
@@ -45,14 +45,14 @@ main(void)
 static void
 mpmain(void)
 {
-  if(cpu() != mpbcpu())
-    lapicinit(cpu());
+  if(cpunum() != mpbcpu())
+    lapicinit(cpunum());
   ksegment();
-  cprintf("cpu%d: mpmain\n", cpu());
+  cprintf("cpu%d: mpmain\n", cpu->id);
   idtinit();
-  xchg(&c->booted, 1);
+  xchg(&cpu->booted, 1);
 
-  cprintf("cpu%d: scheduling\n", cpu());
+  cprintf("cpu%d: scheduling\n", cpu->id);
   scheduler();
 }
 
@@ -69,14 +69,14 @@ bootothers(void)
   memmove(code, _binary_bootother_start, (uint)_binary_bootother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
-    if(c == cpus+cpu())  // We've started already.
+    if(c == cpus+cpunum())  // We've started already.
       continue;
 
     // Fill in %esp, %eip and start code on cpu.
     stack = kalloc(KSTACKSIZE);
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpmain;
-    lapicstartap(c->apicid, (uint)code);
+    lapicstartap(c->id, (uint)code);
 
     // Wait for cpu to get through bootstrap.
     while(c->booted == 0)
