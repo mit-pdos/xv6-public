@@ -5,9 +5,6 @@
 #include "proc.h"
 #include "x86.h"
 
-__thread struct cpu *cpu;
-__thread struct proc *proc;
-
 static void bootothers(void);
 static void mpmain(void) __attribute__((noreturn));
 
@@ -22,6 +19,7 @@ main(void)
   ioapicinit();    // another interrupt controller
   consoleinit();   // I/O devices & their interrupts
   uartinit();      // serial port
+cprintf("cpus %p cpu %p\n", cpus, cpu);
   cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
 
   kinit();         // physical memory allocator

@@ -37,7 +37,7 @@ AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
-CFLAGS = -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32
+CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ASFLAGS = -m32
 # FreeBSD ld wants ``elf_i386_fbsd''
@@ -49,8 +49,8 @@ xv6.img: bootblock kernel fs.img
 	dd if=kernel of=xv6.img seek=1 conv=notrunc
 
 bootblock: bootasm.S bootmain.c
-	$(CC) $(CFLAGS) -O -nostdinc -I. -c bootmain.c
-	$(CC) $(CFLAGS) -nostdinc -I. -c bootasm.S
+	$(CC) $(CFLAGS) -fno-pic -O -nostdinc -I. -c bootmain.c
+	$(CC) $(CFLAGS) -fno-pic -nostdinc -I. -c bootasm.S
 	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
 	$(OBJDUMP) -S bootblock.o > bootblock.asm
 	$(OBJCOPY) -S -O binary -j .text bootblock.o bootblock
@@ -93,7 +93,7 @@ _forktest: forktest.o $(ULIB)
 	$(OBJDUMP) -S _forktest > forktest.asm
 
 mkfs: mkfs.c fs.h
-	gcc $(CFLAGS) -Wall -o mkfs mkfs.c
+	gcc -Wall -o mkfs mkfs.c
 
 UPROGS=\
 	_cat\
@@ -139,7 +139,7 @@ bochs : fs.img xv6.img
 	bochs -q
 
 qemu: fs.img xv6.img
-	qemu -parallel stdio -hdb fs.img xv6.img
+	qemu -parallel stdio -smp 2 -hdb fs.img xv6.img
 
 qemutty: fs.img xv6.img
 	qemu -nographic -smp 2 -hdb fs.img xv6.img

@@ -59,10 +59,9 @@ struct cpu {
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
   
-  // "Thread"-local storage variables
+  // Cpu-local storage variables; see below
   struct cpu *cpu;
   struct proc *proc;
-  void *tlsstruct;
 };
 
 extern struct cpu cpus[NCPU];
@@ -70,9 +69,11 @@ extern int ncpu;
 
 // Per-CPU variables, holding pointers to the
 // current cpu and to the current process.
-// The __thread prefix tells gcc to refer to them in the segment
-// pointed at by gs; the name __thread derives from the use
-// of the same mechanism to provide per-thread storage in
-// multithreaded user programs.
-extern __thread struct cpu *cpu;       // This cpu.
-extern __thread struct proc *proc;     // Current process on this cpu.
+// The asm suffix tells gcc to use "%gs:0" to refer to cpu
+// and "%gs:4" to refer to proc.  ksegment sets up the
+// %gs segment register so that %gs refers to the memory
+// holding those two variables in the local cpu's struct cpu.
+// This is similar to how thread-local variables are implemented
+// in thread libraries such as Linux pthreads.
+extern struct cpu *cpu asm("%gs:0");       // This cpu.
+extern struct proc *proc asm("%gs:4");     // Current proc on this cpu.
