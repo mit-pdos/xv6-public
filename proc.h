@@ -58,7 +58,10 @@ struct cpu {
   volatile uint booted;        // Has the CPU started?
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
-  void *tls[2];
+  
+  // "Thread"-local storage variables
+  struct cpu *cpu;
+  struct proc *proc;
   void *tlsstruct;
 };
 

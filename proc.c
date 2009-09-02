@@ -70,12 +70,13 @@ ksegment(void)
   c = &cpus[cpunum()];
   c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
   c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c->gdt[SEG_KCPU] = SEG(STA_W, (uint)(&c->tls+1), 0xffffffff, 0);
+  c->gdt[SEG_KCPU] = SEG(STA_W, &c->tlsstruct, 0xffffffff, 0);
   lgdt(c->gdt, sizeof(c->gdt));
   loadfsgs(SEG_KCPU << 3);
   
-  // Initialize cpu-local variables.
+  // Initialize cpu-local storage.
   c->tlsstruct = &c->tlsstruct;
+  asm volatile("");  // Do not let gcc reorder across this line.
   cpu = c;
   proc = 0;
 }
