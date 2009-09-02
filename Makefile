@@ -53,7 +53,7 @@ bootblock: bootasm.S bootmain.c
 	$(CC) $(CFLAGS) -nostdinc -I. -c bootasm.S
 	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
 	$(OBJDUMP) -S bootblock.o > bootblock.asm
-	$(OBJCOPY) -S -O binary bootblock.o bootblock
+	$(OBJCOPY) -S -O binary -j .text bootblock.o bootblock
 	./sign.pl bootblock
 
 bootother: bootother.S
