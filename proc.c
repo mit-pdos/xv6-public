@@ -72,10 +72,9 @@ ksegment(void)
   c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
   c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 8, 0);
   lgdt(c->gdt, sizeof(c->gdt));
-  loadfsgs(SEG_KCPU << 3);
+  loadgs(SEG_KCPU << 3);
   
   // Initialize cpu-local storage.
-  asm volatile("");  // Do not let gcc reorder across this line.
   cpu = c;
   proc = 0;
 }

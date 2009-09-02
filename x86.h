@@ -104,9 +104,8 @@ xchg(volatile uint *addr, uint newval)
 }
 
 static inline void
-loadfsgs(ushort v)
+loadgs(ushort v)
 {
-  asm volatile("movw %0, %%fs" : : "r" (v));
   asm volatile("movw %0, %%gs" : : "r" (v));
 }
 
