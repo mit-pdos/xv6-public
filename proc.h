@@ -59,6 +59,7 @@ struct cpu {
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
   void *tls[2];
+  void *tlsstruct;
 };
 
 extern struct cpu cpus[NCPU];

@@ -75,6 +75,7 @@ ksegment(void)
   loadfsgs(SEG_KCPU << 3);
   
   // Initialize cpu-local variables.
+  c->tlsstruct = &c->tlsstruct;
   cpu = c;
   proc = 0;
 }
