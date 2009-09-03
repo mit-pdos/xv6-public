@@ -94,7 +94,7 @@ usegment(void)
   popcli();
 }
 
-//PAGEBREAK: 15
+//PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and return it.
 // Otherwise return 0.
@@ -139,6 +139,7 @@ found:
   return p;
 }
 
+//PAGEBREAK: 32
 // Set up first user process.
 void
 userinit(void)
