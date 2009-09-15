@@ -12,3 +12,4 @@ initcode
 initcode.out
 kernel
 mkfs
+.gdbinit
