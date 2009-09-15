@@ -63,6 +63,7 @@ kbd.h
 kbd.c
 console.c
 timer.c
+uart.c
 
 # user-level
 initcode.S
