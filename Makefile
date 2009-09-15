@@ -170,7 +170,7 @@ EXTRA=\
 dist:
 	rm -rf dist
 	mkdir dist
-	for i in $(FILES); \
+	for i in $(FILES) .gdbinit.tmpl; \
 	do \
 		grep -v PAGEBREAK $$i >dist/$$i; \
 	done
@@ -193,6 +193,5 @@ dist-test:
 tar:
 	rm -rf /tmp/xv6
 	mkdir -p /tmp/xv6
-	cp dist/* /tmp/xv6
+	cp dist/* dist/.gdbinit.tmpl /tmp/xv6
 	(cd /tmp; tar cf - xv6) | gzip >xv6-rev3.tar.gz
-
