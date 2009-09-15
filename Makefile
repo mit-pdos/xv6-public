@@ -138,11 +138,22 @@ bochs : fs.img xv6.img
 	if [ ! -e .bochsrc ]; then ln -s dot-bochsrc .bochsrc; fi
 	bochs -q
 
+# try to generate a unique GDB port
+GDBPORT = $(shell expr `id -u` % 5000 + 25000)
+QEMUOPTS = -smp 2 -hdb fs.img xv6.img
+
 qemu: fs.img xv6.img
-	qemu -parallel stdio -smp 2 -hdb fs.img xv6.img
+	qemu -parallel mon:stdio $(QEMUOPTS)
 
 qemutty: fs.img xv6.img
-	qemu -nographic -smp 2 -hdb fs.img xv6.img
+	qemu -nographic $(QEMUOPTS)
+
+.gdbinit: .gdbinit.tmpl
+	sed "s/localhost:1234/localhost:$(GDBPORT)/" < $^ > $@
+
+qemu-gdb: fs.img xv6.img .gdbinit
+	@echo "*** Now run 'gdb'." 1>&2
+	qemu -parallel mon:stdio $(QEMUOPTS) -s -S -p $(GDBPORT)
 
 # CUT HERE
 # prepare dist for students
