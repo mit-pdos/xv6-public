@@ -143,7 +143,7 @@ GDBPORT = $(shell expr `id -u` % 5000 + 25000)
 QEMUOPTS = -smp 2 -hdb fs.img xv6.img
 
 qemu: fs.img xv6.img
-	qemu -parallel mon:stdio $(QEMUOPTS)
+	qemu -serial mon:stdio $(QEMUOPTS)
 
 qemutty: fs.img xv6.img
 	qemu -nographic $(QEMUOPTS)
@@ -153,7 +153,7 @@ qemutty: fs.img xv6.img
 
 qemu-gdb: fs.img xv6.img .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
-	qemu -parallel mon:stdio $(QEMUOPTS) -s -S -p $(GDBPORT)
+	qemu -serial mon:stdio $(QEMUOPTS) -s -S -p $(GDBPORT)
 
 # CUT HERE
 # prepare dist for students
