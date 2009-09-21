@@ -116,7 +116,7 @@ found:
   p->pid = nextpid++;
   release(&ptable.lock);
 
-  // Allocate kernel stack if necessary.
+  // Allocate kernel stack if possible.
   if((p->kstack = kalloc(KSTACKSIZE)) == 0){
     p->state = UNUSED;
     return 0;
