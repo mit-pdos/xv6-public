@@ -145,7 +145,7 @@ QEMUOPTS = -smp 2 -hdb fs.img xv6.img
 qemu: fs.img xv6.img
 	qemu -serial mon:stdio $(QEMUOPTS)
 
-qemutty: fs.img xv6.img
+qemu-nox: fs.img xv6.img
 	qemu -nographic $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl
@@ -154,6 +154,10 @@ qemutty: fs.img xv6.img
 qemu-gdb: fs.img xv6.img .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
 	qemu -serial mon:stdio $(QEMUOPTS) -s -S -p $(GDBPORT)
+
+qemu-gdb-nox: fs.img xv6.img .gdbinit
+	@echo "*** Now run 'gdb'." 1>&2
+	qemu -nographic $(QEMUOPTS) -s -S -p $(GDBPORT)
 
 # CUT HERE
 # prepare dist for students
