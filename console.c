@@ -163,7 +163,12 @@ consputc(int c)
       ;
   }
 
-  uartputc(c);
+  if (c == BACKSPACE) {
+    uartputc('\b');
+    uartputc(' ');
+    uartputc('\b');
+  } else
+    uartputc(c);
   cgaputc(c);
 }
 
@@ -198,6 +203,7 @@ consoleintr(int (*getc)(void))
       }
       break;
     case C('H'):  // Backspace
+    case '\x7f':
       if(input.e != input.w){
         input.e--;
         consputc(BACKSPACE);
