@@ -15,7 +15,9 @@
 // x86 convention is that the caller has saved them.
 // Contexts are stored at the bottom of the stack they
 // describe; the stack pointer is the address of the context.
-// The layout of the context must match the code in swtch.S.
+// The layout of the context matches the layout of the stack in swtch.S
+// at "Switch stacks" comment. eip is included  in the context 
+// so that allocproc() can easily change the return address on the stack.
 struct context {
   uint edi;
   uint esi;
