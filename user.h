@@ -26,6 +26,7 @@ int sleep(int);
 int stat(char*, struct stat*);
 char* strcpy(char*, char*);
 void *memmove(void*, void*, int);
+void *memcpy(void*, void*, int);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
 void printf(int, char*, ...);
