@@ -39,7 +39,7 @@ OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
-ASFLAGS = -m32
+ASFLAGS = -m32 -gdwarf-2
 # FreeBSD ld wants ``elf_i386_fbsd''
 LDFLAGS += -m $(shell $(LD) -V | grep elf_i386 2>/dev/null)
 
@@ -143,9 +143,9 @@ GDBPORT = $(shell expr `id -u` % 5000 + 25000)
 QEMUOPTS = -smp 2 -hdb fs.img xv6.img
 
 qemu: fs.img xv6.img
-	qemu -parallel mon:stdio $(QEMUOPTS)
+	qemu -serial mon:stdio $(QEMUOPTS)
 
-qemutty: fs.img xv6.img
+qemu-nox: fs.img xv6.img
 	qemu -nographic $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl
@@ -153,7 +153,11 @@ qemutty: fs.img xv6.img
 
 qemu-gdb: fs.img xv6.img .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
-	qemu -parallel mon:stdio $(QEMUOPTS) -s -S -p $(GDBPORT)
+	qemu -serial mon:stdio $(QEMUOPTS) -s -S -p $(GDBPORT)
+
+qemu-gdb-nox: fs.img xv6.img .gdbinit
+	@echo "*** Now run 'gdb'." 1>&2
+	qemu -nographic $(QEMUOPTS) -s -S -p $(GDBPORT)
 
 # CUT HERE
 # prepare dist for students
