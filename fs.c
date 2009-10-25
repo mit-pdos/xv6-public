@@ -314,7 +314,7 @@ iunlockput(struct inode *ip)
 // The contents (data) associated with each inode is stored
 // in a sequence of blocks on the disk.  The first NDIRECT blocks
 // are listed in ip->addrs[].  The next NINDIRECT blocks are 
-// listed in the block ip->addrs[INDIRECT].
+// listed in the block ip->addrs[NDIRECT].
 
 // Return the disk block address of the nth block in inode ip.
 // If there is no such block, bmap allocates one.
