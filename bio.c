@@ -109,6 +109,7 @@ bread(uint dev, uint sector)
 void
 bwrite(struct buf *b)
 {
+  cprintf("bwrite sector %d\n", b->sector);
   if((b->flags & B_BUSY) == 0)
     panic("bwrite");
   b->flags |= B_DIRTY;

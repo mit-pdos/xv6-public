@@ -75,7 +75,7 @@ start32:
   movw    $0x8a00, %ax            # 0x8a00 -> port 0x8a00
   movw    %ax, %dx
   outw    %ax, %dx
-  movw    $0x8e00, %ax            # 0x8e00 -> port 0x8a00
+  movw    $0x8ae0, %ax            # 0x8ae0 -> port 0x8a00
   outw    %ax, %dx
 spin:
   jmp     spin
