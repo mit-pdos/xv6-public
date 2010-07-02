@@ -155,8 +155,10 @@ void            uartputc(int);
 // vm.c
 #define PGROUNDUP(sz)  ((sz+PGSIZE-1) & ~(PGSIZE-1))
 void            pminit(void);
-void            swkstack(void);
+void            ksegment(void);
 void            vminit(void);
+void            jkstack();
+void            printstack(void);
 void            printpgdir(uint*);
 uint*           setupkvm(void);    // XXX need pde_t*
 char*           uva2ka(uint*, char*);
@@ -165,7 +167,6 @@ void            freevm(uint*);
 void            inituvm(uint*, char*, char*, uint);
 int             loaduvm(uint*, char*, struct inode *ip, uint, uint);
 uint*           copyuvm(uint*,uint);
-void            ksegment(void);
 void            loadvm(struct proc*);
 
 // number of elements in fixed-size array

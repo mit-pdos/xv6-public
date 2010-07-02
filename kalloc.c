@@ -23,16 +23,6 @@ struct {
 
 int nfreemem;
 
-static void
-printfreelist(void)
-{
-  struct run *r, **rp;
-  cprintf("freelist:\n");
-  for(rp=&kmem.freelist; (r=*rp) != 0; rp=&r->next){
-    cprintf("0x%x %d=0x%x\n", r, r->len, r->len);
-  }
-}
-
 // Initialize free list of physical pages.
 // This code cheats by just considering one megabyte of
 // pages after end.  Real systems would determine the
