@@ -19,20 +19,27 @@ main(void)
   ioapicinit();    // another interrupt controller
   consoleinit();   // I/O devices & their interrupts
   uartinit();      // serial port
-cprintf("cpus %p cpu %p\n", cpus, cpu);
-  cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
+  pminit();        // physical memory for kernel
+  jkstack();       // Jump to mainc on a proper-allocated kernel stack 
+}
 
-  kinit();         // physical memory allocator
+void
+mainc(void)
+{
+  cprintf("cpus %p cpu %p\n", cpus, cpu);
+  cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
+  vminit();        // virtual memory
   pinit();         // process table
   tvinit();        // trap vectors
   binit();         // buffer cache
   fileinit();      // file table
   iinit();         // inode cache
   ideinit();       // disk
+  cprintf("ismp: %d\n", ismp);
   if(!ismp)
     timerinit();   // uniprocessor timer
   userinit();      // first user process
-  bootothers();    // start other processors
+  // bootothers();    // start other processors  XXX fix where to boot from
 
   // Finish setting up this processor in mpmain.
   mpmain();
@@ -43,9 +50,12 @@ cprintf("cpus %p cpu %p\n", cpus, cpu);
 static void
 mpmain(void)
 {
-  if(cpunum() != mpbcpu())
+  if(cpunum() != mpbcpu()) {
+    ksegment();
+    cprintf("other cpu\n");
+    vminit();
     lapicinit(cpunum());
-  ksegment();
+  }
   cprintf("cpu%d: mpmain\n", cpu->id);
   idtinit();
   xchg(&cpu->booted, 1);
@@ -74,11 +84,15 @@ bootothers(void)
     stack = kalloc(KSTACKSIZE);
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpmain;
+    cprintf("lapicstartap\n");
     lapicstartap(c->id, (uint)code);
+    cprintf("lapicstartap done\n");
 
     // Wait for cpu to get through bootstrap.
     while(c->booted == 0)
       ;
+
+    cprintf("lapicstartap booted\n");
   }
 }
 

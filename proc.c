@@ -60,39 +60,6 @@ procdump(void)
   }
 }
 
-// Set up CPU's kernel segment descriptors.
-// Run once at boot time on each CPU.
-void
-ksegment(void)
-{
-  struct cpu *c;
-
-  c = &cpus[cpunum()];
-  c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0x100000 + 64*1024-1, 0);
-  c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 8, 0);
-  lgdt(c->gdt, sizeof(c->gdt));
-  loadgs(SEG_KCPU << 3);
-  
-  // Initialize cpu-local storage.
-  cpu = c;
-  proc = 0;
-}
-
-// Set up CPU's segment descriptors and current process task state.
-void
-usegment(void)
-{
-  pushcli();
-  cpu->gdt[SEG_UCODE] = SEG(STA_X|STA_R, proc->mem, proc->sz-1, DPL_USER);
-  cpu->gdt[SEG_UDATA] = SEG(STA_W, proc->mem, proc->sz-1, DPL_USER);
-  cpu->gdt[SEG_TSS] = SEG16(STS_T32A, &cpu->ts, sizeof(cpu->ts)-1, 0);
-  cpu->gdt[SEG_TSS].s = 0;
-  cpu->ts.ss0 = SEG_KDATA << 3;
-  cpu->ts.esp0 = (uint)proc->kstack + KSTACKSIZE;
-  ltr(SEG_TSS << 3);
-  popcli();
-}
 
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
@@ -149,20 +116,19 @@ userinit(void)
   
   p = allocproc();
   initproc = p;
-
-  // Initialize memory from initcode.S
-  p->sz = PAGE;
-  p->mem = kalloc(p->sz);
-  memset(p->mem, 0, p->sz);
-  memmove(p->mem, _binary_initcode_start, (int)_binary_initcode_size);
-
+  if (!(p->pgdir = setupkvm()))
+    panic("userinit: out of memory?");
+  if (!allocuvm(p->pgdir, 0x0, (int)_binary_initcode_size))
+    panic("userinit: out of memory?");
+  inituvm(p->pgdir, 0x0, _binary_initcode_start, (int)_binary_initcode_size);
+  p->sz = PGROUNDUP((int)_binary_initcode_size);
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
   p->tf->es = p->tf->ds;
   p->tf->ss = p->tf->ds;
   p->tf->eflags = FL_IF;
-  p->tf->esp = p->sz;
+  p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
@@ -176,17 +142,10 @@ userinit(void)
 int
 growproc(int n)
 {
-  char *newmem;
-
-  newmem = kalloc(proc->sz + n);
-  if(newmem == 0)
+  if (!allocuvm(proc->pgdir, (char *)proc->sz, n))
     return -1;
-  memmove(newmem, proc->mem, proc->sz);
-  memset(newmem + proc->sz, 0, n);
-  kfree(proc->mem, proc->sz);
-  proc->mem = newmem;
   proc->sz += n;
-  usegment();
+  loadvm(proc);
   return 0;
 }
 
@@ -204,14 +163,13 @@ fork(void)
     return -1;
 
   // Copy process state from p.
-  np->sz = proc->sz;
-  if((np->mem = kalloc(np->sz)) == 0){
+  if (!(np->pgdir = copyuvm(proc->pgdir, proc->sz))) {
     kfree(np->kstack, KSTACKSIZE);
     np->kstack = 0;
     np->state = UNUSED;
     return -1;
   }
-  memmove(np->mem, proc->mem, np->sz);
+  np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
 
@@ -225,7 +183,7 @@ fork(void)
  
   pid = np->pid;
   np->state = RUNNABLE;
-
+  safestrcpy(np->name, proc->name, sizeof(proc->name));
   return pid;
 }
 
@@ -256,7 +214,7 @@ scheduler(void)
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       proc = p;
-      usegment();
+      loadvm(p);
       p->state = RUNNING;
       swtch(&cpu->scheduler, proc->context);
 
@@ -284,7 +242,6 @@ sched(void)
     panic("sched running");
   if(readeflags()&FL_IF)
     panic("sched interruptible");
-
   intena = cpu->intena;
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
@@ -455,9 +412,10 @@ wait(void)
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
-        kfree(p->mem, p->sz);
         kfree(p->kstack, KSTACKSIZE);
+	freevm(p->pgdir);
         p->state = UNUSED;
+	p->kstack = 0;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;

@@ -8,6 +8,7 @@
 #include "types.h"
 #include "defs.h"
 #include "param.h"
+#include "mmu.h"
 #include "spinlock.h"
 
 struct run {
@@ -20,21 +21,28 @@ struct {
   struct run *freelist;
 } kmem;
 
+int nfreemem;
+
+static void
+printfreelist(void)
+{
+  struct run *r, **rp;
+  cprintf("freelist:\n");
+  for(rp=&kmem.freelist; (r=*rp) != 0; rp=&r->next){
+    cprintf("0x%x %d=0x%x\n", r, r->len, r->len);
+  }
+}
+
 // Initialize free list of physical pages.
 // This code cheats by just considering one megabyte of
 // pages after end.  Real systems would determine the
 // amount of memory available in the system and use it all.
 void
-kinit(void)
+kinit(char *p, uint len)
 {
-  extern char end[];
-  uint len;
-  char *p;
-
   initlock(&kmem.lock, "kmem");
-  p = (char*)(((uint)end + PAGE) & ~(PAGE-1));
-  len = 256*PAGE; // assume computer has 256 pages of RAM, 1 MB
-  cprintf("mem = %d\n", len);
+  cprintf("end 0x%x free = %d(0x%x)\n", p, len);
+  nfreemem = 0;
   kfree(p, len);
 }
 
@@ -47,19 +55,23 @@ kfree(char *v, int len)
 {
   struct run *r, *rend, **rp, *p, *pend;
 
-  if(len <= 0 || len % PAGE)
+  if(len <= 0 || len % PGSIZE)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
   memset(v, 1, len);
 
   acquire(&kmem.lock);
+  nfreemem += len;
   p = (struct run*)v;
   pend = (struct run*)(v + len);
   for(rp=&kmem.freelist; (r=*rp) != 0 && r <= pend; rp=&r->next){
     rend = (struct run*)((char*)r + r->len);
-    if(r <= p && p < rend)
+    if(r <= p && p < rend) {
+      cprintf("freeing a free page: r = 0x%x p = 0x%x rend = 0x%x\n", 
+	      r, p, rend);
       panic("freeing free page");
+    }
     if(rend == p){  // r before p: expand r to include p
       r->len += len;
       if(r->next && r->next == pend){  // r now next to r->next?
@@ -93,7 +105,7 @@ kalloc(int n)
   char *p;
   struct run *r, **rp;
 
-  if(n % PAGE || n <= 0)
+  if(n % PGSIZE || n <= 0)
     panic("kalloc");
 
   acquire(&kmem.lock);
@@ -103,6 +115,7 @@ kalloc(int n)
       p = (char*)r + r->len;
       if(r->len == 0)
         *rp = r->next;
+      nfreemem -= n;
       release(&kmem.lock);
       return p;
     }
@@ -112,3 +125,4 @@ kalloc(int n)
   cprintf("kalloc: out of memory\n");
   return 0;
 }
+

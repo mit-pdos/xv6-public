@@ -121,6 +121,61 @@ sti(void)
   asm volatile("sti");
 }
 
+static inline void lcr0(uint val)
+{
+  asm volatile("movl %0,%%cr0" : : "r" (val));
+}
+
+static inline uint rcr0(void)
+{
+  uint val;
+  asm volatile("movl %%cr0,%0" : "=r" (val));
+  return val;
+}
+
+static inline uint rcr2(void)
+{
+  uint val;
+  asm volatile("movl %%cr2,%0" : "=r" (val));
+  return val;
+}
+
+static inline void lcr3(uint val) 
+{
+  asm volatile("movl %0,%%cr3" : : "r" (val));
+}
+
+static inline uint rcr3(void)
+{
+  uint val;
+  asm volatile("movl %%cr3,%0" : "=r" (val));
+  return val;
+}
+
+static inline void lebp(uint val)
+{
+  asm volatile("movl %0,%%ebp" : : "r" (val));
+}
+
+static inline uint rebp(void)
+{
+  uint val;
+  asm volatile("movl %%ebp,%0" : "=r" (val));
+  return val;
+}
+
+static inline void lesp(uint val)
+{
+  asm volatile("movl %0,%%esp" : : "r" (val));
+}
+
+static inline uint resp(void)
+{
+  uint val;
+  asm volatile("movl %%esp,%0" : "=r" (val));
+  return val;
+}
+
 //PAGEBREAK: 36
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().

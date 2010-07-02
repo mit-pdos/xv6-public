@@ -88,5 +88,5 @@ gdt:
   SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg
 
 gdtdesc:
-  .word   (gdtdesc - gdt - 1)                            # sizeof(gdt) - 1
+  .word   (gdtdesc - gdt - 1)             # sizeof(gdt) - 1
   .long   gdt                             # address gdt

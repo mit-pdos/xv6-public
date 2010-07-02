@@ -116,7 +116,6 @@ filewrite(struct file *f, char *addr, int n)
     return pipewrite(f->pipe, addr, n);
   if(f->type == FD_INODE){
     ilock(f->ip);
-    cprintf("filewrite: %d\n", n);
     if((r = writei(f->ip, addr, f->off, n)) > 0)
       f->off += r;
     iunlock(f->ip);

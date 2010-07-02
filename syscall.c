@@ -18,9 +18,11 @@ fetchint(struct proc *p, uint addr, int *ip)
 {
   if(addr >= p->sz || addr+4 > p->sz)
     return -1;
-  *ip = *(int*)(p->mem + addr);
+  *ip = *(int*)(addr);
   return 0;
 }
+
+// XXX should we copy the string?
 
 // Fetch the nul-terminated string at addr from process p.
 // Doesn't actually copy the string - just sets *pp to point at it.
@@ -32,8 +34,10 @@ fetchstr(struct proc *p, uint addr, char **pp)
 
   if(addr >= p->sz)
     return -1;
-  *pp = p->mem + addr;
-  ep = p->mem + p->sz;
+  // *pp = p->mem + addr;
+  // ep = p->mem + p->sz;
+  *pp = (char **) addr;
+  ep = p->sz;
   for(s = *pp; s < ep; s++)
     if(*s == 0)
       return s - *pp;
@@ -44,7 +48,8 @@ fetchstr(struct proc *p, uint addr, char **pp)
 int
 argint(int n, int *ip)
 {
-  return fetchint(proc, proc->tf->esp + 4 + 4*n, ip);
+  int x = fetchint(proc, proc->tf->esp + 4 + 4*n, ip);
+  return x;
 }
 
 // Fetch the nth word-sized system call argument as a pointer
@@ -59,7 +64,8 @@ argptr(int n, char **pp, int size)
     return -1;
   if((uint)i >= proc->sz || (uint)i+size >= proc->sz)
     return -1;
-  *pp = proc->mem + i;
+  // *pp = proc->mem + i;   // XXXXX
+  *pp = (char *) i;   // XXXXX
   return 0;
 }
 

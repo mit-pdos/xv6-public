@@ -5,6 +5,8 @@
 #include "stat.h"
 #include "user.h"
 
+#define N  1000
+
 void
 printf(int fd, char *s, ...)
 {
@@ -18,7 +20,7 @@ forktest(void)
 
   printf(1, "fork test\n");
 
-  for(n=0; n<1000; n++){
+  for(n=0; n<N; n++){
     pid = fork();
     if(pid < 0)
       break;
@@ -26,8 +28,8 @@ forktest(void)
       exit();
   }
   
-  if(n == 1000){
-    printf(1, "fork claimed to work 1000 times!\n");
+  if(n == N){
+    printf(1, "fork claimed to work N times!\n", N);
     exit();
   }
   

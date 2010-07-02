@@ -26,3 +26,11 @@ swtch:
   popl %ebx
   popl %ebp
   ret
+
+# Jump on a new stack, fake C calling conventions
+.globl jstack
+jstack:	
+  movl 4(%esp), %esp
+  subl $16, %esp	# space for arguments
+  movl $0, %ebp	        # terminate functions that follow ebp's
+  call mainc	        # continue at mainc

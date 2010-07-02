@@ -264,7 +264,6 @@ sys_open(void)
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
-
   if(omode & O_CREATE){
     if((ip = create(path, T_FILE, 0, 0)) == 0)
       return -1;
@@ -291,7 +290,6 @@ sys_open(void)
   f->off = 0;
   f->readable = !(omode & O_WRONLY);
   f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
-
   return fd;
 }
 
@@ -350,8 +348,9 @@ sys_exec(void)
   int i;
   uint uargv, uarg;
 
-  if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0)
+  if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0) {
     return -1;
+  }
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv))

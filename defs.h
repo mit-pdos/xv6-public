@@ -60,9 +60,10 @@ extern uchar    ioapicid;
 void            ioapicinit(void);
 
 // kalloc.c
+extern int      nfreemem;
 char*           kalloc(int);
 void            kfree(char*, int);
-void            kinit(void);
+void            kinit(char*,uint);
 
 // kbd.c
 void            kbdintr(void);
@@ -101,8 +102,6 @@ int             kill(int);
 void            pinit(void);
 void            procdump(void);
 void            scheduler(void) __attribute__((noreturn));
-void            ksegment(void);
-void            usegment(void);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
@@ -111,6 +110,7 @@ void            yield(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
+void            jstack(uint);
 
 // spinlock.c
 void            acquire(struct spinlock*);
@@ -151,6 +151,22 @@ extern struct spinlock tickslock;
 void            uartinit(void);
 void            uartintr(void);
 void            uartputc(int);
+
+// vm.c
+#define PGROUNDUP(sz)  ((sz+PGSIZE-1) & ~(PGSIZE-1))
+void            pminit(void);
+void            swkstack(void);
+void            vminit(void);
+void            printpgdir(uint*);
+uint*           setupkvm(void);    // XXX need pde_t*
+char*           uva2ka(uint*, char*);
+int             allocuvm(uint*, char*, uint);  // XXX need pde_t*
+void            freevm(uint*);
+void            inituvm(uint*, char*, char*, uint);
+int             loaduvm(uint*, char*, struct inode *ip, uint, uint);
+uint*           copyuvm(uint*,uint);
+void            ksegment(void);
+void            loadvm(struct proc*);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

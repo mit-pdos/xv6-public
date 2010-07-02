@@ -30,8 +30,8 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
-  char *mem;                   // Start of process memory (kernel address)
   uint sz;                     // Size of process memory (bytes)
+  pde_t* pgdir;                // linear address of proc's pgdir
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   volatile int pid;            // Process ID

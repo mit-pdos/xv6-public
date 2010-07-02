@@ -330,7 +330,7 @@ parsecmd(char *s)
 {
   char *es;
   struct cmd *cmd;
-  
+
   es = s + strlen(s);
   cmd = parseline(&s, es);
   peek(&s, es, "");
@@ -363,7 +363,7 @@ struct cmd*
 parsepipe(char **ps, char *es)
 {
   struct cmd *cmd;
-  
+
   cmd = parseexec(ps, es);
   if(peek(ps, es, "|")){
     gettoken(ps, es, 0, 0);
@@ -420,6 +420,7 @@ parseexec(char **ps, char *es)
   int tok, argc;
   struct execcmd *cmd;
   struct cmd *ret;
+  int *x = (int *) peek;
   
   if(peek(ps, es, "("))
     return parseblock(ps, es);
