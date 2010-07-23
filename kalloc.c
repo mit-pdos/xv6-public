@@ -111,8 +111,6 @@ kalloc(int n)
     }
   }
   release(&kmem.lock);
-
-  cprintf("kalloc: out of memory\n");
   return 0;
 }
 

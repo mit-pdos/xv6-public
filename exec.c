@@ -102,7 +102,7 @@ exec(char *path, char **argv)
   return 0;
 
  bad:
-  freevm(pgdir);
+  if (pgdir) freevm(pgdir);
   iunlockput(ip);
   return -1;
 }
