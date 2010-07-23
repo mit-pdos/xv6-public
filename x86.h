@@ -176,6 +176,11 @@ static inline uint resp(void)
   return val;
 }
 
+static inline void nop_pause(void)
+{
+  asm volatile("pause" : :);
+}
+
 //PAGEBREAK: 36
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().

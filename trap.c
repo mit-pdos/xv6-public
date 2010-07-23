@@ -73,6 +73,10 @@ trap(struct trapframe *tf)
             cpu->id, tf->cs, tf->eip);
     lapiceoi();
     break;
+  case T_TLBFLUSH:
+    lapiceoi();
+    lcr3(rcr3());
+    break;
    
   //PAGEBREAK: 13
   default:

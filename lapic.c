@@ -20,8 +20,11 @@
   #define STARTUP    0x00000600   // Startup IPI
   #define DELIVS     0x00001000   // Delivery status
   #define ASSERT     0x00004000   // Assert interrupt (vs deassert)
+  #define DEASSERT   0x00000000
   #define LEVEL      0x00008000   // Level triggered
   #define BCAST      0x00080000   // Send to all APICs, including self.
+  #define BUSY       0x00001000
+  #define FIXED      0x00000000
 #define ICRHI   (0x0310/4)   // Interrupt Command [63:32]
 #define TIMER   (0x0320/4)   // Local Vector Table 0 (TIMER)
   #define X1         0x0000000B   // divide counts by 1
@@ -42,6 +45,27 @@ lapicw(int index, int value)
 {
   lapic[index] = value;
   lapic[ID];  // wait for write to finish, by reading
+}
+
+static uint
+lapicr(uint off)
+{
+  return lapic[off];
+}
+
+static int
+apic_icr_wait()
+{
+    uint i = 100000;
+    while ((lapicr(ICRLO) & BUSY) != 0) {
+        nop_pause();
+        i--;
+        if (i == 0) {
+            cprintf("apic_icr_wait: wedged?\n");
+            return -1;
+        }
+    }
+    return 0;
 }
 
 //PAGEBREAK!
@@ -127,6 +151,22 @@ microdelay(int us)
 {
 }
 
+
+// Send IPI
+void
+lapic_ipi(int cpu, int ino)
+{
+  lapicw(ICRHI, cpu << 24);
+  lapicw(ICRLO, FIXED | DEASSERT | ino);
+  if (apic_icr_wait() < 0)
+    panic("lapic_ipi: icr_wait failure");
+}
+
+void
+lapic_tlbflush(uint cpu)
+{
+  lapic_ipi(cpu, T_TLBFLUSH);
+}
 
 #define IO_RTC  0x70
 

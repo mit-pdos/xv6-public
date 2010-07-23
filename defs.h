@@ -73,6 +73,7 @@ int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
 void            lapicinit(int);
+void            lapic_tlbflush(uint);
 void            lapicstartap(uchar, uint);
 void            microdelay(int);
 
@@ -156,6 +157,8 @@ void            uartputc(int);
 #define PGROUNDUP(sz)  ((sz+PGSIZE-1) & ~(PGSIZE-1))
 void            pminit(void);
 void            ksegment(void);
+void            kvmalloc(void);
+void            loadkvm(void);
 void            vminit(void);
 void            jkstack();
 void            printstack(void);

@@ -95,13 +95,9 @@ exec(char *path, char **argv)
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
 
-  // printstack();
-
-  loadvm(proc);
+  loadvm(proc); 
 
   freevm(oldpgdir);
-
-  // printstack(); 
 
   return 0;
 

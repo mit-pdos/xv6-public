@@ -6,13 +6,14 @@
 #include "x86.h"
 
 static void bootothers(void);
-static void mpmain(void) __attribute__((noreturn));
+static void mpmain(void);
+void jkstack(void) __attribute__((noreturn));
 
 // Bootstrap processor starts running C code here.
 int
 main(void)
 {
-  mpinit(); // collect info about this machine
+  mpinit();        // collect info about this machine
   lapicinit(mpbcpu());
   ksegment();
   picinit();       // interrupt controller
@@ -28,18 +29,17 @@ mainc(void)
 {
   cprintf("cpus %p cpu %p\n", cpus, cpu);
   cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
-  vminit();        // virtual memory
+  kvmalloc();      // allocate the kernel page table
   pinit();         // process table
   tvinit();        // trap vectors
   binit();         // buffer cache
   fileinit();      // file table
   iinit();         // inode cache
   ideinit();       // disk
-  cprintf("ismp: %d\n", ismp);
   if(!ismp)
     timerinit();   // uniprocessor timer
   userinit();      // first user process
-  // bootothers();    // start other processors  XXX fix where to boot from
+  bootothers();    // start other processors
 
   // Finish setting up this processor in mpmain.
   mpmain();
@@ -53,13 +53,12 @@ mpmain(void)
   if(cpunum() != mpbcpu()) {
     ksegment();
     cprintf("other cpu\n");
-    vminit();
     lapicinit(cpunum());
   }
+  vminit();        // Run with paging on each processor
   cprintf("cpu%d: mpmain\n", cpu->id);
   idtinit();
   xchg(&cpu->booted, 1);
-
   cprintf("cpu%d: scheduling\n", cpu->id);
   scheduler();
 }
@@ -72,10 +71,10 @@ bootothers(void)
   struct cpu *c;
   char *stack;
 
-  // Write bootstrap code to unused memory at 0x7000.
-  code = (uchar*)0x7000;
+  // Write bootstrap code to unused memory at 0x7000.  The linker has
+  // placed the start of bootother.S there.
+  code = (uchar *) 0x7000;
   memmove(code, _binary_bootother_start, (uint)_binary_bootother_size);
-
   for(c = cpus; c < cpus+ncpu; c++){
     if(c == cpus+cpunum())  // We've started already.
       continue;
@@ -84,15 +83,11 @@ bootothers(void)
     stack = kalloc(KSTACKSIZE);
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpmain;
-    cprintf("lapicstartap\n");
     lapicstartap(c->id, (uint)code);
-    cprintf("lapicstartap done\n");
 
     // Wait for cpu to get through bootstrap.
     while(c->booted == 0)
       ;
-
-    cprintf("lapicstartap booted\n");
   }
 }
 
