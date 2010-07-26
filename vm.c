@@ -25,31 +25,13 @@
 #define PHYSTOP  0x300000
 #define USERTOP  0xA0000
 
-static uint kerntext;  // Linker start kernel at 1MB
+static uint kerntext;  // Linker starts kernel at 1MB
 static uint kerntsz;   
 static uint kerndata;
 static uint kerndsz;
 static uint kernend;
 static uint freesz;
-
 pde_t *kpgdir;         // One kernel page table for scheduler procs
-
-void
-printstack()
-{
-  uint *ebp = (uint *) rebp();
-  uint i;
-  cprintf("kernel stack: 0x%x\n", ebp);
-  while (ebp) {
-    if (ebp < (uint *) kerntext) // don't follow user ebp
-      return;
-    cprintf("  ebp %x  saved ebp %x eip %x  args", ebp, ebp[0], ebp[1]);
-    for (i = 0; i < 4; i++)
-      cprintf(" %x", ebp[2+i]);
-    cprintf("\n");
-    ebp = (uint *) ebp[0];
-  }
-}
 
 void
 printpgdir(pde_t *pgdir)
@@ -99,19 +81,15 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
 }
 
 static int
-mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm, int p)
+mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
 {
   uint i;
   pte_t *pte;
 
-  if (p) 
-    cprintf("mappages: pgdir 0x%x la 0x%x sz %d(0x%x) pa 0x%x, perm 0x%x\n", 
-	    pgdir, la, size, size, pa, perm);
   for (i = 0; i < size; i += PGSIZE) {
     if (!(pte = walkpgdir(pgdir, (void*)(la + i), 1)))
       return 0;
     *pte = (pa + i) | perm | PTE_P;
-    if (p) cprintf("mappages 0x%x 0x%x pp %d\n", la+i, *pte, PPN(*pte));
   }
   return 1;
 }
@@ -178,19 +156,19 @@ setupkvm(void)
     return 0;
   memset(pgdir, 0, PGSIZE);
   // Map IO space from 640K to 1Mbyte
-  if (!mappages(pgdir, (void *)USERTOP, 0x60000, USERTOP, PTE_W, 0))
+  if (!mappages(pgdir, (void *)USERTOP, 0x60000, USERTOP, PTE_W))
     return 0;
   // Map kernel text from kern text addr read-only
-  if (!mappages(pgdir, (void *) kerntext, kerntsz, kerntext, 0, 0))
+  if (!mappages(pgdir, (void *) kerntext, kerntsz, kerntext, 0))
     return 0;
   // Map kernel data form kern data addr R/W
-  if (!mappages(pgdir, (void *) kerndata, kerndsz, kerndata, PTE_W, 0))
+  if (!mappages(pgdir, (void *) kerndata, kerndsz, kerndata, PTE_W))
     return 0;
   // Map dynamically-allocated memory read/write (kernel stacks, user mem)
-  if (!mappages(pgdir, (void *) kernend, freesz, PADDR(kernend), PTE_W, 0))
+  if (!mappages(pgdir, (void *) kernend, freesz, PADDR(kernend), PTE_W))
     return 0;
   // Map devices such as ioapic, lapic, ...
-  if (!mappages(pgdir, (void *)0xFE000000, 0x2000000, 0xFE000000, PTE_W, 0))
+  if (!mappages(pgdir, (void *)0xFE000000, 0x2000000, 0xFE000000, PTE_W))
     return 0;
   return pgdir;
 }
@@ -218,7 +196,7 @@ allocuvm(pde_t *pgdir, char *addr, uint sz)
       return 0;
     }
     memset(mem, 0, PGSIZE);
-    mappages(pgdir, addr + i, PGSIZE, PADDR(mem), PTE_W|PTE_U, 0);
+    mappages(pgdir, addr + i, PGSIZE, PADDR(mem), PTE_W|PTE_U);
   }
   return 1;
 }
@@ -304,12 +282,13 @@ copyuvm(pde_t *pgdir, uint sz)
     if (!(mem = kalloc(PGSIZE)))
       return 0;
     memmove(mem, (char *)pa, PGSIZE);
-    if (!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U, 0))
+    if (!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U))
       return 0;
   }
   return d;
 }
 
+// Gather about physical memory layout.  Called once during boot.
 void
 pminit(void)
 {
@@ -345,7 +324,8 @@ jkstack(void)
   jstack((uint) top);
 }
 
-// Allocate one page table for the machine for the kernel address space
+// Allocate one page table for the machine for the kernel address
+// space for scheduler processes.
 void
 kvmalloc(void)
 {
