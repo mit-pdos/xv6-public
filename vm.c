@@ -6,13 +6,33 @@
 #include "proc.h"
 #include "elf.h"
 
-static uint kerntext;  // linear/physical address of start of kernel text
-static uint kerntsz;
+// The mappings from logical to linear are one to one (i.e.,
+// segmentation doesn't do anything).
+// The mapping from linear to physical are one to one for the kernel.
+// The mappings for the kernel include all of physical memory (until
+// PHYSTOP), including the I/O hole, and the top of physical address
+// space, where additional devices are located.
+// The kernel itself is linked to be at 1MB, and its physical memory
+// is also at 1MB.
+// Physical memory for user programs is allocated from physical memory
+// between kernend and the end of physical memory (PHYSTOP).
+// The virtual address space of each user program includes the kernel
+// (which is inaccessible in user mode).  The user program addresses
+// range from 0 till 640KB (USERTOP), which where the I/O hole starts
+// (both in physical memory and in the kernel's virtual address
+// space).
+
+#define PHYSTOP  0x300000
+#define USERTOP  0xA0000
+
+static uint kerntext;  // Linker start kernel at 1MB
+static uint kerntsz;   
 static uint kerndata;
 static uint kerndsz;
 static uint kernend;
 static uint freesz;
-static pde_t *kpgdir;
+
+pde_t *kpgdir;         // One kernel page table for scheduler procs
 
 void
 printstack()
@@ -140,13 +160,14 @@ loadvm(struct proc *p)
   lcr3(PADDR(p->pgdir));  // switch to new address space
   popcli();
 
-  // Conservatively flush other processor's TLBs  (XXX lazy--just 2 cpus)
+  // Conservatively flush other processor's TLBs  
+  // XXX lazy--just 2 cpus, but xv6 doesn't need shootdown anyway.
   if (cpu->id == 0) lapic_tlbflush(1);
   else lapic_tlbflush(0);
 }
 
-// Setup kernel part of page table. Linear adresses map one-to-one on
-// physical addresses.
+// Setup kernel part of a page table. Linear adresses map one-to-one
+// on physical addresses.
 pde_t*
 setupkvm(void)
 {
@@ -157,7 +178,7 @@ setupkvm(void)
     return 0;
   memset(pgdir, 0, PGSIZE);
   // Map IO space from 640K to 1Mbyte
-  if (!mappages(pgdir, (void *)0xA0000, 0x60000, 0xA0000, PTE_W, 0))
+  if (!mappages(pgdir, (void *)USERTOP, 0x60000, USERTOP, PTE_W, 0))
     return 0;
   // Map kernel text from kern text addr read-only
   if (!mappages(pgdir, (void *) kerntext, kerntsz, kerntext, 0, 0))
@@ -190,7 +211,7 @@ allocuvm(pde_t *pgdir, char *addr, uint sz)
   char *mem;
 
   n = PGROUNDUP(sz);
-  if (addr + n >= 0xA0000)
+  if (addr + n >= USERTOP)
     return 0;
   for (i = 0; i < n; i += PGSIZE) {
     if (!(mem = kalloc(PGSIZE))) {   // XXX cleanup what we did?
@@ -217,7 +238,7 @@ freevm(pde_t *pgdir)
 	if (pgtab[j] != 0) {
 	  uint pa = PTE_ADDR(pgtab[j]);
 	  uint va = PGADDR(i, j, 0);
-	  if (va >= 0xA0000)   // done with user part?
+	  if (va >= USERTOP)   // done with user part?
 	    break;
 	  kfree((void *) pa, PGSIZE);
 	  pgtab[j] = 0;
@@ -305,12 +326,12 @@ pminit(void)
   kerndata = ph[1].va;
   kerntsz = kerndata - kerntext;
   kerndsz = kernend - kerndata;
-  freesz = 0x300000 - kernend;  // XXX no more than 3 Mbyte of phys mem
+  freesz = PHYSTOP - kernend;
 
   cprintf("kerntext@0x%x(sz=0x%x), kerndata@0x%x(sz=0x%x), kernend 0x%x freesz = 0x%x\n", 
 	  kerntext, kerntsz, kerndata, kerndsz, kernend, freesz);
 
-  kinit((char *)kernend, freesz);   // XXX should be called once on bootcpu
+  kinit((char *)kernend, freesz);
 }
 
 // Jump to mainc on a properly-allocated kernel stack
@@ -331,20 +352,13 @@ kvmalloc(void)
   kpgdir = setupkvm();
 }
 
-// Switch to the kernel page table (used by the scheduler)
-void
-loadkvm(void)
-{
-  lcr3(PADDR(kpgdir));
-}
-
+// Turn on paging.
 void
 vminit(void)
 {
   uint cr0;
 
-  loadkvm();
-  // Turn on paging.
+  lcr3(PADDR(kpgdir));
   cr0 = rcr0();
   cr0 |= CR0_PE|CR0_PG|CR0_AM|CR0_WP|CR0_NE|CR0_TS|CR0_EM|CR0_MP;
   cr0 &= ~(CR0_TS|CR0_EM);

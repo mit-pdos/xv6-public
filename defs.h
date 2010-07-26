@@ -155,23 +155,22 @@ void            uartputc(int);
 
 // vm.c
 #define PGROUNDUP(sz)  ((sz+PGSIZE-1) & ~(PGSIZE-1))
+extern pde_t    *kpgdir;
 void            pminit(void);
 void            ksegment(void);
 void            kvmalloc(void);
-void            loadkvm(void);
 void            vminit(void);
 void            jkstack();
 void            printstack(void);
-void            printpgdir(uint*);
-uint*           setupkvm(void);    // XXX need pde_t*
-char*           uva2ka(uint*, char*);
-int             allocuvm(uint*, char*, uint);  // XXX need pde_t*
-void            freevm(uint*);
-void            inituvm(uint*, char*, char*, uint);
-int             loaduvm(uint*, char*, struct inode *ip, uint, uint);
-uint*           copyuvm(uint*,uint);
+void            printpgdir(pde_t *);
+pde_t*          setupkvm(void);
+char*           uva2ka(pde_t*, char*);
+int             allocuvm(pde_t*, char*, uint);
+void            freevm(pde_t*);
+void            inituvm(pde_t*, char*, char*, uint);
+int             loaduvm(pde_t*, char*, struct inode *ip, uint, uint);
+pde_t*          copyuvm(pde_t*,uint);
 void            loadvm(struct proc*);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
-
