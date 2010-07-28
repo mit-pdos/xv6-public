@@ -47,27 +47,6 @@ lapicw(int index, int value)
   lapic[ID];  // wait for write to finish, by reading
 }
 
-static uint
-lapicr(uint off)
-{
-  return lapic[off];
-}
-
-static int
-apic_icr_wait()
-{
-    uint i = 100000;
-    while ((lapicr(ICRLO) & BUSY) != 0) {
-        nop_pause();
-        i--;
-        if (i == 0) {
-            cprintf("apic_icr_wait: wedged?\n");
-            return -1;
-        }
-    }
-    return 0;
-}
-
 //PAGEBREAK!
 void
 lapicinit(int c)
@@ -149,23 +128,6 @@ lapiceoi(void)
 void
 microdelay(int us)
 {
-}
-
-
-// Send IPI
-void
-lapic_ipi(int cpu, int ino)
-{
-  lapicw(ICRHI, cpu << 24);
-  lapicw(ICRLO, FIXED | DEASSERT | ino);
-  if (apic_icr_wait() < 0)
-    panic("lapic_ipi: icr_wait failure");
-}
-
-void
-lapic_tlbflush(uint cpu)
-{
-  lapic_ipi(cpu, T_TLBFLUSH);
 }
 
 #define IO_RTC  0x70

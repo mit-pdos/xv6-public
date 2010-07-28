@@ -137,11 +137,6 @@ loadvm(struct proc *p)
 
   lcr3(PADDR(p->pgdir));  // switch to new address space
   popcli();
-
-  // Conservatively flush other processor's TLBs  
-  // XXX lazy--just 2 cpus, but xv6 doesn't need shootdown anyway.
-  if (cpu->id == 0) lapic_tlbflush(1);
-  else lapic_tlbflush(0);
 }
 
 // Setup kernel part of a page table. Linear adresses map one-to-one
