@@ -156,8 +156,6 @@ void            pminit(void);
 void            ksegment(void);
 void            kvmalloc(void);
 void            vminit(void);
-void            printstack(void);
-void            printpgdir(pde_t *);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, char*, uint);

@@ -33,27 +33,6 @@ static uint kernend;
 static uint freesz;
 pde_t *kpgdir;         // One kernel page table for scheduler procs
 
-void
-printpgdir(pde_t *pgdir)
-{
-  uint i;
-  uint j;
-
-  cprintf("printpgdir 0x%x\n", pgdir);
-  for (i = 0; i < NPDENTRIES; i++) {
-    if (pgdir[i] != 0 && i < 100) {
-      cprintf("pgdir %d, v=0x%x\n", i, pgdir[i]);
-      pte_t *pgtab = (pte_t*) PTE_ADDR(pgdir[i]);
-      for (j = 0; j < NPTENTRIES; j++) {
-	if (pgtab[j] != 0)
-	  cprintf("pgtab %d, v=0x%x, addr=0x%x\n", j, PGADDR(i, j, 0), 
-		PTE_ADDR(pgtab[j]));
-      }
-    }
-  }
-  cprintf("printpgdir done\n", pgdir);
-}
-
 // return the address of the PTE in page table pgdir
 // that corresponds to linear address va.  if create!=0,
 // create any required page table pages.
@@ -84,19 +63,25 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
 }
 
 // create PTEs for linear addresses starting at la that refer to
-// physical addresses starting at pa. 
+// physical addresses starting at pa. la and size might not
+// be page-aligned.
 static int
 mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
 {
-  uint i;
-  pte_t *pte;
-
-  for (i = 0; i < size; i += PGSIZE) {
-    if (!(pte = walkpgdir(pgdir, (void*)(la + i), 1)))
+  char *first = PGROUNDDOWN(la);
+  char *last = PGROUNDDOWN(la + size - 1);
+  char *a = first;
+  while(1){
+    pte_t *pte = walkpgdir(pgdir, a, 1);
+    if(pte == 0)
       return 0;
     if(*pte & PTE_P)
       panic("remap");
-    *pte = (pa + i) | perm | PTE_P;
+    *pte = pa | perm | PTE_P;
+    if(a == last)
+      break;
+    a += PGSIZE;
+    pa += PGSIZE;
   }
   return 1;
 }
@@ -160,10 +145,10 @@ setupkvm(void)
   // Map IO space from 640K to 1Mbyte
   if (!mappages(pgdir, (void *)USERTOP, 0x60000, USERTOP, PTE_W))
     return 0;
-  // Map kernel text from kern text addr read-only
+  // Map kernel text read-only
   if (!mappages(pgdir, (void *) kerntext, kerntsz, kerntext, 0))
     return 0;
-  // Map kernel data form kern data addr R/W
+  // Map kernel data read/write
   if (!mappages(pgdir, (void *) kerndata, kerndsz, kerndata, PTE_W))
     return 0;
   // Map dynamically-allocated memory read/write (kernel stacks, user mem)
@@ -194,10 +179,10 @@ allocuvm(pde_t *pgdir, char *addr, uint sz)
 {
   if (addr + sz >= (char*)USERTOP)
     return 0;
-  char *start = PGROUNDDOWN(addr);
+  char *first = PGROUNDDOWN(addr);
   char *last = PGROUNDDOWN(addr + sz - 1);
   char *a;
-  for(a = start; a <= last; a += PGSIZE){
+  for(a = first; a <= last; a += PGSIZE){
     pte_t *pte = walkpgdir(pgdir, a, 0);
     if(pte == 0 || (*pte & PTE_P) == 0){
       char *mem = kalloc(PGSIZE);
@@ -212,6 +197,8 @@ allocuvm(pde_t *pgdir, char *addr, uint sz)
   return 1;
 }
 
+// free a page table and all the physical memory pages
+// in the user part.
 void
 freevm(pde_t *pgdir)
 {
@@ -227,9 +214,8 @@ freevm(pde_t *pgdir)
 	if (pgtab[j] != 0) {
 	  uint pa = PTE_ADDR(pgtab[j]);
 	  uint va = PGADDR(i, j, 0);
-	  if (va >= USERTOP)   // done with user part?
-	    break;
-	  kfree((void *) pa, PGSIZE);
+	  if (va < USERTOP)   // user memory
+            kfree((void *) pa, PGSIZE);
 	  pgtab[j] = 0;
 	}
       }
@@ -314,8 +300,8 @@ pminit(void)
   kernend = ((uint)end + PGSIZE) & ~(PGSIZE-1);
   kerntext = ph[0].va;
   kerndata = ph[1].va;
-  kerntsz = kerndata - kerntext;
-  kerndsz = kernend - kerndata;
+  kerntsz = ph[0].memsz;
+  kerndsz = ph[1].memsz;
   freesz = PHYSTOP - kernend;
 
   cprintf("kerntext@0x%x(sz=0x%x), kerndata@0x%x(sz=0x%x), kernend 0x%x freesz = 0x%x\n", 

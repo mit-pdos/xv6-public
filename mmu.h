@@ -85,32 +85,20 @@ struct segdesc {
 // | Page Directory |   Page Table   | Offset within Page  |
 // |      Index     |      Index     |                     |
 // +----------------+----------------+---------------------+
-//  \--- PDX(la) --/ \--- PTX(la) --/ \---- PGOFF(la) ----/
-//  \----------- PPN(la) -----------/
-//
-// The PDX, PTX, PGOFF, and PPN macros decompose linear addresses as shown.
-// To construct a linear address la from PDX(la), PTX(la), and PGOFF(la),
-// use PGADDR(PDX(la), PTX(la), PGOFF(la)).
-
-// page number field of address
-#define PPN(la)		(((uint) (la)) >> PTXSHIFT)
-#define VPN(la)		PPN(la)		// used to index into vpt[]
+//  \--- PDX(la) --/ \--- PTX(la) --/ 
 
 // page directory index
 #define PDX(la)		((((uint) (la)) >> PDXSHIFT) & 0x3FF)
-#define VPD(la)		PDX(la)		// used to index into vpd[]
 
 // page table index
 #define PTX(la)		((((uint) (la)) >> PTXSHIFT) & 0x3FF)
 
-// offset in page
-#define PGOFF(la)	(((uint) (la)) & 0xFFF)
-
 // construct linear address from indexes and offset
 #define PGADDR(d, t, o)	((uint) ((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
-// mapping from physical addresses to virtual addresses is the identity one
-// (really linear addresses, but we map linear to physical also directly)
+// turn a kernel linear address into a physical address.
+// all of the kernel data structures have linear and
+// physical addresses that are equal.
 #define PADDR(a)       ((uint) a)
 
 // Page directory and page table constants.
@@ -119,9 +107,6 @@ struct segdesc {
 
 #define PGSIZE		4096		// bytes mapped by a page
 #define PGSHIFT		12		// log2(PGSIZE)
-
-#define PTSIZE		(PGSIZE*NPTENTRIES) // bytes mapped by a page directory entry
-#define PTSHIFT		22		// log2(PTSIZE)
 
 #define PTXSHIFT	12		// offset of PTX in a linear address
 #define PDXSHIFT	22		// offset of PDX in a linear address
@@ -139,13 +124,6 @@ struct segdesc {
 #define PTE_D		0x040	// Dirty
 #define PTE_PS		0x080	// Page Size
 #define PTE_MBZ		0x180	// Bits must be zero
-
-// The PTE_AVAIL bits aren't used by the kernel or interpreted by the
-// hardware, so user processes are allowed to set them arbitrarily.
-#define PTE_AVAIL	0xE00	// Available for software use
-
-// Only flags in PTE_USER may be used in system calls.
-#define PTE_USER	(PTE_AVAIL | PTE_P | PTE_W | PTE_U)
 
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)	((uint) (pte) & ~0xFFF)

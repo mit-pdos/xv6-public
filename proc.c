@@ -414,9 +414,9 @@ wait(void)
         // Found one.
         pid = p->pid;
         kfree(p->kstack, KSTACKSIZE);
+	p->kstack = 0;
 	freevm(p->pgdir);
         p->state = UNUSED;
-	p->kstack = 0;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
