@@ -110,7 +110,6 @@ void            yield(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
-void            jstack(uint);
 
 // spinlock.c
 void            acquire(struct spinlock*);
@@ -157,7 +156,6 @@ void            pminit(void);
 void            ksegment(void);
 void            kvmalloc(void);
 void            vminit(void);
-void            jkstack();
 void            printstack(void);
 void            printpgdir(pde_t *);
 pde_t*          setupkvm(void);

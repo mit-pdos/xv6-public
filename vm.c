@@ -324,17 +324,6 @@ pminit(void)
   kinit((char *)kernend, freesz);
 }
 
-// Jump to mainc on a properly-allocated kernel stack
-void
-jkstack(void)
-{
-  char *kstack = kalloc(PGSIZE);
-  if (!kstack)
-    panic("jkstack\n");
-  char *top = kstack + PGSIZE;
-  jstack((uint) top);
-}
-
 // Allocate one page table for the machine for the kernel address
 // space for scheduler processes.
 void

@@ -7,7 +7,8 @@
 
 static void bootothers(void);
 static void mpmain(void);
-void jkstack(void) __attribute__((noreturn));
+void jkstack(void)  __attribute__((noreturn));
+void mainc(void);
 
 // Bootstrap processor starts running C code here.
 int
@@ -21,13 +22,24 @@ main(void)
   consoleinit();   // I/O devices & their interrupts
   uartinit();      // serial port
   pminit();        // physical memory for kernel
-  jkstack();       // Jump to mainc on a proper-allocated kernel stack 
+  jkstack();       // Jump to mainc on a properly-allocated stack 
+}
+
+void
+jkstack(void)
+{
+  char *kstack = kalloc(PGSIZE);
+  if (!kstack)
+    panic("jkstack\n");
+  char *top = kstack + PGSIZE;
+  asm volatile("movl %0,%%esp" : : "r" (top));
+  asm volatile("call mainc");
+  panic("jkstack");
 }
 
 void
 mainc(void)
 {
-  cprintf("cpus %p cpu %p\n", cpus, cpu);
   cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
   kvmalloc();      // allocate the kernel page table
   pinit();         // process table
@@ -52,14 +64,12 @@ mpmain(void)
 {
   if(cpunum() != mpbcpu()) {
     ksegment();
-    cprintf("other cpu\n");
     lapicinit(cpunum());
   }
   vminit();        // Run with paging on each processor
-  cprintf("cpu%d: mpmain\n", cpu->id);
+  cprintf("cpu%d: starting\n", cpu->id);
   idtinit();
   xchg(&cpu->booted, 1);
-  cprintf("cpu%d: scheduling\n", cpu->id);
   scheduler();
 }
 
