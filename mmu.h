@@ -126,6 +126,9 @@ struct segdesc {
 #define PTXSHIFT	12		// offset of PTX in a linear address
 #define PDXSHIFT	22		// offset of PDX in a linear address
 
+#define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
+#define PGROUNDDOWN(a) ((char*)((((unsigned int)a) & ~(PGSIZE-1))))
+
 // Page table/directory entry flags.
 #define PTE_P		0x001	// Present
 #define PTE_W		0x002	// Writeable
@@ -148,6 +151,7 @@ struct segdesc {
 #define PTE_ADDR(pte)	((uint) (pte) & ~0xFFF)
 
 typedef uint pte_t;
+extern pde_t    *kpgdir;
 
 // Control Register flags
 #define CR0_PE		0x00000001	// Protection Enable

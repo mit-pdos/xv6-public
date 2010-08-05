@@ -153,8 +153,6 @@ void            uartintr(void);
 void            uartputc(int);
 
 // vm.c
-#define PGROUNDUP(sz)  ((sz+PGSIZE-1) & ~(PGSIZE-1))
-extern pde_t    *kpgdir;
 void            pminit(void);
 void            ksegment(void);
 void            kvmalloc(void);

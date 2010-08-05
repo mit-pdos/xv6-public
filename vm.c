@@ -54,6 +54,9 @@ printpgdir(pde_t *pgdir)
   cprintf("printpgdir done\n", pgdir);
 }
 
+// return the address of the PTE in page table pgdir
+// that corresponds to linear address va.  if create!=0,
+// create any required page table pages.
 static pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int create)
 {
@@ -80,6 +83,8 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
   return &pgtab[PTX(va)];
 }
 
+// create PTEs for linear addresses starting at la that refer to
+// physical addresses starting at pa. 
 static int
 mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
 {
@@ -89,6 +94,8 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
   for (i = 0; i < size; i += PGSIZE) {
     if (!(pte = walkpgdir(pgdir, (void*)(la + i), 1)))
       return 0;
+    if(*pte & PTE_P)
+      panic("remap");
     *pte = (pa + i) | perm | PTE_P;
   }
   return 1;
@@ -177,21 +184,30 @@ uva2ka(pde_t *pgdir, char *uva)
   return (char *)pa;
 }
 
+// allocate sz bytes more memory for a process starting at the
+// given user address; allocates physical memory and page
+// table entries. addr and sz need not be page-aligned.
+// it is a no-op for any parts of the requested memory
+// that are already allocated.
 int
 allocuvm(pde_t *pgdir, char *addr, uint sz)
 {
-  uint i, n;
-  char *mem;
-
-  n = PGROUNDUP(sz);
-  if (addr + n >= USERTOP)
+  if (addr + sz >= (char*)USERTOP)
     return 0;
-  for (i = 0; i < n; i += PGSIZE) {
-    if (!(mem = kalloc(PGSIZE))) {   // XXX cleanup what we did?
-      return 0;
+  char *start = PGROUNDDOWN(addr);
+  char *last = PGROUNDDOWN(addr + sz - 1);
+  char *a;
+  for(a = start; a <= last; a += PGSIZE){
+    pte_t *pte = walkpgdir(pgdir, a, 0);
+    if(pte == 0 || (*pte & PTE_P) == 0){
+      char *mem = kalloc(PGSIZE);
+      if(mem == 0){
+        // XXX clean up?
+        return 0;
+      }
+      memset(mem, 0, PGSIZE);
+      mappages(pgdir, a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
     }
-    memset(mem, 0, PGSIZE);
-    mappages(pgdir, addr + i, PGSIZE, PADDR(mem), PTE_W|PTE_U);
   }
   return 1;
 }

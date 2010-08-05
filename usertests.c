@@ -1229,6 +1229,38 @@ forktest(void)
   printf(1, "fork test OK\n");
 }
 
+void
+sbrktest(void)
+{
+  printf(stdout, "sbrk test\n");
+  char *a = sbrk(0);
+  int i;
+  for(i = 0; i < 5000; i++){
+    char *b = sbrk(1);
+    if(b != a){
+      printf(stdout, "sbrk test failed %d %x %x\n", i, a, b);
+      exit();
+    }
+    *b = 1;
+    a = b + 1;
+  }
+  int pid = fork();
+  if(pid < 0){
+    printf(stdout, "sbrk test fork failed\n");
+    exit();
+  }
+  char *c = sbrk(1);
+  c = sbrk(1);
+  if(c != a + 1){
+    printf(stdout, "sbrk test failed post-fork\n");
+    exit();
+  }
+  if(pid == 0)
+    exit();
+  wait();
+  printf(stdout, "sbrk test OK\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1239,6 +1271,8 @@ main(int argc, char *argv[])
     exit();
   }
   close(open("usertests.ran", O_CREATE));
+
+  sbrktest();
 
   opentest();
   writetest();
