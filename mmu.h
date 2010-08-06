@@ -129,7 +129,6 @@ struct segdesc {
 #define PTE_ADDR(pte)	((uint) (pte) & ~0xFFF)
 
 typedef uint pte_t;
-extern pde_t    *kpgdir;
 
 // Control Register flags
 #define CR0_PE		0x00000001	// Protection Enable

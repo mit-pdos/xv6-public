@@ -1,9 +1,8 @@
 // Physical memory allocator, intended to allocate
-// memory for user processes. Allocates in 4096-byte "pages".
+// memory for user processes. Allocates in 4096-byte pages.
 // Free list is kept sorted and combines adjacent pages into
 // long runs, to make it easier to allocate big segments.
-// One reason the page size is 4k is that the x86 segment size
-// granularity is 4k.
+// This combining is not useful now that xv6 uses paging.
 
 #include "types.h"
 #include "defs.h"

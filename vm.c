@@ -8,13 +8,20 @@
 
 // The mappings from logical to linear are one to one (i.e.,
 // segmentation doesn't do anything).
-// The mapping from linear to physical are one to one for the kernel.
-// The mappings for the kernel include all of physical memory (until
-// PHYSTOP), including the I/O hole, and the top of physical address
-// space, where additional devices are located.
-// The kernel itself is linked to be at 1MB, and its physical memory
-// is also at 1MB.
-// Physical memory for user programs is allocated from physical memory
+// There is one page table per process, plus one that's used
+// when a CPU is not running any process (kpgdir).
+// A user process uses the same page table as the kernel; the
+// page protection bits prevent it from using anything other
+// than its memory.
+// 
+// setupkvm() and exec() set up every page table like this:
+//   0..640K          : user memory (text, data, stack, heap)
+//   640K..1M         : mapped direct (for IO space)
+//   1M..kernend      : mapped direct (for the kernel's text and data)
+//   kernend..PHYSTOP : mapped direct (kernel heap and user pages)
+//   0xfe000000..0    : mapped direct (devices such as ioapic)
+//
+// The kernel allocates memory for its heap and for user memory
 // between kernend and the end of physical memory (PHYSTOP).
 // The virtual address space of each user program includes the kernel
 // (which is inaccessible in user mode).  The user program addresses
@@ -31,7 +38,7 @@ static uint kerndata;
 static uint kerndsz;
 static uint kernend;
 static uint freesz;
-pde_t *kpgdir;         // One kernel page table for scheduler procs
+static pde_t *kpgdir;  // for use in scheduler()
 
 // return the address of the PTE in page table pgdir
 // that corresponds to linear address va.  if create!=0,
@@ -114,9 +121,9 @@ ksegment(void)
   proc = 0;
 }
 
-// Setup address space and current process task state.
+// Switch h/w page table and TSS registers to point to process p.
 void
-loadvm(struct proc *p)
+switchuvm(struct proc *p)
 {
   pushcli();
 
@@ -128,14 +135,21 @@ loadvm(struct proc *p)
   ltr(SEG_TSS << 3);
 
   if (p->pgdir == 0)
-    panic("loadvm: no pgdir\n");
+    panic("switchuvm: no pgdir\n");
 
   lcr3(PADDR(p->pgdir));  // switch to new address space
   popcli();
 }
 
-// Setup kernel part of a page table. Linear adresses map one-to-one
-// on physical addresses.
+// Switch h/w page table register to the kernel-only page table, for when
+// no process is running.
+void
+switchkvm()
+{
+  lcr3(PADDR(kpgdir));   // Switch to the kernel page table
+}
+
+// Set up kernel part of a page table.
 pde_t*
 setupkvm(void)
 {
@@ -163,6 +177,10 @@ setupkvm(void)
   return pgdir;
 }
 
+// return the physical address that a given user address
+// maps to. the result is also a kernel logical address,
+// since the kernel maps the physical memory allocated to user
+// processes directly.
 char*
 uva2ka(pde_t *pgdir, char *uva)
 {    
@@ -266,6 +284,8 @@ inituvm(pde_t *pgdir, char *addr, char *init, uint sz)
   }
 }
 
+// given a parent process's page table, create a copy
+// of it for a child.
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
@@ -278,17 +298,20 @@ copyuvm(pde_t *pgdir, uint sz)
   for (i = 0; i < sz; i += PGSIZE) {
     if (!(pte = walkpgdir(pgdir, (void *)i, 0)))
       panic("copyuvm: pte should exist\n");
-    pa = PTE_ADDR(*pte);
-    if (!(mem = kalloc(PGSIZE)))
-      return 0;
-    memmove(mem, (char *)pa, PGSIZE);
-    if (!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U))
-      return 0;
+    if(*pte & PTE_P){
+      pa = PTE_ADDR(*pte);
+      if (!(mem = kalloc(PGSIZE)))
+        return 0;
+      memmove(mem, (char *)pa, PGSIZE);
+      if (!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U))
+        return 0;
+    }
   }
   return d;
 }
 
-// Gather about physical memory layout.  Called once during boot.
+// Gather information about physical memory layout.
+// Called once during boot.
 void
 pminit(void)
 {
@@ -306,9 +329,6 @@ pminit(void)
   kerntsz = ph[0].memsz;
   kerndsz = ph[1].memsz;
   freesz = PHYSTOP - kernend;
-
-  cprintf("kerntext@0x%x(sz=0x%x), kerndata@0x%x(sz=0x%x), kernend 0x%x freesz = 0x%x\n", 
-	  kerntext, kerntsz, kerndata, kerndsz, kernend, freesz);
 
   kinit((char *)kernend, freesz);
 }

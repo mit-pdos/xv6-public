@@ -43,13 +43,16 @@ exec(char *path, char **argv)
       goto bad;
     if (!allocuvm(pgdir, (char *)ph.va, ph.memsz))
       goto bad;
-    sz += PGROUNDUP(ph.memsz);
+    if(ph.va + ph.memsz > sz)
+      sz = ph.va + ph.memsz;
     if (!loaduvm(pgdir, (char *)ph.va, ip, ph.offset, ph.filesz))
       goto bad;
   }
   iunlockput(ip);
 
   // Allocate and initialize stack at sz
+  sz = PGROUNDUP(sz);
+  sz += PGSIZE; // leave an invalid page
   if (!allocuvm(pgdir, (char *)sz, PGSIZE))
     goto bad;
   mem = uva2ka(pgdir, (char *)sz);
@@ -95,7 +98,7 @@ exec(char *path, char **argv)
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
 
-  loadvm(proc); 
+  switchuvm(proc); 
 
   freevm(oldpgdir);
 

@@ -16,7 +16,7 @@
 // Contexts are stored at the bottom of the stack they
 // describe; the stack pointer is the address of the context.
 // The layout of the context matches the layout of the stack in swtch.S
-// at "Switch stacks" comment. Switch itself doesn't save eip explicitly,
+// at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
 struct context {
   uint edi;
@@ -31,7 +31,7 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
-  pde_t* pgdir;                // linear address of proc's pgdir
+  pde_t* pgdir;                // Linear address of proc's pgdir
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   volatile int pid;            // Process ID
@@ -48,6 +48,7 @@ struct proc {
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss
+//   invalid page
 //   fixed-size stack
 //   expandable heap
 
