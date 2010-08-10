@@ -198,7 +198,7 @@ uva2ka(pde_t *pgdir, char *uva)
 int
 allocuvm(pde_t *pgdir, char *addr, uint sz)
 {
-  if (addr + sz >= (char*)USERTOP)
+  if (addr + sz > (char*)USERTOP)
     return 0;
   char *first = PGROUNDDOWN(addr);
   char *last = PGROUNDDOWN(addr + sz - 1);
@@ -213,6 +213,30 @@ allocuvm(pde_t *pgdir, char *addr, uint sz)
       }
       memset(mem, 0, PGSIZE);
       mappages(pgdir, a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+    }
+  }
+  return 1;
+}
+
+// deallocate some of the user pages, in response to sbrk()
+// with a negative argument. if addr is not page-aligned,
+// then only deallocates starting at the next page boundary.
+int
+deallocuvm(pde_t *pgdir, char *addr, uint sz)
+{
+  if (addr + sz > (char*)USERTOP)
+    return 0;
+  char *first = (char*) PGROUNDUP((uint)addr);
+  char *last = PGROUNDDOWN(addr + sz - 1);
+  char *a;
+  for(a = first; a <= last; a += PGSIZE){
+    pte_t *pte = walkpgdir(pgdir, a, 0);
+    if(pte && (*pte & PTE_P) != 0){
+      uint pa = PTE_ADDR(*pte);
+      if(pa == 0)
+        panic("deallocuvm");
+      kfree((void *) pa, PGSIZE);
+      *pte = 0;
     }
   }
   return 1;

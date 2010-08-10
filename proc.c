@@ -142,8 +142,13 @@ userinit(void)
 int
 growproc(int n)
 {
-  if (!allocuvm(proc->pgdir, (char *)proc->sz, n))
-    return -1;
+  if(n > 0){
+    if (!allocuvm(proc->pgdir, (char *)proc->sz, n))
+      return -1;
+  } else if(n < 0){
+    if (!deallocuvm(proc->pgdir, (char *)(proc->sz + n), 0 - n))
+      return -1;
+  }
   proc->sz += n;
   switchuvm(proc);
   return 0;

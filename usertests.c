@@ -1232,7 +1232,11 @@ forktest(void)
 void
 sbrktest(void)
 {
+  int pid;
+
   printf(stdout, "sbrk test\n");
+
+  // can one sbrk() less than a page?
   char *a = sbrk(0);
   int i;
   for(i = 0; i < 5000; i++){
@@ -1244,7 +1248,7 @@ sbrktest(void)
     *b = 1;
     a = b + 1;
   }
-  int pid = fork();
+  pid = fork();
   if(pid < 0){
     printf(stdout, "sbrk test fork failed\n");
     exit();
@@ -1258,6 +1262,57 @@ sbrktest(void)
   if(pid == 0)
     exit();
   wait();
+
+  // can one allocate the full 640K?
+  a = sbrk(0);
+  uint amt = (640 * 1024) - (uint) a;
+  char *p = sbrk(amt);
+  if(p != a){
+    printf(stdout, "sbrk test failed 640K test, p %x a %x\n", p, a);
+    exit();
+  }
+  char *lastaddr = (char *)(640 * 1024 - 1);
+  *lastaddr = 99;
+
+  // is one forbidden from allocating more than 640K?
+  c = sbrk(4096);
+  if(c != (char *) 0xffffffff){
+    printf(stdout, "sbrk allocated more than 640K, c %x\n", c);
+    exit();
+  }
+
+  // can one de-allocate?
+  a = sbrk(0);
+  c = sbrk(-4096);
+  if(c == (char *) 0xffffffff){
+    printf(stdout, "sbrk could not deallocate\n");
+    exit();
+  }
+  c = sbrk(0);
+  if(c != a - 4096){
+    printf(stdout, "sbrk deallocation produced wrong address, a %x c %x\n", a, c);
+    exit();
+  }
+
+  // can one re-allocate that page?
+  a = sbrk(0);
+  c = sbrk(4096);
+  if(c != a || sbrk(0) != a + 4096){
+    printf(stdout, "sbrk re-allocation failed, a %x c %x\n", a, c);
+    exit();
+  }
+  if(*lastaddr == 99){
+    // should be zero
+    printf(stdout, "sbrk de-allocation didn't really deallocate\n");
+    exit();
+  }
+
+  c = sbrk(4096);
+  if(c != (char *) 0xffffffff){
+    printf(stdout, "sbrk was able to re-allocate beyond 640K, c %x\n", c);
+    exit();
+  }
+
   printf(stdout, "sbrk test OK\n");
 }
 
