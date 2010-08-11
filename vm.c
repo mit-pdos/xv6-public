@@ -29,7 +29,7 @@
 // (both in physical memory and in the kernel's virtual address
 // space).
 
-#define PHYSTOP  0x300000
+#define PHYSTOP  0x1000000
 #define USERTOP  0xA0000
 
 static uint kerntext;  // Linker starts kernel at 1MB
@@ -336,6 +336,8 @@ copyuvm(pde_t *pgdir, uint sz)
 
 // Gather information about physical memory layout.
 // Called once during boot.
+// Really should find out how much physical memory
+// there is rather than assuming PHYSTOP.
 void
 pminit(void)
 {

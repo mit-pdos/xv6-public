@@ -23,14 +23,10 @@ struct {
 int nfreemem;
 
 // Initialize free list of physical pages.
-// This code cheats by just considering one megabyte of
-// pages after end.  Real systems would determine the
-// amount of memory available in the system and use it all.
 void
 kinit(char *p, uint len)
 {
   initlock(&kmem.lock, "kmem");
-  cprintf("end 0x%x free = %d(0x%x)\n", p, len);
   nfreemem = 0;
   kfree(p, len);
 }

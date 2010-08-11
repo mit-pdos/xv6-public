@@ -142,7 +142,7 @@ void            timerinit(void);
 
 // trap.c
 void            idtinit(void);
-extern int      ticks;
+extern uint     ticks;
 void            tvinit(void);
 extern struct spinlock tickslock;
 
