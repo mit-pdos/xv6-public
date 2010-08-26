@@ -322,8 +322,9 @@ void
 mem(void)
 {
   void *m1, *m2;
-  int pid;
+  int pid, ppid;
 
+  ppid = getpid();
   if((pid = fork()) == 0){
     m1 = 0;
     while((m2 = malloc(10001)) != 0) {
@@ -338,6 +339,7 @@ mem(void)
     m1 = malloc(1024*20);
     if(m1 == 0) {
       printf(1, "couldn't allocate mem?!!\n");
+      kill(ppid);
       exit();
     }
     free(m1);
@@ -1229,6 +1231,136 @@ forktest(void)
   printf(1, "fork test OK\n");
 }
 
+void
+sbrktest(void)
+{
+  int pid;
+  char *oldbrk = sbrk(0);
+
+  printf(stdout, "sbrk test\n");
+
+  // can one sbrk() less than a page?
+  char *a = sbrk(0);
+  int i;
+  for(i = 0; i < 5000; i++){
+    char *b = sbrk(1);
+    if(b != a){
+      printf(stdout, "sbrk test failed %d %x %x\n", i, a, b);
+      exit();
+    }
+    *b = 1;
+    a = b + 1;
+  }
+  pid = fork();
+  if(pid < 0){
+    printf(stdout, "sbrk test fork failed\n");
+    exit();
+  }
+  char *c = sbrk(1);
+  c = sbrk(1);
+  if(c != a + 1){
+    printf(stdout, "sbrk test failed post-fork\n");
+    exit();
+  }
+  if(pid == 0)
+    exit();
+  wait();
+
+  // can one allocate the full 640K?
+  a = sbrk(0);
+  uint amt = (640 * 1024) - (uint) a;
+  char *p = sbrk(amt);
+  if(p != a){
+    printf(stdout, "sbrk test failed 640K test, p %x a %x\n", p, a);
+    exit();
+  }
+  char *lastaddr = (char *)(640 * 1024 - 1);
+  *lastaddr = 99;
+
+  // is one forbidden from allocating more than 640K?
+  c = sbrk(4096);
+  if(c != (char *) 0xffffffff){
+    printf(stdout, "sbrk allocated more than 640K, c %x\n", c);
+    exit();
+  }
+
+  // can one de-allocate?
+  a = sbrk(0);
+  c = sbrk(-4096);
+  if(c == (char *) 0xffffffff){
+    printf(stdout, "sbrk could not deallocate\n");
+    exit();
+  }
+  c = sbrk(0);
+  if(c != a - 4096){
+    printf(stdout, "sbrk deallocation produced wrong address, a %x c %x\n", a, c);
+    exit();
+  }
+
+  // can one re-allocate that page?
+  a = sbrk(0);
+  c = sbrk(4096);
+  if(c != a || sbrk(0) != a + 4096){
+    printf(stdout, "sbrk re-allocation failed, a %x c %x\n", a, c);
+    exit();
+  }
+  if(*lastaddr == 99){
+    // should be zero
+    printf(stdout, "sbrk de-allocation didn't really deallocate\n");
+    exit();
+  }
+
+  c = sbrk(4096);
+  if(c != (char *) 0xffffffff){
+    printf(stdout, "sbrk was able to re-allocate beyond 640K, c %x\n", c);
+    exit();
+  }
+
+  // can we read the kernel's memory?
+  for(a = (char*)(640*1024); a < (char *)2000000; a += 50000){
+    int ppid = getpid();
+    int pid = fork();
+    if(pid < 0){
+      printf(stdout, "fork failed\n");
+      exit();
+    }
+    if(pid == 0){
+      printf(stdout, "oops could read %x = %x\n", a, *a);
+      kill(ppid);
+      exit();
+    }
+    wait();
+  }
+
+  if(sbrk(0) > oldbrk)
+    sbrk(-(sbrk(0) - oldbrk));
+
+  printf(stdout, "sbrk test OK\n");
+}
+
+void
+stacktest(void)
+{
+  printf(stdout, "stack test\n");
+  char dummy = 1;
+  char *p = &dummy;
+  int ppid = getpid();
+  int pid = fork();
+  if(pid < 0){
+    printf(stdout, "fork failed\n");
+    exit();
+  }
+  if(pid == 0){
+    // should cause a trap:
+    p[-4096] = 'z';
+    kill(ppid);
+    printf(stdout, "stack test failed: page before stack was writeable\n");
+    exit();
+  }
+  wait();
+  printf(stdout, "stack test OK\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1239,6 +1371,9 @@ main(int argc, char *argv[])
     exit();
   }
   close(open("usertests.ran", O_CREATE));
+
+  stacktest();
+  sbrktest();
 
   opentest();
   writetest();

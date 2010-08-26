@@ -110,7 +110,6 @@ void            yield(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
-void            jstack(uint);
 
 // spinlock.c
 void            acquire(struct spinlock*);
@@ -143,7 +142,7 @@ void            timerinit(void);
 
 // trap.c
 void            idtinit(void);
-extern int      ticks;
+extern uint     ticks;
 void            tvinit(void);
 extern struct spinlock tickslock;
 
@@ -153,23 +152,20 @@ void            uartintr(void);
 void            uartputc(int);
 
 // vm.c
-#define PGROUNDUP(sz)  ((sz+PGSIZE-1) & ~(PGSIZE-1))
-extern pde_t    *kpgdir;
 void            pminit(void);
 void            ksegment(void);
 void            kvmalloc(void);
 void            vminit(void);
-void            jkstack();
-void            printstack(void);
-void            printpgdir(pde_t *);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, char*, uint);
+int             deallocuvm(pde_t *pgdir, char *addr, uint sz);
 void            freevm(pde_t*);
 void            inituvm(pde_t*, char*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode *ip, uint, uint);
 pde_t*          copyuvm(pde_t*,uint);
-void            loadvm(struct proc*);
+void            switchuvm(struct proc*);
+void            switchkvm();
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

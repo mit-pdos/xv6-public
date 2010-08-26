@@ -1,9 +1,8 @@
 // Physical memory allocator, intended to allocate
-// memory for user processes. Allocates in 4096-byte "pages".
+// memory for user processes. Allocates in 4096-byte pages.
 // Free list is kept sorted and combines adjacent pages into
 // long runs, to make it easier to allocate big segments.
-// One reason the page size is 4k is that the x86 segment size
-// granularity is 4k.
+// This combining is not useful now that xv6 uses paging.
 
 #include "types.h"
 #include "defs.h"
@@ -24,14 +23,10 @@ struct {
 int nfreemem;
 
 // Initialize free list of physical pages.
-// This code cheats by just considering one megabyte of
-// pages after end.  Real systems would determine the
-// amount of memory available in the system and use it all.
 void
 kinit(char *p, uint len)
 {
   initlock(&kmem.lock, "kmem");
-  cprintf("end 0x%x free = %d(0x%x)\n", p, len);
   nfreemem = 0;
   kfree(p, len);
 }

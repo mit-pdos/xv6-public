@@ -8,13 +8,20 @@
 
 // The mappings from logical to linear are one to one (i.e.,
 // segmentation doesn't do anything).
-// The mapping from linear to physical are one to one for the kernel.
-// The mappings for the kernel include all of physical memory (until
-// PHYSTOP), including the I/O hole, and the top of physical address
-// space, where additional devices are located.
-// The kernel itself is linked to be at 1MB, and its physical memory
-// is also at 1MB.
-// Physical memory for user programs is allocated from physical memory
+// There is one page table per process, plus one that's used
+// when a CPU is not running any process (kpgdir).
+// A user process uses the same page table as the kernel; the
+// page protection bits prevent it from using anything other
+// than its memory.
+// 
+// setupkvm() and exec() set up every page table like this:
+//   0..640K          : user memory (text, data, stack, heap)
+//   640K..1M         : mapped direct (for IO space)
+//   1M..kernend      : mapped direct (for the kernel's text and data)
+//   kernend..PHYSTOP : mapped direct (kernel heap and user pages)
+//   0xfe000000..0    : mapped direct (devices such as ioapic)
+//
+// The kernel allocates memory for its heap and for user memory
 // between kernend and the end of physical memory (PHYSTOP).
 // The virtual address space of each user program includes the kernel
 // (which is inaccessible in user mode).  The user program addresses
@@ -22,7 +29,7 @@
 // (both in physical memory and in the kernel's virtual address
 // space).
 
-#define PHYSTOP  0x300000
+#define PHYSTOP  0x1000000
 #define USERTOP  0xA0000
 
 static uint kerntext;  // Linker starts kernel at 1MB
@@ -31,29 +38,11 @@ static uint kerndata;
 static uint kerndsz;
 static uint kernend;
 static uint freesz;
-pde_t *kpgdir;         // One kernel page table for scheduler procs
+static pde_t *kpgdir;  // for use in scheduler()
 
-void
-printpgdir(pde_t *pgdir)
-{
-  uint i;
-  uint j;
-
-  cprintf("printpgdir 0x%x\n", pgdir);
-  for (i = 0; i < NPDENTRIES; i++) {
-    if (pgdir[i] != 0 && i < 100) {
-      cprintf("pgdir %d, v=0x%x\n", i, pgdir[i]);
-      pte_t *pgtab = (pte_t*) PTE_ADDR(pgdir[i]);
-      for (j = 0; j < NPTENTRIES; j++) {
-	if (pgtab[j] != 0)
-	  cprintf("pgtab %d, v=0x%x, addr=0x%x\n", j, PGADDR(i, j, 0), 
-		PTE_ADDR(pgtab[j]));
-      }
-    }
-  }
-  cprintf("printpgdir done\n", pgdir);
-}
-
+// return the address of the PTE in page table pgdir
+// that corresponds to linear address va.  if create!=0,
+// create any required page table pages.
 static pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int create)
 {
@@ -80,16 +69,26 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
   return &pgtab[PTX(va)];
 }
 
+// create PTEs for linear addresses starting at la that refer to
+// physical addresses starting at pa. la and size might not
+// be page-aligned.
 static int
 mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
 {
-  uint i;
-  pte_t *pte;
-
-  for (i = 0; i < size; i += PGSIZE) {
-    if (!(pte = walkpgdir(pgdir, (void*)(la + i), 1)))
+  char *first = PGROUNDDOWN(la);
+  char *last = PGROUNDDOWN(la + size - 1);
+  char *a = first;
+  while(1){
+    pte_t *pte = walkpgdir(pgdir, a, 1);
+    if(pte == 0)
       return 0;
-    *pte = (pa + i) | perm | PTE_P;
+    if(*pte & PTE_P)
+      panic("remap");
+    *pte = pa | perm | PTE_P;
+    if(a == last)
+      break;
+    a += PGSIZE;
+    pa += PGSIZE;
   }
   return 1;
 }
@@ -101,12 +100,15 @@ ksegment(void)
 {
   struct cpu *c;
 
-  // Map once virtual addresses to linear addresses using identity map
+  // Map virtual addresses to linear addresses using identity map.
+  // Cannot share a CODE descriptor for both kernel and user
+  // because it would have to have DPL_USR, but the CPU forbids
+  // an interrupt from CPL=0 to DPL=3.
   c = &cpus[cpunum()];
   c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
   c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0x0, 0xffffffff, DPL_USER);
-  c->gdt[SEG_UDATA] = SEG(STA_W, 0x0, 0xffffffff, DPL_USER);
+  c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
+  c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
 
   // map cpu, and curproc
   c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 8, 0);
@@ -119,9 +121,9 @@ ksegment(void)
   proc = 0;
 }
 
-// Setup address space and current process task state.
+// Switch h/w page table and TSS registers to point to process p.
 void
-loadvm(struct proc *p)
+switchuvm(struct proc *p)
 {
   pushcli();
 
@@ -133,14 +135,21 @@ loadvm(struct proc *p)
   ltr(SEG_TSS << 3);
 
   if (p->pgdir == 0)
-    panic("loadvm: no pgdir\n");
+    panic("switchuvm: no pgdir\n");
 
   lcr3(PADDR(p->pgdir));  // switch to new address space
   popcli();
 }
 
-// Setup kernel part of a page table. Linear adresses map one-to-one
-// on physical addresses.
+// Switch h/w page table register to the kernel-only page table, for when
+// no process is running.
+void
+switchkvm()
+{
+  lcr3(PADDR(kpgdir));   // Switch to the kernel page table
+}
+
+// Set up kernel part of a page table.
 pde_t*
 setupkvm(void)
 {
@@ -153,10 +162,10 @@ setupkvm(void)
   // Map IO space from 640K to 1Mbyte
   if (!mappages(pgdir, (void *)USERTOP, 0x60000, USERTOP, PTE_W))
     return 0;
-  // Map kernel text from kern text addr read-only
+  // Map kernel text read-only
   if (!mappages(pgdir, (void *) kerntext, kerntsz, kerntext, 0))
     return 0;
-  // Map kernel data form kern data addr R/W
+  // Map kernel data read/write
   if (!mappages(pgdir, (void *) kerndata, kerndsz, kerndata, PTE_W))
     return 0;
   // Map dynamically-allocated memory read/write (kernel stacks, user mem)
@@ -168,6 +177,10 @@ setupkvm(void)
   return pgdir;
 }
 
+// return the physical address that a given user address
+// maps to. the result is also a kernel logical address,
+// since the kernel maps the physical memory allocated to user
+// processes directly.
 char*
 uva2ka(pde_t *pgdir, char *uva)
 {    
@@ -177,25 +190,60 @@ uva2ka(pde_t *pgdir, char *uva)
   return (char *)pa;
 }
 
+// allocate sz bytes more memory for a process starting at the
+// given user address; allocates physical memory and page
+// table entries. addr and sz need not be page-aligned.
+// it is a no-op for any parts of the requested memory
+// that are already allocated.
 int
 allocuvm(pde_t *pgdir, char *addr, uint sz)
 {
-  uint i, n;
-  char *mem;
-
-  n = PGROUNDUP(sz);
-  if (addr + n >= USERTOP)
+  if (addr + sz > (char*)USERTOP)
     return 0;
-  for (i = 0; i < n; i += PGSIZE) {
-    if (!(mem = kalloc(PGSIZE))) {   // XXX cleanup what we did?
-      return 0;
+  char *first = PGROUNDDOWN(addr);
+  char *last = PGROUNDDOWN(addr + sz - 1);
+  char *a;
+  for(a = first; a <= last; a += PGSIZE){
+    pte_t *pte = walkpgdir(pgdir, a, 0);
+    if(pte == 0 || (*pte & PTE_P) == 0){
+      char *mem = kalloc(PGSIZE);
+      if(mem == 0){
+        // XXX clean up?
+        return 0;
+      }
+      memset(mem, 0, PGSIZE);
+      mappages(pgdir, a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
     }
-    memset(mem, 0, PGSIZE);
-    mappages(pgdir, addr + i, PGSIZE, PADDR(mem), PTE_W|PTE_U);
   }
   return 1;
 }
 
+// deallocate some of the user pages, in response to sbrk()
+// with a negative argument. if addr is not page-aligned,
+// then only deallocates starting at the next page boundary.
+int
+deallocuvm(pde_t *pgdir, char *addr, uint sz)
+{
+  if (addr + sz > (char*)USERTOP)
+    return 0;
+  char *first = (char*) PGROUNDUP((uint)addr);
+  char *last = PGROUNDDOWN(addr + sz - 1);
+  char *a;
+  for(a = first; a <= last; a += PGSIZE){
+    pte_t *pte = walkpgdir(pgdir, a, 0);
+    if(pte && (*pte & PTE_P) != 0){
+      uint pa = PTE_ADDR(*pte);
+      if(pa == 0)
+        panic("deallocuvm");
+      kfree((void *) pa, PGSIZE);
+      *pte = 0;
+    }
+  }
+  return 1;
+}
+
+// free a page table and all the physical memory pages
+// in the user part.
 void
 freevm(pde_t *pgdir)
 {
@@ -211,9 +259,8 @@ freevm(pde_t *pgdir)
 	if (pgtab[j] != 0) {
 	  uint pa = PTE_ADDR(pgtab[j]);
 	  uint va = PGADDR(i, j, 0);
-	  if (va >= USERTOP)   // done with user part?
-	    break;
-	  kfree((void *) pa, PGSIZE);
+	  if (va < USERTOP)   // user memory
+            kfree((void *) pa, PGSIZE);
 	  pgtab[j] = 0;
 	}
       }
@@ -261,6 +308,8 @@ inituvm(pde_t *pgdir, char *addr, char *init, uint sz)
   }
 }
 
+// given a parent process's page table, create a copy
+// of it for a child.
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
@@ -273,17 +322,22 @@ copyuvm(pde_t *pgdir, uint sz)
   for (i = 0; i < sz; i += PGSIZE) {
     if (!(pte = walkpgdir(pgdir, (void *)i, 0)))
       panic("copyuvm: pte should exist\n");
-    pa = PTE_ADDR(*pte);
-    if (!(mem = kalloc(PGSIZE)))
-      return 0;
-    memmove(mem, (char *)pa, PGSIZE);
-    if (!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U))
-      return 0;
+    if(*pte & PTE_P){
+      pa = PTE_ADDR(*pte);
+      if (!(mem = kalloc(PGSIZE)))
+        return 0;
+      memmove(mem, (char *)pa, PGSIZE);
+      if (!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U))
+        return 0;
+    }
   }
   return d;
 }
 
-// Gather about physical memory layout.  Called once during boot.
+// Gather information about physical memory layout.
+// Called once during boot.
+// Really should find out how much physical memory
+// there is rather than assuming PHYSTOP.
 void
 pminit(void)
 {
@@ -298,25 +352,11 @@ pminit(void)
   kernend = ((uint)end + PGSIZE) & ~(PGSIZE-1);
   kerntext = ph[0].va;
   kerndata = ph[1].va;
-  kerntsz = kerndata - kerntext;
-  kerndsz = kernend - kerndata;
+  kerntsz = ph[0].memsz;
+  kerndsz = ph[1].memsz;
   freesz = PHYSTOP - kernend;
 
-  cprintf("kerntext@0x%x(sz=0x%x), kerndata@0x%x(sz=0x%x), kernend 0x%x freesz = 0x%x\n", 
-	  kerntext, kerntsz, kerndata, kerndsz, kernend, freesz);
-
   kinit((char *)kernend, freesz);
-}
-
-// Jump to mainc on a properly-allocated kernel stack
-void
-jkstack(void)
-{
-  char *kstack = kalloc(PGSIZE);
-  if (!kstack)
-    panic("jkstack\n");
-  char *top = kstack + PGSIZE;
-  jstack((uint) top);
 }
 
 // Allocate one page table for the machine for the kernel address

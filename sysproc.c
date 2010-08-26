@@ -57,7 +57,8 @@ sys_sbrk(void)
 int
 sys_sleep(void)
 {
-  int n, ticks0;
+  int n;
+  uint ticks0;
   
   if(argint(0, &n) < 0)
     return -1;
@@ -72,4 +73,17 @@ sys_sleep(void)
   }
   release(&tickslock);
   return 0;
+}
+
+// return how many clock tick interrupts have occurred
+// since boot.
+int
+sys_uptime(void)
+{
+  uint xticks;
+  
+  acquire(&tickslock);
+  xticks = ticks;
+  release(&tickslock);
+  return xticks;
 }

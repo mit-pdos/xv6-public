@@ -142,10 +142,15 @@ userinit(void)
 int
 growproc(int n)
 {
-  if (!allocuvm(proc->pgdir, (char *)proc->sz, n))
-    return -1;
+  if(n > 0){
+    if (!allocuvm(proc->pgdir, (char *)proc->sz, n))
+      return -1;
+  } else if(n < 0){
+    if (!deallocuvm(proc->pgdir, (char *)(proc->sz + n), 0 - n))
+      return -1;
+  }
   proc->sz += n;
-  loadvm(proc);
+  switchuvm(proc);
   return 0;
 }
 
@@ -214,9 +219,10 @@ scheduler(void)
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       proc = p;
-      loadvm(p);
+      switchuvm(p);
       p->state = RUNNING;
       swtch(&cpu->scheduler, proc->context);
+      switchkvm();
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
@@ -242,7 +248,6 @@ sched(void)
     panic("sched running");
   if(readeflags()&FL_IF)
     panic("sched interruptible");
-  lcr3(PADDR(kpgdir));   // Switch to the kernel page table
   intena = cpu->intena;
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
@@ -414,9 +419,9 @@ wait(void)
         // Found one.
         pid = p->pid;
         kfree(p->kstack, KSTACKSIZE);
-	freevm(p->pgdir);
+        p->kstack = 0;
+        freevm(p->pgdir);
         p->state = UNUSED;
-	p->kstack = 0;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
