@@ -21,6 +21,7 @@ spinlock.c
 proc.h
 proc.c
 swtch.S
+vm.c
 kalloc.c
 vm.c
 

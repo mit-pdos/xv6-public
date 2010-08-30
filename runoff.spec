@@ -27,6 +27,7 @@ even: proc.h  # mild preference
 right: proc.c   # VERY important
 
 # setjmp.S either
+# vm.c either
 # kalloc.c either
 
 # syscall.h either
