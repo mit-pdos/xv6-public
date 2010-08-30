@@ -41,7 +41,7 @@ void
 mainc(void)
 {
   cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
-  kvmalloc();      // initialze the kernel page table
+  kvmalloc();      // initialize the kernel page table
   pinit();         // process table
   tvinit();        // trap vectors
   binit();         // buffer cache
@@ -67,7 +67,7 @@ mpmain(void)
     ksegment();
     lapicinit(cpunum());
   }
-  vminit();        // turn on paging
+  vmenable();        // turn on paging
   cprintf("cpu%d: starting\n", cpu->id);
   idtinit();       // load idt register
   xchg(&cpu->booted, 1);
