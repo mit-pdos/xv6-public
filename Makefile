@@ -142,6 +142,10 @@ bochs : fs.img xv6.img
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
+# QEMU's gdb stub command line changed in 0.11
+QEMUGDB = $(shell if qemu -help | grep -q '^-gdb'; \
+	then echo "-gdb tcp::$(GDBPORT)"; \
+	else echo "-s -p $(GDBPORT)"; fi)
 QEMUOPTS = -smp 2 -hdb fs.img xv6.img
 
 qemu: fs.img xv6.img
@@ -155,11 +159,11 @@ qemu-nox: fs.img xv6.img
 
 qemu-gdb: fs.img xv6.img .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
-	qemu -serial mon:stdio $(QEMUOPTS) -s -S -p $(GDBPORT)
+	qemu -serial mon:stdio $(QEMUOPTS) -S $(QEMUGDB)
 
-qemu-gdb-nox: fs.img xv6.img .gdbinit
+qemu-nox-gdb: fs.img xv6.img .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
-	qemu -nographic $(QEMUOPTS) -s -S -p $(GDBPORT)
+	qemu -nographic $(QEMUOPTS) -S $(QEMUGDB)
 
 # CUT HERE
 # prepare dist for students
