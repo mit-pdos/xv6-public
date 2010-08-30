@@ -375,8 +375,9 @@ vminit(void)
 
   lcr3(PADDR(kpgdir));
   cr0 = rcr0();
-  cr0 |= CR0_PE|CR0_PG|CR0_AM|CR0_WP|CR0_NE|CR0_TS|CR0_EM|CR0_MP;
-  cr0 &= ~(CR0_TS|CR0_EM);
+  // cr0 |= CR0_PE|CR0_PG|CR0_AM|CR0_WP|CR0_NE|CR0_TS|CR0_EM|CR0_MP;
+  // cr0 &= ~(CR0_TS|CR0_EM);
+  cr0 |= CR0_PG | CR0_WP;
   lcr0(cr0);
 }
 
