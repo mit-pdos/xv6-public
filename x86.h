@@ -96,24 +96,16 @@ loadgs(ushort v)
   asm volatile("movw %0, %%gs" : : "r" (v));
 }
 
-static inline void lebp(uint val)
-{
-  asm volatile("movl %0,%%ebp" : : "r" (val));
-}
-
-static inline uint rebp(void)
+static inline uint
+rebp(void)
 {
   uint val;
   asm volatile("movl %%ebp,%0" : "=r" (val));
   return val;
 }
 
-static inline void lesp(uint val)
-{
-  asm volatile("movl %0,%%esp" : : "r" (val));
-}
-
-static inline uint resp(void)
+static inline uint
+resp(void)
 {
   uint val;
   asm volatile("movl %%esp,%0" : "=r" (val));
@@ -132,13 +124,6 @@ sti(void)
   asm volatile("sti");
 }
 
-static inline void
-nop_pause(void)
-{
-  asm volatile("pause" : :);
-}
-
-//PAGEBREAK!
 static inline uint
 xchg(volatile uint *addr, uint newval)
 {
@@ -152,6 +137,13 @@ xchg(volatile uint *addr, uint newval)
   return result;
 }
 
+static inline void
+nop_pause(void)
+{
+  asm volatile("pause" : :);
+}
+
+//PAGEBREAK!
 static inline void
 lcr0(uint val)
 {
