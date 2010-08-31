@@ -17,6 +17,7 @@ even: main.c
 
 # spinlock.h either
 # spinlock.c either
+right: spinlock.c  # mild preference
 even: proc.h  # mild preference
 
 # goal is to have two action-packed 2-page spreads,
