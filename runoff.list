@@ -23,7 +23,6 @@ proc.c
 swtch.S
 kalloc.c
 vm.c
-
 # system calls
 traps.h
 vectors.pl
@@ -45,8 +44,6 @@ fs.c
 file.c
 sysfile.c
 exec.c
-
-
 
 # pipes
 pipe.c
@@ -71,5 +68,7 @@ initcode.S
 usys.S
 init.c
 sh.c
+
+
 
 
