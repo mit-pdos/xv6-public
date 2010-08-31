@@ -120,7 +120,8 @@ userinit(void)
     panic("userinit: out of memory?");
   if (!allocuvm(p->pgdir, 0x0, (int)_binary_initcode_size))
     panic("userinit: out of memory?");
-  inituvm(p->pgdir, 0x0, _binary_initcode_start, (int)_binary_initcode_size);
+  inituvm(p->pgdir, 0x0, _binary_initcode_start,
+          (int)_binary_initcode_size);
   p->sz = PGROUNDUP((int)_binary_initcode_size);
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;

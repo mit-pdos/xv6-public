@@ -20,6 +20,9 @@ The following people made contributions:
     Cliff Frey (MP)
     Xiao Yu (MP)
 
+In addition, we are grateful for the patches submitted by Greg Price,
+Yandong Mao, and Hitoshi Mitake.
+
 The code in the files that constitute xv6 is
 Copyright 2006-2007 Frans Kaashoek, Robert Morris, and Russ Cox.
 

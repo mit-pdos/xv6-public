@@ -159,7 +159,7 @@ clean:
 
 # make a printout
 FILES = $(shell grep -v '^\#' runoff.list)
-PRINT = runoff.list $(FILES)
+PRINT = runoff.list runoff.spec $(FILES)
 
 xv6.pdf: $(PRINT)
 	./runoff
