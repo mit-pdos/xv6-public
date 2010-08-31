@@ -17,8 +17,8 @@
 // setupkvm() and exec() set up every page table like this:
 //   0..640K          : user memory (text, data, stack, heap)
 //   640K..1M         : mapped direct (for IO space)
-//   1M..kernend      : mapped direct (for the kernel's text and data)
-//   kernend..PHYSTOP : mapped direct (kernel heap and user pages)
+//   1M..end          : mapped direct (for the kernel's text and data)
+//   end..PHYSTOP     : mapped direct (kernel heap and user pages)
 //   0xfe000000..0    : mapped direct (devices such as ioapic)
 //
 // The kernel allocates memory for its heap and for user memory
@@ -31,12 +31,6 @@
 
 #define USERTOP  0xA0000
 
-static uint kerntext;  // Linker starts kernel at 1MB
-static uint kerntsz;   
-static uint kerndata;
-static uint kerndsz;
-static uint kernend;
-static uint freesz;
 static pde_t *kpgdir;  // for use in scheduler()
 
 // return the address of the PTE in page table pgdir
@@ -161,14 +155,8 @@ setupkvm(void)
   // Map IO space from 640K to 1Mbyte
   if (!mappages(pgdir, (void *)USERTOP, 0x60000, USERTOP, PTE_W))
     return 0;
-  // Map kernel text read-only
-  if (!mappages(pgdir, (void *) kerntext, kerntsz, kerntext, 0))
-    return 0;
-  // Map kernel data read/write
-  if (!mappages(pgdir, (void *) kerndata, kerndsz, kerndata, PTE_W))
-    return 0;
-  // Map dynamically-allocated memory read/write (kernel stacks, user mem)
-  if (!mappages(pgdir, (void *) kernend, freesz, PADDR(kernend), PTE_W))
+  // Map kernel and free memory pool
+  if (!mappages(pgdir, (void *)0x100000, PHYSTOP-0x100000, 0x100000, PTE_W))
     return 0;
   // Map devices such as ioapic, lapic, ...
   if (!mappages(pgdir, (void *)0xFE000000, 0x2000000, 0xFE000000, PTE_W))
@@ -331,31 +319,6 @@ copyuvm(pde_t *pgdir, uint sz)
     }
   }
   return d;
-}
-
-// Gather information about physical memory layout.
-// Called once during boot.
-// Really should find out how much physical memory
-// there is rather than assuming PHYSTOP.
-void
-pminit(void)
-{
-  extern char end[];
-  struct proghdr *ph;
-  struct elfhdr *elf = (struct elfhdr*)0x10000;  // scratch space
-
-  if (elf->magic != ELF_MAGIC || elf->phnum != 2)
-    panic("pminit: need a text and data segment\n");
-
-  ph = (struct proghdr*)((uchar*)elf + elf->phoff);
-  kernend = ((uint)end + PGSIZE) & ~(PGSIZE-1);
-  kerntext = ph[0].va;
-  kerndata = ph[1].va;
-  kerntsz = ph[0].memsz;
-  kerndsz = ph[1].memsz;
-  freesz = PHYSTOP - kernend;
-
-  kinit((char *)kernend, freesz);
 }
 
 // Allocate one page table for the machine for the kernel address

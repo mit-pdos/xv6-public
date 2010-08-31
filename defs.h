@@ -62,7 +62,7 @@ void            ioapicinit(void);
 // kalloc.c
 char*           kalloc(void);
 void            kfree(char*);
-void            kinit(char*,uint);
+void            kinit();
 
 // kbd.c
 void            kbdintr(void);
@@ -151,7 +151,6 @@ void            uartintr(void);
 void            uartputc(int);
 
 // vm.c
-void            pminit(void);
 void            ksegment(void);
 void            kvmalloc(void);
 void            vmenable(void);

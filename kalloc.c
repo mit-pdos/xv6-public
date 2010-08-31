@@ -19,11 +19,13 @@ struct {
 
 // Initialize free list of physical pages.
 void
-kinit(char *p, uint len)
+kinit(void)
 {
+  extern char end[];
+
   initlock(&kmem.lock, "kmem");
-  char *p1 = (char*)PGROUNDUP((uint)p);
-  char *p2 = PGROUNDDOWN(p + len);
+  char *p1 = (char*)PGROUNDUP((uint)end);
+  char *p2 = PGROUNDDOWN(PHYSTOP);
   for( ; p1 < p2; p1 += 4096)
     kfree(p1);
 }
