@@ -29,7 +29,6 @@
 // (both in physical memory and in the kernel's virtual address
 // space).
 
-#define PHYSTOP  0x1000000
 #define USERTOP  0xA0000
 
 static uint kerntext;  // Linker starts kernel at 1MB
@@ -53,7 +52,7 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
   pde = &pgdir[PDX(va)];
   if (*pde & PTE_P) {
     pgtab = (pte_t*) PTE_ADDR(*pde);
-  } else if (!create || !(r = (uint) kalloc(PGSIZE)))
+  } else if (!create || !(r = (uint) kalloc()))
     return 0;
   else {
     pgtab = (pte_t*) r;
@@ -156,7 +155,7 @@ setupkvm(void)
   pde_t *pgdir;
 
   // Allocate page directory
-  if (!(pgdir = (pde_t *) kalloc(PGSIZE)))
+  if (!(pgdir = (pde_t *) kalloc()))
     return 0;
   memset(pgdir, 0, PGSIZE);
   // Map IO space from 640K to 1Mbyte
@@ -206,7 +205,7 @@ allocuvm(pde_t *pgdir, char *addr, uint sz)
   for(a = first; a <= last; a += PGSIZE){
     pte_t *pte = walkpgdir(pgdir, a, 0);
     if(pte == 0 || (*pte & PTE_P) == 0){
-      char *mem = kalloc(PGSIZE);
+      char *mem = kalloc();
       if(mem == 0){
         // XXX clean up?
         return 0;
@@ -235,7 +234,7 @@ deallocuvm(pde_t *pgdir, char *addr, uint sz)
       uint pa = PTE_ADDR(*pte);
       if(pa == 0)
         panic("deallocuvm");
-      kfree((void *) pa, PGSIZE);
+      kfree((void *) pa);
       *pte = 0;
     }
   }
@@ -260,15 +259,15 @@ freevm(pde_t *pgdir)
 	  uint pa = PTE_ADDR(pgtab[j]);
 	  uint va = PGADDR(i, j, 0);
 	  if (va < USERTOP)   // user memory
-            kfree((void *) pa, PGSIZE);
+            kfree((void *) pa);
 	  pgtab[j] = 0;
 	}
       }
-      kfree((void *) da, PGSIZE);
+      kfree((void *) da);
       pgdir[i] = 0;
     }
   }
-  kfree((void *) pgdir, PGSIZE);
+  kfree((void *) pgdir);
 }
 
 int
@@ -324,7 +323,7 @@ copyuvm(pde_t *pgdir, uint sz)
       panic("copyuvm: pte should exist\n");
     if(*pte & PTE_P){
       pa = PTE_ADDR(*pte);
-      if (!(mem = kalloc(PGSIZE)))
+      if (!(mem = kalloc()))
         return 0;
       memmove(mem, (char *)pa, PGSIZE);
       if (!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U))

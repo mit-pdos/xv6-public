@@ -60,9 +60,8 @@ extern uchar    ioapicid;
 void            ioapicinit(void);
 
 // kalloc.c
-extern int      nfreemem;
-char*           kalloc(int);
-void            kfree(char*, int);
+char*           kalloc(void);
+void            kfree(char*);
 void            kinit(char*,uint);
 
 // kbd.c

@@ -84,7 +84,7 @@ found:
   release(&ptable.lock);
 
   // Allocate kernel stack if possible.
-  if((p->kstack = kalloc(KSTACKSIZE)) == 0){
+  if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
     return 0;
   }
@@ -169,7 +169,7 @@ fork(void)
 
   // Copy process state from p.
   if (!(np->pgdir = copyuvm(proc->pgdir, proc->sz))) {
-    kfree(np->kstack, KSTACKSIZE);
+    kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
     return -1;
@@ -418,7 +418,7 @@ wait(void)
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
-        kfree(p->kstack, KSTACKSIZE);
+        kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
         p->state = UNUSED;
