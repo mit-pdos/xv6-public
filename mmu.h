@@ -62,8 +62,6 @@ struct segdesc {
 #define STA_R       0x2     // Readable (executable segments)
 #define STA_A       0x1     // Accessed
 
-// 
-
 // System segment type bits
 #define STS_T16A    0x1     // Available 16-bit TSS
 #define STS_LDT     0x2     // Local Descriptor Table
@@ -78,7 +76,7 @@ struct segdesc {
 #define STS_IG32    0xE     // 32-bit Interrupt Gate
 #define STS_TG32    0xF     // 32-bit Trap Gate
 
-
+//PAGEBREAK!
 // A linear address 'la' has a three-part structure as follows:
 //
 // +--------10------+-------10-------+---------12----------+
