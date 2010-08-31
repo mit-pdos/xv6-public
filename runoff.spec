@@ -16,16 +16,15 @@ even: main.c
 # odd: init.c
 
 # spinlock.h either
-# spinlock.c either
 right: spinlock.c  # mild preference
 even: proc.h  # mild preference
 
 # goal is to have two action-packed 2-page spreads,
 # one with
-#     ksegment usegment allocproc userinit growproc fork
+#     allocproc userinit growproc fork
 # and another with
 #     scheduler sched yield forkret sleep wakeup1 wakeup
-right: proc.c   # VERY important
+right+: proc.c   # VERY important
 
 # setjmp.S either
 # vm.c either
