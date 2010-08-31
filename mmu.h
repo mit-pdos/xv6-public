@@ -24,6 +24,20 @@
 #define FL_VIP          0x00100000      // Virtual Interrupt Pending
 #define FL_ID           0x00200000      // ID flag
 
+// Control Register flags
+#define CR0_PE		0x00000001	// Protection Enable
+#define CR0_MP		0x00000002	// Monitor coProcessor
+#define CR0_EM		0x00000004	// Emulation
+#define CR0_TS		0x00000008	// Task Switched
+#define CR0_ET		0x00000010	// Extension Type
+#define CR0_NE		0x00000020	// Numeric Errror
+#define CR0_WP		0x00010000	// Write Protect
+#define CR0_AM		0x00040000	// Alignment Mask
+#define CR0_NW		0x20000000	// Not Writethrough
+#define CR0_CD		0x40000000	// Cache Disable
+#define CR0_PG		0x80000000	// Paging
+
+//PAGEBREAK!
 // Segment Descriptor
 struct segdesc {
   uint lim_15_0 : 16;  // Low bits of segment limit
@@ -46,7 +60,6 @@ struct segdesc {
 { ((lim) >> 12) & 0xffff, (uint)(base) & 0xffff,      \
   ((uint)(base) >> 16) & 0xff, type, 1, dpl, 1,       \
   (uint)(lim) >> 28, 0, 0, 1, 1, (uint)(base) >> 24 }
-
 #define SEG16(type, base, lim, dpl) (struct segdesc)  \
 { (lim) & 0xffff, (uint)(base) & 0xffff,              \
   ((uint)(base) >> 16) & 0xff, type, 1, dpl, 1,       \
@@ -76,7 +89,6 @@ struct segdesc {
 #define STS_IG32    0xE     // 32-bit Interrupt Gate
 #define STS_TG32    0xF     // 32-bit Trap Gate
 
-//PAGEBREAK!
 // A linear address 'la' has a three-part structure as follows:
 //
 // +--------10------+-------10-------+---------12----------+
@@ -128,21 +140,6 @@ struct segdesc {
 
 typedef uint pte_t;
 
-// Control Register flags
-#define CR0_PE		0x00000001	// Protection Enable
-#define CR0_MP		0x00000002	// Monitor coProcessor
-#define CR0_EM		0x00000004	// Emulation
-#define CR0_TS		0x00000008	// Task Switched
-#define CR0_ET		0x00000010	// Extension Type
-#define CR0_NE		0x00000020	// Numeric Errror
-#define CR0_WP		0x00010000	// Write Protect
-#define CR0_AM		0x00040000	// Alignment Mask
-#define CR0_NW		0x20000000	// Not Writethrough
-#define CR0_CD		0x40000000	// Cache Disable
-#define CR0_PG		0x80000000	// Paging
-
-
-// PAGEBREAK: 40
 // Task state segment format
 struct taskstate {
   uint link;         // Old ts selector
