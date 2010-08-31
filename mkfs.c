@@ -82,7 +82,7 @@ main(int argc, char *argv[])
   usedblocks = ninodes / IPB + 3 + bitblocks;
   freeblock = usedblocks;
 
-  printf("used %d (bit %d ninode %lu) free %u total %d\n", usedblocks,
+  printf("used %d (bit %d ninode %u) free %u total %d\n", usedblocks,
          bitblocks, ninodes/IPB + 1, freeblock, nblocks+usedblocks);
 
   assert(nblocks + usedblocks == size);
@@ -230,7 +230,7 @@ balloc(int used)
   for(i = 0; i < used; i++) {
     buf[i/8] = buf[i/8] | (0x1 << (i%8));
   }
-  printf("balloc: write bitmap block at sector %lu\n", ninodes/IPB + 3);
+  printf("balloc: write bitmap block at sector %u\n", ninodes/IPB + 3);
   wsect(ninodes / IPB + 3, buf);
 }
 
