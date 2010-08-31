@@ -132,7 +132,8 @@ sti(void)
   asm volatile("sti");
 }
 
-static inline void nop_pause(void)
+static inline void
+nop_pause(void)
 {
   asm volatile("pause" : :);
 }
@@ -151,31 +152,36 @@ xchg(volatile uint *addr, uint newval)
   return result;
 }
 
-static inline void lcr0(uint val)
+static inline void
+lcr0(uint val)
 {
   asm volatile("movl %0,%%cr0" : : "r" (val));
 }
 
-static inline uint rcr0(void)
+static inline uint
+rcr0(void)
 {
   uint val;
   asm volatile("movl %%cr0,%0" : "=r" (val));
   return val;
 }
 
-static inline uint rcr2(void)
+static inline uint
+rcr2(void)
 {
   uint val;
   asm volatile("movl %%cr2,%0" : "=r" (val));
   return val;
 }
 
-static inline void lcr3(uint val) 
+static inline void
+lcr3(uint val) 
 {
   asm volatile("movl %0,%%cr3" : : "r" (val));
 }
 
-static inline uint rcr3(void)
+static inline uint
+rcr3(void)
 {
   uint val;
   asm volatile("movl %%cr3,%0" : "=r" (val));
