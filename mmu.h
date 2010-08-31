@@ -112,7 +112,7 @@ struct segdesc {
 #define PDXSHIFT	22		// offset of PDX in a linear address
 
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
-#define PGROUNDDOWN(a) ((char*)((((unsigned int)a) & ~(PGSIZE-1))))
+#define PGROUNDDOWN(a) ((char*)((((unsigned int)(a)) & ~(PGSIZE-1))))
 
 // Page table/directory entry flags.
 #define PTE_P		0x001	// Present
