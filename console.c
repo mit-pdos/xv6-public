@@ -163,7 +163,7 @@ consputc(int c)
       ;
   }
 
-  if (c == BACKSPACE) {
+  if(c == BACKSPACE){
     uartputc('\b');
     uartputc(' ');
     uartputc('\b');

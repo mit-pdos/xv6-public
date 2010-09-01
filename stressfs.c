@@ -17,8 +17,8 @@ main(int argc, char *argv[])
   int i;
   printf(1, "stressfs starting\n");
 
-  for (i = 0; i < 4; i++) {
-    if (fork() > 0) {
+  for(i = 0; i < 4; i++){
+    if(fork() > 0){
       break;
     }
   }
@@ -28,7 +28,7 @@ main(int argc, char *argv[])
   char path[] = "stressfs0";
   path[8] += i;
   int fd = open(path, O_CREATE | O_RDWR);
-  for (i = 0; i < 100; i++)
+  for(i = 0; i < 100; i++)
     printf(fd, "%d\n", i);
   close(fd);
 

@@ -29,7 +29,7 @@ void
 jkstack(void)
 {
   char *kstack = kalloc();
-  if (!kstack)
+  if(!kstack)
     panic("jkstack\n");
   char *top = kstack + PGSIZE;
   asm volatile("movl %0,%%esp" : : "r" (top));
