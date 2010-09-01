@@ -24,10 +24,9 @@ kinit(void)
   extern char end[];
 
   initlock(&kmem.lock, "kmem");
-  char *p1 = (char*)PGROUNDUP((uint)end);
-  char *p2 = PGROUNDDOWN(PHYSTOP);
-  for( ; p1 < p2; p1 += 4096)
-    kfree(p1);
+  char *p = (char*)PGROUNDUP((uint)end);
+  for( ; p + PGSIZE - 1 < (char*) PHYSTOP; p += PGSIZE)
+    kfree(p);
 }
 
 //PAGEBREAK: 21
