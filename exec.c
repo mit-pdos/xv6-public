@@ -30,7 +30,7 @@ exec(char *path, char **argv)
   if(elf.magic != ELF_MAGIC)
     goto bad;
 
-  if (!(pgdir = setupkvm()))
+  if(!(pgdir = setupkvm()))
     goto bad;
 
   // Load program into memory.
@@ -41,11 +41,11 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
-    if (!allocuvm(pgdir, (char *)ph.va, ph.memsz))
+    if(!allocuvm(pgdir, (char *)ph.va, ph.memsz))
       goto bad;
     if(ph.va + ph.memsz > sz)
       sz = ph.va + ph.memsz;
-    if (!loaduvm(pgdir, (char *)ph.va, ip, ph.offset, ph.filesz))
+    if(!loaduvm(pgdir, (char *)ph.va, ip, ph.offset, ph.filesz))
       goto bad;
   }
   iunlockput(ip);
@@ -53,7 +53,7 @@ exec(char *path, char **argv)
   // Allocate and initialize stack at sz
   sz = PGROUNDUP(sz);
   sz += PGSIZE; // leave an invalid page
-  if (!allocuvm(pgdir, (char *)sz, PGSIZE))
+  if(!allocuvm(pgdir, (char *)sz, PGSIZE))
     goto bad;
   mem = uva2ka(pgdir, (char *)sz);
   spoffset = sz;
@@ -105,7 +105,7 @@ exec(char *path, char **argv)
   return 0;
 
  bad:
-  if (pgdir) freevm(pgdir);
+  if(pgdir) freevm(pgdir);
   iunlockput(ip);
   return -1;
 }

@@ -244,13 +244,13 @@ freevm(pde_t *pgdir)
     if (da != 0) {
       pte_t *pgtab = (pte_t*) da;
       for (j = 0; j < NPTENTRIES; j++) {
-	if (pgtab[j] != 0) {
-	  uint pa = PTE_ADDR(pgtab[j]);
-	  uint va = PGADDR(i, j, 0);
-	  if (va < USERTOP)   // user memory
+        if (pgtab[j] != 0) {
+          uint pa = PTE_ADDR(pgtab[j]);
+          uint va = PGADDR(i, j, 0);
+          if (va < USERTOP)   // user memory
             kfree((void *) pa);
-	  pgtab[j] = 0;
-	}
+          pgtab[j] = 0;
+        }
       }
       kfree((void *) da);
       pgdir[i] = 0;
@@ -287,7 +287,7 @@ inituvm(pde_t *pgdir, char *addr, char *init, uint sz)
 
   for (i = 0; i < sz; i += PGSIZE) {
     if (!(pte = walkpgdir(pgdir, (void *)(i+addr), 0)))
-	panic("inituvm: pte should exist\n");
+      panic("inituvm: pte should exist\n");
     off = (i+(uint)addr) % PGSIZE;
     pa = PTE_ADDR(*pte);
     if (sz - i < PGSIZE) n = sz - i;
