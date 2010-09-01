@@ -313,13 +313,17 @@ copyuvm(pde_t *pgdir, uint sz)
     if(*pte & PTE_P){
       pa = PTE_ADDR(*pte);
       if (!(mem = kalloc()))
-        return 0;
+        goto bad;
       memmove(mem, (char *)pa, PGSIZE);
       if (!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U))
-        return 0;
+        goto bad;
     }
   }
   return d;
+
+bad:
+  freevm(d);
+  return 0;
 }
 
 // Allocate one page table for the machine for the kernel address
