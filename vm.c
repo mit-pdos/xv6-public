@@ -310,14 +310,14 @@ copyuvm(pde_t *pgdir, uint sz)
   for(i = 0; i < sz; i += PGSIZE){
     if(!(pte = walkpgdir(pgdir, (void *)i, 0)))
       panic("copyuvm: pte should exist\n");
-    if(*pte & PTE_P){
-      pa = PTE_ADDR(*pte);
-      if(!(mem = kalloc()))
-        goto bad;
-      memmove(mem, (char *)pa, PGSIZE);
-      if(!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U))
-        goto bad;
-    }
+    if(!(*pte & PTE_P))
+      panic("copyuvm: page not present\n");
+    pa = PTE_ADDR(*pte);
+    if(!(mem = kalloc()))
+      goto bad;
+    memmove(mem, (char *)pa, PGSIZE);
+    if(!mappages(d, (void *)i, PGSIZE, PADDR(mem), PTE_W|PTE_U))
+      goto bad;
   }
   return d;
 
