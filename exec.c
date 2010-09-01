@@ -52,7 +52,6 @@ exec(char *path, char **argv)
 
   // Allocate and initialize stack at sz
   sz = PGROUNDUP(sz);
-  sz += PGSIZE; // leave an invalid page
   if(!allocuvm(pgdir, (char *)sz, PGSIZE))
     goto bad;
   mem = uva2ka(pgdir, (char *)sz);
