@@ -324,6 +324,7 @@ mem(void)
   void *m1, *m2;
   int pid, ppid;
 
+  printf(1, "mem test\n");
   ppid = getpid();
   if((pid = fork()) == 0){
     m1 = 0;
@@ -1330,6 +1331,41 @@ sbrktest(void)
       exit();
     }
     wait();
+  }
+
+  // if we run the system out of memory, does it clean up the last
+  // failed allocation?
+  sbrk(-(sbrk(0) - oldbrk));
+  int pids[32];
+  int fds[2];
+  if(pipe(fds) != 0){
+    printf(1, "pipe() failed\n");
+    exit();
+  }
+  for (i = 0; i < sizeof(pids)/sizeof(pids[0]); i++){
+    if ((pids[i] = fork()) == 0) {
+      // allocate the full 640K
+      sbrk((640 * 1024) - (uint)sbrk(0));
+      write(fds[1], "x", 1);
+      // sit around until killed
+      while (1) sleep(1000);
+    }
+    char scratch;
+    if (pids[i] != -1)
+      read(fds[0], &scratch, 1);
+  }
+  // if those failed allocations freed up the pages they did allocate,
+  // we'll be able to allocate here
+  c = sbrk(4096);
+  for (i = 0; i < sizeof(pids)/sizeof(pids[0]); i++){
+    if (pids[i] == -1)
+      continue;
+    kill(pids[i]);
+    wait();
+  }
+  if (c == (char*)0xffffffff) {
+    printf(stdout, "failed sbrk leaked memory\n");
+    exit();
   }
 
   if(sbrk(0) > oldbrk)

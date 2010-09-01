@@ -195,7 +195,8 @@ allocuvm(pde_t *pgdir, char *addr, uint sz)
     if(pte == 0 || (*pte & PTE_P) == 0){
       char *mem = kalloc();
       if(mem == 0){
-        // XXX clean up?
+        cprintf("allocuvm out of memory\n");
+        deallocuvm(pgdir, addr, sz);
         return 0;
       }
       memset(mem, 0, PGSIZE);
