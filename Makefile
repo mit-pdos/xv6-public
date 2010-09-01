@@ -179,7 +179,10 @@ GDBPORT = $(shell expr `id -u` % 5000 + 25000)
 QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
-QEMUOPTS = -smp 2 -hdb fs.img xv6.img
+ifndef CPUS
+CPUS := 2
+endif
+QEMUOPTS = -hdb fs.img xv6.img -smp $(CPUS)
 
 qemu: fs.img xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)
