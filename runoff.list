@@ -9,8 +9,8 @@ elf.h
 
 # startup
 bootasm.S
-bootmain.c
 bootother.S
+bootmain.c
 main.c
 
 # locks

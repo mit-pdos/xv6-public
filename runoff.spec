@@ -20,7 +20,7 @@ sheet1: left
 
 even: bootasm.S  # mild preference
 even: bootother.S  # mild preference
-# bootmain.c either
+even: bootmain.S  # mild preference
 even: main.c
 # mp.c don't care at all
 # even: initcode.S
