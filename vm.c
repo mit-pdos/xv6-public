@@ -206,8 +206,7 @@ allocuvm(pde_t *pgdir, char *addr, uint sz)
   return 1;
 }
 
-// deallocate some of the user pages, in response to sbrk()
-// with a negative argument. if addr is not page-aligned,
+// deallocate some of the user pages. if addr is not page-aligned,
 // then only deallocates starting at the next page boundary.
 int
 deallocuvm(pde_t *pgdir, char *addr, uint sz)
@@ -235,26 +234,14 @@ deallocuvm(pde_t *pgdir, char *addr, uint sz)
 void
 freevm(pde_t *pgdir)
 {
-  uint i, j, da;
+  uint i;
 
   if(!pgdir)
-    panic("freevm: no pgdir\n");
+    panic("freevm: no pgdir");
+  deallocuvm(pgdir, 0, USERTOP);
   for(i = 0; i < NPDENTRIES; i++){
-    da = PTE_ADDR(pgdir[i]);
-    if(da != 0){
-      pte_t *pgtab = (pte_t*) da;
-      for(j = 0; j < NPTENTRIES; j++){
-        if(pgtab[j] != 0){
-          uint pa = PTE_ADDR(pgtab[j]);
-          uint va = PGADDR(i, j, 0);
-          if(va < USERTOP)   // user memory
-            kfree((void *) pa);
-          pgtab[j] = 0;
-        }
-      }
-      kfree((void *) da);
-      pgdir[i] = 0;
-    }
+    if(pgdir[i] & PTE_P)
+      kfree((void *) PTE_ADDR(pgdir[i]));
   }
   kfree((void *) pgdir);
 }
