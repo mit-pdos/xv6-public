@@ -58,6 +58,13 @@ perl -e '
 			next;
 		}
 		
+		if(/sheet1: (left|right)$/){
+			print STDERR "assuming that sheet 1 is a $1 page.  double-check!\n";
+			$left = $1 eq "left" ? "13579" : "02468";
+			$right = $1 eq "left" ? "02468" : "13579";
+			next;
+		}
+		
 		if(/even: (.*)/){
 			$file = $1;
 			if(!defined($toc{$file})){
@@ -90,17 +97,11 @@ perl -e '
 				print STDERR "Have no toc for $file\n";
 				next;
 			}
-			# this assumes that sheet 1 of code is a right page
-			# double-check the PDF.  swap the two regexps below
-			# otherwise.
-			if(!$leftwarn++) {
-				print STDERR "assuming that sheet 1 is a right page.  double-check!\n";
-			}
-			if($what eq "left" && !($toc{$file} =~ /^\d[02468]$tens/)){
+			if($what eq "left" && !($toc{$file} =~ /^\d[$left]$tens/)){
 				print STDERR "$file does not start on a fresh left page [$toc{$file}]\n";
 			}
 			# why does this not work if I inline $x in the if?
-			$x = ($toc{$file} =~ /^\d[13579]$tens/);
+			$x = ($toc{$file} =~ /^\d[$right]$tens/);
 			if($what eq "right" && !$x){
 				print STDERR "$file does not start on a fresh right page [$toc{$file}] [$x]\n";
 			}

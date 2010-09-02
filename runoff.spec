@@ -1,3 +1,5 @@
+sheet1: left
+
 # types.h either
 # param.h either
 # defs.h either
@@ -16,7 +18,7 @@ even: main.c
 # odd: init.c
 
 # spinlock.h either
-right: spinlock.c  # mild preference
+left: spinlock.c  # mild preference
 even: proc.h  # mild preference
 
 # goal is to have two action-packed 2-page spreads,
