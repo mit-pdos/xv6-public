@@ -160,7 +160,7 @@ char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, char*, uint);
 int             deallocuvm(pde_t *pgdir, char *addr, uint sz);
 void            freevm(pde_t*);
-void            inituvm(pde_t*, char*, char*, uint);
+void            inituvm(pde_t*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode *ip, uint, uint);
 pde_t*          copyuvm(pde_t*,uint);
 void            switchuvm(struct proc*);

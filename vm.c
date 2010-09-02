@@ -267,20 +267,14 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 }
 
 void
-inituvm(pde_t *pgdir, char *addr, char *init, uint sz)
+inituvm(pde_t *pgdir, char *init, uint sz)
 {
-  uint i, pa, n, off;
-  pte_t *pte;
-
-  for(i = 0; i < sz; i += PGSIZE){
-    if(!(pte = walkpgdir(pgdir, (void *)(i+addr), 0)))
-      panic("inituvm: pte should exist\n");
-    off = (i+(uint)addr) % PGSIZE;
-    pa = PTE_ADDR(*pte);
-    if(sz - i < PGSIZE) n = sz - i;
-    else n = PGSIZE;
-    memmove((char *)pa+off, init+i, n);
-  }
+  char *mem = kalloc();
+  if (sz >= PGSIZE)
+    panic("inituvm: more than a page");
+  memset(mem, 0, PGSIZE);
+  mappages(pgdir, 0, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+  memmove(mem, init, sz);
 }
 
 // given a parent process's page table, create a copy
