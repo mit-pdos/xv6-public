@@ -2,12 +2,14 @@ sheet1: left
 
 # "left" and "right" specify which page of a two-page spread a file
 # must start on.  "left" means that a file must start on the first of
-# the two page.  "right" means it must start on the second of the two
+# the two pages.  "right" means it must start on the second of the two
 # pages.  The file may start in either column.
 #
 # "even" and "odd" specify which column a file must start on.  "even"
 # means it must start in the left of the two columns.  "odd" means it
 # must start in the right of the two columns.
+#
+# You'd think these would be the other way around.
 
 # types.h either
 # param.h either
