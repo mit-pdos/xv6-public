@@ -42,8 +42,14 @@ odd: proc.h
 left: proc.c   # VERY important
 odd: proc.c   # VERY important
 
-# setjmp.S either
-# vm.c either
+# A few more action packed spreads
+# page table creation and process loading
+#     walkpgdir mappages setupkvm vmenable switch[ku]vm inituvm loaduvm
+# process memory management
+#     allocuvm deallocuvm freevm
+right: vm.c
+odd: vm.c
+
 # kalloc.c either
 
 # syscall.h either
