@@ -19,6 +19,8 @@ The following people made contributions:
     Russ Cox (context switching, locking)
     Cliff Frey (MP)
     Xiao Yu (MP)
+    Nickolai Zeldovich
+    Austin Clements
 
 In addition, we are grateful for the patches contributed by Greg
 Price, Yandong Mao, and Hitoshi Mitake.
@@ -42,9 +44,7 @@ Then run "make TOOLPREFIX=i386-jos-elf-".
 To run xv6, you can use Bochs or QEMU, both PC simulators.
 Bochs makes debugging easier, but QEMU is much faster. 
 To run in Bochs, run "make bochs" and then type "c" at the bochs prompt.
-To run in QEMU, run "make qemu".  Both log the xv6 screen output to 
-standard output.
+To run in QEMU, run "make qemu".
 
-To create a typeset version of the code, run "make xv6.pdf".
-This requires the "mpage" text formatting utility.
-See http://www.mesa.nl/pub/mpage/.
+To create a typeset version of the code, run "make xv6.pdf".  This
+requires the "mpage" utility.  See http://www.mesa.nl/pub/mpage/.
