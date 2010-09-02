@@ -20,22 +20,27 @@ sheet1: left
 
 even: bootasm.S  # mild preference
 even: bootother.S  # mild preference
-even: bootmain.S  # mild preference
+even: bootmain.c  # mild preference
 even: main.c
 # mp.c don't care at all
 # even: initcode.S
 # odd: init.c
 
 # spinlock.h either
-left: spinlock.c  # mild preference
-even: proc.h  # mild preference
+left: spinlock.h  # mild preference
+even: spinlock.h  # mild preference
+
+# This gets struct proc and allocproc on the same spread
+right: proc.h
+odd: proc.h
 
 # goal is to have two action-packed 2-page spreads,
 # one with
-#     allocproc userinit growproc fork
+#     userinit growproc fork exit wait
 # and another with
 #     scheduler sched yield forkret sleep wakeup1 wakeup
-right: proc.c   # VERY important
+left: proc.c   # VERY important
+odd: proc.c   # VERY important
 
 # setjmp.S either
 # vm.c either
