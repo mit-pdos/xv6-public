@@ -192,6 +192,8 @@ do
 	if [ "x$defs" != "x$uses" ]; then
 		echo $i $defs
 		echo $uses |fmt -29 | sed 's/^/    /'
+#	else
+#		echo $i defined but not used >&2
 	fi
 done
 ) >refs
