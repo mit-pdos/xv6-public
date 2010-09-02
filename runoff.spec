@@ -70,6 +70,7 @@ odd: vm.c
 # fs.h either
 # fsvar.h either
 left: ide.c
+even: ide.c
 # odd: bio.c
 odd: fs.c   # VERY important
 # file.c either
@@ -79,5 +80,6 @@ odd: fs.c   # VERY important
 # even: pipe.c  # mild preference
 # string.c either
 left: kbd.h
+even: kbd.h
 even: console.c
 odd: sh.c

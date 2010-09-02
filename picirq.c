@@ -82,32 +82,3 @@ picinit(void)
   if(irqmask != 0xFFFF)
     picsetmask(irqmask);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Blank page.
