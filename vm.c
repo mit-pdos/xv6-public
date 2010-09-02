@@ -193,6 +193,8 @@ uva2ka(pde_t *pgdir, char *uva)
   return (char *)pa;
 }
 
+// Load the initcode into address 0 of pgdir.
+// sz must be less than a page.
 void
 inituvm(pde_t *pgdir, char *init, uint sz)
 {
@@ -204,6 +206,8 @@ inituvm(pde_t *pgdir, char *init, uint sz)
   memmove(mem, init, sz);
 }
 
+// Load a program segment into pgdir.  addr must be page-aligned
+// and the pages from addr to addr+sz must already be mapped.
 int
 loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 {
