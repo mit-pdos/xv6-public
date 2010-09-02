@@ -89,21 +89,20 @@ perl -e '
 			next;
 		}
 		
-		if(/(left|right)(\+?): (.*)/){
+		if(/(left|right): (.*)/){
 			$what = $1;
-			$tens = ($2 eq "+" ? "5" : "0");
-			$file = $3;
+			$file = $2;
 			if(!defined($toc{$file})){
 				print STDERR "Have no toc for $file\n";
 				next;
 			}
-			if($what eq "left" && !($toc{$file} =~ /^\d[$left]$tens/)){
-				print STDERR "$file does not start on a fresh left page [$toc{$file}]\n";
+			if($what eq "left" && !($toc{$file} =~ /^\d[$left][05]/)){
+				print STDERR "$file does not start on a left page [$toc{$file}]\n";
 			}
 			# why does this not work if I inline $x in the if?
-			$x = ($toc{$file} =~ /^\d[$right]$tens/);
+			$x = ($toc{$file} =~ /^\d[$right][05]/);
 			if($what eq "right" && !$x){
-				print STDERR "$file does not start on a fresh right page [$toc{$file}] [$x]\n";
+				print STDERR "$file does not start on a right page [$toc{$file}] [$x]\n";
 			}
 			next;
 		}
