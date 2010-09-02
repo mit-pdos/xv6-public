@@ -11,7 +11,7 @@ exec(char *path, char **argv)
 {
   char *mem, *s, *last;
   int i, argc, arglen, len, off;
-  uint sz, sp, spoffset, argp;
+  uint sz, sp, spbottom, argp;
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
@@ -41,22 +41,18 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
-    if(!allocuvm(pgdir, (char *)ph.va, ph.memsz))
+    if(!(sz = allocuvm(pgdir, sz, ph.va + ph.memsz)))
       goto bad;
-    if(ph.va + ph.memsz > sz)
-      sz = ph.va + ph.memsz;
     if(!loaduvm(pgdir, (char *)ph.va, ip, ph.offset, ph.filesz))
       goto bad;
   }
   iunlockput(ip);
 
   // Allocate and initialize stack at sz
-  sz = PGROUNDUP(sz);
-  if(!allocuvm(pgdir, (char *)sz, PGSIZE))
+  sz = spbottom = PGROUNDUP(sz);
+  if(!(sz = allocuvm(pgdir, sz, sz + PGSIZE)))
     goto bad;
-  mem = uva2ka(pgdir, (char *)sz);
-  spoffset = sz;
-  sz += PGSIZE;
+  mem = uva2ka(pgdir, (char *)spbottom);
 
   arglen = 0;
   for(argc=0; argv[argc]; argc++)
@@ -67,22 +63,22 @@ exec(char *path, char **argv)
   argp = sz - arglen - 4*(argc+1);
 
   // Copy argv strings and pointers to stack.
-  *(uint*)(mem+argp-spoffset + 4*argc) = 0;  // argv[argc]
+  *(uint*)(mem+argp-spbottom + 4*argc) = 0;  // argv[argc]
   for(i=argc-1; i>=0; i--){
     len = strlen(argv[i]) + 1;
     sp -= len;
-    memmove(mem+sp-spoffset, argv[i], len);
-    *(uint*)(mem+argp-spoffset + 4*i) = sp;  // argv[i]
+    memmove(mem+sp-spbottom, argv[i], len);
+    *(uint*)(mem+argp-spbottom + 4*i) = sp;  // argv[i]
   }
 
   // Stack frame for main(argc, argv), below arguments.
   sp = argp;
   sp -= 4;
-  *(uint*)(mem+sp-spoffset) = argp;
+  *(uint*)(mem+sp-spbottom) = argp;
   sp -= 4;
-  *(uint*)(mem+sp-spoffset) = argc;
+  *(uint*)(mem+sp-spbottom) = argc;
   sp -= 4;
-  *(uint*)(mem+sp-spoffset) = 0xffffffff;   // fake return pc
+  *(uint*)(mem+sp-spbottom) = 0xffffffff;   // fake return pc
 
   // Save program name for debugging.
   for(last=s=path; *s; s++)

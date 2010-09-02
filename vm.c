@@ -228,54 +228,50 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   return 1;
 }
 
-// Allocate sz bytes more memory for a process starting at the
-// given user address; allocates physical memory and page
-// table entries. addr and sz need not be page-aligned.
-// It is a no-op for any parts of the requested memory
-// that are already allocated.
+// Allocate memory to the process to bring its size from oldsz to
+// newsz. Allocates physical memory and page table entries. oldsz and
+// newsz need not be page-aligned, nor does newsz have to be larger
+// than oldsz.  Returns the new process size or 0 on error.
 int
-allocuvm(pde_t *pgdir, char *addr, uint sz)
+allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
-  if(addr + sz > (char*)USERTOP)
+  if(newsz > USERTOP)
     return 0;
-  char *a = PGROUNDDOWN(addr);
-  char *last = PGROUNDDOWN(addr + sz - 1);
-  for(; a <= last; a += PGSIZE){
-    pte_t *pte = walkpgdir(pgdir, a, 0);
-    if(pte == 0 || (*pte & PTE_P) == 0){
-      char *mem = kalloc();
-      if(mem == 0){
-        cprintf("allocuvm out of memory\n");
-        deallocuvm(pgdir, addr, sz);
-        return 0;
-      }
-      memset(mem, 0, PGSIZE);
-      mappages(pgdir, a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+  char *a = (char *)PGROUNDUP(oldsz);
+  char *last = PGROUNDDOWN(newsz - 1);
+  for (; a <= last; a += PGSIZE){
+    char *mem = kalloc();
+    if(mem == 0){
+      cprintf("allocuvm out of memory\n");
+      deallocuvm(pgdir, newsz, oldsz);
+      return 0;
     }
+    memset(mem, 0, PGSIZE);
+    mappages(pgdir, a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
   }
-  return 1;
+  return newsz > oldsz ? newsz : oldsz;
 }
 
-// Deallocate some of the user pages. If addr is not page-aligned,
-// then only deallocates starting at the next page boundary.
+// Deallocate user pages to bring the process size from oldsz to
+// newsz.  oldsz and newsz need not be page-aligned, nor does newsz
+// need to be less than oldsz.  oldsz can be larger than the actual
+// process size.  Returns the new process size.
 int
-deallocuvm(pde_t *pgdir, char *addr, uint sz)
+deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
-  if(addr + sz > (char*)USERTOP)
-    return 0;
-  char *a = (char *)PGROUNDUP((uint)addr);
-  char *last = PGROUNDDOWN(addr + sz - 1);
+  char *a = (char *)PGROUNDUP(newsz);
+  char *last = PGROUNDDOWN(oldsz - 1);
   for(; a <= last; a += PGSIZE){
     pte_t *pte = walkpgdir(pgdir, a, 0);
     if(pte && (*pte & PTE_P) != 0){
       uint pa = PTE_ADDR(*pte);
       if(pa == 0)
-        panic("deallocuvm");
+        panic("kfree");
       kfree((void *) pa);
       *pte = 0;
     }
   }
-  return 1;
+  return newsz < oldsz ? newsz : oldsz;
 }
 
 // Free a page table and all the physical memory pages
@@ -287,7 +283,7 @@ freevm(pde_t *pgdir)
 
   if(!pgdir)
     panic("freevm: no pgdir");
-  deallocuvm(pgdir, 0, USERTOP);
+  deallocuvm(pgdir, USERTOP, 0);
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P)
       kfree((void *) PTE_ADDR(pgdir[i]));
