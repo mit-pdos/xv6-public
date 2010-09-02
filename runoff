@@ -191,7 +191,7 @@ do
 	uses=`egrep -h '([^a-zA-Z_0-9])'$i'($|[^a-zA-Z_0-9])' alltext | awk '{print $1}'`
 	if [ "x$defs" != "x$uses" ]; then
 		echo $i $defs
-		echo $uses |fmt -24 | sed 's/^/    /'
+		echo $uses |fmt -29 | sed 's/^/    /'
 	fi
 done
 ) >refs
