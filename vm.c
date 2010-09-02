@@ -27,7 +27,7 @@ ksegment(void)
   c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
   c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
 
-  // map cpu, and curproc
+  // Map cpu, and curproc
   c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 8, 0);
 
   lgdt(c->gdt, sizeof(c->gdt));
@@ -38,8 +38,8 @@ ksegment(void)
   proc = 0;
 }
 
-// return the address of the PTE in page table pgdir
-// that corresponds to linear address va.  if create!=0,
+// Return the address of the PTE in page table pgdir
+// that corresponds to linear address va.  If create!=0,
 // create any required page table pages.
 static pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int create)
@@ -65,7 +65,7 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
   return &pgtab[PTX(va)];
 }
 
-// create PTEs for linear addresses starting at la that refer to
+// Create PTEs for linear addresses starting at la that refer to
 // physical addresses starting at pa. la and size might not
 // be page-aligned.
 static int
@@ -152,12 +152,12 @@ vmenable(void)
   lcr0(cr0);
 }
 
-// Switch h/w page table register to the kernel-only page table, for when
-// no process is running.
+// Switch h/w page table register to the kernel-only page table,
+// for when no process is running.
 void
 switchkvm()
 {
-  lcr3(PADDR(kpgdir));   // Switch to the kernel page table
+  lcr3(PADDR(kpgdir));   // switch to the kernel page table
 }
 
 // Switch h/w page table and TSS registers to point to process p.
@@ -180,8 +180,8 @@ switchuvm(struct proc *p)
   popcli();
 }
 
-// return the physical address that a given user address
-// maps to. the result is also a kernel logical address,
+// Return the physical address that a given user address
+// maps to.  The result is also a kernel logical address,
 // since the kernel maps the physical memory allocated to user
 // processes directly.
 char*
@@ -224,10 +224,10 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   return 1;
 }
 
-// allocate sz bytes more memory for a process starting at the
+// Allocate sz bytes more memory for a process starting at the
 // given user address; allocates physical memory and page
 // table entries. addr and sz need not be page-aligned.
-// it is a no-op for any parts of the requested memory
+// It is a no-op for any parts of the requested memory
 // that are already allocated.
 int
 allocuvm(pde_t *pgdir, char *addr, uint sz)
@@ -252,7 +252,7 @@ allocuvm(pde_t *pgdir, char *addr, uint sz)
   return 1;
 }
 
-// deallocate some of the user pages. if addr is not page-aligned,
+// Deallocate some of the user pages. If addr is not page-aligned,
 // then only deallocates starting at the next page boundary.
 int
 deallocuvm(pde_t *pgdir, char *addr, uint sz)
@@ -274,7 +274,7 @@ deallocuvm(pde_t *pgdir, char *addr, uint sz)
   return 1;
 }
 
-// free a page table and all the physical memory pages
+// Free a page table and all the physical memory pages
 // in the user part.
 void
 freevm(pde_t *pgdir)
@@ -291,7 +291,7 @@ freevm(pde_t *pgdir)
   kfree((void *) pgdir);
 }
 
-// given a parent process's page table, create a copy
+// Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
