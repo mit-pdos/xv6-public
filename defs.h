@@ -152,7 +152,7 @@ void            uartintr(void);
 void            uartputc(int);
 
 // vm.c
-void            ksegment(void);
+void            seginit(void);
 void            kvmalloc(void);
 void            vmenable(void);
 pde_t*          setupkvm(void);

@@ -11,16 +11,14 @@ void jkstack(void)  __attribute__((noreturn));
 void mainc(void);
 
 // Bootstrap processor starts running C code here.
+// Allocate a real stack and switch to it, first
+// doing some setup required for memory allocator to work.
 int
 main(void)
 {
   mpinit();        // collect info about this machine
   lapicinit(mpbcpu());
-  ksegment();      // set up segments
-  picinit();       // interrupt controller
-  ioapicinit();    // another interrupt controller
-  consoleinit();   // I/O devices & their interrupts
-  uartinit();      // serial port
+  seginit();       // set up segments
   kinit();         // initialize memory allocator
   jkstack();       // call mainc() on a properly-allocated stack 
 }
@@ -37,10 +35,16 @@ jkstack(void)
   panic("jkstack");
 }
 
+// Set up hardware and software.
+// Runs only on the boostrap processor.
 void
 mainc(void)
 {
   cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
+  picinit();       // interrupt controller
+  ioapicinit();    // another interrupt controller
+  consoleinit();   // I/O devices & their interrupts
+  uartinit();      // serial port
   kvmalloc();      // initialize the kernel page table
   pinit();         // process table
   tvinit();        // trap vectors
@@ -64,16 +68,17 @@ static void
 mpmain(void)
 {
   if(cpunum() != mpbcpu()) {
-    ksegment();
+    seginit();
     lapicinit(cpunum());
   }
   vmenable();        // turn on paging
   cprintf("cpu%d: starting\n", cpu->id);
   idtinit();       // load idt register
-  xchg(&cpu->booted, 1);
+  xchg(&cpu->booted, 1); // tell bootothers() we're up
   scheduler();     // start running processes
 }
 
+// Start the non-boot processors.
 static void
 bootothers(void)
 {
@@ -91,10 +96,13 @@ bootothers(void)
     if(c == cpus+cpunum())  // We've started already.
       continue;
 
-    // Fill in %esp, %eip and start code on cpu.
+    // Tell bootother.S what stack to use and the address of mpmain;
+    // it expects to find these two addresses stored just before
+    // its first instruction.
     stack = kalloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpmain;
+
     lapicstartap(c->id, (uint)code);
 
     // Wait for cpu to finish mpmain()

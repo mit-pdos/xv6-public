@@ -13,7 +13,7 @@
 .code16                       # Assemble for 16-bit mode
 .globl start
 start:
-  cli                         # Disable interrupts
+  cli                         # BIOS enabled interrupts ; disable
 
   # Set up the important data segment registers (DS, ES, SS).
   xorw    %ax,%ax             # Segment number zero
@@ -45,7 +45,8 @@ seta20.2:
   # Switch from real to protected mode, using a bootstrap GDT
   # and segment translation that makes virtual addresses 
   # identical to physical addresses, so that the 
-  # effective memory map does not change during the switch.
+  # effective memory map does not change after subsequent
+  # loads of segment registers.
   lgdt    gdtdesc
   movl    %cr0, %eax
   orl     $CR0_PE, %eax
@@ -57,7 +58,11 @@ seta20.2:
   # default to 32 bits after this jump.
   ljmp    $(SEG_KCODE<<3), $start32
 
-.code32                       # Assemble for 32-bit mode
+# tell the assembler to generate 0x66 prefixes for 16-bit
+# instructions like movw, and to generate 32-bit immediate
+# addresses.
+.code32
+
 start32:
   # Set up the protected-mode data segment registers
   movw    $(SEG_KDATA<<3), %ax    # Our data segment selector

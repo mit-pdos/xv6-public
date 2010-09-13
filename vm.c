@@ -13,7 +13,7 @@ static pde_t *kpgdir;  // for use in scheduler()
 // Set up CPU's kernel segment descriptors.
 // Run once at boot time on each CPU.
 void
-ksegment(void)
+seginit(void)
 {
   struct cpu *c;
 

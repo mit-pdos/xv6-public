@@ -65,7 +65,8 @@ procdump(void)
 
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
-// If found, change state to EMBRYO and return it.
+// If found, change state to EMBRYO and initialize
+// state required to run in the kernel.
 // Otherwise return 0.
 static struct proc*
 allocproc(void)
@@ -97,7 +98,7 @@ found:
   p->tf = (struct trapframe*)sp;
   
   // Set up new context to start executing at forkret,
-  // which returns to trapret (see below).
+  // which returns to trapret.
   sp -= 4;
   *(uint*)sp = (uint)trapret;
 
@@ -105,6 +106,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+
   return p;
 }
 
