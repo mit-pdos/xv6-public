@@ -48,6 +48,9 @@ exec(char *path, char **argv)
   }
   iunlockput(ip);
 
+  // XXX rtm: what about the BSS? shouldn't there be some
+  // bzero()ing here?
+
   // Allocate and initialize stack at sz
   sz = spbottom = PGROUNDUP(sz);
   if(!(sz = allocuvm(pgdir, sz, sz + PGSIZE)))
@@ -61,6 +64,9 @@ exec(char *path, char **argv)
 
   sp = sz;
   argp = sz - arglen - 4*(argc+1);
+
+  // XXX rtm: does the following code work if the
+  // arguments &c do not fit in one page?
 
   // Copy argv strings and pointers to stack.
   *(uint*)(mem+argp-spbottom + 4*argc) = 0;  // argv[argc]

@@ -17,12 +17,12 @@ struct {
   struct run *freelist;
 } kmem;
 
+extern char end[]; // first address after kernel loaded from ELF file
+
 // Initialize free list of physical pages.
 void
 kinit(void)
 {
-  extern char end[];
-
   initlock(&kmem.lock, "kmem");
   char *p = (char*)PGROUNDUP((uint)end);
   for( ; p + PGSIZE - 1 < (char*) PHYSTOP; p += PGSIZE)
@@ -39,7 +39,7 @@ kfree(char *v)
 {
   struct run *r;
 
-  if(((uint) v) % PGSIZE || (uint)v < 1024*1024 || (uint)v >= PHYSTOP) 
+  if(((uint) v) % PGSIZE || v < end || (uint)v >= PHYSTOP) 
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
