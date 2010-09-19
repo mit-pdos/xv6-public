@@ -1419,6 +1419,21 @@ validatetest(void)
   printf(stdout, "validate ok\n");
 }
 
+char uninit[10000];
+void
+bsstest(void)
+{
+  int i;
+  printf(stdout, "bss test\n");
+  for(i = 0; i < sizeof(uninit); i++){
+    if(uninit[i] != '\0'){
+      printf(stdout, "bss test failed\n");
+      exit();
+    }
+  }
+  printf(stdout, "bss test ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1430,6 +1445,7 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREATE));
 
+  bsstest();
   sbrktest();
   validatetest();
 
