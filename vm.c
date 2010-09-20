@@ -125,6 +125,9 @@ pde_t*
 setupkvm(void)
 {
   pde_t *pgdir;
+  extern char etext[];
+  char *rwstart = PGROUNDDOWN(etext) - PGSIZE;
+  uint rwlen = (uint)rwstart - 0x100000;
 
   // Allocate page directory
   if(!(pgdir = (pde_t *) kalloc()))
@@ -132,8 +135,10 @@ setupkvm(void)
   memset(pgdir, 0, PGSIZE);
   if(// Map IO space from 640K to 1Mbyte
      !mappages(pgdir, (void *)USERTOP, 0x60000, USERTOP, PTE_W) ||
-     // Map kernel and free memory pool
-     !mappages(pgdir, (void *)0x100000, PHYSTOP-0x100000, 0x100000, PTE_W) ||
+     // Map kernel instructions
+     !mappages(pgdir, (void *)0x100000, rwlen, 0x100000, 0) ||
+     // Map kernel data and free memory pool
+     !mappages(pgdir, rwstart, PHYSTOP-(uint)rwstart, (uint)rwstart, PTE_W) ||
      // Map devices such as ioapic, lapic, ...
      !mappages(pgdir, (void *)0xFE000000, 0x2000000, 0xFE000000, PTE_W))
     return 0;
