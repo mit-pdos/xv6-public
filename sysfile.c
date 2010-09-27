@@ -344,7 +344,7 @@ sys_chdir(void)
 int
 sys_exec(void)
 {
-  char *path, *argv[20];
+  char *path, *argv[MAXARG];
   int i;
   uint uargv, uarg;
 

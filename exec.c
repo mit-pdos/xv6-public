@@ -9,16 +9,13 @@
 int
 exec(char *path, char **argv)
 {
-  char *mem, *s, *last;
-  int i, argc, arglen, len, off;
-  uint sz, sp, spbottom, argp;
+  char *s, *last;
+  int i, off;
+  uint sz = 0;
   struct elfhdr elf;
-  struct inode *ip;
+  struct inode *ip = 0;
   struct proghdr ph;
-  pde_t *pgdir, *oldpgdir;
-
-  pgdir = 0;
-  sz = 0;
+  pde_t *pgdir = 0, *oldpgdir;
 
   if((ip = namei(path)) == 0)
     return -1;
@@ -48,40 +45,65 @@ exec(char *path, char **argv)
   }
   iunlockput(ip);
 
-  // Allocate and initialize stack at sz
-  sz = spbottom = PGROUNDUP(sz);
+  // Allocate a one-page stack at the next page boundary
+  sz = PGROUNDUP(sz);
   if(!(sz = allocuvm(pgdir, sz, sz + PGSIZE)))
     goto bad;
-  mem = uva2ka(pgdir, (char *)spbottom);
 
-  arglen = 0;
-  for(argc=0; argv[argc]; argc++)
-    arglen += strlen(argv[argc]) + 1;
-  arglen = (arglen+3) & ~3;
+  // initialize stack content:
 
-  sp = sz;
-  argp = sz - arglen - 4*(argc+1);
+  // "argumentN"                      -- nul-terminated string
+  // ...
+  // "argument0"
+  // 0                                -- argv[argc]
+  // address of argumentN             
+  // ...
+  // address of argument0             -- argv[0]
+  // address of address of argument0  -- argv argument to main()
+  // argc                             -- argc argument to main()
+  // ffffffff                         -- return PC for main() call
 
-  // XXX rtm: does the following code work if the
-  // arguments &c do not fit in one page?
+  uint sp = sz;
 
-  // Copy argv strings and pointers to stack.
-  *(uint*)(mem+argp-spbottom + 4*argc) = 0;  // argv[argc]
-  for(i=argc-1; i>=0; i--){
-    len = strlen(argv[i]) + 1;
-    sp -= len;
-    memmove(mem+sp-spbottom, argv[i], len);
-    *(uint*)(mem+argp-spbottom + 4*i) = sp;  // argv[i]
+  // count arguments
+  int argc;
+  for(argc = 0; argv[argc]; argc++)
+    ;
+  if(argc >= MAXARG)
+    goto bad;
+
+  // push strings and remember where they are
+  uint strings[MAXARG];
+  for(i = argc - 1; i >= 0; --i){
+    sp -= strlen(argv[i]) + 1;
+    strings[i] = sp;
+    copyout(pgdir, sp, argv[i], strlen(argv[i]) + 1);
   }
 
-  // Stack frame for main(argc, argv), below arguments.
-  sp = argp;
+  // push 0 for argv[argc]
   sp -= 4;
-  *(uint*)(mem+sp-spbottom) = argp;
+  int zero = 0;
+  copyout(pgdir, sp, &zero, 4);
+
+  // push argv[] elements
+  for(i = argc - 1; i >= 0; --i){
+    sp -= 4;
+    copyout(pgdir, sp, &strings[i], 4);
+  }
+
+  // push argv
+  uint argvaddr = sp;
   sp -= 4;
-  *(uint*)(mem+sp-spbottom) = argc;
+  copyout(pgdir, sp, &argvaddr, 4);
+
+  // push argc
   sp -= 4;
-  *(uint*)(mem+sp-spbottom) = 0xffffffff;   // fake return pc
+  copyout(pgdir, sp, &argc, 4);
+
+  // push 0 in case main returns
+  sp -= 4;
+  uint ffffffff = 0xffffffff;
+  copyout(pgdir, sp, &ffffffff, 4);
 
   // Save program name for debugging.
   for(last=s=path; *s; s++)
@@ -103,6 +125,7 @@ exec(char *path, char **argv)
   return 0;
 
  bad:
+  cprintf("kernel: exec failed\n");
   if(pgdir) freevm(pgdir);
   iunlockput(ip);
   return -1;

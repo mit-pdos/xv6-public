@@ -165,6 +165,7 @@ int             loaduvm(pde_t*, char*, struct inode *, uint, uint);
 pde_t*          copyuvm(pde_t*,uint);
 void            switchuvm(struct proc*);
 void            switchkvm();
+int             copyout(pde_t *pgdir, uint va, void *buf, uint len);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
