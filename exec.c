@@ -44,6 +44,7 @@ exec(char *path, char **argv)
       goto bad;
   }
   iunlockput(ip);
+  ip = 0;
 
   // Allocate a one-page stack at the next page boundary
   sz = PGROUNDUP(sz);
@@ -105,6 +106,9 @@ exec(char *path, char **argv)
   uint ffffffff = 0xffffffff;
   copyout(pgdir, sp, &ffffffff, 4);
 
+  if(sp < sz - PGSIZE)
+    goto bad;
+
   // Save program name for debugging.
   for(last=s=path; *s; s++)
     if(*s == '/')
@@ -125,8 +129,9 @@ exec(char *path, char **argv)
   return 0;
 
  bad:
-  cprintf("kernel: exec failed\n");
-  if(pgdir) freevm(pgdir);
-  iunlockput(ip);
+  if(pgdir)
+    freevm(pgdir);
+  if(ip)
+    iunlockput(ip);
   return -1;
 }
