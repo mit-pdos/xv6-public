@@ -81,30 +81,19 @@ exec(char *path, char **argv)
     copyout(pgdir, sp, argv[i], strlen(argv[i]) + 1);
   }
 
-  // push 0 for argv[argc]
-  sp -= 4;
-  int zero = 0;
-  copyout(pgdir, sp, &zero, 4);
+#define PUSH(x) { int xx = (int)(x); sp -= 4; copyout(pgdir, sp, &xx, 4); }
+
+  PUSH(0); // argv[argc] is zero
 
   // push argv[] elements
-  for(i = argc - 1; i >= 0; --i){
-    sp -= 4;
-    copyout(pgdir, sp, &strings[i], 4);
-  }
+  for(i = argc - 1; i >= 0; --i)
+    PUSH(strings[i]);
 
-  // push argv
-  uint argvaddr = sp;
-  sp -= 4;
-  copyout(pgdir, sp, &argvaddr, 4);
+  PUSH(sp); // argv
 
-  // push argc
-  sp -= 4;
-  copyout(pgdir, sp, &argc, 4);
+  PUSH(argc);
 
-  // push 0 in case main returns
-  sp -= 4;
-  uint ffffffff = 0xffffffff;
-  copyout(pgdir, sp, &ffffffff, 4);
+  PUSH(0xffffffff); // in case main tries to return
 
   if(sp < sz - PGSIZE)
     goto bad;
