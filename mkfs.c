@@ -90,7 +90,9 @@ main(int argc, char *argv[])
   for(i = 0; i < nblocks + usedblocks; i++)
     wsect(i, zeroes);
 
-  wsect(1, &sb);
+  memset(buf, 0, sizeof(buf));
+  memmove(buf, &sb, sizeof(sb));
+  wsect(1, buf);
 
   rootino = ialloc(T_DIR);
   assert(rootino == ROOTINO);
