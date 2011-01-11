@@ -250,16 +250,16 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 int
 allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
-  char *a, *last, *mem;
+  char *mem;
+  uint a;
 
   if(newsz > USERTOP)
     return 0;
   if(newsz < oldsz)
     return oldsz;
 
-  a = (char*)PGROUNDUP(oldsz);
-  last = PGROUNDDOWN(newsz - 1);
-  for(; a <= last; a += PGSIZE){
+  a = PGROUNDUP(oldsz);
+  for(; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){
       cprintf("allocuvm out of memory\n");
@@ -267,7 +267,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       return 0;
     }
     memset(mem, 0, PGSIZE);
-    mappages(pgdir, a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+    mappages(pgdir, (char*)a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
   }
   return newsz;
 }
@@ -279,17 +279,15 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 int
 deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
-  char *a, *last;
   pte_t *pte;
-  uint pa;
+  uint a, pa;
 
   if(newsz >= oldsz)
     return oldsz;
 
-  a = (char*)PGROUNDUP(newsz);
-  last = PGROUNDDOWN(oldsz - 1);
-  for(; a <= last; a += PGSIZE){
-    pte = walkpgdir(pgdir, a, 0);
+  a = PGROUNDUP(newsz);
+  for(; a  < oldsz; a += PGSIZE){
+    pte = walkpgdir(pgdir, (char*)a, 0);
     if(pte && (*pte & PTE_P) != 0){
       pa = PTE_ADDR(*pte);
       if(pa == 0)
@@ -351,7 +349,6 @@ bad:
 
 // copy some data to user address va in page table pgdir.
 // most useful when pgdir is not the current page table.
-// returns 1 if everthing OK, 0 on error.
 // uva2ka ensures this only works for PTE_U pages.
 int
 copyout(pde_t *pgdir, uint va, void *xbuf, uint len)
