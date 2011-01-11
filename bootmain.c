@@ -33,7 +33,7 @@ bootmain(void)
   // Load each program segment (ignores ph flags).
   ph = (struct proghdr*)((uchar*)elf + elf->phoff);
   eph = ph + elf->phnum;
-  for(; ph < eph; ph++) {
+  for(; ph < eph; ph++){
     va = (uchar*)ph->va;
     readseg(va, ph->filesz, ph->offset);
     if(ph->memsz > ph->filesz)

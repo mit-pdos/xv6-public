@@ -98,18 +98,18 @@ struct segdesc {
 //  \--- PDX(la) --/ \--- PTX(la) --/ 
 
 // page directory index
-#define PDX(la)		((((uint) (la)) >> PDXSHIFT) & 0x3FF)
+#define PDX(la)		(((uint)(la) >> PDXSHIFT) & 0x3FF)
 
 // page table index
-#define PTX(la)		((((uint) (la)) >> PTXSHIFT) & 0x3FF)
+#define PTX(la)		(((uint)(la) >> PTXSHIFT) & 0x3FF)
 
 // construct linear address from indexes and offset
-#define PGADDR(d, t, o)	((uint) ((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
+#define PGADDR(d, t, o)	((uint)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
 // turn a kernel linear address into a physical address.
 // all of the kernel data structures have linear and
 // physical addresses that are equal.
-#define PADDR(a)       ((uint) a)
+#define PADDR(a)       ((uint)(a))
 
 // Page directory and page table constants.
 #define NPDENTRIES	1024		// page directory entries per page directory
@@ -136,7 +136,7 @@ struct segdesc {
 #define PTE_MBZ		0x180	// Bits must be zero
 
 // Address in page table or page directory entry
-#define PTE_ADDR(pte)	((uint) (pte) & ~0xFFF)
+#define PTE_ADDR(pte)	((uint)(pte) & ~0xFFF)
 
 typedef uint pte_t;
 
@@ -205,7 +205,7 @@ struct gatedesc {
 //        this interrupt/trap gate explicitly using an int instruction.
 #define SETGATE(gate, istrap, sel, off, d)                \
 {                                                         \
-  (gate).off_15_0 = (uint) (off) & 0xffff;                \
+  (gate).off_15_0 = (uint)(off) & 0xffff;                \
   (gate).cs = (sel);                                      \
   (gate).args = 0;                                        \
   (gate).rsv1 = 0;                                        \
@@ -213,6 +213,6 @@ struct gatedesc {
   (gate).s = 0;                                           \
   (gate).dpl = (d);                                       \
   (gate).p = 1;                                           \
-  (gate).off_31_16 = (uint) (off) >> 16;                  \
+  (gate).off_31_16 = (uint)(off) >> 16;                  \
 }
 

@@ -62,7 +62,7 @@ void            ioapicinit(void);
 // kalloc.c
 char*           kalloc(void);
 void            kfree(char*);
-void            kinit();
+void            kinit(void);
 
 // kbd.c
 void            kbdintr(void);
@@ -117,8 +117,8 @@ void            getcallerpcs(void*, uint*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
-void            pushcli();
-void            popcli();
+void            pushcli(void);
+void            popcli(void);
 
 // string.c
 int             memcmp(const void*, const void*, uint);
@@ -164,7 +164,7 @@ void            inituvm(pde_t*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode *, uint, uint);
 pde_t*          copyuvm(pde_t*,uint);
 void            switchuvm(struct proc*);
-void            switchkvm();
+void            switchkvm(void);
 int             copyout(pde_t *pgdir, uint va, void *buf, uint len);
 
 // number of elements in fixed-size array

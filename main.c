@@ -7,7 +7,7 @@
 
 static void bootothers(void);
 static void mpmain(void);
-void jkstack(void)  __attribute__((noreturn));
+void jmpkstack(void)  __attribute__((noreturn));
 void mainc(void);
 
 // Bootstrap processor starts running C code here.
@@ -20,19 +20,20 @@ main(void)
   lapicinit(mpbcpu());
   seginit();       // set up segments
   kinit();         // initialize memory allocator
-  jkstack();       // call mainc() on a properly-allocated stack 
+  jmpkstack();       // call mainc() on a properly-allocated stack 
 }
 
 void
-jkstack(void)
+jmpkstack(void)
 {
-  char *kstack = kalloc();
-  if(!kstack)
-    panic("jkstack\n");
-  char *top = kstack + PGSIZE;
-  asm volatile("movl %0,%%esp" : : "r" (top));
-  asm volatile("call mainc");
-  panic("jkstack");
+  char *kstack, *top;
+  
+  kstack = kalloc();
+  if(kstack == 0)
+    panic("jmpkstack kalloc");
+  top = kstack + PGSIZE;
+  asm volatile("movl %0,%%esp; call mainc" : : "r" (top));
+  panic("jmpkstack");
 }
 
 // Set up hardware and software.
@@ -67,7 +68,7 @@ mainc(void)
 static void
 mpmain(void)
 {
-  if(cpunum() != mpbcpu()) {
+  if(cpunum() != mpbcpu()){
     seginit();
     lapicinit(cpunum());
   }
@@ -87,9 +88,9 @@ bootothers(void)
   struct cpu *c;
   char *stack;
 
-  // Write bootstrap code to unused memory at 0x7000.  The linker has
-  // placed the start of bootother.S there.
-  code = (uchar *) 0x7000;
+  // Write bootstrap code to unused memory at 0x7000.
+  // The linker has placed the image of bootother.S in _binary_bootother_start.
+  code = (uchar*)0x7000;
   memmove(code, _binary_bootother_start, (uint)_binary_bootother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
@@ -110,4 +111,3 @@ bootothers(void)
       ;
   }
 }
-

@@ -32,8 +32,8 @@ fetchstr(struct proc *p, uint addr, char **pp)
 
   if(addr >= p->sz)
     return -1;
-  *pp = (char *) addr;
-  ep = (char *) p->sz;
+  *pp = (char*)addr;
+  ep = (char*)p->sz;
   for(s = *pp; s < ep; s++)
     if(*s == 0)
       return s - *pp;
@@ -44,8 +44,7 @@ fetchstr(struct proc *p, uint addr, char **pp)
 int
 argint(int n, int *ip)
 {
-  int x = fetchint(proc, proc->tf->esp + 4 + 4*n, ip);
-  return x;
+  return fetchint(proc, proc->tf->esp + 4 + 4*n, ip);
 }
 
 // Fetch the nth word-sized system call argument as a pointer
@@ -60,7 +59,7 @@ argptr(int n, char **pp, int size)
     return -1;
   if((uint)i >= proc->sz || (uint)i+size >= proc->sz)
     return -1;
-  *pp = (char *) i;
+  *pp = (char*)i;
   return 0;
 }
 
