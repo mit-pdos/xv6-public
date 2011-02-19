@@ -58,11 +58,13 @@ xv6 without Jos, though we are not aware of any that have.
 
 * Xv6 sources
 
-The latest xv6 is [xv6-rev2.tar.gz].
+The latest xv6 is [xv6-rev4.tar.gz].
 We distribute the sources in electronic form but also as 
 a printed booklet with line numbers that keep everyone
 together during lectures.  The booklet is available as
-[xv6-rev2.pdf].
+[xv6-rev4.pdf].
+The xv6 source code is licensed under the traditional <a href="http://www.opensource.org/licenses/mit-license.php">MIT license</a>;
+see the LICENSE file in the source distribution.
 
 xv6 compiles using the GNU C compiler,
 targeted at the x86 using ELF binaries.
@@ -335,5 +337,3 @@ Robert Morris (rtm@mit.edu)
 
 You can reach all of us at 6.828-staff@pdos.csail.mit.edu.
 
-xv6 and lecture notes are copyright &copy; 2006-present by Russ Cox,
-Frans Kaashoek, and Robert Morris.
