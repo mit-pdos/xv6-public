@@ -34,12 +34,12 @@ start:
   movw    %ax,%es
   movw    %ax,%ss
 
-//PAGEBREAK!
   lgdt    gdtdesc
   movl    %cr0, %eax
   orl     $CR0_PE, %eax
   movl    %eax, %cr0
 
+//PAGEBREAK!
   ljmp    $(SEG_KCODE<<3), $start32
 
 .code32

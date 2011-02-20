@@ -13,7 +13,7 @@
 .code16                       # Assemble for 16-bit mode
 .globl start
 start:
-  cli                         # BIOS enabled interrupts ; disable
+  cli                         # BIOS enabled interrupts; disable
 
   # Set up the important data segment registers (DS, ES, SS).
   xorw    %ax,%ax             # Segment number zero
@@ -21,10 +21,8 @@ start:
   movw    %ax,%es             # -> Extra Segment
   movw    %ax,%ss             # -> Stack Segment
 
-  # Enable A20:
-  #   For backwards compatibility with the earliest PCs, physical
-  #   address line 20 is tied low, so that addresses higher than
-  #   1MB wrap around to zero by default.  This code undoes this.
+  # Physical address line A20 is tied to zero so that the first PCs 
+  # with 2 MB would run software that assumed 1 MB.  Undo that.
 seta20.1:
   inb     $0x64,%al               # Wait for not busy
   testb   $0x2,%al
@@ -41,28 +39,21 @@ seta20.2:
   movb    $0xdf,%al               # 0xdf -> port 0x60
   outb    %al,$0x60
 
-//PAGEBREAK!
-  # Switch from real to protected mode, using a bootstrap GDT
-  # and segment translation that makes virtual addresses 
-  # identical to physical addresses, so that the 
-  # effective memory map does not change after subsequent
-  # loads of segment registers.
+  # Switch from real to protected mode.  Use a bootstrap GDT that makes
+  # virtual addresses map dierctly to  physical addresses so that the
+  # effective memory map doesn't change during the transition.
   lgdt    gdtdesc
   movl    %cr0, %eax
   orl     $CR0_PE, %eax
   movl    %eax, %cr0
-  
-  # This ljmp is how you load the CS (Code Segment) register.
-  # SEG_ASM produces segment descriptors with the 32-bit mode
-  # flag set (the D flag), so addresses and word operands will
-  # default to 32 bits after this jump.
+
+//PAGEBREAK!
+  # Complete transition to 32-bit protected mode by using long jmp
+  # to reload %cs and %eip.  The segment registers are set up with no
+  # translation, so that the mapping is still the identity mapping.
   ljmp    $(SEG_KCODE<<3), $start32
 
-# tell the assembler to generate 0x66 prefixes for 16-bit
-# instructions like movw, and to generate 32-bit immediate
-# addresses.
-.code32
-
+.code32  # Tell assembler to generate 32-bit code now.
 start32:
   # Set up the protected-mode data segment registers
   movw    $(SEG_KDATA<<3), %ax    # Our data segment selector

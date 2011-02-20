@@ -96,7 +96,7 @@ ideintr(void)
   acquire(&idelock);
   if((b = idequeue) == 0){
     release(&idelock);
-    cprintf("Spurious IDE interrupt.\n");
+    // cprintf("spurious IDE interrupt\n");
     return;
   }
   idequeue = b->qnext;

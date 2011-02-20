@@ -10,8 +10,8 @@ int
 exec(char *path, char **argv)
 {
   char *s, *last;
-  int i, off, argc;
-  uint sz, sp, strings[MAXARG];
+  int i, off;
+  uint argc, sz, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
@@ -53,49 +53,25 @@ exec(char *path, char **argv)
   if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
     goto bad;
 
-  // initialize stack content:
-
-  // "argumentN"                      -- nul-terminated string
-  // ...
-  // "argument0"
-  // 0                                -- argv[argc]
-  // address of argumentN             
-  // ...
-  // address of argument0             -- argv[0]
-  // address of address of argument0  -- argv argument to main()
-  // argc                             -- argc argument to main()
-  // ffffffff                         -- return PC for main() call
-
+  // Push argument strings, prepare rest of stack in ustack.
   sp = sz;
-
-  // count arguments
-  for(argc = 0; argv[argc]; argc++)
-    ;
-  if(argc >= MAXARG)
-    goto bad;
-
-  // push strings and remember where they are
-  for(i = argc - 1; i >= 0; --i){
-    sp -= strlen(argv[i]) + 1;
-    strings[i] = sp;
-    copyout(pgdir, sp, argv[i], strlen(argv[i]) + 1);
+  for(argc = 0; argv[argc]; argc++) {
+    if(argc >= MAXARG)
+      goto bad;
+    sp -= strlen(argv[argc]) + 1;
+    sp &= ~3;
+    if(copyout(pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
+      goto bad;
+    ustack[3+argc] = sp;
   }
+  ustack[3+argc] = 0;
 
-#define PUSH(x){ int xx = (int)(x); sp -= 4; copyout(pgdir, sp, &xx, 4); }
+  ustack[0] = 0xffffffff;  // fake return PC
+  ustack[1] = argc;
+  ustack[2] = sp - (argc+1)*4;  // argv pointer
 
-  PUSH(0); // argv[argc] is zero
-
-  // push argv[] elements
-  for(i = argc - 1; i >= 0; --i)
-    PUSH(strings[i]);
-
-  PUSH(sp); // argv
-
-  PUSH(argc);
-
-  PUSH(0xffffffff); // in case main tries to return
-
-  if(sp < sz - PGSIZE)
+  sp -= (3+argc+1) * 4;
+  if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
     goto bad;
 
   // Save program name for debugging.
@@ -110,9 +86,7 @@ exec(char *path, char **argv)
   proc->sz = sz;
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
-
-  switchuvm(proc); 
-
+  switchuvm(proc);
   freevm(oldpgdir);
 
   return 0;

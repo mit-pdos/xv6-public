@@ -33,7 +33,7 @@ for($i=0; $i<@lines; ){
 	last if $i>=@lines;
 
 	# If the rest of the file fits, use the whole thing.
-	if(@lines <= $i+50){
+	if(@lines <= $i+50 && !grep { /PAGEBREAK/ } @lines){
 		$breakbefore = @lines;
 	}else{
 		# Find a good next page break;

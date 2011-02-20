@@ -1445,11 +1445,11 @@ bigargtest(void)
   ppid = getpid();
   pid = fork();
   if(pid == 0){
-    char *args[32];
+    char *args[32+1];
     int i;
-    for(i = 0; i < 32-1; i++)
+    for(i = 0; i < 32; i++)
       args[i] = "bigargs test: failed\n                                                                                                                     ";
-    args[32-1] = 0;
+    args[32] = 0;
     printf(stdout, "bigarg test\n");
     exec("echo", args);
     printf(stdout, "bigarg test ok\n");

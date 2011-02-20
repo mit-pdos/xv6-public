@@ -107,8 +107,8 @@ initcode: initcode.S
 	$(OBJCOPY) -S -O binary initcode.out initcode
 	$(OBJDUMP) -S initcode.o > initcode.asm
 
-kernel: $(OBJS) multiboot.o bootother initcode
-	$(LD) $(LDFLAGS) -Ttext 0x100000 -e main -o kernel multiboot.o $(OBJS) -b binary initcode bootother fs.img
+kernel: $(OBJS) multiboot.o data.o bootother initcode
+	$(LD) $(LDFLAGS) -Ttext 0x100000 -e main -o kernel multiboot.o data.o $(OBJS) -b binary initcode bootother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernel.sym
 
@@ -119,8 +119,8 @@ kernel: $(OBJS) multiboot.o bootother initcode
 # great for testing the kernel on real hardware without
 # needing a scratch disk.
 MEMFSOBJS = $(filter-out ide.o,$(OBJS)) memide.o
-kernelmemfs: $(MEMFSOBJS) multiboot.o bootother initcode fs.img
-	$(LD) $(LDFLAGS) -Ttext 0x100000 -e main -o kernelmemfs multiboot.o $(MEMFSOBJS) -b binary initcode bootother fs.img
+kernelmemfs: $(MEMFSOBJS) multiboot.o data.o bootother initcode fs.img
+	$(LD) $(LDFLAGS) -Ttext 0x100000 -e main -o kernelmemfs multiboot.o data.o $(MEMFSOBJS) -b binary initcode bootother fs.img
 	$(OBJDUMP) -S kernelmemfs > kernelmemfs.asm
 	$(OBJDUMP) -t kernelmemfs | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernelmemfs.sym
 
@@ -251,14 +251,16 @@ dist-test:
 	rm -rf dist-test
 	mkdir dist-test
 	cp dist/* dist-test
-	cd dist-test; ../m print
-	cd dist-test; ../m bochs || true
-	cd dist-test; ../m qemu
+	cd dist-test; $(MAKE) print
+	cd dist-test; $(MAKE) bochs || true
+	cd dist-test; $(MAKE) qemu
 
-# update this rule (change rev1) when it is time to
+# update this rule (change rev#) when it is time to
 # make a new revision.
 tar:
 	rm -rf /tmp/xv6
 	mkdir -p /tmp/xv6
 	cp dist/* dist/.gdbinit.tmpl /tmp/xv6
-	(cd /tmp; tar cf - xv6) | gzip >xv6-rev4.tar.gz
+	(cd /tmp; tar cf - xv6) | gzip >xv6-rev5.tar.gz
+
+.PHONY: dist-test dist
