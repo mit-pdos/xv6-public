@@ -229,7 +229,7 @@ balloc(int used)
   int i;
 
   printf("balloc: first %d blocks have been allocated\n", used);
-  assert(used < 512);
+  assert(used < 512*8);
   bzero(buf, 512);
   for(i = 0; i < used; i++){
     buf[i/8] = buf[i/8] | (0x1 << (i%8));

@@ -57,7 +57,7 @@ argptr(int n, char **pp, int size)
   
   if(argint(n, &i) < 0)
     return -1;
-  if((uint)i >= proc->sz || (uint)i+size >= proc->sz)
+  if((uint)i >= proc->sz || (uint)i+size > proc->sz)
     return -1;
   *pp = (char*)i;
   return 0;

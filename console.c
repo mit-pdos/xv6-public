@@ -23,24 +23,24 @@ static struct {
 } cons;
 
 static void
-printint(int xx, int base, int sgn)
+printint(int xx, int base, int sign)
 {
   static char digits[] = "0123456789abcdef";
   char buf[16];
-  int i, neg;
+  int i;
   uint x;
 
-  if(sgn && (neg = xx < 0)){
-    neg = 1;
+  if(sign && (sign = xx < 0))
     x = -xx;
-  } else
+  else
     x = xx;
 
   i = 0;
   do{
     buf[i++] = digits[x % base];
   }while((x /= base) != 0);
-  if(neg)
+
+  if(sign)
     buf[i++] = '-';
 
   while(--i >= 0)
