@@ -1,6 +1,7 @@
 #include "types.h"
 #include "param.h"
 #include "mmu.h"
+#include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
 #include "x86.h"
@@ -16,6 +17,9 @@ exec(char *path, char **argv)
   struct inode *ip;
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
+
+  cprintf("%d: exec %s\n", cpunum(), path);
+  procdump(cpunum());
 
   if((ip = namei(path)) == 0)
     return -1;
@@ -89,9 +93,12 @@ exec(char *path, char **argv)
   switchuvm(proc);
   freevm(oldpgdir);
 
+  cprintf("exec done\n");
+
   return 0;
 
  bad:
+  cprintf("exec failed\n");
   if(pgdir)
     freevm(pgdir);
   if(ip)

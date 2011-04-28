@@ -4,10 +4,10 @@
 #include "defs.h"
 #include "param.h"
 #include "mmu.h"
+#include "spinlock.h"
 #include "proc.h"
 #include "x86.h"
 #include "traps.h"
-#include "spinlock.h"
 #include "buf.h"
 
 #define IDE_BSY       0x80
@@ -49,6 +49,7 @@ ideinit(void)
   initlock(&idelock, "ide");
   picenable(IRQ_IDE);
   ioapicenable(IRQ_IDE, ncpu - 1);
+  // ioapicenable(IRQ_IDE, 0);
   idewait(0);
   
   // Check if disk 1 is present
