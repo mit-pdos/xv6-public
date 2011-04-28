@@ -20,7 +20,7 @@
 // or to write a linker script, but this is simplest.
 
 .data
+.align 4096
 .globl data
 data:
   .word 1
-
