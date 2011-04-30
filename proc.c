@@ -13,7 +13,7 @@ int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
-static void wakeup1(void *chan);
+static void wakeup1(struct ptable *pt, void *chan);
 
 void
 pinit(void)
@@ -74,11 +74,11 @@ found:
 }
 
 static void
-addrun1(struct proc *p)
+addrun1(struct ptable *pt, struct proc *p)
 {
   struct proc *q;
   cprintf("%d: add to run %d\n", cpu->id, p->pid);
-  for (q = ptable->runq; q != 0; q = q->next) {
+  for (q = pt->runq; q != 0; q = q->next) {
     if (q == p) {
       cprintf("allready on q\n");
       p->state = RUNNABLE; 
@@ -86,15 +86,15 @@ addrun1(struct proc *p)
     }
   }
   p->state = RUNNABLE;   // race?
-  p->next = ptable->runq;
-  ptable->runq = p;
+  p->next = pt->runq;
+  pt->runq = p;
 }
 
 static void
 addrun(struct proc *p)
 {
   acquire(&ptable->lock);
-  addrun1(p);
+  addrun1(ptable, p);
   release(&ptable->lock);
 }
 
@@ -225,6 +225,7 @@ exit(void)
 {
   struct proc *p;
   int fd;
+  int c;
 
   if(proc == initproc)
     panic("init exiting");
@@ -242,21 +243,29 @@ exit(void)
 
   cprintf("%d: exit %s\n", cpunum(), proc->name);
 
-  acquire(&ptable->lock);
+  acquire(&ptable->lock);    // XXX sleep/wakeup race?  lock on all ptables?
 
   delrun1(ptable, proc);
 
+  release(&ptable->lock);    // XXX sleep/wakeup race?  lock on all ptables?
+
   // Parent might be sleeping in wait().
-  wakeup1(proc->parent);
+  wakeup(proc->parent);
 
   // Pass abandoned children to init.
-  for(p = ptable->proc; p < &ptable->proc[NPROC]; p++){
-    if(p->parent == proc){
-      p->parent = initproc;
-      if(p->state == ZOMBIE)
-        wakeup1(initproc);
+  for (c = 0; c < NCPU; c++) {
+    acquire(&ptable[c].lock);    // XXX sleep/wakeup race?  lock on all ptables?
+    for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
+      if(p->parent == proc){
+	p->parent = initproc;
+	if(p->state == ZOMBIE)
+	  wakeup1(&ptables[c], initproc);   // XXX race
+      }
     }
+    release(&ptable[c].lock);    // XXX sleep/wakeup race?  lock on all ptables?
   }
+
+  acquire(&ptable->lock);    // XXX sleep/wakeup race?  lock on all ptables?
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
@@ -271,30 +280,36 @@ wait(void)
 {
   struct proc *p;
   int havekids, pid;
+  int c;
 
-  acquire(&ptable->lock);
   for(;;){
     // Scan through table looking for zombie children.
     havekids = 0;
-    for(p = ptable->proc; p < &ptable->proc[NPROC]; p++){
-      if(p->parent != proc)
-        continue;
-      havekids = 1;
-      if(p->state == ZOMBIE){
-        // Found one.
-        pid = p->pid;
-        kfree(p->kstack);
-        p->kstack = 0;
-        freevm(p->pgdir);
-        p->state = UNUSED;
-        p->pid = 0;
-        p->parent = 0;
-        p->name[0] = 0;
-        p->killed = 0;
-        release(&ptable->lock);
-        return pid;
+    for (c = 0; c < NCPU; c++) {
+      acquire(&ptables[c].lock);  // XXX race on sleep and wakeup?
+      for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
+	if(p->parent != proc)
+	  continue;
+	havekids = 1;
+	if(p->state == ZOMBIE){
+	  // Found one.
+	  pid = p->pid;
+	  kfree(p->kstack);
+	  p->kstack = 0;
+	  freevm(p->pgdir);
+	  p->state = UNUSED;
+	  p->pid = 0;
+	  p->parent = 0;
+	  p->name[0] = 0;
+	  p->killed = 0;
+	  release(&ptables[c].lock);
+	  return pid;
+	}
       }
+      release(&ptables[c].lock);  // XXX race on sleep and wakeup?
     }
+
+    acquire(&ptable->lock);  // XXX race on sleep and wakeup?
 
     // No point waiting if we don't have any children.
     if(!havekids || proc->killed){
@@ -304,6 +319,8 @@ wait(void)
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(proc, &ptable->lock);  //DOC: wait-sleep
+
+    release(&ptable->lock);  // XXX race on sleep and wakeup?
   }
 }
 
@@ -455,27 +472,28 @@ sleep(void *chan, struct spinlock *lk)
   }
 }
 
-//PAGEBREAK!
-// Wake up all processes sleeping on chan.
-// The ptable lock must be held.
+// scan a proctable and wakeup any process sleeping on chan
 static void
-wakeup1(void *chan)
+wakeup1(struct ptable *pt, void *chan)
 {
   struct proc *p;
 
-  for(p = ptable->proc; p < &ptable->proc[NPROC]; p++)
+  for(p = pt->proc; p < &pt->proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
-      addrun1(p);
+      addrun1(pt, p);
 }
 
 // Wake up all processes sleeping on chan.
 void
 wakeup(void *chan)
 {
-  // XXX should go through all proctables
-  acquire(&ptable->lock);
-  wakeup1(chan);
-  release(&ptable->lock);
+  int c;
+
+  for (c = 0; c < NCPU; c++) {
+    acquire(&ptables[c].lock);
+    wakeup1(ptable, chan);
+    release(&ptables[c].lock);
+  }
 }
 
 // Kill the process with the given pid.
@@ -485,19 +503,22 @@ int
 kill(int pid)
 {
   struct proc *p;
+  int c;
 
-  acquire(&ptable->lock);
-  for(p = ptable->proc; p < &ptable->proc[NPROC]; p++){
-    if(p->pid == pid){
-      p->killed = 1;
-      // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
-	addrun1(p);
-      release(&ptable->lock);
-      return 0;
+  for (c = 0; c < NCPU; c++) {
+    acquire(&ptables[c].lock);
+    for(p = ptable->proc; p < &ptable->proc[NPROC]; p++){
+      if(p->pid == pid){
+	p->killed = 1;
+	// Wake process from sleep if necessary.
+	if(p->state == SLEEPING)
+	  addrun1(&ptables[c], p);
+	release(&ptables[c].lock);
+	return 0;
+      }
     }
+    release(&ptables[c].lock);
   }
-  release(&ptable->lock);
   return -1;
 }
 
