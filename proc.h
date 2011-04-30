@@ -45,6 +45,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  struct proc *next;
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -67,11 +68,14 @@ struct cpu {
   struct cpu *cpu;
   struct proc *proc;           // The currently-running process.
   struct ptable *ptable;       // The per-core proc table
+  struct kmem *kmem;           // The per-core proc table
 };
 
 struct ptable {
+  char name[MAXNAME];
   struct spinlock lock;
   struct proc proc[NPROC];
+  struct proc *runq;
 };
 
 extern struct ptable ptables[NCPU];
@@ -89,3 +93,4 @@ extern int ncpu;
 extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
 extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
 extern struct ptable *ptable asm("%gs:8"); // &ptables[cpunum()]
+extern struct kmem *kmem asm("%gs:12"); // &kmems[cpunum()]

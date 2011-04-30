@@ -19,7 +19,7 @@ exec(char *path, char **argv)
   pde_t *pgdir, *oldpgdir;
 
   cprintf("%d: exec %s\n", cpunum(), path);
-  procdump(cpunum());
+  procdumpall();
 
   if((ip = namei(path)) == 0)
     return -1;

@@ -58,7 +58,6 @@ mainc(void)
     timerinit();   // uniprocessor timer
   userinit();      // first user process
   bootothers();    // start other processors
-
   // Finish setting up this processor in mpmain.
   mpmain();
 }
@@ -75,8 +74,10 @@ mpmain(void)
   }
   vmenable();        // turn on paging
   cprintf("cpu%d: starting\n", cpu->id);
+  procdumpall();
   idtinit();       // load idt register
   xchg(&cpu->booted, 1); // tell bootothers() we're up
+  procdumpall();
   scheduler();     // start running processes
 }
 

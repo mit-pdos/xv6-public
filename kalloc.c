@@ -7,15 +7,10 @@
 #include "param.h"
 #include "mmu.h"
 #include "spinlock.h"
+#include "proc.h"
+#include "kalloc.h"
 
-struct run {
-  struct run *next;
-};
-
-struct {
-  struct spinlock lock;
-  struct run *freelist;
-} kmem;
+struct kmem kmems[NCPU];
 
 extern char end[]; // first address after kernel loaded from ELF file
 
@@ -23,12 +18,35 @@ extern char end[]; // first address after kernel loaded from ELF file
 void
 kinit(void)
 {
+  struct run *r;
   char *p;
+  int c;
+  int n;
+  int i;
 
-  initlock(&kmem.lock, "kmem");
+  for (c = 0; c < NCPU; c++) {
+    kmems[c].name[0] = (char) c;
+    safestrcpy(kmems[c].name+1, "kmem", MAXNAME-1);
+    initlock(&kmems[c].lock, kmems[c].name);
+  }
+
   p = (char*)PGROUNDUP((uint)end);
-  for(; p + PGSIZE <= (char*)PHYSTOP; p += PGSIZE)
-    kfree(p);
+  n = (char*)PHYSTOP - p;
+
+  cprintf("n = %d\n", n);
+
+  n = n / PGSIZE;
+
+  cprintf("n = %d\n", n);
+
+  for (c = 0; c < NCPU; c++) {
+    for (i = 0; i < n; i++, p += PGSIZE) {
+      memset(p, 1, PGSIZE);
+      r = (struct run*)p;
+      r->next = kmems[c].freelist;
+      kmems[c].freelist = r;
+    }
+  }
 }
 
 //PAGEBREAK: 21
@@ -47,11 +65,11 @@ kfree(char *v)
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);
 
-  acquire(&kmem.lock);
+  acquire(&kmem->lock);
   r = (struct run*)v;
-  r->next = kmem.freelist;
-  kmem.freelist = r;
-  release(&kmem.lock);
+  r->next = kmem->freelist;
+  kmem->freelist = r;
+  release(&kmem->lock);
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -62,11 +80,14 @@ kalloc(void)
 {
   struct run *r;
 
-  acquire(&kmem.lock);
-  r = kmem.freelist;
+  cprintf("%d: kalloc\n", cpunum());
+  acquire(&kmem->lock);
+  r = kmem->freelist;
   if(r)
-    kmem.freelist = r->next;
-  release(&kmem.lock);
+    kmem->freelist = r->next;
+  release(&kmem->lock);
+  if (r == 0)
+      cprintf("%d: kalloc out\n", cpunum());
   return (char*)r;
 }
 
