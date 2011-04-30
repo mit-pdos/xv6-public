@@ -32,12 +32,9 @@ kinit(void)
 
   p = (char*)PGROUNDUP((uint)end);
   n = (char*)PHYSTOP - p;
-
-  cprintf("n = %d\n", n);
-
   n = n / PGSIZE;
-
-  cprintf("n = %d\n", n);
+  n = n / NCPU;
+  cprintf("n = %d end = 0x%x\n", n,  p);
 
   for (c = 0; c < NCPU; c++) {
     for (i = 0; i < n; i++, p += PGSIZE) {
@@ -58,6 +55,8 @@ void
 kfree(char *v)
 {
   struct run *r;
+
+  // cprintf("%d: free 0x%x\n", cpu->id, v);
 
   if((uint)v % PGSIZE || v < end || (uint)v >= PHYSTOP) 
     panic("kfree");
@@ -80,7 +79,8 @@ kalloc(void)
 {
   struct run *r;
 
-  cprintf("%d: kalloc\n", cpunum());
+  //  cprintf("%d: kalloc 0x%x 0x%x 0x%x 0x%x 0%x\n", cpu->id, kmem, &kmems[cpu->id], kmem->freelist, PHYSTOP, kmems[1].freelist);
+
   acquire(&kmem->lock);
   r = kmem->freelist;
   if(r)

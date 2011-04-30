@@ -50,6 +50,7 @@ found:
   release(&ptable->lock);
 
   // Allocate kernel stack if possible.
+  cprintf("allocproc: kalloc\n");
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
     return 0;
