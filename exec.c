@@ -19,7 +19,6 @@ exec(char *path, char **argv)
   pde_t *pgdir, *oldpgdir;
 
   cprintf("%d: exec %s\n", cpunum(), path);
-  procdumpall();
 
   if((ip = namei(path)) == 0)
     return -1;
@@ -92,9 +91,6 @@ exec(char *path, char **argv)
   proc->tf->esp = sp;
   switchuvm(proc);
   freevm(oldpgdir);
-
-  cprintf("exec done\n");
-
   return 0;
 
  bad:

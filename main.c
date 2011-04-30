@@ -74,10 +74,8 @@ mpmain(void)
   }
   vmenable();        // turn on paging
   cprintf("cpu%d: starting\n", cpu->id);
-  procdumpall();
   idtinit();       // load idt register
   xchg(&cpu->booted, 1); // tell bootothers() we're up
-  procdumpall();
   scheduler();     // start running processes
 }
 

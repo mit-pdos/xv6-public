@@ -50,7 +50,6 @@ found:
   release(&ptable->lock);
 
   // Allocate kernel stack if possible.
-  cprintf("allocproc: kalloc\n");
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
     return 0;
@@ -97,7 +96,6 @@ addrun(struct proc *p)
   acquire(&ptable->lock);
   addrun1(p);
   release(&ptable->lock);
-  procdumpall();
 }
 
 static void 
@@ -331,7 +329,6 @@ steal(void)
     }
     release(&ptables[c].lock);
     if (r) {
-      procdumpall();
       return;
     }
   }
