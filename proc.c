@@ -7,23 +7,38 @@
 #include "proc.h"
 
 struct ptable ptables[NCPU];
+struct runq runqs[NCPU];
+struct condvar condvars[NPROC];
+struct spinlock lock_condvars;
 static struct proc *initproc;
 
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
-static void wakeup1(struct ptable *pt, void *chan);
+// static void wakeup1(struct ptable *pt, void *chan);
 
 void
 pinit(void)
 {
   int c;
+  int i;
+
   for (c = 0; c < NCPU; c++) {
-    ptables[c].name[0] = (char) c;
+    ptables[c].name[0] = (char) (c + '0');
     safestrcpy(ptables[c].name+1, "ptable", MAXNAME-1);
     initlock(&ptables[c].lock, ptables[c].name);
+
+    for (i = 0; i < NPROC; i++) {
+      initlock(&ptables[c].proc[i].lock, ptables[c].proc[i].name);
+    }
+
+    runqs[c].name[0] = (char) (c + '0');
+    safestrcpy(runqs[c].name+1, "runq", MAXNAME-1);
+    initlock(&runqs[c].lock, runqs[c].name);
+
   }
+  initlock(&lock_condvars, "condvar");
 }
 
 //PAGEBREAK: 32
@@ -74,11 +89,11 @@ found:
 }
 
 static void
-addrun1(struct ptable *pt, struct proc *p)
+addrun1(struct runq *rq, struct proc *p)
 {
   struct proc *q;
   cprintf("%d: add to run %d\n", cpu->id, p->pid);
-  for (q = pt->runq; q != 0; q = q->next) {
+  for (q = rq->runq; q != 0; q = q->next) {
     if (q == p) {
       cprintf("allready on q\n");
       p->state = RUNNABLE; 
@@ -86,28 +101,28 @@ addrun1(struct ptable *pt, struct proc *p)
     }
   }
   p->state = RUNNABLE;   // race?
-  p->next = pt->runq;
-  pt->runq = p;
+  p->next = rq->runq;
+  rq->runq = p;
 }
 
 static void
 addrun(struct proc *p)
 {
-  acquire(&ptable->lock);
-  addrun1(ptable, p);
-  release(&ptable->lock);
+  acquire(&runq->lock);
+  addrun1(runq, p);
+  release(&runq->lock);
 }
 
 static void 
-delrun1(struct ptable *pt, struct proc *proc)
+delrun1(struct runq *rq, struct proc *proc)
 {
   struct proc *p = 0;
   struct proc *n;
-  n = pt->runq;
+  n = rq->runq;
   while (n != 0) {
     if (n == proc) {
       if (p == 0) {
-	pt->runq = n->next;
+	rq->runq = n->next;
       } else {
 	p->next = n->next;
       }
@@ -123,11 +138,10 @@ delrun1(struct ptable *pt, struct proc *proc)
 void
 delrun(struct proc *proc)
 {
-  acquire(&ptable->lock);
-  delrun1(ptable, proc);
-  release(&ptable->lock);
+  acquire(&runq->lock);
+  delrun1(runq, proc);
+  release(&runq->lock);
 }
-
 
 //PAGEBREAK: 32
 // Set up first user process.
@@ -226,6 +240,7 @@ exit(void)
   struct proc *p;
   int fd;
   int c;
+  int wakeupinit;
 
   if(proc == initproc)
     panic("init exiting");
@@ -241,31 +256,31 @@ exit(void)
   iput(proc->cwd);
   proc->cwd = 0;
 
-  cprintf("%d: exit %s\n", cpunum(), proc->name);
-
-  acquire(&ptable->lock);    // XXX sleep/wakeup race?  lock on all ptables?
-
-  delrun1(ptable, proc);
-
-  release(&ptable->lock);    // XXX sleep/wakeup race?  lock on all ptables?
-
-  // Parent might be sleeping in wait().
-  wakeup(proc->parent);
+  cprintf("%d: exit %s(%d)\n", cpunum(), proc->name, proc->pid);
 
   // Pass abandoned children to init.
+  wakeupinit = 0;
   for (c = 0; c < NCPU; c++) {
-    acquire(&ptable[c].lock);    // XXX sleep/wakeup race?  lock on all ptables?
+    acquire(&ptables[c].lock); 
     for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
       if(p->parent == proc){
 	p->parent = initproc;
 	if(p->state == ZOMBIE)
-	  wakeup1(&ptables[c], initproc);   // XXX race
+	  wakeupinit = 1;
       }
     }
-    release(&ptable[c].lock);    // XXX sleep/wakeup race?  lock on all ptables?
+    release(&ptables[c].lock); 
   }
 
-  acquire(&ptable->lock);    // XXX sleep/wakeup race?  lock on all ptables?
+  acquire(&proc->lock); 
+
+  // Parent might be sleeping in wait().
+  wakeup(proc->parent);
+
+  if (wakeupinit)
+    wakeup(initproc); 
+
+  delrun1(runq, proc);
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
@@ -286,7 +301,7 @@ wait(void)
     // Scan through table looking for zombie children.
     havekids = 0;
     for (c = 0; c < NCPU; c++) {
-      acquire(&ptables[c].lock);  // XXX race on sleep and wakeup?
+      acquire(&ptables[c].lock);  
       for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
 	if(p->parent != proc)
 	  continue;
@@ -306,21 +321,21 @@ wait(void)
 	  return pid;
 	}
       }
-      release(&ptables[c].lock);  // XXX race on sleep and wakeup?
+      release(&ptables[c].lock); 
     }
 
-    acquire(&ptable->lock);  // XXX race on sleep and wakeup?
+    acquire(&proc->lock); 
 
     // No point waiting if we don't have any children.
     if(!havekids || proc->killed){
-      release(&ptable->lock);
+      release(&proc->lock);
       return -1;
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    sleep(proc, &ptable->lock);  //DOC: wait-sleep
+    sleep(proc, &proc->lock);  
 
-    release(&ptable->lock);  // XXX race on sleep and wakeup?
+    release(&proc->lock);
   }
 }
 
@@ -334,17 +349,17 @@ steal(void)
   for (c = 0; c < NCPU; c++) {
     if (c == cpunum())
       continue;
-    acquire(&ptables[c].lock);
-    for(p = ptables[c].runq; p != 0; p = p->next) {
+    acquire(&runqs[c].lock);
+    for(p = runqs[c].runq; p != 0; p = p->next) {
       if (p->state == RUNNABLE) {
 	cprintf("%d: steal %d from %d\n", cpunum(), p->pid, c);
-	delrun1(&ptables[c], p);
+	delrun1(&runqs[c], p);
 	addrun(p);
 	r = 1;
 	break;
       }
     }
-    release(&ptables[c].lock);
+    release(&runqs[c].lock);
     if (r) {
       return;
     }
@@ -369,13 +384,18 @@ scheduler(void)
     sti();
 
     // Loop over process table looking for process to run.
-    acquire(&ptable->lock);
-    for(p = ptable->runq; p != 0; p = p->next) {
+    acquire(&runq->lock);
+
+    for(p = runq->runq; p != 0; p = p->next) {
       if(p->state != RUNNABLE)
         continue;
 
+      acquire(&p->lock);
+
+      release(&runq->lock);
+
       // Switch to chosen process.  It is the process's job
-      // to release ptable->lock and then reacquire it
+      // to release proc->lock and then reacquire it
       // before jumping back to us.
       proc = p;
       switchuvm(p);
@@ -387,21 +407,42 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       proc = 0;
+      release(&p->lock);
+
+      acquire(&runq->lock);
     }
-    release(&ptable->lock);
+    release(&runq->lock);
+    
+#if 0
+    struct proc *q
+    for (p = &ptable->proc[0]; p < &ptable->proc[NPROC]; p++) {
+      if (p->state == RUNNABLE) {
+	// XXX check all runqueue
+	for(q = ptable->runq; q != 0; q = q->next) {
+	  if (p == q) 
+	    break;
+	}
+	if (q == 0) {
+	  procdumpall();
+	  panic("scheduler proc runnable but not on runqueue\n");
+	}
+      }
+    }
+#endif
+
     steal();
   }
 }
 
-// Enter scheduler.  Must hold only ptable->lock
+// Enter scheduler.  Must hold only proc->lock
 // and have changed proc->state.
 void
 sched(void)
 {
   int intena;
 
-  if(!holding(&ptable->lock))
-    panic("sched ptable->lock");
+  if(!holding(&proc->lock))
+    panic("sched proc->lock");
   if(cpu->ncli != 1)
     panic("sched locks");
   if(proc->state == RUNNING)
@@ -417,10 +458,10 @@ sched(void)
 void
 yield(void)
 {
-  acquire(&ptable->lock);  //DOC: yieldlock
-  proc->state = RUNNABLE;  // race?  stays in runqueue
+  acquire(&proc->lock);  //DOC: yieldlock
+  proc->state = RUNNABLE; 
   sched();
-  release(&ptable->lock);
+  release(&proc->lock);
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -428,8 +469,8 @@ yield(void)
 void
 forkret(void)
 {
-  // Still holding ptable->lock from scheduler.
-  release(&ptable->lock);
+  // Still holding proc->lock from scheduler.
+  release(&proc->lock);
   
   // Return to "caller", actually trapret (see allocproc).
 }
@@ -439,48 +480,59 @@ forkret(void)
 void
 sleep(void *chan, struct spinlock *lk)
 {
+  int i;
+
   if(proc == 0)
     panic("sleep");
 
   if(lk == 0)
     panic("sleep without lk");
 
-  // Must acquire ptable->lock in order to
+  // Must acquire lock_condvar in order to
   // change p->state and then call sched.
-  // Once we hold ptable->lock, we can be
+  // Once we hold lock_condvar, we can be
   // guaranteed that we won't miss any wakeup
-  // (wakeup runs with ptable->lock locked),
+  // (wakeup runs with lock_condvar locked),
   // so it's okay to release lk.
-  if(lk != &ptable->lock){  //DOC: sleeplock0
-    acquire(&ptable->lock);  //DOC: sleeplock1
-    release(lk);
-  }
 
-  // Go to sleep.
-  proc->chan = chan;
+  acquire(&lock_condvars); 
+  release(lk);
+
+  // find a condvar and record sleeper
+  // XXX should we check if there is a condvar for chan?
+  for (i = 0; i < NPROC; i++) {
+    if (condvars[i].chan == 0) {
+      break;
+    }
+  }
+  if (i == NPROC)
+    panic("out of condvars");
+
+  // add sleeper
+  condvars[i].chan = chan;
+  condvars[i].waiters = proc;
+
+  // remove from runqueue
+  acquire(&proc->lock);
   proc->state = SLEEPING;
-  delrun1(ptable, proc);
+  delrun1(runq, proc);
+
+  release(&lock_condvars); 
+
   sched();
 
+  release(&proc->lock);
+
+  acquire(&lock_condvars); 
+
   // Tidy up.
-  proc->chan = 0;
+  condvars[i].chan = 0;
 
   // Reacquire original lock.
-  if(lk != &ptable->lock){  //DOC: sleeplock2
-    release(&ptable->lock);
-    acquire(lk);
-  }
-}
+  cprintf("acquire %s\n", lk->name);
+  acquire(lk);
 
-// scan a proctable and wakeup any process sleeping on chan
-static void
-wakeup1(struct ptable *pt, void *chan)
-{
-  struct proc *p;
-
-  for(p = pt->proc; p < &pt->proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
-      addrun1(pt, p);
+  release(&lock_condvars);
 }
 
 // Wake up all processes sleeping on chan.
@@ -489,11 +541,16 @@ wakeup(void *chan)
 {
   int c;
 
-  for (c = 0; c < NCPU; c++) {
-    acquire(&ptables[c].lock);
-    wakeup1(ptable, chan);
-    release(&ptables[c].lock);
+  acquire(&lock_condvars);
+  for (c = 0; c < NPROC; c++) {
+    if (condvars[c].chan == chan) {
+      addrun(condvars[c].waiters);
+      goto done;
+    }
   }
+  // cprintf("wakeup on 0x%x; no chan; lost wakeup?\n", chan);
+ done:
+  release(&lock_condvars);
 }
 
 // Kill the process with the given pid.
@@ -507,12 +564,12 @@ kill(int pid)
 
   for (c = 0; c < NCPU; c++) {
     acquire(&ptables[c].lock);
-    for(p = ptable->proc; p < &ptable->proc[NPROC]; p++){
+    for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
       if(p->pid == pid){
 	p->killed = 1;
 	// Wake process from sleep if necessary.
 	if(p->state == SLEEPING)
-	  addrun1(&ptables[c], p);
+	  addrun1(&runqs[c], p);
 	release(&ptables[c].lock);
 	return 0;
       }
@@ -560,7 +617,7 @@ procdump(int c)
     cprintf("\n");
   }
   cprintf("runq: ");
-  for (q = ptables[c].runq; q != 0; q = q->next) {
+  for (q = runqs[c].runq; q != 0; q = q->next) {
     if(q->state >= 0 && q->state < NELEM(states) && states[q->state])
       state = states[q->state];
     else
