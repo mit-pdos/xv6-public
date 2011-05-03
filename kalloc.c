@@ -7,6 +7,7 @@
 #include "param.h"
 #include "mmu.h"
 #include "spinlock.h"
+#include "xv6-mtrace.h"
 
 struct run {
   struct run *next;
@@ -41,7 +42,7 @@ kfree(char *v)
 {
   struct run *r;
 
-  if((uint)v % PGSIZE || v < end || (uint)v >= PHYSTOP) 
+  if((uint)v % PGSIZE || v < end || (uint)v >= PHYSTOP)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
@@ -51,6 +52,14 @@ kfree(char *v)
   r = (struct run*)v;
   r->next = kmem.freelist;
   kmem.freelist = r;
+
+  mtrace_label_register(mtrace_label_block,
+			r,
+			0,
+			0,
+			0,
+			RET_EIP());
+
   release(&kmem.lock);
 }
 
@@ -66,6 +75,14 @@ kalloc(void)
   r = kmem.freelist;
   if(r)
     kmem.freelist = r->next;
+
+  mtrace_label_register(mtrace_label_block,
+			r,
+			4096,
+			"kalloc",
+			sizeof("kalloc"),
+			RET_EIP());
+
   release(&kmem.lock);
   return (char*)r;
 }
