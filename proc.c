@@ -93,7 +93,7 @@ addrun1(struct runq *rq, struct proc *p)
 {
   struct proc *q;
   cprintf("%d: add to run %d\n", cpu->id, p->pid);
-  for (q = rq->runq; q != 0; q = q->next) {
+  for (q = rq->runq; q != 0; q = q->runq) {
     if (q == p) {
       cprintf("allready on q\n");
       p->state = RUNNABLE; 
@@ -101,7 +101,7 @@ addrun1(struct runq *rq, struct proc *p)
     }
   }
   p->state = RUNNABLE;   // race?
-  p->next = rq->runq;
+  p->runq = rq->runq;
   rq->runq = p;
 }
 
@@ -122,15 +122,15 @@ delrun1(struct runq *rq, struct proc *proc)
   while (n != 0) {
     if (n == proc) {
       if (p == 0) {
-	rq->runq = n->next;
+	rq->runq = n->runq;
       } else {
-	p->next = n->next;
+	p->runq = n->runq;
       }
-      n->next = 0;
+      n->runq = 0;
       return;
     } else {
       p = n;
-      n = n->next;
+      n = n->runq;
     }
   }
 }
@@ -261,7 +261,7 @@ exit(void)
   // Pass abandoned children to init.
   wakeupinit = 0;
   for (c = 0; c < NCPU; c++) {
-    acquire(&ptables[c].lock); 
+    acquire(&ptables[c].lock);  // XXX Unscalable
     for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
       if(p->parent == proc){
 	p->parent = initproc;
@@ -301,7 +301,7 @@ wait(void)
     // Scan through table looking for zombie children.
     havekids = 0;
     for (c = 0; c < NCPU; c++) {
-      acquire(&ptables[c].lock);  
+      acquire(&ptables[c].lock);   // XXX Unscalable
       for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
 	if(p->parent != proc)
 	  continue;
@@ -350,7 +350,7 @@ steal(void)
     if (c == cpunum())
       continue;
     acquire(&runqs[c].lock);
-    for(p = runqs[c].runq; p != 0; p = p->next) {
+    for(p = runqs[c].runq; p != 0; p = p->runq) {
       if (p->state == RUNNABLE) {
 	cprintf("%d: steal %d from %d\n", cpunum(), p->pid, c);
 	delrun1(&runqs[c], p);
@@ -386,7 +386,7 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&runq->lock);
 
-    for(p = runq->runq; p != 0; p = p->next) {
+    for(p = runq->runq; p != 0; p = p->runq) {
       if(p->state != RUNNABLE)
         continue;
 
@@ -617,7 +617,7 @@ procdump(int c)
     cprintf("\n");
   }
   cprintf("runq: ");
-  for (q = runqs[c].runq; q != 0; q = q->next) {
+  for (q = runqs[c].runq; q != 0; q = q->runq) {
     if(q->state >= 0 && q->state < NELEM(states) && states[q->state])
       state = states[q->state];
     else

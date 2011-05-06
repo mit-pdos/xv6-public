@@ -46,7 +46,9 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   struct spinlock lock;
-  struct proc *next;
+  struct proc *runq;
+  struct proc *waiterq;
+  struct proc *childq;
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -74,8 +76,9 @@ struct cpu {
 };
 
 struct condvar {
-  void *chan;                  // If non-zero, sleeping on chan
+  struct spinlock lock;
   struct proc *waiters;
+  void *chan;                  // If non-zero, sleeping on chan
 };
 
 struct runq {
