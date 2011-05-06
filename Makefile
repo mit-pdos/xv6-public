@@ -206,6 +206,7 @@ ifndef CPUS
 CPUS := 2
 endif
 QEMUOPTS = -hdb fs.img xv6.img -smp $(CPUS)
+MTRACEOPTS = -mtrace-enable -mtrace-file /tmp/mtrace-$(shell whoami).out
 
 qemu: fs.img xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)
@@ -215,6 +216,9 @@ qemu-memfs: xv6memfs.img
 
 qemu-nox: fs.img xv6.img
 	$(QEMU) -nographic $(QEMUOPTS)
+
+mtrace-nox: fs.img xv6.img
+	$(QEMU) -nographic $(QEMUOPTS) $(MTRACEOPTS)
 
 .gdbinit: .gdbinit.tmpl
 	sed "s/localhost:1234/localhost:$(GDBPORT)/" < $^ > $@
