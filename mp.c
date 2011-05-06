@@ -9,6 +9,7 @@
 #include "x86.h"
 #include "mmu.h"
 #include "spinlock.h"
+#include "condvar.h"
 #include "proc.h"
 
 struct cpu cpus[NCPU];

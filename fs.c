@@ -16,6 +16,7 @@
 #include "stat.h"
 #include "mmu.h"
 #include "spinlock.h"
+#include "condvar.h"
 #include "proc.h"
 #include "buf.h"
 #include "fs.h"

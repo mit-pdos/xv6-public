@@ -7,6 +7,7 @@
 #include "param.h"
 #include "traps.h"
 #include "spinlock.h"
+#include "condvar.h"
 #include "fs.h"
 #include "file.h"
 #include "mmu.h"
@@ -173,6 +174,7 @@ consputc(int c)
 #define INPUT_BUF 128
 struct {
   struct spinlock lock;
+  struct condvar cv;
   char buf[INPUT_BUF];
   uint r;  // Read index
   uint w;  // Write index
@@ -212,7 +214,7 @@ consoleintr(int (*getc)(void))
         consputc(c);
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
           input.w = input.e;
-          wakeup(&input.r);
+          cv_wakeup(&input.cv);
         }
       }
       break;
@@ -237,7 +239,7 @@ consoleread(struct inode *ip, char *dst, int n)
         ilock(ip);
         return -1;
       }
-      sleep(&input.r, &input.lock);
+      cv_sleep(&input.cv, &input.lock);
     }
     c = input.buf[input.r++ % INPUT_BUF];
     if(c == C('D')){  // EOF
@@ -279,6 +281,7 @@ consoleinit(void)
 {
   initlock(&cons.lock, "console");
   initlock(&input.lock, "input");
+  initlock(&input.cv.lock, "input");
 
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;

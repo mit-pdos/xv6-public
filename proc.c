@@ -4,12 +4,12 @@
 #include "mmu.h"
 #include "x86.h"
 #include "spinlock.h"
+#include "condvar.h"
 #include "proc.h"
 
 struct ptable ptables[NCPU];
 struct runq runqs[NCPU];
-struct condvar condvars[NPROC];
-struct spinlock lock_condvars;
+struct condtab condtabs[NCPU];
 static struct proc *initproc;
 
 int nextpid = 1;
@@ -31,14 +31,21 @@ pinit(void)
 
     for (i = 0; i < NPROC; i++) {
       initlock(&ptables[c].proc[i].lock, ptables[c].proc[i].name);
+      initlock(&ptables[c].proc[i].cv.lock, ptables[c].proc[i].name);
     }
 
     runqs[c].name[0] = (char) (c + '0');
     safestrcpy(runqs[c].name+1, "runq", MAXNAME-1);
     initlock(&runqs[c].lock, runqs[c].name);
 
+    condtabs[c].name[0] = (char) (c + '0');
+    safestrcpy(condtabs[c].name+1, "condtab", MAXNAME-1);
+    initlock(&condtabs[c].lock, condtabs[c].name);
+    for (i = 0; i < NPROC; i++) {
+      initlock(&condtabs[c].condtab[i].lock, condtabs[c].condtab[i].name);
+    }
+
   }
-  initlock(&lock_condvars, "condvar");
 }
 
 //PAGEBREAK: 32
@@ -105,10 +112,11 @@ addrun1(struct runq *rq, struct proc *p)
   rq->runq = p;
 }
 
-static void
+void
 addrun(struct proc *p)
 {
   acquire(&runq->lock);
+  cprintf("%d: addrun %d\n", cpunum(), p->pid);
   addrun1(runq, p);
   release(&runq->lock);
 }
@@ -136,10 +144,11 @@ delrun1(struct runq *rq, struct proc *proc)
 }
 
 void
-delrun(struct proc *proc)
+delrun(struct proc *p)
 {
   acquire(&runq->lock);
-  delrun1(runq, proc);
+  cprintf("%d: delrun %d\n", cpunum(), p->pid);
+  delrun1(runq, p);
   release(&runq->lock);
 }
 
@@ -272,15 +281,15 @@ exit(void)
     release(&ptables[c].lock); 
   }
 
-  acquire(&proc->lock); 
-
   // Parent might be sleeping in wait().
-  wakeup(proc->parent);
+  cv_wakeup(&proc->parent->cv);
 
   if (wakeupinit)
-    wakeup(initproc); 
+    cv_wakeup(&initproc->cv); 
 
-  delrun1(runq, proc);
+  acquire(&proc->lock); 
+
+  delrun1(runq, proc);   // XXX get lock on runq
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
@@ -333,7 +342,7 @@ wait(void)
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    sleep(proc, &proc->lock);  
+    cv_sleep(&proc->cv, &proc->lock);  
 
     release(&proc->lock);
   }
@@ -475,83 +484,7 @@ forkret(void)
   // Return to "caller", actually trapret (see allocproc).
 }
 
-// Atomically release lock and sleep on chan.
-// Reacquires lock when awakened.
-void
-sleep(void *chan, struct spinlock *lk)
-{
-  int i;
 
-  if(proc == 0)
-    panic("sleep");
-
-  if(lk == 0)
-    panic("sleep without lk");
-
-  // Must acquire lock_condvar in order to
-  // change p->state and then call sched.
-  // Once we hold lock_condvar, we can be
-  // guaranteed that we won't miss any wakeup
-  // (wakeup runs with lock_condvar locked),
-  // so it's okay to release lk.
-
-  acquire(&lock_condvars); 
-  release(lk);
-
-  // find a condvar and record sleeper
-  // XXX should we check if there is a condvar for chan?
-  for (i = 0; i < NPROC; i++) {
-    if (condvars[i].chan == 0) {
-      break;
-    }
-  }
-  if (i == NPROC)
-    panic("out of condvars");
-
-  // add sleeper
-  condvars[i].chan = chan;
-  condvars[i].waiters = proc;
-
-  // remove from runqueue
-  acquire(&proc->lock);
-  proc->state = SLEEPING;
-  delrun1(runq, proc);
-
-  release(&lock_condvars); 
-
-  sched();
-
-  release(&proc->lock);
-
-  acquire(&lock_condvars); 
-
-  // Tidy up.
-  condvars[i].chan = 0;
-
-  // Reacquire original lock.
-  cprintf("acquire %s\n", lk->name);
-  acquire(lk);
-
-  release(&lock_condvars);
-}
-
-// Wake up all processes sleeping on chan.
-void
-wakeup(void *chan)
-{
-  int c;
-
-  acquire(&lock_condvars);
-  for (c = 0; c < NPROC; c++) {
-    if (condvars[c].chan == chan) {
-      addrun(condvars[c].waiters);
-      goto done;
-    }
-  }
-  // cprintf("wakeup on 0x%x; no chan; lost wakeup?\n", chan);
- done:
-  release(&lock_condvars);
-}
 
 // Kill the process with the given pid.
 // Process won't exit until it returns
@@ -634,4 +567,20 @@ procdumpall(void)
   for (c = 0; c < NCPU; c++) {
     procdump(c);
   }
+}
+
+//// dead code
+
+// Atomically release lock and sleep on chan.
+// Reacquires lock when awakened.
+void
+sleep(void *chan, struct spinlock *lk)
+{
+  panic("sleep");
+}
+
+// Wake up all processes sleeping on chan.
+void
+wakeup(void *chan)
+{
 }

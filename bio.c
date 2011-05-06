@@ -25,6 +25,7 @@
 #include "defs.h"
 #include "param.h"
 #include "spinlock.h"
+#include "condvar.h"
 #include "buf.h"
 
 struct {
@@ -53,6 +54,7 @@ binit(void)
     b->dev = -1;
     bcache.head.next->prev = b;
     bcache.head.next = b;
+    initlock(&b->cv.lock, "bache");
   }
 }
 
@@ -75,7 +77,7 @@ bget(uint dev, uint sector)
         release(&bcache.lock);
         return b;
       }
-      sleep(b, &bcache.lock);
+      cv_sleep(&b->cv, &bcache.lock);
       goto loop;
     }
   }
@@ -132,7 +134,7 @@ brelse(struct buf *b)
   bcache.head.next = b;
 
   b->flags &= ~B_BUSY;
-  wakeup(b);
+  cv_wakeup(&b->cv);
 
   release(&bcache.lock);
 }

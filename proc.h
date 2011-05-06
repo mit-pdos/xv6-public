@@ -47,8 +47,8 @@ struct proc {
   char name[16];               // Process name (debugging)
   struct spinlock lock;
   struct proc *runq;
-  struct proc *waiterq;
   struct proc *childq;
+  struct condvar cv;
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -73,13 +73,9 @@ struct cpu {
   struct ptable *ptable;       // The per-core proc table
   struct kmem *kmem;           // The per-core proc table
   struct runq *runq;           // The per-core proc table
+  struct condtab *contab;           // The per-core proc table
 };
 
-struct condvar {
-  struct spinlock lock;
-  struct proc *waiters;
-  void *chan;                  // If non-zero, sleeping on chan
-};
 
 struct runq {
   char name[MAXNAME];
@@ -94,9 +90,16 @@ struct ptable {
   struct proc *runq;
 };
 
+struct condtab {
+  char name[MAXNAME];
+  struct spinlock lock;
+  struct condvar condtab[NPROC];
+};
+
 extern struct ptable ptables[NCPU];
 extern struct cpu cpus[NCPU];
 extern struct runq runqs[NCPU];
+extern struct condtab condtabs[NCPU];
 extern int ncpu;
 
 // Per-CPU variables, holding pointers to the
@@ -112,3 +115,4 @@ extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
 extern struct ptable *ptable asm("%gs:8"); // &ptables[cpunum()]
 extern struct kmem *kmem asm("%gs:12"); // &kmems[cpunum()]
 extern struct runq *runq asm("%gs:16"); // &runqs[cpunum()]
+extern struct condtab *condtab asm("%gs:20"); // &condtabs[cpunum()]

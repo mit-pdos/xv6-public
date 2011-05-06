@@ -4,6 +4,7 @@
 #include "x86.h"
 #include "mmu.h"
 #include "spinlock.h"
+#include "condvar.h"
 #include "proc.h"
 #include "elf.h"
 #include "kalloc.h"
@@ -49,6 +50,7 @@ seginit(void)
   ptable = &ptables[cpunum()];
   kmem = &kmems[cpunum()];
   runq = &runqs[cpunum()];
+  condtab = &condtabs[cpunum()];
 }
 
 // Return the address of the PTE in page table pgdir

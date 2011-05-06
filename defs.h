@@ -5,6 +5,7 @@ struct inode;
 struct pipe;
 struct proc;
 struct spinlock;
+struct condvar;
 struct stat;
 
 // bio.c
@@ -12,6 +13,10 @@ void            binit(void);
 struct buf*     bread(uint, uint);
 void            brelse(struct buf*);
 void            bwrite(struct buf*);
+
+// condvar.c
+void            cv_sleep(struct condvar *cv, struct spinlock*);
+void            cv_wakeup(struct condvar *cv);
 
 // console.c
 void            consoleinit(void);
@@ -93,7 +98,9 @@ int             pipewrite(struct pipe*, char*, int);
 
 //PAGEBREAK: 16
 // proc.c
+void            addrun(struct proc *);
 struct proc*    copyproc(struct proc*);
+void            delrun(struct proc*);
 void            exit(void);
 int             fork(void);
 int             growproc(int);
@@ -103,11 +110,11 @@ void            procdump(int);
 void            procdumpall(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
-void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
-void            wakeup(void*);
 void            yield(void);
+void            wakeup(void*);
+void            sleep(void*, struct spinlock*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

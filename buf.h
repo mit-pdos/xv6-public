@@ -5,6 +5,7 @@ struct buf {
   struct buf *prev; // LRU cache list
   struct buf *next;
   struct buf *qnext; // disk queue
+  struct condvar cv;
   uchar data[512];
 };
 #define B_BUSY  0x1  // buffer is locked by some process

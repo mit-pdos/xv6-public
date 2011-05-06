@@ -5,6 +5,7 @@
 #include "param.h"
 #include "mmu.h"
 #include "spinlock.h"
+#include "condvar.h"
 #include "proc.h"
 #include "x86.h"
 #include "traps.h"
@@ -48,8 +49,8 @@ ideinit(void)
 
   initlock(&idelock, "ide");
   picenable(IRQ_IDE);
-  // ioapicenable(IRQ_IDE, ncpu - 1);
-  ioapicenable(IRQ_IDE, 0);
+  ioapicenable(IRQ_IDE, ncpu - 1);
+  // ioapicenable(IRQ_IDE, 0);
   idewait(0);
   
   // Check if disk 1 is present
@@ -109,7 +110,7 @@ ideintr(void)
   // Wake process waiting for this buf.
   b->flags |= B_VALID;
   b->flags &= ~B_DIRTY;
-  wakeup(b);
+  cv_wakeup(&b->cv);
   
   // Start disk on next buf in queue.
   if(idequeue != 0)
@@ -149,7 +150,7 @@ iderw(struct buf *b)
   // Wait for request to finish.
   // Assuming will not sleep too long: ignore proc->killed.
   while((b->flags & (B_VALID|B_DIRTY)) != B_VALID){
-    sleep(b, &idelock);
+    cv_sleep(&b->cv, &idelock);
   }
 
   release(&idelock);
