@@ -50,7 +50,6 @@ seginit(void)
   ptable = &ptables[cpunum()];
   kmem = &kmems[cpunum()];
   runq = &runqs[cpunum()];
-  condtab = &condtabs[cpunum()];
 }
 
 // Return the address of the PTE in page table pgdir

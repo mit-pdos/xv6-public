@@ -73,7 +73,6 @@ struct cpu {
   struct ptable *ptable;       // The per-core proc table
   struct kmem *kmem;           // The per-core proc table
   struct runq *runq;           // The per-core proc table
-  struct condtab *contab;           // The per-core proc table
 };
 
 
@@ -115,4 +114,3 @@ extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
 extern struct ptable *ptable asm("%gs:8"); // &ptables[cpunum()]
 extern struct kmem *kmem asm("%gs:12"); // &kmems[cpunum()]
 extern struct runq *runq asm("%gs:16"); // &runqs[cpunum()]
-extern struct condtab *condtab asm("%gs:20"); // &condtabs[cpunum()]

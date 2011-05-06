@@ -9,7 +9,6 @@
 
 struct ptable ptables[NCPU];
 struct runq runqs[NCPU];
-struct condtab condtabs[NCPU];
 static struct proc *initproc;
 
 int nextpid = 1;
@@ -37,14 +36,6 @@ pinit(void)
     runqs[c].name[0] = (char) (c + '0');
     safestrcpy(runqs[c].name+1, "runq", MAXNAME-1);
     initlock(&runqs[c].lock, runqs[c].name);
-
-    condtabs[c].name[0] = (char) (c + '0');
-    safestrcpy(condtabs[c].name+1, "condtab", MAXNAME-1);
-    initlock(&condtabs[c].lock, condtabs[c].name);
-    for (i = 0; i < NPROC; i++) {
-      initlock(&condtabs[c].condtab[i].lock, condtabs[c].condtab[i].name);
-    }
-
   }
 }
 
