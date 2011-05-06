@@ -87,3 +87,14 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_halt(void)
+{
+  int i;
+  const char s[] = "Shutdown";
+
+  for(i = 0; i < 8; i++)
+    outb(0x8900, s[i]);
+  return 0;
+}
