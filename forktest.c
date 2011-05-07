@@ -4,6 +4,7 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
+#include "xv6-mtrace.h"
 
 #define N  1000
 
@@ -13,9 +14,26 @@ printf(int fd, char *s, ...)
   write(fd, s, strlen(s));
 }
 
+char*
+strncpy(char *s, const char *t, int n)
+{
+  int tlen = strlen((char *)t);
+  memmove(s, (char *)t, n > tlen ? tlen : n);
+  if (n > tlen)
+    s[tlen] = 0;
+  return s;
+}
+
+void*
+memcpy(void *dst, const void *src, uint n)
+{
+  return memmove(dst, (void *)src, n);
+}
+
 void
 forktest(void)
 {
+  struct mtrace_appdata_entry entry;
   int n, pid;
 
   printf(1, "fork test\n");
@@ -44,6 +62,9 @@ forktest(void)
     printf(1, "wait got too many\n");
     exit();
   }
+
+  entry.u64 = n;
+  mtrace_appdata_register(&entry);
   
   printf(1, "fork test OK\n");
 }
@@ -51,6 +72,8 @@ forktest(void)
 int
 main(void)
 {
+  mtrace_enable_set(1, "xv6-forktest");
   forktest();
+  mtrace_enable_set(0, "xv6-forktest");
   exit();
 }
