@@ -38,6 +38,7 @@ forktest(void)
 
   printf(1, "fork test\n");
 
+  mtrace_enable_set(1, "xv6-forktest");
   for(n=0; n<N; n++){
     pid = fork();
     if(pid < 0)
@@ -65,15 +66,15 @@ forktest(void)
 
   entry.u64 = n;
   mtrace_appdata_register(&entry);
+  mtrace_enable_set(0, "xv6-forktest");
   
   printf(1, "fork test OK\n");
+  halt();
 }
 
 int
 main(void)
 {
-  mtrace_enable_set(1, "xv6-forktest");
   forktest();
-  mtrace_enable_set(0, "xv6-forktest");
   exit();
 }
