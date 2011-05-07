@@ -17,6 +17,7 @@
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"
+#include "queue.h"
 #include "proc.h"
 #include "buf.h"
 #include "fs.h"
@@ -138,7 +139,11 @@ struct {
 void
 iinit(void)
 {
+  int i;
   initlock(&icache.lock, "icache");
+  for (i = 0; i < NINODE; i++) {
+    initlock(&icache.inode[i].cv.lock, "icache");
+  }
 }
 
 static struct inode* iget(uint dev, uint inum);
@@ -246,7 +251,7 @@ ilock(struct inode *ip)
 
   acquire(&icache.lock);
   while(ip->flags & I_BUSY)
-    sleep(ip, &icache.lock);
+    cv_sleep(&ip->cv, &icache.lock);
   ip->flags |= I_BUSY;
   release(&icache.lock);
 
@@ -275,7 +280,7 @@ iunlock(struct inode *ip)
 
   acquire(&icache.lock);
   ip->flags &= ~I_BUSY;
-  wakeup(ip);
+  cv_wakeup(&ip->cv);
   release(&icache.lock);
 }
 
@@ -295,7 +300,7 @@ iput(struct inode *ip)
     iupdate(ip);
     acquire(&icache.lock);
     ip->flags = 0;
-    wakeup(ip);
+    cv_wakeup(&ip->cv);
   }
   ip->ref--;
   release(&icache.lock);

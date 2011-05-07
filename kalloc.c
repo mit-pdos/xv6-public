@@ -8,6 +8,7 @@
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"
+#include "queue.h"
 #include "proc.h"
 #include "kalloc.h"
 

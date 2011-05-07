@@ -5,6 +5,7 @@
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"
+#include "queue.h"
 #include "proc.h"
 
 void
@@ -19,7 +20,7 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
   // Must acquire cv_lock to avoid sleep/wakeup race
   acquire(&cv->lock); 
 
-  cprintf("cv_sleep: 0x%x\n", cv);
+  cprintf("cv_sleep: 0x%x %s\n", cv, cv->lock.name);
 
   release(lk);
 

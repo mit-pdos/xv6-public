@@ -11,6 +11,7 @@
 #include "fs.h"
 #include "file.h"
 #include "mmu.h"
+#include "queue.h"
 #include "proc.h"
 #include "x86.h"
 

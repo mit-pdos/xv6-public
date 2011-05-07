@@ -1,9 +1,10 @@
 #include "types.h"
 #include "defs.h"
 #include "param.h"
+#include "spinlock.h"
+#include "condvar.h"
 #include "fs.h"
 #include "file.h"
-#include "spinlock.h"
 
 struct devsw devsw[NDEV];
 struct {

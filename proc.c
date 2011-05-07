@@ -5,6 +5,7 @@
 #include "x86.h"
 #include "spinlock.h"
 #include "condvar.h"
+#include "queue.h"
 #include "proc.h"
 
 struct ptable ptables[NCPU];
@@ -91,7 +92,7 @@ addrun1(struct runq *rq, struct proc *p)
 {
   struct proc *q;
   cprintf("%d: add to run %d\n", cpu->id, p->pid);
-  for (q = rq->runq; q != 0; q = q->runq) {
+  SLIST_FOREACH(q, &rq->runq, run_next) {
     if (q == p) {
       cprintf("allready on q\n");
       p->state = RUNNABLE; 
@@ -99,8 +100,7 @@ addrun1(struct runq *rq, struct proc *p)
     }
   }
   p->state = RUNNABLE;   // race?
-  p->runq = rq->runq;
-  rq->runq = p;
+  SLIST_INSERT_HEAD(&rq->runq, p, run_next);
 }
 
 void
@@ -113,23 +113,13 @@ addrun(struct proc *p)
 }
 
 static void 
-delrun1(struct runq *rq, struct proc *proc)
+delrun1(struct runq *rq, struct proc *p)
 {
-  struct proc *p = 0;
-  struct proc *n;
-  n = rq->runq;
-  while (n != 0) {
-    if (n == proc) {
-      if (p == 0) {
-	rq->runq = n->runq;
-      } else {
-	p->runq = n->runq;
-      }
-      n->runq = 0;
+  struct proc *q, *nq;
+  SLIST_FOREACH_SAFE(q, &rq->runq, run_next, nq) {
+    if (q == p) {
+      SLIST_REMOVE(&rq->runq, q, proc, run_next);
       return;
-    } else {
-      p = n;
-      n = n->runq;
     }
   }
 }
@@ -224,10 +214,12 @@ fork(void)
     if(proc->ofile[i])
       np->ofile[i] = filedup(proc->ofile[i]);
   np->cwd = idup(proc->cwd);
- 
+
+  SLIST_INSERT_HEAD(&proc->childq, np, child_next);  // XXX lock?
   pid = np->pid;
   addrun(np);
   safestrcpy(np->name, proc->name, sizeof(proc->name));
+
   return pid;
 }
 
@@ -293,22 +285,21 @@ exit(void)
 int
 wait(void)
 {
-  struct proc *p;
+  struct proc *p, *np;
   int havekids, pid;
-  int c;
+
+  cprintf("wait %d\n", proc->pid);
 
   for(;;){
     // Scan through table looking for zombie children.
     havekids = 0;
-    for (c = 0; c < NCPU; c++) {
-      acquire(&ptables[c].lock);   // XXX Unscalable
-      for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
-	if(p->parent != proc)
-	  continue;
+    acquire(&proc->lock);
+    SLIST_FOREACH_SAFE(p, &proc->childq, child_next, np) {
 	havekids = 1;
+	acquire(&p->lock);
 	if(p->state == ZOMBIE){
-	  // Found one.
 	  pid = p->pid;
+	  SLIST_REMOVE(&proc->childq, p, proc, child_next);
 	  kfree(p->kstack);
 	  p->kstack = 0;
 	  freevm(p->pgdir);
@@ -317,14 +308,12 @@ wait(void)
 	  p->parent = 0;
 	  p->name[0] = 0;
 	  p->killed = 0;
-	  release(&ptables[c].lock);
+	  release(&p->lock);
+	  release(&proc->lock);
 	  return pid;
 	}
-      }
-      release(&ptables[c].lock); 
+	release(&p->lock);
     }
-
-    acquire(&proc->lock); 
 
     // No point waiting if we don't have any children.
     if(!havekids || proc->killed){
@@ -350,7 +339,7 @@ steal(void)
     if (c == cpunum())
       continue;
     acquire(&runqs[c].lock);
-    for(p = runqs[c].runq; p != 0; p = p->runq) {
+    SLIST_FOREACH(p, &runqs[c].runq, run_next) {
       if (p->state == RUNNABLE) {
 	cprintf("%d: steal %d from %d\n", cpunum(), p->pid, c);
 	delrun1(&runqs[c], p);
@@ -386,7 +375,7 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&runq->lock);
 
-    for(p = runq->runq; p != 0; p = p->runq) {
+    SLIST_FOREACH(p, &runq->runq, run_next) {
       if(p->state != RUNNABLE)
         continue;
 
@@ -544,7 +533,7 @@ procdump(int c)
     cprintf("\n");
   }
   cprintf("runq: ");
-  for (q = runqs[c].runq; q != 0; q = q->runq) {
+  SLIST_FOREACH(q, &runqs[c].runq, run_next) {
     if(q->state >= 0 && q->state < NELEM(states) && states[q->state])
       state = states[q->state];
     else

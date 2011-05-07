@@ -5,12 +5,13 @@
 #include "param.h"
 #include "traps.h"
 #include "spinlock.h"
-#include "fs.h"
-#include "file.h"
 #include "mmu.h"
 #include "condvar.h"
+#include "queue.h"
 #include "proc.h"
 #include "x86.h"
+#include "fs.h"
+#include "file.h"
 
 #define COM1    0x3f8
 
