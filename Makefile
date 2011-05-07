@@ -49,14 +49,16 @@ TOOLPREFIX := $(shell if i386-jos-elf-objdump -i 2>&1 | grep '^elf32-i386$$' >/d
 	echo "***" 1>&2; exit 1; fi)
 endif
 
-QEMUSRC ?= 
+# The i386 ('qemu') mtrace doesn't work, but 'qemu-system-x86_64' mtrace works.
+MTRACE = qemu-system-x86_64
+QEMUSRC ?=
 
 ifeq ($(QEMUSRC),)
 $(error You need to set QEMUSRC (e.g. make QEMUSRC=~/qemu))
 endif
 
 # If the makefile can't find QEMU, specify its path here
-#QEMU = 
+#QEMU =
 
 # Try to infer the correct QEMU
 ifndef QEMU
@@ -196,6 +198,9 @@ bochs : fs.img xv6.img
 	if [ ! -e .bochsrc ]; then ln -s dot-bochsrc .bochsrc; fi
 	bochs -q
 
+mscan.syms: kernel
+	nm -S $< > $@
+
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
 # QEMU's gdb stub command line changed in 0.11
@@ -206,7 +211,7 @@ ifndef CPUS
 CPUS := 2
 endif
 QEMUOPTS = -hdb fs.img xv6.img -smp $(CPUS)
-MTRACEOPTS = -mtrace-enable -mtrace-file /tmp/mtrace-$(shell whoami).out
+MTRACEOPTS = -mtrace-enable -mtrace-file mtrace.out
 
 qemu: fs.img xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)
@@ -217,8 +222,8 @@ qemu-memfs: xv6memfs.img
 qemu-nox: fs.img xv6.img
 	$(QEMU) -nographic $(QEMUOPTS)
 
-mtrace-nox: fs.img xv6.img
-	$(QEMU) -nographic $(QEMUOPTS) $(MTRACEOPTS)
+mtrace-nox: fs.img xv6.img mscan.syms
+	$(MTRACE) -nographic $(QEMUOPTS) $(MTRACEOPTS)
 
 .gdbinit: .gdbinit.tmpl
 	sed "s/localhost:1234/localhost:$(GDBPORT)/" < $^ > $@
