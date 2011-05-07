@@ -280,7 +280,7 @@ exit(void)
 
   acquire(&proc->lock); 
 
-  delrun1(runq, proc);   // XXX get lock on runq
+  delrun(proc);
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
@@ -489,14 +489,17 @@ kill(int pid)
   for (c = 0; c < NCPU; c++) {
     acquire(&ptables[c].lock);
     for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
+      acquire(&p->lock);
       if(p->pid == pid){
 	p->killed = 1;
 	// Wake process from sleep if necessary.
 	if(p->state == SLEEPING)
 	  addrun1(&runqs[c], p);
+	acquire(&p->lock);
 	release(&ptables[c].lock);
 	return 0;
       }
+      acquire(&p->lock);
     }
     release(&ptables[c].lock);
   }
