@@ -16,8 +16,6 @@ int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
-// static void wakeup1(struct ptable *pt, void *chan);
-
 void
 pinit(void)
 {
@@ -31,7 +29,7 @@ pinit(void)
 
     for (i = 0; i < NPROC; i++) {
       initlock(&ptables[c].proc[i].lock, ptables[c].proc[i].name);
-      initlock(&ptables[c].proc[i].cv.lock, ptables[c].proc[i].name);
+      initlock(&ptables[c].proc[i].cv.lock, ptables[c].proc[i].name); // XXX cv_init
     }
 
     runqs[c].name[0] = (char) (c + '0');
@@ -99,7 +97,7 @@ addrun1(struct runq *rq, struct proc *p)
       return;
     }
   }
-  p->state = RUNNABLE;   // race?
+  p->state = RUNNABLE;   // XXX race?
   SLIST_INSERT_HEAD(&rq->runq, p, run_next);
 }
 
@@ -229,9 +227,8 @@ fork(void)
 void
 exit(void)
 {
-  struct proc *p;
+  struct proc *p, *np;
   int fd;
-  int c;
   int wakeupinit;
 
   if(proc == initproc)
@@ -252,16 +249,14 @@ exit(void)
 
   // Pass abandoned children to init.
   wakeupinit = 0;
-  for (c = 0; c < NCPU; c++) {
-    acquire(&ptables[c].lock);  // XXX Unscalable
-    for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
-      if(p->parent == proc){
-	p->parent = initproc;
-	if(p->state == ZOMBIE)
+  SLIST_FOREACH_SAFE(p, &proc->childq, child_next, np) {
+    acquire(&p->lock);
+    p->parent = initproc;
+    if(p->state == ZOMBIE)
 	  wakeupinit = 1;
-      }
-    }
-    release(&ptables[c].lock); 
+    SLIST_REMOVE(&proc->childq, p, proc, child_next);
+    SLIST_INSERT_HEAD(&initproc->childq, p, child_next);  // XXX lock?
+    release(&p->lock);
   }
 
   // Parent might be sleeping in wait().
@@ -291,7 +286,7 @@ wait(void)
   cprintf("wait %d\n", proc->pid);
 
   for(;;){
-    // Scan through table looking for zombie children.
+    // Scan children for ZOMBIEs
     havekids = 0;
     acquire(&proc->lock);
     SLIST_FOREACH_SAFE(p, &proc->childq, child_next, np) {
