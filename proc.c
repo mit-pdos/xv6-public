@@ -5,6 +5,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "xv6-mtrace.h"
 
 struct {
   struct spinlock lock;
@@ -257,6 +258,13 @@ void
 scheduler(void)
 {
   struct proc *p;
+  int pid;
+
+  acquire(&ptable.lock);
+  pid = nextpid++;
+  release(&ptable.lock);
+
+  mtrace_fcall_register(pid, (unsigned long)scheduler, 0, mtrace_start);
 
   for(;;){
     // Enable interrupts on this processor.
@@ -274,7 +282,11 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+
+      mtrace_fcall_register(pid, 0, 0, mtrace_pause);
+      mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
       swtch(&cpu->scheduler, proc->context);
+      mtrace_fcall_register(pid, 0, 0, mtrace_resume);
       switchkvm();
 
       // Process is done running for now.
@@ -302,6 +314,8 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = cpu->intena;
+
+  mtrace_fcall_register(proc->pid, 0, 0, mtrace_pause);
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
 }
