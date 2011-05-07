@@ -133,10 +133,12 @@ syscall(void)
     mtrace_fcall_register(proc->pid, (unsigned long)syscalls[num],
 			  0,
 			  mtrace_start);
+    mtrace_call_set(1, cpunum());
     proc->tf->eax = syscalls[num]();
     mtrace_fcall_register(proc->pid, (unsigned long)syscalls[num],
 			  0,
 			  mtrace_done);
+    mtrace_call_set(0, cpunum());
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             proc->pid, proc->name, num);

@@ -264,6 +264,8 @@ scheduler(void)
   pid = nextpid++;
   release(&ptable.lock);
 
+  // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
+  // mtrace_call_set(1, cpunum());
   mtrace_fcall_register(pid, (unsigned long)scheduler, 0, mtrace_start);
 
   for(;;){
@@ -285,8 +287,10 @@ scheduler(void)
 
       mtrace_fcall_register(pid, 0, 0, mtrace_pause);
       mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
+      mtrace_call_set(1, cpunum());
       swtch(&cpu->scheduler, proc->context);
       mtrace_fcall_register(pid, 0, 0, mtrace_resume);
+      mtrace_call_set(0, cpunum());
       switchkvm();
 
       // Process is done running for now.
@@ -316,6 +320,7 @@ sched(void)
   intena = cpu->intena;
 
   mtrace_fcall_register(proc->pid, 0, 0, mtrace_pause);
+  mtrace_call_set(0, cpunum());
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
 }
