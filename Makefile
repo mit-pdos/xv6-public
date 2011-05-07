@@ -201,6 +201,9 @@ bochs : fs.img xv6.img
 mscan.syms: kernel
 	nm -S $< > $@
 
+mscan.kern: kernel
+	cp $< $@
+
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
 # QEMU's gdb stub command line changed in 0.11
@@ -222,7 +225,7 @@ qemu-memfs: xv6memfs.img
 qemu-nox: fs.img xv6.img
 	$(QEMU) -nographic $(QEMUOPTS)
 
-mtrace-nox: fs.img xv6.img mscan.syms
+mtrace-nox: fs.img xv6.img mscan.syms mscan.kern
 	$(MTRACE) -nographic $(QEMUOPTS) $(MTRACEOPTS)
 
 .gdbinit: .gdbinit.tmpl
