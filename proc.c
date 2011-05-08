@@ -238,6 +238,7 @@ wait(void)
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
+        vmap_free(p->vmap);
         p->state = UNUSED;
         p->pid = 0;
         p->parent = 0;
