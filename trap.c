@@ -46,13 +46,10 @@ trap(struct trapframe *tf)
   }
 
   if(tf->trapno == T_PGFLT){
-    cprintf("[%d] page fault for %x\n", cpunum(), rcr2());
     if(pagefault(proc->pgdir, proc->vmap, rcr2()) >= 0){
-      cprintf("[%d] xxx1\n", cpunum());
       switchuvm(proc);
       return;
     }
-    cprintf("[%d] xxx2\n", cpunum());
   }
 
   switch(tf->trapno){

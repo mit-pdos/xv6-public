@@ -503,22 +503,14 @@ copyin(struct vmap *vmap, uint va, void *p, uint len)
 int
 pagefault(pde_t *pgdir, struct vmap *vmap, uint va)
 {
-  cprintf("pagefault\n");
   pte_t *pte = walkpgdir(pgdir, (const void *)va, 1);
-  cprintf("pagefault: 0\n");
-  if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W)) {
-    cprintf("pagefault: 1\n");
+  if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
     return 0;
-  }
 
-  cprintf("pagefault: 1.1\n");
   struct vma *m = vmap_lookup(vmap, va);
-  if(m == 0) {
-    cprintf("pagefault: 2\n");
+  if(m == 0)
     return -1;
-  }
 
-  cprintf("pagefault: 3\n");
   uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
   *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   release(&m->lock);
