@@ -32,7 +32,7 @@ jmpkstack(void)
   if(kstack == 0)
     panic("jmpkstack kalloc");
   top = kstack + PGSIZE;
-  asm volatile("movl %0,%%esp; call mainc" : : "r" (top));
+  __asm volatile("movl %0,%%esp; call mainc" : : "r" (top));
   panic("jmpkstack");
 }
 

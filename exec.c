@@ -10,12 +10,14 @@ int
 exec(char *path, char **argv)
 {
   char *s, *last;
-  int i, off;
-  uint argc, sz, sp, ustack[3+MAXARG+1];
+  int i, off, brk = 0;
+  uint argc, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
-  struct inode *ip;
+  struct inode *ip = 0;
   struct proghdr ph;
-  pde_t *pgdir, *oldpgdir;
+  pde_t *pgdir = 0, *oldpgdir;
+  struct vmap *vmap = 0, *oldvmap;
+  struct vmnode *vmn = 0;
 
   if((ip = namei(path)) == 0)
     return -1;
@@ -31,8 +33,10 @@ exec(char *path, char **argv)
   if((pgdir = setupkvm()) == 0)
     goto bad;
 
+  if((vmap = vmap_alloc()) == 0)
+    goto bad;
+
   // Load program into memory.
-  sz = 0;
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -40,27 +44,50 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
-    if((sz = allocuvm(pgdir, sz, ph.va + ph.memsz)) == 0)
+    if(ph.va % PGSIZE) {
+      cprintf("unaligned ph.va\n");
       goto bad;
-    if(loaduvm(pgdir, (char*)ph.va, ip, ph.offset, ph.filesz) < 0)
+    }
+
+    uint va_start = PGROUNDDOWN(ph.va);
+    uint va_end = PGROUNDUP(ph.va + ph.memsz);
+    if(va_end > brk)
+      brk = va_end;
+
+    int npg = (va_end - va_start) / PGSIZE;
+    if ((vmn = vmn_allocpg(npg)) == 0)
       goto bad;
+    if(vmn_load(vmn, ip, ph.offset, ph.filesz) < 0)
+      goto bad;
+    if(vmap_insert(vmap, vmn, ph.va) < 0)
+      goto bad;
+    vmn = 0;
   }
   iunlockput(ip);
   ip = 0;
 
-  // Allocate a one-page stack at the next page boundary
-  sz = PGROUNDUP(sz);
-  if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
+  // Allocate a vmnode for the heap.
+  if((vmn = vmn_allocpg(1)) == 0)
     goto bad;
+  if(vmap_insert(vmap, vmn, brk) < 0)
+    goto bad;
+  vmn = 0;
+
+  // Allocate a one-page stack at the top of the (user) address space
+  if((vmn = vmn_allocpg(1)) == 0)
+    goto bad;
+  if(vmap_insert(vmap, vmn, USERTOP-PGSIZE) < 0)
+    goto bad;
+  vmn = 0;
 
   // Push argument strings, prepare rest of stack in ustack.
-  sp = sz;
+  sp = USERTOP;
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
       goto bad;
     sp -= strlen(argv[argc]) + 1;
     sp &= ~3;
-    if(copyout(pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
+    if(copyout(vmap, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
     ustack[3+argc] = sp;
   }
@@ -71,7 +98,7 @@ exec(char *path, char **argv)
   ustack[2] = sp - (argc+1)*4;  // argv pointer
 
   sp -= (3+argc+1) * 4;
-  if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
+  if(copyout(vmap, sp, ustack, (3+argc+1)*4) < 0)
     goto bad;
 
   // Save program name for debugging.
@@ -82,12 +109,15 @@ exec(char *path, char **argv)
 
   // Commit to the user image.
   oldpgdir = proc->pgdir;
+  oldvmap = proc->vmap;
   proc->pgdir = pgdir;
-  proc->sz = sz;
+  proc->vmap = vmap;
+  proc->brk = brk;
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
   switchuvm(proc);
   freevm(oldpgdir);
+  vmap_free(oldvmap);
 
   return 0;
 
@@ -96,5 +126,9 @@ exec(char *path, char **argv)
     freevm(pgdir);
   if(ip)
     iunlockput(ip);
+  if(vmap)
+    vmap_free(vmap);
+  if(vmn)
+    vmn_free(vmn);
   return -1;
 }

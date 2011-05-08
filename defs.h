@@ -6,6 +6,7 @@ struct pipe;
 struct proc;
 struct spinlock;
 struct stat;
+struct vmnode;
 
 // bio.c
 void            binit(void);
@@ -157,15 +158,22 @@ void            kvmalloc(void);
 void            vmenable(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
+struct vmnode * vmn_allocpg(uint);
+void            vmn_free(struct vmnode *);
+int             vmn_load(struct vmnode *, struct inode*, uint, uint);
+struct vmap *   vmap_alloc(void);
+void            vmap_free(struct vmap *);
+int             vmap_insert(struct vmap *, struct vmnode *n, uint);
+struct vma *    vmap_lookup(struct vmap *, uint);
+struct vmap *   vmap_copy(struct vmap *);
 int             allocuvm(pde_t*, uint, uint);
 int             deallocuvm(pde_t*, uint, uint);
 void            freevm(pde_t*);
-void            inituvm(pde_t*, char*, uint);
-int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
 pde_t*          copyuvm(pde_t*, uint);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
-int             copyout(pde_t*, uint, void*, uint);
+int             copyout(struct vmap *, uint, void*, uint);
+int             copyin(struct vmap *, uint, void*, uint);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

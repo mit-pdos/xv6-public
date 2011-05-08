@@ -184,40 +184,175 @@ switchuvm(struct proc *p)
   popcli();
 }
 
-// Load the initcode into address 0 of pgdir.
-// sz must be less than a page.
-void
-inituvm(pde_t *pgdir, char *init, uint sz)
+struct {
+  struct vmnode n[128];
+} vmnodes;
+
+struct {
+  struct vmap m[128];
+} vmaps;
+
+struct vmnode *
+vmn_alloc(void)
 {
-  char *mem;
-  
-  if(sz >= PGSIZE)
-    panic("inituvm: more than a page");
-  mem = kalloc();
-  memset(mem, 0, PGSIZE);
-  mappages(pgdir, 0, PGSIZE, PADDR(mem), PTE_W|PTE_U);
-  memmove(mem, init, sz);
+  for(uint i = 0; i < sizeof(vmnodes.n) / sizeof(vmnodes.n[0]); i++) {
+    struct vmnode *n = &vmnodes.n[i];
+    if(n->alloc == 0 && __sync_bool_compare_and_swap(&n->alloc, 0, 1)) {
+      n->npages = 0;
+      n->ref = 0;
+      return n;
+    }
+  }
+  panic("out of vmnodes");
 }
 
-// Load a program segment into pgdir.  addr must be page-aligned
-// and the pages from addr to addr+sz must already be mapped.
-int
-loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
+struct vmnode *
+vmn_allocpg(uint npg)
 {
-  uint i, pa, n;
-  pte_t *pte;
+  struct vmnode *n = vmn_alloc();
+  if(npg > sizeof(n->page) / sizeof(n->page[0]))
+    panic("vmnode too big");
+  for(uint i = 0; i < npg; i++) {
+    if((n->page[i] = kalloc()) == 0) {
+      vmn_free(n);
+      return 0;
+    }
+    memset((char *) n->page[i], 0, PGSIZE);
+    n->npages++;
+  }
+  return n;
+}
 
-  if((uint)addr % PGSIZE != 0)
-    panic("loaduvm: addr must be page aligned");
-  for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walkpgdir(pgdir, addr+i, 0)) == 0)
-      panic("loaduvm: address should exist");
-    pa = PTE_ADDR(*pte);
+void
+vmn_free(struct vmnode *n)
+{
+  for(uint i = 0; i < n->npages; i++)
+    kfree((char *) n->page[i]);
+  n->alloc = 0;
+}
+
+void
+vmn_decref(struct vmnode *n)
+{
+  if(__sync_sub_and_fetch(&n->ref, 1) == 0)
+    vmn_free(n);
+}
+
+struct vmnode *
+vmn_copy(struct vmnode *n)
+{
+  struct vmnode *c = vmn_allocpg(n->npages);
+  if(c != 0)
+    for(uint i = 0; i < n->npages; i++)
+      memmove(c->page[i], n->page[i], PGSIZE);
+  return c;
+}
+
+struct vmap *
+vmap_alloc(void)
+{
+  for(uint i = 0; i < sizeof(vmaps.m) / sizeof(vmaps.m[0]); i++) {
+    struct vmap *m = &vmaps.m[i];
+    if(m->alloc == 0 && __sync_bool_compare_and_swap(&m->alloc, 0, 1)) {
+      for(uint j = 0; j < sizeof(m->e) / sizeof(m->e[0]); j++)
+	m->e[j].n = 0;
+      return m;
+    }
+  }
+  panic("out of vmaps");
+}
+
+void
+vmap_free(struct vmap *m)
+{
+  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++)
+    if(m->e[i].n)
+      vmn_decref(m->e[i].n);
+  m->alloc = 0;
+}
+
+int
+vmap_insert(struct vmap *m, struct vmnode *n, uint va_start)
+{
+  acquire(&m->lock);
+  uint va_end = va_start + n->npages * PGSIZE;
+  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
+    if(m->e[i].n && (m->e[i].va_start < va_end && m->e[i].va_end > va_start)) {
+      release(&m->lock);
+      cprintf("vmap_insert: overlap\n");
+      return -1;
+    }
+  }
+
+  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
+    if(m->e[i].n)
+      continue;
+    __sync_fetch_and_add(&n->ref, 1);
+    m->e[i].va_start = va_start;
+    m->e[i].va_end = va_end;
+    m->e[i].n = n;
+    release(&m->lock);
+    return 0;
+  }
+  release(&m->lock);
+
+  cprintf("vmap_insert: out of vma slots\n");
+  return -1;
+}
+
+struct vma *
+vmap_lookup(struct vmap *m, uint va)
+{
+  acquire(&m->lock);
+  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
+    struct vma *e = &m->e[i];
+    if (va >= e->va_start && va < e->va_end) {
+      acquire(&e->lock);
+      release(&m->lock);
+      return e;
+    }
+  }
+  release(&m->lock);
+  return 0;
+}
+
+struct vmap *
+vmap_copy(struct vmap *m)
+{
+  struct vmap *c = vmap_alloc();
+  if(c == 0)
+    return 0;
+
+  acquire(&m->lock);
+  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
+    if(m->e[i].n == 0)
+      continue;
+    c->e[i].va_start = m->e[i].va_start;
+    c->e[i].va_end = m->e[i].va_end;
+    c->e[i].n = vmn_copy(m->e[i].n);
+    if(c->e[i].n == 0) {
+      release(&m->lock);
+      vmap_free(c);
+      return 0;
+    }
+    __sync_fetch_and_add(&c->e[i].n->ref, 1);
+  }
+  release(&m->lock);
+  return c;
+}
+
+// Load a program segment into a vmnode.
+int
+vmn_load(struct vmnode *vmn, struct inode *ip, uint offset, uint sz)
+{
+  for(uint i = 0; i < sz; i += PGSIZE){
+    uint n;
+    char *p = vmn->page[i / PGSIZE];
     if(sz - i < PGSIZE)
       n = sz - i;
     else
       n = PGSIZE;
-    if(readi(ip, (char*)pa, offset+i, n) != n)
+    if(readi(ip, p, offset+i, n) != n)
       return -1;
   }
   return 0;
@@ -270,7 +405,7 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       pa = PTE_ADDR(*pte);
       if(pa == 0)
         panic("kfree");
-      kfree((char*)pa);
+      kfree((char*)pa);  // assuming pa==va
       *pte = 0;
     }
   }
@@ -340,28 +475,56 @@ uva2ka(pde_t *pgdir, char *uva)
   return (char*)PTE_ADDR(*pte);
 }
 
-// Copy len bytes from p to user address va in page table pgdir.
-// Most useful when pgdir is not the current page table.
-// uva2ka ensures this only works for PTE_U pages.
+// Copy len bytes from p to user address va in vmap.
+// Most useful when vmap is not the current page table.
 int
-copyout(pde_t *pgdir, uint va, void *p, uint len)
+copyout(struct vmap *vmap, uint va, void *p, uint len)
 {
-  char *buf, *pa0;
-  uint n, va0;
-  
-  buf = (char*)p;
+  char *buf = (char*)p;
   while(len > 0){
-    va0 = (uint)PGROUNDDOWN(va);
-    pa0 = uva2ka(pgdir, (char*)va0);
-    if(pa0 == 0)
+    uint va0 = (uint)PGROUNDDOWN(va);
+    struct vma *vma = vmap_lookup(vmap, va);
+    if(vma == 0)
       return -1;
-    n = PGSIZE - (va - va0);
+
+    uint pn = (va0 - vma->va_start) / PGSIZE;
+    char *p0 = vma->n->page[pn];
+    if(p0 == 0)
+      panic("copyout: missing page");
+    uint n = PGSIZE - (va - va0);
     if(n > len)
       n = len;
-    memmove(pa0 + (va - va0), buf, n);
+    memmove(p0 + (va - va0), buf, n);
     len -= n;
     buf += n;
     va = va0 + PGSIZE;
+    release(&vma->lock);
+  }
+  return 0;
+}
+
+int
+copyin(struct vmap *vmap, uint va, void *p, uint len)
+{
+  char *buf = (char*)p;
+  while(len > 0){
+    uint va0 = (uint)PGROUNDDOWN(va);
+    struct vma *vma = vmap_lookup(vmap, va);
+    if(vma == 0)
+      return -1;
+
+    uint pn = (va0 - vma->va_start) / PGSIZE;
+    char *p0 = vma->n->page[pn];
+    if(p0 == 0)
+      panic("copyout: missing page");
+    uint n = PGSIZE - (va - va0);
+    if(n > len)
+      n = len;
+    memmove(buf, p0 + (va - va0), n);
+    len -= n;
+    buf += n;
+    va = va0 + PGSIZE;
+    release(&vma->lock);
   }
   return 0;
 }

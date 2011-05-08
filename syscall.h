@@ -20,3 +20,5 @@
 #define SYS_sbrk   19
 #define SYS_sleep  20
 #define SYS_uptime 21
+#define SYS_map    22
+#define SYS_unmap  23

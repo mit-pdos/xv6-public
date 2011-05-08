@@ -1,3 +1,5 @@
+#include "spinlock.h"
+
 // Segments in proc->gdt.
 // Also known to bootasm.S and trapasm.S
 #define SEG_KCODE 1  // kernel code
@@ -34,8 +36,8 @@ extern int ncpu;
 // holding those two variables in the local cpu's struct cpu.
 // This is similar to how thread-local variables are implemented
 // in thread libraries such as Linux pthreads.
-extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
-extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
+extern struct cpu *cpu __asm("%gs:0");       // &cpus[cpunum()]
+extern struct proc *proc __asm("%gs:4");     // cpus[cpunum()].proc
 
 //PAGEBREAK: 17
 // Saved registers for kernel context switches.
@@ -58,10 +60,32 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+// Virtual memory
+struct vmnode {
+  uint npages;
+  char *page[32];
+  uint ref;
+  uint alloc;
+};
+
+struct vma {
+  uint va_start;               // start of mapping
+  uint va_end;                 // one past the last byte
+  struct vmnode *n;
+  struct spinlock lock;        // serialize fault/unmap
+};
+
+struct vmap {
+  struct vma e[16];
+  struct spinlock lock;        // serialize map/lookup/unmap
+  uint alloc;
+};
+
 // Per-process state
 struct proc {
-  uint sz;                     // Size of process memory (bytes)
+  struct vmap *vmap;           // va -> vma
   pde_t* pgdir;                // Page table
+  uint brk;                    // Top of heap
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   volatile int pid;            // Process ID
