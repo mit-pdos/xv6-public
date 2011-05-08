@@ -29,7 +29,7 @@ pinit(void)
 
     for (i = 0; i < NPROC; i++) {
       initlock(&ptables[c].proc[i].lock, ptables[c].proc[i].name);
-      initcondvar(&ptables[c].proc[i].cv, ptables[c].proc[i].name); // XXX cv_init
+      initcondvar(&ptables[c].proc[i].cv, ptables[c].proc[i].name);
     }
 
     runqs[c].name[0] = (char) (c + '0');
@@ -89,7 +89,6 @@ static void
 addrun1(struct runq *rq, struct proc *p)
 {
   struct proc *q;
-  cprintf("%d: add to run %d\n", cpu->id, p->pid);
   SLIST_FOREACH(q, &rq->runq, run_next) {
     if (q == p) {
       cprintf("allready on q\n");
@@ -105,7 +104,7 @@ void
 addrun(struct proc *p)
 {
   acquire(&runq->lock);
-  cprintf("%d: addrun %d\n", cpunum(), p->pid);
+  // cprintf("%d: addrun %d\n", cpunum(), p->pid);
   addrun1(runq, p);
   release(&runq->lock);
 }
@@ -126,7 +125,7 @@ void
 delrun(struct proc *p)
 {
   acquire(&runq->lock);
-  cprintf("%d: delrun %d\n", cpunum(), p->pid);
+  // cprintf("%d: delrun %d\n", cpunum(), p->pid);
   delrun1(runq, p);
   release(&runq->lock);
 }
@@ -188,8 +187,6 @@ fork(void)
   int i, pid;
   struct proc *np;
 
-  cprintf("%d: fork\n", cpunum());
-
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
@@ -245,8 +242,6 @@ exit(void)
   iput(proc->cwd);
   proc->cwd = 0;
 
-  cprintf("%d: exit %s(%d)\n", cpunum(), proc->name, proc->pid);
-
   // Pass abandoned children to init.
   wakeupinit = 0;
   SLIST_FOREACH_SAFE(p, &proc->childq, child_next, np) {
@@ -282,8 +277,6 @@ wait(void)
 {
   struct proc *p, *np;
   int havekids, pid;
-
-  cprintf("wait %d\n", proc->pid);
 
   for(;;){
     // Scan children for ZOMBIEs
@@ -384,7 +377,7 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
-      cprintf("%d: running %d\n", cpu->id, p->pid);
+      //      cprintf("%d: running %d\n", cpu->id, p->pid);
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 

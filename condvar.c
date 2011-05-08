@@ -26,8 +26,6 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
   // Must acquire cv_lock to avoid sleep/wakeup race
   acquire(&cv->lock); 
 
-  cprintf("cv_sleep: 0x%x %s\n", cv, cv->lock.name);
-
   release(lk);
 
   if (cv->waiters != 0)
@@ -53,7 +51,6 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
   cv->waiters = 0;
 
   // Reacquire original lock.
-  cprintf("acquire %s\n", lk->name);
   acquire(lk);
 
   release(&cv->lock);
@@ -64,7 +61,6 @@ cv_wakeup(struct condvar *cv)
 {
   acquire(&cv->lock);
   if (cv->waiters != 0) {
-    cprintf("wakeup 0x%x %d\n", cv, cv->waiters->pid);
     addrun(cv->waiters);
   }
   release(&cv->lock);

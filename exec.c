@@ -20,8 +20,6 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
 
-  cprintf("%d: exec %s\n", cpunum(), path);
-
   if((ip = namei(path)) == 0)
     return -1;
   ilock(ip);
