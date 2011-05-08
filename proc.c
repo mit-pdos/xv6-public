@@ -389,23 +389,6 @@ scheduler(void)
       acquire(&runq->lock);
     }
     release(&runq->lock);
-    
-#if 0
-    struct proc *q
-    for (p = &ptable->proc[0]; p < &ptable->proc[NPROC]; p++) {
-      if (p->state == RUNNABLE) {
-	// XXX check all runqueue
-	for(q = ptable->runq; q != 0; q = q->next) {
-	  if (p == q) 
-	    break;
-	}
-	if (q == 0) {
-	  procdumpall();
-	  panic("scheduler proc runnable but not on runqueue\n");
-	}
-      }
-    }
-#endif
 
     steal();
   }
