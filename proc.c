@@ -29,7 +29,7 @@ pinit(void)
 
     for (i = 0; i < NPROC; i++) {
       initlock(&ptables[c].proc[i].lock, ptables[c].proc[i].name);
-      initlock(&ptables[c].proc[i].cv.lock, ptables[c].proc[i].name); // XXX cv_init
+      initcondvar(&ptables[c].proc[i].cv, ptables[c].proc[i].name); // XXX cv_init
     }
 
     runqs[c].name[0] = (char) (c + '0');

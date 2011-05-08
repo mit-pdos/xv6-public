@@ -282,7 +282,7 @@ consoleinit(void)
 {
   initlock(&cons.lock, "console");
   initlock(&input.lock, "input");
-  initlock(&input.cv.lock, "input");
+  initcondvar(&input.cv, "input");
 
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;

@@ -54,7 +54,7 @@ binit(void)
     b->dev = -1;
     bcache.head.next->prev = b;
     bcache.head.next = b;
-    initlock(&b->cv.lock, "bache");
+    initcondvar(&b->cv, "bache");
   }
 }
 

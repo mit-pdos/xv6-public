@@ -15,6 +15,7 @@ void            brelse(struct buf*);
 void            bwrite(struct buf*);
 
 // condvar.c
+void            initcondvar(struct condvar *, char *);
 void            cv_sleep(struct condvar *cv, struct spinlock*);
 void            cv_wakeup(struct condvar *cv);
 

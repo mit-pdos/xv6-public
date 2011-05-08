@@ -9,6 +9,12 @@
 #include "proc.h"
 
 void
+initcondvar(struct condvar *cv, char *n)
+{
+  initlock(&cv->lock, n);
+}
+
+void
 cv_sleep(struct condvar *cv, struct spinlock *lk)
 {
   if(proc == 0)

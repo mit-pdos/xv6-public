@@ -142,7 +142,7 @@ iinit(void)
   int i;
   initlock(&icache.lock, "icache");
   for (i = 0; i < NINODE; i++) {
-    initlock(&icache.inode[i].cv.lock, "icache");
+    initcondvar(&icache.inode[i].cv, "icache");
   }
 }
 
