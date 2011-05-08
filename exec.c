@@ -67,7 +67,8 @@ exec(char *path, char **argv)
   ip = 0;
 
   // Allocate a vmnode for the heap.
-  if((vmn = vmn_allocpg(1)) == 0)
+  // XXX pre-allocate 32 pages..
+  if((vmn = vmn_allocpg(32)) == 0)
     goto bad;
   if(vmap_insert(vmap, vmn, brk) < 0)
     goto bad;
@@ -112,7 +113,7 @@ exec(char *path, char **argv)
   oldvmap = proc->vmap;
   proc->pgdir = pgdir;
   proc->vmap = vmap;
-  proc->brk = brk;
+  proc->brk = brk + 4;  // XXX so that brk-1 points within heap vma..
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
   switchuvm(proc);

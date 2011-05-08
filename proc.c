@@ -116,13 +116,19 @@ growproc(int n)
   uint brk = proc->brk;
   uint nbrk = brk + n;
 
-  /* XXX */
-  if(brk / PGSIZE != nbrk / PGSIZE) {
-    cprintf("cannot resize heap\n");
+  struct vma *vma = vmap_lookup(proc->vmap, brk-1);
+  if(vma == 0)
+    return -1;
+
+  if(nbrk > vma->va_end){
+    /* XXX */
+    release(&vma->lock);
+    cprintf("cannot resize heap: %d -> %d\n", brk, nbrk);
     return -1;
   }
 
   proc->brk = brk + n;
+  release(&vma->lock);
   switchuvm(proc);
   return 0;
 }

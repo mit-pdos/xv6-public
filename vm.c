@@ -185,7 +185,7 @@ switchuvm(struct proc *p)
 }
 
 struct {
-  struct vmnode n[128];
+  struct vmnode n[1024];
 } vmnodes;
 
 struct {
