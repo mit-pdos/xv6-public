@@ -45,6 +45,16 @@ trap(struct trapframe *tf)
     return;
   }
 
+  if(tf->trapno == T_PGFLT){
+    cprintf("[%d] page fault for %x\n", cpunum(), rcr2());
+    if(pagefault(proc->pgdir, proc->vmap, rcr2()) >= 0){
+      cprintf("[%d] xxx1\n", cpunum());
+      switchuvm(proc);
+      return;
+    }
+    cprintf("[%d] xxx2\n", cpunum());
+  }
+
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpu->id == 0){

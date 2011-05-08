@@ -210,8 +210,10 @@ struct vmnode *
 vmn_allocpg(uint npg)
 {
   struct vmnode *n = vmn_alloc();
-  if(npg > sizeof(n->page) / sizeof(n->page[0]))
-    panic("vmnode too big");
+  if(npg > sizeof(n->page) / sizeof(n->page[0])) {
+    cprintf("vmnode too big: %d\n", npg);
+    return 0;
+  }
   for(uint i = 0; i < npg; i++) {
     if((n->page[i] = kalloc()) == 0) {
       vmn_free(n);
@@ -429,37 +431,6 @@ freevm(pde_t *pgdir)
   kfree((char*)pgdir);
 }
 
-// Given a parent process's page table, create a copy
-// of it for a child.
-pde_t*
-copyuvm(pde_t *pgdir, uint sz)
-{
-  pde_t *d;
-  pte_t *pte;
-  uint pa, i;
-  char *mem;
-
-  if((d = setupkvm()) == 0)
-    return 0;
-  for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
-      panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
-    pa = PTE_ADDR(*pte);
-    if((mem = kalloc()) == 0)
-      goto bad;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
-      goto bad;
-  }
-  return d;
-
-bad:
-  freevm(d);
-  return 0;
-}
-
 //PAGEBREAK!
 // Map user virtual address to kernel physical address.
 char*
@@ -527,4 +498,29 @@ copyin(struct vmap *vmap, uint va, void *p, uint len)
     release(&vma->lock);
   }
   return 0;
+}
+
+int
+pagefault(pde_t *pgdir, struct vmap *vmap, uint va)
+{
+  cprintf("pagefault\n");
+  pte_t *pte = walkpgdir(pgdir, (const void *)va, 1);
+  cprintf("pagefault: 0\n");
+  if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W)) {
+    cprintf("pagefault: 1\n");
+    return 0;
+  }
+
+  cprintf("pagefault: 1.1\n");
+  struct vma *m = vmap_lookup(vmap, va);
+  if(m == 0) {
+    cprintf("pagefault: 2\n");
+    return -1;
+  }
+
+  cprintf("pagefault: 3\n");
+  uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
+  *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+  release(&m->lock);
+  return 1;
 }

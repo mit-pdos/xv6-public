@@ -86,7 +86,7 @@ userinit(void)
     panic("userinit: out of memory?");
   if((p->vmap = vmap_alloc()) == 0)
     panic("userinit: out of vmaps?");
-  struct vmnode *vmn = vmn_allocpg(PGROUNDUP((int)_binary_initcode_size));
+  struct vmnode *vmn = vmn_allocpg(PGROUNDUP((int)_binary_initcode_size) / PGSIZE);
   if(vmn == 0)
     panic("userinit: vmn_allocpg");
   if(vmap_insert(p->vmap, vmn, 0) < 0)
