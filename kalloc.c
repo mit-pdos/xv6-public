@@ -67,6 +67,7 @@ kalloc(void)
   if(r)
     kmem.freelist = r->next;
   release(&kmem.lock);
+  memset(r, 2, PGSIZE);
   return (char*)r;
 }
 
