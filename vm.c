@@ -228,8 +228,10 @@ vmn_allocpg(uint npg)
 void
 vmn_free(struct vmnode *n)
 {
-  for(uint i = 0; i < n->npages; i++)
+  for(uint i = 0; i < n->npages; i++) {
     kfree((char *) n->page[i]);
+    n->page[i] = 0;
+  }
   n->alloc = 0;
 }
 
@@ -360,60 +362,6 @@ vmn_load(struct vmnode *vmn, struct inode *ip, uint offset, uint sz)
   return 0;
 }
 
-// Allocate page tables and physical memory to grow process from oldsz to
-// newsz, which need not be page aligned.  Returns new size or 0 on error.
-int
-allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
-{
-  char *mem;
-  uint a;
-
-  if(newsz > USERTOP)
-    return 0;
-  if(newsz < oldsz)
-    return oldsz;
-
-  a = PGROUNDUP(oldsz);
-  for(; a < newsz; a += PGSIZE){
-    mem = kalloc();
-    if(mem == 0){
-      cprintf("allocuvm out of memory\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      return 0;
-    }
-    memset(mem, 0, PGSIZE);
-    mappages(pgdir, (char*)a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
-  }
-  return newsz;
-}
-
-// Deallocate user pages to bring the process size from oldsz to
-// newsz.  oldsz and newsz need not be page-aligned, nor does newsz
-// need to be less than oldsz.  oldsz can be larger than the actual
-// process size.  Returns the new process size.
-int
-deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
-{
-  pte_t *pte;
-  uint a, pa;
-
-  if(newsz >= oldsz)
-    return oldsz;
-
-  a = PGROUNDUP(newsz);
-  for(; a  < oldsz; a += PGSIZE){
-    pte = walkpgdir(pgdir, (char*)a, 0);
-    if(pte && (*pte & PTE_P) != 0){
-      pa = PTE_ADDR(*pte);
-      if(pa == 0)
-        panic("kfree");
-      kfree((char*)pa);  // assuming pa==va
-      *pte = 0;
-    }
-  }
-  return newsz;
-}
-
 // Free a page table and all the physical memory pages
 // in the user part.
 void
@@ -423,7 +371,6 @@ freevm(pde_t *pgdir)
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
-  deallocuvm(pgdir, USERTOP, 0);
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P)
       kfree((char*)PTE_ADDR(pgdir[i]));

@@ -166,8 +166,6 @@ void            vmap_free(struct vmap *);
 int             vmap_insert(struct vmap *, struct vmnode *n, uint);
 struct vma *    vmap_lookup(struct vmap *, uint);
 struct vmap *   vmap_copy(struct vmap *);
-int             allocuvm(pde_t*, uint, uint);
-int             deallocuvm(pde_t*, uint, uint);
 void            freevm(pde_t*);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
