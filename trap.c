@@ -47,6 +47,13 @@ trap(struct trapframe *tf)
     return;
   }
 
+  if(tf->trapno == T_PGFLT){
+    if(pagefault(proc->pgdir, proc->vmap, rcr2()) >= 0){
+      switchuvm(proc);
+      return;
+    }
+  }
+
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpu->id == 0){
