@@ -265,8 +265,11 @@ vmap_alloc(void)
   for(uint i = 0; i < sizeof(vmaps.m) / sizeof(vmaps.m[0]); i++) {
     struct vmap *m = &vmaps.m[i];
     if(m->alloc == 0 && __sync_bool_compare_and_swap(&m->alloc, 0, 1)) {
-      for(uint j = 0; j < sizeof(m->e) / sizeof(m->e[0]); j++)
+      for(uint j = 0; j < sizeof(m->e) / sizeof(m->e[0]); j++){
 	m->e[j].n = 0;
+	m->e[j].lock.name = "vma";
+      }
+      m->lock.name = "vmap";
       return m;
     }
   }
