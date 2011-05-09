@@ -27,14 +27,12 @@ void
 acquire(struct spinlock *lk)
 {
   pushcli(); // disable interrupts to avoid deadlock.
-  if(holding(lk)) {
-    cprintf("lock: %s\n", lk->name);
+  if(holding(lk))
     panic("acquire");
-  }
 
   mtrace_lock_register(RET_EIP(),
 		       lk,
-		       lk->name,
+		       lk->name ?: "null",
 		       mtrace_lockop_acquire,
 		       0);
 
@@ -46,7 +44,7 @@ acquire(struct spinlock *lk)
 
   mtrace_lock_register(RET_EIP(),
 		       lk,
-		       lk->name,
+		       lk->name ?: "null",
 		       mtrace_lockop_acquired,
 		       0);
 
@@ -66,7 +64,7 @@ release(struct spinlock *lk)
 
   mtrace_lock_register(RET_EIP(),
 		       lk,
-		       lk->name,
+		       lk->name ?: "null",
 		       mtrace_lockop_release,
 		       0);
 
