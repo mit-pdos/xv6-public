@@ -146,8 +146,15 @@ userinit(void)
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
-  inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
-  p->sz = PGSIZE;
+  if((p->vmap = vmap_alloc()) == 0)
+    panic("userinit: out of vmaps?");
+  struct vmnode *vmn = vmn_allocpg(PGROUNDUP((int)_binary_initcode_size) / PGSIZE);
+  if(vmn == 0)
+    panic("userinit: vmn_allocpg");
+  if(vmap_insert(p->vmap, vmn, 0) < 0)
+    panic("userinit: vmap_insert");
+  if(copyout(p->vmap, 0, _binary_initcode_start, (int)_binary_initcode_size) < 0)
+    panic("userinit: copyout");
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -167,17 +174,22 @@ userinit(void)
 int
 growproc(int n)
 {
-  uint sz;
-  
-  sz = proc->sz;
-  if(n > 0){
-    if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
-      return -1;
-  } else if(n < 0){
-    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0)
-      return -1;
+  uint brk = proc->brk;
+  uint nbrk = brk + n;
+
+  struct vma *vma = vmap_lookup(proc->vmap, brk-1);
+  if(vma == 0)
+    return -1;
+
+  if(nbrk > vma->va_end){
+    /* XXX */
+    release(&vma->lock);
+    cprintf("cannot resize heap: %d -> %d\n", brk, nbrk);
+    return -1;
   }
-  proc->sz = sz;
+
+  proc->brk = brk + n;
+  release(&vma->lock);
   switchuvm(proc);
   return 0;
 }
@@ -195,14 +207,22 @@ fork(void)
   if((np = allocproc()) == 0)
     return -1;
 
-  // Copy process state from p.
-  if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
+  if((np->pgdir = setupkvm()) == 0){
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
     return -1;
   }
-  np->sz = proc->sz;
+
+  // Copy process state from p.
+  if((np->vmap = vmap_copy(proc->vmap)) == 0){
+    freevm(np->pgdir);
+    kfree(np->kstack);
+    np->kstack = 0;
+    np->state = UNUSED;
+    return -1;
+  }
+  np->brk = proc->brk;
   np->parent = proc;
   *np->tf = *proc->tf;
 
@@ -295,6 +315,7 @@ wait(void)
 	  kfree(p->kstack);
 	  p->kstack = 0;
 	  freevm(p->pgdir);
+	  vmap_free(p->vmap);
 	  p->state = UNUSED;
 	  p->pid = 0;
 	  p->parent = 0;

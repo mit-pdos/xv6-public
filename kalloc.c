@@ -102,6 +102,7 @@ kalloc(void)
   release(&kmem->lock);
   if (r == 0)
       cprintf("%d: kalloc out\n", cpunum());
+  memset(r, 2, PGSIZE);
   return (char*)r;
 }
 
