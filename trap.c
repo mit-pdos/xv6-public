@@ -47,13 +47,6 @@ trap(struct trapframe *tf)
     return;
   }
 
-  if(tf->trapno == T_PGFLT){
-    if(pagefault(proc->pgdir, proc->vmap, rcr2()) >= 0){
-      switchuvm(proc);
-      return;
-    }
-  }
-
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpu->id == 0){
@@ -94,6 +87,14 @@ trap(struct trapframe *tf)
               tf->trapno, cpu->id, tf->eip, rcr2());
       panic("trap");
     }
+
+    if(tf->trapno == T_PGFLT){
+      if(pagefault(proc->pgdir, proc->vmap, rcr2()) >= 0){
+        switchuvm(proc);
+        return;
+      }
+    }
+
     // In user space, assume process misbehaved.
     cprintf("pid %d %s: trap %d err %d on cpu %d "
             "eip 0x%x addr 0x%x--kill proc\n",
