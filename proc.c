@@ -12,7 +12,6 @@ struct ptable ptables[NCPU];
 struct runq runqs[NCPU];
 static struct proc *initproc;
 
-int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
@@ -23,6 +22,8 @@ pinit(void)
   int i;
 
   for (c = 0; c < NCPU; c++) {
+    ptables[c].nextpid = 1;
+
     ptables[c].name[0] = (char) (c + '0');
     safestrcpy(ptables[c].name+1, "ptable", MAXNAME-1);
     initlock(&ptables[c].lock, ptables[c].name);
@@ -48,6 +49,7 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
+  int pid;
 
   acquire(&ptable->lock);
   for(p = ptable->proc; p < &ptable->proc[NPROC]; p++)
@@ -57,8 +59,9 @@ allocproc(void)
   return 0;
 
 found:
+  pid = ptable->nextpid++;
   p->state = EMBRYO;
-  p->pid = nextpid++;   // XXX global var!
+  p->pid = (cpu->id & 0xFFFF) << 16 | (pid & 0xFFFF);
   release(&ptable->lock);
 
   // Allocate kernel stack if possible.

@@ -72,8 +72,8 @@ struct cpu {
   struct cpu *cpu;
   struct proc *proc;           // The currently-running process.
   struct ptable *ptable;       // The per-core proc table
-  struct kmem *kmem;           // The per-core proc table
-  struct runq *runq;           // The per-core proc table
+  struct kmem *kmem;           // The per-core memory table
+  struct runq *runq;           // The per-core runq
 };
 
 struct runq {
@@ -87,6 +87,7 @@ struct ptable {
   struct spinlock lock;
   struct proc proc[NPROC];
   struct proc *runq;
+  int nextpid;
 };
 
 struct condtab {
