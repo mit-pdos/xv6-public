@@ -14,3 +14,6 @@ initcode.out
 kernel
 mkfs
 .gdbinit
+mtrace.out
+mscan.syms
+mscan.kern

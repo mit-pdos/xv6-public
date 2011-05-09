@@ -7,6 +7,7 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
+#include "xv6-mtrace.h"
 
 struct ptable ptables[NCPU];
 struct runq runqs[NCPU];
@@ -358,6 +359,15 @@ void
 scheduler(void)
 {
   struct proc *p;
+  int pid;
+
+  acquire(&ptable.lock);
+  pid = nextpid++;
+  release(&ptable.lock);
+
+  // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
+  // mtrace_call_set(1, cpunum());
+  mtrace_fcall_register(pid, (unsigned long)scheduler, 0, mtrace_start);
 
   for(;;){
     // Enable interrupts on this processor.
@@ -380,8 +390,12 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
-      //      cprintf("%d: running %d\n", cpu->id, p->pid);
+      mtrace_fcall_register(pid, 0, 0, mtrace_pause);
+      mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
+      mtrace_call_set(1, cpunum());
       swtch(&cpu->scheduler, proc->context);
+      mtrace_fcall_register(pid, 0, 0, mtrace_resume);
+      mtrace_call_set(0, cpunum());
       switchkvm();
 
       // Process is done running for now.
@@ -413,6 +427,9 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = cpu->intena;
+
+  mtrace_fcall_register(proc->pid, 0, 0, mtrace_pause);
+  mtrace_call_set(0, cpunum());
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
 }
