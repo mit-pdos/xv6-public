@@ -23,8 +23,7 @@ pinit(void)
   int i;
 
   for (c = 0; c < NCPU; c++) {
-    ptables[c].nextpid = 1;
-
+    ptables[c].nextpid = (c << 16) | (1);
     ptables[c].name[0] = (char) (c + '0');
     safestrcpy(ptables[c].name+1, "ptable", MAXNAME-1);
     initlock(&ptables[c].lock, ptables[c].name);
@@ -50,7 +49,6 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
-  int pid;
 
   acquire(&ptable->lock);
   for(p = ptable->proc; p < &ptable->proc[NPROC]; p++)
@@ -60,9 +58,8 @@ allocproc(void)
   return 0;
 
 found:
-  pid = ptable->nextpid++;
   p->state = EMBRYO;
-  p->pid = (cpu->id & 0xFFFF) << 16 | (pid & 0xFFFF);
+  p->pid = ptable->nextpid++;
   release(&ptable->lock);
 
   // Allocate kernel stack if possible.
@@ -382,9 +379,9 @@ scheduler(void)
   struct proc *p;
   int pid;
 
-  acquire(&ptable.lock);
-  pid = nextpid++;
-  release(&ptable.lock);
+  acquire(&ptable->lock);
+  pid = ptable->nextpid++;
+  release(&ptable->lock);
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpunum());
