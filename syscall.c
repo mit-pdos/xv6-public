@@ -18,12 +18,12 @@
 
 // Fetch the int at addr from process p.
 int
-fetchint(struct proc *p, uint addr, int *ip)
+fetchint(uint addr, int *ip)
 {
-#if 0 /* XXX use pagefault() */
-  if(addr >= p->sz || addr+4 > p->sz)
+  if(pagefault(proc->pgdir, proc->vmap, addr) < 0)
     return -1;
-#endif
+  if(pagefault(proc->pgdir, proc->vmap, addr+3) < 0)
+    return -1;
   *ip = *(int*)(addr);
   return 0;
 }
@@ -32,23 +32,19 @@ fetchint(struct proc *p, uint addr, int *ip)
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
 int
-fetchstr(struct proc *p, uint addr, char **pp)
+fetchstr(uint addr, char **pp)
 {
-  char *s, *ep;
+  char *s = (char *) addr;
 
-#if 0 /* XXX use pagefault() */
-  if(addr >= p->sz)
-    return -1;
-#endif
-  *pp = (char*)addr;
-#if 0 /* XXX use pagefault() */
-  ep = (char*)p->sz;
-#else
-  ep = (char *) 0xffffffff;
-#endif
-  for(s = *pp; s < ep; s++)
-    if(*s == 0)
+  while(1){
+    if(pagefault(proc->pgdir, proc->vmap, (uint) s) < 0)
+      return -1;
+    if(*s == 0){
+      *pp = (char*)addr;
       return s - *pp;
+    }
+    s++;
+  }
   return -1;
 }
 
@@ -56,7 +52,7 @@ fetchstr(struct proc *p, uint addr, char **pp)
 int
 argint(int n, int *ip)
 {
-  return fetchint(proc, proc->tf->esp + 4 + 4*n, ip);
+  return fetchint(proc->tf->esp + 4 + 4*n, ip);
 }
 
 // Fetch the nth word-sized system call argument as a pointer
@@ -69,10 +65,9 @@ argptr(int n, char **pp, int size)
   
   if(argint(n, &i) < 0)
     return -1;
-#if 0 /* XXX use pagefault() */
-  if((uint)i >= proc->sz || (uint)i+size > proc->sz)
-    return -1;
-#endif
+  for(uint va = PGROUNDDOWN(i); va < i+size; va = va + PGSIZE)
+    if(pagefault(proc->pgdir, proc->vmap, va) < 0)
+      return -1;
   *pp = (char*)i;
   return 0;
 }
@@ -87,7 +82,7 @@ argstr(int n, char **pp)
   int addr;
   if(argint(n, &addr) < 0)
     return -1;
-  return fetchstr(proc, addr, pp);
+  return fetchstr(addr, pp);
 }
 
 extern int sys_chdir(void);
