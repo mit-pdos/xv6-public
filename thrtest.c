@@ -7,7 +7,7 @@
 
 static struct uspinlock l;
 static volatile uint tcount;
-enum { nthread = 1 };
+enum { nthread = 4 };
 
 void
 thr(uint arg)
@@ -23,7 +23,7 @@ int
 main(void)
 {
   acquire(&l);
-  printf(1, "thrtest[%d]: start\n", getpid());
+  printf(1, "thrtest[%d]: start esp %x\n", getpid(), resp());
 
   for(uint i = 0; i < nthread; i++) {
     sbrk(4096);
@@ -31,16 +31,23 @@ main(void)
     tstack[-1] = 0xc0ffee00 | i;
 
     int tid = forkt(&tstack[-2], thr);
-    printf(1, "thrtest[%d]: child %d esp %x\n", getpid(), tid, resp());
+    printf(1, "thrtest[%d]: child %d\n", getpid(), tid);
   }
 
+  for(;;){
+    uint lastc = tcount;
+    printf(1, "thrtest[%d]: tcount=%d\n", getpid(), lastc);
+    release(&l);
+    if(lastc==nthread)
+      break;
+    while(tcount==lastc)
+      __asm __volatile("");
+    acquire(&l);
+  }
   release(&l);
-  exit();
+  printf(1, "thrtest[%d]: done\n", getpid());
 
-  do{
-    printf(1, "thrtest[%d]: %d\n", getpid(), tcount);
-    for(uint i = 0; i < 100000; i++)
-      ;
-    //sleep(1);
-  }while(tcount < nthread);
+  for(uint i = 0; i < nthread; i++)
+    wait();
+  exit();
 }

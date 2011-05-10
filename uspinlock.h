@@ -2,7 +2,7 @@
 #include "x86.h"
 
 struct uspinlock {
-  uint locked;       // Is the lock held?
+  volatile uint locked;       // Is the lock held?
 };
 
 static void inline __attribute__((always_inline))
