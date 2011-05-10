@@ -357,7 +357,7 @@ steal(void)
     acquire(&runqs[c].lock);
     SLIST_FOREACH(p, &runqs[c].runq, run_next) {
       if (p->state == RUNNABLE) {
-	cprintf("%d: steal %d from %d\n", cpunum(), p->pid, c);
+	//cprintf("%d: steal %d from %d\n", cpunum(), p->pid, c);
 	delrun1(&runqs[c], p);
 	addrun(p);
 	r = 1;
