@@ -29,7 +29,7 @@ OBJS = \
 	vm.o\
 
 # Cross-compiling (e.g., on Mac OS X)
-#TOOLPREFIX = i386-jos-elf-
+TOOLPREFIX = x86_64-jos-elf-
 
 # Using native tools (e.g., on X86 Linux)
 #TOOLPREFIX = 
@@ -51,8 +51,8 @@ TOOLPREFIX := $(shell if i386-jos-elf-objdump -i 2>&1 | grep '^elf32-i386$$' >/d
 endif
 
 # The i386 ('qemu') mtrace doesn't work, but 'qemu-system-x86_64' mtrace works.
-MTRACE = qemu-system-x86_64
-QEMUSRC ?=
+MTRACE = ../mtrace/x86_64-softmmu/qemu-system-x86_64
+QEMUSRC = ../mtrace
 
 ifeq ($(QEMUSRC),)
 $(error You need to set QEMUSRC (e.g. make QEMUSRC=~/qemu))
@@ -75,12 +75,13 @@ QEMU = $(shell if which qemu > /dev/null; \
 	echo "***" 1>&2; exit 1)
 endif
 
+NM = $(TOOLPREFIX)nm
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -I$(QEMUSRC) -std=c99 -fms-extensions
+CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -I$(QEMUSRC) -std=c99 -fms-extensions -mno-sse
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ASFLAGS = -m32 -gdwarf-2
 # FreeBSD ld wants ``elf_i386_fbsd''
@@ -202,7 +203,7 @@ bochs : fs.img xv6.img
 	bochs -q
 
 mscan.syms: kernel
-	nm -S $< > $@
+	$(NM) -S $< > $@
 
 mscan.kern: kernel
 	cp $< $@
