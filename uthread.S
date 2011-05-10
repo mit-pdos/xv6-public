@@ -15,8 +15,8 @@ forkt:
   cmpl $0, %eax
   jne 1f
 
-  movl %eax, %esp
-  jmp *%ecx
+  movl %ecx, %esp
+  jmp *%edx
 
 1:
   ret
