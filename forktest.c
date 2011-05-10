@@ -40,7 +40,7 @@ forktest(void)
 
   mtrace_enable_set(1, "xv6-forktest");
   for(n=0; n<N; n++){
-    pid = fork();
+    pid = fork(0);
     if(pid < 0)
       break;
     if(pid == 0)

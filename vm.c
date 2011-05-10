@@ -270,19 +270,27 @@ vmap_alloc(void)
 	m->e[j].lock.name = "vma";
       }
       m->lock.name = "vmap";
+      m->ref = 1;
       return m;
     }
   }
   panic("out of vmaps");
 }
 
-void
+static void
 vmap_free(struct vmap *m)
 {
   for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++)
     if(m->e[i].n)
       vmn_decref(m->e[i].n);
   m->alloc = 0;
+}
+
+void
+vmap_decref(struct vmap *m)
+{
+  if(__sync_sub_and_fetch(&m->ref, 1) == 0)
+    vmap_free(m);
 }
 
 int
@@ -346,7 +354,7 @@ vmap_copy(struct vmap *m)
     c->e[i].n = vmn_copy(m->e[i].n);
     if(c->e[i].n == 0) {
       release(&m->lock);
-      vmap_free(c);
+      vmap_decref(c);
       return 0;
     }
     __sync_fetch_and_add(&c->e[i].n->ref, 1);

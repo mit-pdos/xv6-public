@@ -195,7 +195,7 @@ growproc(int n)
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
 int
-fork(void)
+fork(int flags)
 {
   int i, pid;
   struct proc *np;
@@ -211,14 +211,20 @@ fork(void)
     return -1;
   }
 
-  // Copy process state from p.
-  if((np->vmap = vmap_copy(proc->vmap)) == 0){
-    freevm(np->pgdir);
-    kfree(np->kstack);
-    np->kstack = 0;
-    np->state = UNUSED;
-    return -1;
+  if(flags == 0) {
+    // Copy process state from p.
+    if((np->vmap = vmap_copy(proc->vmap)) == 0){
+      freevm(np->pgdir);
+      kfree(np->kstack);
+      np->kstack = 0;
+      np->state = UNUSED;
+      return -1;
+    }
+  } else {
+    np->vmap = proc->vmap;
+    __sync_fetch_and_add(&np->vmap->ref, 1);
   }
+
   np->brk = proc->brk;
   np->parent = proc;
   *np->tf = *proc->tf;
@@ -312,7 +318,7 @@ wait(void)
 	  kfree(p->kstack);
 	  p->kstack = 0;
 	  freevm(p->pgdir);
-	  vmap_free(p->vmap);
+	  vmap_decref(p->vmap);
 	  p->state = UNUSED;
 	  p->pid = 0;
 	  p->parent = 0;

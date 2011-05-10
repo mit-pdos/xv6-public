@@ -49,6 +49,7 @@ struct vma {
 struct vmap {
   struct vma e[16];
   struct spinlock lock;        // serialize map/lookup/unmap
+  uint ref;
   uint alloc;
 };
 

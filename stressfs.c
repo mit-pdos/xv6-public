@@ -20,7 +20,7 @@ main(int argc, char *argv[])
   printf(1, "stressfs starting\n");
 
   for(i = 0; i < 4; i++)
-    if(fork() > 0)
+    if(fork(0) > 0)
       break;
 
   printf(1, "%d\n", i);

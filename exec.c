@@ -121,7 +121,7 @@ exec(char *path, char **argv)
   proc->tf->esp = sp;
   switchuvm(proc);
   freevm(oldpgdir);
-  vmap_free(oldvmap);
+  vmap_decref(oldvmap);
 
   return 0;
 
@@ -132,7 +132,7 @@ exec(char *path, char **argv)
   if(ip)
     iunlockput(ip);
   if(vmap)
-    vmap_free(vmap);
+    vmap_decref(vmap);
   if(vmn)
     vmn_free(vmn);
   return -1;

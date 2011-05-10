@@ -1,7 +1,7 @@
 struct stat;
 
 // system calls
-int fork(void);
+int fork(int);
 int exit(void) __attribute__((noreturn));
 int wait(void);
 int pipe(int*);
@@ -37,3 +37,7 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+
+// uthread.S
+int forkt(void *sp, void *pc);
+

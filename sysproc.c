@@ -11,7 +11,11 @@
 int
 sys_fork(void)
 {
-  return fork();
+  int flags;
+
+  if(argint(0, &flags) < 0)
+    return -1;
+  return fork(flags);
 }
 
 int
