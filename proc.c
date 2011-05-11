@@ -349,7 +349,6 @@ steal(void)
 {
   int c;
   struct proc *p;
-  int r = 0;
 
   for (c = 0; c < NCPU; c++) {
     if (c == cpunum())
@@ -359,15 +358,12 @@ steal(void)
       if (p->state == RUNNABLE) {
 	//cprintf("%d: steal %d from %d\n", cpunum(), p->pid, c);
 	delrun1(&runqs[c], p);
+	release(&runqs[c].lock);
 	addrun(p);
-	r = 1;
-	break;
+	return;
       }
     }
     release(&runqs[c].lock);
-    if (r) {
-      return;
-    }
   }
 }
 
