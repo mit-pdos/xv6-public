@@ -70,7 +70,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   struct spinlock lock;
-  SLIST_ENTRY(proc) run_next;
+  STAILQ_ENTRY(proc) run_next;
   SLIST_HEAD(childlist, proc) childq;
   SLIST_ENTRY(proc) child_next;
   struct condvar cv;
@@ -103,7 +103,7 @@ struct cpu {
 struct runq {
   char name[MAXNAME];
   struct spinlock lock;
-  SLIST_HEAD(runlist, proc) runq;
+  STAILQ_HEAD(runlist, proc) runq;
 };
 
 struct ptable {

@@ -36,6 +36,7 @@ pinit(void)
     runqs[c].name[0] = (char) (c + '0');
     safestrcpy(runqs[c].name+1, "runq", MAXNAME-1);
     initlock(&runqs[c].lock, runqs[c].name);
+    STAILQ_INIT(&runqs[c].runq);
   }
 }
 
@@ -90,15 +91,13 @@ static void
 addrun1(struct runq *rq, struct proc *p)
 {
   struct proc *q;
-  SLIST_FOREACH(q, &rq->runq, run_next) {
-    if (q == p) {
-      cprintf("allready on q\n");
-      p->state = RUNNABLE; 
-      return;
-    }
-  }
-  p->state = RUNNABLE;   // XXX race?
-  SLIST_INSERT_HEAD(&rq->runq, p, run_next);
+  STAILQ_FOREACH(q, &rq->runq, run_next)
+    if (q == p)
+      panic("addrun1: already on queue");
+  acquire(&p->lock);
+  p->state = RUNNABLE;
+  STAILQ_INSERT_TAIL(&rq->runq, p, run_next);
+  release(&p->lock);
 }
 
 void
@@ -114,12 +113,15 @@ static void
 delrun1(struct runq *rq, struct proc *p)
 {
   struct proc *q, *nq;
-  SLIST_FOREACH_SAFE(q, &rq->runq, run_next, nq) {
+  STAILQ_FOREACH_SAFE(q, &rq->runq, run_next, nq) {
     if (q == p) {
-      SLIST_REMOVE(&rq->runq, q, proc, run_next);
+      acquire(&p->lock);
+      STAILQ_REMOVE(&rq->runq, q, proc, run_next);
+      release(&p->lock);
       return;
     }
   }
+  panic("delrun1: not on runq");
 }
 
 void
@@ -289,8 +291,6 @@ exit(void)
 
   acquire(&proc->lock); 
 
-  delrun(proc);
-
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
   sched();
@@ -354,14 +354,15 @@ steal(void)
     if (c == cpunum())
       continue;
     acquire(&runqs[c].lock);
-    SLIST_FOREACH(p, &runqs[c].runq, run_next) {
-      if (p->state == RUNNABLE) {
-	//cprintf("%d: steal %d from %d\n", cpunum(), p->pid, c);
-	delrun1(&runqs[c], p);
-	release(&runqs[c].lock);
-	addrun(p);
-	return;
-      }
+    STAILQ_FOREACH(p, &runqs[c].runq, run_next) {
+      if (p->state != RUNNABLE)
+        panic("non-runnable proc on runq");
+
+      // cprintf("%d: steal %d from %d\n", cpunum(), p->pid, c);
+      delrun1(&runqs[c], p);
+      release(&runqs[c].lock);
+      addrun(p);
+      return;
     }
     release(&runqs[c].lock);
   }
@@ -396,11 +397,13 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&runq->lock);
 
-    SLIST_FOREACH(p, &runq->runq, run_next) {
-      if(p->state != RUNNABLE)
-        continue;
-
+    STAILQ_FOREACH(p, &runq->runq, run_next) {
       acquire(&p->lock);
+      if(p->state != RUNNABLE)
+	panic("non-runnable process on runq\n");
+
+      STAILQ_REMOVE(&runq->runq, p, proc, run_next);
+      release(&runq->lock);
 
       // Switch to chosen process.  It is the process's job
       // to release proc->lock and then reacquire it
@@ -408,9 +411,6 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
-      // Release runq lock only after setting RUNNING, to prevent stealing.
-      release(&runq->lock);
 
       mtrace_fcall_register(pid, 0, 0, mtrace_pause);
       mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
@@ -424,8 +424,6 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       proc = 0;
       release(&p->lock);
-
-      // Cannot loop: process may have been stolen, run_next is another runq.
       break;
     }
 
@@ -463,8 +461,9 @@ sched(void)
 void
 yield(void)
 {
+  addrun(proc);
+
   acquire(&proc->lock);  //DOC: yieldlock
-  proc->state = RUNNABLE; 
   sched();
   release(&proc->lock);
 }
@@ -498,8 +497,10 @@ kill(int pid)
       if(p->pid == pid){
 	p->killed = 1;
 	// Wake process from sleep if necessary.
-	if(p->state == SLEEPING)
-	  addrun1(&runqs[c], p);
+	if(p->state == SLEEPING) {
+	  p->state = RUNNABLE;
+	  STAILQ_INSERT_TAIL(&runq->runq, p, run_next);
+	}
 	release(&p->lock);
 	release(&ptables[c].lock);
 	return 0;
@@ -549,7 +550,7 @@ procdump(int c)
     cprintf("\n");
   }
   cprintf("runq: ");
-  SLIST_FOREACH(q, &runqs[c].runq, run_next) {
+  STAILQ_FOREACH(q, &runqs[c].runq, run_next) {
     if(q->state >= 0 && q->state < NELEM(states) && states[q->state])
       state = states[q->state];
     else

@@ -102,7 +102,6 @@ int             pipewrite(struct pipe*, char*, int);
 // proc.c
 void            addrun(struct proc *);
 struct proc*    copyproc(struct proc*);
-void            delrun(struct proc*);
 void            exit(void);
 int             fork(int);
 int             growproc(int);
@@ -184,3 +183,4 @@ int             pagefault(pde_t*, struct vmap *, uint);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+#define NULL 0

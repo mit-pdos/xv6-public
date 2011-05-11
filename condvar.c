@@ -33,8 +33,6 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
 
   cv->waiters = proc;  // XXX should be queue
 
-  delrun(proc);
-
   acquire(&proc->lock);
 
   release(&cv->lock);
@@ -45,15 +43,8 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
 
   release(&proc->lock);
 
-  acquire(&cv->lock);
-
-  // Tidy up.
-  cv->waiters = 0;
-
   // Reacquire original lock.
   acquire(lk);
-
-  release(&cv->lock);
 }
 
 void
@@ -62,6 +53,7 @@ cv_wakeup(struct condvar *cv)
   acquire(&cv->lock);
   if (cv->waiters != 0) {
     addrun(cv->waiters);
+    cv->waiters = 0;
   }
   release(&cv->lock);
 }
