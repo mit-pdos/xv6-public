@@ -500,7 +500,7 @@ kill(int pid)
 	// Wake process from sleep if necessary.
 	if(p->state == SLEEPING)
 	  addrun1(&runqs[c], p);
-	acquire(&p->lock);
+	release(&p->lock);
 	release(&ptables[c].lock);
 	return 0;
       }
