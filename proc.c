@@ -239,10 +239,13 @@ fork(int flags)
       np->ofile[i] = filedup(proc->ofile[i]);
   np->cwd = idup(proc->cwd);
 
-  SLIST_INSERT_HEAD(&proc->childq, np, child_next);  // XXX lock?
   pid = np->pid;
   addrun(np);
   safestrcpy(np->name, proc->name, sizeof(proc->name));
+
+  acquire(&proc->lock);
+  SLIST_INSERT_HEAD(&proc->childq, np, child_next);
+  release(&proc->lock);
 
   return pid;
 }
@@ -277,19 +280,22 @@ exit(void)
     acquire(&p->lock);
     p->parent = initproc;
     if(p->state == ZOMBIE)
-	  wakeupinit = 1;
+      wakeupinit = 1;
     SLIST_REMOVE(&proc->childq, p, proc, child_next);
-    SLIST_INSERT_HEAD(&initproc->childq, p, child_next);  // XXX lock?
     release(&p->lock);
+
+    acquire(&initproc->lock);
+    SLIST_INSERT_HEAD(&initproc->childq, p, child_next);
+    release(&initproc->lock);
   }
 
   // Parent might be sleeping in wait().
+  acquire(&proc->lock);
+
   cv_wakeup(&proc->parent->cv);
 
   if (wakeupinit)
     cv_wakeup(&initproc->cv); 
-
-  acquire(&proc->lock); 
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
