@@ -17,6 +17,15 @@ struct kmem kmems[NCPU];
 
 extern char end[]; // first address after kernel loaded from ELF file
 
+static void __attribute__((unused))
+kmemprint(void)
+{
+  cprintf("free pages: [ ");
+  for (uint i = 0; i < NCPU; i++)
+    cprintf("%d ", kmems[i].nfree);
+  cprintf("]\n");
+}
+
 // Initialize free list of physical pages.
 void
 kinit(void)
@@ -94,9 +103,8 @@ kalloc(void)
 			RET_EIP());
 
   if (r == 0) {
-    cprintf("%d: kalloc out\n", cpunum());
-    for (uint i = 0; i < NCPU; i++)
-      cprintf("cpu %d: %d free pages\n", i, kmems[i].nfree);
+    kmemprint();
+    panic("out of memory");
   }
   memset(r, 2, PGSIZE);
   return (char*)r;
