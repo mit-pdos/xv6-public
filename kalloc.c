@@ -33,7 +33,7 @@ kinit(void)
   char *p;
 
   for (int c = 0; c < NCPU; c++) {
-    kmems[c].name[0] = (char) c;
+    kmems[c].name[0] = (char) c + '0';
     safestrcpy(kmems[c].name+1, "kmem", MAXNAME-1);
     initlock(&kmems[c].lock, kmems[c].name);
   }
