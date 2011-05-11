@@ -22,7 +22,10 @@ kmemprint(void)
 {
   cprintf("free pages: [ ");
   for (uint i = 0; i < NCPU; i++)
-    cprintf("%d ", kmems[i].nfree);
+    if (i == cpunum())
+      cprintf("<%d> ", kmems[i].nfree);
+    else
+      cprintf("%d ", kmems[i].nfree);
   cprintf("]\n");
 }
 
@@ -59,11 +62,12 @@ kfree(char *v)
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);
 
-  acquire(&kmem->lock);
+  struct kmem *m = kmem;
+  acquire(&m->lock);
   r = (struct run*)v;
-  r->next = kmem->freelist;
-  kmem->freelist = r;
-  kmem->nfree++;
+  r->next = m->freelist;
+  m->freelist = r;
+  m->nfree++;
   mtrace_label_register(mtrace_label_block,
 			r,
 			0,
@@ -71,7 +75,7 @@ kfree(char *v)
 			0,
 			RET_EIP());
 
-  release(&kmem->lock);
+  release(&m->lock);
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -84,8 +88,10 @@ kalloc(void)
 
   //  cprintf("%d: kalloc 0x%x 0x%x 0x%x 0x%x 0%x\n", cpu->id, kmem, &kmems[cpu->id], kmem->freelist, PHYSTOP, kmems[1].freelist);
 
+  uint startcpu = cpunum();
   for (uint i = 0; r == 0 && i < NCPU; i++) {
-    struct kmem *m = &kmems[(i + cpunum()) % NCPU];
+    int cn = (i + startcpu) % NCPU;
+    struct kmem *m = &kmems[cn];
     acquire(&m->lock);
     r = m->freelist;
     if (r) {
