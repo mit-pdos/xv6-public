@@ -402,14 +402,16 @@ scheduler(void)
 
       acquire(&p->lock);
 
-      release(&runq->lock);
-
       // Switch to chosen process.  It is the process's job
       // to release proc->lock and then reacquire it
       // before jumping back to us.
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+
+      // Release runq lock only after setting RUNNING, to prevent stealing.
+      release(&runq->lock);
+
       mtrace_fcall_register(pid, 0, 0, mtrace_pause);
       mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
       mtrace_call_set(1, cpunum());
