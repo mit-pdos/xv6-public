@@ -425,11 +425,14 @@ scheduler(void)
       proc = 0;
       release(&p->lock);
 
-      acquire(&runq->lock);
+      // Cannot loop: process may have been stolen, run_next is another runq.
+      break;
     }
-    release(&runq->lock);
 
-    steal();
+    if(p==0) {
+      release(&runq->lock);
+      steal();
+    }
   }
 }
 
