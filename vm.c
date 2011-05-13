@@ -104,6 +104,44 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
   return 0;
 }
 
+static int
+updatepages(pde_t *pgdir, void *begin, void *end, int perm)
+{
+  char *a, *last;
+  pte_t *pte;
+
+  a = PGROUNDDOWN(begin);
+  last = PGROUNDDOWN(end);
+  for (;;) {
+    pte = walkpgdir(pgdir, a, 1);
+    if(pte != 0)
+      *pte = PTE_ADDR(*pte) | perm | PTE_P;
+    if (a == last)
+      break;
+    a += PGSIZE;
+  }
+  return 0;
+}
+
+static int
+clearpages(pde_t *pgdir, void *begin, void *end)
+{
+  char *a, *last;
+  pte_t *pte;
+
+  a = PGROUNDDOWN(begin);
+  last = PGROUNDDOWN(end);
+  for (;;) {
+    pte = walkpgdir(pgdir, a, 1);
+    if(pte != 0)
+      *pte = 0;
+    if (a == last)
+      break;
+    a += PGSIZE;
+  }
+  return 0;
+}
+
 // The mappings from logical to linear are one to one (i.e.,
 // segmentation doesn't do anything).
 // There is one page table per process, plus one that's used
@@ -253,9 +291,11 @@ struct vmnode *
 vmn_copy(struct vmnode *n)
 {
   struct vmnode *c = vmn_allocpg(n->npages);
-  if(c != 0)
-    for(uint i = 0; i < n->npages; i++)
+  if(c != 0) {
+    for(uint i = 0; i < n->npages; i++) {
       memmove(c->page[i], n->page[i], PGSIZE);
+    }
+  }
   return c;
 }
 
@@ -267,6 +307,7 @@ vmap_alloc(void)
     if(m->alloc == 0 && __sync_bool_compare_and_swap(&m->alloc, 0, 1)) {
       for(uint j = 0; j < sizeof(m->e) / sizeof(m->e[0]); j++){
 	m->e[j].n = 0;
+	m->e[i].va_type = PRIVATE;
 	m->e[j].lock.name = "vma";
       }
       m->lock.name = "vmap";
@@ -339,7 +380,7 @@ vmap_lookup(struct vmap *m, uint va)
 }
 
 struct vmap *
-vmap_copy(struct vmap *m)
+vmap_copy(struct vmap *m, pde_t* pgdir, int share)
 {
   struct vmap *c = vmap_alloc();
   if(c == 0)
@@ -351,7 +392,15 @@ vmap_copy(struct vmap *m)
       continue;
     c->e[i].va_start = m->e[i].va_start;
     c->e[i].va_end = m->e[i].va_end;
-    c->e[i].n = vmn_copy(m->e[i].n);
+    if (share) {
+      c->e[i].n = m->e[i].n;
+      c->e[i].va_type = COW;
+      m->e[i].va_type = COW;
+      updatepages(pgdir, (void *) (m->e[i].va_start), (void *) (m->e[i].va_end), PTE_COW);
+    } else {
+      c->e[i].n = vmn_copy(m->e[i].n);
+      c->e[i].va_type = m->e[i].va_type;
+    }
     if(c->e[i].n == 0) {
       release(&m->lock);
       vmap_decref(c);
@@ -359,6 +408,9 @@ vmap_copy(struct vmap *m)
     }
     __sync_fetch_and_add(&c->e[i].n->ref, 1);
   }
+  if (share)
+    lcr3(PADDR(pgdir));  // Reload hardware page table
+
   release(&m->lock);
   return c;
 }
@@ -466,8 +518,9 @@ copyin(struct vmap *vmap, uint va, void *p, uint len)
 }
 
 int
-pagefault(pde_t *pgdir, struct vmap *vmap, uint va)
+pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
 {
+  
   pte_t *pte = walkpgdir(pgdir, (const void *)va, 1);
   if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
     return 0;
@@ -476,8 +529,39 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va)
   if(m == 0)
     return -1;
 
+  // cprintf("%d: pf addr=0x%x err 0x%x check = %d\n", proc->pid, va, err, check);
+  // cprintf("%d: pf vma type = %d refcnt %d pte=0x%x\n", proc->pid, m->va_type, m->n->ref, *pte);
+
   uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
-  *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+  if (m->va_type == COW && (err & FEC_WR)) {
+    // Write to a COW page
+    if (m->n->ref == 1) {   // if vma isn't shared any more, make it private
+      m->va_type = PRIVATE;
+      *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+    } else {  // vma is still shared; give process its private copy
+      struct vmnode *c = vmn_copy(m->n);
+      c->ref = 1;
+      __sync_sub_and_fetch(&m->n->ref, 1);
+      if (m->n->ref == 0) 
+	panic("cow");
+      m->va_type = PRIVATE;
+      m->n = c;
+      // Update the hardware page tables to reflect the change to the vma
+      clearpages(pgdir, (void *) m->va_start, (void *) m->va_end);
+      pte = walkpgdir(pgdir, (const void *)va, 0);
+      *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+    }
+  } else if (m->va_type == COW) {
+    *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
+  } else {
+    if (m->n->ref > 1)
+      panic("pagefault");
+    *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+  }
+  lcr3(PADDR(pgdir));  // Reload hardware page tables
   release(&m->lock);
   return 1;
 }
+
+
+

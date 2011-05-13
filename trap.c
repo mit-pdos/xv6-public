@@ -91,8 +91,7 @@ trap(struct trapframe *tf)
     }
 
     if(tf->trapno == T_PGFLT){
-      if(pagefault(proc->pgdir, proc->vmap, rcr2()) >= 0){
-        switchuvm(proc);
+      if(pagefault(proc->pgdir, proc->vmap, rcr2(), tf->err) >= 0){
         return;
       }
     }

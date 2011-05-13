@@ -203,6 +203,7 @@ fork(int flags)
 {
   int i, pid;
   struct proc *np;
+  uint cow = 1;
 
   // Allocate process.
   if((np = allocproc()) == 0)
@@ -217,7 +218,7 @@ fork(int flags)
 
   if(flags == 0) {
     // Copy process state from p.
-    if((np->vmap = vmap_copy(proc->vmap)) == 0){
+    if((np->vmap = vmap_copy(proc->vmap, proc->pgdir, cow)) == 0){
       freevm(np->pgdir);
       kfree(np->kstack);
       np->kstack = 0;
@@ -248,7 +249,6 @@ fork(int flags)
   acquire(&proc->lock);
   SLIST_INSERT_HEAD(&proc->childq, np, child_next);
   release(&proc->lock);
-
   return pid;
 }
 
@@ -366,9 +366,7 @@ steal(void)
       if (p->state != RUNNABLE)
         panic("non-runnable proc on runq");
       if (p->curcycles > MINCYCTHRESH) {
-	
-	cprintf("%d: steal %d (%d) from %d\n", cpunum(), p->pid, p->curcycles, c);
-
+	// cprintf("%d: steal %d (%d) from %d\n", cpunum(), p->pid, p->curcycles, c);
 	delrun1(&runqs[c], p);
 	release(&runqs[c].lock);
 	p->curcycles = 0;

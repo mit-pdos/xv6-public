@@ -24,6 +24,11 @@
 #define FL_VIP          0x00100000      // Virtual Interrupt Pending
 #define FL_ID           0x00200000      // ID flag
 
+// Page fault error codes
+#define FEC_PR          0x1     // Page fault caused by protection violation
+#define FEC_WR          0x2     // Page fault caused by a write
+#define FEC_U           0x4     // Page fault occured while in user mode
+
 // Control Register flags
 #define CR0_PE		0x00000001	// Protection Enable
 #define CR0_MP		0x00000002	// Monitor coProcessor
@@ -134,6 +139,7 @@ struct segdesc {
 #define PTE_D		0x040	// Dirty
 #define PTE_PS		0x080	// Page Size
 #define PTE_MBZ		0x180	// Bits must be zero
+#define PTE_COW         0x800   // copy-on-write
 
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)	((uint)(pte) & ~0xFFF)

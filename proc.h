@@ -30,18 +30,20 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum vmatype { PRIVATE, COW};
 
 // Virtual memory
 struct vmnode {
   uint npages;
   char *page[32];
   uint ref;
-  uint alloc;
+  uint alloc;                  // in use?
 };
 
 struct vma {
   uint va_start;               // start of mapping
   uint va_end;                 // one past the last byte
+  enum vmatype va_type;
   struct vmnode *n;
   struct spinlock lock;        // serialize fault/unmap
 };
