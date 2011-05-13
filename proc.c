@@ -365,7 +365,7 @@ steal(void)
     STAILQ_FOREACH(p, &runqs[c].runq, run_next) {
       if (p->state != RUNNABLE)
         panic("non-runnable proc on runq");
-      if (p->curcycles > MTHRESHOLD) {
+      if (p->curcycles > MINCYCTHRESH) {
 	
 	cprintf("%d: steal %d (%d) from %d\n", cpunum(), p->pid, p->curcycles, c);
 

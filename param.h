@@ -11,4 +11,4 @@
 #define PHYSTOP  0x1000000 // use phys mem up to here as free pool
 #define MAXARG       32  // max exec arguments
 #define MAXNAME      16  // max string names
-#define MTHRESHOLD   1000000  // min cycles a proc executes on a core before allowed to be stolen
+#define MINCYCTHRESH 1000000  // min cycles a proc executes on a core before allowed to be stolen
