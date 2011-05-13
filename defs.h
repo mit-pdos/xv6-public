@@ -154,6 +154,7 @@ void            idtinit(void);
 extern uint     ticks;
 void            tvinit(void);
 extern struct spinlock tickslock;
+extern struct condvar cv_ticks;
 
 // uart.c
 void            uartinit(void);

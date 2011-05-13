@@ -69,6 +69,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  unsigned long long tsc;
+  unsigned long long curcycles;
+  unsigned cpuid;
   struct spinlock lock;
   STAILQ_ENTRY(proc) run_next;
   SLIST_HEAD(childlist, proc) childq;

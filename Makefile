@@ -174,6 +174,7 @@ UPROGS=\
 	_zombie\
 	_halt\
 	_thrtest\
+	_sleep\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
