@@ -130,6 +130,11 @@ sys_unmap(void)
     return -1;
   if (vmap_remove(proc->vmap, PGROUNDDOWN(addr), PGROUNDUP(len)) < 0)
     return -1;
+
+  clearpages(proc->pgdir,
+	     (void*) (PGROUNDDOWN(addr)),
+	     (void*) (PGROUNDDOWN(addr)+PGROUNDUP(len)));
+  lcr3(PADDR(proc->pgdir));
   return 0;
 }
 

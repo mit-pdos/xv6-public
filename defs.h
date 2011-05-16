@@ -183,6 +183,7 @@ void            switchkvm(void);
 int             copyout(struct vmap *, uint, void*, uint);
 int             copyin(struct vmap *, uint, void*, uint);
 int             pagefault(pde_t*, struct vmap *, uint, uint);
+void            clearpages(pde_t *pgdir, void *begin, void *end);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

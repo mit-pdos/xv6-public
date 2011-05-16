@@ -104,7 +104,7 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
   return 0;
 }
 
-static int
+static void
 updatepages(pde_t *pgdir, void *begin, void *end, int perm)
 {
   char *a, *last;
@@ -120,10 +120,9 @@ updatepages(pde_t *pgdir, void *begin, void *end, int perm)
       break;
     a += PGSIZE;
   }
-  return 0;
 }
 
-static int
+void
 clearpages(pde_t *pgdir, void *begin, void *end)
 {
   char *a, *last;
@@ -139,7 +138,6 @@ clearpages(pde_t *pgdir, void *begin, void *end)
       break;
     a += PGSIZE;
   }
-  return 0;
 }
 
 // The mappings from logical to linear are one to one (i.e.,
@@ -416,7 +414,7 @@ vmap_lookup(struct vmap *m, uint va)
   acquire(&m->lock);
   for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
     struct vma *e = &m->e[i];
-    if (va >= e->va_start && va < e->va_end) {
+    if (e->n && va >= e->va_start && va < e->va_end) {
       acquire(&e->lock);
       release(&m->lock);
       return e;
@@ -633,8 +631,10 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
     // cprintf("fill in pte\n");
-    if (m->n->ref > 1)
+    if (m->n->ref > 1) {
+      cprintf("pagefault: va 0x%x\n", va);
       panic("pagefault");
+    }
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
   lcr3(PADDR(pgdir));  // Reload hardware page tables
