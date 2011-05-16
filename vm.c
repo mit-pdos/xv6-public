@@ -246,6 +246,8 @@ vmn_alloc(uint npg, uint type)
       if(npg > sizeof(n->page) / sizeof(n->page[0])) {
 	panic("vmnode too big\n");
       }
+      for (uint i = 0; i < sizeof(n->page) / sizeof(n->page[0]); i++) 
+	n->page[i] = 0;
       n->npages = npg;
       n->ref = 0;
       n->ip = 0;
@@ -288,7 +290,8 @@ vmn_free(struct vmnode *n)
     }
   }
   if (n->ip)
-    panic("vmn_free: drop inode ref");
+    iput(n->ip);
+  n->ip = 0;
   n->alloc = 0;
 }
 
@@ -302,10 +305,21 @@ vmn_decref(struct vmnode *n)
 struct vmnode *
 vmn_copy(struct vmnode *n)
 {
-  struct vmnode *c = vmn_allocpg(n->npages);
+  struct vmnode *c = vmn_alloc(n->npages, n->type);
   if(c != 0) {
-    for(uint i = 0; i < n->npages; i++) {
-      memmove(c->page[i], n->page[i], PGSIZE);
+    c->type = n->type;
+    if (n->type == ONDEMAND) {
+      c->ip = idup(n->ip);
+      c->offset = n->offset;
+      c->sz = c->sz;
+    } 
+    if (n->page[0]) {   // If the first page is present, all of them are present
+      if (vmn_doallocpg(c) < 0) {
+	panic("vmn_copy\n");
+      }
+      for(uint i = 0; i < n->npages; i++) {
+	memmove(c->page[i], n->page[i], PGSIZE);
+      }
     }
   }
   return c;
@@ -554,12 +568,12 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
   if(m == 0)
     return -1;
 
-  //  cprintf("%d: pf addr=0x%x err 0x%x\n", proc->pid, va, err);
+  // cprintf("%d: pf addr=0x%x err 0x%x\n", proc->pid, va, err);
   // cprintf("%d: pf vma type = %d refcnt %d  vmn type %d pte=0x%x\n", proc->pid, m->va_type, m->n->ref, m->n->type, *pte);
 
   uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
-  if (m->n && m->n->ip && *pte == 0x0) {
-    //cprintf("ODP\n");
+  if (m->n && m->n->ip && *pte == 0x0 && m->n->page[npg] == 0) {
+    //    cprintf("ODP\n");
     if (vmn_doallocpg(m->n) < 0) {
       panic("pagefault: couldn't allocate pages");
     }
@@ -571,7 +585,7 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
     pte = walkpgdir(pgdir, (const void *)va, 0);
     if (pte == 0x0)
       panic("pagefault: not paged in???");
-    cprintf("ODP done\n");
+    // cprintf("ODP done\n");
   }
 
   if (m->va_type == COW && (err & FEC_WR)) {
@@ -606,6 +620,3 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
   release(&m->lock);
   return 1;
 }
-
-
-

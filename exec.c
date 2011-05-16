@@ -21,9 +21,7 @@ exec(char *path, char **argv)
   pde_t *pgdir = 0, *oldpgdir;
   struct vmap *vmap = 0, *oldvmap;
   struct vmnode *vmn = 0;
-  int odp = 0;
-
-  cprintf("exec: %s\n", path);
+  int odp = 1;
 
   if((ip = namei(path)) == 0)
     return -1;

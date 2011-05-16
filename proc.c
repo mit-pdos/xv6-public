@@ -205,6 +205,8 @@ fork(int flags)
   struct proc *np;
   uint cow = 1;
 
+  //  cprintf("%d: fork\n", proc->pid);
+
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
@@ -249,6 +251,7 @@ fork(int flags)
   acquire(&proc->lock);
   SLIST_INSERT_HEAD(&proc->childq, np, child_next);
   release(&proc->lock);
+  //  cprintf("%d: fork done (pid %d)\n", proc->pid, pid);
   return pid;
 }
 
