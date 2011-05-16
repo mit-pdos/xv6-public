@@ -21,6 +21,7 @@ exec(char *path, char **argv)
   pde_t *pgdir = 0, *oldpgdir;
   struct vmap *vmap = 0, *oldvmap;
   struct vmnode *vmn = 0;
+  int odp = 1;
 
   if((ip = namei(path)) == 0)
     return -1;
@@ -58,16 +59,25 @@ exec(char *path, char **argv)
       brk = va_end;
 
     int npg = (va_end - va_start) / PGSIZE;
-    if ((vmn = vmn_allocpg(npg)) == 0)
-      goto bad;
+    if (odp) {
+      if ((vmn = vmn_alloc(npg, ONDEMAND)) == 0)
+	goto bad;
+    } else {
+      if ((vmn = vmn_allocpg(npg)) == 0)
+	goto bad;
+    }
     if(vmn_load(vmn, ip, ph.offset, ph.filesz) < 0)
       goto bad;
     if(vmap_insert(vmap, vmn, ph.va) < 0)
       goto bad;
     vmn = 0;
   }
-  iunlockput(ip);
-  ip = 0;
+  if (odp) 
+    iunlock(ip);
+  else {
+    iunlockput(ip);
+    ip = 0;
+  }
 
   // Allocate a vmnode for the heap.
   // XXX pre-allocate 32 pages..

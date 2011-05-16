@@ -30,18 +30,25 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum vmatype { PRIVATE, COW};
+enum vmntype { EAGER, ONDEMAND};  
 
 // Virtual memory
 struct vmnode {
   uint npages;
   char *page[32];
   uint ref;
-  uint alloc;
+  uint alloc;                  // in use?
+  enum vmntype type;
+  struct inode *ip;
+  uint offset;
+  uint sz;
 };
 
 struct vma {
   uint va_start;               // start of mapping
   uint va_end;                 // one past the last byte
+  enum vmatype va_type;
   struct vmnode *n;
   struct spinlock lock;        // serialize fault/unmap
 };
@@ -69,6 +76,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  unsigned long long tsc;
+  unsigned long long curcycles;
+  unsigned cpuid;
   struct spinlock lock;
   STAILQ_ENTRY(proc) run_next;
   SLIST_HEAD(childlist, proc) childq;

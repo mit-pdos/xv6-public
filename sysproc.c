@@ -76,7 +76,7 @@ sys_sleep(void)
       release(&tickslock);
       return -1;
     }
-    sleep(&ticks, &tickslock);
+    cv_sleep(&cv_ticks, &tickslock);
   }
   release(&tickslock);
   return 0;

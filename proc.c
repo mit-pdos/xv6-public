@@ -61,6 +61,8 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = ptable->nextpid++;
+  p->cpuid = cpu->id;
+  p->curcycles = 0;
   release(&ptable->lock);
 
   // Allocate kernel stack if possible.
@@ -103,10 +105,10 @@ addrun1(struct runq *rq, struct proc *p)
 void
 addrun(struct proc *p)
 {
-  acquire(&runq->lock);
+  acquire(&runqs[p->cpuid].lock);
   // cprintf("%d: addrun %d\n", cpunum(), p->pid);
-  addrun1(runq, p);
-  release(&runq->lock);
+  addrun1(&runqs[p->cpuid], p);
+  release(&runqs[p->cpuid].lock);
 }
 
 static void 
@@ -201,6 +203,9 @@ fork(int flags)
 {
   int i, pid;
   struct proc *np;
+  uint cow = 1;
+
+  //  cprintf("%d: fork\n", proc->pid);
 
   // Allocate process.
   if((np = allocproc()) == 0)
@@ -215,7 +220,7 @@ fork(int flags)
 
   if(flags == 0) {
     // Copy process state from p.
-    if((np->vmap = vmap_copy(proc->vmap)) == 0){
+    if((np->vmap = vmap_copy(proc->vmap, proc->pgdir, cow)) == 0){
       freevm(np->pgdir);
       kfree(np->kstack);
       np->kstack = 0;
@@ -246,7 +251,7 @@ fork(int flags)
   acquire(&proc->lock);
   SLIST_INSERT_HEAD(&proc->childq, np, child_next);
   release(&proc->lock);
-
+  //  cprintf("%d: fork done (pid %d)\n", proc->pid, pid);
   return pid;
 }
 
@@ -363,12 +368,15 @@ steal(void)
     STAILQ_FOREACH(p, &runqs[c].runq, run_next) {
       if (p->state != RUNNABLE)
         panic("non-runnable proc on runq");
-
-      // cprintf("%d: steal %d from %d\n", cpunum(), p->pid, c);
-      delrun1(&runqs[c], p);
-      release(&runqs[c].lock);
-      addrun(p);
-      return;
+      if (p->curcycles > MINCYCTHRESH) {
+	// cprintf("%d: steal %d (%d) from %d\n", cpunum(), p->pid, p->curcycles, c);
+	delrun1(&runqs[c], p);
+	release(&runqs[c].lock);
+	p->curcycles = 0;
+	p->cpuid = cpu->id;
+	addrun(p);
+	return;
+      }
     }
     release(&runqs[c].lock);
   }
@@ -417,6 +425,7 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      p->tsc = rdtsc();
 
       mtrace_fcall_register(pid, 0, 0, mtrace_pause);
       mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
@@ -456,7 +465,7 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = cpu->intena;
-
+  proc->curcycles += rdtsc() - proc->tsc;
   mtrace_fcall_register(proc->pid, 0, 0, mtrace_pause);
   mtrace_call_set(0, cpunum());
   swtch(&proc->context, cpu->scheduler);

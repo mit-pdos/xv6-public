@@ -154,6 +154,7 @@ void            idtinit(void);
 extern uint     ticks;
 void            tvinit(void);
 extern struct spinlock tickslock;
+extern struct condvar cv_ticks;
 
 // uart.c
 void            uartinit(void);
@@ -166,7 +167,8 @@ void            kvmalloc(void);
 void            vmenable(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
-struct vmnode * vmn_allocpg(uint);
+struct vmnode*  vmn_alloc(uint, uint);
+struct vmnode*  vmn_allocpg(uint);
 void            vmn_free(struct vmnode *);
 int             vmn_load(struct vmnode *, struct inode*, uint, uint);
 struct vmap *   vmap_alloc(void);
@@ -174,13 +176,13 @@ void            vmap_decref(struct vmap *);
 int             vmap_insert(struct vmap *, struct vmnode *n, uint);
 int             vmap_remove(struct vmap *, uint va_start, uint len);
 struct vma *    vmap_lookup(struct vmap *, uint);
-struct vmap *   vmap_copy(struct vmap *);
+struct vmap *   vmap_copy(struct vmap *, pde_t*, int);
 void            freevm(pde_t*);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(struct vmap *, uint, void*, uint);
 int             copyin(struct vmap *, uint, void*, uint);
-int             pagefault(pde_t*, struct vmap *, uint);
+int             pagefault(pde_t*, struct vmap *, uint, uint);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
