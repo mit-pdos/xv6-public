@@ -138,6 +138,12 @@ xchg(volatile uint *addr, uint newval)
   return result;
 }
 
+static inline void
+nop_pause(void)
+{
+  __asm volatile("pause" : :);
+}
+
 //PAGEBREAK!
 static inline void
 lcr0(uint val)

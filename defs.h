@@ -79,6 +79,7 @@ int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
 void            lapicinit(int);
+void            lapic_tlbflush(uint);
 void            lapicstartap(uchar, uint);
 void            microdelay(int);
 

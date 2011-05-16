@@ -134,7 +134,12 @@ sys_unmap(void)
   clearpages(proc->pgdir,
 	     (void*) (PGROUNDDOWN(addr)),
 	     (void*) (PGROUNDDOWN(addr)+PGROUNDUP(len)));
+  cli();
   lcr3(PADDR(proc->pgdir));
+  for (uint i = 0; i < ncpu; i++)
+    if (i != cpu->id)
+      lapic_tlbflush(i);
+  sti();
   return 0;
 }
 
