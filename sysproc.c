@@ -96,6 +96,44 @@ sys_uptime(void)
 }
 
 int
+sys_map(void)
+{
+  uint addr;
+  uint len;
+
+  if (argint(0, (int*) &addr) < 0)
+    return -1;
+  if (argint(1, (int*) &len) < 0)
+    return -1;
+
+  struct vmnode *vmn = vmn_allocpg(PGROUNDUP(len) / PGSIZE);
+  if (vmn == 0)
+    return -1;
+
+  if (vmap_insert(proc->vmap, vmn, PGROUNDDOWN(addr)) < 0) {
+    vmn_free(vmn);
+    return -1;
+  }
+
+  return 0;
+}
+
+int
+sys_unmap(void)
+{
+  uint addr;
+  uint len;
+
+  if (argint(0, (int*) &addr) < 0)
+    return -1;
+  if (argint(1, (int*) &len) < 0)
+    return -1;
+  if (vmap_remove(proc->vmap, PGROUNDDOWN(addr), PGROUNDUP(len)) < 0)
+    return -1;
+  return 0;
+}
+
+int
 sys_halt(void)
 {
   int i;

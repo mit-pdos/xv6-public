@@ -22,6 +22,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int map(void *addr, int len);
+int unmap(void *addr, int len);
 void halt(void);
 
 // ulib.c

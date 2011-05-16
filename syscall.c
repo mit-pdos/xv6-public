@@ -106,6 +106,8 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_map(void);
+extern int sys_unmap(void);
 extern int sys_halt(void);
 
 static int (*syscalls[])(void) = {
@@ -130,6 +132,8 @@ static int (*syscalls[])(void) = {
 [SYS_wait]    sys_wait,
 [SYS_write]   sys_write,
 [SYS_uptime]  sys_uptime,
+[SYS_map]     sys_map,
+[SYS_unmap]   sys_unmap,
 [SYS_halt]    sys_halt,
 };
 

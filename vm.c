@@ -322,6 +322,27 @@ vmap_insert(struct vmap *m, struct vmnode *n, uint va_start)
   return -1;
 }
 
+int
+vmap_remove(struct vmap *m, uint va_start, uint len)
+{
+  acquire(&m->lock);
+  uint va_end = va_start + len;
+  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
+    if(m->e[i].n && (m->e[i].va_start < va_end && m->e[i].va_end > va_start)) {
+      if(m->e[i].va_start != va_start || m->e[i].va_end != va_end) {
+	release(&m->lock);
+	cprintf("vmap_remove: partial unmap unsupported\n");
+	return -1;
+      }
+
+      __sync_fetch_and_sub(&m->e[i].n->ref, 1);
+      m->e[i].n = 0;
+    }
+  }
+  release(&m->lock);
+  return 0;
+}
+
 struct vma *
 vmap_lookup(struct vmap *m, uint va)
 {
