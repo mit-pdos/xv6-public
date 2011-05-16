@@ -166,7 +166,6 @@ void            uartputc(int);
 void            seginit(void);
 void            kvmalloc(void);
 void            vmenable(void);
-pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
 struct vmnode*  vmn_alloc(uint, uint);
 struct vmnode*  vmn_allocpg(uint);
@@ -177,13 +176,12 @@ void            vmap_decref(struct vmap *);
 int             vmap_insert(struct vmap *, struct vmnode *n, uint);
 int             vmap_remove(struct vmap *, uint va_start, uint len);
 struct vma *    vmap_lookup(struct vmap *, uint);
-struct vmap *   vmap_copy(struct vmap *, pde_t*, int);
-void            freevm(pde_t*);
+struct vmap *   vmap_copy(struct vmap *, int);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(struct vmap *, uint, void*, uint);
 int             copyin(struct vmap *, uint, void*, uint);
-int             pagefault(pde_t*, struct vmap *, uint, uint);
+int             pagefault(struct vmap *, uint, uint);
 void            clearpages(pde_t *pgdir, void *begin, void *end);
 
 // number of elements in fixed-size array

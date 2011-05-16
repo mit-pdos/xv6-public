@@ -14,14 +14,6 @@ extern char data[];  // defined in data.S
 
 static pde_t *kpgdir;  // for use in scheduler()
 
-// Allocate one page table for the machine for the kernel address
-// space for scheduler processes.
-void
-kvmalloc(void)
-{
-  kpgdir = setupkvm();
-}
-
 // Set up CPU's kernel segment descriptors.
 // Run once at boot time on each CPU.
 void
@@ -179,7 +171,7 @@ static struct kmap {
 };
 
 // Set up kernel part of a page table.
-pde_t*
+static pde_t*
 setupkvm(void)
 {
   pde_t *pgdir;
@@ -194,6 +186,14 @@ setupkvm(void)
       return 0;
 
   return pgdir;
+}
+
+// Allocate one page table for the machine for the kernel address
+// space for scheduler processes.
+void
+kvmalloc(void)
+{
+  kpgdir = setupkvm();
 }
 
 // Turn on paging.
@@ -226,10 +226,26 @@ switchuvm(struct proc *p)
   cpu->ts.ss0 = SEG_KDATA << 3;
   cpu->ts.esp0 = (uint)proc->kstack + KSTACKSIZE;
   ltr(SEG_TSS << 3);
-  if(p->pgdir == 0)
-    panic("switchuvm: no pgdir");
-  lcr3(PADDR(p->pgdir));  // switch to new address space
+  if(p->vmap == 0 || p->vmap->pgdir == 0)
+    panic("switchuvm: no vmap/pgdir");
+  lcr3(PADDR(p->vmap->pgdir));  // switch to new address space
   popcli();
+}
+
+// Free a page table and all the physical memory pages
+// in the user part.
+static void
+freevm(pde_t *pgdir)
+{
+  uint i;
+
+  if(pgdir == 0)
+    panic("freevm: no pgdir");
+  for(i = 0; i < NPDENTRIES; i++){
+    if(pgdir[i] & PTE_P)
+      kfree((char*)PTE_ADDR(pgdir[i]));
+  }
+  kfree((char*)pgdir);
 }
 
 struct {
@@ -341,6 +357,9 @@ vmap_alloc(void)
       }
       m->lock.name = "vmap";
       m->ref = 1;
+      m->pgdir = setupkvm();
+      if (m->pgdir == 0)
+	panic("vmap_alloc: setupkvm out of memory");
       return m;
     }
   }
@@ -353,6 +372,8 @@ vmap_free(struct vmap *m)
   for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++)
     if(m->e[i].n)
       vmn_decref(m->e[i].n);
+  freevm(m->pgdir);
+  m->pgdir = 0;
   m->alloc = 0;
 }
 
@@ -430,7 +451,7 @@ vmap_lookup(struct vmap *m, uint va)
 }
 
 struct vmap *
-vmap_copy(struct vmap *m, pde_t* pgdir, int share)
+vmap_copy(struct vmap *m, int share)
 {
   struct vmap *c = vmap_alloc();
   if(c == 0)
@@ -446,7 +467,7 @@ vmap_copy(struct vmap *m, pde_t* pgdir, int share)
       c->e[i].n = m->e[i].n;
       c->e[i].va_type = COW;
       m->e[i].va_type = COW;
-      updatepages(pgdir, (void *) (m->e[i].va_start), (void *) (m->e[i].va_end), PTE_COW);
+      updatepages(m->pgdir, (void *) (m->e[i].va_start), (void *) (m->e[i].va_end), PTE_COW);
     } else {
       c->e[i].n = vmn_copy(m->e[i].n);
       c->e[i].va_type = m->e[i].va_type;
@@ -459,7 +480,7 @@ vmap_copy(struct vmap *m, pde_t* pgdir, int share)
     __sync_fetch_and_add(&c->e[i].n->ref, 1);
   }
   if (share)
-    lcr3(PADDR(pgdir));  // Reload hardware page table
+    lcr3(PADDR(m->pgdir));  // Reload hardware page table
 
   release(&m->lock);
   return c;
@@ -493,22 +514,6 @@ vmn_load(struct vmnode *vmn, struct inode *ip, uint offset, uint sz)
   } else {
     return vmn_doload(vmn, ip, offset, sz);
   }
-}
-
-// Free a page table and all the physical memory pages
-// in the user part.
-void
-freevm(pde_t *pgdir)
-{
-  uint i;
-
-  if(pgdir == 0)
-    panic("freevm: no pgdir");
-  for(i = 0; i < NPDENTRIES; i++){
-    if(pgdir[i] & PTE_P)
-      kfree((char*)PTE_ADDR(pgdir[i]));
-  }
-  kfree((char*)pgdir);
 }
 
 //PAGEBREAK!
@@ -581,10 +586,10 @@ copyin(struct vmap *vmap, uint va, void *p, uint len)
 }
 
 int
-pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
+pagefault(struct vmap *vmap, uint va, uint err)
 {
   
-  pte_t *pte = walkpgdir(pgdir, (const void *)va, 1);
+  pte_t *pte = walkpgdir(vmap->pgdir, (const void *)va, 1);
   if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
     return 0;
 
@@ -606,7 +611,7 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
       panic("pagefault: couldn't load");
     }
     acquire(&m->lock);
-    pte = walkpgdir(pgdir, (const void *)va, 0);
+    pte = walkpgdir(vmap->pgdir, (const void *)va, 0);
     if (pte == 0x0)
       panic("pagefault: not paged in???");
     // cprintf("ODP done\n");
@@ -627,8 +632,8 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
       m->va_type = PRIVATE;
       m->n = c;
       // Update the hardware page tables to reflect the change to the vma
-      clearpages(pgdir, (void *) m->va_start, (void *) m->va_end);
-      pte = walkpgdir(pgdir, (const void *)va, 0);
+      clearpages(vmap->pgdir, (void *) m->va_start, (void *) m->va_end);
+      pte = walkpgdir(vmap->pgdir, (const void *)va, 0);
       *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
     }
   } else if (m->va_type == COW) {
@@ -642,7 +647,7 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
     }
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
-  lcr3(PADDR(pgdir));  // Reload hardware page tables
+  lcr3(PADDR(vmap->pgdir));  // Reload hardware page tables
   release(&m->lock);
   return 1;
 }

@@ -58,12 +58,12 @@ struct vmap {
   struct spinlock lock;        // serialize map/lookup/unmap
   uint ref;
   uint alloc;
+  pde_t *pgdir;                // Page table
 };
 
 // Per-process state
 struct proc {
   struct vmap *vmap;           // va -> vma
-  pde_t* pgdir;                // Page table
   uint brk;                    // Top of heap
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state

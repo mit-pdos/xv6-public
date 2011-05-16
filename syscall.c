@@ -20,9 +20,9 @@
 int
 fetchint(uint addr, int *ip)
 {
-  if(pagefault(proc->pgdir, proc->vmap, addr, 0) < 0)
+  if(pagefault(proc->vmap, addr, 0) < 0)
     return -1;
-  if(pagefault(proc->pgdir, proc->vmap, addr+3, 0) < 0)
+  if(pagefault(proc->vmap, addr+3, 0) < 0)
     return -1;
   *ip = *(int*)(addr);
   return 0;
@@ -37,7 +37,7 @@ fetchstr(uint addr, char **pp)
   char *s = (char *) addr;
 
   while(1){
-    if(pagefault(proc->pgdir, proc->vmap, (uint) s, 0) < 0)
+    if(pagefault(proc->vmap, (uint) s, 0) < 0)
       return -1;
     if(*s == 0){
       *pp = (char*)addr;
@@ -66,7 +66,7 @@ argptr(int n, char **pp, int size)
   if(argint(n, &i) < 0)
     return -1;
   for(uint va = PGROUNDDOWN(i); va < i+size; va = va + PGSIZE)
-    if(pagefault(proc->pgdir, proc->vmap, va, 0) < 0)
+    if(pagefault(proc->vmap, va, 0) < 0)
       return -1;
   *pp = (char*)i;
   return 0;

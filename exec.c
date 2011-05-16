@@ -18,7 +18,6 @@ exec(char *path, char **argv)
   struct elfhdr elf;
   struct inode *ip = 0;
   struct proghdr ph;
-  pde_t *pgdir = 0, *oldpgdir;
   struct vmap *vmap = 0, *oldvmap;
   struct vmnode *vmn = 0;
   int odp = 1;
@@ -26,15 +25,11 @@ exec(char *path, char **argv)
   if((ip = namei(path)) == 0)
     return -1;
   ilock(ip);
-  pgdir = 0;
 
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
     goto bad;
   if(elf.magic != ELF_MAGIC)
-    goto bad;
-
-  if((pgdir = setupkvm()) == 0)
     goto bad;
 
   if((vmap = vmap_alloc()) == 0)
@@ -122,23 +117,18 @@ exec(char *path, char **argv)
   safestrcpy(proc->name, last, sizeof(proc->name));
 
   // Commit to the user image.
-  oldpgdir = proc->pgdir;
   oldvmap = proc->vmap;
-  proc->pgdir = pgdir;
   proc->vmap = vmap;
   proc->brk = brk + 4;  // XXX so that brk-1 points within heap vma..
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
   switchuvm(proc);
-  freevm(oldpgdir);
   vmap_decref(oldvmap);
 
   return 0;
 
  bad:
   cprintf("exec failed\n");
-  if(pgdir)
-    freevm(pgdir);
   if(ip)
     iunlockput(ip);
   if(vmap)

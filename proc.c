@@ -145,8 +145,6 @@ userinit(void)
   
   p = allocproc();
   initproc = p;
-  if((p->pgdir = setupkvm()) == 0)
-    panic("userinit: out of memory?");
   if((p->vmap = vmap_alloc()) == 0)
     panic("userinit: out of vmaps?");
   struct vmnode *vmn = vmn_allocpg(PGROUNDUP((int)_binary_initcode_size) / PGSIZE);
@@ -211,17 +209,9 @@ fork(int flags)
   if((np = allocproc()) == 0)
     return -1;
 
-  if((np->pgdir = setupkvm()) == 0){
-    kfree(np->kstack);
-    np->kstack = 0;
-    np->state = UNUSED;
-    return -1;
-  }
-
   if(flags == 0) {
     // Copy process state from p.
-    if((np->vmap = vmap_copy(proc->vmap, proc->pgdir, cow)) == 0){
-      freevm(np->pgdir);
+    if((np->vmap = vmap_copy(proc->vmap, cow)) == 0){
       kfree(np->kstack);
       np->kstack = 0;
       np->state = UNUSED;
@@ -328,7 +318,6 @@ wait(void)
 	  SLIST_REMOVE(&proc->childq, p, proc, child_next);
 	  kfree(p->kstack);
 	  p->kstack = 0;
-	  freevm(p->pgdir);
 	  vmap_decref(p->vmap);
 	  p->state = UNUSED;
 	  p->pid = 0;

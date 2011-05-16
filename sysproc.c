@@ -131,11 +131,11 @@ sys_unmap(void)
   if (vmap_remove(proc->vmap, PGROUNDDOWN(addr), PGROUNDUP(len)) < 0)
     return -1;
 
-  clearpages(proc->pgdir,
+  clearpages(proc->vmap->pgdir,
 	     (void*) (PGROUNDDOWN(addr)),
 	     (void*) (PGROUNDDOWN(addr)+PGROUNDUP(len)));
   cli();
-  lcr3(PADDR(proc->pgdir));
+  lcr3(PADDR(proc->vmap->pgdir));
   for (uint i = 0; i < ncpu; i++)
     if (i != cpu->id)
       lapic_tlbflush(i);
