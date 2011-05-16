@@ -31,6 +31,7 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 enum vmatype { PRIVATE, COW};
+enum vmntype { EAGER, ONDEMAND};  
 
 // Virtual memory
 struct vmnode {
@@ -38,6 +39,10 @@ struct vmnode {
   char *page[32];
   uint ref;
   uint alloc;                  // in use?
+  enum vmntype type;
+  struct inode *ip;
+  uint offset;
+  uint sz;
 };
 
 struct vma {

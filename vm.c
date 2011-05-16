@@ -238,35 +238,43 @@ struct {
 } vmaps;
 
 struct vmnode *
-vmn_alloc(void)
+vmn_alloc(uint npg, uint type)
 {
   for(uint i = 0; i < sizeof(vmnodes.n) / sizeof(vmnodes.n[0]); i++) {
     struct vmnode *n = &vmnodes.n[i];
     if(n->alloc == 0 && __sync_bool_compare_and_swap(&n->alloc, 0, 1)) {
-      n->npages = 0;
+      if(npg > sizeof(n->page) / sizeof(n->page[0])) {
+	panic("vmnode too big\n");
+      }
+      n->npages = npg;
       n->ref = 0;
+      n->ip = 0;
+      n->type = type;
       return n;
     }
   }
   panic("out of vmnodes");
 }
 
+static int
+vmn_doallocpg(struct vmnode *n)
+{
+  for(uint i = 0; i < n->npages; i++) {
+    if((n->page[i] = kalloc()) == 0) {
+      vmn_free(n);
+      return -1;
+    }
+    memset((char *) n->page[i], 0, PGSIZE);
+  }
+  return 0;
+}
+
 struct vmnode *
 vmn_allocpg(uint npg)
 {
-  struct vmnode *n = vmn_alloc();
-  if(npg > sizeof(n->page) / sizeof(n->page[0])) {
-    cprintf("vmnode too big: %d\n", npg);
-    return 0;
-  }
-  for(uint i = 0; i < npg; i++) {
-    if((n->page[i] = kalloc()) == 0) {
-      vmn_free(n);
-      return 0;
-    }
-    memset((char *) n->page[i], 0, PGSIZE);
-    n->npages++;
-  }
+  struct vmnode *n = vmn_alloc(npg, EAGER);
+  if (n == 0) return 0;
+  if (vmn_doallocpg(n) < 0) return 0;
   return n;
 }
 
@@ -274,9 +282,13 @@ void
 vmn_free(struct vmnode *n)
 {
   for(uint i = 0; i < n->npages; i++) {
-    kfree((char *) n->page[i]);
-    n->page[i] = 0;
+    if (n->page[i]) {
+      kfree((char *) n->page[i]);
+      n->page[i] = 0;
+    }
   }
+  if (n->ip)
+    panic("vmn_free: drop inode ref");
   n->alloc = 0;
 }
 
@@ -307,7 +319,7 @@ vmap_alloc(void)
     if(m->alloc == 0 && __sync_bool_compare_and_swap(&m->alloc, 0, 1)) {
       for(uint j = 0; j < sizeof(m->e) / sizeof(m->e[0]); j++){
 	m->e[j].n = 0;
-	m->e[i].va_type = PRIVATE;
+	m->e[j].va_type = PRIVATE;
 	m->e[j].lock.name = "vma";
       }
       m->lock.name = "vmap";
@@ -415,9 +427,8 @@ vmap_copy(struct vmap *m, pde_t* pgdir, int share)
   return c;
 }
 
-// Load a program segment into a vmnode.
-int
-vmn_load(struct vmnode *vmn, struct inode *ip, uint offset, uint sz)
+static int
+vmn_doload(struct vmnode *vmn, struct inode *ip, uint offset, uint sz)
 {
   for(uint i = 0; i < sz; i += PGSIZE){
     uint n;
@@ -430,6 +441,20 @@ vmn_load(struct vmnode *vmn, struct inode *ip, uint offset, uint sz)
       return -1;
   }
   return 0;
+}
+
+// Load a program segment into a vmnode.
+int
+vmn_load(struct vmnode *vmn, struct inode *ip, uint offset, uint sz)
+{
+  if (vmn->type == ONDEMAND) {
+    vmn->ip = ip;
+    vmn->offset = offset;
+    vmn->sz = sz;
+    return 0;
+  } else {
+    return vmn_doload(vmn, ip, offset, sz);
+  }
 }
 
 // Free a page table and all the physical memory pages
@@ -529,12 +554,29 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
   if(m == 0)
     return -1;
 
-  // cprintf("%d: pf addr=0x%x err 0x%x check = %d\n", proc->pid, va, err, check);
-  // cprintf("%d: pf vma type = %d refcnt %d pte=0x%x\n", proc->pid, m->va_type, m->n->ref, *pte);
+  //  cprintf("%d: pf addr=0x%x err 0x%x\n", proc->pid, va, err);
+  // cprintf("%d: pf vma type = %d refcnt %d  vmn type %d pte=0x%x\n", proc->pid, m->va_type, m->n->ref, m->n->type, *pte);
 
   uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
+  if (m->n && m->n->ip && *pte == 0x0) {
+    //cprintf("ODP\n");
+    if (vmn_doallocpg(m->n) < 0) {
+      panic("pagefault: couldn't allocate pages");
+    }
+    release(&m->lock);
+    if (vmn_doload(m->n, m->n->ip, m->n->offset, m->n->sz) < 0) {
+      panic("pagefault: couldn't load");
+    }
+    acquire(&m->lock);
+    pte = walkpgdir(pgdir, (const void *)va, 0);
+    if (pte == 0x0)
+      panic("pagefault: not paged in???");
+    cprintf("ODP done\n");
+  }
+
   if (m->va_type == COW && (err & FEC_WR)) {
     // Write to a COW page
+    // cprintf("write to cow\n");
     if (m->n->ref == 1) {   // if vma isn't shared any more, make it private
       m->va_type = PRIVATE;
       *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
@@ -552,8 +594,10 @@ pagefault(pde_t *pgdir, struct vmap *vmap, uint va, uint err)
       *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
     }
   } else if (m->va_type == COW) {
+    // cprintf("cow\n");
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
+    // cprintf("fill in pte\n");
     if (m->n->ref > 1)
       panic("pagefault");
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
