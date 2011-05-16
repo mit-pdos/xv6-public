@@ -62,9 +62,11 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
   pde_t *pde;
   pte_t *pgtab;
 
+ retry:
   pde = &pgdir[PDX(va)];
-  if(*pde & PTE_P){
-    pgtab = (pte_t*)PTE_ADDR(*pde);
+  pde_t pdev = *pde;
+  if(pdev & PTE_P){
+    pgtab = (pte_t*)PTE_ADDR(pdev);
   } else {
     if(!create || (pgtab = (pte_t*)kalloc()) == 0)
       return 0;
@@ -73,7 +75,10 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
     // The permissions here are overly generous, but they can
     // be further restricted by the permissions in the page table 
     // entries, if necessary.
-    *pde = PADDR(pgtab) | PTE_P | PTE_W | PTE_U;
+    if (!__sync_bool_compare_and_swap(pde, pdev, PADDR(pgtab) | PTE_P | PTE_W | PTE_U)) {
+      kfree((void*) pgtab);
+      goto retry;
+    }
   }
   return &pgtab[PTX(va)];
 }
