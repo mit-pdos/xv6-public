@@ -101,6 +101,11 @@ kalloc(void)
     release(&m->lock);
   }
 
+  if (r == 0) {
+    kmemprint();
+    panic("out of memory");
+  }
+
   mtrace_label_register(mtrace_label_block,
 			r,
 			4096,
@@ -108,10 +113,6 @@ kalloc(void)
 			sizeof("kalloc"),
 			RET_EIP());
 
-  if (r == 0) {
-    kmemprint();
-    panic("out of memory");
-  }
   memset(r, 2, PGSIZE);
   return (char*)r;
 }
