@@ -13,6 +13,7 @@
 
 struct pipe {
   struct spinlock lock;
+  struct condvar  cv;
   char data[PIPESIZE];
   uint nread;     // number of bytes read
   uint nwrite;    // number of bytes written
@@ -36,6 +37,7 @@ pipealloc(struct file **f0, struct file **f1)
   p->nwrite = 0;
   p->nread = 0;
   initlock(&p->lock, "pipe");
+  initcondvar(&p->cv, "pipe");
   (*f0)->type = FD_PIPE;
   (*f0)->readable = 1;
   (*f0)->writable = 0;
@@ -63,11 +65,10 @@ pipeclose(struct pipe *p, int writable)
   acquire(&p->lock);
   if(writable){
     p->writeopen = 0;
-    wakeup(&p->nread);
   } else {
     p->readopen = 0;
-    wakeup(&p->nwrite);
   }
+  cv_wakeup(&p->cv);
   if(p->readopen == 0 && p->writeopen == 0){
     release(&p->lock);
     kfree((char*)p);
@@ -88,12 +89,12 @@ pipewrite(struct pipe *p, char *addr, int n)
         release(&p->lock);
         return -1;
       }
-      wakeup(&p->nread);
-      sleep(&p->nwrite, &p->lock);  //DOC: pipewrite-sleep
+      cv_wakeup(&p->cv);
+      cv_sleep(&p->cv, &p->lock); //DOC: pipewrite-sleep
     }
     p->data[p->nwrite++ % PIPESIZE] = addr[i];
   }
-  wakeup(&p->nread);  //DOC: pipewrite-wakeup1
+  cv_wakeup(&p->cv);  //DOC: pipewrite-wakeup1
   release(&p->lock);
   return n;
 }
@@ -109,14 +110,14 @@ piperead(struct pipe *p, char *addr, int n)
       release(&p->lock);
       return -1;
     }
-    sleep(&p->nread, &p->lock); //DOC: piperead-sleep
+    cv_sleep(&p->cv, &p->lock); //DOC: piperead-sleep
   }
   for(i = 0; i < n; i++){  //DOC: piperead-copy
     if(p->nread == p->nwrite)
       break;
     addr[i] = p->data[p->nread++ % PIPESIZE];
   }
-  wakeup(&p->nwrite);  //DOC: piperead-wakeup
+  cv_wakeup(&p->cv);  //DOC: piperead-wakeup
   release(&p->lock);
   return i;
 }

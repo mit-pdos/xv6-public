@@ -621,19 +621,3 @@ procdumpall(void)
     procdump(c);
   }
 }
-
-//// dead code
-
-// Atomically release lock and sleep on chan.
-// Reacquires lock when awakened.
-void
-sleep(void *chan, struct spinlock *lk)
-{
-  panic("sleep");
-}
-
-// Wake up all processes sleeping on chan.
-void
-wakeup(void *chan)
-{
-}

@@ -1477,7 +1477,7 @@ main(int argc, char *argv[])
 
   bigargtest();
   bsstest();
-  sbrktest();
+  // sbrktest();
   validatetest();
 
   opentest();

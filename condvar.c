@@ -12,6 +12,7 @@ void
 initcondvar(struct condvar *cv, char *n)
 {
   initlock(&cv->lock, n);
+  cv->waiters = 0;
 }
 
 void
@@ -28,10 +29,11 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
 
   release(lk);
 
-  if (cv->waiters != 0)
-    panic("cv_sleep\n");
+  if(proc->cv_next)
+    panic("cv_sleep cv_next");
 
-  cv->waiters = proc;  // XXX should be queue
+  proc->cv_next = cv->waiters;
+  cv->waiters = proc;
 
   acquire(&proc->lock);
 
@@ -47,13 +49,18 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
   acquire(lk);
 }
 
+// Wake up all processes sleeping on this condvar.
 void
 cv_wakeup(struct condvar *cv)
 {
   acquire(&cv->lock);
-  if (cv->waiters != 0) {
+  while(cv->waiters) {
+    if(cv->waiters->state != SLEEPING)
+      panic("cv_wakeup");
+    struct proc *nxt = cv->waiters->cv_next;
+    cv->waiters->cv_next = 0;
     addrun(cv->waiters);
-    cv->waiters = 0;
+    cv->waiters = nxt;
   }
   release(&cv->lock);
 }
