@@ -295,7 +295,7 @@ vmn_allocpg(uint npg)
 {
   struct vmnode *n = vmn_alloc(npg, EAGER);
   if (n == 0) return 0;
-  if (vmn_doallocpg(n) < 0) return 0;
+  if (vmn_doallocpg(n) < 0) return 0;   // XXX free n
   return n;
 }
 
@@ -585,66 +585,62 @@ copyin(struct vmap *vmap, uint va, void *p, uint len)
   return 0;
 }
 
+static struct vma *
+pagefault_ondemand(struct vmap *vmap, uint va, uint err, struct vma *m)
+{
+  if (vmn_doallocpg(m->n) < 0) {
+    panic("pagefault: couldn't allocate pages");
+  }
+  release(&m->lock);
+  if (vmn_doload(m->n, m->n->ip, m->n->offset, m->n->sz) < 0) {
+    panic("pagefault: couldn't load");
+  }
+  m = vmap_lookup(vmap, va);   // re-acquire lock on m
+  return m;
+}
+
+static void
+pagefault_wcow(struct vmap *vmap, uint va, pte_t *pte, struct vma *m, uint npg)
+{
+  if (m->n->ref == 1) {   // if vma isn't shared any more, make it private
+    m->va_type = PRIVATE;
+    *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+  } else {  // vma is still shared; give process its private copy
+    struct vmnode *c = vmn_copy(m->n);
+    c->ref = 1;
+    __sync_sub_and_fetch(&m->n->ref, 1);
+    if (m->n->ref == 0) 
+      panic("cow");
+    m->va_type = PRIVATE;
+    m->n = c;
+    // Update the hardware page tables to reflect the change to the vma
+    clearpages(vmap->pgdir, (void *) m->va_start, (void *) m->va_end);
+    pte = walkpgdir(vmap->pgdir, (const void *)va, 0);
+    *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+  }
+}
+
 int
 pagefault(struct vmap *vmap, uint va, uint err)
 {
-  
   pte_t *pte = walkpgdir(vmap->pgdir, (const void *)va, 1);
   if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
     return 0;
-
   struct vma *m = vmap_lookup(vmap, va);
   if(m == 0)
     return -1;
 
-  // cprintf("%d: pf addr=0x%x err 0x%x\n", proc->pid, va, err);
-  // cprintf("%d: pf vma type = %d refcnt %d  vmn type %d pte=0x%x\n", proc->pid, m->va_type, m->n->ref, m->n->type, *pte);
-
   uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
-  if (m->n && m->n->ip && *pte == 0x0 && m->n->page[npg] == 0) {
-    //    cprintf("ODP\n");
-    if (vmn_doallocpg(m->n) < 0) {
-      panic("pagefault: couldn't allocate pages");
-    }
-    release(&m->lock);
-    if (vmn_doload(m->n, m->n->ip, m->n->offset, m->n->sz) < 0) {
-      panic("pagefault: couldn't load");
-    }
-    acquire(&m->lock);
-    pte = walkpgdir(vmap->pgdir, (const void *)va, 0);
-    if (pte == 0x0)
-      panic("pagefault: not paged in???");
-    // cprintf("ODP done\n");
+  if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0) {
+    m = pagefault_ondemand(vmap, va, err, m);
   }
-
   if (m->va_type == COW && (err & FEC_WR)) {
-    // Write to a COW page
-    // cprintf("write to cow\n");
-    if (m->n->ref == 1) {   // if vma isn't shared any more, make it private
-      m->va_type = PRIVATE;
-      *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
-    } else {  // vma is still shared; give process its private copy
-      struct vmnode *c = vmn_copy(m->n);
-      c->ref = 1;
-      __sync_sub_and_fetch(&m->n->ref, 1);
-      if (m->n->ref == 0) 
-	panic("cow");
-      m->va_type = PRIVATE;
-      m->n = c;
-      // Update the hardware page tables to reflect the change to the vma
-      clearpages(vmap->pgdir, (void *) m->va_start, (void *) m->va_end);
-      pte = walkpgdir(vmap->pgdir, (const void *)va, 0);
-      *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
-    }
+    pagefault_wcow(vmap, va, pte, m, npg);
   } else if (m->va_type == COW) {
-    // cprintf("cow\n");
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
-    // cprintf("fill in pte\n");
-    if (m->n->ref > 1) {
-      cprintf("pagefault: va 0x%x\n", va);
+    if (m->n->ref > 1)
       panic("pagefault");
-    }
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
   lcr3(PADDR(vmap->pgdir));  // Reload hardware page tables

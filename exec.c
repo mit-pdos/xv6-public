@@ -125,6 +125,7 @@ exec(char *path, char **argv)
   switchuvm(proc);
   vmap_decref(oldvmap);
 
+  // XXX migrate to another core??
   return 0;
 
  bad:
