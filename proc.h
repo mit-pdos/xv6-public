@@ -35,7 +35,7 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 enum vmntype { EAGER, ONDEMAND};  
 struct vmnode {
   uint npages;
-  char *page[32];
+  char *page[128];
   uint ref;
   uint alloc;                  // in use?
   enum vmntype type;

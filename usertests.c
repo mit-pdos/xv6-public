@@ -1272,23 +1272,25 @@ sbrktest(void)
   wait();
 
   // can one allocate the full 640K?
+  // less a stack page and an empty page at the top.
   a = sbrk(0);
-  amt = (640 * 1024) - (uint)a;
+  amt = (632 * 1024) - (uint)a;
   p = sbrk(amt);
   if(p != a){
-    printf(stdout, "sbrk test failed 640K test, p %x a %x\n", p, a);
+    printf(stdout, "sbrk test failed 632K test, p %x a %x\n", p, a);
     exit();
   }
-  lastaddr = (char*)(640 * 1024 - 1);
+  lastaddr = (char*)(632 * 1024 - 1);
   *lastaddr = 99;
 
-  // is one forbidden from allocating more than 640K?
+  // is one forbidden from allocating more than 632K?
   c = sbrk(4096);
   if(c != (char*)0xffffffff){
-    printf(stdout, "sbrk allocated more than 640K, c %x\n", c);
+    printf(stdout, "sbrk allocated more than 632K, c %x\n", c);
     exit();
   }
 
+#if 0
   // can one de-allocate?
   a = sbrk(0);
   c = sbrk(-4096);
@@ -1314,10 +1316,11 @@ sbrktest(void)
     printf(stdout, "sbrk de-allocation didn't really deallocate\n");
     exit();
   }
+#endif
 
   c = sbrk(4096);
   if(c != (char*)0xffffffff){
-    printf(stdout, "sbrk was able to re-allocate beyond 640K, c %x\n", c);
+    printf(stdout, "sbrk was able to re-allocate beyond 632K, c %x\n", c);
     exit();
   }
 
@@ -1346,8 +1349,8 @@ sbrktest(void)
   }
   for(i = 0; i < sizeof(pids)/sizeof(pids[0]); i++){
     if((pids[i] = fork(0)) == 0){
-      // allocate the full 640K
-      sbrk((640 * 1024) - (uint)sbrk(0));
+      // allocate the full 632K
+      sbrk((632 * 1024) - (uint)sbrk(0));
       write(fds[1], "x", 1);
       // sit around until killed
       for(;;) sleep(1000);

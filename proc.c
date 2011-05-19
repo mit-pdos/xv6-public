@@ -173,22 +173,71 @@ userinit(void)
 int
 growproc(int n)
 {
-  uint brk = proc->brk;
-  uint nbrk = brk + n;
+  struct vmap *m = proc->vmap;
 
-  struct vma *vma = vmap_lookup(proc->vmap, brk-1);
-  if(vma == 0)
+  if(n < 0 || n > USERTOP || proc->brk + n > USERTOP)
     return -1;
 
-  if(nbrk > vma->va_end){
-    /* XXX */
-    release(&vma->lock);
-    cprintf("cannot resize heap: %d -> %d\n", brk, nbrk);
+  acquire(&m->lock);
+
+  // find first unallocated address in brk..brk+n
+  uint newstart = proc->brk;
+  uint newn = n;
+  while(newn > 0){
+    int ind = vmap_overlap(m, newstart, 1);
+    if(ind == -1)
+      break;
+    if(m->e[ind].va_end >= newstart + newn){
+      newstart += newn;
+      newn = 0;
+      break;
+    }
+    newn -= m->e[ind].va_end - newstart;
+    newstart = m->e[ind].va_end;
+  }
+
+  if(newn <= 0){
+    // no need to allocate
+    proc->brk += n;
+    release(&m->lock);
+    switchuvm(proc);
+    return 0;
+  }
+
+  // is there space for newstart..newstart+newn?
+  if(vmap_overlap(m, newstart, newn) != -1){
+    release(&m->lock);
+    cprintf("growproc: not enough room in address space; brk %d n %d\n",
+            proc->brk, n);
     return -1;
   }
 
-  proc->brk = brk + n;
-  release(&vma->lock);
+  // would the newly allocated region abut the next-higher
+  // vma? we can't allow that, since then a future sbrk()
+  // would start to use the next region (e.g. the stack).
+  if(vmap_overlap(m, PGROUNDUP(newstart+newn), 1) != -1){
+    release(&m->lock);
+    cprintf("growproc: would abut next vma; brk %d n %d\n",
+            proc->brk, n);
+    return -1;
+  }
+
+  struct vmnode *vmn = vmn_allocpg(PGROUNDUP(newn) / PGSIZE);
+  if(vmn == 0){
+    release(&m->lock);
+    cprintf("growproc: vmn_allocpg failed\n");
+    return -1;
+  }
+
+  release(&m->lock); // XXX
+
+  if(vmap_insert(m, vmn, newstart) < 0){
+    vmn_free(vmn);
+    cprintf("growproc: vmap_insert failed\n");
+    return -1;
+  }
+
+  proc->brk += n;
   switchuvm(proc);
   return 0;
 }
