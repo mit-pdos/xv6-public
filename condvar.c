@@ -29,17 +29,16 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
 
   release(lk);
 
-  if(proc->cv_next)
-    panic("cv_sleep cv_next");
-
-  proc->cv_next = cv->waiters;
-  cv->waiters = proc;
-
   acquire(&proc->lock);
 
-  release(&cv->lock);
-
+  if(proc->cv_next || proc->oncv)
+    panic("cv_sleep cv_next");
+  proc->cv_next = cv->waiters;
+  cv->waiters = proc;
   proc->state = SLEEPING;
+  proc->oncv = cv;
+
+  release(&cv->lock);
 
   sched();
 
@@ -55,11 +54,13 @@ cv_wakeup(struct condvar *cv)
 {
   acquire(&cv->lock);
   while(cv->waiters) {
-    if(cv->waiters->state != SLEEPING)
+    struct proc *p = cv->waiters;
+    if(p->state != SLEEPING || p->oncv != cv)
       panic("cv_wakeup");
-    struct proc *nxt = cv->waiters->cv_next;
-    cv->waiters->cv_next = 0;
-    addrun(cv->waiters);
+    struct proc *nxt = p->cv_next;
+    p->cv_next = 0;
+    p->oncv = 0;
+    addrun(p);
     cv->waiters = nxt;
   }
   release(&cv->lock);

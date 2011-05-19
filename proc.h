@@ -75,7 +75,8 @@ struct proc {
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
-  struct proc *cv_next;        // Linked list of processes waiting for condvar
+  struct condvar *oncv;        // Where it is sleeping, for kill()
+  struct proc *cv_next;        // Linked list of processes waiting for oncv
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory

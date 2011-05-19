@@ -168,12 +168,21 @@ userinit(void)
   addrun(p);
 }
 
-// Grow current process's memory by n bytes.
+// Grow/shrink current process's memory by n bytes.
+// Growing may allocate vmas and physical memory,
+// but avoids interfering with any existing vma.
+// Assumes vmas around proc->brk are part of the growable heap.
+// Shrinking just decreases proc->brk; doesn't deallocate.
 // Return 0 on success, -1 on failure.
 int
 growproc(int n)
 {
   struct vmap *m = proc->vmap;
+
+  if(n < 0 && 0 - n <= proc->brk){
+    proc->brk += n;
+    return 0;
+  }
 
   if(n < 0 || n > USERTOP || proc->brk + n > USERTOP)
     return -1;
@@ -549,16 +558,23 @@ kill(int pid)
       acquire(&p->lock);
       if(p->pid == pid){
 	p->killed = 1;
-	// Wake process from sleep if necessary.
-	if(p->state == SLEEPING) {
-	  p->state = RUNNABLE;
-	  STAILQ_INSERT_TAIL(&runq->runq, p, run_next);
-	}
+	if(p->state == SLEEPING){
+          // XXX
+          // we need to wake p up if it is cv_sleep()ing.
+          // can't change p from SLEEPING to RUNNABLE since that
+          //   would make some condvar->waiters a dangling reference,
+          //   and the non-zero p->cv_next will cause a future panic.
+          // can't call cv_wakeup(p->oncv) since that results in
+          //   deadlock (addrun() acquires p->lock).
+          // can't release p->lock then call cv_wakeup() since the
+          //   cv might be deallocated while we're using it
+          //   (pipes dynamically allocate condvars).
+        }
 	release(&p->lock);
 	release(&ptables[c].lock);
 	return 0;
       }
-      acquire(&p->lock);
+      release(&p->lock);
     }
     release(&ptables[c].lock);
   }

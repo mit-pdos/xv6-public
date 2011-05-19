@@ -1290,7 +1290,6 @@ sbrktest(void)
     exit();
   }
 
-#if 0
   // can one de-allocate?
   a = sbrk(0);
   c = sbrk(-4096);
@@ -1311,6 +1310,7 @@ sbrktest(void)
     printf(stdout, "sbrk re-allocation failed, a %x c %x\n", a, c);
     exit();
   }
+#if 0
   if(*lastaddr == 99){
     // should be zero
     printf(stdout, "sbrk de-allocation didn't really deallocate\n");
@@ -1477,7 +1477,7 @@ main(int argc, char *argv[])
 
   bigargtest();
   bsstest();
-  // sbrktest();
+  sbrktest();
   validatetest();
 
   opentest();
