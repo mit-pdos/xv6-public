@@ -173,6 +173,7 @@ void            vmn_free(struct vmnode *);
 int             vmn_load(struct vmnode *, struct inode*, uint, uint);
 struct vmap *   vmap_alloc(void);
 void            vmap_decref(struct vmap *);
+int             vmap_overlap(struct vmap *m, uint start, uint end);
 int             vmap_insert(struct vmap *, struct vmnode *n, uint);
 int             vmap_remove(struct vmap *, uint va_start, uint len);
 struct vma *    vmap_lookup(struct vmap *, uint);

@@ -384,17 +384,40 @@ vmap_decref(struct vmap *m)
     vmap_free(m);
 }
 
+// Does any vma overlap start..start+len?
+// If yes, return the m->e[] index.
+// If no, return -1.
+// This code can't handle regions at the very end
+// of the address space, e.g. 0xffffffff..0x0
+int
+vmap_overlap(struct vmap *m, uint start, uint len)
+{
+  if(holding(&m->lock) == 0)
+    panic("vmap_overlap no lock");
+  if(start + len < start)
+    panic("vmap_overlap bad len");
+
+  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++){
+    if(m->e[i].n){
+      if(m->e[i].va_end <= m->e[i].va_start)
+        panic("vmap_overlap bad vma");
+      if(m->e[i].va_start < start+len && m->e[i].va_end > start)
+        return i;
+    }
+  }
+  return -1;
+}
+
 int
 vmap_insert(struct vmap *m, struct vmnode *n, uint va_start)
 {
   acquire(&m->lock);
-  uint va_end = va_start + n->npages * PGSIZE;
-  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
-    if(m->e[i].n && (m->e[i].va_start < va_end && m->e[i].va_end > va_start)) {
-      release(&m->lock);
-      cprintf("vmap_insert: overlap\n");
-      return -1;
-    }
+  uint len = n->npages * PGSIZE;
+
+  if(vmap_overlap(m, va_start, len) != -1){
+    release(&m->lock);
+    cprintf("vmap_insert: overlap\n");
+    return -1;
   }
 
   for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
@@ -402,7 +425,7 @@ vmap_insert(struct vmap *m, struct vmnode *n, uint va_start)
       continue;
     __sync_fetch_and_add(&n->ref, 1);
     m->e[i].va_start = va_start;
-    m->e[i].va_end = va_end;
+    m->e[i].va_end = va_start + len;
     m->e[i].n = n;
     release(&m->lock);
     return 0;
@@ -438,13 +461,12 @@ struct vma *
 vmap_lookup(struct vmap *m, uint va)
 {
   acquire(&m->lock);
-  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
-    struct vma *e = &m->e[i];
-    if (e->n && va >= e->va_start && va < e->va_end) {
-      acquire(&e->lock);
-      release(&m->lock);
-      return e;
-    }
+  int ind = vmap_overlap(m, va, 1);
+  if(ind >= 0){
+    struct vma *e = &m->e[ind];
+    acquire(&e->lock);
+    release(&m->lock);
+    return e;
   }
   release(&m->lock);
   return 0;

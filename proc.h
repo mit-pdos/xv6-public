@@ -30,10 +30,9 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
-enum vmatype { PRIVATE, COW};
-enum vmntype { EAGER, ONDEMAND};  
 
-// Virtual memory
+// A memory object (physical pages or inode).
+enum vmntype { EAGER, ONDEMAND};  
 struct vmnode {
   uint npages;
   char *page[32];
@@ -45,6 +44,9 @@ struct vmnode {
   uint sz;
 };
 
+// A mapping of a chunk of an address space to
+// a specific memory object.
+enum vmatype { PRIVATE, COW};
 struct vma {
   uint va_start;               // start of mapping
   uint va_end;                 // one past the last byte
@@ -53,6 +55,8 @@ struct vma {
   struct spinlock lock;        // serialize fault/unmap
 };
 
+// An address space: a set of vmas plus h/w page table.
+// The elements of e[] are not ordered by address.
 struct vmap {
   struct vma e[16];
   struct spinlock lock;        // serialize map/lookup/unmap
