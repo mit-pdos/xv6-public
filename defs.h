@@ -115,6 +115,7 @@ void            sched(void);
 void            userinit(void);
 int             wait(void);
 void            yield(void);
+void            migrate(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
