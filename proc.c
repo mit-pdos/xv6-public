@@ -11,6 +11,7 @@
 
 struct ptable ptables[NCPU];
 struct runq runqs[NCPU];
+int idle[NCPU];
 static struct proc *initproc;
 
 extern void forkret(void);
@@ -23,6 +24,9 @@ pinit(void)
   int i;
 
   for (c = 0; c < NCPU; c++) {
+
+    idle[c] = 1;
+    
     ptables[c].nextpid = (c << 16) | (1);
     ptables[c].name[0] = (char) (c + '0');
     safestrcpy(ptables[c].name+1, "ptable", MAXNAME-1);
@@ -402,7 +406,31 @@ wait(void)
   }
 }
 
-void 
+void
+migrate(void)
+{
+  int c;
+  struct proc *p;
+
+  for (c = 0; c < NCPU; c++) {
+    if (c == cpunum())
+      continue;
+    if (idle[c]) {    // OK if there is a race
+      cprintf("migrate to %d\n", c);
+      p = proc;
+      p->curcycles = 0;
+      p->cpuid = c;
+      addrun(p);
+      acquire(&p->lock);
+      p->state = RUNNABLE;
+      sched();
+      release(&proc->lock);
+      return;
+    }
+  }
+}
+
+int
 steal(void)
 {
   int c;
@@ -422,11 +450,12 @@ steal(void)
 	p->curcycles = 0;
 	p->cpuid = cpu->id;
 	addrun(p);
-	return;
+	return 1;
       }
     }
     release(&runqs[c].lock);
   }
+  return 0;
 }
 
 //PAGEBREAK: 42
@@ -464,6 +493,8 @@ scheduler(void)
 	panic("non-runnable process on runq\n");
 
       STAILQ_REMOVE(&runq->runq, p, proc, run_next);
+      if (idle[cpu->id])
+	idle[cpu->id] = 0;
       release(&runq->lock);
 
       // Switch to chosen process.  It is the process's job
@@ -491,7 +522,8 @@ scheduler(void)
 
     if(p==0) {
       release(&runq->lock);
-      steal();
+      if (!steal())
+	idle[cpu->id] = 1;
     }
   }
 }
