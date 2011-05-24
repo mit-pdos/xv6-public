@@ -588,7 +588,9 @@ namex(char *path, int nameiparent, char *name)
     // XXX do we need to ilock(ip)?
     // hopefully not, would be nice to have
     // lock-free namecache hits.
-    next = nc_lookup(ip, name);
+    next = 0;
+    if(nameiparent == 0)
+      next = nc_lookup(ip, name);
     if(next == 0){
       ilock(ip);
       if(ip->type != T_DIR){

@@ -202,7 +202,7 @@ void            clearpages(pde_t *pgdir, void *begin, void *end);
 void            nc_init();
 struct inode *  nc_lookup(struct inode *, char *);
 void            nc_insert(struct inode *, char *, struct inode *);
-
+void            nc_invalidate(struct inode *dir, char *name);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

@@ -259,13 +259,13 @@ struct {
 struct vmnode *
 vmn_alloc(uint npg, uint type)
 {
-  for(uint i = 0; i < sizeof(vmnodes.n) / sizeof(vmnodes.n[0]); i++) {
+  for(uint i = 0; i < NELEM(vmnodes.n); i++) {
     struct vmnode *n = &vmnodes.n[i];
     if(n->alloc == 0 && __sync_bool_compare_and_swap(&n->alloc, 0, 1)) {
-      if(npg > sizeof(n->page) / sizeof(n->page[0])) {
+      if(npg > NELEM(n->page)) {
 	panic("vmnode too big\n");
       }
-      for (uint i = 0; i < sizeof(n->page) / sizeof(n->page[0]); i++) 
+      for (uint i = 0; i < NELEM(n->page); i++) 
 	n->page[i] = 0;
       n->npages = npg;
       n->ref = 0;
@@ -347,10 +347,10 @@ vmn_copy(struct vmnode *n)
 struct vmap *
 vmap_alloc(void)
 {
-  for(uint i = 0; i < sizeof(vmaps.m) / sizeof(vmaps.m[0]); i++) {
+  for(uint i = 0; i < NELEM(vmaps.m); i++) {
     struct vmap *m = &vmaps.m[i];
     if(m->alloc == 0 && __sync_bool_compare_and_swap(&m->alloc, 0, 1)) {
-      for(uint j = 0; j < sizeof(m->e) / sizeof(m->e[0]); j++){
+      for(uint j = 0; j < NELEM(m->e); j++){
 	m->e[j].n = 0;
 	m->e[j].va_type = PRIVATE;
 	m->e[j].lock.name = "vma";
@@ -369,7 +369,7 @@ vmap_alloc(void)
 static void
 vmap_free(struct vmap *m)
 {
-  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
+  for(uint i = 0; i < NELEM(m->e); i++) {
     if(m->e[i].n)
       vmn_decref(m->e[i].n);
   }
@@ -398,7 +398,7 @@ vmap_overlap(struct vmap *m, uint start, uint len)
   if(start + len < start)
     panic("vmap_overlap bad len");
 
-  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++){
+  for(uint i = 0; i < NELEM(m->e); i++){
     if(m->e[i].n){
       if(m->e[i].va_end <= m->e[i].va_start)
         panic("vmap_overlap bad vma");
@@ -421,7 +421,7 @@ vmap_insert(struct vmap *m, struct vmnode *n, uint va_start)
     return -1;
   }
 
-  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
+  for(uint i = 0; i < NELEM(m->e); i++) {
     if(m->e[i].n)
       continue;
     __sync_fetch_and_add(&n->ref, 1);
@@ -442,7 +442,7 @@ vmap_remove(struct vmap *m, uint va_start, uint len)
 {
   acquire(&m->lock);
   uint va_end = va_start + len;
-  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
+  for(uint i = 0; i < NELEM(m->e); i++) {
     if(m->e[i].n && (m->e[i].va_start < va_end && m->e[i].va_end > va_start)) {
       if(m->e[i].va_start != va_start || m->e[i].va_end != va_end) {
 	release(&m->lock);
@@ -481,7 +481,7 @@ vmap_copy(struct vmap *m, int share)
     return 0;
 
   acquire(&m->lock);
-  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
+  for(uint i = 0; i < NELEM(m->e); i++) {
     if(m->e[i].n == 0)
       continue;
     c->e[i].va_start = m->e[i].va_start;
