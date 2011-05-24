@@ -67,9 +67,13 @@ extern uchar    ioapicid;
 void            ioapicinit(void);
 
 // kalloc.c
+void            kinit(void);
 char*           kalloc(void);
 void            kfree(char*);
-void            kinit(void);
+void*           kmalloc(uint);
+void            kmfree(void*);
+
+
 
 // kbd.c
 void            kbdintr(void);

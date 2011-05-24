@@ -363,7 +363,7 @@ vmap_alloc(void)
       return m;
     }
   }
-  panic("out of vmaps");
+  return 0;
 }
 
 static void

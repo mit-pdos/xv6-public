@@ -55,19 +55,28 @@ allocproc(void)
   struct proc *p;
   char *sp;
 
+#if 0
   acquire(&ptable->lock);
   for(p = ptable->proc; p < &ptable->proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
   release(&ptable->lock);
   return 0;
-
 found:
+  p->state = EMBRYO;
+  release(&ptable->lock);
+#else
+  p = kmalloc(sizeof(struct proc));
+  if (p == 0) return 0;
+  memset(p, 0, sizeof(*p));
+  p->state = EMBRYO;
+  initlock(&p->lock, "proc");
+  initcondvar(&p->cv, "proc");
+#endif
   p->state = EMBRYO;
   p->pid = ptable->nextpid++;
   p->cpuid = cpu->id;
-  p->curcycles = 0;
-  release(&ptable->lock);
+
 
   // Allocate kernel stack if possible.
   if((p->kstack = kalloc()) == 0){
@@ -110,7 +119,7 @@ void
 addrun(struct proc *p)
 {
   acquire(&runqs[p->cpuid].lock);
-  // cprintf("%d: addrun %d\n", cpunum(), p->pid);
+  //  cprintf("%d: addrun %d\n", cpunum(), p->pid);
   addrun1(&runqs[p->cpuid], p);
   release(&runqs[p->cpuid].lock);
 }
@@ -148,6 +157,7 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
   
   p = allocproc();
+  cprintf("allocproc -> 0x%x\n", p);
   initproc = p;
   if((p->vmap = vmap_alloc()) == 0)
     panic("userinit: out of vmaps?");
@@ -277,6 +287,7 @@ fork(int flags)
       kfree(np->kstack);
       np->kstack = 0;
       np->state = UNUSED;
+      kmfree(np);
       return -1;
     }
   } else {
@@ -388,6 +399,7 @@ wait(void)
 	  p->killed = 0;
 	  release(&p->lock);
 	  release(&proc->lock);
+	  kmfree(p);
 	  return pid;
 	}
 	release(&p->lock);
@@ -416,7 +428,7 @@ migrate(void)
     if (c == cpunum())
       continue;
     if (idle[c]) {    // OK if there is a race
-      cprintf("migrate to %d\n", c);
+      // cprintf("migrate to %d\n", c);
       p = proc;
       p->curcycles = 0;
       p->cpuid = c;
