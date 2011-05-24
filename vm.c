@@ -369,9 +369,10 @@ vmap_alloc(void)
 static void
 vmap_free(struct vmap *m)
 {
-  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++)
+  for(uint i = 0; i < sizeof(m->e) / sizeof(m->e[0]); i++) {
     if(m->e[i].n)
       vmn_decref(m->e[i].n);
+  }
   freevm(m->pgdir);
   m->pgdir = 0;
   m->alloc = 0;
@@ -449,7 +450,7 @@ vmap_remove(struct vmap *m, uint va_start, uint len)
 	return -1;
       }
 
-      __sync_fetch_and_sub(&m->e[i].n->ref, 1);
+      __sync_fetch_and_sub(&m->e[i].n->ref, 1);   // XXX shouldn't use vmn_decref?
       m->e[i].n = 0;
     }
   }
@@ -624,22 +625,19 @@ pagefault_ondemand(struct vmap *vmap, uint va, uint err, struct vma *m)
 static void
 pagefault_wcow(struct vmap *vmap, uint va, pte_t *pte, struct vma *m, uint npg)
 {
-  if (m->n->ref == 1) {   // if vma isn't shared any more, make it private
-    m->va_type = PRIVATE;
-    *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
-  } else {  // vma is still shared; give process its private copy
-    struct vmnode *c = vmn_copy(m->n);
-    c->ref = 1;
-    __sync_sub_and_fetch(&m->n->ref, 1);
-    if (m->n->ref == 0) 
-      panic("cow");
-    m->va_type = PRIVATE;
-    m->n = c;
-    // Update the hardware page tables to reflect the change to the vma
-    clearpages(vmap->pgdir, (void *) m->va_start, (void *) m->va_end);
-    pte = walkpgdir(vmap->pgdir, (const void *)va, 0);
-    *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
-  }
+  // Always make a copy of n, even if this process has the only ref, because other processes
+  // may change ref count while this process is handling wcow
+  struct vmnode *o = m->n;
+  struct vmnode *c = vmn_copy(m->n);
+  c->ref = 1;
+  m->va_type = PRIVATE;
+  m->n = c;
+  // Update the hardware page tables to reflect the change to the vma
+  clearpages(vmap->pgdir, (void *) m->va_start, (void *) m->va_end);
+  pte = walkpgdir(vmap->pgdir, (const void *)va, 0);
+  *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+  // drop my ref to vmnode
+  vmn_decref(o);
 }
 
 int
@@ -661,8 +659,9 @@ pagefault(struct vmap *vmap, uint va, uint err)
   } else if (m->va_type == COW) {
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
-    if (m->n->ref > 1)
+    if (m->n->ref != 1) {
       panic("pagefault");
+    }
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
   lcr3(PADDR(vmap->pgdir));  // Reload hardware page tables
