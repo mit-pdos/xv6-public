@@ -105,8 +105,12 @@ kalloc(void)
   }
 
   if (r == 0) {
+    cprintf("kalloc: out of memory");
     kmemprint();
+    return 0;
+#if 0
     panic("out of memory");
+#endif
   }
 
   mtrace_label_register(mtrace_label_block,
@@ -182,7 +186,7 @@ morecore(uint nu)
     nu = 512;   // we allocate nu * sizeof(Header)
   }
   p = kalloc();
-  if(p == (char*)-1)
+  if(p == 0)
     return 0;
   hp = (Header*)p;
   hp->s.size = nu;

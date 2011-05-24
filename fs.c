@@ -146,8 +146,6 @@ iinit(void)
   }
 }
 
-static struct inode* iget(uint dev, uint inum);
-
 //PAGEBREAK!
 // Allocate a new inode with the given type on device dev.
 struct inode*
@@ -195,7 +193,7 @@ iupdate(struct inode *ip)
 
 // Find the inode with number inum on device dev
 // and return the in-memory copy.
-static struct inode*
+struct inode*
 iget(uint dev, uint inum)
 {
   struct inode *ip, *empty;
@@ -587,21 +585,28 @@ namex(char *path, int nameiparent, char *name)
     ip = idup(proc->cwd);
 
   while((path = skipelem(path, name)) != 0){
-    ilock(ip);
-    if(ip->type != T_DIR){
+    // XXX do we need to ilock(ip)?
+    // hopefully not, would be nice to have
+    // lock-free namecache hits.
+    next = nc_lookup(ip, name);
+    if(next == 0){
+      ilock(ip);
+      if(ip->type != T_DIR){
+        iunlockput(ip);
+        return 0;
+      }
+      if(nameiparent && *path == '\0'){
+        // Stop one level early.
+        iunlock(ip);
+        return ip;
+      }
+      if((next = dirlookup(ip, name, 0)) == 0){
+        iunlockput(ip);
+        return 0;
+      }
+      nc_insert(ip, name, next);
       iunlockput(ip);
-      return 0;
     }
-    if(nameiparent && *path == '\0'){
-      // Stop one level early.
-      iunlock(ip);
-      return ip;
-    }
-    if((next = dirlookup(ip, name, 0)) == 0){
-      iunlockput(ip);
-      return 0;
-    }
-    iunlockput(ip);
     ip = next;
   }
   if(nameiparent){

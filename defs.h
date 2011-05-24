@@ -43,6 +43,7 @@ int             filewrite(struct file*, char*, int n);
 int             dirlink(struct inode*, char*, uint);
 struct inode*   dirlookup(struct inode*, char*, uint*);
 struct inode*   ialloc(uint, short);
+struct inode*   iget(uint dev, uint inum);
 struct inode*   idup(struct inode*);
 void            iinit(void);
 void            ilock(struct inode*);
@@ -196,6 +197,12 @@ int             copyout(struct vmap *, uint, void*, uint);
 int             copyin(struct vmap *, uint, void*, uint);
 int             pagefault(struct vmap *, uint, uint);
 void            clearpages(pde_t *pgdir, void *begin, void *end);
+
+// namecache.c
+void            nc_init();
+struct inode *  nc_lookup(struct inode *, char *);
+void            nc_insert(struct inode *, char *, struct inode *);
+
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
