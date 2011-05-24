@@ -13,6 +13,7 @@ struct ptable ptables[NCPU];
 struct runq runqs[NCPU];
 int idle[NCPU];
 static struct proc *initproc;
+static struct ns *nspid;
 
 extern void forkret(void);
 extern void trapret(void);
@@ -21,6 +22,10 @@ void
 pinit(void)
 {
   int c;
+
+  nspid = nsalloc();
+  if (nspid == 0)
+    panic("pinit");
 
   for (c = 0; c < NCPU; c++) {
 
@@ -56,7 +61,10 @@ allocproc(void)
   initcondvar(&p->cv, "proc");
 
   p->state = EMBRYO;
-  p->pid = ptable->nextpid++;
+  //  p->pid = ptable->nextpid++;
+  p->pid = ns_allockey(nspid);
+  if (ns_insert(nspid, p->pid, (void *) p) < 0)
+    panic("allocproc: ns_insert");
   p->cpuid = cpu->id;
 
   // Allocate kernel stack if possible.
@@ -373,6 +381,8 @@ wait(void)
 	  p->kstack = 0;
 	  vmap_decref(p->vmap);
 	  p->state = UNUSED;
+	  if (ns_remove(nspid, p->pid) < 0)
+	    panic("wait: ns_remove");
 	  p->pid = 0;
 	  p->parent = 0;
 	  p->name[0] = 0;
@@ -573,38 +583,29 @@ forkret(void)
 int
 kill(int pid)
 {
-  //  struct proc *p;
-  int c;
+  struct proc *p;
 
-  for (c = 0; c < NCPU; c++) {
-    acquire(&ptables[c].lock);
-#if 0
-    for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
-      acquire(&p->lock);
-      if(p->pid == pid){
-	p->killed = 1;
-	if(p->state == SLEEPING){
-          // XXX
-          // we need to wake p up if it is cv_sleep()ing.
-          // can't change p from SLEEPING to RUNNABLE since that
-          //   would make some condvar->waiters a dangling reference,
-          //   and the non-zero p->cv_next will cause a future panic.
-          // can't call cv_wakeup(p->oncv) since that results in
-          //   deadlock (addrun() acquires p->lock).
-          // can't release p->lock then call cv_wakeup() since the
-          //   cv might be deallocated while we're using it
-          //   (pipes dynamically allocate condvars).
-        }
-	release(&p->lock);
-	release(&ptables[c].lock);
-	return 0;
-      }
-      release(&p->lock);
-    }
-#endif
-    release(&ptables[c].lock);
+  p = (struct proc *) ns_lookup(nspid, pid);
+  if (p == 0) {
+    panic("kill");
+    return -1;
   }
-  return -1;
+  acquire(&p->lock);
+  p->killed = 1;
+  if(p->state == SLEEPING){
+    // XXX
+    // we need to wake p up if it is cv_sleep()ing.
+    // can't change p from SLEEPING to RUNNABLE since that
+    //   would make some condvar->waiters a dangling reference,
+    //   and the non-zero p->cv_next will cause a future panic.
+    // can't call cv_wakeup(p->oncv) since that results in
+    //   deadlock (addrun() acquires p->lock).
+    // can't release p->lock then call cv_wakeup() since the
+    //   cv might be deallocated while we're using it
+    //   (pipes dynamically allocate condvars).
+  }
+  release(&p->lock);
+  return 0;
 }
 
 //PAGEBREAK: 36

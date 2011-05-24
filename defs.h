@@ -8,6 +8,7 @@ struct spinlock;
 struct condvar;
 struct stat;
 struct vmnode;
+struct ns;
 
 // bio.c
 void            binit(void);
@@ -92,6 +93,14 @@ extern int      ismp;
 int             mpbcpu(void);
 void            mpinit(void);
 void            mpstartthem(void);
+
+// ns.c
+void            nsinit(void);
+struct ns*      nsalloc(void);
+int             ns_allockey(struct ns*);
+int             ns_insert(struct ns*, int key, void*);
+void*           ns_lookup(struct ns*, int);
+int             ns_remove(struct ns *ns, int key);
 
 // picirq.c
 void            picenable(int);

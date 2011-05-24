@@ -50,6 +50,7 @@ mainc(void)
   consoleinit();   // I/O devices & their interrupts
   uartinit();      // serial port
   kvmalloc();      // initialize the kernel page table
+  nsinit();        // initialize name space module
   pinit();         // process table
   tvinit();        // trap vectors
   binit();         // buffer cache
