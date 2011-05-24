@@ -124,7 +124,6 @@ struct runq {
 struct ptable {
   char name[MAXNAME];
   struct spinlock lock;
-  struct proc proc[NPROC];
   struct proc *runq;
   int nextpid;
 };

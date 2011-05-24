@@ -21,7 +21,6 @@ void
 pinit(void)
 {
   int c;
-  int i;
 
   for (c = 0; c < NCPU; c++) {
 
@@ -31,12 +30,6 @@ pinit(void)
     ptables[c].name[0] = (char) (c + '0');
     safestrcpy(ptables[c].name+1, "ptable", MAXNAME-1);
     initlock(&ptables[c].lock, ptables[c].name);
-
-    for (i = 0; i < NPROC; i++) {
-      initlock(&ptables[c].proc[i].lock, ptables[c].proc[i].name);
-      initcondvar(&ptables[c].proc[i].cv, ptables[c].proc[i].name);
-    }
-
     runqs[c].name[0] = (char) (c + '0');
     safestrcpy(runqs[c].name+1, "runq", MAXNAME-1);
     initlock(&runqs[c].lock, runqs[c].name);
@@ -55,28 +48,16 @@ allocproc(void)
   struct proc *p;
   char *sp;
 
-#if 0
-  acquire(&ptable->lock);
-  for(p = ptable->proc; p < &ptable->proc[NPROC]; p++)
-    if(p->state == UNUSED)
-      goto found;
-  release(&ptable->lock);
-  return 0;
-found:
-  p->state = EMBRYO;
-  release(&ptable->lock);
-#else
   p = kmalloc(sizeof(struct proc));
   if (p == 0) return 0;
   memset(p, 0, sizeof(*p));
   p->state = EMBRYO;
   initlock(&p->lock, "proc");
   initcondvar(&p->cv, "proc");
-#endif
+
   p->state = EMBRYO;
   p->pid = ptable->nextpid++;
   p->cpuid = cpu->id;
-
 
   // Allocate kernel stack if possible.
   if((p->kstack = kalloc()) == 0){
@@ -157,7 +138,6 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
   
   p = allocproc();
-  cprintf("allocproc -> 0x%x\n", p);
   initproc = p;
   if((p->vmap = vmap_alloc()) == 0)
     panic("userinit: out of vmaps?");
@@ -593,11 +573,12 @@ forkret(void)
 int
 kill(int pid)
 {
-  struct proc *p;
+  //  struct proc *p;
   int c;
 
   for (c = 0; c < NCPU; c++) {
     acquire(&ptables[c].lock);
+#if 0
     for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
       acquire(&p->lock);
       if(p->pid == pid){
@@ -620,6 +601,7 @@ kill(int pid)
       }
       release(&p->lock);
     }
+#endif
     release(&ptables[c].lock);
   }
   return -1;
@@ -640,28 +622,17 @@ procdump(int c)
   [RUNNING]   "run   ",
   [ZOMBIE]    "zombie"
   };
-  int i;
-  struct proc *p;
-  struct proc *q;
   char *state;
+
+#if 0
   uint pc[10];
-  
-  cprintf("proc table cpu %d\n", c);
-  for(p = ptables[c].proc; p < &ptables[c].proc[NPROC]; p++){
-    if(p->state == UNUSED)
-      continue;
-    if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
-      state = states[p->state];
-    else
-      state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
-    if(p->state == SLEEPING){
-      getcallerpcs((uint*)p->context->ebp+2, pc);
-      for(i=0; i<10 && pc[i] != 0; i++)
-        cprintf(" %p", pc[i]);
-    }
-    cprintf("\n");
+  if(p->state == SLEEPING){
+    getcallerpcs((uint*)p->context->ebp+2, pc);
+    for(i=0; i<10 && pc[i] != 0; i++)
+      cprintf(" %p", pc[i]);
   }
+#endif
+  struct proc *q;
   cprintf("runq: ");
   STAILQ_FOREACH(q, &runqs[c].runq, run_next) {
     if(q->state >= 0 && q->state < NELEM(states) && states[q->state])
