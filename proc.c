@@ -261,7 +261,7 @@ fork(int flags)
 {
   int i, pid;
   struct proc *np;
-  uint cow = 1;
+  uint cow = 0;
 
   //  cprintf("%d: fork\n", proc->pid);
 
