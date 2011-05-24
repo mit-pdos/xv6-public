@@ -258,22 +258,19 @@ struct {
 struct vmnode *
 vmn_alloc(uint npg, uint type)
 {
-  for(uint i = 0; i < NELEM(vmnodes.n); i++) {
-    struct vmnode *n = &vmnodes.n[i];
-    if(n->alloc == 0 && __sync_bool_compare_and_swap(&n->alloc, 0, 1)) {
-      if(npg > NELEM(n->page)) {
-	panic("vmnode too big\n");
-      }
-      for (uint i = 0; i < NELEM(n->page); i++) 
-	n->page[i] = 0;
-      n->npages = npg;
-      n->ref = 0;
-      n->ip = 0;
-      n->type = type;
-      return n;
-    }
+  struct vmnode *n = kmalloc(sizeof(struct vmnode));
+  if (n == 0) 
+    panic("out of vmnodes");
+  if(npg > NELEM(n->page)) {
+    panic("vmnode too big\n");
   }
-  panic("out of vmnodes");
+  for (uint i = 0; i < NELEM(n->page); i++) 
+    n->page[i] = 0;
+  n->npages = npg;
+  n->ref = 0;
+  n->ip = 0;
+  n->type = type;
+  return n;
 }
 
 static int
@@ -310,7 +307,7 @@ vmn_free(struct vmnode *n)
   if (n->ip)
     iput(n->ip);
   n->ip = 0;
-  n->alloc = 0;
+  kmfree(n);
 }
 
 void

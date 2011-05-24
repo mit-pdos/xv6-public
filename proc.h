@@ -37,7 +37,6 @@ struct vmnode {
   uint npages;
   char *page[128];
   uint ref;
-  uint alloc;                  // in use?
   enum vmntype type;
   struct inode *ip;
   uint offset;
