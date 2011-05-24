@@ -448,8 +448,7 @@ vmap_remove(struct vmap *m, uint va_start, uint len)
 	cprintf("vmap_remove: partial unmap unsupported\n");
 	return -1;
       }
-
-      __sync_fetch_and_sub(&m->e[i].n->ref, 1);   // XXX shouldn't use vmn_decref?
+      vmn_decref(m->e[i].n);
       m->e[i].n = 0;
     }
   }
