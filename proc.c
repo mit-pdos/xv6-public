@@ -63,7 +63,7 @@ allocproc(void)
 
   // Allocate kernel stack if possible.
   if((p->kstack = kalloc()) == 0){
-    p->state = UNUSED;
+    kmfree(p);
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;

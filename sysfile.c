@@ -205,6 +205,7 @@ sys_unlink(void)
     dp->nlink--;
     iupdate(dp);
   }
+  nc_invalidate(dp, name);
   iunlockput(dp);
 
   ip->nlink--;
