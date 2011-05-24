@@ -9,7 +9,6 @@
 #include "proc.h"
 #include "xv6-mtrace.h"
 
-struct ptable ptables[NCPU];
 struct runq runqs[NCPU];
 int idle[NCPU];
 static struct proc *initproc;
@@ -55,7 +54,6 @@ allocproc(void)
   initcondvar(&p->cv, "proc");
 
   p->state = EMBRYO;
-  //  p->pid = ptable->nextpid++;
   p->pid = ns_allockey(nspid);
   if (ns_insert(nspid, p->pid, (void *) p) < 0)
     panic("allocproc: ns_insert");
@@ -468,9 +466,7 @@ scheduler(void)
   struct proc *p;
   int pid;
 
-  acquire(&ptable->lock);
-  pid = ptable->nextpid++;
-  release(&ptable->lock);
+  pid = ns_allockey(nspid);
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpunum());

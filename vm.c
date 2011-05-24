@@ -31,8 +31,8 @@ seginit(void)
   c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
   c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
 
-  // Map cpu, curproc, ptable, kmem, runq
-  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 20, 0);
+  // Map cpu, curproc, kmem, runq
+  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 16, 0);
 
   lgdt(c->gdt, sizeof(c->gdt));
   loadgs(SEG_KCPU << 3);
@@ -40,7 +40,6 @@ seginit(void)
   // Initialize cpu-local storage.
   cpu = c;
   proc = 0;
-  ptable = &ptables[cpunum()];
   kmem = &kmems[cpunum()];
   runq = &runqs[cpunum()];
 }

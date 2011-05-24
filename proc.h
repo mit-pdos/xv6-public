@@ -110,7 +110,6 @@ struct cpu {
   // Cpu-local storage variables; see below
   struct cpu *cpu;
   struct proc *proc;           // The currently-running process.
-  struct ptable *ptable;       // The per-core proc table
   struct kmem *kmem;           // The per-core memory table
   struct runq *runq;           // The per-core runq
 };
@@ -121,20 +120,12 @@ struct runq {
   STAILQ_HEAD(runlist, proc) runq;
 };
 
-struct ptable {
-  char name[MAXNAME];
-  struct spinlock lock;
-  struct proc *runq;
-  int nextpid;
-};
-
 struct condtab {
   char name[MAXNAME];
   struct spinlock lock;
   struct condvar condtab[NPROC];
 };
 
-extern struct ptable ptables[NCPU];
 extern struct cpu cpus[NCPU];
 extern struct runq runqs[NCPU];
 extern struct condtab condtabs[NCPU];
@@ -150,6 +141,5 @@ extern int ncpu;
 // in thread libraries such as Linux pthreads.
 extern struct cpu *cpu __asm("%gs:0");       // &cpus[cpunum()]
 extern struct proc *proc __asm("%gs:4");     // cpus[cpunum()].proc
-extern struct ptable *ptable __asm("%gs:8"); // &ptables[cpunum()]
-extern struct kmem *kmem __asm("%gs:12"); // &kmems[cpunum()]
-extern struct runq *runq __asm("%gs:16"); // &runqs[cpunum()]
+extern struct kmem *kmem __asm("%gs:8"); // &kmems[cpunum()]
+extern struct runq *runq __asm("%gs:12"); // &runqs[cpunum()]
