@@ -28,13 +28,7 @@ pinit(void)
     panic("pinit");
 
   for (c = 0; c < NCPU; c++) {
-
     idle[c] = 1;
-    
-    ptables[c].nextpid = (c << 16) | (1);
-    ptables[c].name[0] = (char) (c + '0');
-    safestrcpy(ptables[c].name+1, "ptable", MAXNAME-1);
-    initlock(&ptables[c].lock, ptables[c].name);
     runqs[c].name[0] = (char) (c + '0');
     safestrcpy(runqs[c].name+1, "runq", MAXNAME-1);
     initlock(&runqs[c].lock, runqs[c].name);
