@@ -98,15 +98,22 @@ addrun1(struct runq *rq, struct proc *p)
   STAILQ_FOREACH(q, &rq->runq, run_next)
     if (q == p)
       panic("addrun1: already on queue");
-  acquire(&p->lock);
   p->state = RUNNABLE;
   STAILQ_INSERT_TAIL(&rq->runq, p, run_next);
-  release(&p->lock);
 }
 
+// Mark a process RUNNABLE and add it to the runq
+// of its cpu. Caller must hold p->lock so that
+// some other core doesn't start running the
+// process before the caller has finished setting
+// the process up, and to cope with racing callers
+// e.g. two wakeups on same process. and to
+// allow atomic addrun(); sched();
 void
 addrun(struct proc *p)
 {
+  if(!holding(&p->lock))
+    panic("addrun no p->lock");
   acquire(&runqs[p->cpuid].lock);
   //  cprintf("%d: addrun %d\n", cpunum(), p->pid);
   addrun1(&runqs[p->cpuid], p);
@@ -119,9 +126,7 @@ delrun1(struct runq *rq, struct proc *p)
   struct proc *q, *nq;
   STAILQ_FOREACH_SAFE(q, &rq->runq, run_next, nq) {
     if (q == p) {
-      acquire(&p->lock);
       STAILQ_REMOVE(&rq->runq, q, proc, run_next);
-      release(&p->lock);
       return;
     }
   }
@@ -131,6 +136,8 @@ delrun1(struct runq *rq, struct proc *p)
 void
 delrun(struct proc *p)
 {
+  if(!holding(&p->lock))
+    panic("delrun no p->lock");
   acquire(&runq->lock);
   // cprintf("%d: delrun %d\n", cpunum(), p->pid);
   delrun1(runq, p);
@@ -167,7 +174,9 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+  acquire(&p->lock);
   addrun(p);
+  release(&p->lock);
 }
 
 // Grow/shrink current process's memory by n bytes.
@@ -294,14 +303,16 @@ fork(int flags)
     if(proc->ofile[i])
       np->ofile[i] = filedup(proc->ofile[i]);
   np->cwd = idup(proc->cwd);
-
   pid = np->pid;
-  addrun(np);
   safestrcpy(np->name, proc->name, sizeof(proc->name));
-
   acquire(&proc->lock);
   SLIST_INSERT_HEAD(&proc->childq, np, child_next);
   release(&proc->lock);
+
+  acquire(&np->lock);
+  addrun(np);
+  release(&np->lock);
+
   //  cprintf("%d: fork done (pid %d)\n", proc->pid, pid);
   return pid;
 }
@@ -420,11 +431,10 @@ migrate(void)
     if (idle[c]) {    // OK if there is a race
       // cprintf("migrate to %d\n", c);
       p = proc;
+      acquire(&p->lock);
       p->curcycles = 0;
       p->cpuid = c;
       addrun(p);
-      acquire(&p->lock);
-      p->state = RUNNABLE;
       sched();
       release(&proc->lock);
       return;
@@ -443,6 +453,7 @@ steal(void)
       continue;
     acquire(&runqs[c].lock);
     STAILQ_FOREACH(p, &runqs[c].runq, run_next) {
+      acquire(&p->lock);
       if (p->state != RUNNABLE)
         panic("non-runnable proc on runq");
       if (p->curcycles > MINCYCTHRESH) {
@@ -452,8 +463,10 @@ steal(void)
 	p->curcycles = 0;
 	p->cpuid = cpu->id;
 	addrun(p);
+        release(&p->lock);
 	return 1;
       }
+      release(&p->lock);
     }
     release(&runqs[c].lock);
   }
@@ -557,9 +570,8 @@ sched(void)
 void
 yield(void)
 {
-  addrun(proc);
-
   acquire(&proc->lock);  //DOC: yieldlock
+  addrun(proc);
   sched();
   release(&proc->lock);
 }

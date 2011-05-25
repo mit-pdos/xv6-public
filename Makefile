@@ -247,6 +247,9 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
 	$(QEMU) -nographic $(QEMUOPTS) -S $(QEMUGDB)
 
+mtrace-nox-gdb: fs.img xv6.img mscan.syms mscan.kern .gdbinit
+	$(MTRACE) -nographic $(QEMUOPTS) $(MTRACEOPTS) -S -gdb tcp::$(GDBPORT)
+
 # CUT HERE
 # prepare dist for students
 # after running make dist, probably want to

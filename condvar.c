@@ -55,12 +55,14 @@ cv_wakeup(struct condvar *cv)
   acquire(&cv->lock);
   while(cv->waiters) {
     struct proc *p = cv->waiters;
+    acquire(&p->lock);
     if(p->state != SLEEPING || p->oncv != cv)
       panic("cv_wakeup");
     struct proc *nxt = p->cv_next;
     p->cv_next = 0;
     p->oncv = 0;
     addrun(p);
+    release(&p->lock);
     cv->waiters = nxt;
   }
   release(&cv->lock);

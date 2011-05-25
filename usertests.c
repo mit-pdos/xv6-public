@@ -5,6 +5,7 @@
 #include "fcntl.h"
 #include "syscall.h"
 #include "traps.h"
+#include "xv6-mtrace.h"
 
 char buf[2048];
 char name[3];
@@ -1464,10 +1465,101 @@ bigargtest(void)
   wait();
 }
 
+void
+uox(char *name, char *data)
+{
+  int fd = open(name, O_CREATE|O_RDWR);
+  if(fd < 0){
+    printf(stdout, "creat %s failed\n", name);
+    exit();
+  }
+  if(write(fd, "xx", 2) != 2){
+    printf(stdout, "write failed\n");
+    exit();
+  }
+  close(fd);
+}
+
+// test concurrent unlink / open.
+void
+unopentest(void)
+{
+  printf(stdout, "concurrent unlink/open\n");
+
+  int pid = fork(0);
+  if(pid == 0){
+    while(1){
+      for(int i = 0; i < 1; i++){
+        char name[32];
+        name[0] = 'f';
+        name[1] = 'A' + i;
+        name[2] = '\0';
+        int fd = open(name, O_RDWR);
+        if(fd >= 0)
+          close(fd);
+        fd = open(name, O_RDWR);
+        if(fd >= 0){
+          if(write(fd, "y", 1) != 1){
+            printf(stdout, "write %s failed\n", name);
+            exit();
+          }
+          close(fd);
+        }
+      }
+    }
+  }
+
+  for(int iters = 0; iters < 1000; iters++){
+    for(int i = 0; i < 1; i++){
+      char name[32];
+      name[0] = 'f';
+      name[1] = 'A' + i;
+      name[2] = '\0';
+      uox(name, "xxx");
+      if(unlink(name) < 0){
+        printf(stdout, "unlink %s failed\n", name);
+        exit();
+      }
+      // reallocate that inode
+      name[0] = 'g';
+      if(mkdir(name) != 0){
+        printf(stdout, "mkdir %s failed\n", name);
+        exit();
+      }
+    }
+    for(int i = 0; i < 10; i++){
+      char name[32];
+      name[0] = 'f';
+      name[1] = 'A' + i;
+      name[2] = '\0';
+      unlink(name);
+      name[0] = 'g';
+      unlink(name);
+    }
+  }
+  kill(pid);
+  wait();
+
+  printf(stdout, "concurrent unlink/open ok\n");
+}
+
+// for mtrace-magic.h
+char*
+strncpy(char *s, const char *t, int n)
+{
+  int tlen = strlen((char *)t);
+  memmove(s, (char *)t, n > tlen ? tlen : n);
+  if (n > tlen)
+    s[tlen] = 0;
+  return s;
+}
+
 int
 main(int argc, char *argv[])
 {
   printf(1, "usertests starting\n");
+
+  mtrace_enable_set(1, "xv6-forktest");
 
   if(open("usertests.ran", 0) >= 0){
     printf(1, "already ran user tests -- rebuild fs.img\n");
@@ -1475,6 +1567,7 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREATE));
 
+  // unopentest();
   bigargtest();
   bsstest();
   sbrktest();

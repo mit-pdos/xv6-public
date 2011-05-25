@@ -3,10 +3,12 @@
 //
 // to do:
 //   use ns.c namespaces
-//   invalidation (for rename, unlink)
-//   does directory inum need to be locked?
+//   does directory inum need to be locked around ns_lookup?
 //   need a lock to make table lookup and iget atomic?
+//     unlink/lookup race?
+//     better: inode generation #
 //   insert when file created, not just looked up
+//   eviction
 //
 
 #include "types.h"
@@ -32,7 +34,7 @@ struct nce {
   char name[DIRSIZ];
   uint cinum; // child inumber
 };
-#define NCE 32
+#define NCE 128
 struct nce nce[NCE];
 
 void
@@ -85,7 +87,8 @@ nc_insert(struct inode *dir, char *name, struct inode *ip)
     return;
   }
 
-  for(int i = 0; i < NCE; i++){
+  int i;
+  for(i = 0; i < NCE; i++){
     e = &nce[i];
     if(e->valid == 0){
       e->valid = 1;
@@ -96,6 +99,8 @@ nc_insert(struct inode *dir, char *name, struct inode *ip)
       break;
     }
   }
+  if(i >= NCE)
+    cprintf("namecache full\n");
 
   release(&nc_lock);
 }

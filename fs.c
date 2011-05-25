@@ -585,9 +585,6 @@ namex(char *path, int nameiparent, char *name)
     ip = idup(proc->cwd);
 
   while((path = skipelem(path, name)) != 0){
-    // XXX do we need to ilock(ip)?
-    // hopefully not, would be nice to have
-    // lock-free namecache hits.
     next = 0;
     if(nameiparent == 0)
       next = nc_lookup(ip, name);

@@ -5,6 +5,7 @@
 #include "condvar.h"
 #include "fs.h"
 #include "file.h"
+#include "stat.h"
 
 struct devsw devsw[NDEV];
 struct {
@@ -117,6 +118,8 @@ filewrite(struct file *f, char *addr, int n)
     return pipewrite(f->pipe, addr, n);
   if(f->type == FD_INODE){
     ilock(f->ip);
+    if(f->ip->type == 0 || f->ip->type == T_DIR)
+      panic("filewrite but 0 or T_DIR");
     if((r = writei(f->ip, addr, f->off, n)) > 0)
       f->off += r;
     iunlock(f->ip);
