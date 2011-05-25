@@ -31,8 +31,8 @@ seginit(void)
   c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
   c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
 
-  // Map cpu, curproc, ptable, kmem, runq
-  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 20, 0);
+  // Map cpu, curproc, kmem, runq
+  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 16, 0);
 
   lgdt(c->gdt, sizeof(c->gdt));
   loadgs(SEG_KCPU << 3);
@@ -40,7 +40,6 @@ seginit(void)
   // Initialize cpu-local storage.
   cpu = c;
   proc = 0;
-  ptable = &ptables[cpunum()];
   kmem = &kmems[cpunum()];
   runq = &runqs[cpunum()];
 }
@@ -259,22 +258,19 @@ struct {
 struct vmnode *
 vmn_alloc(uint npg, uint type)
 {
-  for(uint i = 0; i < NELEM(vmnodes.n); i++) {
-    struct vmnode *n = &vmnodes.n[i];
-    if(n->alloc == 0 && __sync_bool_compare_and_swap(&n->alloc, 0, 1)) {
-      if(npg > NELEM(n->page)) {
-	panic("vmnode too big\n");
-      }
-      for (uint i = 0; i < NELEM(n->page); i++) 
-	n->page[i] = 0;
-      n->npages = npg;
-      n->ref = 0;
-      n->ip = 0;
-      n->type = type;
-      return n;
-    }
+  struct vmnode *n = kmalloc(sizeof(struct vmnode));
+  if (n == 0) 
+    panic("out of vmnodes");
+  if(npg > NELEM(n->page)) {
+    panic("vmnode too big\n");
   }
-  panic("out of vmnodes");
+  for (uint i = 0; i < NELEM(n->page); i++) 
+    n->page[i] = 0;
+  n->npages = npg;
+  n->ref = 0;
+  n->ip = 0;
+  n->type = type;
+  return n;
 }
 
 static int
@@ -311,7 +307,7 @@ vmn_free(struct vmnode *n)
   if (n->ip)
     iput(n->ip);
   n->ip = 0;
-  n->alloc = 0;
+  kmfree(n);
 }
 
 void
@@ -449,8 +445,7 @@ vmap_remove(struct vmap *m, uint va_start, uint len)
 	cprintf("vmap_remove: partial unmap unsupported\n");
 	return -1;
       }
-
-      __sync_fetch_and_sub(&m->e[i].n->ref, 1);   // XXX shouldn't use vmn_decref?
+      vmn_decref(m->e[i].n);
       m->e[i].n = 0;
     }
   }

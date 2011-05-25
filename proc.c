@@ -9,7 +9,6 @@
 #include "proc.h"
 #include "xv6-mtrace.h"
 
-struct ptable ptables[NCPU];
 struct runq runqs[NCPU];
 int idle[NCPU];
 static struct proc *initproc;
@@ -28,13 +27,7 @@ pinit(void)
     panic("pinit");
 
   for (c = 0; c < NCPU; c++) {
-
     idle[c] = 1;
-    
-    ptables[c].nextpid = (c << 16) | (1);
-    ptables[c].name[0] = (char) (c + '0');
-    safestrcpy(ptables[c].name+1, "ptable", MAXNAME-1);
-    initlock(&ptables[c].lock, ptables[c].name);
     runqs[c].name[0] = (char) (c + '0');
     safestrcpy(runqs[c].name+1, "runq", MAXNAME-1);
     initlock(&runqs[c].lock, runqs[c].name);
@@ -61,7 +54,6 @@ allocproc(void)
   initcondvar(&p->cv, "proc");
 
   p->state = EMBRYO;
-  //  p->pid = ptable->nextpid++;
   p->pid = ns_allockey(nspid);
   if (ns_insert(nspid, p->pid, (void *) p) < 0)
     panic("allocproc: ns_insert");
@@ -487,9 +479,7 @@ scheduler(void)
   struct proc *p;
   int pid;
 
-  acquire(&ptable->lock);
-  pid = ptable->nextpid++;
-  release(&ptable->lock);
+  pid = ns_allockey(nspid);
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpunum());
