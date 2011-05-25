@@ -288,22 +288,6 @@ ilock(struct inode *ip)
 
   if((ip->flags & I_VALID) == 0)
     panic("ilock");
-
-#if 0
-  if(!(ip->flags & I_VALID)){
-    bp = bread(ip->dev, IBLOCK(ip->inum));
-    dip = (struct dinode*)bp->data + ip->inum%IPB;
-    ip->type = dip->type;
-    ip->major = dip->major;
-    ip->minor = dip->minor;
-    ip->nlink = dip->nlink;
-    ip->size = dip->size;
-    ip->gen = dip->gen;
-    memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
-    brelse(bp);
-    ip->flags |= I_VALID;
-  }
-#endif
 }
 
 // Unlock the given inode.
@@ -324,10 +308,12 @@ void
 iput(struct inode *ip)
 {
   acquire(&icache.lock);
-  if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0){
+  if(ip->ref == 1 && ip->nlink == 0){
     // inode is no longer used: truncate and free inode.
     if(ip->flags & I_BUSY)
       panic("iput busy");
+    if((ip->flags & I_VALID) == 0)
+      panic("iput not valid");
     ip->flags |= I_BUSY;
     release(&icache.lock);
     itrunc(ip);
@@ -337,7 +323,7 @@ iput(struct inode *ip)
     ip->gen += 1;
     iupdate(ip);
     acquire(&icache.lock);
-    ip->flags = 0;
+    ip->flags &= ~I_BUSY;
     cv_wakeup(&ip->cv);
   }
   ip->ref--;
