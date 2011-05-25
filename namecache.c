@@ -4,11 +4,11 @@
 // to do:
 //   use ns.c namespaces
 //   does directory inum need to be locked around ns_lookup?
-//   need a lock to make table lookup and iget atomic?
-//     unlink/lookup race?
-//     better: inode generation #
+//   maybe generation #s don't need to be in on-disk inode
+//     if namecache only referred to cached inodes
 //   insert when file created, not just looked up
 //   eviction
+//   verify that it hits when it is supposed to
 //
 
 #include "types.h"
@@ -33,6 +33,7 @@ struct nce {
   uint dinum; // directory inumber
   char name[DIRSIZ];
   uint cinum; // child inumber
+  uint gen;   // child ip->gen
 };
 #define NCE 128
 struct nce nce[NCE];
@@ -61,28 +62,51 @@ struct inode *
 nc_lookup(struct inode *dir, char *name)
 {
   uint inum = 0;
+  uint gen = 0;
 
   acquire(&nc_lock);
   struct nce *e = nc_lookup1(dir, name);
-  if(e)
+  if(e){
     inum = e->cinum;
+    gen = e->gen;
+  }
   release(&nc_lock);
 
-  if(inum)
-    return iget(dir->dev, inum);
-  else
+  if(inum){
+    struct inode *ip = iget(dir->dev, inum);
+    // this is a bit ugly
+    // maybe there should be a real inode cache and
+    // the namecache should contain direct refs.
+    ilock(ip);
+    int ok = (ip->gen == gen);
+    iunlock(ip);
+    if(ok){
+      return ip;
+    } else {
+      iput(ip);
+      return 0;
+    }
+  } else
     return 0;
 }
 
+// dir is locked, but ip is not.
 void
 nc_insert(struct inode *dir, char *name, struct inode *ip)
 {
+  ilock(ip);
+  uint inum = ip->inum;
+  uint gen = ip->gen;
+  iunlock(ip);
+
   acquire(&nc_lock);
 
   struct nce *e = nc_lookup1(dir, name);
   if(e){
-    if(e->cinum != ip->inum)
+    if(e->cinum != inum || e->gen != gen){
+      // someone forgot to call nc_invalidate()
       panic("nc_insert change");
+    }
     release(&nc_lock);
     return;
   }
@@ -95,7 +119,8 @@ nc_insert(struct inode *dir, char *name, struct inode *ip)
       e->dev = dir->dev;
       e->dinum = dir->inum;
       strncpy(e->name, name, DIRSIZ);
-      e->cinum = ip->inum;
+      e->cinum = inum;
+      e->gen = gen;
       break;
     }
   }

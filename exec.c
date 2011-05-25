@@ -8,6 +8,9 @@
 #include "defs.h"
 #include "x86.h"
 #include "elf.h"
+#include "stat.h"
+#include "fs.h"
+#include "file.h"
 
 int
 exec(char *path, char **argv)
@@ -27,6 +30,8 @@ exec(char *path, char **argv)
   ilock(ip);
 
   // Check ELF header
+  if(ip->type != T_FILE)
+    goto bad;
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
     goto bad;
   if(elf.magic != ELF_MAGIC)

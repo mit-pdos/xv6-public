@@ -1567,7 +1567,7 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREATE));
 
-  // unopentest();
+  unopentest();
   bigargtest();
   bsstest();
   sbrktest();

@@ -79,6 +79,8 @@ filestat(struct file *f, struct stat *st)
 {
   if(f->type == FD_INODE){
     ilock(f->ip);
+    if(f->ip->type == 0)
+      panic("filestat");
     stati(f->ip, st);
     iunlock(f->ip);
     return 0;
@@ -98,6 +100,8 @@ fileread(struct file *f, char *addr, int n)
     return piperead(f->pipe, addr, n);
   if(f->type == FD_INODE){
     ilock(f->ip);
+    if(f->ip->type == 0)
+      panic("fileread");
     if((r = readi(f->ip, addr, f->off, n)) > 0)
       f->off += r;
     iunlock(f->ip);

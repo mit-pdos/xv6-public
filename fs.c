@@ -148,6 +148,7 @@ iinit(void)
 
 //PAGEBREAK!
 // Allocate a new inode with the given type on device dev.
+// Returns a locked inode.
 struct inode*
 ialloc(uint dev, short type)
 {
@@ -160,14 +161,24 @@ ialloc(uint dev, short type)
   for(inum = 1; inum < sb.ninodes; inum++){  // loop over inode blocks
     bp = bread(dev, IBLOCK(inum));
     dip = (struct dinode*)bp->data + inum%IPB;
-    if(dip->type == 0){  // a free inode
-      memset(dip, 0, sizeof(*dip));
-      dip->type = type;
-      bwrite(bp);   // mark it allocated on the disk
-      brelse(bp);
-      return iget(dev, inum);
-    }
+    int seemsfree = (dip->type == 0);
     brelse(bp);
+    if(seemsfree){
+      // maybe this inode is free. look at it via the
+      // inode cache to make sure.
+      struct inode *ip = iget(dev, inum);
+      ilock(ip);
+      if(ip->type == 0){
+        ip->type = type;
+        ip->gen += 1;
+        if(ip->nlink || ip->size || ip->addrs[0])
+          panic("ialloc not zeroed");
+        iupdate(ip);
+        return ip;
+      }
+      iunlockput(ip);
+      cprintf("ialloc oops %d\n", inum); // XXX harmless
+    }
   }
   panic("ialloc: no inodes");
 }
@@ -186,6 +197,7 @@ iupdate(struct inode *ip)
   dip->minor = ip->minor;
   dip->nlink = ip->nlink;
   dip->size = ip->size;
+  dip->gen = ip->gen;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   bwrite(bp);
   brelse(bp);
@@ -238,6 +250,9 @@ idup(struct inode *ip)
 }
 
 // Lock the given inode.
+// XXX why does ilock() read the inode from disk?
+// why doesn't the iget() that allocated the inode cache entry
+// read the inode from disk?
 void
 ilock(struct inode *ip)
 {
@@ -261,11 +276,10 @@ ilock(struct inode *ip)
     ip->minor = dip->minor;
     ip->nlink = dip->nlink;
     ip->size = dip->size;
+    ip->gen = dip->gen;
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     brelse(bp);
     ip->flags |= I_VALID;
-    if(ip->type == 0)
-      panic("ilock: no type");
   }
 }
 
@@ -295,6 +309,9 @@ iput(struct inode *ip)
     release(&icache.lock);
     itrunc(ip);
     ip->type = 0;
+    ip->major = 0;
+    ip->minor = 0;
+    ip->gen += 1;
     iupdate(ip);
     acquire(&icache.lock);
     ip->flags = 0;
@@ -590,6 +607,8 @@ namex(char *path, int nameiparent, char *name)
       next = nc_lookup(ip, name);
     if(next == 0){
       ilock(ip);
+      if(ip->type == 0)
+        panic("namex");
       if(ip->type != T_DIR){
         iunlockput(ip);
         return 0;

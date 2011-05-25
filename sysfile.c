@@ -177,6 +177,8 @@ sys_unlink(void)
   if((dp = nameiparent(path, name)) == 0)
     return -1;
   ilock(dp);
+  if(dp->type != T_DIR)
+    panic("sys_unlink");
 
   // Cannot unlink "." or "..".
   if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0){
@@ -205,6 +207,7 @@ sys_unlink(void)
     dp->nlink--;
     iupdate(dp);
   }
+
   nc_invalidate(dp, name);
   iunlockput(dp);
 
@@ -224,6 +227,8 @@ create(char *path, short type, short major, short minor)
   if((dp = nameiparent(path, name)) == 0)
     return 0;
   ilock(dp);
+  if(dp->type != T_DIR)
+    panic("create");
 
   if((ip = dirlookup(dp, name, &off)) != 0){
     iunlockput(dp);
@@ -237,7 +242,6 @@ create(char *path, short type, short major, short minor)
   if((ip = ialloc(dp->dev, type)) == 0)
     panic("create: ialloc");
 
-  ilock(ip);
   ip->major = major;
   ip->minor = minor;
   ip->nlink = 1;
@@ -275,6 +279,8 @@ sys_open(void)
     if((ip = namei(path)) == 0)
       return -1;
     ilock(ip);
+    if(ip->type == 0)
+      panic("open");
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       return -1;
