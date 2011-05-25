@@ -205,6 +205,11 @@ iupdate(struct inode *ip)
 
 // Find the inode with number inum on device dev
 // and return the in-memory copy.
+// The inode is not locked, so someone else might
+// be modifying it.
+// But it has a ref count, so it won't be freed or reused.
+// Though unlocked, all fields will be present,
+// so looking a ip->inum and ip->gen are OK even w/o lock.
 struct inode*
 iget(uint dev, uint inum)
 {
@@ -217,6 +222,8 @@ iget(uint dev, uint inum)
   for(ip = &icache.inode[0]; ip < &icache.inode[NINODE]; ip++){
     if(ip->ref > 0 && ip->dev == dev && ip->inum == inum){
       ip->ref++;
+      while((ip->flags & I_VALID) == 0)
+        cv_sleep(&ip->cv, &icache.lock);
       release(&icache.lock);
       return ip;
     }
@@ -224,7 +231,7 @@ iget(uint dev, uint inum)
       empty = ip;
   }
 
-  // Allocate fresh inode.
+  // Allocate fresh inode cache slot.
   if(empty == 0)
     panic("iget: no inodes");
 
@@ -232,8 +239,22 @@ iget(uint dev, uint inum)
   ip->dev = dev;
   ip->inum = inum;
   ip->ref = 1;
-  ip->flags = 0;
+  ip->flags = I_BUSY;
   release(&icache.lock);
+
+  struct buf *bp = bread(ip->dev, IBLOCK(ip->inum));
+  struct dinode *dip = (struct dinode*)bp->data + ip->inum%IPB;
+  ip->type = dip->type;
+  ip->major = dip->major;
+  ip->minor = dip->minor;
+  ip->nlink = dip->nlink;
+  ip->size = dip->size;
+  ip->gen = dip->gen;
+  memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+  brelse(bp);
+  ip->flags |= I_VALID;
+
+  iunlock(ip);
 
   return ip;
 }
@@ -256,9 +277,6 @@ idup(struct inode *ip)
 void
 ilock(struct inode *ip)
 {
-  struct buf *bp;
-  struct dinode *dip;
-
   if(ip == 0 || ip->ref < 1)
     panic("ilock");
 
@@ -268,6 +286,10 @@ ilock(struct inode *ip)
   ip->flags |= I_BUSY;
   release(&icache.lock);
 
+  if((ip->flags & I_VALID) == 0)
+    panic("ilock");
+
+#if 0
   if(!(ip->flags & I_VALID)){
     bp = bread(ip->dev, IBLOCK(ip->inum));
     dip = (struct dinode*)bp->data + ip->inum%IPB;
@@ -281,6 +303,7 @@ ilock(struct inode *ip)
     brelse(bp);
     ip->flags |= I_VALID;
   }
+#endif
 }
 
 // Unlock the given inode.

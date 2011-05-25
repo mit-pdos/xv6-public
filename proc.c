@@ -165,7 +165,7 @@ userinit(void)
   p->tf->eip = 0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
-  p->cwd = namei("/");
+  p->cwd = 0; // forkret will fix in the process's context
   acquire(&p->lock);
   addrun(p);
   release(&p->lock);
@@ -573,11 +573,15 @@ forkret(void)
 {
   // Still holding proc->lock from scheduler.
   release(&proc->lock);
+
+  // just for the first process. can't do it earlier
+  // b/c file system code needs a process context
+  // in which to call cv_sleep().
+  if(proc->cwd == 0)
+    proc->cwd = namei("/");
   
   // Return to "caller", actually trapret (see allocproc).
 }
-
-
 
 // Kill the process with the given pid.
 // Process won't exit until it returns

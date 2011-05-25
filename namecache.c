@@ -3,7 +3,6 @@
 //
 // to do:
 //   use ns.c namespaces
-//   does directory inum need to be locked around ns_lookup?
 //   maybe generation #s don't need to be in on-disk inode
 //     if namecache only referred to cached inodes
 //   insert when file created, not just looked up
@@ -77,33 +76,30 @@ nc_lookup(struct inode *dir, char *name)
     // this is a bit ugly
     // maybe there should be a real inode cache and
     // the namecache should contain direct refs.
-    ilock(ip);
     int ok = (ip->gen == gen);
-    iunlock(ip);
     if(ok){
       return ip;
     } else {
       iput(ip);
       return 0;
     }
-  } else
+  } else {
     return 0;
+  }
 }
 
 // dir is locked, but ip is not.
 void
 nc_insert(struct inode *dir, char *name, struct inode *ip)
 {
-  ilock(ip);
-  uint inum = ip->inum;
-  uint gen = ip->gen;
-  iunlock(ip);
+  // though ip is not locked, it's still OK to 
+  // look at ip->gen.
 
   acquire(&nc_lock);
 
   struct nce *e = nc_lookup1(dir, name);
   if(e){
-    if(e->cinum != inum || e->gen != gen){
+    if(e->cinum != ip->inum || e->gen != ip->gen){
       // someone forgot to call nc_invalidate()
       panic("nc_insert change");
     }
@@ -119,8 +115,8 @@ nc_insert(struct inode *dir, char *name, struct inode *ip)
       e->dev = dir->dev;
       e->dinum = dir->inum;
       strncpy(e->name, name, DIRSIZ);
-      e->cinum = inum;
-      e->gen = gen;
+      e->cinum = ip->inum;
+      e->gen = ip->gen;
       break;
     }
   }
