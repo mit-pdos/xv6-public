@@ -108,9 +108,6 @@ kalloc(void)
     cprintf("kalloc: out of memory");
     kmemprint();
     return 0;
-#if 0
-    panic("out of memory");
-#endif
   }
 
   mtrace_label_register(mtrace_label_block,

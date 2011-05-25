@@ -247,28 +247,19 @@ freevm(pde_t *pgdir)
   kfree((char*)pgdir);
 }
 
-struct {
-  struct vmnode n[1024];
-} vmnodes;
-
-struct {
-  struct vmap m[128];
-} vmaps;
-
 struct vmnode *
 vmn_alloc(uint npg, uint type)
 {
   struct vmnode *n = kmalloc(sizeof(struct vmnode));
-  if (n == 0) 
-    panic("out of vmnodes");
+  if (n == 0) {
+    cprintf("out of vmnodes");
+    return 0;
+  }
   if(npg > NELEM(n->page)) {
     panic("vmnode too big\n");
   }
-  for (uint i = 0; i < NELEM(n->page); i++) 
-    n->page[i] = 0;
+  memset(n, 0, sizeof(struct vmnode));
   n->npages = npg;
-  n->ref = 0;
-  n->ip = 0;
   n->type = type;
   return n;
 }
@@ -291,7 +282,10 @@ vmn_allocpg(uint npg)
 {
   struct vmnode *n = vmn_alloc(npg, EAGER);
   if (n == 0) return 0;
-  if (vmn_doallocpg(n) < 0) return 0;   // XXX free n
+  if (vmn_doallocpg(n) < 0) {
+    vmn_free(n);
+    return 0;
+  }
   return n;
 }
 
@@ -330,7 +324,10 @@ vmn_copy(struct vmnode *n)
     } 
     if (n->page[0]) {   // If the first page is present, all of them are present
       if (vmn_doallocpg(c) < 0) {
-	panic("vmn_copy\n");
+	cprintf("vmn_copy: out of memory\n");
+	vmn_free(c);
+	cprintf("return\n");
+	return 0;
       }
       for(uint i = 0; i < n->npages; i++) {
 	memmove(c->page[i], n->page[i], PGSIZE);
@@ -343,23 +340,22 @@ vmn_copy(struct vmnode *n)
 struct vmap *
 vmap_alloc(void)
 {
-  for(uint i = 0; i < NELEM(vmaps.m); i++) {
-    struct vmap *m = &vmaps.m[i];
-    if(m->alloc == 0 && __sync_bool_compare_and_swap(&m->alloc, 0, 1)) {
-      for(uint j = 0; j < NELEM(m->e); j++){
-	m->e[j].n = 0;
-	m->e[j].va_type = PRIVATE;
-	m->e[j].lock.name = "vma";
-      }
-      m->lock.name = "vmap";
-      m->ref = 1;
-      m->pgdir = setupkvm();
-      if (m->pgdir == 0)
-	panic("vmap_alloc: setupkvm out of memory");
-      return m;
-    }
+  struct vmap *m = kmalloc(sizeof(struct vmap));
+  if (m == 0) return 0;
+  memset(m, 0, sizeof(struct vmap));
+  for(uint j = 0; j < NELEM(m->e); j++){
+    m->e[j].va_type = PRIVATE;
+    m->e[j].lock.name = "vma";
   }
-  return 0;
+  m->lock.name = "vmap";
+  m->ref = 1;
+  m->pgdir = setupkvm();
+  if (m->pgdir == 0) {
+    cprintf("vmap_alloc: setupkvm out of memory");
+    kmfree(m);
+    return 0;
+  }
+  return m;
 }
 
 static void
@@ -492,7 +488,7 @@ vmap_copy(struct vmap *m, int share)
     }
     if(c->e[i].n == 0) {
       release(&m->lock);
-      vmap_decref(c);
+      vmap_free(c);
       return 0;
     }
     __sync_fetch_and_add(&c->e[i].n->ref, 1);
@@ -617,13 +613,17 @@ pagefault_ondemand(struct vmap *vmap, uint va, uint err, struct vma *m)
   return m;
 }
 
-static void
+static int
 pagefault_wcow(struct vmap *vmap, uint va, pte_t *pte, struct vma *m, uint npg)
 {
   // Always make a copy of n, even if this process has the only ref, because other processes
   // may change ref count while this process is handling wcow
   struct vmnode *o = m->n;
   struct vmnode *c = vmn_copy(m->n);
+  if (c == 0) {
+    cprintf("pagefault_wcow: out of mem\n");
+    return -1;
+  }
   c->ref = 1;
   m->va_type = PRIVATE;
   m->n = c;
@@ -633,6 +633,7 @@ pagefault_wcow(struct vmap *vmap, uint va, pte_t *pte, struct vma *m, uint npg)
   *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   // drop my ref to vmnode
   vmn_decref(o);
+  return 0;
 }
 
 int
@@ -650,7 +651,10 @@ pagefault(struct vmap *vmap, uint va, uint err)
     m = pagefault_ondemand(vmap, va, err, m);
   }
   if (m->va_type == COW && (err & FEC_WR)) {
-    pagefault_wcow(vmap, va, pte, m, npg);
+    if (pagefault_wcow(vmap, va, pte, m, npg) < 0) {
+      release(&m->lock);
+      return -1;
+    }
   } else if (m->va_type == COW) {
     *pte = PADDR(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
