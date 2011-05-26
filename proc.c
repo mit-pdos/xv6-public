@@ -11,8 +11,8 @@
 
 struct runq runqs[NCPU];
 int idle[NCPU];
+struct ns *nspid;
 static struct proc *initproc;
-static struct ns *nspid;
 
 extern void forkret(void);
 extern void trapret(void);
@@ -55,9 +55,11 @@ allocproc(void)
 
   p->state = EMBRYO;
   p->pid = ns_allockey(nspid);
+  p->epoch = INF;
+  p->cpuid = cpu->id;
+
   if (ns_insert(nspid, p->pid, (void *) p) < 0)
     panic("allocproc: ns_insert");
-  p->cpuid = cpu->id;
 
   // Allocate kernel stack if possible.
   if((p->kstack = kalloc()) == 0){
@@ -614,13 +616,10 @@ kill(int pid)
   return 0;
 }
 
-//PAGEBREAK: 36
-// Print a process listing to console.  For debugging.
-// Runs when user types ^P on console.
-// No lock to avoid wedging a stuck machine further.
-void
-procdump(int c)
+void procdump(int k, void *v)
 {
+  struct proc *p = (struct proc *) v;
+
   static char *states[] = {
   [UNUSED]    "unused",
   [EMBRYO]    "embryo",
@@ -631,31 +630,27 @@ procdump(int c)
   };
   char *state;
 
-#if 0
+  if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+    state = states[p->state];
+  else
+    state = "???";
+  cprintf("%d %s %s %d, ", p->pid, state, p->name, p->cpuid);
+
   uint pc[10];
   if(p->state == SLEEPING){
     getcallerpcs((uint*)p->context->ebp+2, pc);
-    for(i=0; i<10 && pc[i] != 0; i++)
+    for(int i=0; i<10 && pc[i] != 0; i++)
       cprintf(" %p", pc[i]);
-  }
-#endif
-  struct proc *q;
-  cprintf("runq: ");
-  STAILQ_FOREACH(q, &runqs[c].runq, run_next) {
-    if(q->state >= 0 && q->state < NELEM(states) && states[q->state])
-      state = states[q->state];
-    else
-      state = "???";
-    cprintf("%d %s %s, ", q->pid, state, q->name);
   }
   cprintf("\n");
 }
 
+//PAGEBREAK: 36
+// Print a process listing to console.  For debugging.
+// Runs when user types ^P on console.
+// No lock to avoid wedging a stuck machine further.
 void
 procdumpall(void)
 {
-  int c;
-  for (c = 0; c < NCPU; c++) {
-    procdump(c);
-  }
+  ns_enumerate(nspid, procdump);
 }

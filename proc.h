@@ -88,6 +88,7 @@ struct proc {
   SLIST_HEAD(childlist, proc) childq;
   SLIST_ENTRY(proc) child_next;
   struct condvar cv;
+  uint epoch;
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -129,6 +130,7 @@ extern struct cpu cpus[NCPU];
 extern struct runq runqs[NCPU];
 extern struct condtab condtabs[NCPU];
 extern int ncpu;
+extern struct ns *nspid;
 
 // Per-CPU variables, holding pointers to the
 // current cpu and to the current process.

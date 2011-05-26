@@ -12,3 +12,4 @@
 #define MAXARG       32  // max exec arguments
 #define MAXNAME      16  // max string names
 #define MINCYCTHRESH 1000000  // min cycles a proc executes on a core before allowed to be stolen
+#define INF          0xFFFFFFFF

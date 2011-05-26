@@ -124,3 +124,16 @@ ns_remove(struct ns *ns, int key)
   return r;
 }
 
+void
+ns_enumerate(struct ns *ns, void (*f)(int, void *))
+{
+  acquire(&ns->lock);
+  for (int i = 0; i < NHASH; i++) {
+    struct elem *e = TAILQ_FIRST(&(ns->table[i].chain));
+    while (e != NULL) {
+      (*f)(e->key, e->val);
+      e = TAILQ_NEXT(e, chain);
+    }
+  }
+  release(&ns->lock);
+}

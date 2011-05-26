@@ -102,6 +102,8 @@ int             ns_allockey(struct ns*);
 int             ns_insert(struct ns*, int key, void*);
 void*           ns_lookup(struct ns*, int);
 int             ns_remove(struct ns *ns, int key);
+void            ns_enumerate(struct ns *ns, void (*f)(int, void *));
+
 
 // picirq.c
 void            picenable(int);
@@ -122,7 +124,6 @@ int             fork(int);
 int             growproc(int);
 int             kill(int);
 void            pinit(void);
-void            procdump(int);
 void            procdumpall(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
@@ -130,6 +131,9 @@ void            userinit(void);
 int             wait(void);
 void            yield(void);
 void            migrate(void);
+
+// rcu.c
+void            rcuinit(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

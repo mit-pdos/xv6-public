@@ -51,6 +51,7 @@ mainc(void)
   uartinit();      // serial port
   kvmalloc();      // initialize the kernel page table
   nsinit();        // initialize name space module
+  rcuinit();       // initialize rcu module
   pinit();         // process table
   tvinit();        // trap vectors
   binit();         // buffer cache
