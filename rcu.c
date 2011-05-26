@@ -22,9 +22,7 @@ static struct rcu *rcu_freelist;
 static uint global_epoch;
 static uint min_epoch;
 static struct spinlock rcu_lock;
-
 static int delayed_nfree;
-static int ninuse;
 
 void
 rcuinit(void)
@@ -39,7 +37,7 @@ rcuinit(void)
     r->rcu = rcu_freelist;
     rcu_freelist = r;
   }
-  cprintf("rcu_init: allocated %d bytes\n", sizeof(struct rcu) * NRCU);
+  // cprintf("rcu_init: allocated %d bytes\n", sizeof(struct rcu) * NRCU);
 }
 
 struct rcu *
@@ -70,35 +68,27 @@ rcu_gc(void)
   int n = 0;
   min_epoch = global_epoch;
 
-
   acquire(&rcu_lock);
 
   ns_enumerate(nspid, rcu_min);
-
   for (r = rcu_delayed_head; r != NULL; r = nr) {
     if (r->epoch >= min_epoch)
       break;
-
-    // printf("free: %ld\n", r->epoch);
+    // cprintf("free: %d\n", r->epoch);
     if (r->dofree == 0)
       panic("rcu_gc");
     r->dofree(r->item);
-
     delayed_nfree--;
     n++;
-
     rcu_delayed_head = r->rcu;
     if (rcu_delayed_head == 0)
       rcu_delayed_tail = 0;
-
     nr = r->rcu;
-
     r->rcu = rcu_freelist;
     rcu_freelist = r;
   }
   release(&rcu_lock);
-  //  printf("rcu_gc: n=%d ndelayed_free=%d nfree=%d ninuse=%d\n", n, delayed_nfree, 
-  //	 tree_nfree, tree_ninuse);
+  // cprintf("rcu_gc: n %d ndelayed_free=%d\n", n, delayed_nfree);
 }
 
 // XXX Use atomic instruction to update list (instead of holding lock)
@@ -113,25 +103,24 @@ rcu_delayed(void *e, void (*dofree)(void *))
   r->rcu = 0;
   r->epoch = global_epoch;
   acquire(&rcu_lock);
-  //  printf("rcu_delayed: %ld\n", global_epoch);
+  // cprintf("rcu_delayed: %d\n", global_epoch);
   if (rcu_delayed_tail != 0) 
     rcu_delayed_tail->rcu = r;
   rcu_delayed_tail = r;
   if (rcu_delayed_head == 0) rcu_delayed_head = r;
   release(&rcu_lock);
   delayed_nfree++;
-  ninuse--;
 }
 
 void
-rcu_begin_read()
+rcu_begin_read(void)
 {
   proc->epoch = global_epoch;
   __sync_synchronize();
 }
 
 void
-rcu_end_read()
+rcu_end_read(void)
 {
   proc->epoch = INF;
 }
@@ -142,6 +131,8 @@ rcu_begin_write(struct spinlock *l)
   acquire(l);
 }
 
+// XXX if a process never rcu_end_write() infrequently we have a problem; run
+// rcu_gc from a kernel thread periodically?
 void
 rcu_end_write(struct spinlock *l)
 {

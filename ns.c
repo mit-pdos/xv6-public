@@ -7,7 +7,7 @@
 // XXX maybe use open hash table, no chain, better cache locality
 
 #define NHASH 100
-static int rcu = 0;
+static int rcu = 1;
 
 #define ACQUIRE(l) (rcu) ? rcu_begin_write(l) : acquire(l)
 #define RELEASE(l) (rcu) ? rcu_end_write(l) : release(l)
@@ -109,9 +109,14 @@ ns_dolookup(struct ns *ns, int key)
 void*
 ns_lookup(struct ns *ns, int key)
 {
-  ACQUIRE(&ns->lock);
+  if (rcu) rcu_begin_read();
+  else acquire(&ns->lock);
+
   struct elem *e = ns_dolookup(ns, key);
-  RELEASE(&ns->lock);
+
+  if (rcu) rcu_begin_read();
+  else release(&ns->lock);
+
   return (e == 0)? 0 : e->val;
 }
 
@@ -123,7 +128,8 @@ ns_remove(struct ns *ns, int key)
   struct elem *e = ns_dolookup(ns, key);
   if (e) {
     TAILQ_REMOVE(&(ns->table[key % NHASH].chain), e, chain);
-    kmfree(e);
+    if (rcu) rcu_delayed(e, kmfree);
+    else kmfree(e);
     r = 0;
   }
   RELEASE(&ns->lock);
