@@ -1,3 +1,5 @@
+-include config.mk
+
 OBJS = \
 	bio.o\
 	condvar.o\
@@ -32,7 +34,7 @@ OBJS = \
 	rcu.o
 
 # Cross-compiling (e.g., on Mac OS X)
-TOOLPREFIX = x86_64-jos-elf-
+TOOLPREFIX ?= x86_64-jos-elf-
 
 # Using native tools (e.g., on X86 Linux)
 #TOOLPREFIX = 
@@ -54,8 +56,8 @@ TOOLPREFIX := $(shell if i386-jos-elf-objdump -i 2>&1 | grep '^elf32-i386$$' >/d
 endif
 
 # The i386 ('qemu') mtrace doesn't work, but 'qemu-system-x86_64' mtrace works.
-MTRACE = ../mtrace/x86_64-softmmu/qemu-system-x86_64
-QEMUSRC = ../mtrace
+MTRACE ?= ../mtrace/x86_64-softmmu/qemu-system-x86_64
+QEMUSRC ?= ../mtrace
 
 ifeq ($(QEMUSRC),)
 $(error You need to set QEMUSRC (e.g. make QEMUSRC=~/qemu))

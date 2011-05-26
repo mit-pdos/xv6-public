@@ -17,3 +17,4 @@ mkfs
 mtrace.out
 mscan.syms
 mscan.kern
+config.mk
