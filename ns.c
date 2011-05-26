@@ -4,8 +4,13 @@
 #include "queue.h"
 
 // name spaces
+// XXX maybe use open hash table, no chain, better cache locality
 
 #define NHASH 100
+static int rcu = 0;
+
+#define ACQUIRE(l) (rcu) ? rcu_begin_write(l) : acquire(l)
+#define RELEASE(l) (rcu) ? rcu_end_write(l) : release(l)
 
 // XXX cache align
 struct elem {
@@ -39,11 +44,12 @@ nsalloc(void)
 {
   struct ns *ns = 0;
 
-  acquire(&ns_lock);
   ns = kmalloc(sizeof(struct ns));
   if (ns == 0)
     panic("nsalloc");
   memset(ns, 0, sizeof(struct ns));
+
+  acquire(&ns_lock);
   for (int i = 0; i < NHASH; i++) {
     TAILQ_INIT(&ns->table[i].chain);
   }
@@ -74,7 +80,7 @@ int
 ns_insert(struct ns *ns, int key, void *val) 
 {
   int r = -1;
-  acquire(&ns->lock);
+  ACQUIRE(&ns->lock);
   struct elem *e = elemalloc();
   if (e) {
     e->key = key;
@@ -83,7 +89,7 @@ ns_insert(struct ns *ns, int key, void *val)
     TAILQ_INSERT_TAIL(&(ns->table[i].chain), e, chain);
     r = 0;
   }
-  release(&ns->lock);
+  RELEASE(&ns->lock);
   return r;
 }
 
@@ -103,9 +109,9 @@ ns_dolookup(struct ns *ns, int key)
 void*
 ns_lookup(struct ns *ns, int key)
 {
-  acquire(&ns->lock);
+  ACQUIRE(&ns->lock);
   struct elem *e = ns_dolookup(ns, key);
-  release(&ns->lock);
+  RELEASE(&ns->lock);
   return (e == 0)? 0 : e->val;
 }
 
@@ -113,14 +119,14 @@ int
 ns_remove(struct ns *ns, int key)
 {
   int r = -1;
-  acquire(&ns->lock);
+  ACQUIRE(&ns->lock);
   struct elem *e = ns_dolookup(ns, key);
   if (e) {
     TAILQ_REMOVE(&(ns->table[key % NHASH].chain), e, chain);
     kmfree(e);
     r = 0;
   }
-  release(&ns->lock);
+  RELEASE(&ns->lock);
   return r;
 }
 

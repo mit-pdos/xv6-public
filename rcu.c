@@ -10,8 +10,6 @@
 
 #define NRCU 1000
 
-#define NDELAY 500
-
 struct rcu {
   void *item;
   unsigned long epoch;
@@ -37,10 +35,11 @@ rcuinit(void)
   initlock(&rcu_lock, "rcu");
   for (i = 0; i < NRCU; i++) {
     r = (struct rcu *) kmalloc(sizeof(struct rcu));
+    memset(r, 0, sizeof(struct rcu));
     r->rcu = rcu_freelist;
     rcu_freelist = r;
   }
-  cprintf("rcu_init: allocated %ld bytes\n", sizeof(struct rcu) * NRCU);
+  cprintf("rcu_init: allocated %d bytes\n", sizeof(struct rcu) * NRCU);
 }
 
 struct rcu *
@@ -71,7 +70,11 @@ rcu_gc(void)
   int n = 0;
   min_epoch = global_epoch;
 
+
+  acquire(&rcu_lock);
+
   ns_enumerate(nspid, rcu_min);
+
   for (r = rcu_delayed_head; r != NULL; r = nr) {
     if (r->epoch >= min_epoch)
       break;
@@ -93,6 +96,7 @@ rcu_gc(void)
     r->rcu = rcu_freelist;
     rcu_freelist = r;
   }
+  release(&rcu_lock);
   //  printf("rcu_gc: n=%d ndelayed_free=%d nfree=%d ninuse=%d\n", n, delayed_nfree, 
   //	 tree_nfree, tree_ninuse);
 }
@@ -108,40 +112,42 @@ rcu_delayed(void *e, void (*dofree)(void *))
   r->item = e;
   r->rcu = 0;
   r->epoch = global_epoch;
+  acquire(&rcu_lock);
   //  printf("rcu_delayed: %ld\n", global_epoch);
   if (rcu_delayed_tail != 0) 
     rcu_delayed_tail->rcu = r;
   rcu_delayed_tail = r;
   if (rcu_delayed_head == 0) rcu_delayed_head = r;
+  release(&rcu_lock);
   delayed_nfree++;
   ninuse--;
 }
 
 void
-rcu_begin_read(int tid)
+rcu_begin_read()
 {
   proc->epoch = global_epoch;
   __sync_synchronize();
 }
 
 void
-rcu_end_read(int tid)
+rcu_end_read()
 {
   proc->epoch = INF;
 }
 
 void
-rcu_begin_write(int tid)
+rcu_begin_write(struct spinlock *l)
 {
-  acquire(&rcu_lock);
+  acquire(l);
 }
 
 void
-rcu_end_write(int tid)
+rcu_end_write(struct spinlock *l)
 {
   // for other data structures using rcu, use atomic add:
   __sync_fetch_and_add(&global_epoch, 1);
+  release(l);
   rcu_gc();
-  release(&rcu_lock);
 }
 

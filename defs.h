@@ -134,6 +134,8 @@ void            migrate(void);
 
 // rcu.c
 void            rcuinit(void);
+void            rcu_begin_write(struct spinlock *);
+void            rcu_end_write(struct spinlock *);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
