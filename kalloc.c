@@ -104,7 +104,7 @@ kalloc(void)
   }
 
   if (r == 0) {
-    cprintf("kalloc: out of memory");
+    cprintf("kalloc: out of memory\n");
     kmemprint();
     return 0;
   }
