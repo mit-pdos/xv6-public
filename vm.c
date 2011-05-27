@@ -351,7 +351,7 @@ vmap_alloc(void)
   m->ref = 1;
   m->pgdir = setupkvm();
   if (m->pgdir == 0) {
-    cprintf("vmap_alloc: setupkvm out of memory");
+    cprintf("vmap_alloc: setupkvm out of memory\n");
     kmfree(m);
     return 0;
   }
