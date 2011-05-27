@@ -131,7 +131,7 @@ rcu_begin_write(struct spinlock *l)
   acquire(l);
 }
 
-// XXX if a process never rcu_end_write() infrequently we have a problem; run
+// XXX if a process never calls rcu_end_write() we have a problem; run
 // rcu_gc from a kernel thread periodically?
 void
 rcu_end_write(struct spinlock *l)

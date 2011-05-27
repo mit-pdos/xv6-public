@@ -13,10 +13,10 @@
 #include "kalloc.h"
 #include "xv6-mtrace.h"
 
-struct kmem kmems[NCPU];
+void kminit(void);
 
+struct kmem kmems[NCPU];
 extern char end[]; // first address after kernel loaded from ELF file
-struct spinlock free_lock;
 
 static void __attribute__((unused))
 kmemprint(void)
@@ -45,8 +45,7 @@ kinit(void)
   p = (char*)PGROUNDUP((uint)end);
   for(; p + PGSIZE <= (char*)PHYSTOP; p += PGSIZE)
     kfree(p);
-
-  initlock(&free_lock, "malloc");
+  kminit();
 }
 
 //PAGEBREAK: 21
@@ -137,8 +136,22 @@ union header {
 
 typedef union header Header;
 
-static Header base;
-static Header *freep;   // last allocated block
+static struct freelist {
+  Header base;
+  Header *freep;   // last allocated block
+  struct spinlock lock;
+  char name[MAXNAME];
+} freelists[NCPU];
+
+void
+kminit(void)
+{
+  for (int c = 0; c < NCPU; c++) {
+    freelists[c].name[0] = (char) c + '0';
+    safestrcpy(freelists[c].name+1, "freelist", MAXNAME-1);
+    initlock(&freelists[c].lock, freelists[c].name);
+  }
+}
 
 static void
 domfree(void *ap)
@@ -146,7 +159,7 @@ domfree(void *ap)
   Header *bp, *p;
 
   bp = (Header*)ap - 1;
-  for(p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
+  for(p = freelists[cpu->id].freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
     if(p >= p->s.ptr && (bp > p || bp < p->s.ptr))
       break;
   if(bp + bp->s.size == p->s.ptr){
@@ -159,15 +172,15 @@ domfree(void *ap)
     p->s.ptr = bp->s.ptr;
   } else
     p->s.ptr = bp;
-  freep = p;
+  freelists[cpu->id].freep = p;
 }
 
 void
 kmfree(void *ap)
 {
-  acquire(&free_lock);
+  acquire(&freelists[cpu->id].lock);
   domfree(ap);
-  release(&free_lock);
+  release(&freelists[cpu->id].lock);
 }
 
 // Caller should hold free_locky
@@ -188,7 +201,7 @@ morecore(uint nu)
   hp = (Header*)p;
   hp->s.size = nu;
   domfree((void*)(hp + 1));
-  return freep;
+  return freelists[cpu->id].freep;
 }
 
 void*
@@ -198,11 +211,11 @@ kmalloc(uint nbytes)
   uint nunits;
   void *r = 0;
 
-  acquire(&free_lock);
+  acquire(&freelists[cpu->id].lock);
   nunits = (nbytes + sizeof(Header) - 1)/sizeof(Header) + 1;
-  if((prevp = freep) == 0){
-    base.s.ptr = freep = prevp = &base;
-    base.s.size = 0;
+  if((prevp = freelists[cpu->id].freep) == 0){
+    freelists[cpu->id].base.s.ptr = freelists[cpu->id].freep = prevp = &freelists[cpu->id].base;
+    freelists[cpu->id].base.s.size = 0;
   }
   for(p = prevp->s.ptr; ; prevp = p, p = p->s.ptr){
     if(p->s.size >= nunits){
@@ -213,14 +226,14 @@ kmalloc(uint nbytes)
         p += p->s.size;
         p->s.size = nunits;
       }
-      freep = prevp;
+      freelists[cpu->id].freep = prevp;
       r = (void*)(p + 1);
       break;
     }
-    if(p == freep)
+    if(p == freelists[cpu->id].freep)
       if((p = morecore(nunits)) == 0)
         break;
   }
-  release(&free_lock);
+  release(&freelists[cpu->id].lock);
   return r;
 }
