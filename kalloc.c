@@ -18,6 +18,8 @@ void kminit(void);
 struct kmem kmems[NCPU];
 extern char end[]; // first address after kernel loaded from ELF file
 
+static int kinited;
+
 static void __attribute__((unused))
 kmemprint(void)
 {
@@ -46,6 +48,7 @@ kinit(void)
   for(; p + PGSIZE <= (char*)PHYSTOP; p += PGSIZE)
     kfree(p);
   kminit();
+  kinited = 1;
 }
 
 //PAGEBREAK: 21
@@ -70,13 +73,14 @@ kfree(char *v)
   r->next = m->freelist;
   m->freelist = r;
   m->nfree++;
-  mtrace_label_register(mtrace_label_block,
-			r,
-			0,
-			0,
-			0,
-			RET_EIP());
-
+  if (kinited)
+    mtrace_label_register(mtrace_label_block,
+			  r,
+			  0,
+			  0,
+			  0,
+			  RET_EIP());
+  
   release(&m->lock);
 }
 
@@ -180,6 +184,12 @@ kmfree(void *ap)
 {
   acquire(&freelists[cpu->id].lock);
   domfree(ap);
+  mtrace_label_register(mtrace_label_heap,
+			ap,
+			0,
+			0,
+			0,
+			RET_EIP());
   release(&freelists[cpu->id].lock);
 }
 
@@ -235,5 +245,13 @@ kmalloc(uint nbytes)
         break;
   }
   release(&freelists[cpu->id].lock);
+
+  if (r)
+    mtrace_label_register(mtrace_label_heap,
+			  r,
+			  nbytes,
+			  "kmalloc",
+			  sizeof("kmalloc"),
+			  RET_EIP());
   return r;
 }
