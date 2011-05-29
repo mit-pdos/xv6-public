@@ -65,7 +65,8 @@ kfree(char *v)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
-  memset(v, 1, PGSIZE);
+  if (kinited)
+    memset(v, 1, PGSIZE);
 
   struct kmem *m = kmem;
   acquire(&m->lock);
