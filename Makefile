@@ -181,6 +181,7 @@ UPROGS=\
 	_thrtest\
 	_sleep\
 	_maptest\
+	_forktree\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
