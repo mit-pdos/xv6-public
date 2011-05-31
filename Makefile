@@ -224,8 +224,9 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 ifndef CPUS
 CPUS := 2
 endif
-QEMUOPTS = -hdb fs.img xv6.img -smp $(CPUS)
-MTRACEOPTS = -mtrace-enable -mtrace-file mtrace.out -mtrace-quantum 1000
+QEMUOPTS = -hdb fs.img xv6.img -smp $(CPUS) -m 512
+MTRACEOPTS = -icount 0 -rtc clock=vm \
+             -mtrace-enable -mtrace-file mtrace.out -mtrace-quantum 1000
 
 qemu: fs.img xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)
