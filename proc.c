@@ -50,13 +50,15 @@ allocproc(void)
   if (p == 0) return 0;
   memset(p, 0, sizeof(*p));
   p->state = EMBRYO;
-  initlock(&p->lock, "proc");
-  initcondvar(&p->cv, "proc");
 
   p->state = EMBRYO;
   p->pid = ns_allockey(nspid);
   p->epoch = INF;
   p->cpuid = cpu->id;
+
+  snprintf(p->lockname, sizeof(p->lockname), "proc%d", p->pid);
+  initlock(&p->lock, p->lockname);
+  initcondvar(&p->cv, p->lockname);
 
   if (ns_insert(nspid, p->pid, (void *) p) < 0)
     panic("allocproc: ns_insert");

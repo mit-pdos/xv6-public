@@ -89,6 +89,7 @@ struct proc {
   SLIST_ENTRY(proc) child_next;
   struct condvar cv;
   uint epoch;
+  char lockname[16];
 };
 
 // Process memory is laid out contiguously, low addresses first:

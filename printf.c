@@ -2,14 +2,11 @@
 #include "stat.h"
 #include "user.h"
 
-static void
-putc(int fd, char c)
-{
-  write(fd, &c, 1);
-}
+#include <stdarg.h>
 
 static void
-printint(int fd, int xx, int base, int sgn)
+printint(void (*putch) (void*, char), void *putarg,
+	 int xx, int base, int sgn)
 {
   static char digits[] = "0123456789ABCDEF";
   char buf[16];
@@ -32,54 +29,101 @@ printint(int fd, int xx, int base, int sgn)
     buf[i++] = '-';
 
   while(--i >= 0)
-    putc(fd, buf[i]);
+    putch(putarg, buf[i]);
 }
 
-// Print to the given fd. Only understands %d, %x, %p, %s.
+// Only understands %d, %x, %p, %s.
 void
-printf(int fd, char *fmt, ...)
+vprintfmt(void (*putch) (void*, char), void *putarg,
+          char *fmt, va_list ap)
 {
   char *s;
   int c, i, state;
-  uint *ap;
 
   state = 0;
-  ap = (uint*)(void*)&fmt + 1;
   for(i = 0; fmt[i]; i++){
     c = fmt[i] & 0xff;
     if(state == 0){
       if(c == '%'){
         state = '%';
       } else {
-        putc(fd, c);
+        putch(putarg, c);
       }
     } else if(state == '%'){
       if(c == 'd'){
-        printint(fd, *ap, 10, 1);
-        ap++;
+        printint(putch, putarg, va_arg(ap, uint), 10, 1);
       } else if(c == 'x' || c == 'p'){
-        printint(fd, *ap, 16, 0);
-        ap++;
+        printint(putch, putarg, va_arg(ap, uint), 16, 0);
       } else if(c == 's'){
-        s = (char*)*ap;
-        ap++;
+        s = (char*) va_arg(ap, char*);
         if(s == 0)
           s = "(null)";
         while(*s != 0){
-          putc(fd, *s);
+          putch(putarg, *s);
           s++;
         }
       } else if(c == 'c'){
-        putc(fd, *ap);
-        ap++;
+        putch(putarg, va_arg(ap, uint));
       } else if(c == '%'){
-        putc(fd, c);
+        putch(putarg, c);
       } else {
         // Unknown % sequence.  Print it to draw attention.
-        putc(fd, '%');
-        putc(fd, c);
+        putch(putarg, '%');
+        putch(putarg, c);
       }
       state = 0;
     }
   }
+}
+
+// Print to the given fd.
+static void
+writec(void *arg, char c)
+{
+  int fd = (int) arg;
+  write(fd, &c, 1);
+}
+
+void
+printf(int fd, char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vprintfmt(writec, (void*) fd, fmt, ap);
+  va_end(ap);
+}
+
+// Print to a buffer.
+struct bufstate {
+  char *p;
+  char *e;
+};
+
+static void
+writebuf(void *arg, char c)
+{
+  struct bufstate *bs = arg;
+  if (bs->p < bs->e) {
+    bs->p[0] = c;
+    bs->p++;
+  }
+}
+
+void
+vsnprintf(char *buf, uint n, char *fmt, va_list ap)
+{
+  struct bufstate bs = { buf, buf+n-1 };
+  vprintfmt(writebuf, (void*) &bs, fmt, ap);
+  bs.p[0] = '\0';
+}
+
+void
+snprintf(char *buf, uint n, char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vsnprintf(buf, n, fmt, ap);
+  va_end(ap);
 }

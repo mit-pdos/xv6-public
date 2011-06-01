@@ -1,3 +1,5 @@
+#include <stdarg.h>
+
 struct buf;
 struct context;
 struct file;
@@ -24,6 +26,8 @@ void            cv_wakeup(struct condvar *cv);
 // console.c
 void            consoleinit(void);
 void            cprintf(char*, ...);
+void            vsnprintf(char *buf, uint n, char *fmt, va_list ap);
+void            snprintf(char *buf, uint n, char *fmt, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 

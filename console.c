@@ -15,6 +15,8 @@
 #include "proc.h"
 #include "x86.h"
 
+#include <stdarg.h>
+
 static void consputc(int);
 
 static int panicked = 0;
@@ -25,7 +27,8 @@ static struct {
 } cons;
 
 static void
-printint(int xx, int base, int sign)
+printint(void (*putch) (void*, char), void *putarg,
+         int xx, int base, int sign)
 {
   static char digits[] = "0123456789abcdef";
   char buf[16];
@@ -46,59 +49,110 @@ printint(int xx, int base, int sign)
     buf[i++] = '-';
 
   while(--i >= 0)
-    consputc(buf[i]);
+    putch(putarg, buf[i]);
 }
 
 //PAGEBREAK: 50
-// Print to the console. only understands %d, %x, %p, %s.
+// Only understands %d, %x, %p, %s.
+void
+vprintfmt(void (*putch) (void*, char), void *putarg,
+          char *fmt, va_list ap)
+{
+  char *s;
+  int c, i, state;
+
+  state = 0;
+  for(i = 0; fmt[i]; i++){
+    c = fmt[i] & 0xff;
+    if(state == 0){
+      if(c == '%'){
+        state = '%';
+      } else {
+        putch(putarg, c);
+      }
+    } else if(state == '%'){
+      if(c == 'd'){
+        printint(putch, putarg, va_arg(ap, uint), 10, 1);
+      } else if(c == 'x' || c == 'p'){
+        printint(putch, putarg, va_arg(ap, uint), 16, 0);
+      } else if(c == 's'){
+        s = (char*) va_arg(ap, char*);
+        if(s == 0)
+          s = "(null)";
+        while(*s != 0){
+          putch(putarg, *s);
+          s++;
+        }
+      } else if(c == 'c'){
+        putch(putarg, va_arg(ap, uint));
+      } else if(c == '%'){
+        putch(putarg, c);
+      } else {
+        // Unknown % sequence.  Print it to draw attention.
+        putch(putarg, '%');
+        putch(putarg, c);
+      }
+      state = 0;
+    }
+  }
+}
+
+// Print to the console.
+static void
+writecons(void *arg, char c)
+{
+  consputc(c);
+}
+
 void
 cprintf(char *fmt, ...)
 {
-  int i, c, state, locking;
-  uint *argp;
-  char *s;
+  va_list ap;
 
-  locking = cons.locking;
+  int locking = cons.locking;
   if(locking)
     acquire(&cons.lock);
 
-  argp = (uint*)(void*)(&fmt + 1);
-  state = 0;
-  for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
-    if(c != '%'){
-      consputc(c);
-      continue;
-    }
-    c = fmt[++i] & 0xff;
-    if(c == 0)
-      break;
-    switch(c){
-    case 'd':
-      printint(*argp++, 10, 1);
-      break;
-    case 'x':
-    case 'p':
-      printint(*argp++, 16, 0);
-      break;
-    case 's':
-      if((s = (char*)*argp++) == 0)
-        s = "(null)";
-      for(; *s; s++)
-        consputc(*s);
-      break;
-    case '%':
-      consputc('%');
-      break;
-    default:
-      // Print unknown % sequence to draw attention.
-      consputc('%');
-      consputc(c);
-      break;
-    }
-  }
+  va_start(ap, fmt);
+  vprintfmt(writecons, 0, fmt, ap);
+  va_end(ap);
 
   if(locking)
     release(&cons.lock);
+}
+
+// Print to a buffer.
+struct bufstate {
+  char *p;
+  char *e;
+};
+
+static void
+writebuf(void *arg, char c)
+{
+  struct bufstate *bs = arg;
+  if (bs->p < bs->e) {
+    bs->p[0] = c;
+    bs->p++;
+  }
+}
+
+void
+vsnprintf(char *buf, uint n, char *fmt, va_list ap)
+{
+  struct bufstate bs = { buf, buf+n-1 };
+  vprintfmt(writebuf, (void*) &bs, fmt, ap);
+  bs.p[0] = '\0';
+}
+
+void
+snprintf(char *buf, uint n, char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vsnprintf(buf, n, fmt, ap);
+  va_end(ap);
 }
 
 void

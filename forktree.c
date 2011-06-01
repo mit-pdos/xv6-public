@@ -4,7 +4,7 @@
 #include "xv6-mtrace.h"
 
 #define NCHILD 2
-#define NDEPTH 6
+#define NDEPTH 5
 
 char*
 strncpy(char *s, const char *t, int n)
@@ -27,7 +27,7 @@ forktree(void)
 {
   uint depth = 0;
 
-  printf(1, "fork tree\n");
+  printf(1, "%d: fork tree\n", getpid());
   mtrace_enable_set(1, "xv6-forktree");
 
  next_level:
@@ -68,7 +68,7 @@ forktree(void)
   mtrace_appdata_register(&entry);
   mtrace_enable_set(0, "xv6-forktree");
   
-  printf(1, "fork tree OK\n");
+  printf(1, "%d: fork tree OK\n", getpid());
   halt();
 }
 
