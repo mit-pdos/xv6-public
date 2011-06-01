@@ -452,7 +452,7 @@ steal(void)
       acquire(&p->lock);
       if (p->state != RUNNABLE)
         panic("non-runnable proc on runq");
-      if (p->curcycles > MINCYCTHRESH) {
+      if (p->curcycles == 0 || p->curcycles > MINCYCTHRESH) {
 	// cprintf("%d: steal %d (%d) from %d\n", cpunum(), p->pid, p->curcycles, c);
 	delrun1(&runqs[c], p);
 	release(&runqs[c].lock);
