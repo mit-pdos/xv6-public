@@ -182,6 +182,7 @@ UPROGS=\
 	_sleep\
 	_maptest\
 	_forktree\
+	_mapbench\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

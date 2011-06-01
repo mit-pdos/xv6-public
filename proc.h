@@ -52,6 +52,7 @@ struct vma {
   enum vmatype va_type;
   struct vmnode *n;
   struct spinlock lock;        // serialize fault/unmap
+  char lockname[16];
 };
 
 // An address space: a set of vmas plus h/w page table.
@@ -62,6 +63,7 @@ struct vmap {
   uint ref;
   uint alloc;
   pde_t *pgdir;                // Page table
+  char lockname[16];
 };
 
 // Per-process state

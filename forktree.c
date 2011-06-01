@@ -6,22 +6,6 @@
 #define NCHILD 2
 #define NDEPTH 5
 
-char*
-strncpy(char *s, const char *t, int n)
-{
-  int tlen = strlen((char *)t);
-  memmove(s, (char *)t, n > tlen ? tlen : n);
-  if (n > tlen)
-    s[tlen] = 0;
-  return s;
-}
-
-void*
-memcpy(void *dst, const void *src, uint n)
-{
-  return memmove(dst, (void *)src, n);
-}
-
 void
 forktree(void)
 {

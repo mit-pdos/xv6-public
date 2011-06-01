@@ -5,6 +5,16 @@
 #include "x86.h"
 
 char*
+strncpy(char *s, const char *t, int n)
+{
+  int tlen = strlen((char *)t);
+  memmove(s, (char *)t, n > tlen ? tlen : n);
+  if (n > tlen)
+    s[tlen] = 0;
+  return s;
+}
+
+char*
 strcpy(char *s, char *t)
 {
   char *os;
@@ -90,6 +100,12 @@ atoi(const char *s)
   while('0' <= *s && *s <= '9')
     n = n*10 + *s++ - '0';
   return n;
+}
+
+void*
+memcpy(void *dst, const void *src, uint n)
+{
+  return memmove(dst, (void *)src, n);
 }
 
 void*

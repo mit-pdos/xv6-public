@@ -341,13 +341,17 @@ struct vmap *
 vmap_alloc(void)
 {
   struct vmap *m = kmalloc(sizeof(struct vmap));
-  if (m == 0) return 0;
+  if (m == 0)
+    return 0;
+
   memset(m, 0, sizeof(struct vmap));
   for(uint j = 0; j < NELEM(m->e); j++){
     m->e[j].va_type = PRIVATE;
-    m->e[j].lock.name = "vma";
+    snprintf(m->e[j].lockname, sizeof(m->e[j].lockname), "vma:%p", &m->e[j]);
+    initlock(&m->e[j].lock, m->e[j].lockname);
   }
-  m->lock.name = "vmap";
+  snprintf(m->lockname, sizeof(m->lockname), "vmap:%p", m);
+  initlock(&m->lock, m->lockname);
   m->ref = 1;
   m->pgdir = setupkvm();
   if (m->pgdir == 0) {

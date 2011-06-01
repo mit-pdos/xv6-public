@@ -1543,17 +1543,6 @@ unopentest(void)
   printf(stdout, "concurrent unlink/open ok\n");
 }
 
-// for mtrace-magic.h
-char*
-strncpy(char *s, const char *t, int n)
-{
-  int tlen = strlen((char *)t);
-  memmove(s, (char *)t, n > tlen ? tlen : n);
-  if (n > tlen)
-    s[tlen] = 0;
-  return s;
-}
-
 int
 main(int argc, char *argv[])
 {

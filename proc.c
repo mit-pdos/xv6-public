@@ -56,7 +56,7 @@ allocproc(void)
   p->epoch = INF;
   p->cpuid = cpu->id;
 
-  snprintf(p->lockname, sizeof(p->lockname), "proc%d", p->pid);
+  snprintf(p->lockname, sizeof(p->lockname), "proc:%d", p->pid);
   initlock(&p->lock, p->lockname);
   initcondvar(&p->cv, p->lockname);
 
@@ -502,8 +502,10 @@ scheduler(void)
 	panic("non-runnable process on runq\n");
 
       STAILQ_REMOVE(&runq->runq, p, proc, run_next);
-      if (idle[cpu->id])
+      if (idle[cpu->id]) {
+	// cprintf("%d: no longer idle, running %d\n", cpu->id, p->pid);
 	idle[cpu->id] = 0;
+      }
       release(&runq->lock);
 
       // Switch to chosen process.  It is the process's job
@@ -531,8 +533,10 @@ scheduler(void)
 
     if(p==0) {
       release(&runq->lock);
-      if (!steal())
+      if (!steal() && !idle[cpu->id]) {
+	// cprintf("%d: idle\n", cpu->id);
 	idle[cpu->id] = 1;
+      }
     }
   }
 }

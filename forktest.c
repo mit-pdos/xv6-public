@@ -15,22 +15,6 @@ printf(int fd, char *s, ...)
   write(fd, s, strlen(s));
 }
 
-char*
-strncpy(char *s, const char *t, int n)
-{
-  int tlen = strlen((char *)t);
-  memmove(s, (char *)t, n > tlen ? tlen : n);
-  if (n > tlen)
-    s[tlen] = 0;
-  return s;
-}
-
-void*
-memcpy(void *dst, const void *src, uint n)
-{
-  return memmove(dst, (void *)src, n);
-}
-
 void
 forktest(void)
 {
