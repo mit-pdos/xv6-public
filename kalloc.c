@@ -32,32 +32,13 @@ kmemprint(void)
   cprintf("]\n");
 }
 
-// Initialize free list of physical pages.
-void
-kinit(void)
-{
-  char *p;
-
-  for (int c = 0; c < NCPU; c++) {
-    kmems[c].name[0] = (char) c + '0';
-    safestrcpy(kmems[c].name+1, "kmem", MAXNAME-1);
-    initlock(&kmems[c].lock, kmems[c].name);
-  }
-
-  p = (char*)PGROUNDUP((uint)end);
-  for(; p + PGSIZE <= (char*)PHYSTOP; p += PGSIZE)
-    kfree(p);
-  kminit();
-  kinited = 1;
-}
-
 //PAGEBREAK: 21
 // Free the page of physical memory pointed at by v,
 // which normally should have been returned by a
 // call to kalloc().  (The exception is when
 // initializing the allocator; see kinit above.)
-void
-kfree(char *v)
+static void
+kfree_pool(struct kmem *m, char *v)
 {
   struct run *r;
 
@@ -68,7 +49,6 @@ kfree(char *v)
   if (kinited)
     memset(v, 1, PGSIZE);
 
-  struct kmem *m = kmem;
   acquire(&m->lock);
   r = (struct run*)v;
   r->next = m->freelist;
@@ -83,6 +63,31 @@ kfree(char *v)
 			  RET_EIP());
   
   release(&m->lock);
+}
+
+void
+kfree(char *v)
+{
+  kfree_pool(kmem, v);
+}
+
+// Initialize free list of physical pages.
+void
+kinit(void)
+{
+  char *p;
+
+  for (int c = 0; c < NCPU; c++) {
+    kmems[c].name[0] = (char) c + '0';
+    safestrcpy(kmems[c].name+1, "kmem", MAXNAME-1);
+    initlock(&kmems[c].lock, kmems[c].name);
+  }
+
+  p = (char*)PGROUNDUP((uint)end);
+  for(; p + PGSIZE <= (char*)PHYSTOP; p += PGSIZE)
+    kfree_pool(&kmems[((uintptr_t)p) / (PHYSTOP/NCPU)], p);
+  kminit();
+  kinited = 1;
 }
 
 // Allocate one 4096-byte page of physical memory.
