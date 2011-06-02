@@ -115,19 +115,19 @@ struct cpu {
   struct proc *proc;           // The currently-running process.
   struct kmem *kmem;           // The per-core memory table
   struct runq *runq;           // The per-core runq
-};
+} __attribute__ ((aligned (CACHELINE)));
 
 struct runq {
   char name[MAXNAME];
   struct spinlock lock;
   STAILQ_HEAD(runlist, proc) runq;
-};
+} __attribute__ ((aligned (CACHELINE)));
 
 struct condtab {
   char name[MAXNAME];
   struct spinlock lock;
   struct condvar condtab[NPROC];
-};
+} __attribute__ ((aligned (CACHELINE)));
 
 extern struct cpu cpus[NCPU];
 extern struct runq runqs[NCPU];
