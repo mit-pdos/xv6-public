@@ -134,17 +134,10 @@ kalloc(void)
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
 
-typedef long Align;
-
-union header {
-  struct {
-    union header *ptr;
-    uint size;   // in multiples of sizeof(Header)
-  } s;
-  Align x;
-};
-
-typedef union header Header;
+typedef struct header {
+  struct header *ptr;
+  uint size;   // in multiples of sizeof(Header)
+} __attribute__ ((aligned (CACHELINE))) Header;
 
 static struct freelist {
   Header base;
@@ -169,19 +162,19 @@ domfree(void *ap)
   Header *bp, *p;
 
   bp = (Header*)ap - 1;
-  for(p = freelists[cpu->id].freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
-    if(p >= p->s.ptr && (bp > p || bp < p->s.ptr))
+  for(p = freelists[cpu->id].freep; !(bp > p && bp < p->ptr); p = p->ptr)
+    if(p >= p->ptr && (bp > p || bp < p->ptr))
       break;
-  if(bp + bp->s.size == p->s.ptr){
-    bp->s.size += p->s.ptr->s.size;
-    bp->s.ptr = p->s.ptr->s.ptr;
+  if(bp + bp->size == p->ptr){
+    bp->size += p->ptr->size;
+    bp->ptr = p->ptr->ptr;
   } else
-    bp->s.ptr = p->s.ptr;
-  if(p + p->s.size == bp){
-    p->s.size += bp->s.size;
-    p->s.ptr = bp->s.ptr;
+    bp->ptr = p->ptr;
+  if(p + p->size == bp){
+    p->size += bp->size;
+    p->ptr = bp->ptr;
   } else
-    p->s.ptr = bp;
+    p->ptr = bp;
   freelists[cpu->id].freep = p;
 }
 
@@ -205,17 +198,18 @@ morecore(uint nu)
 {
   char *p;
   Header *hp;
+  static uint units_per_page = PGSIZE / sizeof(Header);
 
-  if(nu != 512) {
-    if (nu > 512)
+  if(nu != units_per_page) {
+    if (nu > units_per_page)
       panic("morecore");
-    nu = 512;   // we allocate nu * sizeof(Header)
+    nu = units_per_page;   // we allocate nu * sizeof(Header)
   }
   p = kalloc();
   if(p == 0)
     return 0;
   hp = (Header*)p;
-  hp->s.size = nu;
+  hp->size = nu;
   domfree((void*)(hp + 1));
   return freelists[cpu->id].freep;
 }
@@ -230,17 +224,17 @@ kmalloc(uint nbytes)
   acquire(&freelists[cpu->id].lock);
   nunits = (nbytes + sizeof(Header) - 1)/sizeof(Header) + 1;
   if((prevp = freelists[cpu->id].freep) == 0){
-    freelists[cpu->id].base.s.ptr = freelists[cpu->id].freep = prevp = &freelists[cpu->id].base;
-    freelists[cpu->id].base.s.size = 0;
+    freelists[cpu->id].base.ptr = freelists[cpu->id].freep = prevp = &freelists[cpu->id].base;
+    freelists[cpu->id].base.size = 0;
   }
-  for(p = prevp->s.ptr; ; prevp = p, p = p->s.ptr){
-    if(p->s.size >= nunits){
-      if(p->s.size == nunits)
-        prevp->s.ptr = p->s.ptr;
+  for(p = prevp->ptr; ; prevp = p, p = p->ptr){
+    if(p->size >= nunits){
+      if(p->size == nunits)
+        prevp->ptr = p->ptr;
       else {
-        p->s.size -= nunits;
-        p += p->s.size;
-        p->s.size = nunits;
+        p->size -= nunits;
+        p += p->size;
+        p->size = nunits;
       }
       freelists[cpu->id].freep = prevp;
       r = (void*)(p + 1);
