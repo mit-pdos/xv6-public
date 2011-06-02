@@ -25,7 +25,7 @@ kmemprint(void)
 {
   cprintf("free pages: [ ");
   for (uint i = 0; i < NCPU; i++)
-    if (i == cpunum())
+    if (i == cpu->id)
       cprintf("<%d> ", kmems[i].nfree);
     else
       cprintf("%d ", kmems[i].nfree);
@@ -54,6 +54,8 @@ kfree_pool(struct kmem *m, char *v)
   r->next = m->freelist;
   m->freelist = r;
   m->nfree++;
+  release(&m->lock);
+
   if (kinited)
     mtrace_label_register(mtrace_label_block,
 			  r,
@@ -61,8 +63,6 @@ kfree_pool(struct kmem *m, char *v)
 			  0,
 			  0,
 			  RET_EIP());
-  
-  release(&m->lock);
 }
 
 void
@@ -100,7 +100,7 @@ kalloc(void)
 
   //  cprintf("%d: kalloc 0x%x 0x%x 0x%x 0x%x 0%x\n", cpu->id, kmem, &kmems[cpu->id], kmem->freelist, PHYSTOP, kmems[1].freelist);
 
-  uint startcpu = cpunum();
+  uint startcpu = cpu->id;
   for (uint i = 0; r == 0 && i < NCPU; i++) {
     int cn = (i + startcpu) % NCPU;
     struct kmem *m = &kmems[cn];
