@@ -2,11 +2,12 @@
 #include "x86.h"
 #include "defs.h"
 #include "kbd.h"
+#include "param.h"
 
 int
 kbdgetc(void)
 {
-  static uint shift;
+  static uint shift __attribute__ ((aligned (CACHELINE)));
   static uchar *charcode[4] = {
     normalmap, shiftmap, ctlmap, ctlmap
   };

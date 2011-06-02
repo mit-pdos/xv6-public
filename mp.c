@@ -14,10 +14,10 @@
 #include "proc.h"
 
 struct cpu cpus[NCPU];
-static struct cpu *bcpu;
-int ismp;
-int ncpu;
-uchar ioapicid;
+static struct cpu *bcpu __attribute__((aligned (CACHELINE)));
+int ismp __attribute__((aligned (CACHELINE)));
+int ncpu __attribute__((aligned (CACHELINE)));
+uchar ioapicid __attribute__((aligned (CACHELINE)));
 
 int
 mpbcpu(void)

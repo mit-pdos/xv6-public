@@ -10,9 +10,9 @@
 #include "xv6-mtrace.h"
 
 struct runq runqs[NCPU];
-int idle[NCPU];
-struct ns *nspid;
-static struct proc *initproc;
+int __attribute__ ((aligned (CACHELINE))) idle[NCPU];
+struct ns *nspid __attribute__ ((aligned (CACHELINE)));
+static struct proc *initproc __attribute__ ((aligned (CACHELINE)));
 
 extern void forkret(void);
 extern void trapret(void);

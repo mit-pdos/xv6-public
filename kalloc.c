@@ -18,7 +18,7 @@ void kminit(void);
 struct kmem kmems[NCPU];
 extern char end[]; // first address after kernel loaded from ELF file
 
-static int kinited;
+static int kinited __attribute__ ((aligned (CACHELINE)));
 
 static void __attribute__((unused))
 kmemprint(void)

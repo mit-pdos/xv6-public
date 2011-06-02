@@ -6,6 +6,7 @@
 #include "traps.h"
 #include "mmu.h"
 #include "x86.h"
+#include "param.h"
 
 // Local APIC registers, divided by 4 for use as uint[] indices.
 #define ID      (0x0020/4)   // ID
@@ -125,7 +126,7 @@ cpunum(void)
   // almost everything, including cprintf and panic, calls cpu,
   // often indirectly through acquire and release.
   if(readeflags()&FL_IF){
-    static int n;
+    static int n __attribute__ ((aligned (CACHELINE)));
     if(n++ == 0)
       cprintf("cpu called from %x with interrupts enabled\n",
         __builtin_return_address(0));

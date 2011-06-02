@@ -7,11 +7,11 @@
 #include "file.h"
 #include "stat.h"
 
-struct devsw devsw[NDEV];
+struct devsw __attribute__ ((aligned (CACHELINE))) devsw[NDEV];
 struct {
   struct spinlock lock;
   struct file file[NFILE];
-} ftable;
+} __attribute__ ((aligned (CACHELINE))) ftable;
 
 void
 fileinit(void)

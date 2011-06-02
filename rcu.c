@@ -16,13 +16,13 @@ struct rcu {
   struct rcu *rcu;
   void (*dofree)(void *);
 };
-static struct rcu *rcu_delayed_head;
-static struct rcu *rcu_delayed_tail;
-static struct rcu *rcu_freelist;
-static uint global_epoch;
-static uint min_epoch;
-static struct spinlock rcu_lock;
-static int delayed_nfree;
+static struct rcu *rcu_delayed_head __attribute__ ((aligned (CACHELINE)));
+static struct rcu *rcu_delayed_tail __attribute__ ((aligned (CACHELINE)));
+static struct rcu *rcu_freelist __attribute__ ((aligned (CACHELINE)));
+static uint global_epoch __attribute__ ((aligned (CACHELINE))); static
+uint min_epoch __attribute__ ((aligned (CACHELINE))); static struct
+spinlock rcu_lock __attribute__ ((aligned (CACHELINE))); static int
+delayed_nfree __attribute__ ((aligned (CACHELINE)));
 
 void
 rcuinit(void)

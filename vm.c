@@ -12,7 +12,7 @@
 
 extern char data[];  // defined in data.S
 
-static pde_t *kpgdir;  // for use in scheduler()
+static pde_t *kpgdir __attribute__ ((aligned (CACHELINE)));  // for use in scheduler()
 
 // Set up CPU's kernel segment descriptors.
 // Run once at boot time on each CPU.

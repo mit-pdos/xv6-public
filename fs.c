@@ -134,7 +134,7 @@ bfree(int dev, uint b)
 struct {
   struct spinlock lock;
   struct inode inode[NINODE];
-} icache;
+} __attribute__ ((aligned (CACHELINE))) icache;
 
 void
 iinit(void)
