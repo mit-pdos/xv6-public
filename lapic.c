@@ -127,9 +127,11 @@ cpunum(void)
   // often indirectly through acquire and release.
   if(readeflags()&FL_IF){
     static int n __attribute__ ((aligned (CACHELINE)));
-    if(n++ == 0)
+    if(n == 0) {
+      n++;
       cprintf("cpu called from %x with interrupts enabled\n",
         __builtin_return_address(0));
+    }
   }
 
   if(lapic)
