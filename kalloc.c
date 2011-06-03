@@ -17,6 +17,7 @@ void kminit(void);
 
 struct kmem kmems[NCPU];
 extern char end[]; // first address after kernel loaded from ELF file
+enum { kalloc_memset = 0 };
 
 static int kinited __attribute__ ((aligned (CACHELINE)));
 
@@ -46,7 +47,7 @@ kfree_pool(struct kmem *m, char *v)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
-  if (kinited)
+  if (kinited && kalloc_memset)
     memset(v, 1, PGSIZE);
 
   acquire(&m->lock);
@@ -126,7 +127,8 @@ kalloc(void)
 			sizeof("kalloc"),
 			RET_EIP());
 
-  memset(r, 2, PGSIZE);
+  if (kalloc_memset)
+    memset(r, 2, PGSIZE);
   return (char*)r;
 }
 
