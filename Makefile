@@ -242,6 +242,15 @@ qemu-nox: fs.img xv6.img
 mtrace-nox: fs.img xv6.img mscan.syms mscan.kern
 	$(MTRACE) -nographic $(QEMUOPTS) $(MTRACEOPTS)
 
+mtrace.txt: mtrace.out $(QEMUSRC)/mtrace-tools/m2text
+	$(QEMUSRC)/mtrace-tools/m2text $< > $@
+
+mscan.out: mtrace.out $(QEMUSRC)/mtrace-tools/mscan
+	$(QEMUSRC)/mtrace-tools/mscan > $@
+
+mscan.sorted: mscan.out $(QEMUSRC)/mtrace-tools/sersec-sort.py
+	$(QEMUSRC)/mtrace-tools/sersec-sort.py < $< > $@
+
 .gdbinit: .gdbinit.tmpl
 	sed "s/localhost:1234/localhost:$(GDBPORT)/" < $^ > $@
 

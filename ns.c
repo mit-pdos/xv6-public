@@ -48,6 +48,7 @@ nsalloc(void)
   if (ns == 0)
     panic("nsalloc");
   memset(ns, 0, sizeof(struct ns));
+  initlock(&ns_lock, "ns");
 
   acquire(&ns_lock);
   for (int i = 0; i < NHASH; i++) {
