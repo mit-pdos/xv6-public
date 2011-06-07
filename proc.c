@@ -1,6 +1,7 @@
 #include "types.h"
 #include "defs.h"
 #include "param.h"
+#include "memlayout.h"
 #include "mmu.h"
 #include "x86.h"
 #include "spinlock.h"
@@ -506,6 +507,7 @@ scheduler(void)
 	// cprintf("%d: no longer idle, running %d\n", cpu->id, p->pid);
 	idle[cpu->id] = 0;
       }
+
       release(&runq->lock);
 
       // Switch to chosen process.  It is the process's job
@@ -560,6 +562,7 @@ sched(void)
   proc->curcycles += rdtsc() - proc->tsc;
   mtrace_fcall_register(proc->pid, 0, 0, mtrace_pause);
   mtrace_call_set(0, cpunum());
+
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
 }
@@ -587,7 +590,7 @@ forkret(void)
   // in which to call cv_sleep().
   if(proc->cwd == 0)
     proc->cwd = namei("/");
-  
+
   // Return to "caller", actually trapret (see allocproc).
 }
 

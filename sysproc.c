@@ -2,6 +2,7 @@
 #include "x86.h"
 #include "defs.h"
 #include "param.h"
+#include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"
@@ -135,7 +136,7 @@ sys_unmap(void)
 	     (void*) (PGROUNDDOWN(addr)),
 	     (void*) (PGROUNDDOWN(addr)+PGROUNDUP(len)));
   cli();
-  lcr3(PADDR(proc->vmap->pgdir));
+  lcr3(v2p(proc->vmap->pgdir));
   for (uint i = 0; i < ncpu; i++)
     if (i != cpu->id)
       lapic_tlbflush(i);
