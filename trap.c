@@ -1,6 +1,7 @@
 #include "types.h"
 #include "defs.h"
 #include "param.h"
+#include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"
@@ -32,7 +33,7 @@ tvinit(void)
 void
 idtinit(void)
 {
-  lidt(idt, sizeof(idt));
+   lidt(idt, sizeof(idt));
 }
 
 //PAGEBREAK: 41
@@ -48,7 +49,6 @@ trap(struct trapframe *tf)
       exit();
     return;
   }
-
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpu->id == 0){

@@ -3,6 +3,7 @@
 #include "types.h"
 #include "defs.h"
 #include "param.h"
+#include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"
@@ -94,7 +95,7 @@ void
 ideintr(void)
 {
   struct buf *b;
-
+  
   // Take first buffer off queue.
   acquire(&idelock);
   if((b = idequeue) == 0){

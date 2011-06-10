@@ -5,6 +5,7 @@
 #include "types.h"
 #include "defs.h"
 #include "param.h"
+#include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"
@@ -17,9 +18,24 @@ void kminit(void);
 
 struct kmem kmems[NCPU];
 extern char end[]; // first address after kernel loaded from ELF file
+char *newend;
 enum { kalloc_memset = 0 };
 
 static int kinited __attribute__ ((aligned (CACHELINE)));
+
+
+// simple page allocator to get off the ground during boot
+char *
+pgalloc(void)
+{
+  if (newend == 0)
+    newend = end;
+
+  void *p = (void*)PGROUNDUP((uint)newend);
+  memset(p, 0, PGSIZE);
+  newend = newend + PGSIZE;
+  return p;
+}
 
 static void __attribute__((unused))
 kmemprint(void)
@@ -43,8 +59,9 @@ kfree_pool(struct kmem *m, char *v)
 {
   struct run *r;
 
-  if((uint)v % PGSIZE || v < end || (uint)v >= PHYSTOP)
-    panic("kfree");
+  if((uint)v % PGSIZE || v < end || v2p(v) >= PHYSTOP) {
+    panic("kfree_pool");
+  }
 
   // Fill with junk to catch dangling refs.
   if (kinited && kalloc_memset)
@@ -84,9 +101,10 @@ kinit(void)
     initlock(&kmems[c].lock, kmems[c].name);
   }
 
-  p = (char*)PGROUNDUP((uint)end);
-  for(; p + PGSIZE <= (char*)PHYSTOP; p += PGSIZE)
-    kfree_pool(&kmems[((uintptr_t)p) / (PHYSTOP/NCPU)], p);
+  p = (char*)PGROUNDUP((uint)newend);
+  for(; p + PGSIZE <= (char*)p2v(PHYSTOP); p += PGSIZE) {
+    kfree_pool(&kmems[((uintptr_t) v2p(p)) / (PHYSTOP/NCPU)], p);
+  }
   kminit();
   kinited = 1;
 }

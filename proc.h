@@ -143,7 +143,7 @@ extern struct ns *nspid;
 // holding those two variables in the local cpu's struct cpu.
 // This is similar to how thread-local variables are implemented
 // in thread libraries such as Linux pthreads.
-extern struct cpu *cpu __asm("%gs:0");       // &cpus[cpunum()]
+extern struct cpu *cpu __asm("%gs:0");       // &cpus[cpunum()].cpu
 extern struct proc *proc __asm("%gs:4");     // cpus[cpunum()].proc
-extern struct kmem *kmem __asm("%gs:8"); // &kmems[cpunum()]
-extern struct runq *runq __asm("%gs:12"); // &runqs[cpunum()]
+extern struct kmem *kmem __asm("%gs:8"); // &cpu[cpunum()].kmem
+extern struct runq *runq __asm("%gs:12"); // &cpu[cpunum()].runq

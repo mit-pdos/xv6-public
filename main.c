@@ -1,6 +1,7 @@
 #include "types.h"
 #include "defs.h"
 #include "param.h"
+#include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"
@@ -12,6 +13,7 @@ static void bootothers(void);
 static void mpmain(void);
 void jmpkstack(void)  __attribute__((noreturn));
 void mainc(void);
+static volatile int newpgdir;
 
 // Bootstrap processor starts running C code here.
 // Allocate a real stack and switch to it, first
@@ -19,6 +21,7 @@ void mainc(void);
 int
 main(void)
 {
+  pginit(pgalloc);
   mpinit();        // collect info about this machine
   lapicinit(mpbcpu());
   seginit();       // set up segments
@@ -49,7 +52,6 @@ mainc(void)
   ioapicinit();    // another interrupt controller
   consoleinit();   // I/O devices & their interrupts
   uartinit();      // serial port
-  kvmalloc();      // initialize the kernel page table
   rcuinit();       // initialize rcu module
   nsinit();        // initialize name space module
   pinit();         // process table
@@ -62,6 +64,8 @@ mainc(void)
     timerinit();   // uniprocessor timer
   userinit();      // first user process
   bootothers();    // start other processors
+  kvmalloc();      // new kernel page table wo. bottom mapped
+  newpgdir = 1;
   // Finish setting up this processor in mpmain.
   mpmain();
 }
@@ -70,16 +74,22 @@ mainc(void)
 // Bootstrap CPU comes here from mainc().
 // Other CPUs jump here from bootother.S.
 static void
+mpboot(void)
+{
+  vmenable();        // turn on paging
+  seginit();
+  lapicinit(cpunum());
+  mpmain();
+}
+
+static void 
 mpmain(void)
 {
-  if(cpunum() != mpbcpu()){
-    seginit();
-    lapicinit(cpunum());
-  }
-  vmenable();        // turn on paging
   cprintf("cpu%d: starting\n", cpu->id);
   idtinit();       // load idt register
   xchg(&cpu->booted, 1); // tell bootothers() we're up
+  while (!newpgdir) ;  // wait until we have new page dir
+  switchkvm();     // switch to new page dir
   scheduler();     // start running processes
 }
 
@@ -95,7 +105,7 @@ bootothers(void)
   // Write bootstrap code to unused memory at 0x7000.
   // The linker has placed the image of bootother.S in
   // _binary_bootother_start.
-  code = (uchar*)0x7000;
+  code = p2v(0x7000);
   memmove(code, _binary_bootother_start, (uint)_binary_bootother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
@@ -107,9 +117,9 @@ bootothers(void)
     // its first instruction.
     stack = kalloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
-    *(void**)(code-8) = mpmain;
+    *(void**)(code-8) = mpboot;
 
-    lapicstartap(c->id, (uint)code);
+    lapicstartap(c->id, v2p(code));
 
     // Wait for cpu to finish mpmain()
     while(c->booted == 0)
