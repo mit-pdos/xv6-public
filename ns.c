@@ -28,14 +28,12 @@ struct ns {
   int nextkey; 
   struct bucket table[NHASH];
   struct spinlock lock;
+  char name[16];
 };
-
-struct spinlock ns_lock;
 
 void
 nsinit(void)
 {
-  initlock(&ns_lock, "nstable");
 }
 
 // XXX should be using our missing scalable allocator module
@@ -48,13 +46,11 @@ nsalloc(void)
   if (ns == 0)
     panic("nsalloc");
   memset(ns, 0, sizeof(struct ns));
-  initlock(&ns_lock, "ns");
+  snprintf(ns->name, sizeof(ns->name), "ns:%x", ns);
+  initlock(&ns->lock, ns->name);
 
-  acquire(&ns_lock);
-  for (int i = 0; i < NHASH; i++) {
+  for (int i = 0; i < NHASH; i++)
     TAILQ_INIT(&ns->table[i].chain);
-  }
-  release(&ns_lock);
   return ns;
 }
 
