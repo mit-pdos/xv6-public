@@ -19,10 +19,10 @@ struct rcu {
 static struct rcu *rcu_delayed_head __attribute__ ((aligned (CACHELINE)));
 static struct rcu *rcu_delayed_tail __attribute__ ((aligned (CACHELINE)));
 static struct rcu *rcu_freelist __attribute__ ((aligned (CACHELINE)));
-static uint global_epoch __attribute__ ((aligned (CACHELINE))); static
-uint min_epoch __attribute__ ((aligned (CACHELINE))); static struct
-spinlock rcu_lock __attribute__ ((aligned (CACHELINE))); static int
-delayed_nfree __attribute__ ((aligned (CACHELINE)));
+static uint global_epoch __attribute__ ((aligned (CACHELINE)));
+static uint min_epoch __attribute__ ((aligned (CACHELINE)));
+static struct spinlock rcu_lock __attribute__ ((aligned (CACHELINE)));
+static int delayed_nfree __attribute__ ((aligned (CACHELINE)));
 
 void
 rcuinit(void)
@@ -68,9 +68,9 @@ rcu_gc(void)
   int n = 0;
   min_epoch = global_epoch;
 
+  ns_enumerate(nspid, rcu_min);
   acquire(&rcu_lock);
 
-  ns_enumerate(nspid, rcu_min);
   for (r = rcu_delayed_head; r != NULL; r = nr) {
     if (r->epoch >= min_epoch)
       break;
