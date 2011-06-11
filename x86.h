@@ -212,6 +212,11 @@ static __inline__ unsigned long long rdtsc(void)
   return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
 }
 
+static __inline__ void hlt(void)
+{
+  __asm__ __volatile__ ("hlt");
+}
+
 //PAGEBREAK: 36
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().

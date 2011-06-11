@@ -112,7 +112,7 @@ addrun(struct proc *p)
   if(!holding(&p->lock))
     panic("addrun no p->lock");
   acquire(&runqs[p->cpuid].lock);
-  //  cprintf("%d: addrun %d\n", cpunum(), p->pid);
+  //  cprintf("%d: addrun %d\n", cpu->id, p->pid);
   addrun1(&runqs[p->cpuid], p);
   release(&runqs[p->cpuid].lock);
 }
@@ -136,7 +136,7 @@ delrun(struct proc *p)
   if(!holding(&p->lock))
     panic("delrun no p->lock");
   acquire(&runq->lock);
-  // cprintf("%d: delrun %d\n", cpunum(), p->pid);
+  // cprintf("%d: delrun %d\n", cpu->id, p->pid);
   delrun1(runq, p);
   release(&runq->lock);
 }
@@ -423,7 +423,7 @@ migrate(void)
   struct proc *p;
 
   for (c = 0; c < NCPU; c++) {
-    if (c == cpunum())
+    if (c == cpu->id)
       continue;
     if (idle[c]) {    // OK if there is a race
       // cprintf("migrate to %d\n", c);
@@ -446,7 +446,7 @@ steal(void)
   struct proc *p;
 
   for (c = 0; c < NCPU; c++) {
-    if (c == cpunum())
+    if (c == cpu->id)
       continue;
     acquire(&runqs[c].lock);
     STAILQ_FOREACH(p, &runqs[c].runq, run_next) {
@@ -454,7 +454,7 @@ steal(void)
       if (p->state != RUNNABLE)
         panic("non-runnable proc on runq");
       if (p->curcycles == 0 || p->curcycles > MINCYCTHRESH) {
-	// cprintf("%d: steal %d (%d) from %d\n", cpunum(), p->pid, p->curcycles, c);
+	// cprintf("%d: steal %d (%d) from %d\n", cpu->id, p->pid, p->curcycles, c);
 	delrun1(&runqs[c], p);
 	release(&runqs[c].lock);
 	p->curcycles = 0;
@@ -487,7 +487,7 @@ scheduler(void)
   pid = ns_allockey(nspid);
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
-  // mtrace_call_set(1, cpunum());
+  // mtrace_call_set(1, cpu->id);
   mtrace_fcall_register(pid, (unsigned long)scheduler, 0, mtrace_start);
 
   for(;;){
@@ -520,10 +520,10 @@ scheduler(void)
 
       mtrace_fcall_register(pid, 0, 0, mtrace_pause);
       mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
-      mtrace_call_set(1, cpunum());
+      mtrace_call_set(1, cpu->id);
       swtch(&cpu->scheduler, proc->context);
       mtrace_fcall_register(pid, 0, 0, mtrace_resume);
-      mtrace_call_set(0, cpunum());
+      mtrace_call_set(0, cpu->id);
       switchkvm();
 
       // Process is done running for now.
@@ -535,10 +535,18 @@ scheduler(void)
 
     if(p==0) {
       release(&runq->lock);
-      if (!steal() && !idle[cpu->id]) {
-	// cprintf("%d: idle\n", cpu->id);
-	idle[cpu->id] = 1;
+      if (steal()) {
+	if (idle[cpu->id])
+	  idle[cpu->id] = 0;
+      } else {
+	if (!idle[cpu->id])
+	  idle[cpu->id] = 1;
       }
+    }
+
+    if (idle[cpu->id]) {
+      sti();
+      hlt();
     }
   }
 }
@@ -561,7 +569,7 @@ sched(void)
   intena = cpu->intena;
   proc->curcycles += rdtsc() - proc->tsc;
   mtrace_fcall_register(proc->pid, 0, 0, mtrace_pause);
-  mtrace_call_set(0, cpunum());
+  mtrace_call_set(0, cpu->id);
 
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
