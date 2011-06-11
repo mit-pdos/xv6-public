@@ -109,6 +109,7 @@ struct cpu {
   volatile uint booted;        // Has the CPU started?
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
+  int last_rcu_gc_ticks;
   
   // Cpu-local storage variables; see below
   struct cpu *cpu;
