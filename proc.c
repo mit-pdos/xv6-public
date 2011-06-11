@@ -383,8 +383,10 @@ wait(void)
 	havekids = 1;
 	acquire(&p->lock);
 	if(p->state == ZOMBIE){
+	  release(&p->lock);	// noone else better be trying to lock p
 	  pid = p->pid;
 	  SLIST_REMOVE(&proc->childq, p, proc, child_next);
+	  release(&proc->lock);
 	  kfree(p->kstack);
 	  p->kstack = 0;
 	  vmap_decref(p->vmap);
@@ -395,8 +397,6 @@ wait(void)
 	  p->parent = 0;
 	  p->name[0] = 0;
 	  p->killed = 0;
-	  release(&p->lock);
-	  release(&proc->lock);
 	  kmfree(p);
 	  return pid;
 	}
