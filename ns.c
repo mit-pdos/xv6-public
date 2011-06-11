@@ -77,16 +77,16 @@ int
 ns_insert(struct ns *ns, int key, void *val) 
 {
   int r = -1;
-  ACQUIRE(&ns->lock);
   struct elem *e = elemalloc();
   if (e) {
     e->key = key;
     e->val = val;
     uint i = key % NHASH;
+    ACQUIRE(&ns->lock);
     TAILQ_INSERT_TAIL(&(ns->table[i].chain), e, chain);
+    RELEASE(&ns->lock);
     r = 0;
   }
-  RELEASE(&ns->lock);
   return r;
 }
 
@@ -125,11 +125,13 @@ ns_remove(struct ns *ns, int key)
   struct elem *e = ns_dolookup(ns, key);
   if (e) {
     TAILQ_REMOVE(&(ns->table[key % NHASH].chain), e, chain);
+    RELEASE(&ns->lock);
     if (rcu) rcu_delayed(e, kmfree);
     else kmfree(e);
     r = 0;
+  } else {
+    RELEASE(&ns->lock);
   }
-  RELEASE(&ns->lock);
   return r;
 }
 
