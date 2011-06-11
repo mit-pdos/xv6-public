@@ -8,44 +8,28 @@
 #include "stat.h"
 
 struct devsw __attribute__ ((aligned (CACHELINE))) devsw[NDEV];
-struct {
-  struct spinlock lock;
-  struct file file[NFILE];
-} __attribute__ ((aligned (CACHELINE))) ftable;
 
 void
 fileinit(void)
 {
-  initlock(&ftable.lock, "ftable");
 }
 
 // Allocate a file structure.
 struct file*
 filealloc(void)
 {
-  struct file *f;
-
-  acquire(&ftable.lock);
-  for(f = ftable.file; f < ftable.file + NFILE; f++){
-    if(f->ref == 0){
-      f->ref = 1;
-      release(&ftable.lock);
-      return f;
-    }
-  }
-  release(&ftable.lock);
-  return 0;
+  struct file *f = kmalloc(sizeof(struct file));
+  f->ref = 1;
+  return f;
 }
 
 // Increment ref count for file f.
 struct file*
 filedup(struct file *f)
 {
-  acquire(&ftable.lock);
   if(f->ref < 1)
     panic("filedup");
-  f->ref++;
-  release(&ftable.lock);
+  __sync_fetch_and_add(&f->ref, 1);
   return f;
 }
 
@@ -53,24 +37,14 @@ filedup(struct file *f)
 void
 fileclose(struct file *f)
 {
-  struct file ff;
-
-  acquire(&ftable.lock);
-  if(f->ref < 1)
-    panic("fileclose");
-  if(--f->ref > 0){
-    release(&ftable.lock);
+  if (__sync_sub_and_fetch(&f->ref, 1) > 0)
     return;
-  }
-  ff = *f;
-  f->ref = 0;
-  f->type = FD_NONE;
-  release(&ftable.lock);
-  
-  if(ff.type == FD_PIPE)
-    pipeclose(ff.pipe, ff.writable);
-  else if(ff.type == FD_INODE)
-    iput(ff.ip);
+
+  if(f->type == FD_PIPE)
+    pipeclose(f->pipe, f->writable);
+  else if(f->type == FD_INODE)
+    iput(f->ip);
+  kmfree(f);
 }
 
 // Get metadata about file f.
