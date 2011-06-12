@@ -14,8 +14,8 @@ struct rcu {
   struct rcu *rcu;
   void (*dofree)(void *);
 };
-static struct rcu *rcu_delayed_head[NCPU] __attribute__ ((aligned (CACHELINE)));
-static struct rcu *rcu_delayed_tail[NCPU] __attribute__ ((aligned (CACHELINE)));
+static struct { struct rcu *x __attribute__((aligned (CACHELINE))); } rcu_delayed_head[NCPU];
+static struct { struct rcu *x __attribute__((aligned (CACHELINE))); } rcu_delayed_tail[NCPU];
 static uint global_epoch __attribute__ ((aligned (CACHELINE)));
 static uint min_epoch __attribute__ ((aligned (CACHELINE)));
 static struct spinlock rcu_lock __attribute__ ((aligned (CACHELINE)));
@@ -54,7 +54,7 @@ rcu_gc(void)
   ns_enumerate(nspid, rcu_min);
   acquire(&rcu_lock);
 
-  for (r = rcu_delayed_head[cpu->id]; r != NULL; r = nr) {
+  for (r = rcu_delayed_head[cpu->id].x; r != NULL; r = nr) {
     if (r->epoch >= min_epoch)
       break;
     // cprintf("free: %d\n", r->epoch);
@@ -63,9 +63,9 @@ rcu_gc(void)
     r->dofree(r->item);
     delayed_nfree--;
     n++;
-    rcu_delayed_head[cpu->id] = r->rcu;
-    if (rcu_delayed_head[cpu->id] == 0)
-      rcu_delayed_tail[cpu->id] = 0;
+    rcu_delayed_head[cpu->id].x = r->rcu;
+    if (rcu_delayed_head[cpu->id].x == 0)
+      rcu_delayed_tail[cpu->id].x = 0;
     nr = r->rcu;
     kmfree(r);
   }
@@ -86,11 +86,11 @@ rcu_delayed(void *e, void (*dofree)(void *))
   r->epoch = global_epoch;
   acquire(&rcu_lock);
   // cprintf("rcu_delayed: %d\n", global_epoch);
-  if (rcu_delayed_tail[cpu->id] != 0) 
-    rcu_delayed_tail[cpu->id]->rcu = r;
-  rcu_delayed_tail[cpu->id] = r;
-  if (rcu_delayed_head[cpu->id] == 0)
-    rcu_delayed_head[cpu->id] = r;
+  if (rcu_delayed_tail[cpu->id].x != 0) 
+    rcu_delayed_tail[cpu->id].x->rcu = r;
+  rcu_delayed_tail[cpu->id].x = r;
+  if (rcu_delayed_head[cpu->id].x == 0)
+    rcu_delayed_head[cpu->id].x = r;
   release(&rcu_lock);
   delayed_nfree++;
 }

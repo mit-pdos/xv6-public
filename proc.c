@@ -18,6 +18,8 @@ static struct proc *initproc __attribute__ ((aligned (CACHELINE)));
 extern void forkret(void);
 extern void trapret(void);
 
+enum { sched_debug = 0 };
+
 void
 pinit(void)
 {
@@ -413,17 +415,20 @@ migrate(struct proc *p)
     if (c == cpu->id)
       continue;
     if (idle[c]) {    // OK if there is a race
-      // cprintf("migrate to %d\n", c);
       acquire(&p->lock);
       if (p->state != RUNNABLE) {
 	release(&p->lock);
 	continue;
       }
 
+      if (sched_debug)
+	cprintf("cpu%d: migrate %d to %d\n", cpu->id, p->pid, c);
+
       delrun(p);
       p->curcycles = 0;
       p->cpuid = c;
       addrun(p);
+      idle[c] = 0;
 
       if (p == proc) {
 	proc->state = RUNNABLE;
@@ -442,13 +447,15 @@ steal_cb(int k, void *v)
   struct proc *p = v;
   
   acquire(&p->lock);
-  if (p->state != RUNNABLE) {
+  if (p->state != RUNNABLE || p->cpuid == cpu->id) {
     release(&p->lock);
     return 0;
   }
 
   if (p->curcycles == 0 || p->curcycles > MINCYCTHRESH) {
-    // cprintf("%d: steal %d (%d) from %d\n", cpu->id, p->pid, p->curcycles, c);
+    if (sched_debug)
+      cprintf("cpu%d: steal %d (cycles=%d) from %d\n",
+	      cpu->id, p->pid, (int)p->curcycles, p->cpuid);
     delrun(p);
     p->curcycles = 0;
     p->cpuid = cpu->id;
