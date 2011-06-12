@@ -296,6 +296,8 @@ fork(int flags)
   np->state = RUNNABLE;
   release(&np->lock);
 
+  migrate(np);
+
   //  cprintf("%d: fork done (pid %d)\n", proc->pid, pid);
   return pid;
 }
@@ -428,7 +430,7 @@ migrate(struct proc *p)
 	sched();
       }
 
-      release(&proc->lock);
+      release(&p->lock);
       return;
     }
   }
