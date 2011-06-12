@@ -17,14 +17,15 @@ struct rcu {
 static struct { struct rcu *x __attribute__((aligned (CACHELINE))); } rcu_delayed_head[NCPU];
 static struct { struct rcu *x __attribute__((aligned (CACHELINE))); } rcu_delayed_tail[NCPU];
 static uint global_epoch __attribute__ ((aligned (CACHELINE)));
-static uint min_epoch __attribute__ ((aligned (CACHELINE)));
-static struct spinlock rcu_lock __attribute__ ((aligned (CACHELINE)));
-static int delayed_nfree __attribute__ ((aligned (CACHELINE)));
+static struct { uint x __attribute__((aligned (CACHELINE))); } min_epoch[NCPU];
+static struct { struct spinlock l __attribute__((aligned (CACHELINE))); } rcu_lock[NCPU];
+static struct { int v __attribute__((aligned (CACHELINE))); } delayed_nfree[NCPU];
 
 void
 rcuinit(void)
 {
-  initlock(&rcu_lock, "rcu");
+  for (int i = 0; i < NCPU; i++)
+    initlock(&rcu_lock[i].l, "rcu");
 }
 
 struct rcu *
@@ -36,8 +37,8 @@ rcu_alloc()
 void *
 rcu_min(int key, void *v){
   struct proc *p = (struct proc *) v;
-  if (min_epoch > p->epoch) {
-      min_epoch = p->epoch;
+  if (min_epoch[cpu->id].x > p->epoch) {
+      min_epoch[cpu->id].x = p->epoch;
   }
   return 0;
 }
@@ -49,19 +50,21 @@ rcu_gc(void)
 {
   struct rcu *r, *nr;
   int n = 0;
-  min_epoch = global_epoch;
+  min_epoch[cpu->id].x = global_epoch;
 
   ns_enumerate(nspid, rcu_min);
-  acquire(&rcu_lock);
+
+  pushcli();
+  acquire(&rcu_lock[cpu->id].l);
 
   for (r = rcu_delayed_head[cpu->id].x; r != NULL; r = nr) {
-    if (r->epoch >= min_epoch)
+    if (r->epoch >= min_epoch[cpu->id].x)
       break;
     // cprintf("free: %d\n", r->epoch);
     if (r->dofree == 0)
       panic("rcu_gc");
     r->dofree(r->item);
-    delayed_nfree--;
+    delayed_nfree[cpu->id].v--;
     n++;
     rcu_delayed_head[cpu->id].x = r->rcu;
     if (rcu_delayed_head[cpu->id].x == 0)
@@ -69,7 +72,9 @@ rcu_gc(void)
     nr = r->rcu;
     kmfree(r);
   }
-  release(&rcu_lock);
+  release(&rcu_lock[cpu->id].l);
+  popcli();
+
   // cprintf("rcu_gc: n %d ndelayed_free=%d\n", n, delayed_nfree);
 }
 
@@ -84,15 +89,17 @@ rcu_delayed(void *e, void (*dofree)(void *))
   r->item = e;
   r->rcu = 0;
   r->epoch = global_epoch;
-  acquire(&rcu_lock);
+  pushcli();
+  acquire(&rcu_lock[cpu->id].l);
   // cprintf("rcu_delayed: %d\n", global_epoch);
   if (rcu_delayed_tail[cpu->id].x != 0) 
     rcu_delayed_tail[cpu->id].x->rcu = r;
   rcu_delayed_tail[cpu->id].x = r;
   if (rcu_delayed_head[cpu->id].x == 0)
     rcu_delayed_head[cpu->id].x = r;
-  release(&rcu_lock);
-  delayed_nfree++;
+  release(&rcu_lock[cpu->id].l);
+  delayed_nfree[cpu->id].v++;
+  popcli();
 }
 
 void
