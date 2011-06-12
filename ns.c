@@ -1,34 +1,28 @@
 #include "types.h"
 #include "defs.h"
 #include "spinlock.h"
-#include "queue.h"
 
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
 
 #define NHASH 100
-static int rcu = 1;
-
-#define ACQUIRE(l) (rcu) ? rcu_begin_write(l) : acquire(l)
-#define RELEASE(l) (rcu) ? rcu_end_write(l) : release(l)
 
 // XXX cache align
 struct elem {
   int key;
   void *val;
-  TAILQ_ENTRY(elem) chain;
+  struct elem * volatile next;
 };
 
 struct bucket {
-  TAILQ_HEAD(elist, elem) chain;
+  struct spinlock l;
+  struct elem * volatile chain;
 };
 
 struct ns {
   int used;
-  int nextkey; 
+  int nextkey;
   struct bucket table[NHASH];
-  struct spinlock lock;
-  char name[16];
 };
 
 void
@@ -46,12 +40,9 @@ nsalloc(void)
   if (ns == 0)
     panic("nsalloc");
   memset(ns, 0, sizeof(struct ns));
-  snprintf(ns->name, sizeof(ns->name), "ns:%x", ns);
-  initlock(&ns->lock, ns->name);
-  ns->nextkey = 1;
-
   for (int i = 0; i < NHASH; i++)
-    TAILQ_INIT(&ns->table[i].chain);
+    initlock(&ns->table[i].l, "bucket");
+  ns->nextkey = 1;
   return ns;
 }
 
@@ -83,69 +74,77 @@ ns_insert(struct ns *ns, int key, void *val)
     e->key = key;
     e->val = val;
     uint i = key % NHASH;
-    ACQUIRE(&ns->lock);
-    TAILQ_INSERT_TAIL(&(ns->table[i].chain), e, chain);
-    RELEASE(&ns->lock);
+    rcu_begin_write(0);
+    for (;;) {
+      struct elem *x = ns->table[i].chain;
+      e->next = x;
+      if (__sync_bool_compare_and_swap(&ns->table[i].chain, x, e))
+	break;
+    }
+    rcu_end_write(0);
     r = 0;
   }
   return r;
-}
-
-static struct elem*
-ns_dolookup(struct ns *ns, int key)
-{
-  struct elem *e = TAILQ_FIRST(&(ns->table[key % NHASH].chain));
-  while (e != NULL) {
-    if (e->key == key) {
-      return e;
-    }
-    e = TAILQ_NEXT(e, chain);
-  }
-  return 0;
 }
 
 void*
 ns_lookup(struct ns *ns, int key)
 {
-  if (rcu) rcu_begin_read();
-  else acquire(&ns->lock);
+  uint i = key % NHASH;
 
-  struct elem *e = ns_dolookup(ns, key);
+  rcu_begin_read();
+  struct elem *e = ns->table[i].chain;
 
-  if (rcu) rcu_begin_read();
-  else release(&ns->lock);
+  while (e != NULL) {
+    if (e->key == key) {
+      return e;
+    }
+    e = e->next;
+  }
+  rcu_end_read();
 
-  return (e == 0)? 0 : e->val;
+  return 0;
 }
 
 int
 ns_remove(struct ns *ns, int key)
 {
-  int r = -1;
-  ACQUIRE(&ns->lock);
-  struct elem *e = ns_dolookup(ns, key);
-  if (e) {
-    TAILQ_REMOVE(&(ns->table[key % NHASH].chain), e, chain);
-    RELEASE(&ns->lock);
-    if (rcu) rcu_delayed(e, kmfree);
-    else kmfree(e);
-    r = 0;
-  } else {
-    RELEASE(&ns->lock);
+  uint i = key % NHASH;
+  rcu_begin_write(&ns->table[i].l);
+
+  struct elem * volatile * pe = &ns->table[i].chain;
+  for (;;) {
+    struct elem *e = *pe;
+    if (!e)
+      break;
+
+    if (e->key == key) {
+      for (;;)
+	if (__sync_bool_compare_and_swap(pe, e, e->next))
+	  break;
+      rcu_end_write(&ns->table[i].l);
+      rcu_delayed(e, kmfree);
+      return 0;
+    }
+
+    pe = &e->next;
   }
-  return r;
+
+  rcu_end_write(&ns->table[i].l);
+  return -1;
 }
 
 void
 ns_enumerate(struct ns *ns, void (*f)(int, void *))
 {
-  acquire(&ns->lock);
+  rcu_begin_read();
   for (int i = 0; i < NHASH; i++) {
-    struct elem *e = TAILQ_FIRST(&(ns->table[i].chain));
+    struct elem *e = ns->table[i].chain;
     while (e != NULL) {
       (*f)(e->key, e->val);
-      e = TAILQ_NEXT(e, chain);
+      e = e->next;
     }
   }
-  release(&ns->lock);
+  rcu_end_read();
 }
+
