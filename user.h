@@ -33,6 +33,7 @@ void *memmove(void*, void*, int);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
 void printf(int, char*, ...);
+void snprintf(char *buf, uint n, char *fmt, ...);
 char* gets(char*, int max);
 uint strlen(char*);
 void* memset(void*, int, uint);
