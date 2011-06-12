@@ -97,7 +97,7 @@ rcu_delayed(void *e, void (*dofree)(void *))
 void
 rcu_begin_read(void)
 {
-  if (proc->rcu_read_depth++ == 0)
+  if (proc && proc->rcu_read_depth++ == 0)
     proc->epoch = global_epoch;
   __sync_synchronize();
 }
@@ -105,7 +105,7 @@ rcu_begin_read(void)
 void
 rcu_end_read(void)
 {
-  if (--proc->rcu_read_depth == 0)
+  if (proc && proc->rcu_read_depth > 0 && --proc->rcu_read_depth == 0)
     proc->epoch = INF;
 }
 

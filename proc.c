@@ -488,13 +488,17 @@ void
 scheduler(void)
 {
   struct proc *p;
-  int pid;
 
-  pid = ns_allockey(nspid);
+  // allocate a fake PID for each scheduler thread
+  struct proc *schedp = allocproc();
+  if (!schedp)
+    panic("scheduler allocproc");
+
+  proc = schedp;
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);
-  mtrace_fcall_register(pid, (unsigned long)scheduler, 0, mtrace_start);
+  mtrace_fcall_register(schedp->pid, (unsigned long)scheduler, 0, mtrace_start);
 
   for(;;){
     // Enable interrupts on this processor.
@@ -524,17 +528,17 @@ scheduler(void)
       p->state = RUNNING;
       p->tsc = rdtsc();
 
-      mtrace_fcall_register(pid, 0, 0, mtrace_pause);
+      mtrace_fcall_register(schedp->pid, 0, 0, mtrace_pause);
       mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
       mtrace_call_set(1, cpu->id);
       swtch(&cpu->scheduler, proc->context);
-      mtrace_fcall_register(pid, 0, 0, mtrace_resume);
+      mtrace_fcall_register(schedp->pid, 0, 0, mtrace_resume);
       mtrace_call_set(0, cpu->id);
       switchkvm();
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
-      proc = 0;
+      proc = schedp;
       release(&p->lock);
       break;
     }
