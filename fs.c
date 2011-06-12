@@ -264,9 +264,7 @@ iget(uint dev, uint inum)
 struct inode*
 idup(struct inode *ip)
 {
-  acquire(&icache.lock);
-  ip->ref++;
-  release(&icache.lock);
+  __sync_fetch_and_add(&ip->ref, 1);
   return ip;
 }
 
@@ -307,27 +305,28 @@ iunlock(struct inode *ip)
 void
 iput(struct inode *ip)
 {
-  acquire(&icache.lock);
-  if(ip->ref == 1 && ip->nlink == 0){
-    // inode is no longer used: truncate and free inode.
-    if(ip->flags & I_BUSY)
-      panic("iput busy");
-    if((ip->flags & I_VALID) == 0)
-      panic("iput not valid");
-    ip->flags |= I_BUSY;
-    release(&icache.lock);
-    itrunc(ip);
-    ip->type = 0;
-    ip->major = 0;
-    ip->minor = 0;
-    ip->gen += 1;
-    iupdate(ip);
+  if(__sync_sub_and_fetch(&ip->ref, 1) == 0) {
     acquire(&icache.lock);
-    ip->flags &= ~I_BUSY;
-    cv_wakeup(&ip->cv);
+    if (ip->nlink == 0){
+      // inode is no longer used: truncate and free inode.
+      if(ip->flags & I_BUSY)
+	panic("iput busy");
+      if((ip->flags & I_VALID) == 0)
+	panic("iput not valid");
+      ip->flags |= I_BUSY;
+      release(&icache.lock);
+      itrunc(ip);
+      ip->type = 0;
+      ip->major = 0;
+      ip->minor = 0;
+      ip->gen += 1;
+      iupdate(ip);
+      acquire(&icache.lock);
+      ip->flags &= ~I_BUSY;
+      cv_wakeup(&ip->cv);
+    }
+    release(&icache.lock);
   }
-  ip->ref--;
-  release(&icache.lock);
 }
 
 // Common idiom: unlock, then put.
