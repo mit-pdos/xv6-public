@@ -111,7 +111,7 @@ ns_lookup(struct ns *ns, int key)
 }
 
 int
-ns_remove(struct ns *ns, int key)
+ns_remove(struct ns *ns, int key, void *v)
 {
   uint i = key % NHASH;
   rcu_begin_write(&ns->table[i].l);
@@ -122,7 +122,7 @@ ns_remove(struct ns *ns, int key)
     if (!e)
       break;
 
-    if (e->key == key) {
+    if (e->key == key && (e->val == v || v == 0)) {
       for (;;)
 	if (__sync_bool_compare_and_swap(pe, e, e->next))
 	  break;
@@ -148,6 +148,20 @@ ns_enumerate(struct ns *ns, void (*f)(int, void *))
       (*f)(e->key, e->val);
       e = e->next;
     }
+  }
+  rcu_end_read();
+}
+
+void
+ns_enumerate_key(struct ns *ns, int key, void (*f)(void *))
+{
+  uint i = key % NHASH;
+  rcu_begin_read();
+  struct elem *e = ns->table[i].chain;
+  while (e) {
+    if (e->key == key)
+      (*f)(e->val);
+    e = e->next;
   }
   rcu_end_read();
 }
