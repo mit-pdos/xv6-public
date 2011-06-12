@@ -59,8 +59,8 @@ allocproc(void)
   p->cpuid = cpu->id;
   p->on_runq = -1;
 
-  snprintf(p->lockname, sizeof(p->lockname), "proc:%d", p->pid);
-  initlock(&p->lock, p->lockname);
+  snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
+  initlock(&p->lock, p->lockname+3);
   initcondvar(&p->cv, p->lockname);
 
   if (ns_insert(nspid, p->pid, (void *) p) < 0)
