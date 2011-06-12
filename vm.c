@@ -486,8 +486,10 @@ vmap_decref(struct vmap *m)
 int
 vmap_overlap(struct vmap *m, uint start, uint len)
 {
+#if SPINLOCK_DEBUG
   if(holding(&m->lock) == 0)
     panic("vmap_overlap no lock");
+#endif
   if(start + len < start)
     panic("vmap_overlap bad len");
 

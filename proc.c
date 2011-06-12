@@ -110,8 +110,10 @@ addrun1(struct runq *rq, struct proc *p)
 void
 addrun(struct proc *p)
 {
+#if SPINLOCK_DEBUG
   if(!holding(&p->lock))
     panic("addrun no p->lock");
+#endif
   acquire(&runqs[p->cpuid].lock);
   //  cprintf("%d: addrun %d\n", cpu->id, p->pid);
   addrun1(&runqs[p->cpuid], p);
@@ -134,8 +136,10 @@ delrun1(struct runq *rq, struct proc *p)
 void
 delrun(struct proc *p)
 {
+#if SPINLOCK_DEBUG
   if(!holding(&p->lock))
     panic("delrun no p->lock");
+#endif
   acquire(&runq->lock);
   // cprintf("%d: delrun %d\n", cpu->id, p->pid);
   delrun1(runq, p);
@@ -566,8 +570,10 @@ sched(void)
 {
   int intena;
 
+#if SPINLOCK_DEBUG
   if(!holding(&proc->lock))
     panic("sched proc->lock");
+#endif
   if(cpu->ncli != 1)
     panic("sched locks");
   if(proc->state == RUNNING)

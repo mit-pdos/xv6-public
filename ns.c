@@ -5,7 +5,11 @@
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
 
+#if SPINLOCK_DEBUG
+#define NHASH 10
+#else
 #define NHASH 100
+#endif
 
 // XXX cache align
 struct elem {

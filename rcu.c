@@ -112,18 +112,20 @@ rcu_end_read(void)
 void
 rcu_begin_write(struct spinlock *l)
 {
-  rcu_begin_read();
   if (l) acquire(l);
   __sync_synchronize();
+
+  rcu_begin_read();
 }
 
 void
 rcu_end_write(struct spinlock *l)
 {
+  rcu_end_read();
+
   // global_epoch can be bumped anywhere; this seems as good a place as any
   __sync_fetch_and_add(&global_epoch, 1);
 
   if (l) release(l);
-  rcu_end_read();
 }
 

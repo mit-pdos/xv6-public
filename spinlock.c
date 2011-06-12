@@ -15,9 +15,11 @@
 void
 initlock(struct spinlock *lk, char *name)
 {
+#if SPINLOCK_DEBUG
   lk->name = name;
-  lk->locked = 0;
   lk->cpu = 0;
+#endif
+  lk->locked = 0;
 }
 
 // Acquire the lock.
@@ -28,12 +30,19 @@ void
 acquire(struct spinlock *lk)
 {
   pushcli(); // disable interrupts to avoid deadlock.
+
+#if SPINLOCK_DEBUG
   if(holding(lk))
     panic("acquire");
+#endif
 
   mtrace_lock_register(RET_EIP(),
 		       lk,
+#if SPINLOCK_DEBUG
 		       lk->name ?: "null",
+#else
+		       "unknown",
+#endif
 		       mtrace_lockop_acquire,
 		       0);
 
@@ -45,32 +54,46 @@ acquire(struct spinlock *lk)
 
   mtrace_lock_register(RET_EIP(),
 		       lk,
+#if SPINLOCK_DEBUG
 		       lk->name ?: "null",
+#else
+		       "unknown",
+#endif
 		       mtrace_lockop_acquired,
 		       0);
 
+#if SPINLOCK_DEBUG
   // Record info about lock acquisition for debugging.
   lk->cpu = cpu;
   getcallerpcs(&lk, lk->pcs);
+#endif
 }
 
 // Release the lock.
 void
 release(struct spinlock *lk)
 {
+#if SPINLOCK_DEBUG
   if(!holding(lk)) {
     cprintf("lock: %s\n", lk->name);
     panic("release");
   }
+#endif
 
   mtrace_lock_register(RET_EIP(),
 		       lk,
+#if SPINLOCK_DEBUG
 		       lk->name ?: "null",
+#else
+		       "unknown",
+#endif
 		       mtrace_lockop_release,
 		       0);
 
+#if SPINLOCK_DEBUG
   lk->pcs[0] = 0;
   lk->cpu = 0;
+#endif
 
   // The xchg serializes, so that reads before release are
   // not reordered after it.  The 1996 PentiumPro manual (Volume 3,
@@ -105,11 +128,13 @@ getcallerpcs(void *v, uint pcs[])
 }
 
 // Check whether this cpu is holding the lock.
+#if SPINLOCK_DEBUG
 int
 holding(struct spinlock *lock)
 {
   return lock->locked && lock->cpu == cpu;
 }
+#endif
 
 
 // Pushcli/popcli are like cli/sti except that they are matched:
