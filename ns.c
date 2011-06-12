@@ -1,6 +1,7 @@
 #include "types.h"
 #include "defs.h"
 #include "spinlock.h"
+#include "param.h"
 
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
@@ -11,7 +12,6 @@
 #define NHASH 100
 #endif
 
-// XXX cache align
 struct elem {
   int key;
   void *val;
@@ -21,7 +21,7 @@ struct elem {
 struct bucket {
   struct spinlock l;
   struct elem * volatile chain;
-};
+} __attribute__((aligned (CACHELINE)));
 
 struct ns {
   int used;
