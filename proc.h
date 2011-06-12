@@ -91,6 +91,7 @@ struct proc {
   SLIST_ENTRY(proc) child_next;
   struct condvar cv;
   uint epoch;
+  uint rcu_read_depth;
   char lockname[16];
 };
 

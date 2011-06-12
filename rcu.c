@@ -97,30 +97,33 @@ rcu_delayed(void *e, void (*dofree)(void *))
 void
 rcu_begin_read(void)
 {
-  proc->epoch = global_epoch;
+  if (proc->rcu_read_depth++ == 0)
+    proc->epoch = global_epoch;
   __sync_synchronize();
 }
 
 void
 rcu_end_read(void)
 {
-  proc->epoch = INF;
+  if (--proc->rcu_read_depth == 0)
+    proc->epoch = INF;
 }
 
 void
 rcu_begin_write(struct spinlock *l)
 {
-  acquire(l);
+  rcu_begin_read();
+  if (l) acquire(l);
+  __sync_synchronize();
 }
 
-// XXX if a process never calls rcu_end_write() we have a problem; run
-// rcu_gc from a kernel thread periodically?
 void
 rcu_end_write(struct spinlock *l)
 {
-  // for other data structures using rcu, use atomic add:
+  // global_epoch can be bumped anywhere; this seems as good a place as any
   __sync_fetch_and_add(&global_epoch, 1);
-  release(l);
-  // rcu_gc();
+
+  if (l) release(l);
+  rcu_end_read();
 }
 
