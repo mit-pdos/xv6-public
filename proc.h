@@ -93,6 +93,7 @@ struct proc {
   uint epoch;
   uint rcu_read_depth;
   char lockname[16];
+  int on_runq;
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -116,13 +117,6 @@ struct cpu {
   struct cpu *cpu;
   struct proc *proc;           // The currently-running process.
   struct kmem *kmem;           // The per-core memory table
-  struct runq *runq;           // The per-core runq
-} __attribute__ ((aligned (CACHELINE)));
-
-struct runq {
-  char name[MAXNAME];
-  struct spinlock lock;
-  STAILQ_HEAD(runlist, proc) runq;
 } __attribute__ ((aligned (CACHELINE)));
 
 struct condtab {
@@ -132,7 +126,6 @@ struct condtab {
 } __attribute__ ((aligned (CACHELINE)));
 
 extern struct cpu cpus[NCPU];
-extern struct runq runqs[NCPU];
 extern struct condtab condtabs[NCPU];
 extern int ncpu;
 extern struct ns *nspid;
@@ -148,4 +141,3 @@ extern struct ns *nspid;
 extern struct cpu *cpu __asm("%gs:0");       // &cpus[cpunum()].cpu
 extern struct proc *proc __asm("%gs:4");     // cpus[cpunum()].proc
 extern struct kmem *kmem __asm("%gs:8"); // &cpu[cpunum()].kmem
-extern struct runq *runq __asm("%gs:12"); // &cpu[cpunum()].runq

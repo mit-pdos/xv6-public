@@ -33,12 +33,13 @@ rcu_alloc()
   return kmalloc(sizeof(struct rcu));
 }
 
-void
+void *
 rcu_min(int key, void *v){
   struct proc *p = (struct proc *) v;
   if (min_epoch > p->epoch) {
       min_epoch = p->epoch;
   }
+  return 0;
 }
 
 // XXX use atomic instruction to update list (instead of holding lock)

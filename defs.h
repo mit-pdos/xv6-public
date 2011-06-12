@@ -105,8 +105,8 @@ int             ns_allockey(struct ns*);
 int             ns_insert(struct ns*, int key, void*);
 void*           ns_lookup(struct ns*, int);
 int             ns_remove(struct ns *ns, int key, void *val);
-void            ns_enumerate(struct ns *ns, void (*f)(int, void *));
-void            ns_enumerate_key(struct ns *ns, int key, void (*f)(void *));
+void*           ns_enumerate(struct ns *ns, void *(*f)(int, void *));
+void*           ns_enumerate_key(struct ns *ns, int key, void *(*f)(void *));
 
 
 // picirq.c
@@ -134,7 +134,7 @@ void            sched(void);
 void            userinit(void);
 int             wait(void);
 void            yield(void);
-void            migrate(void);
+void            migrate(struct proc *);
 
 // rcu.c
 void            rcuinit(void);

@@ -90,8 +90,8 @@ seginit(void)
   c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
   c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
 
-  // Map cpu, curproc, kmem, runq
-  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 16, 0);
+  // Map cpu, curproc, kmem
+  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 12, 0);
 
   // lgt((void *) v2p((void*)(c->gdt)), sizeof(c->gdt));
   lgdt((void *)(c->gdt), sizeof(c->gdt));
@@ -101,7 +101,6 @@ seginit(void)
   cpu = c;
   proc = 0;
   kmem = &kmems[cpunum()];
-  runq = &runqs[cpunum()];
 }
 
 void

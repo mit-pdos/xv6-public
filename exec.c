@@ -131,7 +131,7 @@ exec(char *path, char **argv)
   switchuvm(proc);
   vmap_decref(oldvmap);
 
-  migrate();
+  migrate(proc);
 
   return 0;
 

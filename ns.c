@@ -101,7 +101,7 @@ ns_lookup(struct ns *ns, int key)
 
   while (e != NULL) {
     if (e->key == key) {
-      return e;
+      return e->val;
     }
     e = e->next;
   }
@@ -138,31 +138,38 @@ ns_remove(struct ns *ns, int key, void *v)
   return -1;
 }
 
-void
-ns_enumerate(struct ns *ns, void (*f)(int, void *))
+void *
+ns_enumerate(struct ns *ns, void *(*f)(int, void *))
 {
   rcu_begin_read();
   for (int i = 0; i < NHASH; i++) {
     struct elem *e = ns->table[i].chain;
     while (e != NULL) {
-      (*f)(e->key, e->val);
+      void *r = (*f)(e->key, e->val);
+      if (r)
+	return r;
       e = e->next;
     }
   }
   rcu_end_read();
+  return 0;
 }
 
-void
-ns_enumerate_key(struct ns *ns, int key, void (*f)(void *))
+void *
+ns_enumerate_key(struct ns *ns, int key, void *(*f)(void *))
 {
   uint i = key % NHASH;
   rcu_begin_read();
   struct elem *e = ns->table[i].chain;
   while (e) {
-    if (e->key == key)
-      (*f)(e->val);
+    if (e->key == key) {
+      void *r = (*f)(e->val);
+      if (r)
+	return r;
+    }
     e = e->next;
   }
   rcu_end_read();
+  return 0;
 }
 

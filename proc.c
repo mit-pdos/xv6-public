@@ -10,9 +10,9 @@
 #include "proc.h"
 #include "xv6-mtrace.h"
 
-struct runq runqs[NCPU];
 int __attribute__ ((aligned (CACHELINE))) idle[NCPU];
 struct ns *nspid __attribute__ ((aligned (CACHELINE)));
+struct ns *nsrunq __attribute__ ((aligned (CACHELINE)));
 static struct proc *initproc __attribute__ ((aligned (CACHELINE)));
 
 extern void forkret(void);
@@ -27,13 +27,12 @@ pinit(void)
   if (nspid == 0)
     panic("pinit");
 
-  for (c = 0; c < NCPU; c++) {
+  nsrunq = nsalloc();
+  if (nsrunq == 0)
+    panic("pinit runq");
+
+  for (c = 0; c < NCPU; c++)
     idle[c] = 1;
-    runqs[c].name[0] = (char) (c + '0');
-    safestrcpy(runqs[c].name+1, "runq", MAXNAME-1);
-    initlock(&runqs[c].lock, runqs[c].name);
-    STAILQ_INIT(&runqs[c].runq);
-  }
 }
 
 //PAGEBREAK: 32
@@ -56,6 +55,7 @@ allocproc(void)
   p->pid = ns_allockey(nspid);
   p->epoch = INF;
   p->cpuid = cpu->id;
+  p->on_runq = -1;
 
   snprintf(p->lockname, sizeof(p->lockname), "proc:%d", p->pid);
   initlock(&p->lock, p->lockname);
@@ -89,17 +89,6 @@ allocproc(void)
   return p;
 }
 
-static void
-addrun1(struct runq *rq, struct proc *p)
-{
-  struct proc *q;
-  STAILQ_FOREACH(q, &rq->runq, run_next)
-    if (q == p)
-      panic("addrun1: already on queue");
-  p->state = RUNNABLE;
-  STAILQ_INSERT_TAIL(&rq->runq, p, run_next);
-}
-
 // Mark a process RUNNABLE and add it to the runq
 // of its cpu. Caller must hold p->lock so that
 // some other core doesn't start running the
@@ -114,23 +103,11 @@ addrun(struct proc *p)
   if(!holding(&p->lock))
     panic("addrun no p->lock");
 #endif
-  acquire(&runqs[p->cpuid].lock);
-  //  cprintf("%d: addrun %d\n", cpu->id, p->pid);
-  addrun1(&runqs[p->cpuid], p);
-  release(&runqs[p->cpuid].lock);
-}
 
-static void 
-delrun1(struct runq *rq, struct proc *p)
-{
-  struct proc *q, *nq;
-  STAILQ_FOREACH_SAFE(q, &rq->runq, run_next, nq) {
-    if (q == p) {
-      STAILQ_REMOVE(&rq->runq, q, proc, run_next);
-      return;
-    }
-  }
-  panic("delrun1: not on runq");
+  if (p->on_runq >= 0)
+    panic("addrun on runq already");
+  ns_insert(nsrunq, p->cpuid, p);
+  p->on_runq = p->cpuid;
 }
 
 void
@@ -140,10 +117,11 @@ delrun(struct proc *p)
   if(!holding(&p->lock))
     panic("delrun no p->lock");
 #endif
-  acquire(&runq->lock);
-  // cprintf("%d: delrun %d\n", cpu->id, p->pid);
-  delrun1(runq, p);
-  release(&runq->lock);
+
+  if (p->on_runq < 0)
+    panic("delrun not on runq");
+  ns_remove(nsrunq, p->on_runq, p);
+  p->on_runq = -1;
 }
 
 //PAGEBREAK: 32
@@ -178,6 +156,7 @@ userinit(void)
   p->cwd = 0; // forkret will fix in the process's context
   acquire(&p->lock);
   addrun(p);
+  p->state = RUNNABLE;
   release(&p->lock);
 }
 
@@ -314,6 +293,7 @@ fork(int flags)
 
   acquire(&np->lock);
   addrun(np);
+  np->state = RUNNABLE;
   release(&np->lock);
 
   //  cprintf("%d: fork done (pid %d)\n", proc->pid, pid);
@@ -423,57 +403,67 @@ wait(void)
 }
 
 void
-migrate(void)
+migrate(struct proc *p)
 {
   int c;
-  struct proc *p;
 
   for (c = 0; c < NCPU; c++) {
     if (c == cpu->id)
       continue;
     if (idle[c]) {    // OK if there is a race
       // cprintf("migrate to %d\n", c);
-      p = proc;
       acquire(&p->lock);
+      if (p->state != RUNNABLE) {
+	release(&p->lock);
+	continue;
+      }
+
+      delrun(p);
       p->curcycles = 0;
       p->cpuid = c;
       addrun(p);
-      sched();
+
+      if (p == proc) {
+	proc->state = RUNNABLE;
+	sched();
+      }
+
       release(&proc->lock);
       return;
     }
   }
 }
 
+static void *
+steal_cb(int k, void *v)
+{
+  struct proc *p = v;
+  
+  acquire(&p->lock);
+  if (p->state != RUNNABLE) {
+    release(&p->lock);
+    return 0;
+  }
+
+  if (p->curcycles == 0 || p->curcycles > MINCYCTHRESH) {
+    // cprintf("%d: steal %d (%d) from %d\n", cpu->id, p->pid, p->curcycles, c);
+    delrun(p);
+    p->curcycles = 0;
+    p->cpuid = cpu->id;
+    addrun(p);
+    release(&p->lock);
+    return p;
+  }
+
+  release(&p->lock);
+  return 0;
+}
+
 int
 steal(void)
 {
-  int c;
-  struct proc *p;
-
-  for (c = 0; c < NCPU; c++) {
-    if (c == cpu->id)
-      continue;
-    acquire(&runqs[c].lock);
-    STAILQ_FOREACH(p, &runqs[c].runq, run_next) {
-      acquire(&p->lock);
-      if (p->state != RUNNABLE)
-        panic("non-runnable proc on runq");
-      if (p->curcycles == 0 || p->curcycles > MINCYCTHRESH) {
-	// cprintf("%d: steal %d (%d) from %d\n", cpu->id, p->pid, p->curcycles, c);
-	delrun1(&runqs[c], p);
-	release(&runqs[c].lock);
-	p->curcycles = 0;
-	p->cpuid = cpu->id;
-	addrun(p);
-        release(&p->lock);
-	return 1;
-      }
-      release(&p->lock);
-    }
-    release(&runqs[c].lock);
-  }
-  return 0;
+  void *stole = ns_enumerate(nsrunq, steal_cb);
+  return stole ? 1 : 0;
 }
 
 //PAGEBREAK: 42
@@ -487,8 +477,6 @@ steal(void)
 void
 scheduler(void)
 {
-  struct proc *p;
-
   // allocate a fake PID for each scheduler thread
   struct proc *schedp = allocproc();
   if (!schedp)
@@ -504,47 +492,39 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
-    // Loop over process table looking for process to run.
-    acquire(&runq->lock);
-
-    STAILQ_FOREACH(p, &runq->runq, run_next) {
+    struct proc *p = ns_lookup(nsrunq, cpu->id);
+    if (p) {
       acquire(&p->lock);
-      if(p->state != RUNNABLE)
-	panic("non-runnable process on runq\n");
+      if (p->state != RUNNABLE) {
+	release(&p->lock);
+      } else {
+	if (idle[cpu->id])
+	  idle[cpu->id] = 0;
 
-      STAILQ_REMOVE(&runq->runq, p, proc, run_next);
-      if (idle[cpu->id]) {
-	// cprintf("%d: no longer idle, running %d\n", cpu->id, p->pid);
-	idle[cpu->id] = 0;
+	// Switch to chosen process.  It is the process's job
+	// to release proc->lock and then reacquire it
+	// before jumping back to us.
+	proc = p;
+	switchuvm(p);
+	p->state = RUNNING;
+	p->tsc = rdtsc();
+
+	mtrace_fcall_register(schedp->pid, 0, 0, mtrace_pause);
+	mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
+	mtrace_call_set(1, cpu->id);
+	swtch(&cpu->scheduler, proc->context);
+	mtrace_fcall_register(schedp->pid, 0, 0, mtrace_resume);
+	mtrace_call_set(0, cpu->id);
+	switchkvm();
+
+	// Process is done running for now.
+	// It should have changed its p->state before coming back.
+	proc = schedp;
+	if (p->state != RUNNABLE)
+	  delrun(p);
+	release(&p->lock);
       }
-
-      release(&runq->lock);
-
-      // Switch to chosen process.  It is the process's job
-      // to release proc->lock and then reacquire it
-      // before jumping back to us.
-      proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      p->tsc = rdtsc();
-
-      mtrace_fcall_register(schedp->pid, 0, 0, mtrace_pause);
-      mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
-      mtrace_call_set(1, cpu->id);
-      swtch(&cpu->scheduler, proc->context);
-      mtrace_fcall_register(schedp->pid, 0, 0, mtrace_resume);
-      mtrace_call_set(0, cpu->id);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      proc = schedp;
-      release(&p->lock);
-      break;
-    }
-
-    if(p==0) {
-      release(&runq->lock);
+    } else {
       if (steal()) {
 	if (idle[cpu->id])
 	  idle[cpu->id] = 0;
@@ -598,7 +578,7 @@ void
 yield(void)
 {
   acquire(&proc->lock);  //DOC: yieldlock
-  addrun(proc);
+  proc->state = RUNNABLE;
   sched();
   release(&proc->lock);
 }
@@ -651,7 +631,7 @@ kill(int pid)
   return 0;
 }
 
-void procdump(int k, void *v)
+void *procdump(int k, void *v)
 {
   struct proc *p = (struct proc *) v;
 
@@ -678,6 +658,7 @@ void procdump(int k, void *v)
       cprintf(" %p", pc[i]);
   }
   cprintf("\n");
+  return 0;
 }
 
 //PAGEBREAK: 36

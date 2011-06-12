@@ -62,6 +62,7 @@ cv_wakeup(struct condvar *cv)
     p->cv_next = 0;
     p->oncv = 0;
     addrun(p);
+    p->state = RUNNABLE;
     release(&p->lock);
     cv->waiters = nxt;
   }
