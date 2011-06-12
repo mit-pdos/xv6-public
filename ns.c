@@ -126,6 +126,7 @@ ns_remove(struct ns *ns, int key, void *v)
       break;
 
     if (e->key == key && (e->val == v || v == 0)) {
+      // XXX annotate as locks for mtrace
       if (!__sync_bool_compare_and_swap(&e->next_lock, 0, 1))
 	goto retry;
       if (!__sync_bool_compare_and_swap(pelock, 0, 1)) {

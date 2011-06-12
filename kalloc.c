@@ -270,8 +270,8 @@ kmalloc(uint nbytes)
     mtrace_label_register(mtrace_label_heap,
 			  r,
 			  nbytes,
-			  "kmalloc",
-			  sizeof("kmalloc"),
+			  "kmalloc'ed",
+			  sizeof("kmalloc'ed"),
 			  RET_EIP());
   return r;
 }

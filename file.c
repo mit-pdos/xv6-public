@@ -27,9 +27,8 @@ filealloc(void)
 struct file*
 filedup(struct file *f)
 {
-  if(f->ref < 1)
+  if (__sync_fetch_and_add(&f->ref, 1) < 1)
     panic("filedup");
-  __sync_fetch_and_add(&f->ref, 1);
   return f;
 }
 
