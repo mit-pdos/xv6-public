@@ -15,11 +15,11 @@
 struct elem {
   int key;
   void *val;
+  int next_lock;
   struct elem * volatile next;
 };
 
 struct bucket {
-  struct spinlock l;
   struct elem * volatile chain;
 } __attribute__((aligned (CACHELINE)));
 
@@ -44,8 +44,6 @@ nsalloc(void)
   if (ns == 0)
     panic("nsalloc");
   memset(ns, 0, sizeof(struct ns));
-  for (int i = 0; i < NHASH; i++)
-    initlock(&ns->table[i].l, "bucket");
   ns->nextkey = 1;
   return ns;
 }
@@ -114,8 +112,13 @@ int
 ns_remove(struct ns *ns, int key, void *v)
 {
   uint i = key % NHASH;
-  rcu_begin_write(&ns->table[i].l);
+  rcu_begin_write(0);
 
+ retry:
+  (void) 0;
+
+  int fakelock = 0;
+  int *pelock = &fakelock;
   struct elem * volatile * pe = &ns->table[i].chain;
   for (;;) {
     struct elem *e = *pe;
@@ -123,10 +126,20 @@ ns_remove(struct ns *ns, int key, void *v)
       break;
 
     if (e->key == key && (e->val == v || v == 0)) {
-      for (;;)
-	if (__sync_bool_compare_and_swap(pe, e, e->next))
-	  break;
-      rcu_end_write(&ns->table[i].l);
+      if (!__sync_bool_compare_and_swap(&e->next_lock, 0, 1))
+	goto retry;
+      if (!__sync_bool_compare_and_swap(pelock, 0, 1)) {
+	e->next_lock = 0;
+	goto retry;
+      }
+      if (!__sync_bool_compare_and_swap(pe, e, e->next)) {
+	*pelock = 0;
+	e->next_lock = 0;
+	goto retry;
+      }
+
+      *pelock = 0;
+      rcu_end_write(0);
       rcu_delayed(e, kmfree);
       return 0;
     }
@@ -134,7 +147,7 @@ ns_remove(struct ns *ns, int key, void *v)
     pe = &e->next;
   }
 
-  rcu_end_write(&ns->table[i].l);
+  rcu_end_write(0);
   return -1;
 }
 
