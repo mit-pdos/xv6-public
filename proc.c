@@ -66,7 +66,8 @@ allocproc(void)
 
   // Allocate kernel stack if possible.
   if((p->kstack = kalloc()) == 0){
-    kmfree(p);
+    ns_remove(nspid, p->pid);
+    rcu_delayed(p, kmfree);
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
@@ -281,7 +282,8 @@ fork(int flags)
       kfree(np->kstack);
       np->kstack = 0;
       np->state = UNUSED;
-      kmfree(np);
+      ns_remove(nspid, np->pid);
+      rcu_delayed(np, kmfree);
       return -1;
     }
   } else {
@@ -397,7 +399,7 @@ wait(void)
 	  p->parent = 0;
 	  p->name[0] = 0;
 	  p->killed = 0;
-	  kmfree(p);
+	  rcu_delayed(p, kmfree);
 	  return pid;
 	}
 	release(&p->lock);
