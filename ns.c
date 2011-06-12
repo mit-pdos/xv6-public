@@ -48,6 +48,7 @@ nsalloc(void)
   memset(ns, 0, sizeof(struct ns));
   snprintf(ns->name, sizeof(ns->name), "ns:%x", ns);
   initlock(&ns->lock, ns->name);
+  ns->nextkey = 1;
 
   for (int i = 0; i < NHASH; i++)
     TAILQ_INIT(&ns->table[i].chain);
