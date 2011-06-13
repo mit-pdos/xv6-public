@@ -18,6 +18,7 @@ struct inode {
   int ref;            // Reference count
   int flags;          // I_BUSY, I_VALID
   struct condvar cv;
+  struct spinlock lock;
 
   short type;         // copy of disk inode
   short major;
@@ -29,6 +30,7 @@ struct inode {
 
 #define I_BUSY 0x1
 #define I_VALID 0x2
+#define I_FREE 0x4
 
 
 // device implementations

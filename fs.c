@@ -131,18 +131,19 @@ bfree(int dev, uint b)
 // responsibility to lock them before using them.  A non-zero
 // ip->ref keeps these unlocked inodes in the cache.
 
-struct {
-  struct spinlock lock;
-  struct inode inode[NINODE];
-} __attribute__ ((aligned (CACHELINE))) icache;
+static struct ns *ins;
 
 void
 iinit(void)
 {
-  int i;
-  initlock(&icache.lock, "icache");
-  for (i = 0; i < NINODE; i++) {
-    initcondvar(&icache.inode[i].cv, "icache-cv");
+  ins = nsalloc(0);
+  for (int i = 0; i < NINODE; i++) {
+    struct inode *ip = kmalloc(sizeof(*ip));
+    memset(ip, 0, sizeof(*ip));
+    ip->inum = -i-1;
+    initlock(&ip->lock, "icache-lock");
+    initcondvar(&ip->cv, "icache-cv");
+    ns_insert(ins, ip->inum, ip);
   }
 }
 
@@ -203,6 +204,17 @@ iupdate(struct inode *ip)
   brelse(bp);
 }
 
+static void *
+evict(uint key, void *p)
+{
+  struct inode *ip = p;
+  acquire(&ip->lock);
+  if (ip->ref == 0)
+    return ip;
+  release(&ip->lock);
+  return 0;
+}
+
 // Find the inode with number inum on device dev
 // and return the in-memory copy.
 // The inode is not locked, so someone else might
@@ -213,35 +225,46 @@ iupdate(struct inode *ip)
 struct inode*
 iget(uint dev, uint inum)
 {
-  struct inode *ip, *empty;
+  struct inode *ip;
 
-  acquire(&icache.lock);
-
+ retry:
   // Try for cached inode.
-  empty = 0;
-  for(ip = &icache.inode[0]; ip < &icache.inode[NINODE]; ip++){
-    if(ip->ref > 0 && ip->dev == dev && ip->inum == inum){
-      ip->ref++;
-      while((ip->flags & I_VALID) == 0)
-        cv_sleep(&ip->cv, &icache.lock);
-      release(&icache.lock);
-      return ip;
+  ip = ns_lookup(ins, inum);	// XXX ignore dev
+  if (ip) {
+    if (ip->dev != dev) panic("iget dev mismatch");
+    acquire(&ip->lock);
+    __sync_fetch_and_add(&ip->ref, 1);
+    if (ip->flags & I_FREE) {
+      release(&ip->lock);
+      goto retry;
     }
-    if(empty == 0 && ip->ref == 0)    // Remember empty slot.
-      empty = ip;
+
+    while((ip->flags & I_VALID) == 0)
+      cv_sleep(&ip->cv, &ip->lock);
+    release(&ip->lock);
+    return ip;
   }
 
   // Allocate fresh inode cache slot.
-  if(empty == 0)
-    panic("iget: no inodes");
-
-  ip = empty;
+  struct inode *victim = ns_enumerate(ins, evict);
+  if (!victim)
+    panic("iget out of space");
+  victim->flags |= I_FREE;
+  release(&victim->lock);
+  rcu_delayed(victim, kmfree);
+  
+  ip = kmalloc(sizeof(*ip));
   ip->dev = dev;
   ip->inum = inum;
   ip->ref = 1;
   ip->flags = I_BUSY;
-  release(&icache.lock);
-
+  initlock(&ip->lock, "icache-lock");
+  initcondvar(&ip->cv, "icache-cv");
+  if (ns_insert(ins, ip->inum, ip) < 0) {
+    rcu_delayed(ip, kmfree);
+    goto retry;
+  }
+  
   struct buf *bp = bread(ip->dev, IBLOCK(ip->inum));
   struct dinode *dip = (struct dinode*)bp->data + ip->inum%IPB;
   ip->type = dip->type;
@@ -278,11 +301,11 @@ ilock(struct inode *ip)
   if(ip == 0 || ip->ref < 1)
     panic("ilock");
 
-  acquire(&icache.lock);
+  acquire(&ip->lock);
   while(ip->flags & I_BUSY)
-    cv_sleep(&ip->cv, &icache.lock);
+    cv_sleep(&ip->cv, &ip->lock);
   ip->flags |= I_BUSY;
-  release(&icache.lock);
+  release(&ip->lock);
 
   if((ip->flags & I_VALID) == 0)
     panic("ilock");
@@ -295,10 +318,10 @@ iunlock(struct inode *ip)
   if(ip == 0 || !(ip->flags & I_BUSY) || ip->ref < 1)
     panic("iunlock");
 
-  acquire(&icache.lock);
+  acquire(&ip->lock);
   ip->flags &= ~I_BUSY;
   cv_wakeup(&ip->cv);
-  release(&icache.lock);
+  release(&ip->lock);
 }
 
 // Caller holds reference to unlocked ip.  Drop reference.
@@ -306,26 +329,26 @@ void
 iput(struct inode *ip)
 {
   if(__sync_sub_and_fetch(&ip->ref, 1) == 0) {
-    acquire(&icache.lock);
-    if (ip->nlink == 0){
+    acquire(&ip->lock);
+    if (ip->ref == 0 && ip->nlink == 0) {
       // inode is no longer used: truncate and free inode.
       if(ip->flags & I_BUSY)
 	panic("iput busy");
       if((ip->flags & I_VALID) == 0)
 	panic("iput not valid");
       ip->flags |= I_BUSY;
-      release(&icache.lock);
+      release(&ip->lock);
       itrunc(ip);
       ip->type = 0;
       ip->major = 0;
       ip->minor = 0;
       ip->gen += 1;
       iupdate(ip);
-      acquire(&icache.lock);
+      acquire(&ip->lock);
       ip->flags &= ~I_BUSY;
       cv_wakeup(&ip->cv);
     }
-    release(&icache.lock);
+    release(&ip->lock);
   }
 }
 
