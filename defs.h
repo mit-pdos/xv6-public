@@ -102,11 +102,11 @@ void            mpstartthem(void);
 void            nsinit(void);
 struct ns*      nsalloc(int allowdup);
 int             ns_allockey(struct ns*);
-int             ns_insert(struct ns*, int key, void*);
-void*           ns_lookup(struct ns*, int);
-int             ns_remove(struct ns *ns, int key, void *val);
-void*           ns_enumerate(struct ns *ns, void *(*f)(int, void *));
-void*           ns_enumerate_key(struct ns *ns, int key, void *(*f)(void *));
+int             ns_insert(struct ns*, uint key, void*);
+void*           ns_lookup(struct ns*, uint);
+int             ns_remove(struct ns *ns, uint key, void *val);
+void*           ns_enumerate(struct ns *ns, void *(*f)(uint, void *));
+void*           ns_enumerate_key(struct ns *ns, uint key, void *(*f)(void *));
 
 
 // picirq.c

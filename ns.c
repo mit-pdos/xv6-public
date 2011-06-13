@@ -13,7 +13,7 @@
 #endif
 
 struct elem {
-  int key;
+  uint key;
   void *val;
   int next_lock;
   struct elem * volatile next;
@@ -25,7 +25,7 @@ struct bucket {
 
 struct ns {
   int allowdup;
-  int nextkey;
+  uint nextkey;
   struct bucket table[NHASH];
 };
 
@@ -64,12 +64,12 @@ elemalloc(void)
 int
 ns_allockey(struct ns *ns)
 {
-  int n = __sync_fetch_and_add(&ns->nextkey, 1);
+  uint n = __sync_fetch_and_add(&ns->nextkey, 1);
   return n;
 }
 
 int 
-ns_insert(struct ns *ns, int key, void *val) 
+ns_insert(struct ns *ns, uint key, void *val) 
 {
   struct elem *e = elemalloc();
   if (e) {
@@ -102,7 +102,7 @@ ns_insert(struct ns *ns, int key, void *val)
 }
 
 void*
-ns_lookup(struct ns *ns, int key)
+ns_lookup(struct ns *ns, uint key)
 {
   uint i = key % NHASH;
 
@@ -121,7 +121,7 @@ ns_lookup(struct ns *ns, int key)
 }
 
 int
-ns_remove(struct ns *ns, int key, void *v)
+ns_remove(struct ns *ns, uint key, void *v)
 {
   uint i = key % NHASH;
   rcu_begin_write(0);
@@ -165,7 +165,7 @@ ns_remove(struct ns *ns, int key, void *v)
 }
 
 void *
-ns_enumerate(struct ns *ns, void *(*f)(int, void *))
+ns_enumerate(struct ns *ns, void *(*f)(uint, void *))
 {
   rcu_begin_read();
   for (int i = 0; i < NHASH; i++) {
@@ -182,7 +182,7 @@ ns_enumerate(struct ns *ns, void *(*f)(int, void *))
 }
 
 void *
-ns_enumerate_key(struct ns *ns, int key, void *(*f)(void *))
+ns_enumerate_key(struct ns *ns, uint key, void *(*f)(void *))
 {
   uint i = key % NHASH;
   rcu_begin_read();

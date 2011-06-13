@@ -445,7 +445,7 @@ migrate(struct proc *p)
 }
 
 static void *
-steal_cb(int k, void *v)
+steal_cb(uint k, void *v)
 {
   struct proc *p = v;
   
@@ -643,7 +643,7 @@ kill(int pid)
   return 0;
 }
 
-void *procdump(int k, void *v)
+void *procdump(uint k, void *v)
 {
   struct proc *p = (struct proc *) v;
 

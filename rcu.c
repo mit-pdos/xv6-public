@@ -35,7 +35,7 @@ rcu_alloc()
 }
 
 void *
-rcu_min(int key, void *v){
+rcu_min(uint key, void *v){
   struct proc *p = (struct proc *) v;
   if (min_epoch[cpu->id].x > p->epoch) {
       min_epoch[cpu->id].x = p->epoch;
