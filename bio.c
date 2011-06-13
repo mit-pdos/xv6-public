@@ -28,34 +28,45 @@
 #include "condvar.h"
 #include "buf.h"
 
-struct {
-  struct spinlock lock;
-  struct buf buf[NBUF];
-
-  // Linked list of all buffers, through prev/next.
-  // head.next is most recently used.
-  struct buf head;
-} bcache;
+static struct ns *bufns;
 
 void
 binit(void)
 {
-  struct buf *b;
+  bufns = nsalloc(0);
 
-  initlock(&bcache.lock, "bcache");
-
-//PAGEBREAK!
-  // Create linked list of buffers
-  bcache.head.prev = &bcache.head;
-  bcache.head.next = &bcache.head;
-  for(b = bcache.buf; b < bcache.buf+NBUF; b++){
-    b->next = bcache.head.next;
-    b->prev = &bcache.head;
-    b->dev = -1;
-    bcache.head.next->prev = b;
-    bcache.head.next = b;
+  for (uint i = 0; i < NBUF; i++) {
+    struct buf *b = kmalloc(sizeof(*b));
+    b->dev = 0xdeadbeef;
+    b->sector = -i;	/* dummy to pre-allocate NBUF spaces for evict */
+    b->flags = 0;
+    initlock(&b->lock, "bcache-lock");
     initcondvar(&b->cv, "bcache-cv");
+    if (ns_insert(bufns, b->sector, b) < 0)
+      panic("binit ns_insert");
   }
+}
+
+static void *
+evict(uint key, void *bp)
+{
+  struct buf *b = bp;
+  acquire(&b->lock);
+  if ((b->flags & (B_BUSY | B_VALID)) == 0)
+    return b;
+  release(&b->lock);
+  return 0;
+}
+
+static void *
+evict_valid(uint key, void *bp)
+{
+  struct buf *b = bp;
+  acquire(&b->lock);
+  if ((b->flags & B_BUSY) == 0)
+    return b;
+  release(&b->lock);
+  return 0;
 }
 
 // Look through buffer cache for sector on device dev.
@@ -66,33 +77,50 @@ bget(uint dev, uint sector)
 {
   struct buf *b;
 
-  acquire(&bcache.lock);
-
  loop:
   // Try for cached block.
-  for(b = bcache.head.next; b != &bcache.head; b = b->next){
-    if(b->dev == dev && b->sector == sector){
-      if(!(b->flags & B_BUSY)){
-        b->flags |= B_BUSY;
-        release(&bcache.lock);
-        return b;
-      }
-      cv_sleep(&b->cv, &bcache.lock);
-      goto loop;
-    }
-  }
-
-  // Allocate fresh block.
-  for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
-    if((b->flags & B_BUSY) == 0){
-      b->dev = dev;
-      b->sector = sector;
-      b->flags = B_BUSY;
-      release(&bcache.lock);
+  // XXX ignore dev
+  rcu_begin_read();
+  b = ns_lookup(bufns, sector);
+  if (b) {
+    acquire(&b->lock);
+    if (b->dev != dev)
+      panic("dev mismatch");
+    if (!(b->flags & B_BUSY)) {
+      b->flags |= B_BUSY;
+      release(&b->lock);
+      rcu_end_read();
       return b;
     }
+
+    cv_sleep(&b->cv, &b->lock);
+    release(&b->lock);
+    goto loop;
   }
-  panic("bget: no buffers");
+  rcu_end_read();
+
+  // Allocate fresh block.
+  struct buf *victim = ns_enumerate(bufns, evict);
+  if (victim == 0)
+    victim = ns_enumerate(bufns, evict_valid);
+  if (victim == 0)
+    panic("bget all busy");
+  victim->flags |= B_BUSY;
+  ns_remove(bufns, victim->sector, victim);
+  release(&victim->lock);
+  rcu_delayed(victim, kmfree);
+
+  b = kmalloc(sizeof(*b));
+  b->dev = dev;
+  b->sector = sector;
+  b->flags = B_BUSY;
+  initlock(&b->lock, "bcache-lock");
+  initcondvar(&b->cv, "bcache-cv");
+  if (ns_insert(bufns, b->sector, b) < 0) {
+    rcu_delayed(b, kmfree);
+    goto loop;
+  }
+  return b;
 }
 
 // Return a B_BUSY buf with the contents of the indicated disk sector.
@@ -121,21 +149,11 @@ bwrite(struct buf *b)
 void
 brelse(struct buf *b)
 {
+  acquire(&b->lock);
   if((b->flags & B_BUSY) == 0)
     panic("brelse");
-
-  acquire(&bcache.lock);
-
-  b->next->prev = b->prev;
-  b->prev->next = b->next;
-  b->next = bcache.head.next;
-  b->prev = &bcache.head;
-  bcache.head.next->prev = b;
-  bcache.head.next = b;
-
   b->flags &= ~B_BUSY;
+  release(&b->lock);
   cv_wakeup(&b->cv);
-
-  release(&bcache.lock);
 }
 

@@ -6,6 +6,7 @@ struct buf {
   struct buf *next;
   struct buf *qnext; // disk queue
   struct condvar cv;
+  struct spinlock lock;
   uchar data[512];
 };
 #define B_BUSY  0x1  // buffer is locked by some process
