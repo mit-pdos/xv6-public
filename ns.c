@@ -24,7 +24,7 @@ struct bucket {
 } __attribute__((aligned (CACHELINE)));
 
 struct ns {
-  int used;
+  int allowdup;
   int nextkey;
   struct bucket table[NHASH];
 };
@@ -36,7 +36,7 @@ nsinit(void)
 
 // XXX should be using our missing scalable allocator module
 struct ns*
-nsalloc(void)
+nsalloc(int allowdup)
 {
   struct ns *ns = 0;
 
@@ -45,6 +45,7 @@ nsalloc(void)
     panic("nsalloc");
   memset(ns, 0, sizeof(struct ns));
   ns->nextkey = 1;
+  ns->allowdup = allowdup;
   return ns;
 }
 
@@ -70,23 +71,34 @@ ns_allockey(struct ns *ns)
 int 
 ns_insert(struct ns *ns, int key, void *val) 
 {
-  int r = -1;
   struct elem *e = elemalloc();
   if (e) {
     e->key = key;
     e->val = val;
     uint i = key % NHASH;
     rcu_begin_write(0);
-    for (;;) {
-      struct elem *x = ns->table[i].chain;
-      e->next = x;
-      if (__sync_bool_compare_and_swap(&ns->table[i].chain, x, e))
-	break;
+
+   retry:
+    (void) 0;
+    struct elem *root = ns->table[i].chain;
+    if (!ns->allowdup) {
+      for (struct elem *x = root; x; x = x->next) {
+	if (x->key == key) {
+	  rcu_end_write(0);
+	  rcu_delayed(e, kmfree);
+	  return -1;
+	}
+      }
     }
+
+    e->next = root;
+    if (!__sync_bool_compare_and_swap(&ns->table[i].chain, root, e))
+      goto retry;
+
     rcu_end_write(0);
-    r = 0;
+    return 0;
   }
-  return r;
+  return -1;
 }
 
 void*

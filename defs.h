@@ -100,7 +100,7 @@ void            mpstartthem(void);
 
 // ns.c
 void            nsinit(void);
-struct ns*      nsalloc(void);
+struct ns*      nsalloc(int allowdup);
 int             ns_allockey(struct ns*);
 int             ns_insert(struct ns*, int key, void*);
 void*           ns_lookup(struct ns*, int);

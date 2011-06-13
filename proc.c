@@ -25,11 +25,11 @@ pinit(void)
 {
   int c;
 
-  nspid = nsalloc();
+  nspid = nsalloc(0);
   if (nspid == 0)
     panic("pinit");
 
-  nsrunq = nsalloc();
+  nsrunq = nsalloc(1);
   if (nsrunq == 0)
     panic("pinit runq");
 
