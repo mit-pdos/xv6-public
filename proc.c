@@ -546,13 +546,13 @@ scheduler(void)
       }
     }
 
-    if (idle[cpu->id]) {
-      int now = ticks;
-      if (now - cpu->last_rcu_gc_ticks > 100) {
-	rcu_gc();
-	cpu->last_rcu_gc_ticks = now;
-      }
+    int now = ticks;
+    if (now - cpu->last_rcu_gc_ticks > 100) {
+      rcu_gc();
+      cpu->last_rcu_gc_ticks = now;
+    }
 
+    if (idle[cpu->id]) {
       sti();
       hlt();
     }
