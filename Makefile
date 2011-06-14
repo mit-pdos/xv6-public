@@ -243,6 +243,9 @@ qemu-nox: fs.img xv6.img
 mtrace-nox: fs.img xv6.img mscan.syms mscan.kern
 	$(MTRACE) -nographic $(QEMUOPTS) $(MTRACEOPTS)
 
+mtrace-gdb: fs.img xv6.img mscan.syms mscan.kern
+	$(MTRACE) -nographic $(QEMUOPTS) $(MTRACEOPTS) -S $(QEMUGDB)
+
 mtrace.txt: mtrace.out $(QEMUSRC)/mtrace-tools/m2text
 	$(QEMUSRC)/mtrace-tools/m2text $< > $@
 
