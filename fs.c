@@ -251,6 +251,7 @@ iget(uint dev, uint inum)
     panic("iget out of space");
   victim->flags |= I_FREE;
   release(&victim->lock);
+  ns_remove(ins, victim->inum, victim);
   rcu_delayed(victim, kmfree);
   
   ip = kmalloc(sizeof(*ip));
