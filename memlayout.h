@@ -7,7 +7,7 @@
 
 #define IOSPACEB  0xA0000 // begin IO space
 #define IOSPACEE  0x100000  // end IO space
-#define PHYSTOP  0x1000000 // use phys mem up to here as free pool
+#define PHYSTOP  0xE000000 // use phys mem up to here as free pool
 
 #define KERNBASE 0xF0000000
 #define USERTOP  (KERNBASE-PGSIZE)
