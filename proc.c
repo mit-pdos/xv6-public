@@ -486,6 +486,16 @@ steal(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+static void *
+choose_runnable(void *pp)
+{
+  struct proc *p = pp;
+  if (p->state == RUNNABLE)
+    return p;
+  return 0;
+}
+
 void
 scheduler(void)
 {
@@ -504,7 +514,7 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
-    struct proc *p = ns_lookup(nsrunq, cpu->id);
+    struct proc *p = ns_enumerate_key(nsrunq, cpu->id, choose_runnable);
     if (p) {
       acquire(&p->lock);
       if (p->state != RUNNABLE) {
