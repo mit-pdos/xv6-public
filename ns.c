@@ -111,6 +111,7 @@ ns_lookup(struct ns *ns, uint key)
 
   while (e != NULL) {
     if (e->key == key) {
+      rcu_end_read();
       return e->val;
     }
     e = e->next;
@@ -172,8 +173,10 @@ ns_enumerate(struct ns *ns, void *(*f)(uint, void *))
     struct elem *e = ns->table[i].chain;
     while (e != NULL) {
       void *r = (*f)(e->key, e->val);
-      if (r)
+      if (r) {
+	rcu_end_read();
 	return r;
+      }
       e = e->next;
     }
   }
@@ -190,8 +193,10 @@ ns_enumerate_key(struct ns *ns, uint key, void *(*f)(void *))
   while (e) {
     if (e->key == key) {
       void *r = (*f)(e->val);
-      if (r)
+      if (r) {
+	rcu_end_read();
 	return r;
+      }
     }
     e = e->next;
   }

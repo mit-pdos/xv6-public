@@ -95,6 +95,7 @@ bget(uint dev, uint sector)
 
     cv_sleep(&b->cv, &b->lock);
     release(&b->lock);
+    rcu_end_read();
     goto loop;
   }
   rcu_end_read();
