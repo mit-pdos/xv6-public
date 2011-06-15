@@ -229,27 +229,41 @@ iget(uint dev, uint inum)
 
  retry:
   // Try for cached inode.
+  rcu_begin_read();
   ip = ns_lookup(ins, inum);	// XXX ignore dev
   if (ip) {
     if (ip->dev != dev) panic("iget dev mismatch");
-    acquire(&ip->lock);
+    // tricky: first bump ref, then check free flag
     __sync_fetch_and_add(&ip->ref, 1);
     if (ip->flags & I_FREE) {
-      release(&ip->lock);
+      rcu_end_read();
+      __sync_sub_and_fetch(&ip->ref, 1);
       goto retry;
     }
-
-    while((ip->flags & I_VALID) == 0)
-      cv_sleep(&ip->cv, &ip->lock);
-    release(&ip->lock);
+    rcu_end_read();
+    if (!(ip->flags & I_VALID)) {
+      acquire(&ip->lock);
+      while((ip->flags & I_VALID) == 0)
+	cv_sleep(&ip->cv, &ip->lock);
+      release(&ip->lock);
+    }
     return ip;
   }
+  rcu_end_read();
 
   // Allocate fresh inode cache slot.
+ retry_evict:
+  (void) 0;
   struct inode *victim = ns_enumerate(ins, evict);
   if (!victim)
     panic("iget out of space");
+  // tricky: first flag as free, then check refcnt, then remove from ns
   victim->flags |= I_FREE;
+  if (victim->ref > 0) {
+    victim->flags &= ~(I_FREE);
+    release(&victim->lock);
+    goto retry_evict;
+  }
   release(&victim->lock);
   ns_remove(ins, victim->inum, victim);
   rcu_delayed(victim, kmfree);
