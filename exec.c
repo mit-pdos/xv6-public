@@ -28,7 +28,8 @@ exec(char *path, char **argv)
 
   if((ip = namei(path)) == 0)
     return -1;
-  ilock(ip, 0);
+  // ilock(ip, 0);
+  rcu_begin_read();
 
   // Check ELF header
   if(ip->type != T_FILE)
@@ -73,10 +74,11 @@ exec(char *path, char **argv)
       goto bad;
     vmn = 0;
   }
-  if (odp) 
-    iunlock(ip);
-  else {
-    iunlockput(ip);
+  if (odp) {
+    // iunlock(ip);
+  } else {
+    // iunlockput(ip);
+    iput(ip);
     ip = 0;
   }
 
@@ -133,15 +135,17 @@ exec(char *path, char **argv)
 
   migrate(proc);
 
+  rcu_end_read();
   return 0;
 
  bad:
   cprintf("exec failed\n");
-  if(ip)
-    iunlockput(ip);
+  // if(ip)
+  //   iunlockput(ip);
   if(vmap)
     vmap_decref(vmap);
   if(vmn)
     vmn_free(vmn);
+  rcu_end_read();
   return -1;
 }

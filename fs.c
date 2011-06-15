@@ -419,7 +419,7 @@ itrunc(struct inode *ip)
 
   for(i = 0; i < NDIRECT; i++){
     if(ip->addrs[i]){
-      bfree(ip->dev, ip->addrs[i]);
+      rcu_delayed2(ip->dev, ip->addrs[i], bfree);
       ip->addrs[i] = 0;
     }
   }
@@ -429,10 +429,10 @@ itrunc(struct inode *ip)
     a = (uint*)bp->data;
     for(j = 0; j < NINDIRECT; j++){
       if(a[j])
-        bfree(ip->dev, a[j]);
+        rcu_delayed2(ip->dev, a[j], bfree);
     }
     brelse(bp, 0);
-    bfree(ip->dev, ip->addrs[NDIRECT]);
+    rcu_delayed2(ip->dev, ip->addrs[NDIRECT], bfree);
     ip->addrs[NDIRECT] = 0;
   }
 

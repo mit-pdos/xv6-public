@@ -143,6 +143,7 @@ void            rcu_end_write(struct spinlock *);
 void            rcu_begin_read(void);
 void            rcu_end_read(void);
 void            rcu_delayed(void*, void (*dofree)(void*));
+void            rcu_delayed2(int, uint, void (*dofree)(int, uint));
 void		rcu_gc(void);
 
 // swtch.S
