@@ -120,8 +120,9 @@ bget(uint dev, uint sector, int writer)
   b->sector = sector;
   b->flags = B_BUSYR | B_BUSYW;
   b->readbusy = 1;
-  initlock(&b->lock, "bcache-lock");
-  initcondvar(&b->cv, "bcache-cv");
+  snprintf(b->lockname, sizeof(b->lockname), "cv:buf:%d", b->sector);
+  initlock(&b->lock, b->lockname+3);
+  initcondvar(&b->cv, b->lockname);
   if (ns_insert(bufns, b->sector, b) < 0) {
     rcu_delayed(b, kmfree);
     goto loop;

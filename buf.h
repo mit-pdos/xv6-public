@@ -6,6 +6,7 @@ struct buf {
   struct buf *prev; // LRU cache list
   struct buf *next;
   struct buf *qnext; // disk queue
+  char lockname[16];
   struct condvar cv;
   struct spinlock lock;
   uchar data[512];
