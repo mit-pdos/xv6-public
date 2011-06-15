@@ -130,7 +130,7 @@ iderw(struct buf *b)
 {
   struct buf **pp;
 
-  if(!(b->flags & (B_BUSYR | B_BUSYW)))
+  if(!(b->flags & B_BUSY))
     panic("iderw: buf not busy");
   if((b->flags & (B_VALID|B_DIRTY)) == B_VALID)
     panic("iderw: nothing to do");

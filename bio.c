@@ -54,7 +54,7 @@ evict(uint key, void *bp)
 {
   struct buf *b = bp;
   acquire(&b->lock);
-  if ((b->flags & (B_BUSYR | B_BUSYW | B_VALID)) == 0)
+  if ((b->flags & (B_BUSY | B_VALID)) == 0)
     return b;
   release(&b->lock);
   return 0;
@@ -65,7 +65,7 @@ evict_valid(uint key, void *bp)
 {
   struct buf *b = bp;
   acquire(&b->lock);
-  if ((b->flags & (B_BUSYR | B_BUSYW)) == 0)
+  if ((b->flags & (B_BUSY)) == 0)
     return b;
   release(&b->lock);
   return 0;
@@ -75,7 +75,7 @@ evict_valid(uint key, void *bp)
 // If not found, allocate fresh block.
 // In either case, return locked buffer.
 static struct buf*
-bget(uint dev, uint sector, int writer)
+bget(uint dev, uint sector, int *writer)
 {
   struct buf *b;
 
@@ -85,21 +85,24 @@ bget(uint dev, uint sector, int writer)
   rcu_begin_read();
   b = ns_lookup(bufns, sector);
   if (b) {
-    acquire(&b->lock);
     if (b->dev != dev)
       panic("dev mismatch");
-    if (!(b->flags & (B_BUSYW | (writer ? B_BUSYR : 0)))) {
-      b->flags |= B_BUSYR | (writer ? B_BUSYW : 0);
-      __sync_fetch_and_add(&b->readbusy, 1);
+    if (*writer || !(b->flags & B_VALID)) {
+      acquire(&b->lock);
+      if (b->flags & B_BUSY) {
+	cv_sleep(&b->cv, &b->lock);
+	release(&b->lock);
+	rcu_end_read();
+	goto loop;
+      }
+
+      b->flags |= B_BUSY;
       release(&b->lock);
-      rcu_end_read();
-      return b;
+      *writer = 1;
     }
 
-    cv_sleep(&b->cv, &b->lock);
-    release(&b->lock);
-    rcu_end_read();
-    goto loop;
+    // rcu_end_read() happens in brelse
+    return b;
   }
   rcu_end_read();
 
@@ -109,8 +112,7 @@ bget(uint dev, uint sector, int writer)
     victim = ns_enumerate(bufns, evict_valid);
   if (victim == 0)
     panic("bget all busy");
-  victim->flags |= B_BUSYR | B_BUSYW;
-  __sync_fetch_and_add(&victim->readbusy, 1);
+  victim->flags |= B_BUSY;
   ns_remove(bufns, victim->sector, victim);
   release(&victim->lock);
   rcu_delayed(victim, kmfree);
@@ -118,15 +120,17 @@ bget(uint dev, uint sector, int writer)
   b = kmalloc(sizeof(*b));
   b->dev = dev;
   b->sector = sector;
-  b->flags = B_BUSYR | B_BUSYW;
-  b->readbusy = 1;
+  b->flags = B_BUSY;
+  *writer = 1;
   snprintf(b->lockname, sizeof(b->lockname), "cv:buf:%d", b->sector);
   initlock(&b->lock, b->lockname+3);
   initcondvar(&b->cv, b->lockname);
+  rcu_begin_read();
   if (ns_insert(bufns, b->sector, b) < 0) {
     rcu_delayed(b, kmfree);
     goto loop;
   }
+  // rcu_end_read() happens in brelse
   return b;
 }
 
@@ -136,9 +140,15 @@ bread(uint dev, uint sector, int writer)
 {
   struct buf *b;
 
-  b = bget(dev, sector, writer);
+  int origwriter = writer;
+  b = bget(dev, sector, &writer);
   if(!(b->flags & B_VALID))
     iderw(b);
+  if (writer && !origwriter) {
+    acquire(&b->lock);
+    b->flags &= ~B_BUSY;
+    release(&b->lock);
+  }
   return b;
 }
 
@@ -146,7 +156,7 @@ bread(uint dev, uint sector, int writer)
 void
 bwrite(struct buf *b)
 {
-  if((b->flags & B_BUSYW) == 0)
+  if((b->flags & B_BUSY) == 0)
     panic("bwrite");
   b->flags |= B_DIRTY;
   if (writeback)
@@ -155,14 +165,17 @@ bwrite(struct buf *b)
 
 // Release the buffer b.
 void
-brelse(struct buf *b)
+brelse(struct buf *b, int writer)
 {
-  acquire(&b->lock);
-  if((b->flags & (B_BUSYR | B_BUSYW)) == 0)
-    panic("brelse");
-  int lastreader = __sync_sub_and_fetch(&b->readbusy, 1);
-  b->flags &= ~(B_BUSYW | ((lastreader==0) ? B_BUSYR : 0));
-  release(&b->lock);
-  cv_wakeup(&b->cv);
+  if (writer) {
+    acquire(&b->lock);
+    if((b->flags & B_BUSY) == 0)
+      panic("brelse");
+    b->flags &= ~B_BUSY;
+    release(&b->lock);
+    cv_wakeup(&b->cv);
+  }
+  // rcu_begin_read() happens in bread
+  rcu_end_read();
 }
 

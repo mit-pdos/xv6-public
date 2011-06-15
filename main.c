@@ -62,6 +62,7 @@ mainc(void)
   ideinit();       // disk
   if(!ismp)
     timerinit();   // uniprocessor timer
+  nc_init();
   userinit();      // first user process
   bootothers();    // start other processors
   kvmalloc();      // new kernel page table wo. bottom mapped

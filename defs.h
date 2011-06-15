@@ -15,7 +15,7 @@ struct ns;
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint, int writer);
-void            brelse(struct buf*);
+void            brelse(struct buf*, int writer);
 void            bwrite(struct buf*);
 
 // condvar.c

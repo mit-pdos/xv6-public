@@ -34,7 +34,7 @@ readsb(int dev, struct superblock *sb)
   
   bp = bread(dev, 1, 0);
   memmove(sb, bp->data, sizeof(*sb));
-  brelse(bp);
+  brelse(bp, 0);
 }
 
 // Zero a block.
@@ -46,7 +46,7 @@ bzero(int dev, int bno)
   bp = bread(dev, bno, 1);
   memset(bp->data, 0, BSIZE);
   bwrite(bp);
-  brelse(bp);
+  brelse(bp, 1);
 }
 
 // Blocks. 
@@ -68,11 +68,11 @@ balloc(uint dev)
       if((bp->data[bi/8] & m) == 0){  // Is block free?
         bp->data[bi/8] |= m;  // Mark block in use on disk.
         bwrite(bp);
-        brelse(bp);
+        brelse(bp, 1);
         return b + bi;
       }
     }
-    brelse(bp);
+    brelse(bp, 1);
   }
   panic("balloc: out of blocks");
 }
@@ -95,7 +95,7 @@ bfree(int dev, uint b)
     panic("freeing free block");
   bp->data[bi/8] &= ~m;  // Mark block free on disk.
   bwrite(bp);
-  brelse(bp);
+  brelse(bp, 1);
 }
 
 // Inodes.
@@ -160,10 +160,10 @@ ialloc(uint dev, short type)
 
   readsb(dev, &sb);
   for(inum = 1; inum < sb.ninodes; inum++){  // loop over inode blocks
-    bp = bread(dev, IBLOCK(inum), 1);
+    bp = bread(dev, IBLOCK(inum), 0);
     dip = (struct dinode*)bp->data + inum%IPB;
     int seemsfree = (dip->type == 0);
-    brelse(bp);
+    brelse(bp, 0);
     if(seemsfree){
       // maybe this inode is free. look at it via the
       // inode cache to make sure.
@@ -201,7 +201,7 @@ iupdate(struct inode *ip)
   dip->gen = ip->gen;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   bwrite(bp);
-  brelse(bp);
+  brelse(bp, 1);
 }
 
 static void *
@@ -277,7 +277,7 @@ iget(uint dev, uint inum)
   ip->size = dip->size;
   ip->gen = dip->gen;
   memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
-  brelse(bp);
+  brelse(bp, 0);
   ip->flags |= I_VALID;
 
   iunlock(ip);
@@ -400,7 +400,7 @@ bmap(struct inode *ip, uint bn)
       a[bn] = addr = balloc(ip->dev);
       bwrite(bp);
     }
-    brelse(bp);
+    brelse(bp, 1);
     return addr;
   }
 
@@ -431,7 +431,7 @@ itrunc(struct inode *ip)
       if(a[j])
         bfree(ip->dev, a[j]);
     }
-    brelse(bp);
+    brelse(bp, 0);
     bfree(ip->dev, ip->addrs[NDIRECT]);
     ip->addrs[NDIRECT] = 0;
   }
@@ -474,7 +474,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     bp = bread(ip->dev, bmap(ip, off/BSIZE), 0);
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(dst, bp->data + off%BSIZE, m);
-    brelse(bp);
+    brelse(bp, 0);
   }
   return n;
 }
@@ -503,7 +503,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(bp->data + off%BSIZE, src, m);
     bwrite(bp);
-    brelse(bp);
+    brelse(bp, 1);
   }
 
   if(n > 0 && off > ip->size){
@@ -547,11 +547,11 @@ dirlookup(struct inode *dp, char *name, uint *poff)
         if(poff)
           *poff = off + (uchar*)de - bp->data;
         inum = de->inum;
-        brelse(bp);
+        brelse(bp, 0);
         return iget(dp->dev, inum);
       }
     }
-    brelse(bp);
+    brelse(bp, 0);
   }
   return 0;
 }

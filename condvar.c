@@ -52,6 +52,9 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
 void
 cv_wakeup(struct condvar *cv)
 {
+  if (!cv->waiters)
+    return;
+
   acquire(&cv->lock);
   while(cv->waiters) {
     struct proc *p = cv->waiters;
