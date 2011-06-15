@@ -51,7 +51,7 @@ int
 filestat(struct file *f, struct stat *st)
 {
   if(f->type == FD_INODE){
-    ilock(f->ip);
+    ilock(f->ip, 0);
     if(f->ip->type == 0)
       panic("filestat");
     stati(f->ip, st);
@@ -72,7 +72,7 @@ fileread(struct file *f, char *addr, int n)
   if(f->type == FD_PIPE)
     return piperead(f->pipe, addr, n);
   if(f->type == FD_INODE){
-    ilock(f->ip);
+    ilock(f->ip, 0);
     if(f->ip->type == 0)
       panic("fileread");
     if((r = readi(f->ip, addr, f->off, n)) > 0)
@@ -94,7 +94,7 @@ filewrite(struct file *f, char *addr, int n)
   if(f->type == FD_PIPE)
     return pipewrite(f->pipe, addr, n);
   if(f->type == FD_INODE){
-    ilock(f->ip);
+    ilock(f->ip, 1);
     if(f->ip->type == 0 || f->ip->type == T_DIR)
       panic("filewrite but 0 or T_DIR");
     if((r = writei(f->ip, addr, f->off, n)) > 0)

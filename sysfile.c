@@ -119,7 +119,7 @@ sys_link(void)
     return -1;
   if((ip = namei(old)) == 0)
     return -1;
-  ilock(ip);
+  ilock(ip, 1);
   if(ip->type == T_DIR){
     iunlockput(ip);
     return -1;
@@ -130,7 +130,7 @@ sys_link(void)
 
   if((dp = nameiparent(new, name)) == 0)
     goto bad;
-  ilock(dp);
+  ilock(dp, 1);
   if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
     iunlockput(dp);
     goto bad;
@@ -140,7 +140,7 @@ sys_link(void)
   return 0;
 
 bad:
-  ilock(ip);
+  ilock(ip, 1);
   ip->nlink--;
   iupdate(ip);
   iunlockput(ip);
@@ -176,7 +176,7 @@ sys_unlink(void)
     return -1;
   if((dp = nameiparent(path, name)) == 0)
     return -1;
-  ilock(dp);
+  ilock(dp, 1);
   if(dp->type != T_DIR)
     panic("sys_unlink");
 
@@ -190,7 +190,7 @@ sys_unlink(void)
     iunlockput(dp);
     return -1;
   }
-  ilock(ip);
+  ilock(ip, 1);
 
   if(ip->nlink < 1)
     panic("unlink: nlink < 1");
@@ -226,13 +226,13 @@ create(char *path, short type, short major, short minor)
 
   if((dp = nameiparent(path, name)) == 0)
     return 0;
-  ilock(dp);
+  ilock(dp, 1);
   if(dp->type != T_DIR)
     panic("create");
 
   if((ip = dirlookup(dp, name, &off)) != 0){
     iunlockput(dp);
-    ilock(ip);
+    ilock(ip, 1);
     if(type == T_FILE && ip->type == T_FILE)
       return ip;
     iunlockput(ip);
@@ -278,7 +278,7 @@ sys_open(void)
   } else {
     if((ip = namei(path)) == 0)
       return -1;
-    ilock(ip);
+    ilock(ip, 0);
     if(ip->type == 0)
       panic("open");
     if(ip->type == T_DIR && omode != O_RDONLY){
@@ -340,7 +340,7 @@ sys_chdir(void)
 
   if(argstr(0, &path) < 0 || (ip = namei(path)) == 0)
     return -1;
-  ilock(ip);
+  ilock(ip, 0);
   if(ip->type != T_DIR){
     iunlockput(ip);
     return -1;

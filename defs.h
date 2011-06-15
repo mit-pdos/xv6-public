@@ -50,7 +50,7 @@ struct inode*   ialloc(uint, short);
 struct inode*   iget(uint dev, uint inum);
 struct inode*   idup(struct inode*);
 void            iinit(void);
-void            ilock(struct inode*);
+void            ilock(struct inode*, int writer);
 void            iput(struct inode*);
 void            iunlock(struct inode*);
 void            iunlockput(struct inode*);

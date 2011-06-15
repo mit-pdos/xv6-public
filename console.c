@@ -297,7 +297,7 @@ consoleread(struct inode *ip, char *dst, int n)
     while(input.r == input.w){
       if(proc->killed){
         release(&input.lock);
-        ilock(ip);
+        ilock(ip, 1);
         return -1;
       }
       cv_sleep(&input.cv, &input.lock);
@@ -317,7 +317,7 @@ consoleread(struct inode *ip, char *dst, int n)
       break;
   }
   release(&input.lock);
-  ilock(ip);
+  ilock(ip, 1);
 
   return target - n;
 }
@@ -332,7 +332,7 @@ consolewrite(struct inode *ip, char *buf, int n)
   for(i = 0; i < n; i++)
     consputc(buf[i] & 0xff);
   release(&cons.lock);
-  ilock(ip);
+  ilock(ip, 1);
 
   return n;
 }

@@ -28,7 +28,7 @@ exec(char *path, char **argv)
 
   if((ip = namei(path)) == 0)
     return -1;
-  ilock(ip);
+  ilock(ip, 0);
 
   // Check ELF header
   if(ip->type != T_FILE)

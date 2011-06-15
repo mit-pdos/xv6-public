@@ -168,7 +168,7 @@ ialloc(uint dev, short type)
       // maybe this inode is free. look at it via the
       // inode cache to make sure.
       struct inode *ip = iget(dev, inum);
-      ilock(ip);
+      ilock(ip, 1);
       if(ip->type == 0){
         ip->type = type;
         ip->gen += 1;
@@ -258,7 +258,8 @@ iget(uint dev, uint inum)
   ip->dev = dev;
   ip->inum = inum;
   ip->ref = 1;
-  ip->flags = I_BUSY;
+  ip->flags = I_BUSYR | I_BUSYW;
+  ip->readbusy = 1;
   snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
   initlock(&ip->lock, ip->lockname+3);
   initcondvar(&ip->cv, ip->lockname);
@@ -298,15 +299,16 @@ idup(struct inode *ip)
 // why doesn't the iget() that allocated the inode cache entry
 // read the inode from disk?
 void
-ilock(struct inode *ip)
+ilock(struct inode *ip, int writer)
 {
   if(ip == 0 || ip->ref < 1)
     panic("ilock");
 
   acquire(&ip->lock);
-  while(ip->flags & I_BUSY)
+  while(ip->flags & (I_BUSYW | (writer ? I_BUSYR : 0)))
     cv_sleep(&ip->cv, &ip->lock);
-  ip->flags |= I_BUSY;
+  ip->flags |= I_BUSYR | (writer ? I_BUSYW : 0);
+  __sync_fetch_and_add(&ip->readbusy, 1);
   release(&ip->lock);
 
   if((ip->flags & I_VALID) == 0)
@@ -317,11 +319,12 @@ ilock(struct inode *ip)
 void
 iunlock(struct inode *ip)
 {
-  if(ip == 0 || !(ip->flags & I_BUSY) || ip->ref < 1)
+  if(ip == 0 || !(ip->flags & (I_BUSYR | I_BUSYW)) || ip->ref < 1)
     panic("iunlock");
 
   acquire(&ip->lock);
-  ip->flags &= ~I_BUSY;
+  int lastreader = __sync_sub_and_fetch(&ip->readbusy, 1);
+  ip->flags &= ~(I_BUSYW | ((lastreader==0) ? I_BUSYR : 0));
   cv_wakeup(&ip->cv);
   release(&ip->lock);
 }
@@ -334,11 +337,12 @@ iput(struct inode *ip)
     acquire(&ip->lock);
     if (ip->ref == 0 && ip->nlink == 0) {
       // inode is no longer used: truncate and free inode.
-      if(ip->flags & I_BUSY)
+      if(ip->flags & (I_BUSYR | I_BUSYW))
 	panic("iput busy");
       if((ip->flags & I_VALID) == 0)
 	panic("iput not valid");
-      ip->flags |= I_BUSY;
+      ip->flags |= I_BUSYR | I_BUSYW;
+      __sync_fetch_and_add(&ip->readbusy, 1);
       release(&ip->lock);
       itrunc(ip);
       ip->type = 0;
@@ -347,7 +351,8 @@ iput(struct inode *ip)
       ip->gen += 1;
       iupdate(ip);
       acquire(&ip->lock);
-      ip->flags &= ~I_BUSY;
+      ip->flags &= ~(I_BUSYR | I_BUSYW);
+      __sync_sub_and_fetch(&ip->readbusy, 1);
       cv_wakeup(&ip->cv);
     }
     release(&ip->lock);
@@ -639,7 +644,7 @@ namex(char *path, int nameiparent, char *name)
     if(nameiparent == 0)
       next = nc_lookup(ip, name);
     if(next == 0){
-      ilock(ip);
+      ilock(ip, 0);
       if(ip->type == 0)
         panic("namex");
       if(ip->type != T_DIR){

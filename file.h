@@ -17,6 +17,7 @@ struct inode {
   uint gen;           // Generation number
   int ref;            // Reference count
   int flags;          // I_BUSY, I_VALID
+  int readbusy;
   struct condvar cv;
   struct spinlock lock;
   char lockname[16];
@@ -29,9 +30,10 @@ struct inode {
   uint addrs[NDIRECT+1];
 };
 
-#define I_BUSY 0x1
-#define I_VALID 0x2
-#define I_FREE 0x4
+#define I_BUSYR 0x1
+#define I_BUSYW 0x2
+#define I_VALID 0x4
+#define I_FREE 0x8
 
 
 // device implementations
