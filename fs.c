@@ -259,8 +259,9 @@ iget(uint dev, uint inum)
   ip->inum = inum;
   ip->ref = 1;
   ip->flags = I_BUSY;
-  initlock(&ip->lock, "icache-lock");
-  initcondvar(&ip->cv, "icache-cv");
+  snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
+  initlock(&ip->lock, ip->lockname+3);
+  initcondvar(&ip->cv, ip->lockname);
   if (ns_insert(ins, ip->inum, ip) < 0) {
     rcu_delayed(ip, kmfree);
     goto retry;

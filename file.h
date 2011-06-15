@@ -19,6 +19,7 @@ struct inode {
   int flags;          // I_BUSY, I_VALID
   struct condvar cv;
   struct spinlock lock;
+  char lockname[16];
 
   short type;         // copy of disk inode
   short major;

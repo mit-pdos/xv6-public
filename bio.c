@@ -30,6 +30,8 @@
 
 static struct ns *bufns;
 
+enum { writeback = 0 };
+
 void
 binit(void)
 {
@@ -143,7 +145,8 @@ bwrite(struct buf *b)
   if((b->flags & B_BUSY) == 0)
     panic("bwrite");
   b->flags |= B_DIRTY;
-  iderw(b);
+  if (writeback)
+    iderw(b);
 }
 
 // Release the buffer b.
