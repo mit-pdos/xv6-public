@@ -58,7 +58,7 @@ struct vma {
 // An address space: a set of vmas plus h/w page table.
 // The elements of e[] are not ordered by address.
 struct vmap {
-  struct vma e[16];
+  struct vma* e[16];
   struct spinlock lock;        // serialize map/lookup/unmap
   uint ref;
   uint alloc;

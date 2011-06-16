@@ -212,7 +212,7 @@ clearpages(pde_t *pgdir, void *begin, void *end)
   last = PGROUNDDOWN(end);
   for (;;) {
     pte = walkpgdir(pgdir, a, 1);
-    if(pte != 0)
+    if(pte != 0) 
       *pte = 0;
     if (a == last)
       break;
@@ -433,6 +433,19 @@ vmn_copy(struct vmnode *n)
   return c;
 }
 
+static struct vma *
+vma_alloc(void)
+{
+  struct vma *e = kmalloc(sizeof(struct vma));
+  if (e == 0)
+    return 0;
+  memset(e, 0, sizeof(struct vma));
+  e->va_type = PRIVATE;
+  snprintf(e->lockname, sizeof(e->lockname), "vma:%p", e);
+  initlock(&e->lock, e->lockname);
+  return e;
+}
+
 struct vmap *
 vmap_alloc(void)
 {
@@ -441,11 +454,6 @@ vmap_alloc(void)
     return 0;
 
   memset(m, 0, sizeof(struct vmap));
-  for(uint j = 0; j < NELEM(m->e); j++){
-    m->e[j].va_type = PRIVATE;
-    snprintf(m->e[j].lockname, sizeof(m->e[j].lockname), "vma:%p", &m->e[j]);
-    initlock(&m->e[j].lock, m->e[j].lockname);
-  }
   snprintf(m->lockname, sizeof(m->lockname), "vmap:%p", m);
   initlock(&m->lock, m->lockname);
   m->ref = 1;
@@ -459,11 +467,21 @@ vmap_alloc(void)
 }
 
 static void
-vmap_free(struct vmap *m)
+vma_free(void *p)
 {
+  struct vma *e = (struct vma *) p;
+  if(e->n)
+    vmn_decref(e->n);
+  kmfree(e);
+}
+
+static void
+vmap_free(void *p)
+{
+  struct vmap *m = (struct vmap *) p;
   for(uint i = 0; i < NELEM(m->e); i++) {
-    if(m->e[i].n)
-      vmn_decref(m->e[i].n);
+    if (m->e[i])
+      vma_free(m->e[i]);
   }
   freevm(m->pgdir);
   m->pgdir = 0;
@@ -474,7 +492,7 @@ void
 vmap_decref(struct vmap *m)
 {
   if(__sync_sub_and_fetch(&m->ref, 1) == 0)
-    vmap_free(m);
+    rcu_delayed(m, vmap_free);
 }
 
 // Does any vma overlap start..start+len?
@@ -493,10 +511,10 @@ vmap_overlap(struct vmap *m, uint start, uint len)
     panic("vmap_overlap bad len");
 
   for(uint i = 0; i < NELEM(m->e); i++){
-    if(m->e[i].n){
-      if(m->e[i].va_end <= m->e[i].va_start)
+    if(m->e[i]){
+      if(m->e[i]->va_end <= m->e[i]->va_start)
         panic("vmap_overlap bad vma");
-      if(m->e[i].va_start < start+len && m->e[i].va_end > start)
+      if(m->e[i]->va_start < start+len && m->e[i]->va_end > start)
         return i;
     }
   }
@@ -516,12 +534,15 @@ vmap_insert(struct vmap *m, struct vmnode *n, uint va_start)
   }
 
   for(uint i = 0; i < NELEM(m->e); i++) {
-    if(m->e[i].n)
+    if(m->e[i])
       continue;
+    m->e[i] = vma_alloc();
+    if (m->e[i] == 0)
+      return -1;
+    m->e[i]->va_start = va_start;
+    m->e[i]->va_end = va_start + len;
+    m->e[i]->n = n;
     __sync_fetch_and_add(&n->ref, 1);
-    m->e[i].va_start = va_start;
-    m->e[i].va_end = va_start + len;
-    m->e[i].n = n;
     release(&m->lock);
     return 0;
   }
@@ -537,14 +558,14 @@ vmap_remove(struct vmap *m, uint va_start, uint len)
   acquire(&m->lock);
   uint va_end = va_start + len;
   for(uint i = 0; i < NELEM(m->e); i++) {
-    if(m->e[i].n && (m->e[i].va_start < va_end && m->e[i].va_end > va_start)) {
-      if(m->e[i].va_start != va_start || m->e[i].va_end != va_end) {
+    if(m->e[i] && (m->e[i]->va_start < va_end && m->e[i]->va_end > va_start)) {
+      if(m->e[i]->va_start != va_start || m->e[i]->va_end != va_end) {
 	release(&m->lock);
 	cprintf("vmap_remove: partial unmap unsupported\n");
 	return -1;
       }
-      vmn_decref(m->e[i].n);
-      m->e[i].n = 0;
+      rcu_delayed(m->e[i], vma_free);
+      m->e[i] = 0;
     }
   }
   release(&m->lock);
@@ -554,15 +575,27 @@ vmap_remove(struct vmap *m, uint va_start, uint len)
 struct vma *
 vmap_lookup(struct vmap *m, uint va)
 {
-  acquire(&m->lock);
+  acquire(&m->lock); // rcu read
   int ind = vmap_overlap(m, va, 1);
   if(ind >= 0){
-    struct vma *e = &m->e[ind];
+    struct vma *e = m->e[ind];
     acquire(&e->lock);
     release(&m->lock);
     return e;
   }
   release(&m->lock);
+  return 0;
+}
+
+struct vma *
+vmap_lookup_rcu(struct vmap *m, uint va)
+{
+  rcu_begin_read();
+  int ind = vmap_overlap(m, va, 1);
+  if(ind >= 0){
+    struct vma *e = m->e[ind];
+    return e;
+  }
   return 0;
 }
 
@@ -575,25 +608,31 @@ vmap_copy(struct vmap *m, int share)
 
   acquire(&m->lock);
   for(uint i = 0; i < NELEM(m->e); i++) {
-    if(m->e[i].n == 0)
+    if(m->e[i] == 0)
       continue;
-    c->e[i].va_start = m->e[i].va_start;
-    c->e[i].va_end = m->e[i].va_end;
-    if (share) {
-      c->e[i].n = m->e[i].n;
-      c->e[i].va_type = COW;
-      m->e[i].va_type = COW;
-      updatepages(m->pgdir, (void *) (m->e[i].va_start), (void *) (m->e[i].va_end), PTE_COW);
-    } else {
-      c->e[i].n = vmn_copy(m->e[i].n);
-      c->e[i].va_type = m->e[i].va_type;
-    }
-    if(c->e[i].n == 0) {
+    c->e[i] = vma_alloc();
+    if (c->e[i] == 0) {
       release(&m->lock);
       vmap_free(c);
       return 0;
     }
-    __sync_fetch_and_add(&c->e[i].n->ref, 1);
+    c->e[i]->va_start = m->e[i]->va_start;
+    c->e[i]->va_end = m->e[i]->va_end;
+    if (share) {
+      c->e[i]->n = m->e[i]->n;
+      c->e[i]->va_type = COW;
+      m->e[i]->va_type = COW;
+      updatepages(m->pgdir, (void *) (m->e[i]->va_start), (void *) (m->e[i]->va_end), PTE_COW);
+    } else {
+      c->e[i]->n = vmn_copy(m->e[i]->n);
+      c->e[i]->va_type = m->e[i]->va_type;
+    }
+    if(c->e[i]->n == 0) {
+      release(&m->lock);
+      vmap_free(c);
+      return 0;
+    }
+    __sync_fetch_and_add(&c->e[i]->n->ref, 1);
   }
   if (share)
     lcr3(v2p(m->pgdir));  // Reload hardware page table
@@ -705,7 +744,7 @@ pagefault_wcow(struct vmap *vmap, uint va, pte_t *pte, struct vma *m, uint npg)
 {
   // Always make a copy of n, even if this process has the only ref, because other processes
   // may change ref count while this process is handling wcow
-  struct vmnode *o = m->n;
+  struct vmnode *n = m->n;
   struct vmnode *c = vmn_copy(m->n);
   if (c == 0) {
     cprintf("pagefault_wcow: out of mem\n");
@@ -719,7 +758,7 @@ pagefault_wcow(struct vmap *vmap, uint va, pte_t *pte, struct vma *m, uint npg)
   pte = walkpgdir(vmap->pgdir, (const void *)va, 0);
   *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   // drop my ref to vmnode
-  vmn_decref(o);
+  vmn_decref(n);
   return 0;
 }
 

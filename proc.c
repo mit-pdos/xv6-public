@@ -192,13 +192,13 @@ growproc(int n)
     int ind = vmap_overlap(m, newstart, 1);
     if(ind == -1)
       break;
-    if(m->e[ind].va_end >= newstart + newn){
+    if(m->e[ind]->va_end >= newstart + newn){
       newstart += newn;
       newn = 0;
       break;
     }
-    newn -= m->e[ind].va_end - newstart;
-    newstart = m->e[ind].va_end;
+    newn -= m->e[ind]->va_end - newstart;
+    newstart = m->e[ind]->va_end;
   }
 
   if(newn <= 0){
