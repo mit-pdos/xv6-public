@@ -103,7 +103,7 @@ enum {
   nskey_int = 1,
   nskey_ii,
   nskey_str,
-  nskey_iistr
+  nskey_iis
 };
 
 struct nskey {
@@ -115,12 +115,20 @@ struct nskey {
       uint b;
     } ii;
     char *s;
+    struct {
+      uint a;
+      uint b;
+      char *s;
+    } iis;
   } u;
 };
 
-#define KI(v)	  (struct nskey){.type=nskey_int,.u.i=v}
-#define KII(x,y)  (struct nskey){.type=nskey_ii,.u.ii.a=x,.u.ii.b=y}
-#define KS(v)	  (struct nskey){.type=nskey_str,.u.s=v}
+#define KI(v)	    (struct nskey){.type=nskey_int,.u.i=v}
+#define KII(x,y)    (struct nskey){.type=nskey_ii,.u.ii.a=x,.u.ii.b=y}
+#define KS(v)	    (struct nskey){.type=nskey_str,.u.s=v}
+#define KIIS(x,y,z) (struct nskey){.type=nskey_iis,.u.iis.a=x, \
+						   .u.iis.b=y, \
+						   .u.iis.s=z}
 
 void            nsinit(void);
 struct ns*      nsalloc(int allowdup);

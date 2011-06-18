@@ -24,6 +24,11 @@ struct elem {
       uint b;
     } iikey;
     char skey[0];
+    struct {
+      uint a;
+      uint b;
+      char s[0];
+    } iiskey;
   };
 };
 
@@ -72,10 +77,13 @@ elemalloc(struct nskey *k)
   case nskey_str:
     sz = offsetof(struct elem, skey) + strlen(k->u.s) + 1;
     break;
+  case nskey_iis:
+    sz = offsetof(struct elem, iiskey.s) + strlen(k->u.iis.s) + 1;
+    break;
   default:
     panic("key type");
   }
-  
+
   e = kmalloc(sz);
   if (e == 0)
     return 0;
@@ -93,6 +101,8 @@ h(struct nskey *k)
     return (k->u.ii.a ^ k->u.ii.b) % NHASH;
   case nskey_str:
     return k->u.s[0] % NHASH; // XXX
+  case nskey_iis:
+    return (k->u.iis.a ^ k->u.iis.b ^ k->u.iis.s[0]) % NHASH;
   default:
     panic("key type");
   }
@@ -110,7 +120,12 @@ setkey(struct elem *e, struct nskey *k)
     e->iikey.b = k->u.ii.b;
     break;
   case nskey_str:
-    strncpy(e->skey, k->u.s, __INT_MAX__);
+    strncpy(e->skey, k->u.s, strlen(k->u.s) + 1);
+    break;
+  case nskey_iis:
+    e->iiskey.a = k->u.iis.a;
+    e->iiskey.b = k->u.iis.b;
+    strncpy(e->iiskey.s, k->u.iis.s, strlen(k->u.iis.s) + 1);
     break;
   default:
     panic("key type");
@@ -127,6 +142,10 @@ cmpkey(struct elem *e, struct nskey *k)
     return e->iikey.a == k->u.ii.a && e->iikey.b == k->u.ii.b;
   case nskey_str:
     return !strcmp(e->skey, k->u.s);
+  case nskey_iis:
+    return e->iiskey.a == k->u.iis.a &&
+	   e->iiskey.b == k->u.iis.b &&
+	   !strcmp(e->iiskey.s, k->u.iis.s);
   default:
     panic("key type");
   }
