@@ -19,6 +19,10 @@ struct elem {
   struct elem * volatile next;
   union {
     uint ikey;
+    struct {
+      uint a;
+      uint b;
+    } iikey;
     char skey[0];
   };
 };
@@ -60,7 +64,10 @@ elemalloc(struct nskey *k)
   int sz;
   switch (k->type) {
   case nskey_int:
-    sz = sizeof(*e);
+    sz = offsetof(struct elem, ikey) + sizeof(e->ikey);
+    break;
+  case nskey_ii:
+    sz = offsetof(struct elem, iikey) + sizeof(e->iikey);
     break;
   case nskey_str:
     sz = offsetof(struct elem, skey) + strlen(k->u.s) + 1;
@@ -82,6 +89,8 @@ h(struct nskey *k)
   switch (k->type) {
   case nskey_int:
     return k->u.i % NHASH;
+  case nskey_ii:
+    return (k->u.ii.a ^ k->u.ii.b) % NHASH;
   case nskey_str:
     return k->u.s[0] % NHASH; // XXX
   default:
@@ -95,6 +104,10 @@ setkey(struct elem *e, struct nskey *k)
   switch (k->type) {
   case nskey_int:
     e->ikey = k->u.i;
+    break;
+  case nskey_ii:
+    e->iikey.a = k->u.ii.a;
+    e->iikey.b = k->u.ii.b;
     break;
   case nskey_str:
     strncpy(e->skey, k->u.s, __INT_MAX__);
@@ -110,10 +123,10 @@ cmpkey(struct elem *e, struct nskey *k)
   switch (k->type) {
   case nskey_int:
     return e->ikey == k->u.i;
-    break;
+  case nskey_ii:
+    return e->iikey.a == k->u.ii.a && e->iikey.b == k->u.ii.b;
   case nskey_str:
     return !strcmp(e->skey, k->u.s);
-    break;
   default:
     panic("key type");
   }

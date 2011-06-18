@@ -101,19 +101,26 @@ void            mpstartthem(void);
 // ns.c
 enum {
   nskey_int = 1,
+  nskey_ii,
   nskey_str,
+  nskey_iistr
 };
 
 struct nskey {
   int type;
   union {
     uint i;
+    struct {
+      uint a;
+      uint b;
+    } ii;
     char *s;
   } u;
 };
 
-#define KI(v) (struct nskey){.type=nskey_int,.u.i=v}
-#define KS(v) (struct nskey){.type=nskey_str,.u.s=v}
+#define KI(v)	  (struct nskey){.type=nskey_int,.u.i=v}
+#define KII(x,y)  (struct nskey){.type=nskey_ii,.u.ii.a=x,.u.ii.b=y}
+#define KS(v)	  (struct nskey){.type=nskey_str,.u.s=v}
 
 void            nsinit(void);
 struct ns*      nsalloc(int allowdup);
