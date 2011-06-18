@@ -99,15 +99,30 @@ void            mpinit(void);
 void            mpstartthem(void);
 
 // ns.c
+enum {
+  nskey_int = 1,
+  nskey_str,
+};
+
+struct nskey {
+  int type;
+  union {
+    uint i;
+    char *s;
+  } u;
+};
+
+#define KI(v) (struct nskey){.type=nskey_int,.u.i=v}
+#define KS(v) (struct nskey){.type=nskey_str,.u.s=v}
+
 void            nsinit(void);
 struct ns*      nsalloc(int allowdup);
 int             ns_allockey(struct ns*);
-int             ns_insert(struct ns*, uint key, void*);
-void*           ns_lookup(struct ns*, uint);
-int             ns_remove(struct ns *ns, uint key, void *val);
-void*           ns_enumerate(struct ns *ns, void *(*f)(uint, void *));
-void*           ns_enumerate_key(struct ns *ns, uint key, void *(*f)(void *));
-
+int             ns_insert(struct ns*, struct nskey key, void*);
+void*           ns_lookup(struct ns*, struct nskey key);
+int             ns_remove(struct ns *ns, struct nskey key, void *val);
+void*           ns_enumerate(struct ns *ns, void *(*f)(void *, void *));
+void*           ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *));
 
 // picirq.c
 void            picenable(int);
@@ -166,6 +181,7 @@ char*           safestrcpy(char*, const char*, int);
 int             strlen(const char*);
 int             strncmp(const char*, const char*, uint);
 char*           strncpy(char*, const char*, int);
+int             strcmp(const char *p, const char *q);
 
 // syscall.c
 int             argint(int, int*);

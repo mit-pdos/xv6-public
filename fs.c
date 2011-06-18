@@ -143,7 +143,7 @@ iinit(void)
     ip->inum = -i-1;
     initlock(&ip->lock, "icache-lock");
     initcondvar(&ip->cv, "icache-cv");
-    ns_insert(ins, ip->inum, ip);
+    ns_insert(ins, KI(ip->inum), ip);
   }
 }
 
@@ -205,7 +205,7 @@ iupdate(struct inode *ip)
 }
 
 static void *
-evict(uint key, void *p)
+evict(void *vkey, void *p)
 {
   struct inode *ip = p;
   acquire(&ip->lock);
@@ -230,7 +230,7 @@ iget(uint dev, uint inum)
  retry:
   // Try for cached inode.
   rcu_begin_read();
-  ip = ns_lookup(ins, inum);	// XXX ignore dev
+  ip = ns_lookup(ins, KI(inum));	// XXX ignore dev
   if (ip) {
     if (ip->dev != dev) panic("iget dev mismatch");
     // tricky: first bump ref, then check free flag
@@ -265,7 +265,7 @@ iget(uint dev, uint inum)
     goto retry_evict;
   }
   release(&victim->lock);
-  ns_remove(ins, victim->inum, victim);
+  ns_remove(ins, KI(victim->inum), victim);
   rcu_delayed(victim, kmfree);
   
   ip = kmalloc(sizeof(*ip));
@@ -277,7 +277,7 @@ iget(uint dev, uint inum)
   snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
   initlock(&ip->lock, ip->lockname+3);
   initcondvar(&ip->cv, ip->lockname);
-  if (ns_insert(ins, ip->inum, ip) < 0) {
+  if (ns_insert(ins, KI(ip->inum), ip) < 0) {
     rcu_delayed(ip, kmfree);
     goto retry;
   }

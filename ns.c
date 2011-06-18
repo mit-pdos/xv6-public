@@ -2,6 +2,7 @@
 #include "defs.h"
 #include "spinlock.h"
 #include "param.h"
+#include <stddef.h>
 
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
@@ -13,10 +14,13 @@
 #endif
 
 struct elem {
-  uint key;
   void *val;
   int next_lock;
   struct elem * volatile next;
+  union {
+    uint ikey;
+    char skey[0];
+  };
 };
 
 struct bucket {
@@ -50,14 +54,69 @@ nsalloc(int allowdup)
 }
 
 static struct elem *
-elemalloc(void)
+elemalloc(struct nskey *k)
 {
   struct elem *e = 0;
-  e = kmalloc(sizeof(struct elem));
+  int sz;
+  switch (k->type) {
+  case nskey_int:
+    sz = sizeof(*e);
+    break;
+  case nskey_str:
+    sz = offsetof(struct elem, skey) + strlen(k->u.s) + 1;
+    break;
+  default:
+    panic("key type");
+  }
+  
+  e = kmalloc(sz);
   if (e == 0)
     return 0;
-  memset(e, 0, sizeof(struct elem));
+  memset(e, 0, sz);
   return e;
+}
+
+static int
+h(struct nskey *k)
+{
+  switch (k->type) {
+  case nskey_int:
+    return k->u.i % NHASH;
+  case nskey_str:
+    return k->u.s[0] % NHASH; // XXX
+  default:
+    panic("key type");
+  }
+}
+
+static void
+setkey(struct elem *e, struct nskey *k)
+{
+  switch (k->type) {
+  case nskey_int:
+    e->ikey = k->u.i;
+    break;
+  case nskey_str:
+    strncpy(e->skey, k->u.s, __INT_MAX__);
+    break;
+  default:
+    panic("key type");
+  }
+}
+
+static int
+cmpkey(struct elem *e, struct nskey *k)
+{
+  switch (k->type) {
+  case nskey_int:
+    return e->ikey == k->u.i;
+    break;
+  case nskey_str:
+    return !strcmp(e->skey, k->u.s);
+    break;
+  default:
+    panic("key type");
+  }
 }
 
 // XXX need something more scalable; partition the name space?
@@ -69,13 +128,13 @@ ns_allockey(struct ns *ns)
 }
 
 int 
-ns_insert(struct ns *ns, uint key, void *val) 
+ns_insert(struct ns *ns, struct nskey key, void *val) 
 {
-  struct elem *e = elemalloc();
+  struct elem *e = elemalloc(&key);
   if (e) {
-    e->key = key;
+    setkey(e, &key);
     e->val = val;
-    uint i = key % NHASH;
+    uint i = h(&key);
     rcu_begin_write(0);
 
    retry:
@@ -83,7 +142,7 @@ ns_insert(struct ns *ns, uint key, void *val)
     struct elem *root = ns->table[i].chain;
     if (!ns->allowdup) {
       for (struct elem *x = root; x; x = x->next) {
-	if (x->key == key) {
+	if (cmpkey(x, &key)) {
 	  rcu_end_write(0);
 	  rcu_delayed(e, kmfree);
 	  return -1;
@@ -102,15 +161,15 @@ ns_insert(struct ns *ns, uint key, void *val)
 }
 
 void*
-ns_lookup(struct ns *ns, uint key)
+ns_lookup(struct ns *ns, struct nskey key)
 {
-  uint i = key % NHASH;
+  uint i = h(&key);
 
   rcu_begin_read();
   struct elem *e = ns->table[i].chain;
 
   while (e != NULL) {
-    if (e->key == key) {
+    if (cmpkey(e, &key)) {
       rcu_end_read();
       return e->val;
     }
@@ -122,9 +181,9 @@ ns_lookup(struct ns *ns, uint key)
 }
 
 int
-ns_remove(struct ns *ns, uint key, void *v)
+ns_remove(struct ns *ns, struct nskey key, void *v)
 {
-  uint i = key % NHASH;
+  uint i = h(&key);
   rcu_begin_write(0);
 
  retry:
@@ -138,7 +197,7 @@ ns_remove(struct ns *ns, uint key, void *v)
     if (!e)
       break;
 
-    if (e->key == key && (e->val == v || v == 0)) {
+    if (cmpkey(e, &key) && (e->val == v || v == 0)) {
       // XXX annotate as locks for mtrace
       if (!__sync_bool_compare_and_swap(&e->next_lock, 0, 1))
 	goto retry;
@@ -166,13 +225,13 @@ ns_remove(struct ns *ns, uint key, void *v)
 }
 
 void *
-ns_enumerate(struct ns *ns, void *(*f)(uint, void *))
+ns_enumerate(struct ns *ns, void *(*f)(void *, void *))
 {
   rcu_begin_read();
   for (int i = 0; i < NHASH; i++) {
     struct elem *e = ns->table[i].chain;
     while (e != NULL) {
-      void *r = (*f)(e->key, e->val);
+      void *r = (*f)(&e->ikey, e->val);
       if (r) {
 	rcu_end_read();
 	return r;
@@ -185,13 +244,13 @@ ns_enumerate(struct ns *ns, void *(*f)(uint, void *))
 }
 
 void *
-ns_enumerate_key(struct ns *ns, uint key, void *(*f)(void *))
+ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *))
 {
-  uint i = key % NHASH;
+  uint i = h(&key);
   rcu_begin_read();
   struct elem *e = ns->table[i].chain;
   while (e) {
-    if (e->key == key) {
+    if (cmpkey(e, &key)) {
       void *r = (*f)(e->val);
       if (r) {
 	rcu_end_read();

@@ -63,12 +63,12 @@ allocproc(void)
   initlock(&p->lock, p->lockname+3);
   initcondvar(&p->cv, p->lockname);
 
-  if (ns_insert(nspid, p->pid, (void *) p) < 0)
+  if (ns_insert(nspid, KI(p->pid), (void *) p) < 0)
     panic("allocproc: ns_insert");
 
   // Allocate kernel stack if possible.
   if((p->kstack = kalloc()) == 0){
-    if (ns_remove(nspid, p->pid, p) < 0)
+    if (ns_remove(nspid, KI(p->pid), p) < 0)
       panic("allocproc: ns_remove");
     rcu_delayed(p, kmfree);
     return 0;
@@ -109,7 +109,7 @@ addrun(struct proc *p)
 
   if (p->on_runq >= 0)
     panic("addrun on runq already");
-  ns_insert(nsrunq, p->cpuid, p);
+  ns_insert(nsrunq, KI(p->cpuid), p);
   p->on_runq = p->cpuid;
 }
 
@@ -123,7 +123,7 @@ delrun(struct proc *p)
 
   if (p->on_runq < 0)
     panic("delrun not on runq");
-  if (ns_remove(nsrunq, p->on_runq, p) < 0)
+  if (ns_remove(nsrunq, KI(p->on_runq), p) < 0)
     panic("delrun: ns_remove");
   p->on_runq = -1;
 }
@@ -269,7 +269,7 @@ fork(int flags)
       kfree(np->kstack);
       np->kstack = 0;
       np->state = UNUSED;
-      if (ns_remove(nspid, np->pid, np) < 0)
+      if (ns_remove(nspid, KI(np->pid), np) < 0)
 	panic("fork: ns_remove");
       rcu_delayed(np, kmfree);
       return -1;
@@ -384,7 +384,7 @@ wait(void)
 	  p->kstack = 0;
 	  vmap_decref(p->vmap);
 	  p->state = UNUSED;
-	  if (ns_remove(nspid, p->pid, p) < 0)
+	  if (ns_remove(nspid, KI(p->pid), p) < 0)
 	    panic("wait: ns_remove");
 	  p->pid = 0;
 	  p->parent = 0;
@@ -445,7 +445,7 @@ migrate(struct proc *p)
 }
 
 static void *
-steal_cb(uint k, void *v)
+steal_cb(void *vk, void *v)
 {
   struct proc *p = v;
   
@@ -514,7 +514,7 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
-    struct proc *p = ns_enumerate_key(nsrunq, cpu->id, choose_runnable);
+    struct proc *p = ns_enumerate_key(nsrunq, KI(cpu->id), choose_runnable);
     if (p) {
       acquire(&p->lock);
       if (p->state != RUNNABLE) {
@@ -630,7 +630,7 @@ kill(int pid)
 {
   struct proc *p;
 
-  p = (struct proc *) ns_lookup(nspid, pid);
+  p = (struct proc *) ns_lookup(nspid, KI(pid));
   if (p == 0) {
     panic("kill");
     return -1;
@@ -653,7 +653,7 @@ kill(int pid)
   return 0;
 }
 
-void *procdump(uint k, void *v)
+void *procdump(void *vk, void *v)
 {
   struct proc *p = (struct proc *) v;
 

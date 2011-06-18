@@ -48,7 +48,7 @@ rcu_alloc()
 }
 
 void *
-rcu_min(uint key, void *v){
+rcu_min(void *vkey, void *v){
   struct proc *p = (struct proc *) v;
   if (min_epoch[cpu->id].x > p->epoch) {
       min_epoch[cpu->id].x = p->epoch;
@@ -93,8 +93,9 @@ rcu_gc(void)
     kmfree(r);
   }
   release(&rcu_lock[cpu->id].l);
-  // cprintf("rcu_gc: cpu %d n %d delayed_nfree=%d min_epoch=%d\n",
-  //         cpu->id, n, delayed_nfree[cpu->id], min_epoch[cpu->id]);
+  if (rcu_debug)
+    cprintf("rcu_gc: cpu %d n %d delayed_nfree=%d min_epoch=%d\n",
+	    cpu->id, n, delayed_nfree[cpu->id], min_epoch[cpu->id]);
   popcli();
 
   // global_epoch can be bumped anywhere; this seems as good a place as any
