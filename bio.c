@@ -44,7 +44,7 @@ binit(void)
     b->flags = 0;
     initlock(&b->lock, "bcache-lock");
     initcondvar(&b->cv, "bcache-cv");
-    if (ns_insert(bufns, KI(b->sector), b) < 0)
+    if (ns_insert(bufns, KII(b->dev, b->sector), b) < 0)
       panic("binit ns_insert");
   }
 }
@@ -83,10 +83,10 @@ bget(uint dev, uint sector, int *writer)
   // Try for cached block.
   // XXX ignore dev
   rcu_begin_read();
-  b = ns_lookup(bufns, KI(sector));
+  b = ns_lookup(bufns, KII(dev, sector));
   if (b) {
-    if (b->dev != dev)
-      panic("dev mismatch");
+    if (b->dev != dev || b->sector != sector)
+      panic("block mismatch");
     if (*writer || !(b->flags & B_VALID)) {
       acquire(&b->lock);
       if (b->flags & B_BUSY) {
@@ -113,7 +113,7 @@ bget(uint dev, uint sector, int *writer)
   if (victim == 0)
     panic("bget all busy");
   victim->flags |= B_BUSY;
-  ns_remove(bufns, KI(victim->sector), victim);
+  ns_remove(bufns, KII(victim->dev, victim->sector), victim);
   release(&victim->lock);
   rcu_delayed(victim, kmfree);
 
@@ -126,7 +126,7 @@ bget(uint dev, uint sector, int *writer)
   initlock(&b->lock, b->lockname+3);
   initcondvar(&b->cv, b->lockname);
   rcu_begin_read();
-  if (ns_insert(bufns, KI(b->sector), b) < 0) {
+  if (ns_insert(bufns, KII(b->dev, b->sector), b) < 0) {
     rcu_delayed(b, kmfree);
     goto loop;
   }
