@@ -54,7 +54,7 @@ evict(void *vkey, void *bp)
 {
   struct buf *b = bp;
   acquire(&b->lock);
-  if ((b->flags & (B_BUSY | B_VALID)) == 0)
+  if ((b->flags & (B_BUSY | B_DIRTY | B_VALID)) == 0)
     return b;
   release(&b->lock);
   return 0;
@@ -65,7 +65,7 @@ evict_valid(void *vkey, void *bp)
 {
   struct buf *b = bp;
   acquire(&b->lock);
-  if ((b->flags & (B_BUSY)) == 0)
+  if ((b->flags & (B_BUSY | B_DIRTY)) == 0)
     return b;
   release(&b->lock);
   return 0;

@@ -178,7 +178,7 @@ ialloc(uint dev, short type)
         return ip;
       }
       iunlockput(ip);
-      cprintf("ialloc oops %d\n", inum); // XXX harmless
+      //cprintf("ialloc oops %d\n", inum); // XXX harmless
     }
   }
   panic("ialloc: no inodes");
