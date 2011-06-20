@@ -148,6 +148,7 @@ bread(uint dev, uint sector, int writer)
     acquire(&b->lock);
     b->flags &= ~B_BUSY;
     release(&b->lock);
+    cv_wakeup(&b->cv);
   }
   return b;
 }
