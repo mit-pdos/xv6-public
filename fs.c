@@ -208,6 +208,9 @@ static void *
 evict(void *vkey, void *p)
 {
   struct inode *ip = p;
+  if (ip->ref)
+    return 0;
+
   acquire(&ip->lock);
   if (ip->ref == 0)
     return ip;
