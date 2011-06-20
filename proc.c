@@ -188,18 +188,20 @@ growproc(int n)
   // find first unallocated address in brk..brk+n
   uint newstart = proc->brk;
   uint newn = n;
+  rcu_begin_read();
   while(newn > 0){
-    int ind = vmap_overlap(m, newstart, 1);
-    if(ind == -1)
+    struct vma *e = vmap_overlap(m, newstart, 1);
+    if(e == 0)
       break;
-    if(m->e[ind]->va_end >= newstart + newn){
+    if(e->va_end >= newstart + newn){
       newstart += newn;
       newn = 0;
       break;
     }
-    newn -= m->e[ind]->va_end - newstart;
-    newstart = m->e[ind]->va_end;
+    newn -= e->va_end - newstart;
+    newstart = e->va_end;
   }
+  rcu_end_read();
 
   if(newn <= 0){
     // no need to allocate
@@ -210,8 +212,7 @@ growproc(int n)
   }
 
   // is there space for newstart..newstart+newn?
-  if(vmap_overlap(m, newstart, newn) != -1){
-    release(&m->lock);
+  if(vmap_overlap(m, newstart, newn) != 0){
     cprintf("growproc: not enough room in address space; brk %d n %d\n",
             proc->brk, n);
     return -1;
@@ -220,8 +221,7 @@ growproc(int n)
   // would the newly allocated region abut the next-higher
   // vma? we can't allow that, since then a future sbrk()
   // would start to use the next region (e.g. the stack).
-  if(vmap_overlap(m, PGROUNDUP(newstart+newn), 1) != -1){
-    release(&m->lock);
+  if(vmap_overlap(m, PGROUNDUP(newstart+newn), 1) != 0){
     cprintf("growproc: would abut next vma; brk %d n %d\n",
             proc->brk, n);
     return -1;

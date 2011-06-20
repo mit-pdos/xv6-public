@@ -494,29 +494,26 @@ vmap_decref(struct vmap *m)
 }
 
 // Does any vma overlap start..start+len?
-// If yes, return the m->e[] index.
-// If no, return -1.
+// If yes, return the vma pointer.
+// If no, return 0.
 // This code can't handle regions at the very end
 // of the address space, e.g. 0xffffffff..0x0
-int
+struct vma *
 vmap_overlap(struct vmap *m, uint start, uint len)
 {
-#if SPINLOCK_DEBUG
-  if(holding(&m->lock) == 0)
-    panic("vmap_overlap no lock");
-#endif
   if(start + len < start)
     panic("vmap_overlap bad len");
 
   for(uint i = 0; i < NELEM(m->e); i++){
-    if(m->e[i]){
-      if(m->e[i]->va_end <= m->e[i]->va_start)
+    struct vma *e = m->e[i];
+    if(e) {
+      if(e->va_end <= e->va_start)
         panic("vmap_overlap bad vma");
-      if(m->e[i]->va_start < start+len && m->e[i]->va_end > start)
-        return i;
+      if(e->va_start < start+len && e->va_end > start)
+        return e;
     }
   }
-  return -1;
+  return 0;
 }
 
 int
@@ -525,8 +522,7 @@ vmap_insert(struct vmap *m, struct vmnode *n, uint va_start)
   acquire(&m->lock);
   uint len = n->npages * PGSIZE;
 
-  if(vmap_overlap(m, va_start, len) != -1){
-    release(&m->lock);
+  if(vmap_overlap(m, va_start, len)){
     cprintf("vmap_insert: overlap\n");
     return -1;
   }
@@ -570,33 +566,6 @@ vmap_remove(struct vmap *m, uint va_start, uint len)
   return 0;
 }
 
-struct vma *
-vmap_lookup(struct vmap *m, uint va)
-{
-  acquire(&m->lock); // rcu read
-  int ind = vmap_overlap(m, va, 1);
-  if(ind >= 0){
-    struct vma *e = m->e[ind];
-    acquire(&e->lock);
-    release(&m->lock);
-    return e;
-  }
-  release(&m->lock);
-  return 0;
-}
-
-struct vma *
-vmap_lookup_rcu(struct vmap *m, uint va)
-{
-  rcu_begin_read();
-  int ind = vmap_overlap(m, va, 1);
-  if(ind >= 0){
-    struct vma *e = m->e[ind];
-    return e;
-  }
-  return 0;
-}
-
 struct vmap *
 vmap_copy(struct vmap *m, int share)
 {
@@ -619,8 +588,11 @@ vmap_copy(struct vmap *m, int share)
     if (share) {
       c->e[i]->n = m->e[i]->n;
       c->e[i]->va_type = COW;
+
+      acquire(&m->e[i]->lock);
       m->e[i]->va_type = COW;
       updatepages(m->pgdir, (void *) (m->e[i]->va_start), (void *) (m->e[i]->va_end), PTE_COW);
+      release(&m->e[i]->lock);
     } else {
       c->e[i]->n = vmn_copy(m->e[i]->n);
       c->e[i]->va_type = m->e[i]->va_type;
@@ -677,10 +649,17 @@ copyout(struct vmap *vmap, uint va, void *p, uint len)
   char *buf = (char*)p;
   while(len > 0){
     uint va0 = (uint)PGROUNDDOWN(va);
-    struct vma *vma = vmap_lookup(vmap, va);
-    if(vma == 0)
+    rcu_begin_read();
+    acquire(&vmap->lock);
+    struct vma *vma = vmap_overlap(vmap, va, 1);
+    if(vma == 0) {
+      release(&vmap->lock);
+      rcu_end_read();
       return -1;
+    }
 
+    acquire(&vma->lock);
+    release(&vmap->lock);
     uint pn = (va0 - vma->va_start) / PGSIZE;
     char *p0 = vma->n->page[pn];
     if(p0 == 0)
@@ -693,6 +672,7 @@ copyout(struct vmap *vmap, uint va, void *p, uint len)
     buf += n;
     va = va0 + PGSIZE;
     release(&vma->lock);
+    rcu_end_read();
   }
   return 0;
 }
@@ -703,10 +683,17 @@ copyin(struct vmap *vmap, uint va, void *p, uint len)
   char *buf = (char*)p;
   while(len > 0){
     uint va0 = (uint)PGROUNDDOWN(va);
-    struct vma *vma = vmap_lookup(vmap, va);
-    if(vma == 0)
+    rcu_begin_read();
+    acquire(&vmap->lock);
+    struct vma *vma = vmap_overlap(vmap, va, 1);
+    if(vma == 0) {
+      release(&vmap->lock);
+      rcu_end_read();
       return -1;
+    }
 
+    acquire(&vma->lock);
+    release(&vmap->lock);
     uint pn = (va0 - vma->va_start) / PGSIZE;
     char *p0 = vma->n->page[pn];
     if(p0 == 0)
@@ -719,6 +706,7 @@ copyin(struct vmap *vmap, uint va, void *p, uint len)
     buf += n;
     va = va0 + PGSIZE;
     release(&vma->lock);
+    rcu_end_read();
   }
   return 0;
 }
@@ -733,7 +721,12 @@ pagefault_ondemand(struct vmap *vmap, uint va, uint err, struct vma *m)
   if (vmn_doload(m->n, m->n->ip, m->n->offset, m->n->sz) < 0) {
     panic("pagefault: couldn't load");
   }
-  m = vmap_lookup(vmap, va);   // re-acquire lock on m
+  acquire(&vmap->lock);
+  m = vmap_overlap(vmap, va, 1);
+  if (!m)
+    panic("pagefault_ondemand");
+  acquire(&m->lock); // re-acquire lock on m
+  release(&vmap->lock);
   return m;
 }
 
@@ -766,10 +759,18 @@ pagefault(struct vmap *vmap, uint va, uint err)
   pte_t *pte = walkpgdir(vmap->pgdir, (const void *)va, 1);
   if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
     return 0;
-  struct vma *m = vmap_lookup(vmap, va);
-  if(m == 0)
-    return -1;
 
+  rcu_begin_read();
+  acquire(&vmap->lock);
+  struct vma *m = vmap_overlap(vmap, va, 1);
+  if(m == 0) {
+    release(&vmap->lock);
+    rcu_end_read();
+    return -1;
+  }
+
+  acquire(&m->lock);
+  release(&vmap->lock);
   uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
   if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0) {
     m = pagefault_ondemand(vmap, va, err, m);
@@ -777,6 +778,7 @@ pagefault(struct vmap *vmap, uint va, uint err)
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(vmap, va, pte, m, npg) < 0) {
       release(&m->lock);
+      rcu_end_read();
       return -1;
     }
   } else if (m->va_type == COW) {
@@ -789,5 +791,6 @@ pagefault(struct vmap *vmap, uint va, uint err)
   }
   lcr3(v2p(vmap->pgdir));  // Reload hardware page tables
   release(&m->lock);
+  rcu_end_read();
   return 1;
 }
