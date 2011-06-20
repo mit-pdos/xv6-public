@@ -388,21 +388,21 @@ vmn_free(struct vmnode *n)
 {
   for(uint i = 0; i < n->npages; i++) {
     if (n->page[i]) {
-      rcu_delayed(n->page[i], kfree);
+      kfree(n->page[i]);
       n->page[i] = 0;
     }
   }
   if (n->ip)
     iput(n->ip);
   n->ip = 0;
-  rcu_delayed(n, kmfree);
+  kmfree(n);
 }
 
 static void
 vmn_decref(struct vmnode *n)
 {
   if(__sync_sub_and_fetch(&n->ref, 1) == 0)
-    rcu_delayed(vmn_free, (void*)n);
+    vmn_free(n);
 }
 
 struct vmnode *
@@ -470,7 +470,7 @@ vma_free(void *p)
   struct vma *e = (struct vma *) p;
   if(e->n)
     vmn_decref(e->n);
-  rcu_delayed(e, kmfree);
+  kmfree(e);
 }
 
 static void
@@ -479,9 +479,9 @@ vmap_free(void *p)
   struct vmap *m = (struct vmap *) p;
   for(uint i = 0; i < NELEM(m->e); i++) {
     if (m->e[i])
-      rcu_delayed(m->e[i], vma_free);
+      vma_free(m->e[i]);
   }
-  rcu_delayed(m->pgdir, (void*)freevm);
+  freevm(m->pgdir);
   m->pgdir = 0;
   m->alloc = 0;
 }
@@ -490,7 +490,7 @@ void
 vmap_decref(struct vmap *m)
 {
   if(__sync_sub_and_fetch(&m->ref, 1) == 0)
-    rcu_delayed(m, vmap_free);
+    vmap_free(m);
 }
 
 // Does any vma overlap start..start+len?
