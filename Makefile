@@ -184,6 +184,7 @@ UPROGS=\
 	_forktree\
 	_forkexectree\
 	_mapbench\
+	_dirbench\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
