@@ -364,10 +364,8 @@ static int
 vmn_doallocpg(struct vmnode *n)
 {
   for(uint i = 0; i < n->npages; i++) {
-    if((n->page[i] = kalloc()) == 0) {
-      vmn_free(n);
+    if((n->page[i] = kalloc()) == 0)
       return -1;
-    }
     memset((char *) n->page[i], 0, PGSIZE);
   }
   return 0;
