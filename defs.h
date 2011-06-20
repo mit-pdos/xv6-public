@@ -76,7 +76,7 @@ void            ioapicinit(void);
 char*           pgalloc(void);
 void            kinit(void);
 char*           kalloc(void);
-void            kfree(char*);
+void            kfree(void *);
 void*           kmalloc(uint);
 void            kmfree(void*);
 

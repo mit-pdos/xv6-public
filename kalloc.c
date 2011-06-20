@@ -84,7 +84,7 @@ kfree_pool(struct kmem *m, char *v)
 }
 
 void
-kfree(char *v)
+kfree(void *v)
 {
   kfree_pool(kmem, v);
 }
