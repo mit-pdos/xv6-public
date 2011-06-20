@@ -388,21 +388,21 @@ vmn_free(struct vmnode *n)
 {
   for(uint i = 0; i < n->npages; i++) {
     if (n->page[i]) {
-      kfree(n->page[i]);   // vmn_free is rcu delayed, when kfree must be delayed, don't delay
+      rcu_delayed(n->page[i], kfree);
       n->page[i] = 0;
     }
   }
   if (n->ip)
     iput(n->ip);
   n->ip = 0;
-  kmfree(n);   // vmn_free is rcu delayed, when kmfree must be delayed, don't delay again
+  rcu_delayed(n, kmfree);
 }
 
 static void
 vmn_decref(struct vmnode *n)
 {
   if(__sync_sub_and_fetch(&n->ref, 1) == 0)
-    vmn_free(n);   // XXX delay?
+    rcu_delayed(vmn_free, (void*)n);
 }
 
 struct vmnode *
@@ -470,7 +470,7 @@ vma_free(void *p)
   struct vma *e = (struct vma *) p;
   if(e->n)
     vmn_decref(e->n);
-  kmfree(e);  // already rcu delayed
+  rcu_delayed(e, kmfree);
 }
 
 static void
@@ -479,9 +479,9 @@ vmap_free(void *p)
   struct vmap *m = (struct vmap *) p;
   for(uint i = 0; i < NELEM(m->e); i++) {
     if (m->e[i])
-      vma_free(m->e[i]);  // already rcu delayed
+      rcu_delayed(m->e[i], vma_free);
   }
-  freevm(m->pgdir);  // already rcu delayed
+  rcu_delayed(m->pgdir, (void*)freevm);
   m->pgdir = 0;
   m->alloc = 0;
 }
