@@ -10,7 +10,7 @@
 
 struct rcu {
   unsigned long epoch;
-  struct rcu *next;
+  TAILQ_ENTRY(rcu) link;
   union {
     struct {
       void (*dofree)(void *);
@@ -25,8 +25,10 @@ struct rcu {
   };
   int type;
 };
-static struct { struct rcu *x __attribute__((aligned (CACHELINE))); } rcu_delayed_head[NCPU];
-static struct { struct rcu *x __attribute__((aligned (CACHELINE))); } rcu_delayed_tail[NCPU];
+
+TAILQ_HEAD(rcu_head, rcu);
+
+static struct { struct rcu_head x __attribute__((aligned (CACHELINE))); } rcu_q[NCPU];
 static uint global_epoch __attribute__ ((aligned (CACHELINE)));
 static struct { uint x __attribute__((aligned (CACHELINE))); } min_epoch[NCPU];
 static struct { struct spinlock l __attribute__((aligned (CACHELINE))); } rcu_lock[NCPU];
@@ -37,8 +39,10 @@ enum { rcu_debug = 0 };
 void
 rcuinit(void)
 {
-  for (int i = 0; i < NCPU; i++)
+  for (int i = 0; i < NCPU; i++) {
     initlock(&rcu_lock[i].l, "rcu");
+    TAILQ_INIT(&rcu_q[i].x);
+  }
 }
 
 struct rcu *
@@ -70,9 +74,11 @@ rcu_gc(void)
   pushcli();
   acquire(&rcu_lock[cpu->id].l);
 
-  for (r = rcu_delayed_head[cpu->id].x; r != NULL; r = nr) {
+  for (r = TAILQ_FIRST(&rcu_q[cpu->id].x); r != NULL; r = nr) {
     if (r->epoch >= min_epoch[cpu->id].x)
       break;
+    release(&rcu_lock[cpu->id].l);
+
     // cprintf("free: %d (%x %x)\n", r->epoch, r->dofree, r->item);
     switch (r->type) {
     case 1:
@@ -84,12 +90,12 @@ rcu_gc(void)
     default:
       panic("rcu type");
     }
+
+    acquire(&rcu_lock[cpu->id].l);
     delayed_nfree[cpu->id].v--;
     n++;
-    rcu_delayed_head[cpu->id].x = r->next;
-    if (rcu_delayed_head[cpu->id].x == 0)
-      rcu_delayed_tail[cpu->id].x = 0;
-    nr = r->next;
+    nr = TAILQ_NEXT(r, link);
+    TAILQ_REMOVE(&rcu_q[cpu->id].x, r, link);
     kmfree(r);
   }
   release(&rcu_lock[cpu->id].l);
@@ -109,32 +115,23 @@ rcu_delayed_int(struct rcu *r)
   pushcli();
   acquire(&rcu_lock[cpu->id].l);
   // cprintf("rcu_delayed: %d\n", global_epoch);
-  if (rcu_delayed_tail[cpu->id].x != 0) 
-    rcu_delayed_tail[cpu->id].x->next = r;
-  rcu_delayed_tail[cpu->id].x = r;
-  if (rcu_delayed_head[cpu->id].x == 0)
-    rcu_delayed_head[cpu->id].x = r;
-  release(&rcu_lock[cpu->id].l);
+  TAILQ_INSERT_TAIL(&rcu_q[cpu->id].x, r, link);
   delayed_nfree[cpu->id].v++;
+  release(&rcu_lock[cpu->id].l);
   popcli();
 }
 
 void
 rcu_delayed(void *e, void (*dofree)(void *))
 {
-  if (rcu_debug) {
+  if (rcu_debug)
     cprintf("rcu_delayed: %x %x\n", dofree, e);
-    for (struct rcu *r = rcu_delayed_head[cpu->id].x; r; r = r->next)
-      if (r->f1.item == e && r->f1.dofree == dofree)
-	panic("rcu_delayed double free");
-  }
 
   struct rcu *r = rcu_alloc();
   if (r == 0)
     panic("rcu_delayed");
   r->f1.dofree = dofree;
   r->f1.item = e;
-  r->next = 0;
   r->epoch = global_epoch;
   r->type = 1;
   rcu_delayed_int(r);
@@ -149,7 +146,6 @@ rcu_delayed2(int a1, uint a2, void (*dofree)(int,uint))
   r->f2.dofree = dofree;
   r->f2.arg1 = a1;
   r->f2.arg2 = a2;
-  r->next = 0;
   r->epoch = global_epoch;
   r->type = 2;
   rcu_delayed_int(r);

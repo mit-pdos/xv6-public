@@ -86,7 +86,6 @@ struct proc {
   unsigned long long curcycles;
   unsigned cpuid;
   struct spinlock lock;
-  STAILQ_ENTRY(proc) run_next;
   SLIST_HEAD(childlist, proc) childq;
   SLIST_ENTRY(proc) child_next;
   struct condvar cv;
