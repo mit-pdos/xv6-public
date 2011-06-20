@@ -135,6 +135,8 @@ sys_link(void)
     iunlockput(dp);
     goto bad;
   }
+
+  nc_insert(dp, name, ip);
   iunlockput(dp);
   iput(ip);
   return 0;
@@ -258,6 +260,7 @@ create(char *path, short type, short major, short minor)
   if(dirlink(dp, name, ip->inum) < 0)
     panic("create: dirlink");
 
+  nc_insert(dp, name, ip);
   iunlockput(dp);
   return ip;
 }

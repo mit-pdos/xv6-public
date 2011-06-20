@@ -22,7 +22,7 @@ struct rcu {
       int arg1;
       uint arg2;
     } f2;
-  } u;
+  };
   int type;
 };
 static struct { struct rcu *x __attribute__((aligned (CACHELINE))); } rcu_delayed_head[NCPU];
@@ -48,7 +48,7 @@ rcu_alloc()
 }
 
 void *
-rcu_min(uint key, void *v){
+rcu_min(void *vkey, void *v){
   struct proc *p = (struct proc *) v;
   if (min_epoch[cpu->id].x > p->epoch) {
       min_epoch[cpu->id].x = p->epoch;
@@ -76,10 +76,10 @@ rcu_gc(void)
     // cprintf("free: %d (%x %x)\n", r->epoch, r->dofree, r->item);
     switch (r->type) {
     case 1:
-      r->u.f1.dofree(r->u.f1.item);
+      r->f1.dofree(r->f1.item);
       break;
     case 2:
-      r->u.f2.dofree(r->u.f2.arg1, r->u.f2.arg2);
+      r->f2.dofree(r->f2.arg1, r->f2.arg2);
       break;
     default:
       panic("rcu type");
@@ -93,8 +93,9 @@ rcu_gc(void)
     kmfree(r);
   }
   release(&rcu_lock[cpu->id].l);
-  // cprintf("rcu_gc: cpu %d n %d delayed_nfree=%d min_epoch=%d\n",
-  //         cpu->id, n, delayed_nfree[cpu->id], min_epoch[cpu->id]);
+  if (rcu_debug)
+    cprintf("rcu_gc: cpu %d n %d delayed_nfree=%d min_epoch=%d\n",
+	    cpu->id, n, delayed_nfree[cpu->id], min_epoch[cpu->id]);
   popcli();
 
   // global_epoch can be bumped anywhere; this seems as good a place as any
@@ -124,15 +125,15 @@ rcu_delayed(void *e, void (*dofree)(void *))
   if (rcu_debug) {
     cprintf("rcu_delayed: %x %x\n", dofree, e);
     for (struct rcu *r = rcu_delayed_head[cpu->id].x; r; r = r->next)
-      if (r->u.f1.item == e && r->u.f1.dofree == dofree)
+      if (r->f1.item == e && r->f1.dofree == dofree)
 	panic("rcu_delayed double free");
   }
 
   struct rcu *r = rcu_alloc();
   if (r == 0)
     panic("rcu_delayed");
-  r->u.f1.dofree = dofree;
-  r->u.f1.item = e;
+  r->f1.dofree = dofree;
+  r->f1.item = e;
   r->next = 0;
   r->epoch = global_epoch;
   r->type = 1;
@@ -145,9 +146,9 @@ rcu_delayed2(int a1, uint a2, void (*dofree)(int,uint))
   struct rcu *r = rcu_alloc();
   if (r == 0)
     panic("rcu_delayed");
-  r->u.f2.dofree = dofree;
-  r->u.f2.arg1 = a1;
-  r->u.f2.arg2 = a2;
+  r->f2.dofree = dofree;
+  r->f2.arg1 = a1;
+  r->f2.arg2 = a2;
   r->next = 0;
   r->epoch = global_epoch;
   r->type = 2;
