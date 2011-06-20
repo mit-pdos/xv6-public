@@ -52,8 +52,9 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
 void
 cv_wakeup(struct condvar *cv)
 {
-  if (!cv->waiters)
-    return;
+  // XXX race with cv_sleep()
+  // if (!cv->waiters)
+  //   return;
 
   acquire(&cv->lock);
   while(cv->waiters) {
