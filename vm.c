@@ -650,16 +650,13 @@ copyout(struct vmap *vmap, uint va, void *p, uint len)
   while(len > 0){
     uint va0 = (uint)PGROUNDDOWN(va);
     rcu_begin_read();
-    acquire(&vmap->lock);
     struct vma *vma = vmap_overlap(vmap, va, 1);
     if(vma == 0) {
-      release(&vmap->lock);
       rcu_end_read();
       return -1;
     }
 
     acquire(&vma->lock);
-    release(&vmap->lock);
     uint pn = (va0 - vma->va_start) / PGSIZE;
     char *p0 = vma->n->page[pn];
     if(p0 == 0)
@@ -684,16 +681,13 @@ copyin(struct vmap *vmap, uint va, void *p, uint len)
   while(len > 0){
     uint va0 = (uint)PGROUNDDOWN(va);
     rcu_begin_read();
-    acquire(&vmap->lock);
     struct vma *vma = vmap_overlap(vmap, va, 1);
     if(vma == 0) {
-      release(&vmap->lock);
       rcu_end_read();
       return -1;
     }
 
     acquire(&vma->lock);
-    release(&vmap->lock);
     uint pn = (va0 - vma->va_start) / PGSIZE;
     char *p0 = vma->n->page[pn];
     if(p0 == 0)
@@ -721,12 +715,10 @@ pagefault_ondemand(struct vmap *vmap, uint va, uint err, struct vma *m)
   if (vmn_doload(m->n, m->n->ip, m->n->offset, m->n->sz) < 0) {
     panic("pagefault: couldn't load");
   }
-  acquire(&vmap->lock);
   m = vmap_overlap(vmap, va, 1);
   if (!m)
     panic("pagefault_ondemand");
   acquire(&m->lock); // re-acquire lock on m
-  release(&vmap->lock);
   return m;
 }
 
@@ -761,16 +753,13 @@ pagefault(struct vmap *vmap, uint va, uint err)
     return 0;
 
   rcu_begin_read();
-  acquire(&vmap->lock);
   struct vma *m = vmap_overlap(vmap, va, 1);
   if(m == 0) {
-    release(&vmap->lock);
     rcu_end_read();
     return -1;
   }
 
   acquire(&m->lock);
-  release(&vmap->lock);
   uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
   if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0) {
     m = pagefault_ondemand(vmap, va, err, m);
