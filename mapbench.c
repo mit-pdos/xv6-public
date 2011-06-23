@@ -8,6 +8,7 @@
 static struct uspinlock l;
 static volatile uint tcount;
 enum { nthread = 4 };
+enum { readaccess = 0 };
 
 void
 thr(uint tid)
@@ -19,8 +20,10 @@ thr(uint tid)
       exit();
     }
 
-    for (uint j = 0; j < 8 * 4096; j++)
-      p[j] = '\0';
+    if (readaccess) {
+      for (uint j = 0; j < 8 * 4096; j++)
+	p[j] = '\0';
+    }
 
     if (unmap((void *) p, 8 * 4096) < 0) {
       printf(1, "%d: unmap failed\n", tid);
