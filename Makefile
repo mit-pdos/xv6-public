@@ -7,7 +7,6 @@ OBJS = \
 	exec.o\
 	file.o\
 	fs.o\
-	namecache.o\
 	ide.o\
 	ioapic.o\
 	kalloc.o\
