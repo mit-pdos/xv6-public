@@ -554,10 +554,6 @@ dir_init(struct inode *dp)
   if (dp->type != T_DIR)
     panic("dir_init not DIR");
 
-  ilock(dp, 1);
-  if (dp->dir)
-    return;
-
   struct ns *dir = nsalloc(0);
   for (uint off = 0; off < dp->size; off += BSIZE) {
     struct buf *bp = bread(dp->dev, bmap(dp, off / BSIZE), 0);
@@ -574,8 +570,10 @@ dir_init(struct inode *dp)
     }
     brelse(bp, 0);
   }
-  dp->dir = dir;
-  iunlock(dp);
+  if (!__sync_bool_compare_and_swap(&dp->dir, 0, dir)) {
+    // free all the dirents
+    nsfree(dir);
+  }
 }
 
 // Look for a directory entry in a directory.
@@ -660,8 +658,6 @@ namex(char *path, int nameiparent, char *name)
 
   while((path = skipelem(path, name)) != 0){
     next = 0;
-    if(nameiparent == 0)
-      next = nc_lookup(ip, name);
     if(next == 0){
       if(ip->type == 0)
         panic("namex");
@@ -680,7 +676,6 @@ namex(char *path, int nameiparent, char *name)
 	rcu_end_read();
         return 0;
       }
-      nc_insert(ip, name, next);
       iput(ip);
     }
     ip = next;

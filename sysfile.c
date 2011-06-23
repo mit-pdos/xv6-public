@@ -133,7 +133,7 @@ sys_link(void)
   if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0)
     goto bad;
 
-  nc_insert(dp, name, ip);
+  //nc_insert(dp, name, ip);
   iput(ip);
   return 0;
 
@@ -213,7 +213,7 @@ sys_unlink(void)
     iunlock(dp);
   }
 
-  nc_invalidate(dp, name);
+  //nc_invalidate(dp, name);
   iput(dp);
 
   ip->nlink--;
@@ -261,7 +261,7 @@ create(char *path, short type, short major, short minor)
   if(dirlink(dp, name, ip->inum) < 0)
     panic("create: dirlink");
 
-  nc_insert(dp, name, ip);
+  //nc_insert(dp, name, ip);
   iput(dp);
   return ip;
 }
