@@ -130,14 +130,10 @@ sys_link(void)
 
   if((dp = nameiparent(new, name)) == 0)
     goto bad;
-  ilock(dp, 1);
-  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
-    iunlockput(dp);
+  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0)
     goto bad;
-  }
 
   nc_insert(dp, name, ip);
-  iunlockput(dp);
   iput(ip);
   return 0;
 
@@ -150,18 +146,21 @@ bad:
 }
 
 // Is the directory dp empty except for "." and ".." ?
+static void*
+check_empty(void *k, void *v)
+{
+  char *name = k;
+  if (strcmp(name, ".") && strcmp(name, ".."))
+    return (void*)1;
+  return 0;
+}
+
 static int
 isdirempty(struct inode *dp)
 {
-  int off;
-  struct dirent de;
-
-  for(off=2*sizeof(de); off<dp->size; off+=sizeof(de)){
-    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-      panic("isdirempty: readi");
-    if(de.inum != 0)
-      return 0;
-  }
+  dir_init(dp);
+  if (ns_enumerate(dp->dir, check_empty))
+    return 0;
   return 1;
 }
 
@@ -170,26 +169,24 @@ int
 sys_unlink(void)
 {
   struct inode *ip, *dp;
-  struct dirent de;
-  char name[DIRSIZ], *path;
-  uint off;
+  char name[DIRSIZ+1], *path;
 
   if(argstr(0, &path) < 0)
     return -1;
   if((dp = nameiparent(path, name)) == 0)
     return -1;
-  ilock(dp, 1);
   if(dp->type != T_DIR)
     panic("sys_unlink");
 
   // Cannot unlink "." or "..".
   if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0){
-    iunlockput(dp);
+    iput(dp);
     return -1;
   }
 
-  if((ip = dirlookup(dp, name, &off)) == 0){
-    iunlockput(dp);
+ retry:
+  if((ip = dirlookup(dp, name)) == 0){
+    iput(dp);
     return -1;
   }
   ilock(ip, 1);
@@ -198,20 +195,26 @@ sys_unlink(void)
     panic("unlink: nlink < 1");
   if(ip->type == T_DIR && !isdirempty(ip)){
     iunlockput(ip);
-    iunlockput(dp);
+    iput(dp);
     return -1;
   }
 
-  memset(&de, 0, sizeof(de));
-  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-    panic("unlink: writei");
+  dir_init(dp);
+  name[DIRSIZ] = '\0';
+  if (ns_remove(dp->dir, KS(name), (void*)ip->inum) == 0) {
+    iunlockput(ip);
+    goto retry;
+  }
+
   if(ip->type == T_DIR){
+    ilock(dp, 1);
     dp->nlink--;
     iupdate(dp);
+    iunlock(dp);
   }
 
   nc_invalidate(dp, name);
-  iunlockput(dp);
+  iput(dp);
 
   ip->nlink--;
   iupdate(ip);
@@ -222,18 +225,16 @@ sys_unlink(void)
 static struct inode*
 create(char *path, short type, short major, short minor)
 {
-  uint off;
   struct inode *ip, *dp;
   char name[DIRSIZ];
 
   if((dp = nameiparent(path, name)) == 0)
     return 0;
-  ilock(dp, 1);
   if(dp->type != T_DIR)
     panic("create");
 
-  if((ip = dirlookup(dp, name, &off)) != 0){
-    iunlockput(dp);
+  if((ip = dirlookup(dp, name)) != 0){
+    iput(dp);
     ilock(ip, 1);
     if(type == T_FILE && ip->type == T_FILE)
       return ip;
@@ -261,7 +262,7 @@ create(char *path, short type, short major, short minor)
     panic("create: dirlink");
 
   nc_insert(dp, name, ip);
-  iunlockput(dp);
+  iput(dp);
   return ip;
 }
 

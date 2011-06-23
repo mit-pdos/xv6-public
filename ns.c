@@ -62,6 +62,20 @@ nsalloc(int allowdup)
   return ns;
 }
 
+static void *
+any(void *x, void *y)
+{
+  return (void*) 1;
+}
+
+void
+nsfree(struct ns *ns)
+{
+  if (ns_enumerate(ns, &any))
+    panic("nsfree: not empty");
+  rcu_delayed(ns, kmfree);
+}
+
 static struct elem *
 elemalloc(struct nskey *k)
 {
@@ -212,7 +226,7 @@ ns_lookup(struct ns *ns, struct nskey key)
   return 0;
 }
 
-int
+void*
 ns_remove(struct ns *ns, struct nskey key, void *v)
 {
   uint i = h(&key);
@@ -244,16 +258,17 @@ ns_remove(struct ns *ns, struct nskey key, void *v)
       }
 
       *pelock = 0;
+      void *v = e->val;
       rcu_end_write(0);
       rcu_delayed(e, kmfree);
-      return 0;
+      return v;
     }
 
     pe = &e->next;
   }
 
   rcu_end_write(0);
-  return -1;
+  return 0;
 }
 
 void *

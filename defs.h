@@ -45,7 +45,7 @@ int             filewrite(struct file*, char*, int n);
 
 // fs.c
 int             dirlink(struct inode*, char*, uint);
-struct inode*   dirlookup(struct inode*, char*, uint*);
+struct inode*   dirlookup(struct inode*, char*);
 struct inode*   ialloc(uint, short);
 struct inode*   iget(uint dev, uint inum);
 struct inode*   idup(struct inode*);
@@ -61,6 +61,7 @@ struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
+void	        dir_init(struct inode *dp);
 
 // ide.c
 void            ideinit(void);
@@ -132,10 +133,11 @@ struct nskey {
 
 void            nsinit(void);
 struct ns*      nsalloc(int allowdup);
+void		nsfree(struct ns*);
 int             ns_allockey(struct ns*);
 int             ns_insert(struct ns*, struct nskey key, void*);
 void*           ns_lookup(struct ns*, struct nskey key);
-int             ns_remove(struct ns *ns, struct nskey key, void *val);
+void*           ns_remove(struct ns *ns, struct nskey key, void *val); // removed val
 void*           ns_enumerate(struct ns *ns, void *(*f)(void *, void *));
 void*           ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *));
 

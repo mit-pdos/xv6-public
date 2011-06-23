@@ -208,7 +208,7 @@ static void *
 evict(void *vkey, void *p)
 {
   struct inode *ip = p;
-  if (ip->ref)
+  if (ip->ref || ip->type == T_DIR)
     return 0;
 
   acquire(&ip->lock);
@@ -359,6 +359,14 @@ iput(struct inode *ip)
 	panic("iput not valid");
       ip->flags |= I_BUSYR | I_BUSYW;
       __sync_fetch_and_add(&ip->readbusy, 1);
+
+      if (ip->dir) {
+	ns_remove(ip->dir, KS("."), 0);
+	ns_remove(ip->dir, KS(".."), 0);
+	nsfree(ip->dir);
+	ip->dir = 0;
+      }
+
       release(&ip->lock);
       itrunc(ip);
       ip->type = 0;
@@ -538,68 +546,62 @@ namecmp(const char *s, const char *t)
   return strncmp(s, t, DIRSIZ);
 }
 
-// Look for a directory entry in a directory.
-// If found, set *poff to byte offset of entry.
-// Caller must have already locked dp.
-struct inode*
-dirlookup(struct inode *dp, char *name, uint *poff)
+void
+dir_init(struct inode *dp)
 {
-  uint off, inum;
-  struct buf *bp;
-  struct dirent *de;
+  if (dp->dir)
+    return;
+  if (dp->type != T_DIR)
+    panic("dir_init not DIR");
 
-  if(dp->type != T_DIR)
-    panic("dirlookup not DIR");
+  ilock(dp, 1);
+  if (dp->dir)
+    return;
 
-  for(off = 0; off < dp->size; off += BSIZE){
-    bp = bread(dp->dev, bmap(dp, off / BSIZE), 0);
-    for(de = (struct dirent*)bp->data;
-        de < (struct dirent*)(bp->data + BSIZE);
-        de++){
-      if(de->inum == 0)
-        continue;
-      if(namecmp(name, de->name) == 0){
-        // entry matches path element
-        if(poff)
-          *poff = off + (uchar*)de - bp->data;
-        inum = de->inum;
-        brelse(bp, 0);
-        return iget(dp->dev, inum);
-      }
+  struct ns *dir = nsalloc(0);
+  for (uint off = 0; off < dp->size; off += BSIZE) {
+    struct buf *bp = bread(dp->dev, bmap(dp, off / BSIZE), 0);
+    for (struct dirent *de = (struct dirent *) bp->data;
+	 de < (struct dirent *) (bp->data + BSIZE);
+	 de++) {
+      if (de->inum == 0)
+	continue;
+
+      char namebuf[DIRSIZ+1];
+      strncpy(namebuf, de->name, DIRSIZ);
+      namebuf[DIRSIZ] = '\0';
+      ns_insert(dir, KS(namebuf), (void*) (uint) de->inum);
     }
     brelse(bp, 0);
   }
-  return 0;
+  dp->dir = dir;
+  iunlock(dp);
+}
+
+// Look for a directory entry in a directory.
+struct inode*
+dirlookup(struct inode *dp, char *name)
+{
+  dir_init(dp);
+
+  void *vinum = ns_lookup(dp->dir, KS(name));
+  uint inum = (uint) vinum;
+
+  //cprintf("dirlookup: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
+  if (inum == 0)
+    return 0;
+
+  return iget(dp->dev, inum);
 }
 
 // Write a new directory entry (name, inum) into the directory dp.
 int
 dirlink(struct inode *dp, char *name, uint inum)
 {
-  int off;
-  struct dirent de;
-  struct inode *ip;
+  dir_init(dp);
 
-  // Check that name is not present.
-  if((ip = dirlookup(dp, name, 0)) != 0){
-    iput(ip);
-    return -1;
-  }
-
-  // Look for an empty dirent.
-  for(off = 0; off < dp->size; off += sizeof(de)){
-    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-      panic("dirlink read");
-    if(de.inum == 0)
-      break;
-  }
-
-  strncpy(de.name, name, DIRSIZ);
-  de.inum = inum;
-  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-    panic("dirlink");
-  
-  return 0;
+  //cprintf("dirlink: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
+  return ns_insert(dp->dir, KS(name), (void*)inum);
 }
 
 //PAGEBREAK!
@@ -650,6 +652,7 @@ namex(char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
 
+  rcu_begin_read();
   if(*path == '/') 
     ip = iget(ROOTDEV, ROOTINO);
   else
@@ -660,31 +663,34 @@ namex(char *path, int nameiparent, char *name)
     if(nameiparent == 0)
       next = nc_lookup(ip, name);
     if(next == 0){
-      ilock(ip, 0);
       if(ip->type == 0)
         panic("namex");
       if(ip->type != T_DIR){
-        iunlockput(ip);
+        iput(ip);
+	rcu_end_read();
         return 0;
       }
       if(nameiparent && *path == '\0'){
         // Stop one level early.
-        iunlock(ip);
+	rcu_end_read();
         return ip;
       }
-      if((next = dirlookup(ip, name, 0)) == 0){
-        iunlockput(ip);
+      if((next = dirlookup(ip, name)) == 0){
+        iput(ip);
+	rcu_end_read();
         return 0;
       }
       nc_insert(ip, name, next);
-      iunlockput(ip);
+      iput(ip);
     }
     ip = next;
   }
   if(nameiparent){
     iput(ip);
+    rcu_end_read();
     return 0;
   }
+  rcu_end_read();
   return ip;
 }
 
@@ -692,7 +698,9 @@ struct inode*
 namei(char *path)
 {
   char name[DIRSIZ];
-  return namex(path, 0, name);
+  struct inode *r = namex(path, 0, name);
+  //cprintf("namei: %s -> %x (%d)\n", path, r, r?r->inum:0);
+  return r;
 }
 
 struct inode*

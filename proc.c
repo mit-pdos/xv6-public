@@ -68,7 +68,7 @@ allocproc(void)
 
   // Allocate kernel stack if possible.
   if((p->kstack = kalloc()) == 0){
-    if (ns_remove(nspid, KI(p->pid), p) < 0)
+    if (ns_remove(nspid, KI(p->pid), p) == 0)
       panic("allocproc: ns_remove");
     rcu_delayed(p, kmfree);
     return 0;
@@ -123,7 +123,7 @@ delrun(struct proc *p)
 
   if (p->on_runq < 0)
     panic("delrun not on runq");
-  if (ns_remove(nsrunq, KI(p->on_runq), p) < 0)
+  if (ns_remove(nsrunq, KI(p->on_runq), p) == 0)
     panic("delrun: ns_remove");
   p->on_runq = -1;
 }
@@ -269,7 +269,7 @@ fork(int flags)
       kfree(np->kstack);
       np->kstack = 0;
       np->state = UNUSED;
-      if (ns_remove(nspid, KI(np->pid), np) < 0)
+      if (ns_remove(nspid, KI(np->pid), np) == 0)
 	panic("fork: ns_remove");
       rcu_delayed(np, kmfree);
       return -1;
@@ -384,7 +384,7 @@ wait(void)
 	  p->kstack = 0;
 	  vmap_decref(p->vmap);
 	  p->state = UNUSED;
-	  if (ns_remove(nspid, KI(p->pid), p) < 0)
+	  if (ns_remove(nspid, KI(p->pid), p) == 0)
 	    panic("wait: ns_remove");
 	  p->pid = 0;
 	  p->parent = 0;

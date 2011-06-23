@@ -21,6 +21,7 @@ struct inode {
   struct condvar cv;
   struct spinlock lock;
   char lockname[16];
+  struct ns *dir;
 
   short type;         // copy of disk inode
   short major;
