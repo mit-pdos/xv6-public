@@ -225,6 +225,21 @@ evict(void *vkey, void *p)
 // But it has a ref count, so it won't be freed or reused.
 // Though unlocked, all fields will be present,
 // so looking a ip->inum and ip->gen are OK even w/o lock.
+static void
+ifree(void *arg)
+{
+  struct inode *ip = arg;
+
+  if (ip->dir) {
+    ns_remove(ip->dir, KS("."), 0);
+    ns_remove(ip->dir, KS(".."), 0);
+    nsfree(ip->dir);
+    ip->dir = 0;
+  }
+
+  kmfree(ip);
+}
+
 struct inode*
 iget(uint dev, uint inum)
 {
@@ -268,7 +283,7 @@ iget(uint dev, uint inum)
   }
   release(&victim->lock);
   ns_remove(ins, KII(victim->dev, victim->inum), victim);
-  rcu_delayed(victim, kmfree);
+  rcu_delayed(victim, ifree);
   
   ip = kmalloc(sizeof(*ip));
   ip->dev = dev;
@@ -357,27 +372,25 @@ iput(struct inode *ip)
 	panic("iput busy");
       if((ip->flags & I_VALID) == 0)
 	panic("iput not valid");
-      ip->flags |= I_BUSYR | I_BUSYW;
-      __sync_fetch_and_add(&ip->readbusy, 1);
 
-      if (ip->dir) {
-	ns_remove(ip->dir, KS("."), 0);
-	ns_remove(ip->dir, KS(".."), 0);
-	nsfree(ip->dir);
-	ip->dir = 0;
+      ip->flags |= I_FREE;
+      if (ip->ref > 0) {
+	ip->flags &= ~(I_FREE);
+	release(&ip->lock);
+	return;
       }
 
-      release(&ip->lock);
       itrunc(ip);
       ip->type = 0;
       ip->major = 0;
       ip->minor = 0;
       ip->gen += 1;
       iupdate(ip);
-      acquire(&ip->lock);
-      ip->flags &= ~(I_BUSYR | I_BUSYW);
-      __sync_sub_and_fetch(&ip->readbusy, 1);
-      cv_wakeup(&ip->cv);
+
+      release(&ip->lock);
+      ns_remove(ins, KII(ip->dev, ip->inum), ip);
+      rcu_delayed(ip, ifree);
+      return;
     }
     release(&ip->lock);
   }
