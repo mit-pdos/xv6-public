@@ -31,7 +31,8 @@ OBJS = \
 	vectors.o\
 	vm.o\
 	ns.o \
-	rcu.o
+	rcu.o \
+	bonsai.o \
 
 # Cross-compiling (e.g., on Mac OS X)
 TOOLPREFIX ?= x86_64-jos-elf-
