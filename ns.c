@@ -2,6 +2,7 @@
 #include "defs.h"
 #include "spinlock.h"
 #include "param.h"
+#include "fs.h"
 #include <stddef.h>
 
 // name spaces
@@ -24,6 +25,7 @@ struct elem {
       uint b;
     } iikey;
     char skey[0];
+    char dnkey[DIRSIZ];
     struct {
       uint a;
       uint b;
@@ -91,6 +93,9 @@ elemalloc(struct nskey *k)
   case nskey_str:
     sz = offsetof(struct elem, skey) + strlen(k->u.s) + 1;
     break;
+  case nskey_dirname:
+    sz = offsetof(struct elem, dnkey) + sizeof(e->dnkey);
+    break;
   case nskey_iis:
     sz = offsetof(struct elem, iiskey.s) + strlen(k->u.iis.s) + 1;
     break;
@@ -115,6 +120,8 @@ h(struct nskey *k)
     return (k->u.ii.a ^ k->u.ii.b) % NHASH;
   case nskey_str:
     return k->u.s[0] % NHASH; // XXX
+  case nskey_dirname:
+    return k->u.dirname[0] % NHASH; // XXX
   case nskey_iis:
     return (k->u.iis.a ^ k->u.iis.b ^ k->u.iis.s[0]) % NHASH;
   default:
@@ -136,6 +143,9 @@ setkey(struct elem *e, struct nskey *k)
   case nskey_str:
     strncpy(e->skey, k->u.s, strlen(k->u.s) + 1);
     break;
+  case nskey_dirname:
+    strncpy(e->dnkey, k->u.dirname, DIRSIZ);
+    break;
   case nskey_iis:
     e->iiskey.a = k->u.iis.a;
     e->iiskey.b = k->u.iis.b;
@@ -156,6 +166,8 @@ cmpkey(struct elem *e, struct nskey *k)
     return e->iikey.a == k->u.ii.a && e->iikey.b == k->u.ii.b;
   case nskey_str:
     return !strcmp(e->skey, k->u.s);
+  case nskey_dirname:
+    return !namecmp(e->dnkey, k->u.dirname);
   case nskey_iis:
     return e->iiskey.a == k->u.iis.a &&
 	   e->iiskey.b == k->u.iis.b &&

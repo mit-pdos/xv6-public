@@ -231,8 +231,8 @@ ifree(void *arg)
   struct inode *ip = arg;
 
   if (ip->dir) {
-    ns_remove(ip->dir, KS("."), 0);
-    ns_remove(ip->dir, KS(".."), 0);
+    ns_remove(ip->dir, KD("."), 0);
+    ns_remove(ip->dir, KD(".."), 0);
     nsfree(ip->dir);
     ip->dir = 0;
   }
@@ -576,10 +576,7 @@ dir_init(struct inode *dp)
       if (de->inum == 0)
 	continue;
 
-      char namebuf[DIRSIZ+1];
-      strncpy(namebuf, de->name, DIRSIZ);
-      namebuf[DIRSIZ] = '\0';
-      ns_insert(dir, KS(namebuf), (void*) (uint) de->inum);
+      ns_insert(dir, KD(de->name), (void*) (uint) de->inum);
     }
     brelse(bp, 0);
   }
@@ -595,7 +592,7 @@ dirlookup(struct inode *dp, char *name)
 {
   dir_init(dp);
 
-  void *vinum = ns_lookup(dp->dir, KS(name));
+  void *vinum = ns_lookup(dp->dir, KD(name));
   uint inum = (uint) vinum;
 
   //cprintf("dirlookup: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
@@ -612,7 +609,7 @@ dirlink(struct inode *dp, char *name, uint inum)
   dir_init(dp);
 
   //cprintf("dirlink: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
-  return ns_insert(dp->dir, KS(name), (void*)inum);
+  return ns_insert(dp->dir, KD(name), (void*)inum);
 }
 
 //PAGEBREAK!

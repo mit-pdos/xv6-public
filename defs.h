@@ -104,6 +104,7 @@ enum {
   nskey_int = 1,
   nskey_ii,
   nskey_str,
+  nskey_dirname,
   nskey_iis
 };
 
@@ -116,6 +117,7 @@ struct nskey {
       uint b;
     } ii;
     char *s;
+    char *dirname;
     struct {
       uint a;
       uint b;
@@ -127,6 +129,7 @@ struct nskey {
 #define KI(v)	    (struct nskey){.type=nskey_int,.u.i=v}
 #define KII(x,y)    (struct nskey){.type=nskey_ii,.u.ii.a=x,.u.ii.b=y}
 #define KS(v)	    (struct nskey){.type=nskey_str,.u.s=v}
+#define KD(v)	    (struct nskey){.type=nskey_dirname,.u.dirname=v}
 #define KIIS(x,y,z) (struct nskey){.type=nskey_iis,.u.iis.a=x, \
 						   .u.iis.b=y, \
 						   .u.iis.s=z}

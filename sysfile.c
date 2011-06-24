@@ -169,7 +169,7 @@ int
 sys_unlink(void)
 {
   struct inode *ip, *dp;
-  char name[DIRSIZ+1], *path;
+  char name[DIRSIZ], *path;
 
   if(argstr(0, &path) < 0)
     return -1;
@@ -200,8 +200,7 @@ sys_unlink(void)
   }
 
   dir_init(dp);
-  name[DIRSIZ] = '\0';
-  if (ns_remove(dp->dir, KS(name), (void*)ip->inum) == 0) {
+  if (ns_remove(dp->dir, KD(name), (void*)ip->inum) == 0) {
     iunlockput(ip);
     goto retry;
   }
