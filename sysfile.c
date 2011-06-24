@@ -147,7 +147,7 @@ bad:
 
 // Is the directory dp empty except for "." and ".." ?
 static void*
-check_empty(void *k, void *v)
+check_empty(void *k, void *v, void *arg)
 {
   char *name = k;
   if (strcmp(name, ".") && strcmp(name, ".."))
@@ -159,7 +159,7 @@ static int
 isdirempty(struct inode *dp)
 {
   dir_init(dp);
-  if (ns_enumerate(dp->dir, check_empty))
+  if (ns_enumerate(dp->dir, check_empty, 0))
     return 0;
   return 1;
 }

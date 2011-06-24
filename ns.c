@@ -65,7 +65,7 @@ nsalloc(int allowdup)
 }
 
 static void *
-any(void *x, void *y)
+any(void *x, void *y, void *arg)
 {
   return (void*) 1;
 }
@@ -73,7 +73,7 @@ any(void *x, void *y)
 void
 nsfree(struct ns *ns)
 {
-  if (ns_enumerate(ns, &any))
+  if (ns_enumerate(ns, &any, 0))
     panic("nsfree: not empty");
   rcu_delayed(ns, kmfree);
 }
@@ -284,13 +284,13 @@ ns_remove(struct ns *ns, struct nskey key, void *v)
 }
 
 void *
-ns_enumerate(struct ns *ns, void *(*f)(void *, void *))
+ns_enumerate(struct ns *ns, void *(*f)(void *, void *, void *), void *arg)
 {
   rcu_begin_read();
   for (int i = 0; i < NHASH; i++) {
     struct elem *e = ns->table[i].chain;
     while (e != NULL) {
-      void *r = (*f)(&e->ikey, e->val);
+      void *r = (*f)(&e->ikey, e->val, arg);
       if (r) {
 	rcu_end_read();
 	return r;
@@ -303,14 +303,14 @@ ns_enumerate(struct ns *ns, void *(*f)(void *, void *))
 }
 
 void *
-ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *))
+ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *, void *), void *arg)
 {
   uint i = h(&key);
   rcu_begin_read();
   struct elem *e = ns->table[i].chain;
   while (e) {
     if (cmpkey(e, &key)) {
-      void *r = (*f)(e->val);
+      void *r = (*f)(e->val, arg);
       if (r) {
 	rcu_end_read();
 	return r;

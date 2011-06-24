@@ -445,7 +445,7 @@ migrate(struct proc *p)
 }
 
 static void *
-steal_cb(void *vk, void *v)
+steal_cb(void *vk, void *v, void *arg)
 {
   struct proc *p = v;
   
@@ -474,7 +474,7 @@ steal_cb(void *vk, void *v)
 int
 steal(void)
 {
-  void *stole = ns_enumerate(nsrunq, steal_cb);
+  void *stole = ns_enumerate(nsrunq, steal_cb, 0);
   return stole ? 1 : 0;
 }
 
@@ -488,7 +488,7 @@ steal(void)
 //      via swtch back to the scheduler.
 
 static void *
-choose_runnable(void *pp)
+choose_runnable(void *pp, void *arg)
 {
   struct proc *p = pp;
   if (p->state == RUNNABLE)
@@ -514,7 +514,7 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
-    struct proc *p = ns_enumerate_key(nsrunq, KI(cpu->id), choose_runnable);
+    struct proc *p = ns_enumerate_key(nsrunq, KI(cpu->id), choose_runnable, 0);
     if (p) {
       acquire(&p->lock);
       if (p->state != RUNNABLE) {
@@ -653,7 +653,7 @@ kill(int pid)
   return 0;
 }
 
-void *procdump(void *vk, void *v)
+void *procdump(void *vk, void *v, void *arg)
 {
   struct proc *p = (struct proc *) v;
 
@@ -690,5 +690,5 @@ void *procdump(void *vk, void *v)
 void
 procdumpall(void)
 {
-  ns_enumerate(nspid, procdump);
+  ns_enumerate(nspid, procdump, 0);
 }

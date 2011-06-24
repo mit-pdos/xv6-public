@@ -141,8 +141,8 @@ int             ns_allockey(struct ns*);
 int             ns_insert(struct ns*, struct nskey key, void*);
 void*           ns_lookup(struct ns*, struct nskey key);
 void*           ns_remove(struct ns *ns, struct nskey key, void *val); // removed val
-void*           ns_enumerate(struct ns *ns, void *(*f)(void *, void *));
-void*           ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *));
+void*           ns_enumerate(struct ns *ns, void *(*f)(void *, void *, void *), void *arg);
+void*           ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *, void *), void *arg);
 
 // picirq.c
 void            picenable(int);

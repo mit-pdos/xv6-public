@@ -205,7 +205,7 @@ iupdate(struct inode *ip)
 }
 
 static void *
-evict(void *vkey, void *p)
+evict(void *vkey, void *p, void *arg)
 {
   struct inode *ip = p;
   if (ip->ref || ip->type == T_DIR)
@@ -271,7 +271,7 @@ iget(uint dev, uint inum)
   // Allocate fresh inode cache slot.
  retry_evict:
   (void) 0;
-  struct inode *victim = ns_enumerate(ins, evict);
+  struct inode *victim = ns_enumerate(ins, evict, 0);
   if (!victim)
     panic("iget out of space");
   // tricky: first flag as free, then check refcnt, then remove from ns
@@ -585,6 +585,17 @@ dir_init(struct inode *dp)
     // free all the dirents
     nsfree(dir);
   }
+}
+
+void
+dir_flush(struct inode *dp)
+{
+  if (!dp->dir)
+    return;
+
+  ilock(dp, 1);
+  
+  iunlock(dp);
 }
 
 // Look for a directory entry in a directory.

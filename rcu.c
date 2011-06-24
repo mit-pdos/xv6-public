@@ -30,7 +30,6 @@ TAILQ_HEAD(rcu_head, rcu);
 
 static struct { struct rcu_head x __attribute__((aligned (CACHELINE))); } rcu_q[NCPU];
 static uint global_epoch __attribute__ ((aligned (CACHELINE)));
-static struct { uint x __attribute__((aligned (CACHELINE))); } min_epoch[NCPU];
 static struct { struct spinlock l __attribute__((aligned (CACHELINE))); } rcu_lock[NCPU];
 static struct { int v __attribute__((aligned (CACHELINE))); } delayed_nfree[NCPU];
 
@@ -52,10 +51,11 @@ rcu_alloc()
 }
 
 void *
-rcu_min(void *vkey, void *v){
+rcu_min(void *vkey, void *v, void *arg){
+  uint *min_epoch_p = arg;
   struct proc *p = (struct proc *) v;
-  if (min_epoch[cpu->id].x > p->epoch) {
-      min_epoch[cpu->id].x = p->epoch;
+  if (*min_epoch_p > p->epoch) {
+      *min_epoch_p = p->epoch;
   }
   return 0;
 }
@@ -66,16 +66,16 @@ void
 rcu_gc(void)
 {
   struct rcu *r, *nr;
+  uint min_epoch = global_epoch;
   int n = 0;
-  min_epoch[cpu->id].x = global_epoch;
 
-  ns_enumerate(nspid, rcu_min);
+  ns_enumerate(nspid, rcu_min, &min_epoch);
 
   pushcli();
   acquire(&rcu_lock[cpu->id].l);
 
   for (r = TAILQ_FIRST(&rcu_q[cpu->id].x); r != NULL; r = nr) {
-    if (r->epoch >= min_epoch[cpu->id].x)
+    if (r->epoch >= min_epoch)
       break;
     release(&rcu_lock[cpu->id].l);
 
@@ -101,7 +101,7 @@ rcu_gc(void)
   release(&rcu_lock[cpu->id].l);
   if (rcu_debug)
     cprintf("rcu_gc: cpu %d n %d delayed_nfree=%d min_epoch=%d\n",
-	    cpu->id, n, delayed_nfree[cpu->id], min_epoch[cpu->id]);
+	    cpu->id, n, delayed_nfree[cpu->id], min_epoch);
   popcli();
 
   // global_epoch can be bumped anywhere; this seems as good a place as any

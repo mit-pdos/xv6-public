@@ -50,7 +50,7 @@ binit(void)
 }
 
 static void *
-evict(void *vkey, void *bp)
+evict(void *vkey, void *bp, void *arg)
 {
   struct buf *b = bp;
   acquire(&b->lock);
@@ -61,7 +61,7 @@ evict(void *vkey, void *bp)
 }
 
 static void *
-evict_valid(void *vkey, void *bp)
+evict_valid(void *vkey, void *bp, void *arg)
 {
   struct buf *b = bp;
   acquire(&b->lock);
@@ -107,9 +107,9 @@ bget(uint dev, uint sector, int *writer)
   rcu_end_read();
 
   // Allocate fresh block.
-  struct buf *victim = ns_enumerate(bufns, evict);
+  struct buf *victim = ns_enumerate(bufns, evict, 0);
   if (victim == 0)
-    victim = ns_enumerate(bufns, evict_valid);
+    victim = ns_enumerate(bufns, evict_valid, 0);
   if (victim == 0)
     panic("bget all busy");
   victim->flags |= B_BUSY;
