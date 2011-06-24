@@ -11,12 +11,20 @@ struct condvar;
 struct stat;
 struct vmnode;
 struct ns;
+struct node;
 
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint, int writer);
 void            brelse(struct buf*, int writer);
 void            bwrite(struct buf*);
+
+// bonsai.c
+struct node*    tree_contains(struct node *n, int key);
+struct node*    tree_insert(struct node *n, int key);
+struct node*    tree_remove(struct node *n, int key);
+void            tree_test(void);
+
 
 // condvar.c
 void            initcondvar(struct condvar *, char *);
