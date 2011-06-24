@@ -208,7 +208,7 @@ evict(void *vkey, void *p, void *arg)
     return 0;
 
   acquire(&ip->lock);
-  if (ip->ref == 0)
+  if (ip->ref == 0 && ip->type != T_DIR && !(ip->flags & (I_FREE | I_BUSYR | I_BUSYW)))
     return ip;
   release(&ip->lock);
   return 0;
@@ -371,8 +371,14 @@ iput(struct inode *ip)
     acquire(&ip->lock);
     if (ip->ref == 0 && ip->nlink == 0) {
       // inode is no longer used: truncate and free inode.
-      if(ip->flags & (I_BUSYR | I_BUSYW))
+      if(ip->flags & (I_BUSYR | I_BUSYW)) {
+	// race with iget
 	panic("iput busy");
+      }
+      if(ip->flags & I_FREE) {
+	// race with evict
+	panic("iput free");
+      }
       if((ip->flags & I_VALID) == 0)
 	panic("iput not valid");
 
@@ -382,8 +388,11 @@ iput(struct inode *ip)
 	release(&ip->lock);
 	return;
       }
+
+      ip->flags |= (I_BUSYR | I_BUSYW);
+      __sync_fetch_and_add(&ip->readbusy, 1);
+
       release(&ip->lock);
-      ns_remove(ins, KII(ip->dev, ip->inum), ip);
 
       itrunc(ip);
       ip->type = 0;
@@ -392,6 +401,7 @@ iput(struct inode *ip)
       ip->gen += 1;
       iupdate(ip);
 
+      ns_remove(ins, KII(ip->dev, ip->inum), ip);
       rcu_delayed(ip, ifree);
       __sync_fetch_and_add(&icache_free[cpu->id].x, 1);
       return;
