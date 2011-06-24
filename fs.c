@@ -133,18 +133,14 @@ bfree(int dev, uint b)
 
 static struct ns *ins;
 
+static struct { uint x __attribute__((aligned (CACHELINE))); } icache_free[NCPU];
+
 void
 iinit(void)
 {
   ins = nsalloc(0);
-  for (int i = 0; i < NINODE; i++) {
-    struct inode *ip = kmalloc(sizeof(*ip));
-    memset(ip, 0, sizeof(*ip));
-    ip->inum = -i-1;
-    initlock(&ip->lock, "icache-lock");
-    initcondvar(&ip->cv, "icache-cv");
-    ns_insert(ins, KII(ip->dev, ip->inum), ip);
-  }
+  for (int i = 0; i < NCPU; i++)
+    icache_free[i].x = NINODE;
 }
 
 //PAGEBREAK!
@@ -271,20 +267,26 @@ iget(uint dev, uint inum)
   // Allocate fresh inode cache slot.
  retry_evict:
   (void) 0;
-  struct inode *victim = ns_enumerate(ins, evict, 0);
-  if (!victim)
-    panic("iget out of space");
-  // tricky: first flag as free, then check refcnt, then remove from ns
-  victim->flags |= I_FREE;
-  if (victim->ref > 0) {
-    victim->flags &= ~(I_FREE);
+  uint cur_free = icache_free[cpu->id].x;
+  if (cur_free == 0) {
+    struct inode *victim = ns_enumerate(ins, evict, 0);
+    if (!victim)
+      panic("iget out of space");
+    // tricky: first flag as free, then check refcnt, then remove from ns
+    victim->flags |= I_FREE;
+    if (victim->ref > 0) {
+      victim->flags &= ~(I_FREE);
+      release(&victim->lock);
+      goto retry_evict;
+    }
     release(&victim->lock);
-    goto retry_evict;
+    ns_remove(ins, KII(victim->dev, victim->inum), victim);
+    rcu_delayed(victim, ifree);
+  } else {
+    if (!__sync_bool_compare_and_swap(&icache_free[cpu->id].x, cur_free, cur_free-1))
+      goto retry_evict;
   }
-  release(&victim->lock);
-  ns_remove(ins, KII(victim->dev, victim->inum), victim);
-  rcu_delayed(victim, ifree);
-  
+
   ip = kmalloc(sizeof(*ip));
   ip->dev = dev;
   ip->inum = inum;
@@ -380,6 +382,8 @@ iput(struct inode *ip)
 	release(&ip->lock);
 	return;
       }
+      release(&ip->lock);
+      ns_remove(ins, KII(ip->dev, ip->inum), ip);
 
       itrunc(ip);
       ip->type = 0;
@@ -388,9 +392,8 @@ iput(struct inode *ip)
       ip->gen += 1;
       iupdate(ip);
 
-      release(&ip->lock);
-      ns_remove(ins, KII(ip->dev, ip->inum), ip);
       rcu_delayed(ip, ifree);
+      __sync_fetch_and_add(&icache_free[cpu->id].x, 1);
       return;
     }
     release(&ip->lock);
