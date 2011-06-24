@@ -284,9 +284,13 @@ sys_open(void)
     ilock(ip, 0);
     if(ip->type == 0)
       panic("open");
-    if(ip->type == T_DIR && omode != O_RDONLY){
-      iunlockput(ip);
-      return -1;
+    if(ip->type == T_DIR) {
+      if (omode != O_RDONLY){
+	iunlockput(ip);
+	return -1;
+      }
+
+      dir_flush(ip);
     }
   }
 

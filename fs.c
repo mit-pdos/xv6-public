@@ -587,15 +587,39 @@ dir_init(struct inode *dp)
   }
 }
 
+struct flush_state {
+  struct inode *dp;
+  uint off;
+};
+
+static void *
+dir_flush_cb(void *key, void *val, void *arg)
+{
+  struct flush_state *fs = arg;
+  char *name = key;
+  uint inum = (uint) val;
+
+  struct dirent de;
+  strncpy(de.name, name, DIRSIZ);
+  de.inum = inum;
+  if(writei(fs->dp, (char*)&de, fs->off, sizeof(de)) != sizeof(de))
+    panic("dir_flush_cb");
+  fs->off += sizeof(de);
+  return 0;
+}
+
 void
 dir_flush(struct inode *dp)
 {
+  // assume already locked
+
   if (!dp->dir)
     return;
 
-  ilock(dp, 1);
-  
-  iunlock(dp);
+  struct flush_state fs;
+  fs.dp = dp;
+  fs.off = 0;
+  ns_enumerate(dp->dir, dir_flush_cb, &fs);
 }
 
 // Look for a directory entry in a directory.

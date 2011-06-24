@@ -62,6 +62,7 @@ int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
 void	        dir_init(struct inode *dp);
+void	        dir_flush(struct inode *dp);
 
 // ide.c
 void            ideinit(void);
