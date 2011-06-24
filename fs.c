@@ -294,6 +294,7 @@ iget(uint dev, uint inum)
   snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
   initlock(&ip->lock, ip->lockname+3);
   initcondvar(&ip->cv, ip->lockname);
+  ip->dir = 0;
   if (ns_insert(ins, KII(ip->dev, ip->inum), ip) < 0) {
     rcu_delayed(ip, kmfree);
     goto retry;
