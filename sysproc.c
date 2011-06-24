@@ -132,9 +132,9 @@ sys_unmap(void)
   if (vmap_remove(proc->vmap, PGROUNDDOWN(addr), PGROUNDUP(len)) < 0)
     return -1;
 
-  clearpages(proc->vmap->pgdir,
+  updatepages(proc->vmap->pgdir,
 	     (void*) (PGROUNDDOWN(addr)),
-	     (void*) (PGROUNDDOWN(addr)+PGROUNDUP(len)));
+	     (void*) (PGROUNDDOWN(addr)+PGROUNDUP(len)), 0);
   cli();
   lcr3(v2p(proc->vmap->pgdir));
   for (uint i = 0; i < ncpu; i++)

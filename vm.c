@@ -18,6 +18,7 @@ static pde_t *kpgdir __attribute__ ((aligned (CACHELINE)));  // for use in sched
 struct segdesc gdt[NSEGS];
 
 // page map for during boot
+// XXX build a static page table in assembly
 static void
 pgmap(void *va, void *last, uint pa)
 {
@@ -93,7 +94,6 @@ seginit(void)
   // Map cpu, curproc, kmem
   c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 12, 0);
 
-  // lgt((void *) v2p((void*)(c->gdt)), sizeof(c->gdt));
   lgdt((void *)(c->gdt), sizeof(c->gdt));
   loadgs(SEG_KCPU << 3);
   
@@ -184,7 +184,7 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
   return 0;
 }
 
-static void
+void
 updatepages(pde_t *pgdir, void *begin, void *end, int perm)
 {
   char *a, *last;
@@ -194,26 +194,10 @@ updatepages(pde_t *pgdir, void *begin, void *end, int perm)
   last = PGROUNDDOWN(end);
   for (;;) {
     pte = walkpgdir(pgdir, a, 1);
-    if(pte != 0)
-      *pte = PTE_ADDR(*pte) | perm | PTE_P;
-    if (a == last)
-      break;
-    a += PGSIZE;
-  }
-}
-
-void
-clearpages(pde_t *pgdir, void *begin, void *end)
-{
-  char *a, *last;
-  pte_t *pte;
-
-  a = PGROUNDDOWN(begin);
-  last = PGROUNDDOWN(end);
-  for (;;) {
-    pte = walkpgdir(pgdir, a, 1);
-    if(pte != 0) 
-      *pte = 0;
+    if(pte != 0) {
+      if (perm == 0) *pte = 0;
+      else *pte = PTE_ADDR(*pte) | perm | PTE_P;
+    }
     if (a == last)
       break;
     a += PGSIZE;
@@ -737,7 +721,7 @@ pagefault_wcow(struct vmap *vmap, uint va, pte_t *pte, struct vma *m, uint npg)
   m->va_type = PRIVATE;
   m->n = c;
   // Update the hardware page tables to reflect the change to the vma
-  clearpages(vmap->pgdir, (void *) m->va_start, (void *) m->va_end);
+  updatepages(vmap->pgdir, (void *) m->va_start, (void *) m->va_end, 0);
   pte = walkpgdir(vmap->pgdir, (const void *)va, 0);
   *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   // drop my ref to vmnode

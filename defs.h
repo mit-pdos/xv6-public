@@ -258,7 +258,7 @@ void            switchkvm(void);
 int             copyout(struct vmap *, uint, void*, uint);
 int             copyin(struct vmap *, uint, void*, uint);
 int             pagefault(struct vmap *, uint, uint);
-void            clearpages(pde_t *pgdir, void *begin, void *end);
+void            updatepages(pde_t *pgdir, void *begin, void *end, int perm);
 
 // namecache.c
 void            nc_init();
