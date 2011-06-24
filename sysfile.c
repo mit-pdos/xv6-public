@@ -227,6 +227,7 @@ create(char *path, short type, short major, short minor)
   struct inode *ip, *dp;
   char name[DIRSIZ];
 
+ retry:
   if((dp = nameiparent(path, name)) == 0)
     return 0;
   if(dp->type != T_DIR)
@@ -257,8 +258,13 @@ create(char *path, short type, short major, short minor)
       panic("create dots");
   }
 
-  if(dirlink(dp, name, ip->inum) < 0)
-    panic("create: dirlink");
+  if(dirlink(dp, name, ip->inum) < 0) {
+    // create race
+    ip->nlink--;
+    iunlockput(ip);
+    iput(dp);
+    goto retry;
+  }
 
   //nc_insert(dp, name, ip);
   iput(dp);
