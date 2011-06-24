@@ -90,6 +90,14 @@ trap(struct trapframe *tf)
       // In kernel, it must be our mistake.
       cprintf("unexpected trap %d from cpu %d eip %x (cr2=0x%x)\n",
               tf->trapno, cpu->id, tf->eip, rcr2());
+      cprintf("eax %x\n", tf->eax);
+      cprintf("ebx %x\n", tf->ebx);
+      cprintf("ecx %x\n", tf->ecx);
+      cprintf("edx %x\n", tf->edx);
+      cprintf("edi %x\n", tf->edi);
+      cprintf("esi %x\n", tf->esi);
+      cprintf("esp %x\n", tf->esp);
+      cprintf("ebp %x\n", tf->ebp);
       panic("trap");
     }
 
