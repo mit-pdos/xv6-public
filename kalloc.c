@@ -182,6 +182,8 @@ domfree(void *ap)
   Header *bp, *p;
 
   bp = (Header*)ap - 1;
+  if (kalloc_memset)
+    memset(ap, 3, (bp->size-1) * sizeof(*bp));
   for(p = freelists[cpu->id].freep; !(bp > p && bp < p->ptr); p = p->ptr)
     if(p >= p->ptr && (bp > p || bp < p->ptr))
       break;
