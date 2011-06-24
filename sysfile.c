@@ -285,11 +285,14 @@ sys_open(void)
     if((ip = create(path, T_FILE, 0, 0)) == 0)
       return -1;
   } else {
+ retry:
     if((ip = namei(path)) == 0)
       return -1;
     ilock(ip, 0);
-    if(ip->type == 0)
-      panic("open");
+    if(ip->type == 0) {
+      iunlockput(ip);
+      goto retry;
+    }
     if(ip->type == T_DIR) {
       if (omode != O_RDONLY){
 	iunlockput(ip);
