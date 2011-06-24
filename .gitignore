@@ -14,7 +14,10 @@ initcode.out
 kernel
 mkfs
 .gdbinit
-mtrace.out
-mscan.syms
-mscan.kern
+/mtrace.out
+/mtrace.txt
+/mscan.out
+/mscan.sorted
+/mscan.syms
+/mscan.kern
 config.mk
