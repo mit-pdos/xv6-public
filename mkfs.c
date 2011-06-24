@@ -10,9 +10,9 @@
 #include "fs.h"
 #include "stat.h"
 
-int nblocks = 995;
+int nblocks = 4067;
 int ninodes = 200;
-int size = 1024;
+int size = 4096;
 
 int fsfd;
 struct superblock sb;
@@ -80,7 +80,7 @@ main(int argc, char *argv[])
   sb.nblocks = xint(nblocks); // so whole disk is size sectors
   sb.ninodes = xint(ninodes);
 
-  bitblocks = size/(512*8) + 1;
+  bitblocks = (size+512*8-1)/(512*8);
   usedblocks = ninodes / IPB + 3 + bitblocks;
   freeblock = usedblocks;
 
