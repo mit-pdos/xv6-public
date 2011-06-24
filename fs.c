@@ -368,6 +368,8 @@ void
 iput(struct inode *ip)
 {
   if(__sync_sub_and_fetch(&ip->ref, 1) == 0) {
+    if (ip->nlink)
+      return;
     acquire(&ip->lock);
     if (ip->ref == 0 && ip->nlink == 0) {
       // inode is no longer used: truncate and free inode.

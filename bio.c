@@ -145,9 +145,7 @@ bread(uint dev, uint sector, int writer)
   if(!(b->flags & B_VALID))
     iderw(b);
   if (writer && !origwriter) {
-    acquire(&b->lock);
-    b->flags &= ~B_BUSY;
-    release(&b->lock);
+    __sync_fetch_and_and(&b->flags, ~B_BUSY);
     cv_wakeup(&b->cv);
   }
   return b;
@@ -169,11 +167,9 @@ void
 brelse(struct buf *b, int writer)
 {
   if (writer) {
-    acquire(&b->lock);
     if((b->flags & B_BUSY) == 0)
       panic("brelse");
-    b->flags &= ~B_BUSY;
-    release(&b->lock);
+    __sync_fetch_and_and(&b->flags, ~B_BUSY);
     cv_wakeup(&b->cv);
   }
   // rcu_begin_read() happens in bread
