@@ -63,7 +63,7 @@ balloc(uint dev)
   readsb(dev, &sb);
   for(b = 0; b < sb.size; b += BPB){
     bp = bread(dev, BBLOCK(b, sb.ninodes), 1);
-    for(bi = 0; bi < BPB; bi++){
+    for(bi = 0; bi < BPB && bi < (sb.size - b); bi++){
       m = 1 << (bi % 8);
       if((bp->data[bi/8] & m) == 0){  // Is block free?
         bp->data[bi/8] |= m;  // Mark block in use on disk.
