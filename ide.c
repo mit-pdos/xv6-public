@@ -39,8 +39,10 @@ idewait(int checkerr)
 
   while(((r = inb(0x1f7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY) 
     ;
-  if(checkerr && (r & (IDE_DF|IDE_ERR)) != 0)
+  if(checkerr && (r & (IDE_DF|IDE_ERR)) != 0) {
+    panic("idewait");
     return -1;
+  }
   return 0;
 }
 
