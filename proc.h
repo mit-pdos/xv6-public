@@ -93,6 +93,7 @@ struct proc {
   uint rcu_read_depth;
   char lockname[16];
   int on_runq;
+  int cpu_pin;
 };
 
 // Process memory is laid out contiguously, low addresses first:

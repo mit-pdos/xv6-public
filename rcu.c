@@ -32,6 +32,7 @@ static struct { struct rcu_head x __attribute__((aligned (CACHELINE))); } rcu_q[
 static uint global_epoch __attribute__ ((aligned (CACHELINE)));
 static struct { struct spinlock l __attribute__((aligned (CACHELINE))); } rcu_lock[NCPU];
 static struct { int v __attribute__((aligned (CACHELINE))); } delayed_nfree[NCPU];
+static struct { struct condvar cv __attribute__((aligned (CACHELINE))); } rcu_cv[NCPU];
 
 enum { rcu_debug = 0 };
 
@@ -41,6 +42,7 @@ rcuinit(void)
   for (int i = 0; i < NCPU; i++) {
     initlock(&rcu_lock[i].l, "rcu");
     TAILQ_INIT(&rcu_q[i].x);
+    initcondvar(&rcu_cv[i].cv, "rcu_gc_cv");
   }
 }
 
@@ -63,7 +65,7 @@ rcu_min(void *vkey, void *v, void *arg){
 // XXX use atomic instruction to update list (instead of holding lock)
 // lists of lists?
 void
-rcu_gc(void)
+rcu_gc_work(void)
 {
   struct rcu *r, *nr;
   uint min_epoch = global_epoch;
@@ -71,7 +73,7 @@ rcu_gc(void)
 
   ns_enumerate(nspid, rcu_min, &min_epoch);
 
-  pushcli();
+  // pushcli(); // not necessary: rcup->cpu_pin==1
   acquire(&rcu_lock[cpu->id].l);
 
   for (r = TAILQ_FIRST(&rcu_q[cpu->id].x); r != NULL; r = nr) {
@@ -102,10 +104,31 @@ rcu_gc(void)
   if (rcu_debug)
     cprintf("rcu_gc: cpu %d n %d delayed_nfree=%d min_epoch=%d\n",
 	    cpu->id, n, delayed_nfree[cpu->id], min_epoch);
-  popcli();
+  // popcli(); // not necessary: rcup->cpu_pin==1
 
   // global_epoch can be bumped anywhere; this seems as good a place as any
   __sync_fetch_and_add(&global_epoch, 1);
+}
+
+void
+rcu_gc_worker(void)
+{
+  release(&proc->lock);	// initially held by scheduler
+
+  struct spinlock wl;
+  initlock(&wl, "rcu_gc_worker");   // dummy lock
+  acquire(&wl);
+
+  for (;;) {
+    rcu_gc_work();
+    cv_sleep(&rcu_cv[cpu->id].cv, &wl);
+  }
+}
+
+void
+rcu_gc(void)
+{
+  cv_wakeup(&rcu_cv[cpu->id].cv);
 }
 
 // XXX Use atomic instruction to update list (instead of holding lock)

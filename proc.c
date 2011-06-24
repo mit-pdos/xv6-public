@@ -58,6 +58,7 @@ allocproc(void)
   p->epoch = INF;
   p->cpuid = cpu->id;
   p->on_runq = -1;
+  p->cpu_pin = 0;
 
   snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
   initlock(&p->lock, p->lockname+3);
@@ -162,6 +163,20 @@ userinit(void)
   addrun(p);
   p->state = RUNNABLE;
   release(&p->lock);
+
+  for (uint c = 0; c < NCPU; c++) {
+    struct proc *rcup = allocproc();
+    rcup->vmap = vmap_alloc();
+    rcup->context->eip = (uint) rcu_gc_worker;
+    rcup->cwd = 0;
+    rcup->cpuid = c;
+    rcup->cpu_pin = 1;
+
+    acquire(&rcup->lock);
+    rcup->state = RUNNABLE;
+    addrun(rcup);
+    release(&rcup->lock);
+  }
 }
 
 // Grow/shrink current process's memory by n bytes.
@@ -419,7 +434,7 @@ migrate(struct proc *p)
       continue;
     if (idle[c]) {    // OK if there is a race
       acquire(&p->lock);
-      if (p->state != RUNNABLE) {
+      if (p->state != RUNNABLE || p->cpu_pin) {
 	release(&p->lock);
 	continue;
       }
@@ -450,7 +465,7 @@ steal_cb(void *vk, void *v, void *arg)
   struct proc *p = v;
   
   acquire(&p->lock);
-  if (p->state != RUNNABLE || p->cpuid == cpu->id) {
+  if (p->state != RUNNABLE || p->cpuid == cpu->id || p->cpu_pin) {
     release(&p->lock);
     return 0;
   }
@@ -505,6 +520,7 @@ scheduler(void)
     panic("scheduler allocproc");
 
   proc = schedp;
+  proc->cpu_pin = 1;
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);

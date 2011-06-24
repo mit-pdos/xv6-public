@@ -181,6 +181,7 @@ void            rcu_end_read(void);
 void            rcu_delayed(void*, void (*dofree)(void*));
 void            rcu_delayed2(int, uint, void (*dofree)(int, uint));
 void		rcu_gc(void);
+void		rcu_gc_worker(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
