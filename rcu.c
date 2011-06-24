@@ -117,11 +117,13 @@ rcu_gc_worker(void)
 
   struct spinlock wl;
   initlock(&wl, "rcu_gc_worker");   // dummy lock
-  acquire(&wl);
 
   for (;;) {
     rcu_gc_work();
+
+    acquire(&wl);
     cv_sleep(&rcu_cv[cpu->id].cv, &wl);
+    release(&wl);
   }
 }
 
