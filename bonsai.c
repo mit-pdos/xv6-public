@@ -45,8 +45,8 @@ alloc_node(int key, node_t *l, node_t *r)
 static void
 free_node(void *p)
 {
-  // printf("free_node: 0x%lx\n", (long) n);
-  kfree(p);
+  // cprintf("free_node: 0x%x\n", p);
+  kmfree(p);
 }
 
 static void
