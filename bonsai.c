@@ -44,7 +44,6 @@ alloc_node(struct kv *kv, node_t *l, node_t *r)
 static void
 free_node(void *p)
 {
-  // printf("free_node: 0x%lx\n", (long) n);
   kmfree(p);
 }
 
