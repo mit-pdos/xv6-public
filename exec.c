@@ -29,6 +29,7 @@ exec(char *path, char **argv)
   if((ip = namei(path)) == 0)
     return -1;
   // ilock(ip, 0);
+
   rcu_begin_read();
 
   // Check ELF header

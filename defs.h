@@ -20,9 +20,16 @@ void            brelse(struct buf*, int writer);
 void            bwrite(struct buf*);
 
 // bonsai.c
-struct node*    tree_contains(struct node *n, int key);
-struct node*    tree_insert(struct node *n, int key);
+struct kv {
+  uint key;
+  void *val;
+};
+
+struct kv*      tree_find(struct node *n, int key);
+struct kv*      tree_find_gt(struct node *n, int key);
+struct node*    tree_insert(struct node *n, struct kv *kv);
 struct node*    tree_remove(struct node *n, int key);
+int             tree_foreach(struct node *n, int (*cb)(struct kv* kv, void *), void *);
 void            tree_test(void);
 
 
@@ -249,7 +256,7 @@ void            vmn_free(struct vmnode *);
 int             vmn_load(struct vmnode *, struct inode*, uint, uint);
 struct vmap *   vmap_alloc(void);
 void            vmap_decref(struct vmap *);
-struct vma *    vmap_overlap(struct vmap *m, uint start, uint end);
+struct vma *    vmap_lookup(struct vmap *m, uint start, uint end);
 int             vmap_insert(struct vmap *, struct vmnode *n, uint);
 int             vmap_remove(struct vmap *, uint va_start, uint len);
 struct vmap *   vmap_copy(struct vmap *, int);

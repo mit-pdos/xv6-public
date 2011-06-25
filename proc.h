@@ -55,10 +55,16 @@ struct vma {
   char lockname[16];
 };
 
+#define TREE
+
 // An address space: a set of vmas plus h/w page table.
 // The elements of e[] are not ordered by address.
 struct vmap {
+#ifdef TREE
+  struct node* root;
+#else
   struct vma* e[16];
+#endif
   struct spinlock lock;        // serialize map/lookup/unmap
   uint ref;
   uint alloc;

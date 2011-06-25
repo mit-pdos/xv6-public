@@ -211,19 +211,17 @@ updatepages(pde_t *pgdir, void *begin, void *end, int perm)
 // than its memory.
 // 
 // setupkvm() and exec() set up every page table like this:
-//   0..640K          : user memory (text, data, stack, heap)
-//   640K..1M         : mapped direct (for IO space)
-//   1M..end          : mapped direct (for the kernel's text and data)
-//   end..PHYSTOP     : mapped direct (kernel heap and user pages)
+//   0..KERNBASE      : user memory (text, data, stack, heap), mapped to some phys mem
+//   KERNBASE+640K..KERNBASE+1M: mapped to 640K..1M
+//   KERNBASE+1M..KERNBASE+end : mapped to 1M..end
+//   KERNBASE+end..KERBASE+PHYSTOP     : mapped to end..PHYSTOP (free memory)
 //   0xfe000000..0    : mapped direct (devices such as ioapic)
 //
 // The kernel allocates memory for its heap and for user memory
 // between kernend and the end of physical memory (PHYSTOP).
 // The virtual address space of each user program includes the kernel
-// (which is inaccessible in user mode).  The user program addresses
-// range from 0 till 640KB (USERTOP), which where the I/O hole starts
-// (both in physical memory and in the kernel's virtual address
-// space).
+// (which is inaccessible in user mode).  The user program sits in
+// the bottom of the address space, and the kernel at the top at KERNBASE.
 static struct kmap {
   void *l;
   uint p;
@@ -404,7 +402,6 @@ vmn_copy(struct vmnode *n)
       if (vmn_doallocpg(c) < 0) {
 	cprintf("vmn_copy: out of memory\n");
 	vmn_free(c);
-	cprintf("return\n");
 	return 0;
       }
       for(uint i = 0; i < n->npages; i++) {
@@ -457,6 +454,36 @@ vma_free(void *p)
   kmfree(e);
 }
 
+#ifdef TREE
+struct state {
+  int share;
+  void *pgdir;
+  struct node *root;
+};
+
+static int
+vmap_free_vma(struct kv *kv, void *p)
+{  
+  struct state *st = (struct state *) p;
+  vma_free(kv->val);
+  st->root = tree_remove(st->root, kv->key);
+  return 1;
+}
+
+static void
+vmap_free(void *p)
+{
+  struct vmap *m = (struct vmap *) p;
+  struct state *st = kmalloc(sizeof(struct state));
+  st->root = m->root;
+  tree_foreach(m->root, vmap_free_vma, st);
+  m->root = st->root;
+  freevm(m->pgdir);
+  kmfree(st);
+  m->pgdir = 0;
+  m->alloc = 0;
+}
+#else
 static void
 vmap_free(void *p)
 {
@@ -469,6 +496,7 @@ vmap_free(void *p)
   m->pgdir = 0;
   m->alloc = 0;
 }
+#endif
 
 void
 vmap_decref(struct vmap *m)
@@ -482,21 +510,34 @@ vmap_decref(struct vmap *m)
 // If no, return 0.
 // This code can't handle regions at the very end
 // of the address space, e.g. 0xffffffff..0x0
+// We key vma's by their end address.
 struct vma *
-vmap_overlap(struct vmap *m, uint start, uint len)
+vmap_lookup(struct vmap *m, uint start, uint len)
 {
   if(start + len < start)
-    panic("vmap_overlap bad len");
+    panic("vmap_lookup bad len");
 
+#ifdef TREE
+  struct kv *kv = tree_find_gt(m->root, start);   // find vma with va_end > start
+  if (kv != 0) {
+    struct vma *e = (struct vma *) (kv->val);
+    if (e->va_end <= e->va_start) 
+      panic("malformed va");
+    if (e->va_start < start+len && e->va_end > start) {
+        return e;
+    }
+  }
+#else
   for(uint i = 0; i < NELEM(m->e); i++){
     struct vma *e = m->e[i];
     if(e) {
-      if(e->va_end <= e->va_start)
-        panic("vmap_overlap bad vma");
+      if(e->va_end <= e->va_start)  // XXX shouldn't this involve start and len?
+        panic("vmap_lookup bad vma");
       if(e->va_start < start+len && e->va_end > start)
         return e;
     }
   }
+#endif
   return 0;
 }
 
@@ -506,11 +547,29 @@ vmap_insert(struct vmap *m, struct vmnode *n, uint va_start)
   acquire(&m->lock);
   uint len = n->npages * PGSIZE;
 
-  if(vmap_overlap(m, va_start, len)){
+  if(vmap_lookup(m, va_start, len)){
     cprintf("vmap_insert: overlap\n");
+    release(&m->lock);
     return -1;
   }
 
+#ifdef TREE
+  struct vma *e = vma_alloc();
+  struct kv kv;
+  if (e == 0) {
+    release(&m->lock);
+    return -1;
+  }
+  e->va_start = va_start;
+  e->va_end = va_start + len;
+  e->n = n;
+  __sync_fetch_and_add(&n->ref, 1);
+  kv.key = e->va_end;
+  kv.val = e;
+  m->root = tree_insert(m->root, &kv);
+  release(&m->lock);
+  return 0;
+#else 
   for(uint i = 0; i < NELEM(m->e); i++) {
     if(m->e[i])
       continue;
@@ -528,6 +587,7 @@ vmap_insert(struct vmap *m, struct vmnode *n, uint va_start)
 
   cprintf("vmap_insert: out of vma slots\n");
   return -1;
+#endif
 }
 
 int
@@ -535,6 +595,19 @@ vmap_remove(struct vmap *m, uint va_start, uint len)
 {
   acquire(&m->lock);
   uint va_end = va_start + len;
+#ifdef TREE
+  struct kv *kv = tree_find_gt(m->root, va_start);
+  if (kv == 0)
+    panic("no vma?");
+  struct vma *e = (struct vma *) kv->val;
+  if(e->va_start != va_start || e->va_end != va_end) {
+    cprintf("vmap_remove: partial unmap unsupported\n");
+    release(&m->lock);
+    return -1;
+  }
+  m->root = tree_remove(m->root, va_start+len);
+  rcu_delayed(e, vma_free);
+#else
   for(uint i = 0; i < NELEM(m->e); i++) {
     if(m->e[i] && (m->e[i]->va_start < va_end && m->e[i]->va_end > va_start)) {
       if(m->e[i]->va_start != va_start || m->e[i]->va_end != va_end) {
@@ -546,8 +619,42 @@ vmap_remove(struct vmap *m, uint va_start, uint len)
       m->e[i] = 0;
     }
   }
+#endif
   release(&m->lock);
   return 0;
+}
+
+static int
+vmap_copy_vma(struct kv *kv, void *_st)
+{
+  struct state *st = (struct state *) _st;
+  struct vma *e = (struct vma *) kv->val;
+  struct vma *c = vma_alloc();   // insert in tree!
+  if (c == 0) {
+    return 0;
+  }
+  c->va_start = e->va_start;
+  c->va_end = e->va_end;
+  if (st->share) {
+    c->n = e->n;
+    c->va_type = COW;
+    acquire(&e->lock);
+    e->va_type = COW;
+    updatepages(st->pgdir, (void *) (e->va_start), (void *) (e->va_end), PTE_COW);
+    release(&e->lock);
+  } else {
+    c->n = vmn_copy(e->n);
+    c->va_type = e->va_type;
+  }
+  if(c->n == 0) {
+    return 0;
+  }
+  __sync_fetch_and_add(&c->n->ref, 1);
+  struct kv kv1;
+  kv1.key = c->va_end;
+  kv1.val = (void *) c;
+  st->root = tree_insert(st->root, &kv1);
+  return 1;
 }
 
 struct vmap *
@@ -558,6 +665,20 @@ vmap_copy(struct vmap *m, int share)
     return 0;
 
   acquire(&m->lock);
+#ifdef TREE
+  struct state *st = kmalloc(sizeof(struct state));
+  st->share = share;
+  st->pgdir = m->pgdir;
+  st->root = c->root;
+  if (!tree_foreach(m->root, vmap_copy_vma, st)) {
+    vmap_free(c);
+    release(&m->lock);
+    kmfree(st);
+    return 0;
+  }
+  c->root = st->root;
+  kmfree(st);
+#else
   for(uint i = 0; i < NELEM(m->e); i++) {
     if(m->e[i] == 0)
       continue;
@@ -588,6 +709,7 @@ vmap_copy(struct vmap *m, int share)
     }
     __sync_fetch_and_add(&c->e[i]->n->ref, 1);
   }
+#endif
   if (share)
     lcr3(v2p(m->pgdir));  // Reload hardware page table
 
@@ -634,7 +756,7 @@ copyout(struct vmap *vmap, uint va, void *p, uint len)
   while(len > 0){
     uint va0 = (uint)PGROUNDDOWN(va);
     rcu_begin_read();
-    struct vma *vma = vmap_overlap(vmap, va, 1);
+    struct vma *vma = vmap_lookup(vmap, va, 1);
     if(vma == 0) {
       rcu_end_read();
       return -1;
@@ -665,7 +787,7 @@ copyin(struct vmap *vmap, uint va, void *p, uint len)
   while(len > 0){
     uint va0 = (uint)PGROUNDDOWN(va);
     rcu_begin_read();
-    struct vma *vma = vmap_overlap(vmap, va, 1);
+    struct vma *vma = vmap_lookup(vmap, va, 1);
     if(vma == 0) {
       rcu_end_read();
       return -1;
@@ -699,7 +821,7 @@ pagefault_ondemand(struct vmap *vmap, uint va, uint err, struct vma *m)
   if (vmn_doload(m->n, m->n->ip, m->n->offset, m->n->sz) < 0) {
     panic("pagefault: couldn't load");
   }
-  m = vmap_overlap(vmap, va, 1);
+  m = vmap_lookup(vmap, va, 1);
   if (!m)
     panic("pagefault_ondemand");
   acquire(&m->lock); // re-acquire lock on m
@@ -733,11 +855,15 @@ int
 pagefault(struct vmap *vmap, uint va, uint err)
 {
   pte_t *pte = walkpgdir(vmap->pgdir, (const void *)va, 1);
+
+  // XXX every PTE_COW results in page fault on each access. fix
   if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
     return 0;
 
+  // cprintf("%d: pagefault 0x%x err 0x%x pte 0x%x\n", proc->pid, va, err, *pte);
+
   rcu_begin_read();
-  struct vma *m = vmap_overlap(vmap, va, 1);
+  struct vma *m = vmap_lookup(vmap, va, 1);
   if(m == 0) {
     rcu_end_read();
     return -1;
@@ -745,6 +871,12 @@ pagefault(struct vmap *vmap, uint va, uint err)
 
   acquire(&m->lock);
   uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
+
+  // cprintf("%d: pagefault: valid vma 0x%x 0x%x %d (cow=%d)\n", proc->pid, m->va_start, 
+  // m->va_type, COW);
+  // if (m->n) 
+  // cprintf("page %d 0x%x %d %d\n", npg, m->n->page[npg], m->n->type, ONDEMAND);
+
   if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0) {
     m = pagefault_ondemand(vmap, va, err, m);
   }
