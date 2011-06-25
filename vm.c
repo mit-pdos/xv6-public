@@ -629,7 +629,7 @@ vmap_copy_vma(struct kv *kv, void *_st)
 {
   struct state *st = (struct state *) _st;
   struct vma *e = (struct vma *) kv->val;
-  struct vma *c = vma_alloc();   // insert in tree!
+  struct vma *c = vma_alloc();
   if (c == 0) {
     return 0;
   }
@@ -856,15 +856,16 @@ pagefault(struct vmap *vmap, uint va, uint err)
 {
   pte_t *pte = walkpgdir(vmap->pgdir, (const void *)va, 1);
 
-  // XXX every PTE_COW results in page fault on each access. fix
-  if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
+  if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W)) {   // optimize checks of args to syscals
     return 0;
+  }
 
   // cprintf("%d: pagefault 0x%x err 0x%x pte 0x%x\n", proc->pid, va, err, *pte);
 
   rcu_begin_read();
   struct vma *m = vmap_lookup(vmap, va, 1);
   if(m == 0) {
+    // cprintf("pagefault: no vma\n");
     rcu_end_read();
     return -1;
   }
