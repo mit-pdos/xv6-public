@@ -23,19 +23,18 @@
 
 typedef struct node node_t;
 struct node {
-  int key;
-  int val;
+  struct kv kv;
   int size;
   node_t *r, *l;
 } __attribute__ ((aligned (CACHELINE)));
 
 static node_t*
-alloc_node(int key, node_t *l, node_t *r)
+alloc_node(struct kv *kv, node_t *l, node_t *r)
 {
   node_t *n = kmalloc(sizeof(node_t));
   if (n == 0)
     return 0;
-  n->key = key;
+  n->kv = *kv;
   n->size = SIZE(l) + SIZE(r) + 1;
   n->l = l;
   n->r = r;
@@ -46,7 +45,7 @@ static void
 free_node(void *p)
 {
   // printf("free_node: 0x%lx\n", (long) n);
-  kfree(p);
+  kmfree(p);
 }
 
 static void
@@ -72,29 +71,45 @@ tree_print(node_t *n, int depth)
   if (n->l != 0)
     tree_print(n->l, depth+1);
   tree_printspace(depth*2);
-  cprintf("0x%lx: %d sz %d l 0x%lx 0x%lx\n", (long) n, n->key, n->size, 
+  cprintf("0x%lx: %d sz %d l 0x%lx 0x%lx\n", (long) n, n->kv.key, n->size, 
 	 (long) n->l, (long) n->r);
   if (n->r != 0)
     tree_print(n->r, depth+1);
 }
 
-node_t*
-tree_contains(node_t *n, int key)
+struct kv*
+tree_find(node_t *n, int key)
 {
   if (n == 0) return 0;
 
-  if (n->key == key) return n;
+  if (n->kv.key == key) return &n->kv;
 
-  if (key < n->key) return tree_contains(n->l, key);
-  else return tree_contains(n->r, key);
+  if (key < n->kv.key) return tree_find(n->l, key);
+  else return tree_find(n->r, key);
+}
+
+struct kv*
+tree_find_gt(node_t *n, int key)
+{
+  struct kv *r = 0;
+
+  if (n == 0) return 0;
+
+  if (n->kv.key > key) {
+    r = tree_find_gt(n->l, key);
+    if (r == 0) r = &n->kv;
+  } else {
+    r = tree_find_gt(n->r, key);
+  }
+  return r;
 }
 
 static node_t* tree_balance(node_t *n, node_t *l, node_t *r, int, int);
 
 static node_t*
-tree_single_left(int key, node_t *l, node_t *r)
+tree_single_left(struct kv *kv, node_t *l, node_t *r)
 {
-  node_t *t = alloc_node(r->key, alloc_node(key, l, r->l), r->r);
+  node_t *t = alloc_node(&r->kv, alloc_node(kv, l, r->l), r->r);
   rcu_free_node(r);
   return t;
 }
@@ -102,10 +117,10 @@ tree_single_left(int key, node_t *l, node_t *r)
 static node_t*
 tree_double_left(node_t *n, node_t *l, node_t *r)
 {
-  node_t *tl = alloc_node(n->key, l,  r->l->l);
+  node_t *tl = alloc_node(&n->kv, l,  r->l->l);
   // node_t *tr = alloc_node(r->key, r->l->r, r->r);
   node_t *tr = tree_balance(r, r->l->r, r->r, 0, 0);
-  node_t *t = alloc_node(r->l->key, tl, tr);
+  node_t *t = alloc_node(&r->l->kv, tl, tr);
 
   rcu_free_node(r->l);
   // rcu_free_node(r);
@@ -113,9 +128,9 @@ tree_double_left(node_t *n, node_t *l, node_t *r)
 }
 
 static node_t*
-tree_single_right(int key, node_t *l, node_t *r)
+tree_single_right(struct kv *kv, node_t *l, node_t *r)
 {
-  node_t *t = alloc_node(l->key, l->l, alloc_node(key, l->r, r));
+  node_t *t = alloc_node(&l->kv, l->l, alloc_node(kv, l->r, r));
   rcu_free_node(l);
   return t;
 }
@@ -125,8 +140,8 @@ tree_double_right(node_t *n, node_t *l, node_t *r)
 {
   // node_t *tl = alloc_node(l->key, l->l, l->r->l);
   node_t *tl = tree_balance(l, l->l, l->r->l, 0, 0);
-  node_t *tr = alloc_node(n->key, l->r->r, r);
-  node_t *t = alloc_node(l->r->key, tl, tr);
+  node_t *tr = alloc_node(&n->kv, l->r->r, r);
+  node_t *t = alloc_node(&l->r->kv, tl, tr);
 
   rcu_free_node(l->r);
   // rcu_free_node(l);
@@ -147,7 +162,7 @@ tree_node(node_t *n, node_t *l, node_t *r, int leftreplace, int inplace)
     n->size = 1 + SIZE(l) + SIZE(r);
     t = n;
   } else {
-    t = alloc_node(n->key, l, r);
+    t = alloc_node(&n->kv, l, r);
     rcu_free_node(n);
   }
   return t;
@@ -168,13 +183,13 @@ tree_balance(node_t *n, node_t *l, node_t *r, int leftreplace, int inplace)
   } else if (rn > WEIGHT * ln) {
     int rln = SIZE(r->l);
     int rrn = SIZE(r->r);
-    if (rln < rrn) t = tree_single_left(n->key, l, r);
+    if (rln < rrn) t = tree_single_left(&n->kv, l, r);
     else t = tree_double_left(n, l, r);
     rcu_free_node(n);
   } else if (ln > WEIGHT * rn) {
     int lln = SIZE(l->l);
     int lrn = SIZE(l->r);
-    if (lrn < lln) t = tree_single_right(n->key, l, r);
+    if (lrn < lln) t = tree_single_right(&n->kv, l, r);
     else t = tree_double_right(n, l, r);
     rcu_free_node(n);
   } else {
@@ -184,17 +199,17 @@ tree_balance(node_t *n, node_t *l, node_t *r, int leftreplace, int inplace)
 }
 
 node_t*
-tree_insert(node_t *n, int key)
+tree_insert(node_t *n, struct kv *kv)
 {
   node_t* t;
   if (n == 0) {
-    t = alloc_node(key, 0, 0);
-  } else if (key == n->key) {
+    t = alloc_node(kv, 0, 0);
+  } else if (kv->key == n->kv.key) {
     t = n;
-  } else if (key < n->key) {
-    t = tree_balance(n, tree_insert(n->l, key), n->r, 1, 1);
+  } else if (kv->key < n->kv.key) {
+    t = tree_balance(n, tree_insert(n->l, kv), n->r, 1, 1);
   } else {
-    t = tree_balance(n, n->l, tree_insert(n->r, key), 0, 1);
+    t = tree_balance(n, n->l, tree_insert(n->r, kv), 0, 1);
   }
   return t;
 }
@@ -243,9 +258,9 @@ tree_remove(node_t *n, int key)
   node_t *t;
 
   if (n == 0) t = 0;
-  else if (key < n->key) {
+  else if (key < n->kv.key) {
     t = tree_balance(n, tree_remove(n->l, key), n->r, 1, 1);
-  } else if (key > n->key) {
+  } else if (key > n->kv.key) {
     t = tree_balance(n, n->l, tree_remove(n->r, key), 0, 1);
   } else { 
     t = tree_delprime(n->l, n->r);
@@ -254,6 +269,23 @@ tree_remove(node_t *n, int key)
   return t;
 }
 
+int
+tree_foreach(node_t *n, int (*cb)(struct kv*, void *), void *st)
+{
+  if (n == 0)
+    return 1;
+
+  if (!tree_foreach(n->l, cb, st))
+    return 0;
+  if (!cb(&n->kv, st))
+    return 0;
+  
+  if (!tree_foreach(n->r, cb, st))
+    return 0;
+  return 1;
+}
+
+#define TEST
 #ifdef TEST
 
 #define NINSERT 1000
@@ -271,10 +303,10 @@ tree_check(node_t *n)
   if (n->l != 0) t = tree_check(n->l);
 
   // in order?
-  if (n->l != 0 && n->l->key > n->key) {
+  if (n->l != 0 && n->l->kv.key > n->kv.key) {
     panic("out of order l");
   }
-  if (n->r != 0 && n->r->key < n->key) {
+  if (n->r != 0 && n->r->kv.key < n->kv.key) {
     panic("out of order r");
   }
 
@@ -299,14 +331,14 @@ void
 rcu_tree_check(int t, int sz)
 {
   int i;
-  node_t *n;
+  struct kv *kv;
 
   // are all keys in the tree?
   for (i = 0; i < sz; i++) {
     if (insert_values[i] == 0)
       continue;
-    n = tree_contains(root, insert_values[i]);
-    if (n == 0) {
+    kv = tree_find(root, insert_values[i]);
+    if (kv == 0) {
       cprintf("tree_check %d (%d) fails\n", insert_values[i], i);
       panic("key missing");
     }
@@ -328,11 +360,13 @@ tree_test(void)
 {
   int i;
   for (i = 0; i < NINSERT; i++) {
+    struct kv kv;
     long d = draw(0);
+    kv.key = d;
     insert_values[i] = d;
     // tree_print(root, 0);
     // printf("add(%ld,%ld) nfree %d\n", d, d, tree_nfree);
-    root = tree_insert(root, d);
+    root = tree_insert(root, &kv);
   }
   rcu_tree_check(0, NINSERT);
   cprintf("tree_test ok1\n");
