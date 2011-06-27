@@ -524,7 +524,8 @@ scheduler(void)
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);
-  mtrace_fcall_register(schedp->pid, (unsigned long)scheduler, 0, mtrace_start);
+  mtrace_fcall_register(schedp->pid, (unsigned long)scheduler, 
+                        schedp->pid, 0, mtrace_start);
 
   for(;;){
     // Enable interrupts on this processor.
@@ -547,11 +548,11 @@ scheduler(void)
 	p->state = RUNNING;
 	p->tsc = rdtsc();
 
-	mtrace_fcall_register(schedp->pid, 0, 0, mtrace_pause);
-	mtrace_fcall_register(proc->pid, 0, 0, mtrace_resume);
+	mtrace_fcall_register(schedp->pid, 0, schedp->pid, 0, mtrace_pause);
+	mtrace_fcall_register(proc->pid, 0, proc->pid, 0, mtrace_resume);
 	mtrace_call_set(1, cpu->id);
 	swtch(&cpu->scheduler, proc->context);
-	mtrace_fcall_register(schedp->pid, 0, 0, mtrace_resume);
+	mtrace_fcall_register(schedp->pid, 0, schedp->pid, 0, mtrace_resume);
 	mtrace_call_set(0, cpu->id);
 	switchkvm();
 
@@ -604,7 +605,7 @@ sched(void)
     panic("sched interruptible");
   intena = cpu->intena;
   proc->curcycles += rdtsc() - proc->tsc;
-  mtrace_fcall_register(proc->pid, 0, 0, mtrace_pause);
+  mtrace_fcall_register(proc->pid, 0, proc->pid, 0, mtrace_pause);
   mtrace_call_set(0, cpu->id);
 
   swtch(&proc->context, cpu->scheduler);
