@@ -9,7 +9,7 @@
 #include "proc.h"
 #include "x86.h"
 #include "syscall.h"
-#include "xv6-mtrace.h"
+#include "xv6-kmtrace.h"
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
@@ -145,12 +145,10 @@ syscall(void)
 
   num = proc->tf->eax;
   if(num >= 0 && num < NELEM(syscalls) && syscalls[num]) {
-    mtrace_fcall_register(proc->pid, (unsigned long)syscalls[num],
-			  proc->pid, 0,mtrace_start);
+    mtrace_kstack_register(syscalls[num], mtrace_start, 0);
     mtrace_call_set(1, cpunum());
     proc->tf->eax = syscalls[num]();
-    mtrace_fcall_register(proc->pid, (unsigned long)syscalls[num],
-			  proc->pid, 0, mtrace_done);
+    mtrace_kstack_register(NULL, mtrace_done, 0);
     mtrace_call_set(0, cpunum());
   } else {
     cprintf("%d %s: unknown sys call %d\n",
