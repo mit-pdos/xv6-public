@@ -18,6 +18,8 @@ static struct proc *initproc __attribute__ ((aligned (CACHELINE)));
 extern void forkret(void);
 extern void trapret(void);
 
+struct kstack_tag kstack_tag[NCPU];
+
 enum { sched_debug = 0 };
 
 void
@@ -51,7 +53,6 @@ allocproc(void)
   p = kmalloc(sizeof(struct proc));
   if (p == 0) return 0;
   memset(p, 0, sizeof(*p));
-  p->state = EMBRYO;
 
   p->state = EMBRYO;
   p->pid = ns_allockey(nspid);
@@ -59,6 +60,7 @@ allocproc(void)
   p->cpuid = cpu->id;
   p->on_runq = -1;
   p->cpu_pin = 0;
+  p->mtrace_stacks.curr = -1;
 
   snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
   initlock(&p->lock, p->lockname+3);
@@ -524,7 +526,7 @@ scheduler(void)
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);
-  mtrace_kstack_register(scheduler, mtrace_start, schedp->pid);
+  mtrace_kstack_start(scheduler, schedp);
 
   for(;;){
     // Enable interrupts on this processor.
@@ -547,15 +549,15 @@ scheduler(void)
 	p->state = RUNNING;
 	p->tsc = rdtsc();
 
-        mtrace_kstack_register(NULL, mtrace_pause, schedp->pid);
+        mtrace_kstack_pause(schedp);
         if (p->context->eip != (uint)forkret && 
             p->context->eip != (uint)rcu_gc_worker)
         {
-          mtrace_kstack_register(NULL, mtrace_resume, 0);
+          mtrace_kstack_resume(proc);
         }
 	mtrace_call_set(1, cpu->id);
 	swtch(&cpu->scheduler, proc->context);
-        mtrace_kstack_register(NULL, mtrace_resume, schedp->pid);
+        mtrace_kstack_resume(schedp);
 	mtrace_call_set(0, cpu->id);
 	switchkvm();
 
@@ -609,9 +611,9 @@ sched(void)
   intena = cpu->intena;
   proc->curcycles += rdtsc() - proc->tsc;
   if (proc->state == ZOMBIE)
-    mtrace_kstack_register(NULL, mtrace_done, 0);
+    mtrace_kstack_stop(proc);
   else
-    mtrace_kstack_register(NULL, mtrace_pause, 0);
+    mtrace_kstack_pause(proc);
   mtrace_call_set(0, cpu->id);
 
   swtch(&proc->context, cpu->scheduler);
@@ -640,9 +642,9 @@ forkret(void)
   // b/c file system code needs a process context
   // in which to call cv_sleep().
   if(proc->cwd == 0) {
-    mtrace_kstack_register(forkret, mtrace_start, 0);
+    mtrace_kstack_start(forkret, proc);
     proc->cwd = namei("/");
-    mtrace_kstack_register(NULL, mtrace_done, 0);
+    mtrace_kstack_stop(proc);
   }
 
   // Return to "caller", actually trapret (see allocproc).

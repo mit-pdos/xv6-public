@@ -9,6 +9,7 @@
 #include "proc.h"
 #include "x86.h"
 #include "traps.h"
+#include "xv6-kmtrace.h"
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -49,6 +50,11 @@ trap(struct trapframe *tf)
       exit();
     return;
   }
+
+  if (proc->mtrace_stacks.curr >= 0)
+    mtrace_kstack_pause(proc);
+  mtrace_kstack_start(trap, proc);
+
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpu->id == 0){
@@ -103,6 +109,9 @@ trap(struct trapframe *tf)
 
     if(tf->trapno == T_PGFLT){
       if(pagefault(proc->vmap, rcr2(), tf->err) >= 0){
+        mtrace_kstack_stop(proc);
+        if (proc->mtrace_stacks.curr >= 0)
+          mtrace_kstack_resume(proc);
         return;
       }
     }
@@ -129,4 +138,8 @@ trap(struct trapframe *tf)
   // Check if the process has been killed since we yielded
   if(proc && proc->killed && (tf->cs&3) == DPL_USER)
     exit();
+
+  mtrace_kstack_stop(proc);
+  if (proc->mtrace_stacks.curr >= 0)
+    mtrace_kstack_resume(proc);
 }

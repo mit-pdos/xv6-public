@@ -72,6 +72,18 @@ struct vmap {
   char lockname[16];
 };
 
+// Per-process, per-stack meta data for mtrace
+#define MTRACE_NSTACKS 16
+#define MTRACE_TAGSHIFT 28
+#if NCPU > 16
+#error Oops -- decrease MTRACE_TAGSHIFT
+#endif
+
+struct mtrace_stacks {
+  int curr;
+  unsigned long tag[MTRACE_NSTACKS];
+};
+
 // Per-process state
 struct proc {
   struct vmap *vmap;           // va -> vma
@@ -100,6 +112,7 @@ struct proc {
   char lockname[16];
   int on_runq;
   int cpu_pin;
+  struct mtrace_stacks mtrace_stacks;
 };
 
 // Process memory is laid out contiguously, low addresses first:

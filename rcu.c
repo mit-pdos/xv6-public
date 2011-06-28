@@ -116,7 +116,7 @@ rcu_gc_worker(void)
 {
   release(&proc->lock);	// initially held by scheduler
 
-  mtrace_kstack_register(rcu_gc_worker, mtrace_start, 0);
+  mtrace_kstack_start(rcu_gc_worker, proc);
 
   struct spinlock wl;
   initlock(&wl, "rcu_gc_worker");   // dummy lock

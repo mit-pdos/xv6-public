@@ -145,10 +145,10 @@ syscall(void)
 
   num = proc->tf->eax;
   if(num >= 0 && num < NELEM(syscalls) && syscalls[num]) {
-    mtrace_kstack_register(syscalls[num], mtrace_start, 0);
+    mtrace_kstack_start(syscalls[num], proc);
     mtrace_call_set(1, cpunum());
     proc->tf->eax = syscalls[num]();
-    mtrace_kstack_register(NULL, mtrace_done, 0);
+    mtrace_kstack_stop(proc);
     mtrace_call_set(0, cpunum());
   } else {
     cprintf("%d %s: unknown sys call %d\n",
