@@ -253,8 +253,8 @@ mtrace.txt: mtrace.out $(QEMUSRC)/mtrace-tools/m2text
 mscan.out: mtrace.out $(QEMUSRC)/mtrace-tools/mscan
 	$(QEMUSRC)/mtrace-tools/mscan > $@ || (rm -f $@; exit 2)
 
-mscan.sorted: mscan.out $(QEMUSRC)/mtrace-tools/sersec-sort.py
-	$(QEMUSRC)/mtrace-tools/sersec-sort.py < $< > $@
+mscan.sorted: mscan.out $(QEMUSRC)/mtrace-tools/sersec-sort
+	$(QEMUSRC)/mtrace-tools/sersec-sort < $< > $@
 
 .gdbinit: .gdbinit.tmpl
 	sed "s/localhost:1234/localhost:$(GDBPORT)/" < $^ > $@
