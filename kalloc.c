@@ -72,8 +72,6 @@ kfree_pool(struct kmem *m, char *v)
   r->next = m->freelist;
   m->freelist = r;
   m->nfree++;
-  release(&m->lock);
-
   if (kinited)
     mtrace_label_register(mtrace_label_block,
 			  r,
@@ -81,6 +79,7 @@ kfree_pool(struct kmem *m, char *v)
 			  0,
 			  0,
 			  RET_EIP());
+  release(&m->lock);
 }
 
 void
