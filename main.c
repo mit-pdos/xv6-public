@@ -20,7 +20,7 @@ main(void)
   lapicinit(mpbcpu());
   seginit();       // set up segments
   kinit();         // initialize memory allocator
-  jmpkstack();       // call mainc() on a properly-allocated stack 
+  jmpkstack();     // call mainc() on a properly-allocated stack 
 }
 
 void

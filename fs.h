@@ -13,6 +13,7 @@ struct superblock {
   uint size;         // Size of file system image (blocks)
   uint nblocks;      // Number of data blocks
   uint ninodes;      // Number of inodes.
+  uint nlog;         // Number of log blocks
 };
 
 #define NDIRECT 12

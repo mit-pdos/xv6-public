@@ -25,7 +25,7 @@
 static void itrunc(struct inode*);
 
 // Read the super block.
-static void
+void
 readsb(int dev, struct superblock *sb)
 {
   struct buf *bp;
@@ -65,7 +65,7 @@ balloc(uint dev)
       m = 1 << (bi % 8);
       if((bp->data[bi/8] & m) == 0){  // Is block free?
         bp->data[bi/8] |= m;  // Mark block in use on disk.
-        bwrite(bp);
+        log_write(bp);
         brelse(bp);
         return b + bi;
       }
@@ -92,7 +92,7 @@ bfree(int dev, uint b)
   if((bp->data[bi/8] & m) == 0)
     panic("freeing free block");
   bp->data[bi/8] &= ~m;  // Mark block free on disk.
-  bwrite(bp);
+  log_write(bp);
   brelse(bp);
 }
 
@@ -159,7 +159,7 @@ ialloc(uint dev, short type)
     if(dip->type == 0){  // a free inode
       memset(dip, 0, sizeof(*dip));
       dip->type = type;
-      bwrite(bp);   // mark it allocated on the disk
+      log_write(bp);   // mark it allocated on the disk
       brelse(bp);
       return iget(dev, inum);
     }
@@ -183,7 +183,7 @@ iupdate(struct inode *ip)
   dip->nlink = ip->nlink;
   dip->size = ip->size;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
-  bwrite(bp);
+  log_write(bp);
   brelse(bp);
 }
 
@@ -339,7 +339,7 @@ bmap(struct inode *ip, uint bn)
     a = (uint*)bp->data;
     if((addr = a[bn]) == 0){
       a[bn] = addr = balloc(ip->dev);
-      bwrite(bp);
+      log_write(bp);
     }
     brelse(bp);
     return addr;

@@ -6,6 +6,7 @@ struct pipe;
 struct proc;
 struct spinlock;
 struct stat;
+struct superblock;
 
 // bio.c
 void            binit(void);
@@ -32,6 +33,7 @@ int             filestat(struct file*, struct stat*);
 int             filewrite(struct file*, char*, int n);
 
 // fs.c
+void            readsb(int dev, struct superblock *sb);
 int             dirlink(struct inode*, char*, uint);
 struct inode*   dirlookup(struct inode*, char*, uint*);
 struct inode*   ialloc(uint, short);
@@ -74,6 +76,12 @@ void            lapiceoi(void);
 void            lapicinit(int);
 void            lapicstartap(uchar, uint);
 void            microdelay(int);
+
+// log.c
+void            initlog(void);
+void            log_write(struct buf*);
+void            begin_trans();
+void            commit_trans();
 
 // mp.c
 extern int      ismp;
