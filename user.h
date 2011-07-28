@@ -18,10 +18,10 @@ int link(char*, char*);
 int mkdir(char*);
 int chdir(char*);
 int dup(int);
-int getpid();
+int getpid(void);
 char* sbrk(int);
 int sleep(int);
-int uptime();
+int uptime(void);
 
 // ulib.c
 int stat(char*, struct stat*);

@@ -6,6 +6,7 @@ struct pipe;
 struct proc;
 struct spinlock;
 struct stat;
+struct superblock;
 
 // bio.c
 void            binit(void);
@@ -32,6 +33,7 @@ int             filestat(struct file*, struct stat*);
 int             filewrite(struct file*, char*, int n);
 
 // fs.c
+void            readsb(int dev, struct superblock *sb);
 int             dirlink(struct inode*, char*, uint);
 struct inode*   dirlookup(struct inode*, char*, uint*);
 struct inode*   ialloc(uint, short);
@@ -62,7 +64,7 @@ void            ioapicinit(void);
 // kalloc.c
 char*           kalloc(void);
 void            kfree(char*);
-void            kinit(char*,uint);
+void            kinit(void);
 
 // kbd.c
 void            kbdintr(void);
@@ -74,6 +76,12 @@ void            lapiceoi(void);
 void            lapicinit(int);
 void            lapicstartap(uchar, uint);
 void            microdelay(int);
+
+// log.c
+void            initlog(void);
+void            log_write(struct buf*);
+void            begin_trans();
+void            commit_trans();
 
 // mp.c
 extern int      ismp;
@@ -101,6 +109,7 @@ int             kill(int);
 void            pinit(void);
 void            procdump(void);
 void            scheduler(void) __attribute__((noreturn));
+void            sched(void);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
@@ -116,8 +125,8 @@ void            getcallerpcs(void*, uint*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
-void            pushcli();
-void            popcli();
+void            pushcli(void);
+void            popcli(void);
 
 // string.c
 int             memcmp(const void*, const void*, uint);
@@ -151,20 +160,20 @@ void            uartintr(void);
 void            uartputc(int);
 
 // vm.c
-void            pminit(void);
-void            ksegment(void);
+void            seginit(void);
 void            kvmalloc(void);
 void            vmenable(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
-int             allocuvm(pde_t*, char*, uint);
-int             deallocuvm(pde_t *pgdir, char *addr, uint sz);
+int             allocuvm(pde_t*, uint, uint);
+int             deallocuvm(pde_t*, uint, uint);
 void            freevm(pde_t*);
-void            inituvm(pde_t*, char*, char*, uint);
-int             loaduvm(pde_t*, char*, struct inode *ip, uint, uint);
-pde_t*          copyuvm(pde_t*,uint);
+void            inituvm(pde_t*, char*, uint);
+int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
+pde_t*          copyuvm(pde_t*, uint);
 void            switchuvm(struct proc*);
-void            switchkvm();
+void            switchkvm(void);
+int             copyout(pde_t*, uint, void*, uint);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

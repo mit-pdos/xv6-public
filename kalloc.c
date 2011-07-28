@@ -17,17 +17,21 @@ struct {
   struct run *freelist;
 } kmem;
 
+extern char end[]; // first address after kernel loaded from ELF file
+
 // Initialize free list of physical pages.
 void
-kinit(char *p, uint len)
+kinit(void)
 {
+  char *p;
+
   initlock(&kmem.lock, "kmem");
-  char *p1 = (char*)PGROUNDUP((uint)p);
-  char *p2 = PGROUNDDOWN(p + len);
-  for( ; p1 < p2; p1 += 4096)
-    kfree(p1);
+  p = (char*)PGROUNDUP((uint)end);
+  for(; p + PGSIZE <= (char*)PHYSTOP; p += PGSIZE)
+    kfree(p);
 }
 
+//PAGEBREAK: 21
 // Free the page of physical memory pointed at by v,
 // which normally should have been returned by a
 // call to kalloc().  (The exception is when
@@ -37,14 +41,14 @@ kfree(char *v)
 {
   struct run *r;
 
-  if(((uint) v) % PGSIZE || (uint)v < 1024*1024 || (uint)v >= PHYSTOP) 
+  if((uint)v % PGSIZE || v < end || (uint)v >= PHYSTOP) 
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);
 
   acquire(&kmem.lock);
-  r = (struct run *) v;
+  r = (struct run*)v;
   r->next = kmem.freelist;
   kmem.freelist = r;
   release(&kmem.lock);
@@ -54,7 +58,7 @@ kfree(char *v)
 // Returns a pointer that the kernel can use.
 // Returns 0 if the memory cannot be allocated.
 char*
-kalloc()
+kalloc(void)
 {
   struct run *r;
 
@@ -63,6 +67,6 @@ kalloc()
   if(r)
     kmem.freelist = r->next;
   release(&kmem.lock);
-  return (char*) r;
+  return (char*)r;
 }
 

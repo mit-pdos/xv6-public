@@ -18,28 +18,29 @@ static void consputc(int);
 static int panicked = 0;
 
 static struct {
-	struct spinlock lock;
-	int locking;
+  struct spinlock lock;
+  int locking;
 } cons;
 
 static void
-printint(int xx, int base, int sgn)
+printint(int xx, int base, int sign)
 {
   static char digits[] = "0123456789abcdef";
   char buf[16];
-  int i = 0, neg = 0;
+  int i;
   uint x;
 
-  if(sgn && xx < 0){
-    neg = 1;
+  if(sign && (sign = xx < 0))
     x = -xx;
-  } else
+  else
     x = xx;
 
+  i = 0;
   do{
     buf[i++] = digits[x % base];
   }while((x /= base) != 0);
-  if(neg)
+
+  if(sign)
     buf[i++] = '-';
 
   while(--i >= 0)
@@ -136,8 +137,7 @@ cgaputc(int c)
   if(c == '\n')
     pos += 80 - pos%80;
   else if(c == BACKSPACE){
-    if(pos > 0)
-      crt[--pos] = ' ' | 0x0700;
+    if(pos > 0) --pos;
   } else
     crt[pos++] = (c&0xff) | 0x0700;  // black on white
   
@@ -163,16 +163,13 @@ consputc(int c)
       ;
   }
 
-  if (c == BACKSPACE) {
-    uartputc('\b');
-    uartputc(' ');
-    uartputc('\b');
+  if(c == BACKSPACE){
+    uartputc('\b'); uartputc(' '); uartputc('\b');
   } else
     uartputc(c);
   cgaputc(c);
 }
 
-//PAGEBREAK: 50
 #define INPUT_BUF 128
 struct {
   struct spinlock lock;
@@ -202,8 +199,7 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
-    case C('H'):  // Backspace
-    case '\x7f':
+    case C('H'): case '\x7f':  // Backspace
       if(input.e != input.w){
         input.e--;
         consputc(BACKSPACE);
@@ -211,9 +207,7 @@ consoleintr(int (*getc)(void))
       break;
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
-        // The serial port produces 0x13, not 0x10
-        if(c == '\r')
-          c = '\n';
+        c = (c == '\r') ? '\n' : c;
         input.buf[input.e++ % INPUT_BUF] = c;
         consputc(c);
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){

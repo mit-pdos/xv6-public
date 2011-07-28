@@ -13,6 +13,7 @@ struct superblock {
   uint size;         // Size of file system image (blocks)
   uint nblocks;      // Number of data blocks
   uint ninodes;      // Number of inodes.
+  uint nlog;         // Number of log blocks
 };
 
 #define NDIRECT 12
@@ -41,7 +42,6 @@ struct dinode {
 // Block containing bit for block b
 #define BBLOCK(b, ninodes) (b/BPB + (ninodes)/IPB + 3)
 
-// PAGEBREAK: 10
 // Directory is a file containing a sequence of dirent structures.
 #define DIRSIZ 14
 

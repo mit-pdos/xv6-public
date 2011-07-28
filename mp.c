@@ -39,7 +39,6 @@ mpsearch1(uchar *addr, int len)
 {
   uchar *e, *p;
 
-  cprintf("mpsearch1 0x%x %d\n", addr, len);
   e = addr+len;
   for(p = addr; p < e; p += sizeof(struct mp))
     if(memcmp(p, "_MP_", 4) == 0 && sum(p, sizeof(struct mp)) == 0)
@@ -113,9 +112,9 @@ mpinit(void)
     switch(*p){
     case MPPROC:
       proc = (struct mpproc*)p;
-      if(ncpu != proc->apicid) {
-        cprintf("mpinit: ncpu=%d apicpid=%d", ncpu, proc->apicid);
-        panic("mpinit");
+      if(ncpu != proc->apicid){
+        cprintf("mpinit: ncpu=%d apicid=%d\n", ncpu, proc->apicid);
+        ismp = 0;
       }
       if(proc->flags & MPBOOT)
         bcpu = &cpus[ncpu];
@@ -135,9 +134,17 @@ mpinit(void)
       continue;
     default:
       cprintf("mpinit: unknown config type %x\n", *p);
-      panic("mpinit");
+      ismp = 0;
     }
   }
+  if(!ismp){
+    // Didn't like what we found; fall back to no MP.
+    ncpu = 1;
+    lapic = 0;
+    ioapicid = 0;
+    return;
+  }
+
   if(mp->imcrp){
     // Bochs doesn't support IMCR, so this doesn't run on Bochs.
     // But it would on real hardware.

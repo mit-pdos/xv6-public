@@ -26,7 +26,7 @@ free(void *ap)
 {
   Header *bp, *p;
 
-  bp = (Header*) ap - 1;
+  bp = (Header*)ap - 1;
   for(p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
     if(p >= p->s.ptr && (bp > p || bp < p->s.ptr))
       break;
@@ -52,7 +52,7 @@ morecore(uint nu)
   if(nu < 4096)
     nu = 4096;
   p = sbrk(nu * sizeof(Header));
-  if(p == (char*) -1)
+  if(p == (char*)-1)
     return 0;
   hp = (Header*)p;
   hp->s.size = nu;
@@ -81,7 +81,7 @@ malloc(uint nbytes)
         p->s.size = nunits;
       }
       freep = prevp;
-      return (void*) (p + 1);
+      return (void*)(p + 1);
     }
     if(p == freep)
       if((p = morecore(nunits)) == 0)

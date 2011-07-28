@@ -58,6 +58,13 @@ perl -e '
 			next;
 		}
 		
+		if(/sheet1: (left|right)$/){
+			print STDERR "assuming that sheet 1 is a $1 page.  double-check!\n";
+			$left = $1 eq "left" ? "13579" : "02468";
+			$right = $1 eq "left" ? "02468" : "13579";
+			next;
+		}
+		
 		if(/even: (.*)/){
 			$file = $1;
 			if(!defined($toc{$file})){
@@ -89,18 +96,13 @@ perl -e '
 				print STDERR "Have no toc for $file\n";
 				next;
 			}
-			# this assumes that sheet 1 of code is a left page
-			# double-check the PDF
-			if(!$leftwarn++) {
-				print STDERR "assuming that sheet 1 is a left page.  double-check!\n";
-			}
-			if($what eq "left" && !($toc{$file} =~ /^\d[13579]0/)){
-				print STDERR "$file does not start on a fresh left page [$toc{$file}]\n";
+			if($what eq "left" && !($toc{$file} =~ /^\d[$left][05]/)){
+				print STDERR "$file does not start on a left page [$toc{$file}]\n";
 			}
 			# why does this not work if I inline $x in the if?
-			$x = ($toc{$file} =~ /^\d[02468]0/);
+			$x = ($toc{$file} =~ /^\d[$right][05]/);
 			if($what eq "right" && !$x){
-				print STDERR "$file does not start on a fresh right page [$toc{$file}] [$x]\n";
+				print STDERR "$file does not start on a right page [$toc{$file}] [$x]\n";
 			}
 			next;
 		}
@@ -189,7 +191,9 @@ do
 	uses=`egrep -h '([^a-zA-Z_0-9])'$i'($|[^a-zA-Z_0-9])' alltext | awk '{print $1}'`
 	if [ "x$defs" != "x$uses" ]; then
 		echo $i $defs
-		echo $uses |fmt -24 | sed 's/^/    /'
+		echo $uses |fmt -29 | sed 's/^/    /'
+#	else
+#		echo $i defined but not used >&2
 	fi
 done
 ) >refs

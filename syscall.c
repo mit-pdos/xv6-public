@@ -22,8 +22,6 @@ fetchint(struct proc *p, uint addr, int *ip)
   return 0;
 }
 
-// XXX should we copy the string?
-
 // Fetch the nul-terminated string at addr from process p.
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
@@ -34,8 +32,8 @@ fetchstr(struct proc *p, uint addr, char **pp)
 
   if(addr >= p->sz)
     return -1;
-  *pp = (char *) addr;
-  ep = (char *) p->sz;
+  *pp = (char*)addr;
+  ep = (char*)p->sz;
   for(s = *pp; s < ep; s++)
     if(*s == 0)
       return s - *pp;
@@ -46,8 +44,7 @@ fetchstr(struct proc *p, uint addr, char **pp)
 int
 argint(int n, int *ip)
 {
-  int x = fetchint(proc, proc->tf->esp + 4 + 4*n, ip);
-  return x;
+  return fetchint(proc, proc->tf->esp + 4 + 4*n, ip);
 }
 
 // Fetch the nth word-sized system call argument as a pointer
@@ -60,10 +57,9 @@ argptr(int n, char **pp, int size)
   
   if(argint(n, &i) < 0)
     return -1;
-  if((uint)i >= proc->sz || (uint)i+size >= proc->sz)
+  if((uint)i >= proc->sz || (uint)i+size > proc->sz)
     return -1;
-  // *pp = proc->mem + i;   // XXXXX
-  *pp = (char *) i;   // XXXXX
+  *pp = (char*)i;
   return 0;
 }
 
@@ -102,39 +98,52 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 
+int
+sys_init(void)
+{
+  initlog();
+  return 0;
+}
+
 static int (*syscalls[])(void) = {
-[SYS_chdir]   sys_chdir,
-[SYS_close]   sys_close,
-[SYS_dup]     sys_dup,
-[SYS_exec]    sys_exec,
-[SYS_exit]    sys_exit,
+[SYS_init]    sys_init,
 [SYS_fork]    sys_fork,
-[SYS_fstat]   sys_fstat,
-[SYS_getpid]  sys_getpid,
-[SYS_kill]    sys_kill,
-[SYS_link]    sys_link,
-[SYS_mkdir]   sys_mkdir,
-[SYS_mknod]   sys_mknod,
-[SYS_open]    sys_open,
+[SYS_exit]    sys_exit,
+[SYS_wait]    sys_wait,
 [SYS_pipe]    sys_pipe,
 [SYS_read]    sys_read,
+[SYS_kill]    sys_kill,
+[SYS_exec]    sys_exec,
+[SYS_fstat]   sys_fstat,
+[SYS_chdir]   sys_chdir,
+[SYS_dup]     sys_dup,
+[SYS_getpid]  sys_getpid,
 [SYS_sbrk]    sys_sbrk,
 [SYS_sleep]   sys_sleep,
-[SYS_unlink]  sys_unlink,
-[SYS_wait]    sys_wait,
-[SYS_write]   sys_write,
 [SYS_uptime]  sys_uptime,
+// File system calls that are run in a transaction:
+[SYS_open]    sys_open,
+[SYS_write]   sys_write,
+[SYS_mknod]   sys_mknod,
+[SYS_unlink]  sys_unlink,
+[SYS_link]    sys_link,
+[SYS_mkdir]   sys_mkdir,
+[SYS_close]   sys_close,
 };
 
 void
 syscall(void)
 {
   int num;
-  
+
   num = proc->tf->eax;
-  if(num >= 0 && num < NELEM(syscalls) && syscalls[num])
+  if(num >= 0 && num < SYS_open && syscalls[num]) {
     proc->tf->eax = syscalls[num]();
-  else {
+  } else if (num >= SYS_open && num < NELEM(syscalls) && syscalls[num]) {
+    begin_trans();
+    proc->tf->eax = syscalls[num]();
+    commit_trans();
+  } else {
     cprintf("%d %s: unknown sys call %d\n",
             proc->pid, proc->name, num);
     proc->tf->eax = -1;

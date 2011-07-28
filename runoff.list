@@ -22,8 +22,8 @@ proc.h
 proc.c
 swtch.S
 kalloc.c
+data.S
 vm.c
-
 # system calls
 traps.h
 vectors.pl
@@ -46,10 +46,9 @@ file.c
 sysfile.c
 exec.c
 
-
-
 # pipes
 pipe.c
+
 
 # string operations
 string.c
@@ -65,11 +64,15 @@ kbd.c
 console.c
 timer.c
 uart.c
+multiboot.S
 
 # user-level
 initcode.S
 usys.S
 init.c
 sh.c
+
+
+
 
 
