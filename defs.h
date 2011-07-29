@@ -62,6 +62,7 @@ extern uchar    ioapicid;
 void            ioapicinit(void);
 
 // kalloc.c
+char*           pgalloc(void);
 char*           kalloc(void);
 void            kfree(char*);
 void            kinit(void);
@@ -160,6 +161,7 @@ void            uartintr(void);
 void            uartputc(int);
 
 // vm.c
+void            pginit(char* (*alloc)());
 void            seginit(void);
 void            kvmalloc(void);
 void            vmenable(void);

@@ -2,20 +2,71 @@
 #include "types.h"
 #include "defs.h"
 #include "x86.h"
+#include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
 #include "elf.h"
 
 extern char data[];  // defined in data.S
-
 static pde_t *kpgdir;  // for use in scheduler()
+struct segdesc gdt[NSEGS];
 
-// Allocate one page table for the machine for the kernel address
-// space for scheduler processes.
-void
-kvmalloc(void)
+
+// page map for during boot
+// XXX build a static page table in assembly
+static void
+pgmap(void *va, void *last, uint pa)
 {
-  kpgdir = setupkvm();
+  pde_t *pde;
+  pte_t *pgtab;
+  pte_t *pte;
+
+  for(;;){
+    pde = &kpgdir[PDX(va)];
+    pde_t pdev = *pde;
+    if (pdev == 0) {
+      pgtab = (pte_t *) pgalloc();
+      *pde = v2p(pgtab) | PTE_P | PTE_W;
+    } else {
+      pgtab = (pte_t*)p2v(PTE_ADDR(pdev));
+    }
+    pte = &pgtab[PTX(va)];
+    *pte = pa | PTE_W | PTE_P;
+    if(va == last)
+      break;
+    va += PGSIZE;
+    pa += PGSIZE;
+  }
+}
+
+// set up a page table to get off the ground
+void
+pginit(char* (*alloc)(void))
+{
+  uint cr0;
+
+  kpgdir = (pde_t *) alloc();
+  pgmap((void *) 0, (void *) PHYSTOP, 0);    // map pa 0 at va 0
+  pgmap((void *) KERNBASE, (void *) (KERNBASE+PHYSTOP), 0);   // map pa 0 at va KERNBASE
+  pgmap((void*)0xFE000000, 0, 0xFE000000);
+
+  switchkvm(); // load kpgdir into cr3
+
+  cr0 = rcr0();
+  cr0 |= CR0_PG;
+  lcr0(cr0);   // paging on
+
+  // new gdt
+  gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
+  gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
+  lgdt((void *)v2p(gdt), sizeof(gdt));
+  loadgs(SEG_KDATA << 3);
+  loadfs(SEG_KDATA << 3);
+  loades(SEG_KDATA << 3);
+  loadds(SEG_KDATA << 3);
+  loadss(SEG_KDATA << 3);
+
+  __asm volatile("ljmp %0,$1f\n 1:\n" :: "i" (SEG_KCODE << 3));  // reload cs
 }
 
 // Set up CPU's kernel segment descriptors.
@@ -57,7 +108,7 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
 
   pde = &pgdir[PDX(va)];
   if(*pde & PTE_P){
-    pgtab = (pte_t*)PTE_ADDR(*pde);
+    pgtab = (pte_t*)p2v(PTE_ADDR(*pde));
   } else {
     if(!create || (pgtab = (pte_t*)kalloc()) == 0)
       return 0;
@@ -66,7 +117,7 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
     // The permissions here are overly generous, but they can
     // be further restricted by the permissions in the page table 
     // entries, if necessary.
-    *pde = PADDR(pgtab) | PTE_P | PTE_W | PTE_U;
+    *pde = v2p(pgtab) | PTE_P | PTE_W | PTE_U;
   }
   return &pgtab[PTX(va)];
 }
@@ -105,29 +156,30 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
 // page protection bits prevent it from using anything other
 // than its memory.
 // 
+//
 // setupkvm() and exec() set up every page table like this:
-//   0..640K          : user memory (text, data, stack, heap)
-//   640K..1M         : mapped direct (for IO space)
-//   1M..end          : mapped direct (for the kernel's text and data)
-//   end..PHYSTOP     : mapped direct (kernel heap and user pages)
+//   0..KERNBASE      : user memory (text, data, stack, heap), mapped to some phys mem
+//   KERNBASE+640K..KERNBASE+1M: mapped to 640K..1M
+//   KERNBASE+1M..KERNBASE+end : mapped to 1M..end
+//   KERNBASE+end..KERBASE+PHYSTOP     : mapped to end..PHYSTOP (free memory)
 //   0xfe000000..0    : mapped direct (devices such as ioapic)
 //
 // The kernel allocates memory for its heap and for user memory
 // between kernend and the end of physical memory (PHYSTOP).
 // The virtual address space of each user program includes the kernel
-// (which is inaccessible in user mode).  The user program addresses
-// range from 0 till 640KB (USERTOP), which where the I/O hole starts
-// (both in physical memory and in the kernel's virtual address
-// space).
+// (which is inaccessible in user mode).  The user program sits in
+// the bottom of the address space, and the kernel at the top at KERNBASE.
 static struct kmap {
-  void *p;
-  void *e;
+  void *l;
+  uint p;
+  uint e;
   int perm;
 } kmap[] = {
-  {(void*)USERTOP,    (void*)0x100000, PTE_W},  // I/O space
-  {(void*)0x100000,   data,            0    },  // kernel text, rodata
-  {data,              (void*)PHYSTOP,  PTE_W},  // kernel data, memory
-  {(void*)0xFE000000, 0,               PTE_W},  // device mappings
+  { (void *)IOSPACEB, IOSPACEB, IOSPACEE, PTE_W},  // I/O space
+  { P2V(IOSPACEB), IOSPACEB, IOSPACEE, PTE_W},  // I/O space
+  { (void *)KERNLINK, V2P(KERNLINK), V2P(data),  0},  // kernel text, rodata
+  { data, V2P(data), PHYSTOP,  PTE_W},  // kernel data, memory
+  { (void*)0xFE000000, 0xFE000000, 0, PTE_W},  // device mappings
 };
 
 // Set up kernel part of a page table.
@@ -142,10 +194,19 @@ setupkvm(void)
   memset(pgdir, 0, PGSIZE);
   k = kmap;
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
-    if(mappages(pgdir, k->p, k->e - k->p, (uint)k->p, k->perm) < 0)
+    if(mappages(pgdir, k->l, k->e - k->p, (uint)k->p, k->perm) < 0)
       return 0;
 
   return pgdir;
+}
+
+// Allocate one page table for the machine for the kernel address
+// space for scheduler processes.
+void
+kvmalloc(void)
+{
+  kpgdir = setupkvm();
+  switchkvm();
 }
 
 // Turn on paging.
@@ -158,6 +219,16 @@ vmenable(void)
   cr0 = rcr0();
   cr0 |= CR0_PG;
   lcr0(cr0);
+
+ struct cpu *c = &cpus[0];
+  lgdt((void *)v2p((void *)(c->gdt)), sizeof(c->gdt));
+  loadgs(SEG_KCPU << 3);
+  loadfs(SEG_KDATA << 3);
+  loades(SEG_KDATA << 3);
+  loadds(SEG_KDATA << 3);
+  loadss(SEG_KDATA << 3);
+
+  __asm volatile("ljmp %0,$1f\n 1:\n" :: "i" (SEG_KCODE << 3));  // reload cs
 }
 
 // Switch h/w page table register to the kernel-only page table,
@@ -165,7 +236,7 @@ vmenable(void)
 void
 switchkvm(void)
 {
-  lcr3(PADDR(kpgdir));   // switch to the kernel page table
+  lcr3(v2p(kpgdir));   // switch to the kernel page table
 }
 
 // Switch TSS and h/w page table to correspond to process p.
@@ -180,7 +251,7 @@ switchuvm(struct proc *p)
   ltr(SEG_TSS << 3);
   if(p->pgdir == 0)
     panic("switchuvm: no pgdir");
-  lcr3(PADDR(p->pgdir));  // switch to new address space
+  lcr3(v2p(p->pgdir));  // switch to new address space
   popcli();
 }
 
@@ -195,7 +266,7 @@ inituvm(pde_t *pgdir, char *init, uint sz)
     panic("inituvm: more than a page");
   mem = kalloc();
   memset(mem, 0, PGSIZE);
-  mappages(pgdir, 0, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+  mappages(pgdir, 0, PGSIZE, v2p(mem), PTE_W|PTE_U);
   memmove(mem, init, sz);
 }
 
@@ -245,7 +316,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       return 0;
     }
     memset(mem, 0, PGSIZE);
-    mappages(pgdir, (char*)a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+    mappages(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
   }
   return newsz;
 }
@@ -289,7 +360,7 @@ freevm(pde_t *pgdir)
   deallocuvm(pgdir, USERTOP, 0);
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P)
-      kfree((char*)PTE_ADDR(pgdir[i]));
+      kfree(p2v(PTE_ADDR(pgdir[i])));
   }
   kfree((char*)pgdir);
 }
@@ -315,7 +386,7 @@ copyuvm(pde_t *pgdir, uint sz)
     if((mem = kalloc()) == 0)
       goto bad;
     memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
+    if(mappages(d, (void*)i, PGSIZE, v2p(mem), PTE_W|PTE_U) < 0)
       goto bad;
   }
   return d;

@@ -4,6 +4,7 @@
 #include "defs.h"
 #include "param.h"
 #include "x86.h"
+#include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
 #include "spinlock.h"
@@ -71,7 +72,7 @@ getcallerpcs(void *v, uint pcs[])
   
   ebp = (uint*)v - 2;
   for(i = 0; i < 10; i++){
-    if(ebp == 0 || ebp < (uint*)0x100000 || ebp == (uint*)0xffffffff)
+    if(ebp == 0 || ebp < (uint*)KERNBASE || ebp == (uint*)0xffffffff)
       break;
     pcs[i] = ebp[1];     // saved %eip
     ebp = (uint*)ebp[0]; // saved %ebp

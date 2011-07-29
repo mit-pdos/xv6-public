@@ -8,6 +8,7 @@
 #include "types.h"
 #include "elf.h"
 #include "x86.h"
+#include "memlayout.h"
 
 #define SECTSIZE  512
 
@@ -19,7 +20,7 @@ bootmain(void)
   struct elfhdr *elf;
   struct proghdr *ph, *eph;
   void (*entry)(void);
-  uchar* va;
+  uchar* pa;
 
   elf = (struct elfhdr*)0x10000;  // scratch space
 
@@ -34,15 +35,15 @@ bootmain(void)
   ph = (struct proghdr*)((uchar*)elf + elf->phoff);
   eph = ph + elf->phnum;
   for(; ph < eph; ph++){
-    va = (uchar*)ph->va;
-    readseg(va, ph->filesz, ph->offset);
+    pa = (uchar*)ph->pa;
+    readseg(pa, ph->filesz, ph->offset);
     if(ph->memsz > ph->filesz)
-      stosb(va + ph->filesz, 0, ph->memsz - ph->filesz);
+      stosb(pa + ph->filesz, 0, ph->memsz - ph->filesz);
   }
 
   // Call the entry point from the ELF header.
   // Does not return!
-  entry = (void(*)(void))(elf->entry);
+  entry = (void(*)(void))(elf->entry & 0xFFFFFF);
   entry();
 }
 

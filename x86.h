@@ -96,6 +96,30 @@ loadgs(ushort v)
   asm volatile("movw %0, %%gs" : : "r" (v));
 }
 
+static inline void
+loadfs(ushort v)
+{
+  __asm volatile("movw %0, %%fs" : : "r" (v));
+}
+
+static inline void
+loades(ushort v)
+{
+  __asm volatile("movw %0, %%es" : : "r" (v));
+}
+
+static inline void
+loadds(ushort v)
+{
+  __asm volatile("movw %0, %%ds" : : "r" (v));
+}
+
+static inline void
+loadss(ushort v)
+{
+  __asm volatile("movw %0, %%ss" : : "r" (v));
+}
+
 static inline uint
 rebp(void)
 {

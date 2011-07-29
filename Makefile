@@ -109,7 +109,7 @@ initcode: initcode.S
 	$(OBJDUMP) -S initcode.o > initcode.asm
 
 kernel: $(OBJS) multiboot.o data.o bootother initcode
-	$(LD) $(LDFLAGS) -Ttext 0x100000 -e main -o kernel multiboot.o data.o $(OBJS) -b binary initcode bootother
+	$(LD) $(LDFLAGS) -T kernel.ld -e multiboot_entry -o kernel multiboot.o data.o $(OBJS) -b binary initcode bootother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernel.sym
 
@@ -200,7 +200,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 ifndef CPUS
 CPUS := 2
 endif
-QEMUOPTS = -hdb fs.img xv6.img -smp $(CPUS)
+QEMUOPTS = -hdb fs.img xv6.img -smp $(CPUS) -m 512
 
 qemu: fs.img xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)

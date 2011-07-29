@@ -1,4 +1,5 @@
 #include "asm.h"
+#include "memlayout.h"
 
 # Each non-boot CPU ("AP") is started up in response to a STARTUP
 # IPI from the boot CPU.  Section B.4.2 of the Multi-Processor
@@ -24,6 +25,8 @@
 
 #define CR0_PE    1
 
+#define RELOC1(x) ((x) + KERNBASE)    // same as V2P, but without casts
+
 .code16           
 .globl start
 start:
@@ -40,7 +43,7 @@ start:
   movl    %eax, %cr0
 
 //PAGEBREAK!
-  ljmp    $(SEG_KCODE<<3), $start32
+  ljmpl    $(SEG_KCODE<<3), $(start32+KERNBASE)
 
 .code32
 start32:
@@ -53,10 +56,10 @@ start32:
   movw    %ax, %gs
 
   # switch to the stack allocated by bootothers()
-  movl    start-4, %esp
+  movl    RELOC1(start-4), %esp
 
   # call mpmain()
-  call	*(start-8)
+  call	*(RELOC1(start)-8)
 
   movw    $0x8a00, %ax
   movw    %ax, %dx
@@ -69,8 +72,9 @@ spin:
 .p2align 2
 gdt:
   SEG_NULLASM
-  SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)
-  SEG_ASM(STA_W, 0x0, 0xffffffff)
+  SEG_ASM(STA_X|STA_R, -KERNBASE, 0xffffffff)
+  SEG_ASM(STA_W, -KERNBASE, 0xffffffff)
+
 
 gdtdesc:
   .word   (gdtdesc - gdt - 1)
