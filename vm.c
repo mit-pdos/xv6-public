@@ -175,7 +175,6 @@ static struct kmap {
   uint e;
   int perm;
 } kmap[] = {
-  { (void *)IOSPACEB, IOSPACEB, IOSPACEE, PTE_W},  // I/O space
   { P2V(IOSPACEB), IOSPACEB, IOSPACEE, PTE_W},  // I/O space
   { (void *)KERNLINK, V2P(KERNLINK), V2P(data),  0},  // kernel text, rodata
   { data, V2P(data), PHYSTOP,  PTE_W},  // kernel data, memory
@@ -288,7 +287,7 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
       n = sz - i;
     else
       n = PGSIZE;
-    if(readi(ip, (char*)pa, offset+i, n) != n)
+    if(readi(ip, p2v(pa), offset+i, n) != n)
       return -1;
   }
   return 0;
@@ -341,7 +340,8 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       pa = PTE_ADDR(*pte);
       if(pa == 0)
         panic("kfree");
-      kfree((char*)pa);
+      char *v = p2v(pa);
+      kfree(v);
       *pte = 0;
     }
   }
@@ -359,8 +359,10 @@ freevm(pde_t *pgdir)
     panic("freevm: no pgdir");
   deallocuvm(pgdir, USERTOP, 0);
   for(i = 0; i < NPDENTRIES; i++){
-    if(pgdir[i] & PTE_P)
-      kfree(p2v(PTE_ADDR(pgdir[i])));
+    if(pgdir[i] & PTE_P) {
+      char * v = p2v(PTE_ADDR(pgdir[i]));
+      kfree(v);
+    }
   }
   kfree((char*)pgdir);
 }
@@ -385,7 +387,7 @@ copyuvm(pde_t *pgdir, uint sz)
     pa = PTE_ADDR(*pte);
     if((mem = kalloc()) == 0)
       goto bad;
-    memmove(mem, (char*)pa, PGSIZE);
+    memmove(mem, (char*)p2v(pa), PGSIZE);
     if(mappages(d, (void*)i, PGSIZE, v2p(mem), PTE_W|PTE_U) < 0)
       goto bad;
   }
@@ -397,7 +399,7 @@ bad:
 }
 
 //PAGEBREAK!
-// Map user virtual address to kernel physical address.
+// Map user virtual address to kernel address.
 char*
 uva2ka(pde_t *pgdir, char *uva)
 {
@@ -408,7 +410,7 @@ uva2ka(pde_t *pgdir, char *uva)
     return 0;
   if((*pte & PTE_U) == 0)
     return 0;
-  return (char*)PTE_ADDR(*pte);
+  return (char*)p2v(PTE_ADDR(*pte));
 }
 
 // Copy len bytes from p to user address va in page table pgdir.
