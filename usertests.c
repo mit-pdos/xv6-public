@@ -1238,7 +1238,7 @@ forktest(void)
 void
 sbrktest(void)
 {
-  int fds[2], pid, pids[32], ppid;
+  int fds[2], pid, pids[10], ppid;
   char *a, *b, *c, *lastaddr, *oldbrk, *p, scratch;
   uint amt;
 
@@ -1310,6 +1310,13 @@ sbrktest(void)
     exit();
   }
 
+  a = sbrk(0);
+  c = sbrk(-(sbrk(0) - oldbrk));
+  if(c != a){
+    printf(stdout, "sbrk downsize failed, a %x c %x\n", a, c);
+    exit();
+  }
+  
   // can we read the kernel's memory?
   for(a = (char*)(KERNBASE); a < (char*) (KERNBASE+2000000); a += 50000){
     ppid = getpid();
@@ -1328,15 +1335,14 @@ sbrktest(void)
 
   // if we run the system out of memory, does it clean up the last
   // failed allocation?
-  sbrk(-(sbrk(0) - oldbrk));
   if(pipe(fds) != 0){
     printf(1, "pipe() failed\n");
     exit();
   }
   for(i = 0; i < sizeof(pids)/sizeof(pids[0]); i++){
     if((pids[i] = fork()) == 0){
-      // allocate the full 640K
-      sbrk((640 * 1024) - (uint)sbrk(0));
+      // allocate a lot of memory
+      sbrk(BIG - (uint)sbrk(0));
       write(fds[1], "x", 1);
       // sit around until killed
       for(;;) sleep(1000);
