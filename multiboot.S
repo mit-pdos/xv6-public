@@ -16,13 +16,9 @@
 
 #include "asm.h"
 #include "memlayout.h"
-
-#define RELOC(x) ((x) - KERNBASE)    // same as V2P, but without casts
+#include "mmu.h"
 
 #define STACK 4096
-
-#define SEG_KCODE 1  // kernel code
-#define SEG_KDATA 2  // kernel data+stack
 
 # Multiboot header.  Data to direct multiboot loader.
 .p2align 2
@@ -45,7 +41,7 @@ multiboot_header:
 # boot loader - bootasm.S - sets up.
 .globl multiboot_entry
 multiboot_entry:
-  lgdt RELOC(gdtdesc)
+  lgdt V2P_WO(gdtdesc)
   ljmp $(SEG_KCODE<<3), $mbstart32
 
 mbstart32:
@@ -73,6 +69,6 @@ gdt:
 
 gdtdesc:
   .word   (gdtdesc - gdt - 1)             # sizeof(gdt) - 1
-  .long   RELOC(gdt)                      # address gdt
+  .long   V2P_WO(gdt)                      # address gdt
 
 .comm stack, STACK

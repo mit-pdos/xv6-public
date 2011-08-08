@@ -1,6 +1,7 @@
 #include "asm.h"
 #include "memlayout.h"
-
+#include "mmu.h"
+	
 # Each non-boot CPU ("AP") is started up in response to a STARTUP
 # IPI from the boot CPU.  Section B.4.2 of the Multi-Processor
 # Specification says that the AP will start in real mode with CS:IP
@@ -19,13 +20,6 @@
 #   - it does not need to enable A20
 #   - it uses the address at start-4 for the %esp
 #   - it jumps to the address at start-8 instead of calling bootmain
-
-#define SEG_KCODE 1
-#define SEG_KDATA 2
-
-#define CR0_PE    1
-
-#define RELOC1(x) ((x) + KERNBASE)    // same as V2P, but without casts
 
 .code16           
 .globl start
@@ -56,10 +50,10 @@ start32:
   movw    %ax, %gs
 
   # switch to the stack allocated by bootothers()
-  movl    RELOC1(start-4), %esp
+  movl    P2V_WO(start-4), %esp
 
   # call mpmain()
-  call	*(RELOC1(start)-8)
+  call	*(P2V_WO(start)-8)
 
   movw    $0x8a00, %ax
   movw    %ax, %dx
