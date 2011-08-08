@@ -158,7 +158,7 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
 // 
 //
 // setupkvm() and exec() set up every page table like this:
-//   0..KERNBASE      : user memory (text, data, stack, heap), mapped to some phys mem
+//   0..USERTOP      : user memory (text, data, stack, heap), mapped to some phys mem
 //   KERNBASE+640K..KERNBASE+1M: mapped to 640K..1M
 //   KERNBASE+1M..KERNBASE+end : mapped to 1M..end
 //   KERNBASE+end..KERBASE+PHYSTOP     : mapped to end..PHYSTOP (free memory)

@@ -5,6 +5,7 @@
 #include "fcntl.h"
 #include "syscall.h"
 #include "traps.h"
+#include "memlayout.h"
 
 char buf[2048];
 char name[3];
@@ -1247,7 +1248,7 @@ sbrktest(void)
   // can one sbrk() less than a page?
   a = sbrk(0);
   int i;
-  for(i = 0; i < 5000; i++){
+  for(i = 0; i < 5000; i++){ 
     b = sbrk(1);
     if(b != a){
       printf(stdout, "sbrk test failed %d %x %x\n", i, a, b);
@@ -1271,23 +1272,17 @@ sbrktest(void)
     exit();
   wait();
 
-  // can one allocate the full 640K?
+  // can one grow address space to something big?
+#define BIG (100*1024*1024)
   a = sbrk(0);
-  amt = (640 * 1024) - (uint)a;
+  amt = (BIG) - (uint)a;
   p = sbrk(amt);
-  if(p != a){
-    printf(stdout, "sbrk test failed 640K test, p %x a %x\n", p, a);
+  if (p != a) { 
+    printf(stdout, "sbrk test failed to grow big address space; enough phys mem?\n");
     exit();
   }
-  lastaddr = (char*)(640 * 1024 - 1);
+  lastaddr = (char*) (BIG-1);
   *lastaddr = 99;
-
-  // is one forbidden from allocating more than 640K?
-  c = sbrk(4096);
-  if(c != (char*)0xffffffff){
-    printf(stdout, "sbrk allocated more than 640K, c %x\n", c);
-    exit();
-  }
 
   // can one de-allocate?
   a = sbrk(0);
@@ -1315,14 +1310,8 @@ sbrktest(void)
     exit();
   }
 
-  c = sbrk(4096);
-  if(c != (char*)0xffffffff){
-    printf(stdout, "sbrk was able to re-allocate beyond 640K, c %x\n", c);
-    exit();
-  }
-
   // can we read the kernel's memory?
-  for(a = (char*)(640*1024); a < (char*)2000000; a += 50000){
+  for(a = (char*)(KERNBASE); a < (char*) (KERNBASE+2000000); a += 50000){
     ppid = getpid();
     pid = fork();
     if(pid < 0){
