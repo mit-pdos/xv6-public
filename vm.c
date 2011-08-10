@@ -100,8 +100,8 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm, char* (*alloc)(vo
 // 
 //
 // setupkvm() and exec() set up every page table like this:
-//   0..USERTOP      : user memory (text, data, stack, heap), mapped to some phys mem
-//   KERNBASE+640K..KERNBASE+1M: mapped to 640K..1M
+//   0..USERTOP      : user memory (text, data, stack, heap), mapped to some unused phys mem
+//   KERNBASE..KERNBASE+1M: mapped to 0..1M
 //   KERNBASE+1M..KERNBASE+end : mapped to 1M..end
 //   KERNBASE+end..KERBASE+PHYSTOP     : mapped to end..PHYSTOP (free memory)
 //   0xfe000000..0    : mapped direct (devices such as ioapic)
@@ -117,10 +117,10 @@ static struct kmap {
   uint e;
   int perm;
 } kmap[] = {
-  { P2V(0), 0, 1024*1024, PTE_W},  // First 1Mbyte contains BIOS and IO section
+  { P2V(0), 0, 1024*1024, PTE_W},  // First 1Mbyte contains BIOS and some IO devices
   { (void *)KERNLINK, V2P(KERNLINK), V2P(data),  0},  // kernel text, rodata
   { data, V2P(data), PHYSTOP,  PTE_W},  // kernel data, memory
-  { (void*)DEVSPACE, DEVSPACE, 0, PTE_W},  // device mappings
+  { (void*)DEVSPACE, DEVSPACE, 0, PTE_W},  // more devices
 };
 
 // Set up kernel part of a page table.
