@@ -36,11 +36,11 @@ sum(uchar *addr, int len)
 
 // Look for an MP structure in the len bytes at addr.
 static struct mp*
-mpsearch1(uchar *addr, int len)
+mpsearch1(uint a, int len)
 {
-  uchar *e, *p;
+  uchar *e, *p, *addr;
 
-  addr = p2v((uint) addr);
+  addr = p2v(a);
   e = addr+len;
   for(p = addr; p < e; p += sizeof(struct mp))
     if(memcmp(p, "_MP_", 4) == 0 && sum(p, sizeof(struct mp)) == 0)
@@ -60,16 +60,16 @@ mpsearch(void)
   uint p;
   struct mp *mp;
 
-  bda = (uchar*)0x400;
-  if((p = ((bda[0x0F]<<8)|bda[0x0E]) << 4)){
-    if((mp = mpsearch1((uchar*)p, 1024)))
+  bda = (uchar *) P2V(0x400);
+  if((p = ((bda[0x0F]<<8)| bda[0x0E]) << 4)){
+    if((mp = mpsearch1(p, 1024)))
       return mp;
   } else {
     p = ((bda[0x14]<<8)|bda[0x13])*1024;
-    if((mp = mpsearch1((uchar*)p-1024, 1024)))
+    if((mp = mpsearch1(p-1024, 1024)))
       return mp;
   }
-  return mpsearch1((uchar*)0xF0000, 0x10000);
+  return mpsearch1(0xF0000, 0x10000);
 }
 
 // Search for an MP configuration table.  For now,
