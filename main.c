@@ -7,9 +7,7 @@
 #include "x86.h"
 
 static void bootothers(void);
-static void mpmain(void);
-void jmpkstack(void)  __attribute__((noreturn));
-void mainc(void);
+static void mpmain(void)  __attribute__((noreturn));
 static volatile int newpgdir;
 
 // Bootstrap processor starts running C code here.
@@ -22,31 +20,8 @@ main(void)
   mpinit();        // collect info about this machine
   lapicinit(mpbcpu());
   seginit();       // set up segments
-  kinit();         // initialize memory allocator
-  jmpkstack();     // call mainc() on a properly-allocated stack   XXX ax
-  mainc();
-  return 0;
-}
-
-void
-jmpkstack(void)
-{
-  char *kstack, *top;
-  
-  kstack = kalloc();
-  if(kstack == 0)
-    panic("jmpkstack kalloc");
-  top = kstack + PGSIZE;
-  asm volatile("movl %0,%%esp; call mainc" : : "r" (top));
-  panic("jmpkstack");
-}
-
-// Set up hardware and software.
-// Runs only on the boostrap processor.
-void
-mainc(void)
-{
   cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
+  kinit();         // initialize memory allocator
   picinit();       // interrupt controller
   ioapicinit();    // another interrupt controller
   consoleinit();   // I/O devices & their interrupts
