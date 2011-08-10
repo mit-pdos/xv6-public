@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "defs.h"
+#include "memlayout.h"
 #include "traps.h"
 #include "mmu.h"
 #include "x86.h"
@@ -135,6 +136,7 @@ microdelay(int us)
 // Start additional processor running bootstrap code at addr.
 // See Appendix B of MultiProcessor Specification.
 void
+
 lapicstartap(uchar apicid, uint addr)
 {
   int i;
@@ -145,7 +147,7 @@ lapicstartap(uchar apicid, uint addr)
   // the AP startup code prior to the [universal startup algorithm]."
   outb(IO_RTC, 0xF);  // offset 0xF is shutdown code
   outb(IO_RTC+1, 0x0A);
-  wrv = (ushort*)(0x40<<4 | 0x67);  // Warm reset vector
+  wrv = (ushort*)P2V((0x40<<4 | 0x67));  // Warm reset vector
   wrv[0] = 0;
   wrv[1] = addr >> 4;
 
