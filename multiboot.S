@@ -37,23 +37,8 @@ multiboot_header:
   .long multiboot_entry
 
 # Multiboot entry point.  Machine is mostly set up.
-# Configure the GDT to match the environment that our usual
-# boot loader - bootasm.S - sets up.
 .globl multiboot_entry
 multiboot_entry:
-#  lgdt V2P_WO(gdtdesc)
-#  ljmp $(SEG_KCODE<<3), $mbstart32
-
-mbstart32:
-  # Set up the protected-mode data segment registers
-  movw    $(SEG_KDATA<<3), %ax    # Our data segment selector
-  movw    %ax, %ds                # -> DS: Data Segment
-  movw    %ax, %es                # -> ES: Extra Segment
-  movw    %ax, %ss                # -> SS: Stack Segment
-  movw    $0, %ax                 # Zero segments not ready for use
-  movw    %ax, %fs                # -> FS
-  movw    %ax, %gs                # -> GS
-
   movl    $(V2P_WO(bootpgdir)), %eax
   movl    %eax, %cr3
   # Turn on paging.
