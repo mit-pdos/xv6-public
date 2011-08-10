@@ -41,8 +41,8 @@ multiboot_header:
 # boot loader - bootasm.S - sets up.
 .globl multiboot_entry
 multiboot_entry:
-  lgdt V2P_WO(gdtdesc)
-  ljmp $(SEG_KCODE<<3), $mbstart32
+#  lgdt V2P_WO(gdtdesc)
+#  ljmp $(SEG_KCODE<<3), $mbstart32
 
 mbstart32:
   # Set up the protected-mode data segment registers
@@ -54,21 +54,22 @@ mbstart32:
   movw    %ax, %fs                # -> FS
   movw    %ax, %gs                # -> GS
 
+  movl    $(V2P_WO(bootpgdir)), %eax
+  movl    %eax, %cr3
+  # Turn on paging.
+  movl    %cr0, %eax
+  orl     $(CR0_PE|CR0_PG|CR0_WP), %eax
+  movl    %eax, %cr0
+
+  # now switch to using addresses above KERNBASE
+  # call addresses are pc-relative so we jump though this hoop:
+  mov     $relocated, %eax
+  jmp     *%eax
+relocated:
   # Set up the stack pointer and call into C.
   movl $(stack + STACK), %esp
   call main
 spin:
   jmp spin
-
-# Bootstrap GDT
-.p2align 2                                # force 4 byte alignment
-gdt:
-  SEG_NULLASM                             # null seg
-  SEG_ASM(STA_X|STA_R, -KERNBASE, 0xffffffff)   # code seg
-  SEG_ASM(STA_W, -KERNBASE, 0xffffffff)         # data seg
-
-gdtdesc:
-  .word   (gdtdesc - gdt - 1)             # sizeof(gdt) - 1
-  .long   V2P_WO(gdt)                      # address gdt
 
 .comm stack, STACK

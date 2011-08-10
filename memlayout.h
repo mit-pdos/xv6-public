@@ -5,8 +5,7 @@
 
 #define KSTKSIZE        (8*PGSIZE)              // size of a kernel stack
 
-#define IOSPACEB  0x0A0000 // begin IO space
-#define IOSPACEE  0x100000  // end IO space
+#define DEVSPACE  0xFE000000  // other devices are in the top of the phys address space
 #define PHYSTOP   0xE000000 // use phys mem up to here as free pool
 
 // Key addresses for address space layout (see kmap in vm.c for the layout)

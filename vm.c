@@ -11,64 +11,6 @@ extern char data[];  // defined in data.S
 static pde_t *kpgdir;  // for use in scheduler()
 struct segdesc gdt[NSEGS];
 
-
-// page map for during boot
-// XXX build a static page table in assembly
-static void
-pgmap(void *va, void *last, uint pa)
-{
-  pde_t *pde;
-  pte_t *pgtab;
-  pte_t *pte;
-
-  for(;;){
-    pde = &kpgdir[PDX(va)];
-    pde_t pdev = *pde;
-    if (pdev == 0) {
-      pgtab = (pte_t *) pgalloc();
-      *pde = v2p(pgtab) | PTE_P | PTE_W;
-    } else {
-      pgtab = (pte_t*)p2v(PTE_ADDR(pdev));
-    }
-    pte = &pgtab[PTX(va)];
-    *pte = pa | PTE_W | PTE_P;
-    if(va == last)
-      break;
-    va += PGSIZE;
-    pa += PGSIZE;
-  }
-}
-
-// set up a page table to get off the ground
-void
-pginit(char* (*alloc)(void))
-{
-  uint cr0;
-
-  kpgdir = (pde_t *) alloc();
-  pgmap((void *) 0, (void *) PHYSTOP, 0);    // map pa 0 at va 0
-  pgmap((void *) KERNBASE, (void *) (KERNBASE+PHYSTOP), 0);   // map pa 0 at va KERNBASE
-  pgmap((void*)0xFE000000, 0, 0xFE000000);
-
-  switchkvm(); // load kpgdir into cr3
-
-  cr0 = rcr0();
-  cr0 |= CR0_PG;
-  lcr0(cr0);   // paging on
-
-  // new gdt
-  gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
-  gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  lgdt((void *)v2p(gdt), sizeof(gdt));
-  loadgs(SEG_KDATA << 3);
-  loadfs(SEG_KDATA << 3);
-  loades(SEG_KDATA << 3);
-  loadds(SEG_KDATA << 3);
-  loadss(SEG_KDATA << 3);
-
-  __asm volatile("ljmp %0,$1f\n 1:\n" :: "i" (SEG_KCODE << 3));  // reload cs
-}
-
 // Set up CPU's kernel segment descriptors.
 // Run once at boot time on each CPU.
 void
@@ -101,7 +43,7 @@ seginit(void)
 // that corresponds to linear address va.  If create!=0,
 // create any required page table pages.
 static pte_t *
-walkpgdir(pde_t *pgdir, const void *va, int create)
+walkpgdir(pde_t *pgdir, const void *va, int create, char* (*alloc)(void))
 {
   pde_t *pde;
   pte_t *pgtab;
@@ -110,7 +52,7 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
   if(*pde & PTE_P){
     pgtab = (pte_t*)p2v(PTE_ADDR(*pde));
   } else {
-    if(!create || (pgtab = (pte_t*)kalloc()) == 0)
+    if(!create || (pgtab = (pte_t*)alloc()) == 0)
       return 0;
     // Make sure all those PTE_P bits are zero.
     memset(pgtab, 0, PGSIZE);
@@ -126,7 +68,7 @@ walkpgdir(pde_t *pgdir, const void *va, int create)
 // physical addresses starting at pa. la and size might not
 // be page-aligned.
 static int
-mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
+mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm, char* (*alloc)(void))
 {
   char *a, *last;
   pte_t *pte;
@@ -134,7 +76,7 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
   a = PGROUNDDOWN(la);
   last = PGROUNDDOWN(la + size - 1);
   for(;;){
-    pte = walkpgdir(pgdir, a, 1);
+    pte = walkpgdir(pgdir, a, 1, alloc);
     if(pte == 0)
       return -1;
     if(*pte & PTE_P)
@@ -175,25 +117,25 @@ static struct kmap {
   uint e;
   int perm;
 } kmap[] = {
-  { P2V(IOSPACEB), IOSPACEB, IOSPACEE, PTE_W},  // I/O space
+  { P2V(0), 0, 1024*1024, PTE_W},  // First 1Mbyte contains BIOS and IO section
   { (void *)KERNLINK, V2P(KERNLINK), V2P(data),  0},  // kernel text, rodata
   { data, V2P(data), PHYSTOP,  PTE_W},  // kernel data, memory
-  { (void*)0xFE000000, 0xFE000000, 0, PTE_W},  // device mappings
+  { (void*)DEVSPACE, DEVSPACE, 0, PTE_W},  // device mappings
 };
 
 // Set up kernel part of a page table.
 pde_t*
-setupkvm(void)
+setupkvm(char* (*alloc)(void))
 {
   pde_t *pgdir;
   struct kmap *k;
 
-  if((pgdir = (pde_t*)kalloc()) == 0)
+  if((pgdir = (pde_t*)alloc()) == 0)
     return 0;
   memset(pgdir, 0, PGSIZE);
   k = kmap;
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
-    if(mappages(pgdir, k->l, k->e - k->p, (uint)k->p, k->perm) < 0)
+    if(mappages(pgdir, k->l, k->e - k->p, (uint)k->p, k->perm, alloc) < 0)
       return 0;
 
   return pgdir;
@@ -204,7 +146,7 @@ setupkvm(void)
 void
 kvmalloc(void)
 {
-  kpgdir = setupkvm();
+  kpgdir = setupkvm(boot_alloc);
   switchkvm();
 }
 
@@ -265,7 +207,7 @@ inituvm(pde_t *pgdir, char *init, uint sz)
     panic("inituvm: more than a page");
   mem = kalloc();
   memset(mem, 0, PGSIZE);
-  mappages(pgdir, 0, PGSIZE, v2p(mem), PTE_W|PTE_U);
+  mappages(pgdir, 0, PGSIZE, v2p(mem), PTE_W|PTE_U, kalloc);
   memmove(mem, init, sz);
 }
 
@@ -280,7 +222,7 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   if((uint)addr % PGSIZE != 0)
     panic("loaduvm: addr must be page aligned");
   for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walkpgdir(pgdir, addr+i, 0)) == 0)
+    if((pte = walkpgdir(pgdir, addr+i, 0, kalloc)) == 0)
       panic("loaduvm: address should exist");
     pa = PTE_ADDR(*pte);
     if(sz - i < PGSIZE)
@@ -315,7 +257,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       return 0;
     }
     memset(mem, 0, PGSIZE);
-    mappages(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
+    mappages(pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U, kalloc);
   }
   return newsz;
 }
@@ -335,7 +277,7 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 
   a = PGROUNDUP(newsz);
   for(; a  < oldsz; a += PGSIZE){
-    pte = walkpgdir(pgdir, (char*)a, 0);
+    pte = walkpgdir(pgdir, (char*)a, 0, kalloc);
     if(pte && (*pte & PTE_P) != 0){
       pa = PTE_ADDR(*pte);
       if(pa == 0)
@@ -377,10 +319,10 @@ copyuvm(pde_t *pgdir, uint sz)
   uint pa, i;
   char *mem;
 
-  if((d = setupkvm()) == 0)
+  if((d = setupkvm(kalloc)) == 0)
     return 0;
   for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
+    if((pte = walkpgdir(pgdir, (void*)i, 0, kalloc)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
@@ -388,7 +330,7 @@ copyuvm(pde_t *pgdir, uint sz)
     if((mem = kalloc()) == 0)
       goto bad;
     memmove(mem, (char*)p2v(pa), PGSIZE);
-    if(mappages(d, (void*)i, PGSIZE, v2p(mem), PTE_W|PTE_U) < 0)
+    if(mappages(d, (void*)i, PGSIZE, v2p(mem), PTE_W|PTE_U, kalloc) < 0)
       goto bad;
   }
   return d;
@@ -405,7 +347,7 @@ uva2ka(pde_t *pgdir, char *uva)
 {
   pte_t *pte;
 
-  pte = walkpgdir(pgdir, uva, 0);
+  pte = walkpgdir(pgdir, uva, 0, kalloc);
   if((*pte & PTE_P) == 0)
     return 0;
   if((*pte & PTE_U) == 0)

@@ -23,11 +23,13 @@ char *newend;
 
 // simple page allocator to get off the ground during boot
 char *
-pgalloc(void)
+boot_alloc(void)
 {
   if (newend == 0)
     newend = end;
 
+  if ((uint) newend >= KERNBASE + 0x400000)
+    panic("only first 4Mbyte are mapped during boot");
   void *p = (void*)PGROUNDUP((uint)newend);
   memset(p, 0, PGSIZE);
   newend = newend + PGSIZE;
