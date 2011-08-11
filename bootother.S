@@ -14,12 +14,13 @@
 # Bootothers (in main.c) sends the STARTUPs one at a time.
 # It copies this code (start) at 0x7000.
 # It puts the address of a newly allocated per-core stack in start-4,
-# and the address of the place to jump to (mpmain) in start-8.
+# the address of the place to jump to (mpboot) in start-8, and the physical
+# address of bootpgdir in start-12.
+#
 #
 # This code is identical to bootasm.S except:
 #   - it does not need to enable A20
-#   - it uses the address at start-4 for the %esp
-#   - it jumps to the address at start-8 instead of calling bootmain
+#   - it uses the address at start-4, start-8, and start-12
 
 .code16           
 .globl start
@@ -37,7 +38,7 @@ start:
   movl    %eax, %cr0
 
 //PAGEBREAK!
-  ljmpl    $(SEG_KCODE<<3), $(start32+KERNBASE)
+  ljmpl    $(SEG_KCODE<<3), $(start32)
 
 .code32
 start32:
@@ -49,11 +50,18 @@ start32:
   movw    %ax, %fs
   movw    %ax, %gs
 
-  # switch to the stack allocated by bootothers()
-  movl    P2V_WO(start-4), %esp
+  # Use bootpgdir as our initial page table
+  movl    (start-12), %eax
+  movl    %eax, %cr3
+  # Turn on paging.
+  movl    %cr0, %eax
+  orl     $(CR0_PE|CR0_PG|CR0_WP), %eax
+  movl    %eax, %cr0
 
-  # call mpmain()
-  call	*(P2V_WO(start)-8)
+  # Switch to the stack allocated by bootothers()
+  movl    (start-4), %esp
+  # Call mpboot()
+  call	 *(start-8)
 
   movw    $0x8a00, %ax
   movw    %ax, %dx
@@ -66,10 +74,11 @@ spin:
 .p2align 2
 gdt:
   SEG_NULLASM
-  SEG_ASM(STA_X|STA_R, -KERNBASE, 0xffffffff)
-  SEG_ASM(STA_W, -KERNBASE, 0xffffffff)
+  SEG_ASM(STA_X|STA_R, 0, 0xffffffff)
+  SEG_ASM(STA_W, 0, 0xffffffff)
 
 
 gdtdesc:
   .word   (gdtdesc - gdt - 1)
   .long   gdt
+

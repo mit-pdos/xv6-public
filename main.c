@@ -8,7 +8,7 @@
 
 static void bootothers(void);
 static void mpmain(void)  __attribute__((noreturn));
-static volatile int newpgdir;
+extern pde_t *kpgdir;
 
 // Bootstrap processor starts running C code here.
 // Allocate a real stack and switch to it, first
@@ -21,7 +21,6 @@ main(void)
   lapicinit(mpbcpu());
   seginit();       // set up segments
   cprintf("\ncpu%d: starting xv6\n\n", cpu->id);
-  kinit();         // initialize memory allocator
   picinit();       // interrupt controller
   ioapicinit();    // another interrupt controller
   consoleinit();   // I/O devices & their interrupts
@@ -34,38 +33,34 @@ main(void)
   ideinit();       // disk
   if(!ismp)
     timerinit();   // uniprocessor timer
-  userinit();      // first user process
-  bootothers();    // start other processors
-  newpgdir = 1;
+  bootothers();    // start other processors (must come before kinit; must use boot_alloc)
+  kinit();         // initialize memory allocator
+  userinit();      // first user process  (must come after kinit)
   // Finish setting up this processor in mpmain.
   mpmain();
 }
 
-// Common CPU setup code.
-// Bootstrap CPU comes here from mainc().
 // Other CPUs jump here from bootother.S.
 static void
 mpboot(void)
 {
-  vmenable();        // turn on paging
+  switchkvm(); 
   seginit();
   lapicinit(cpunum());
   mpmain();
 }
 
 // Common CPU setup code.
-// Bootstrap CPU comes here from mainc().
-// Other CPUs jump here from bootother.S.
 static void
 mpmain(void)
 {
   cprintf("cpu%d: starting\n", cpu->id);
   idtinit();       // load idt register
   xchg(&cpu->booted, 1); // tell bootothers() we're up
-  while (!newpgdir) ;  // wait until we have new page dir
-  switchkvm();     // switch to new page dir
   scheduler();     // start running processes
 }
+
+pde_t bootpgdir[];
 
 // Start the non-boot processors.
 static void
@@ -86,41 +81,37 @@ bootothers(void)
     if(c == cpus+cpunum())  // We've started already.
       continue;
 
-    // Tell bootother.S what stack to use and the address of mpmain;
-    // it expects to find these two addresses stored just before
-    // its first instruction.
-    stack = kalloc();
+    // Tell bootother.S what stack to use, the address of mpboot and pgdir;
+    stack = boot_alloc();    // We need a stack below 4Mbyte with bootpgdir
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpboot;
+    *(int**)(code-12) = (void *) v2p(bootpgdir);
 
     lapicstartap(c->id, v2p(code));
 
-    // Wait for cpu to finish mpmain()
+    // wait for cpu to finish mpmain()
     while(c->booted == 0)
       ;
   }
 }
 
-// Boot page table used in multiboot.S.
+// Boot page table used in multiboot.S and bootother.S.
 // Page directories (and page tables), must start on a page boundary,
 // hence the "__aligned__" attribute.  Also, because of restrictions
 // related to linking and static initializers, we use "x + PTE_P"
 // here, rather than the more standard "x | PTE_P".  Everywhere else
 // you should use "|" to combine flags.
-pte_t entry_pgtable[NPTENTRIES];
 pte_t dev_pgtable[NPTENTRIES];
+pte_t entry_pgtable[NPTENTRIES];
 
 __attribute__((__aligned__(PGSIZE)))
 pde_t bootpgdir[NPDENTRIES] = {
 	// Map VA's [0, 4MB) to PA's [0, 4MB)
 	[0]
-		= ((uint)entry_pgtable - KERNBASE) + PTE_P,
+		= ((uint)entry_pgtable - KERNBASE) + PTE_P + PTE_W,
 	// Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
 	[KERNBASE>>PDXSHIFT]
     	        = ((uint)entry_pgtable - KERNBASE) + PTE_P + PTE_W,
-	// Map VA's [DEVSPACE, DEVSPACE+4MB) to PA's [DEVSPACE, 4MB)
-	[0xFEE00000>>PDXSHIFT]
-    	        = ((uint)dev_pgtable - KERNBASE) + PTE_P + PTE_W,
 };
 
 // XXX switch to super pages

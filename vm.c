@@ -8,7 +8,7 @@
 #include "elf.h"
 
 extern char data[];  // defined in data.S
-static pde_t *kpgdir;  // for use in scheduler()
+pde_t *kpgdir;  // for use in scheduler()
 struct segdesc gdt[NSEGS];
 
 // Set up CPU's kernel segment descriptors.
@@ -40,7 +40,7 @@ seginit(void)
 }
 
 // Return the address of the PTE in page table pgdir
-// that corresponds to linear address va.  If create!=0,
+// that corresponds to linear address va.  If alloc!=0,
 // create any required page table pages.
 static pte_t *
 walkpgdir(pde_t *pgdir, const void *va, char* (*alloc)(void))
@@ -102,8 +102,8 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm, char* (*alloc)(vo
 // setupkvm() and exec() set up every page table like this:
 //   0..USERTOP      : user memory (text, data, stack, heap), mapped to some unused phys mem
 //   KERNBASE..KERNBASE+1M: mapped to 0..1M
-//   KERNBASE+1M..KERNBASE+end : mapped to 1M..end
-//   KERNBASE+end..KERBASE+PHYSTOP     : mapped to end..PHYSTOP (free memory)
+//   KERNBASE+1M..KERNBASE+end : mapped to 1M..end (mapped without write permission)
+//   KERNBASE+end..KERBASE+PHYSTOP     : mapped to end..PHYSTOP (rw data + free memory)
 //   0xfe000000..0    : mapped direct (devices such as ioapic)
 //
 // The kernel allocates memory for its heap and for user memory
@@ -148,28 +148,6 @@ kvmalloc(void)
 {
   kpgdir = setupkvm(boot_alloc);
   switchkvm();
-}
-
-// Turn on paging.
-void
-vmenable(void)
-{
-  uint cr0;
-
-  switchkvm(); // load kpgdir into cr3
-  cr0 = rcr0();
-  cr0 |= CR0_PG;
-  lcr0(cr0);
-
- struct cpu *c = &cpus[0];
-  lgdt((void *)v2p((void *)(c->gdt)), sizeof(c->gdt));
-  loadgs(SEG_KCPU << 3);
-  loadfs(SEG_KDATA << 3);
-  loades(SEG_KDATA << 3);
-  loadds(SEG_KDATA << 3);
-  loadss(SEG_KDATA << 3);
-
-  __asm volatile("ljmp %0,$1f\n 1:\n" :: "i" (SEG_KCODE << 3));  // reload cs
 }
 
 // Switch h/w page table register to the kernel-only page table,

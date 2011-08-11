@@ -98,10 +98,10 @@ bootblock: bootasm.S bootmain.c
 	./sign.pl bootblock
 
 bootother: bootother.S
-	$(CC) $(CFLAGS) -nostdinc -I. -c bootother.S
-	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
-	$(OBJCOPY) -S -O binary bootother.out bootother
-	$(OBJDUMP) -S bootother.o > bootother.asm
+	$(CC) $(CFLAGS) -fno-pic -nostdinc -I. -c bootother.S
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7000 -o bootblockother.o bootother.o
+	$(OBJCOPY) -S -O binary -j .text bootblockother.o bootother
+	$(OBJDUMP) -S bootblockother.o > bootother.asm
 
 initcode: initcode.S
 	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
@@ -199,7 +199,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef CPUS
-CPUS := 1
+CPUS := 2
 endif
 QEMUOPTS = -hdb fs.img xv6.img -smp $(CPUS) -m 512
 
