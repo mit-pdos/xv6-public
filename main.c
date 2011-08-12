@@ -82,7 +82,13 @@ bootothers(void)
       continue;
 
     // Tell bootother.S what stack to use, the address of mpboot and pgdir;
-    stack = boot_alloc();    // We need a stack below 4Mbyte with bootpgdir
+    // We cannot use kpgdir yet, because the AP processor is running in low 
+    // memory, so we use bootpgdir for the APs too.  kalloc can return addresses
+    // above 4Mbyte (the machine may have much more physical memory than 4Mbyte), which 
+    // aren't mapped by bootpgdir, so we must allocate a stack using boot_alloc();
+    // This introduces the constraint that xv6 cannot invoke until after these last boot_alloc 
+    // invocations.
+    stack = boot_alloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpboot;
     *(int**)(code-12) = (void *) v2p(bootpgdir);
