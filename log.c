@@ -8,18 +8,36 @@
 #include "fs.h"
 #include "buf.h"
 
-// Dirt simple "logging" supporting only one transaction.  All file system calls
-// that potentially write a block should be wrapped in begin_trans and commit_trans,
-// so that there is never more than one transaction. This serializes all file system 
-// operations that potentially write, but simplifies recovery (only the last
-// one transaction to recover) and concurrency (don't have to worry about reading a modified
-// block from a transaction that hasn't committed yet).
+// Simple logging. Each system call that might write the file system
+// should be surrounded with begin_trans() and commit_trans() calls.
+//
+// The log holds at most one transaction at a time. Commit forces
+// the log (with commit record) to disk, then installs the affected
+// blocks to disk, then erases the log. begin_trans() ensures that
+// only one system call can be in a transaction; others must wait.
+// 
+// Allowing only one transaction at a time means that the file
+// system code doesn't have to worry about the possibility of
+// one transaction reading a block that another one has modified,
+// for example an i-node block.
+//
+// Read-only system calls don't need to use transactions, though
+// this means that they may observe uncommitted data. I-node
+// and buffer locks prevent read-only calls from seeing inconsistent data.
+//
+// The log is a physical re-do log containing disk blocks.
+// The on-disk log format:
+//   header block, containing sector #s for block A, B, C, ...
+//   block A
+//   block B
+//   block C
+//   ...
+// Log appends are synchronous.
 
-// The header of the log.  If head == 0, there are no log entries.  All entries till head
-// are committed. sector[] records the home sector for each block in the log 
-// (i.e., physical logging).
+// Contents of the header block, used for both the on-disk header block
+// and to keep track in memory of logged sector #s before commit.
 struct logheader {
-  int head;   
+  int n;   
   int sector[LOGSIZE];
 };
 
@@ -55,10 +73,10 @@ install_trans(void)
 {
   int tail;
 
-  if (log.lh.head > 0)
-    cprintf("install_trans %d\n", log.lh.head);
-  for (tail = 0; tail < log.lh.head; tail++) {
-    cprintf("put entry %d to disk block %d\n", tail, log.lh.sector[tail]);
+  //if (log.lh.n > 0)
+  //  cprintf("install_trans %d\n", log.lh.n);
+  for (tail = 0; tail < log.lh.n; tail++) {
+    // cprintf("put entry %d to disk block %d\n", tail, log.lh.sector[tail]);
     struct buf *lbuf = bread(log.dev, log.start+tail+1);   // read i'th block from log
     struct buf *dbuf = bread(log.dev, log.lh.sector[tail]);  // read dst block
     memmove(dbuf->data, lbuf->data, BSIZE);
@@ -75,27 +93,27 @@ read_head(void)
   struct buf *buf = bread(log.dev, log.start);
   struct logheader *lh = (struct logheader *) (buf->data);
   int i;
-  log.lh.head = lh->head;
-  for (i = 0; i < log.lh.head; i++) {
+  log.lh.n = lh->n;
+  for (i = 0; i < log.lh.n; i++) {
     log.lh.sector[i] = lh->sector[i];
   }
   brelse(buf);
-  if (log.lh.head > 0)
-    cprintf("read_head: %d\n", log.lh.head);
+  //if (log.lh.n > 0)
+  //  cprintf("read_head: %d\n", log.lh.n);
 }
 
 // Write the in-memory log header to disk, committing log entries till head
 static void
 write_head(void)
 {
-  if (log.lh.head > 0)
-    cprintf("write_head: %d\n", log.lh.head);
+  // if (log.lh.n > 0)
+  //   cprintf("write_head: %d\n", log.lh.n);
 
   struct buf *buf = bread(log.dev, log.start);
   struct logheader *hb = (struct logheader *) (buf->data);
   int i;
-  hb->head = log.lh.head;
-  for (i = 0; i < log.lh.head; i++) {
+  hb->n = log.lh.n;
+  for (i = 0; i < log.lh.n; i++) {
     hb->sector[i] = log.lh.sector[i];
   }
   bwrite(buf);
@@ -107,7 +125,7 @@ recover_from_log(void)
 {
   read_head();      
   install_trans();  // Install all transactions till head
-  log.lh.head = 0;
+  log.lh.n = 0;
   write_head();     //  Reclaim log
 }
 
@@ -127,7 +145,7 @@ commit_trans(void)
 {
   write_head();        // This causes all blocks till log.head to be commited
   install_trans();     // Install all the transactions till head
-  log.lh.head = 0; 
+  log.lh.n = 0; 
   write_head();        // Reclaim log
 
   acquire(&log.lock);
@@ -136,21 +154,27 @@ commit_trans(void)
   release(&log.lock);
 }
 
-// Write buffer into the log at log.head and record the block number log.lh.entry, but
-// don't write the log header (which would commit the write).
+// Caller has modified b->data and is done with the buffer.
+// Append the block to the log and record the block number, 
+// but don't write the log header (which would commit the write).
+// log_write() replaces bwrite(); a typical use is:
+//   bp = bread(...)
+//   modify bp->data[]
+//   log_write(bp)
+//   brelse(bp)
 void
 log_write(struct buf *b)
 {
   int i;
 
-  if (log.lh.head >= LOGSIZE)
+  if (log.lh.n >= LOGSIZE || log.lh.n >= log.size - 1)
     panic("too big a transaction");
   if (!log.intrans)
     panic("write outside of trans");
 
-  cprintf("log_write: %d %d\n", b->sector, log.lh.head);
+  // cprintf("log_write: %d %d\n", b->sector, log.lh.n);
 
-  for (i = 0; i < log.lh.head; i++) {
+  for (i = 0; i < log.lh.n; i++) {
     if (log.lh.sector[i] == b->sector)   // log absorbtion?
       break;
   }
@@ -159,6 +183,6 @@ log_write(struct buf *b)
   memmove(lbuf->data, b->data, BSIZE);
   bwrite(lbuf);
   brelse(lbuf);
-  if (i == log.lh.head)
-    log.lh.head++;
+  if (i == log.lh.n)
+    log.lh.n++;
 }

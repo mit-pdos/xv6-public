@@ -7,7 +7,7 @@
 #include "traps.h"
 #include "memlayout.h"
 
-char buf[2048];
+char buf[8192];
 char name[3];
 char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
 int stdout = 1;
@@ -968,6 +968,36 @@ subdir(void)
   printf(1, "subdir ok\n");
 }
 
+// test writes that are larger than the log.
+void
+bigwrite(void)
+{
+  int fd, sz;
+
+  printf(1, "bigwrite test\n");
+
+  unlink("bigwrite");
+  for(sz = 499; sz < 12*512; sz += 471){
+    fd = open("bigwrite", O_CREATE | O_RDWR);
+    if(fd < 0){
+      printf(1, "cannot create bigwrite\n");
+      exit();
+    }
+    int i;
+    for(i = 0; i < 2; i++){
+      int cc = write(fd, buf, sz);
+      if(cc != sz){
+        printf(1, "write(%d) ret %d\n", sz, cc);
+        exit();
+      }
+    }
+    close(fd);
+    unlink("bigwrite");
+  }
+
+  printf(1, "bigwrite ok\n");
+}
+
 void
 bigfile(void)
 {
@@ -1467,6 +1497,7 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREATE));
 
+  bigwrite();
   bigargtest();
   bsstest();
   sbrktest();
