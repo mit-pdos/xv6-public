@@ -86,8 +86,8 @@ bootothers(void)
     // memory, so we use bootpgdir for the APs too.  kalloc can return addresses
     // above 4Mbyte (the machine may have much more physical memory than 4Mbyte), which 
     // aren't mapped by bootpgdir, so we must allocate a stack using boot_alloc();
-    // This introduces the constraint that xv6 cannot invoke until after these last boot_alloc 
-    // invocations.
+    // This introduces the constraint that xv6 cannot use kalloc until after these 
+    // last boot_alloc invocations.
     stack = boot_alloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpboot;
