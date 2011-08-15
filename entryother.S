@@ -50,6 +50,10 @@ start32:
   movw    %ax, %fs
   movw    %ax, %gs
 
+  # Turn on page size extension for 4Mbyte pages
+  movl    %cr4, %eax
+  orl     $(CR4_PSE), %eax
+  movl    %eax, %cr4
   # Use bootpgdir as our initial page table
   movl    (start-12), %eax
   movl    %eax, %cr3
@@ -58,7 +62,7 @@ start32:
   orl     $(CR0_PE|CR0_PG|CR0_WP), %eax
   movl    %eax, %cr0
 
-  # Switch to the stack allocated by entryothers()
+  # Switch to the stack allocated by enterothers()
   movl    (start-4), %esp
   # Call mpboot()
   call	 *(start-8)

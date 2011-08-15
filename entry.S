@@ -39,6 +39,11 @@ multiboot_header:
 # Multiboot entry point.  Machine is mostly set up.
 .globl multiboot_entry
 multiboot_entry:
+  # Turn on page size extension for 4Mbyte pages
+  movl    %cr4, %eax
+  orl     $(CR4_PSE), %eax
+  movl    %eax, %cr4
+  # Set page directory
   movl    $(V2P_WO(bootpgdir)), %eax
   movl    %eax, %cr3
   # Turn on paging.
