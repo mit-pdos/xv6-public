@@ -97,11 +97,11 @@ bootblock: bootasm.S bootmain.c
 	$(OBJCOPY) -S -O binary -j .text bootblock.o bootblock
 	./sign.pl bootblock
 
-bootother: bootother.S
-	$(CC) $(CFLAGS) -fno-pic -nostdinc -I. -c bootother.S
-	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7000 -o bootblockother.o bootother.o
-	$(OBJCOPY) -S -O binary -j .text bootblockother.o bootother
-	$(OBJDUMP) -S bootblockother.o > bootother.asm
+entryother: entryother.S
+	$(CC) $(CFLAGS) -fno-pic -nostdinc -I. -c entryother.S
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7000 -o bootblockother.o entryother.o
+	$(OBJCOPY) -S -O binary -j .text bootblockother.o entryother
+	$(OBJDUMP) -S bootblockother.o > entryother.asm
 
 initcode: initcode.S
 	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
@@ -109,8 +109,8 @@ initcode: initcode.S
 	$(OBJCOPY) -S -O binary initcode.out initcode
 	$(OBJDUMP) -S initcode.o > initcode.asm
 
-kernel: $(OBJS) multiboot.o data.o bootother initcode
-	$(LD) $(LDFLAGS) -T kernel.ld -e multiboot_entry -o kernel multiboot.o data.o $(OBJS) -b binary initcode bootother
+kernel: $(OBJS) entry.o data.o entryother initcode
+	$(LD) $(LDFLAGS) -T kernel.ld -e multiboot_entry -o kernel entry.o data.o $(OBJS) -b binary initcode entryother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernel.sym
 
@@ -121,12 +121,12 @@ kernel: $(OBJS) multiboot.o data.o bootother initcode
 # great for testing the kernel on real hardware without
 # needing a scratch disk.
 MEMFSOBJS = $(filter-out ide.o,$(OBJS)) memide.o
-kernelmemfs: $(MEMFSOBJS) multiboot.o data.o bootother initcode fs.img
-	$(LD) $(LDFLAGS) -Ttext 0x100000 -e main -o kernelmemfs multiboot.o data.o $(MEMFSOBJS) -b binary initcode bootother fs.img
+kernelmemfs: $(MEMFSOBJS) entry.o data.o entryother initcode fs.img
+	$(LD) $(LDFLAGS) -Ttext 0x100000 -e main -o kernelmemfs entry.o data.o $(MEMFSOBJS) -b binary initcode entryother fs.img
 	$(OBJDUMP) -S kernelmemfs > kernelmemfs.asm
 	$(OBJDUMP) -t kernelmemfs | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernelmemfs.sym
 
-tags: $(OBJS) bootother.S _init
+tags: $(OBJS) entryother.S _init
 	etags *.S *.c
 
 vectors.S: vectors.pl
