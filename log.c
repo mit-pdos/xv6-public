@@ -143,11 +143,13 @@ begin_trans(void)
 void
 commit_trans(void)
 {
-  write_head();        // This causes all blocks till log.head to be commited
-  install_trans();     // Install all the transactions till head
-  log.lh.n = 0; 
-  write_head();        // Reclaim log
-
+  if (log.lh.n > 0) {
+    write_head();        // This causes all blocks till log.head to be commited
+    install_trans();     // Install all the transactions till head
+    log.lh.n = 0; 
+    write_head();        // Reclaim log
+  }
+  
   acquire(&log.lock);
   log.intrans = 0;
   wakeup(&log);
