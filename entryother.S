@@ -58,7 +58,7 @@ start32:
   orl     $(CR0_PE|CR0_PG|CR0_WP), %eax
   movl    %eax, %cr0
 
-  # Switch to the stack allocated by bootothers()
+  # Switch to the stack allocated by entryothers()
   movl    (start-4), %esp
   # Call mpboot()
   call	 *(start-8)

@@ -6,7 +6,7 @@
 #include "proc.h"
 #include "x86.h"
 
-static void bootothers(void);
+static void enterothers(void);
 static void mpmain(void)  __attribute__((noreturn));
 extern pde_t *kpgdir;
 
@@ -33,14 +33,14 @@ main(void)
   ideinit();       // disk
   if(!ismp)
     timerinit();   // uniprocessor timer
-  bootothers();    // start other processors (must come before kinit; must use boot_alloc)
+  enterothers();    // start other processors (must come before kinit; must use boot_alloc)
   kinit();         // initialize memory allocator
   userinit();      // first user process  (must come after kinit)
   // Finish setting up this processor in mpmain.
   mpmain();
 }
 
-// Other CPUs jump here from bootother.S.
+// Other CPUs jump here from entryother.S.
 static void
 mpboot(void)
 {
@@ -56,7 +56,7 @@ mpmain(void)
 {
   cprintf("cpu%d: starting\n", cpu->id);
   idtinit();       // load idt register
-  xchg(&cpu->booted, 1); // tell bootothers() we're up
+  xchg(&cpu->booted, 1); // tell enterothers() we're up
   scheduler();     // start running processes
 }
 
@@ -64,24 +64,24 @@ pde_t bootpgdir[];
 
 // Start the non-boot processors.
 static void
-bootothers(void)
+enterothers(void)
 {
-  extern uchar _binary_bootother_start[], _binary_bootother_size[];
+  extern uchar _binary_entryother_start[], _binary_entryother_size[];
   uchar *code;
   struct cpu *c;
   char *stack;
 
   // Write bootstrap code to unused memory at 0x7000.
-  // The linker has placed the image of bootother.S in
-  // _binary_bootother_start.
+  // The linker has placed the image of entryother.S in
+  // _binary_entryother_start.
   code = p2v(0x7000);
-  memmove(code, _binary_bootother_start, (uint)_binary_bootother_size);
+  memmove(code, _binary_entryother_start, (uint)_binary_entryother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
     if(c == cpus+cpunum())  // We've started already.
       continue;
 
-    // Tell bootother.S what stack to use, the address of mpboot and pgdir;
+    // Tell entryother.S what stack to use, the address of mpboot and pgdir;
     // We cannot use kpgdir yet, because the AP processor is running in low 
     // memory, so we use bootpgdir for the APs too.  kalloc can return addresses
     // above 4Mbyte (the machine may have much more physical memory than 4Mbyte), which 
@@ -101,7 +101,7 @@ bootothers(void)
   }
 }
 
-// Boot page table used in multiboot.S and bootother.S.
+// Boot page table used in multiboot.S and entryother.S.
 // Page directories (and page tables), must start on a page boundary,
 // hence the "__aligned__" attribute.  Also, because of restrictions
 // related to linking and static initializers, we use "x + PTE_P"
