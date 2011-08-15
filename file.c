@@ -118,7 +118,6 @@ filewrite(struct file *f, char *addr, int n)
   if(f->type == FD_PIPE)
     return pipewrite(f->pipe, addr, n);
   if(f->type == FD_INODE){
-    ilock(f->ip);
     // write a few blocks at a time to avoid exceeding
     // the maximum log transaction size, including
     // i-node, indirect block, allocation blocks,
@@ -131,9 +130,13 @@ filewrite(struct file *f, char *addr, int n)
       int n1 = n - i;
       if(n1 > max)
         n1 = max;
+
       begin_trans();
+      ilock(f->ip);
       r = writei(f->ip, addr + i, f->off, n1);
+      iunlock(f->ip);
       commit_trans();
+
       if(r < 0)
         break;
       if(r != n1)
@@ -141,7 +144,6 @@ filewrite(struct file *f, char *addr, int n)
       f->off += r;
       i += r;
     }
-    iunlock(f->ip);
     return i == n ? n : -1;
   }
   panic("filewrite");

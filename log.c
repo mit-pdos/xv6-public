@@ -124,9 +124,9 @@ static void
 recover_from_log(void)
 {
   read_head();      
-  install_trans();  // Install all transactions till head
+  install_trans(); // if committed, copy from log to disk
   log.lh.n = 0;
-  write_head();     //  Reclaim log
+  write_head(); // clear the log
 }
 
 void

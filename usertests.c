@@ -364,6 +364,8 @@ sharedfd(void)
   int fd, pid, i, n, nc, np;
   char buf[10];
 
+  printf(1, "sharedfd test\n");
+
   unlink("sharedfd");
   fd = open("sharedfd", O_CREATE|O_RDWR);
   if(fd < 0){
@@ -655,7 +657,7 @@ linktest(void)
   printf(1, "linktest ok\n");
 }
 
-// test concurrent create and unlink of the same file
+// test concurrent create/link/unlink of the same file
 void
 concreate(void)
 {
@@ -728,9 +730,14 @@ concreate(void)
     }
     if(((i % 3) == 0 && pid == 0) ||
        ((i % 3) == 1 && pid != 0)){
-      fd = open(file, 0);
-      close(fd);
+      close(open(file, 0));
+      close(open(file, 0));
+      close(open(file, 0));
+      close(open(file, 0));
     } else {
+      unlink(file);
+      unlink(file);
+      unlink(file);
       unlink(file);
     }
     if(pid == 0)
@@ -740,6 +747,42 @@ concreate(void)
   }
 
   printf(1, "concreate ok\n");
+}
+
+// another concurrent link/unlink/create test,
+// to look for deadlocks.
+void
+linkunlink()
+{
+  int pid, i;
+
+  printf(1, "linkunlink test\n");
+
+  unlink("x");
+  pid = fork();
+  if(pid < 0){
+    printf(1, "fork failed\n");
+    exit();
+  }
+
+  unsigned int x = (pid ? 1 : 97);
+  for(i = 0; i < 100; i++){
+    x = x * 1103515245 + 12345;
+    if((x % 3) == 0){
+      close(open("x", O_RDWR | O_CREATE));
+    } else if((x % 3) == 1){
+      link("cat", "x");
+    } else {
+      unlink("x");
+    }
+  }
+
+  if(pid)
+    wait();
+  else 
+    exit();
+
+  printf(1, "linkunlink ok\n");
 }
 
 // directory that uses indirect blocks
@@ -1518,6 +1561,7 @@ main(int argc, char *argv[])
   bigfile();
   subdir();
   concreate();
+  linkunlink();
   linktest();
   unlinkread();
   createdelete();

@@ -116,13 +116,15 @@ sys_link(void)
     return -1;
   if((ip = namei(old)) == 0)
     return -1;
+
+  begin_trans();
+
   ilock(ip);
   if(ip->type == T_DIR){
     iunlockput(ip);
+    commit_trans();
     return -1;
   }
-
-  begin_trans();
 
   ip->nlink++;
   iupdate(ip);
@@ -180,16 +182,21 @@ sys_unlink(void)
     return -1;
   if((dp = nameiparent(path, name)) == 0)
     return -1;
+
+  begin_trans();
+
   ilock(dp);
 
   // Cannot unlink "." or "..".
   if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0){
     iunlockput(dp);
+    commit_trans();
     return -1;
   }
 
   if((ip = dirlookup(dp, name, &off)) == 0){
     iunlockput(dp);
+    commit_trans();
     return -1;
   }
   ilock(ip);
@@ -199,10 +206,9 @@ sys_unlink(void)
   if(ip->type == T_DIR && !isdirempty(ip)){
     iunlockput(ip);
     iunlockput(dp);
+    commit_trans();
     return -1;
   }
-
-  begin_trans();
 
   memset(&de, 0, sizeof(de));
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
