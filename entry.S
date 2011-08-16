@@ -34,17 +34,17 @@ multiboot_header:
   .long multiboot_header
   .long edata
   .long end
-  .long multiboot_entry
+  .long entry
 
-# Multiboot entry point.  Machine is mostly set up.
-.globl multiboot_entry
-multiboot_entry:
+# Entering xv6 on boot processor.  Machine is mostly set up.
+.globl entry
+entry:
   # Turn on page size extension for 4Mbyte pages
   movl    %cr4, %eax
   orl     $(CR4_PSE), %eax
   movl    %eax, %cr4
   # Set page directory
-  movl    $(V2P_WO(bootpgdir)), %eax
+  movl    $(V2P_WO(enterpgdir)), %eax
   movl    %eax, %cr3
   # Turn on paging.
   movl    %cr0, %eax

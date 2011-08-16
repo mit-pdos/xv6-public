@@ -14,8 +14,8 @@
 # Bootothers (in main.c) sends the STARTUPs one at a time.
 # It copies this code (start) at 0x7000.
 # It puts the address of a newly allocated per-core stack in start-4,
-# the address of the place to jump to (mpboot) in start-8, and the physical
-# address of bootpgdir in start-12.
+# the address of the place to jump to (mpenter) in start-8, and the physical
+# address of enterpgdir in start-12.
 #
 #
 # This code is identical to bootasm.S except:
@@ -54,7 +54,7 @@ start32:
   movl    %cr4, %eax
   orl     $(CR4_PSE), %eax
   movl    %eax, %cr4
-  # Use bootpgdir as our initial page table
+  # Use enterpgdir as our initial page table
   movl    (start-12), %eax
   movl    %eax, %cr3
   # Turn on paging.
@@ -62,9 +62,9 @@ start32:
   orl     $(CR0_PE|CR0_PG|CR0_WP), %eax
   movl    %eax, %cr0
 
-  # Switch to the stack allocated by enterothers()
+  # Switch to the stack allocated by startothers()
   movl    (start-4), %esp
-  # Call mpboot()
+  # Call mpenter()
   call	 *(start-8)
 
   movw    $0x8a00, %ax

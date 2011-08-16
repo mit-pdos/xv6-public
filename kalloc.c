@@ -21,15 +21,15 @@ struct {
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
 
-// simple page allocator to get off the ground during boot
+// simple page allocator to get off the ground during entry
 char *
-boot_alloc(void)
+enter_alloc(void)
 {
   if (newend == 0)
     newend = end;
 
   if ((uint) newend >= KERNBASE + 0x400000)
-    panic("only first 4Mbyte are mapped during boot");
+    panic("only first 4Mbyte are mapped during entry");
   void *p = (void*)PGROUNDUP((uint)newend);
   memset(p, 0, PGSIZE);
   newend = newend + PGSIZE;

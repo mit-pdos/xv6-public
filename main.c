@@ -6,7 +6,7 @@
 #include "proc.h"
 #include "x86.h"
 
-static void enterothers(void);
+static void startothers(void);
 static void mpmain(void)  __attribute__((noreturn));
 extern pde_t *kpgdir;
 
@@ -33,7 +33,7 @@ main(void)
   ideinit();       // disk
   if(!ismp)
     timerinit();   // uniprocessor timer
-  enterothers();    // start other processors (must come before kinit; must use boot_alloc)
+  startothers();    // start other processors (must come before kinit; must use enter_alloc)
   kinit();         // initialize memory allocator
   userinit();      // first user process  (must come after kinit)
   // Finish setting up this processor in mpmain.
@@ -42,7 +42,7 @@ main(void)
 
 // Other CPUs jump here from entryother.S.
 static void
-mpboot(void)
+mpenter(void)
 {
   switchkvm(); 
   seginit();
@@ -56,22 +56,22 @@ mpmain(void)
 {
   cprintf("cpu%d: starting\n", cpu->id);
   idtinit();       // load idt register
-  xchg(&cpu->booted, 1); // tell enterothers() we're up
+  xchg(&cpu->started, 1); // tell startothers() we're up
   scheduler();     // start running processes
 }
 
-pde_t bootpgdir[];
+pde_t enterpgdir[];
 
-// Start the non-boot processors.
+// Start the non-boot (AP) processors.
 static void
-enterothers(void)
+startothers(void)
 {
   extern uchar _binary_entryother_start[], _binary_entryother_size[];
   uchar *code;
   struct cpu *c;
   char *stack;
 
-  // Write bootstrap code to unused memory at 0x7000.
+  // Write entry code to unused memory at 0x7000.
   // The linker has placed the image of entryother.S in
   // _binary_entryother_start.
   code = p2v(0x7000);
@@ -81,44 +81,36 @@ enterothers(void)
     if(c == cpus+cpunum())  // We've started already.
       continue;
 
-    // Tell entryother.S what stack to use, the address of mpboot and pgdir;
+    // Tell entryother.S what stack to use, the address of mpenter and pgdir;
     // We cannot use kpgdir yet, because the AP processor is running in low 
-    // memory, so we use bootpgdir for the APs too.  kalloc can return addresses
+    // memory, so we use enterpgdir for the APs too.  kalloc can return addresses
     // above 4Mbyte (the machine may have much more physical memory than 4Mbyte), which 
-    // aren't mapped by bootpgdir, so we must allocate a stack using boot_alloc();
+    // aren't mapped by enterpgdir, so we must allocate a stack using enter_alloc();
     // This introduces the constraint that xv6 cannot use kalloc until after these 
-    // last boot_alloc invocations.
-    stack = boot_alloc();
+    // last enter_alloc invocations.
+    stack = enter_alloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
-    *(void**)(code-8) = mpboot;
-    *(int**)(code-12) = (void *) v2p(bootpgdir);
+    *(void**)(code-8) = mpenter;
+    *(int**)(code-12) = (void *) v2p(enterpgdir);
 
     lapicstartap(c->id, v2p(code));
 
     // wait for cpu to finish mpmain()
-    while(c->booted == 0)
+    while(c->started == 0)
       ;
   }
 }
 
-// Boot page table used in multiboot.S and entryother.S.
+// Boot page table used in entry.S and entryother.S.
 // Page directories (and page tables), must start on a page boundary,
-// hence the "__aligned__" attribute.  Also, because of restrictions
-// related to linking and static initializers, we use "x + PTE_P"
-// here, rather than the more standard "x | PTE_P".  Everywhere else
-// you should use "|" to combine flags.
+// hence the "__aligned__" attribute.  
 // Use PTE_PS in page directory entry to enable 4Mbyte pages.
-pte_t dev_pgtable[NPTENTRIES];
-pte_t entry_pgtable[NPTENTRIES];
-
 __attribute__((__aligned__(PGSIZE)))
-pde_t bootpgdir[NPDENTRIES] = {
+pde_t enterpgdir[NPDENTRIES] = {
 	// Map VA's [0, 4MB) to PA's [0, 4MB)
-	[0]
-		= (0) + PTE_P + PTE_W + PTE_PS,
+	[0] = (0) + PTE_P + PTE_W + PTE_PS,
 	// Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
-	[KERNBASE>>PDXSHIFT]
-    	        = (0) + PTE_P + PTE_W + PTE_PS,
+	[KERNBASE>>PDXSHIFT] = (0) + PTE_P + PTE_W + PTE_PS,
 };
 
 //PAGEBREAK!

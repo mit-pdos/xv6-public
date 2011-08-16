@@ -12,7 +12,7 @@ pde_t *kpgdir;  // for use in scheduler()
 struct segdesc gdt[NSEGS];
 
 // Set up CPU's kernel segment descriptors.
-// Run once at boot time on each CPU.
+// Run once on entry on each CPU.
 void
 seginit(void)
 {
@@ -146,7 +146,7 @@ setupkvm(char* (*alloc)(void))
 void
 kvmalloc(void)
 {
-  kpgdir = setupkvm(boot_alloc);
+  kpgdir = setupkvm(enter_alloc);
   switchkvm();
 }
 

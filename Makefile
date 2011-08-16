@@ -110,7 +110,7 @@ initcode: initcode.S
 	$(OBJDUMP) -S initcode.o > initcode.asm
 
 kernel: $(OBJS) entry.o data.o entryother initcode
-	$(LD) $(LDFLAGS) -T kernel.ld -e multiboot_entry -o kernel entry.o data.o $(OBJS) -b binary initcode entryother
+	$(LD) $(LDFLAGS) -T kernel.ld -e entry -o kernel entry.o data.o $(OBJS) -b binary initcode entryother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernel.sym
 

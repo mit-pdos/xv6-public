@@ -132,7 +132,7 @@ microdelay(int us)
 
 #define IO_RTC  0x70
 
-// Start additional processor running bootstrap code at addr.
+// Start additional processor running entry code at addr.
 // See Appendix B of MultiProcessor Specification.
 void
 
@@ -158,7 +158,7 @@ lapicstartap(uchar apicid, uint addr)
   lapicw(ICRLO, INIT | LEVEL);
   microdelay(100);    // should be 10ms, but too slow in Bochs!
   
-  // Send startup IPI (twice!) to enter bootstrap code.
+  // Send startup IPI (twice!) to enter code.
   // Regular hardware is supposed to only accept a STARTUP
   // when it is in the halted state due to an INIT.  So the second
   // should be ignored, but it is part of the official Intel algorithm.

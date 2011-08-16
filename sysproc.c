@@ -77,7 +77,7 @@ sys_sleep(void)
 }
 
 // return how many clock tick interrupts have occurred
-// since boot.
+// since start.
 int
 sys_uptime(void)
 {
