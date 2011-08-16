@@ -1,16 +1,20 @@
 # basic headers
 types.h
 param.h
+memlayout.h
 defs.h
 x86.h
 asm.h
 mmu.h
 elf.h
 
-# startup
+# bootloader
 bootasm.S
-bootother.S
 bootmain.c
+
+# entering xv6
+entry.S
+entryother.S
 main.c
 
 # locks
@@ -42,6 +46,7 @@ file.h
 ide.c
 bio.c
 fs.c
+log.c
 file.c
 sysfile.c
 exec.c
@@ -64,7 +69,6 @@ kbd.c
 console.c
 timer.c
 uart.c
-multiboot.S
 
 # user-level
 initcode.S
