@@ -173,7 +173,7 @@ fs.img: mkfs README $(UPROGS)
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm *.sym vectors.S parport.out \
-	bootblock kernel xv6.img fs.img mkfs \
+	bootblock entryother kernel xv6.img fs.img kernelmemfs mkfs \
 	$(UPROGS)
 
 # make a printout
