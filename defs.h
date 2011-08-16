@@ -66,6 +66,7 @@ char*           enter_alloc(void);
 char*           kalloc(void);
 void            kfree(char*);
 void            kinit(void);
+uint            detect_memory(void);
 
 // kbd.c
 void            kbdintr(void);

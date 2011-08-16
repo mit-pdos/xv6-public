@@ -135,7 +135,6 @@ microdelay(int us)
 // Start additional processor running entry code at addr.
 // See Appendix B of MultiProcessor Specification.
 void
-
 lapicstartap(uchar apicid, uint addr)
 {
   int i;
@@ -169,3 +168,5 @@ lapicstartap(uchar apicid, uint addr)
     microdelay(200);
   }
 }
+
+

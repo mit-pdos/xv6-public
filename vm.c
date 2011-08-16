@@ -8,6 +8,7 @@
 #include "elf.h"
 
 extern char data[];  // defined in data.S
+uint maxpa;  // max physical address
 pde_t *kpgdir;  // for use in scheduler()
 struct segdesc gdt[NSEGS];
 
@@ -64,8 +65,8 @@ walkpgdir(pde_t *pgdir, const void *va, char* (*alloc)(void))
   return &pgtab[PTX(va)];
 }
 
-// Create PTEs for virtual addresses starting at la that refer to
-// physical addresses starting at pa. la and size might not
+// Create PTEs for virtual addresses starting at va that refer to
+// physical addresses starting at pa. va and size might not
 // be page-aligned.
 static int
 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm, char* (*alloc)(void))
@@ -73,8 +74,8 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm, char* (*alloc)(vo
   char *a, *last;
   pte_t *pte;
   
-  a = PGROUNDDOWN(va);
-  last = PGROUNDDOWN(va + size - 1);
+  a = (char *) PGROUNDDOWN((uint) va);
+  last = (char *) PGROUNDDOWN(((uint) va) + size - 1);
   for(;;){
     pte = walkpgdir(pgdir, a, alloc);
     if(pte == 0)
@@ -100,13 +101,13 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm, char* (*alloc)(vo
 // 
 // setupkvm() and exec() set up every page table like this:
 //   0..USERTOP      : user memory (text, data, stack, heap), mapped to some unused phys mem
-//   KERNBASE..KERNBASE+1M: mapped to 0..1M
-//   KERNBASE+1M..KERNBASE+end : mapped to 1M..end (mapped without write permission)
-//   KERNBASE+end..KERBASE+PHYSTOP     : mapped to end..PHYSTOP (rw data + free memory)
+//   KERNBASE..KERNBASE+EXTMEM: mapped to 0..EXTMEM  (below extended memory)
+//   KERNBASE+EXTMEM..KERNBASE+end : mapped to EXTMEM..end (mapped without write permission)
+//   KERNBASE+end..KERBASE+maxpa     : mapped to end..maxpa (rw data + free memory)
 //   0xfe000000..0    : mapped direct (devices such as ioapic)
 //
 // The kernel allocates memory for its heap and for user memory
-// between kernend and the end of physical memory (PHYSTOP).
+// between kernend and the end of physical memory (maxpa).
 // The virtual address space of each user program includes the kernel
 // (which is inaccessible in user mode).  The user program sits in
 // the bottom of the address space, and the kernel at the top at KERNBASE.
@@ -118,7 +119,7 @@ static struct kmap {
 } kmap[] = {
   { P2V(0), 0, 1024*1024, PTE_W},  // First 1Mbyte contains BIOS and some IO devices
   { (void *)KERNLINK, V2P(KERNLINK), V2P(data),  0},  // kernel text, rodata
-  { data, V2P(data), PHYSTOP,  PTE_W},  // kernel data, memory
+  { data, V2P(data), 0,  PTE_W},  // kernel data, memory
   { (void*)DEVSPACE, DEVSPACE, 0, PTE_W},  // more devices
 };
 
@@ -129,6 +130,13 @@ setupkvm(char* (*alloc)(void))
   pde_t *pgdir;
   struct kmap *k;
 
+  if (kmap[2].phys_end == 0) {
+    maxpa = detect_memory();
+    kmap[2].phys_end = maxpa;
+    if (p2v(maxpa) > kmap[3].virt)
+      panic("detect_memory: too much memory");
+
+  }
   if((pgdir = (pde_t*)alloc()) == 0)
     return 0;
   memset(pgdir, 0, PGSIZE);

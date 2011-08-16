@@ -1,17 +1,12 @@
 // Memory layout
 
-#define PGSIZE          4096            // bytes mapped by a page
-#define PGSHIFT         12              // log2(PGSIZE)
-
-#define KSTKSIZE        (8*PGSIZE)              // size of a kernel stack
-
-#define DEVSPACE  0xFE000000  // other devices are in the top of the phys address space
-#define PHYSTOP   0xE000000 // use phys mem up to here as free pool
+#define EXTMEM  0x100000            // Start of extended memory
+#define DEVSPACE 0xFE000000         // Other devices are at high addresses
 
 // Key addresses for address space layout (see kmap in vm.c for the layout)
-#define KERNBASE 0xF0000000  // First kernel virtual address
+#define KERNBASE 0xF0000000         // First kernel virtual address
 #define USERTOP  (KERNBASE-PGSIZE)  // Highest user virtual address
-#define KERNLINK 0xF0100000   // Address where kernel is linked
+#define KERNLINK (KERNBASE+EXTMEM)  // Address where kernel is linked
 
 #ifndef __ASSEMBLER__
 
