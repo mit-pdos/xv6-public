@@ -1529,6 +1529,59 @@ bigargtest(void)
   wait();
 }
 
+// what happens when the file system runs out of blocks?
+// answer: balloc panics, so this test is not useful.
+void
+fsfull()
+{
+  int nfiles;
+  int fsblocks = 0;
+
+  printf(1, "fsfull test\n");
+
+  for(nfiles = 0; ; nfiles++){
+    char name[64];
+    name[0] = 'f';
+    name[1] = '0' + nfiles / 1000;
+    name[2] = '0' + (nfiles % 1000) / 100;
+    name[3] = '0' + (nfiles % 100) / 10;
+    name[4] = '0' + (nfiles % 10);
+    name[5] = '\0';
+    printf(1, "writing %s\n", name);
+    int fd = open(name, O_CREATE|O_RDWR);
+    if(fd < 0){
+      printf(1, "open %s failed\n", name);
+      break;
+    }
+    int total = 0;
+    while(1){
+      int cc = write(fd, buf, 512);
+      if(cc < 512)
+        break;
+      total += cc;
+      fsblocks++;
+    }
+    printf(1, "wrote %d bytes\n", total);
+    close(fd);
+    if(total == 0)
+      break;
+  }
+
+  while(nfiles >= 0){
+    char name[64];
+    name[0] = 'f';
+    name[1] = '0' + nfiles / 1000;
+    name[2] = '0' + (nfiles % 1000) / 100;
+    name[3] = '0' + (nfiles % 100) / 10;
+    name[4] = '0' + (nfiles % 10);
+    name[5] = '\0';
+    unlink(name);
+    nfiles--;
+  }
+
+  printf(1, "fsfull test finished\n");
+}
+
 int
 main(int argc, char *argv[])
 {
