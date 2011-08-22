@@ -469,30 +469,25 @@ struct inode*
 dirlookup(struct inode *dp, char *name, uint *poff)
 {
   uint off, inum;
-  struct buf *bp;
-  struct dirent *de;
+  struct dirent de;
 
   if(dp->type != T_DIR)
     panic("dirlookup not DIR");
 
-  for(off = 0; off < dp->size; off += BSIZE){
-    bp = bread(dp->dev, bmap(dp, off / BSIZE));
-    for(de = (struct dirent*)bp->data;
-        de < (struct dirent*)(bp->data + BSIZE);
-        de++){
-      if(de->inum == 0)
-        continue;
-      if(namecmp(name, de->name) == 0){
-        // entry matches path element
-        if(poff)
-          *poff = off + (uchar*)de - bp->data;
-        inum = de->inum;
-        brelse(bp);
-        return iget(dp->dev, inum);
-      }
+  for(off = 0; off < dp->size; off += sizeof(de)){
+    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+      panic("dirlink read");
+    if(de.inum == 0)
+      continue;
+    if(namecmp(name, de.name) == 0){
+      // entry matches path element
+      if(poff)
+        *poff = off;
+      inum = de.inum;
+      return iget(dp->dev, inum);
     }
-    brelse(bp);
   }
+
   return 0;
 }
 
