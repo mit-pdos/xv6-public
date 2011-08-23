@@ -322,8 +322,14 @@ yield(void)
 void
 forkret(void)
 {
+  static int first = 1;
   // Still holding ptable.lock from scheduler.
   release(&ptable.lock);
+
+  if (first) {
+    first = 0;
+    initlog();
+  }
   
   // Return to "caller", actually trapret (see allocproc).
 }

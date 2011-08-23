@@ -60,7 +60,7 @@ mpmain(void)
   scheduler();     // start running processes
 }
 
-pde_t enterpgdir[];
+pde_t enterpgdir[];  // For entry.S
 
 // Start the non-boot (AP) processors.
 static void
