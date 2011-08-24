@@ -6,7 +6,6 @@
 
 // Key addresses for address space layout (see kmap in vm.c for the layout)
 #define KERNBASE 0xF0000000         // First kernel virtual address
-#define USERTOP  (KERNBASE-PGSIZE)  // Highest user virtual address
 #define KERNLINK (KERNBASE+EXTMEM)  // Address where kernel is linked
 
 #ifndef __ASSEMBLER__
