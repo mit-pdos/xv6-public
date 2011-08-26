@@ -2,8 +2,8 @@
 #include "defs.h"
 #include "param.h"
 #include "fs.h"
-#include "file.h"
 #include "spinlock.h"
+#include "file.h"
 
 struct devsw devsw[NDEV];
 struct {
@@ -133,7 +133,8 @@ filewrite(struct file *f, char *addr, int n)
 
       begin_trans();
       ilock(f->ip);
-      r = writei(f->ip, addr + i, f->off, n1);
+      if ((r = writei(f->ip, addr + i, f->off, n1)) > 0)
+	f->off += r;
       iunlock(f->ip);
       commit_trans();
 
@@ -141,7 +142,6 @@ filewrite(struct file *f, char *addr, int n)
         break;
       if(r != n1)
         panic("short filewrite");
-      f->off += r;
       i += r;
     }
     return i == n ? n : -1;

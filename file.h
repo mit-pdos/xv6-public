@@ -15,7 +15,9 @@ struct inode {
   uint dev;           // Device number
   uint inum;          // Inode number
   int ref;            // Reference count
-  int flags;          // I_BUSY, I_VALID
+  int flags;          // I_VALID
+  struct spinlock lock;
+  struct sleeplock sleeplock;
 
   short type;         // copy of disk inode
   short major;
@@ -25,9 +27,7 @@ struct inode {
   uint addrs[NDIRECT+1];
 };
 
-#define I_BUSY 0x1
 #define I_VALID 0x2
-
 
 // device implementations
 

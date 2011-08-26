@@ -43,9 +43,9 @@ struct logheader {
 
 struct {
   struct spinlock lock;
+  struct sleeplock sleeplock;
   int start;
   int size;
-  int intrans;
   int dev;
   struct logheader lh;
 } log;
@@ -60,6 +60,7 @@ initlog(void)
 
   struct superblock sb;
   initlock(&log.lock, "log");
+  initsleeplock(&log.sleeplock);
   readsb(ROOTDEV, &sb);
   log.start = sb.size - sb.nlog;
   log.size = sb.nlog;
@@ -133,10 +134,7 @@ void
 begin_trans(void)
 {
   acquire(&log.lock);
-  while (log.intrans) {
-    sleep(&log, &log.lock);
-  }
-  log.intrans = 1;
+  acquire_sleeplock(&log.sleeplock, &log.lock);
   release(&log.lock);
 }
 
@@ -149,10 +147,8 @@ commit_trans(void)
     log.lh.n = 0; 
     write_head();        // Reclaim log
   }
-  
   acquire(&log.lock);
-  log.intrans = 0;
-  wakeup(&log);
+  release_sleeplock(&log.sleeplock);
   release(&log.lock);
 }
 
@@ -171,7 +167,7 @@ log_write(struct buf *b)
 
   if (log.lh.n >= LOGSIZE || log.lh.n >= log.size - 1)
     panic("too big a transaction");
-  if (!log.intrans)
+  if (!acquired_sleeplock(&log.sleeplock))
     panic("write outside of trans");
 
   // cprintf("log_write: %d %d\n", b->sector, log.lh.n);

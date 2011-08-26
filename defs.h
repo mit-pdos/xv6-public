@@ -5,6 +5,7 @@ struct inode;
 struct pipe;
 struct proc;
 struct spinlock;
+struct sleeplock;
 struct stat;
 struct superblock;
 
@@ -129,6 +130,10 @@ void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
 void            pushcli(void);
 void            popcli(void);
+void            initsleeplock(struct sleeplock*);
+void            acquire_sleeplock(struct sleeplock*,struct spinlock*);
+void            release_sleeplock(struct sleeplock*);
+int             acquired_sleeplock(struct sleeplock*);
 
 // string.c
 int             memcmp(const void*, const void*, uint);
