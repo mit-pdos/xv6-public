@@ -46,7 +46,7 @@ seta20.2:
 
 //PAGEBREAK!
   # Complete transition to 32-bit protected mode by using long jmp
-  # to reload %cs and %eip.  The segment registers are set up with no
+  # to reload %cs and %eip.  The segment descriptors are set up with no
   # translation, so that the mapping is still the identity mapping.
   ljmp    $(SEG_KCODE<<3), $start32
 
