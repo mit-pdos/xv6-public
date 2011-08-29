@@ -107,10 +107,10 @@ startothers(void)
 // Use PTE_PS in page directory entry to enable 4Mbyte pages.
 __attribute__((__aligned__(PGSIZE)))
 pde_t enterpgdir[NPDENTRIES] = {
-	// Map VA's [0, 4MB) to PA's [0, 4MB)
-	[0] = (0) + PTE_P + PTE_W + PTE_PS,
-	// Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
-	[KERNBASE>>PDXSHIFT] = (0) + PTE_P + PTE_W + PTE_PS,
+  // Map VA's [0, 4MB) to PA's [0, 4MB)
+  [0] = (0) + PTE_P + PTE_W + PTE_PS,
+  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
+  [KERNBASE>>PDXSHIFT] = (0) + PTE_P + PTE_W + PTE_PS,
 };
 
 //PAGEBREAK!

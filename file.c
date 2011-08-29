@@ -134,7 +134,7 @@ filewrite(struct file *f, char *addr, int n)
       begin_trans();
       ilock(f->ip);
       if ((r = writei(f->ip, addr + i, f->off, n1)) > 0)
-	f->off += r;
+        f->off += r;
       iunlock(f->ip);
       commit_trans();
 
