@@ -27,7 +27,7 @@ struct inode {
   uint addrs[NDIRECT+1];
 };
 
-#define I_VALID 0x2
+#define I_VALID 0x1
 
 // device implementations
 
