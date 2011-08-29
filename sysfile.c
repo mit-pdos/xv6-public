@@ -5,7 +5,6 @@
 #include "mmu.h"
 #include "proc.h"
 #include "fs.h"
-#include "spinlock.h"
 #include "file.h"
 #include "fcntl.h"
 

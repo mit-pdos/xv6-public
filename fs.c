@@ -113,8 +113,11 @@ bfree(int dev, uint b)
 // It is an error to use an inode without holding a reference to it.
 //
 // Processes are only allowed to read and write inode
-// metadata and contents when holding the inode's sleeplock.
-// Callers are responsible for locking
+// metadata and contents when holding the inode's lock,
+// represented by the I_BUSY flag in the in-memory copy.
+// Because inode locks are held during disk accesses, 
+// they are implemented using a flag rather than with
+// spin locks.  Callers are responsible for locking
 // inodes before passing them to routines in this file; leaving
 // this responsibility with the caller makes it possible for them
 // to create arbitrarily-sized atomic operations.
@@ -213,7 +216,6 @@ iget(uint dev, uint inum)
   ip->inum = inum;
   ip->ref = 1;
   ip->flags = 0;
-  initsleeplock(&ip->sleeplock);
   release(&icache.lock);
 
   return ip;
@@ -230,7 +232,7 @@ idup(struct inode *ip)
   return ip;
 }
 
-// Acquire the sleeplock for a given inode.
+// Lock the given inode.
 void
 ilock(struct inode *ip)
 {
@@ -241,7 +243,9 @@ ilock(struct inode *ip)
     panic("ilock");
 
   acquire(&icache.lock);
-  acquire_sleeplock(&ip->sleeplock, &icache.lock);
+  while(ip->flags & I_BUSY)
+    sleep(ip, &icache.lock);
+  ip->flags |= I_BUSY;
   release(&icache.lock);
 
   if(!(ip->flags & I_VALID)){
@@ -264,11 +268,12 @@ ilock(struct inode *ip)
 void
 iunlock(struct inode *ip)
 {
-  if(ip == 0 || !acquired_sleeplock(&ip->sleeplock) || ip->ref < 1)
+  if(ip == 0 || !(ip->flags & I_BUSY) || ip->ref < 1)
     panic("iunlock");
 
   acquire(&icache.lock);
-  release_sleeplock(&ip->sleeplock);
+  ip->flags &= ~I_BUSY;
+  wakeup(ip);
   release(&icache.lock);
 }
 
@@ -279,15 +284,14 @@ iput(struct inode *ip)
   acquire(&icache.lock);
   if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0){
     // inode is no longer used: truncate and free inode.
-    if(acquired_sleeplock(&ip->sleeplock))
+    if(ip->flags & I_BUSY)
       panic("iput busy");
-    acquire_sleeplock(&ip->sleeplock, &icache.lock);
+    ip->flags |= I_BUSY;
     release(&icache.lock);
     itrunc(ip);
     ip->type = 0;
     iupdate(ip);
     acquire(&icache.lock);
-    release_sleeplock(&ip->sleeplock);
     ip->flags = 0;
     wakeup(ip);
   }
@@ -429,14 +433,10 @@ writei(struct inode *ip, char *src, uint off, uint n)
     return devsw[ip->major].write(ip, src, n);
   }
 
-  if(off > ip->size || off + n < off) {
-    panic("writei1");
+  if(off > ip->size || off + n < off)
     return -1;
-  }
-  if(off + n > MAXFILE*BSIZE) {
-    panic("writei2");
+  if(off + n > MAXFILE*BSIZE)
     return -1;
-  }
 
   for(tot=0; tot<n; tot+=m, off+=m, src+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));

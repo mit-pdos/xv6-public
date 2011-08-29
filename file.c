@@ -2,8 +2,8 @@
 #include "defs.h"
 #include "param.h"
 #include "fs.h"
-#include "spinlock.h"
 #include "file.h"
+#include "spinlock.h"
 
 struct devsw devsw[NDEV];
 struct {

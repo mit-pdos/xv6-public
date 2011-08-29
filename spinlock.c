@@ -17,9 +17,10 @@ initlock(struct spinlock *lk, char *name)
   lk->cpu = 0;
 }
 
-// Acquire a spin lock. Loops (spins) until the lock is acquired.
-// Holding a lock for a long time may cause other CPUs to waste time spinning to acquire it.
-// Spinlocks shouldn't be held across sleep(); for those cases, use sleeplocks.
+// Acquire the lock.
+// Loops (spins) until the lock is acquired.
+// Holding a lock for a long time may cause
+// other CPUs to waste time spinning to acquire it.
 void
 acquire(struct spinlock *lk)
 {
@@ -114,38 +115,3 @@ popcli(void)
     sti();
 }
 
-void
-initsleeplock(struct sleeplock *l)
-{
-  l->locked = 0;
-}
-
-// Grab the sleeplock that is protected by spinl. Sleeplocks allow a process to lock
-// a data structure for long times, including across sleeps.  Other processes that try
-// to acquire a sleeplock will be put to sleep when another process hold the sleeplock.
-// To update status of the sleeplock atomically, the caller must hold spinl
-void
-acquire_sleeplock(struct sleeplock *sleepl, struct spinlock *spinl)
-{
-  while (sleepl->locked) {
-    sleep(sleepl, spinl);
-  }
-  sleepl->locked = 1;
-}
-
-// Release the sleeplock that is protected by a spin lock
-// Caller must hold the spinlock that protects the sleeplock
-void
-release_sleeplock(struct sleeplock *sleepl)
-{
-  sleepl->locked = 0;
-  wakeup(sleepl);
-}
-
-// Is the sleeplock acquired?
-// Caller must hold the spinlock that protects the sleeplock
-int
-acquired_sleeplock(struct sleeplock *sleepl)
-{
-  return sleepl->locked;
-}

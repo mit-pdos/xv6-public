@@ -127,7 +127,7 @@ iderw(struct buf *b)
 {
   struct buf **pp;
 
-  if(!acquired_sleeplock(&b->sleeplock))
+  if(!(b->flags & B_BUSY))
     panic("iderw: buf not busy");
   if((b->flags & (B_VALID|B_DIRTY)) == B_VALID)
     panic("iderw: nothing to do");
