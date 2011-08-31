@@ -43,7 +43,7 @@ bootmain(void)
 
   // Call the entry point from the ELF header.
   // Does not return!
-  entry = (void(*)(void))(elf->entry & 0xFFFFFF);
+  entry = (void(*)(void))(elf->entry - KERNBASE);
   entry();
 }
 

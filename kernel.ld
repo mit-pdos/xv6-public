@@ -8,7 +8,8 @@ ENTRY(_start)
 SECTIONS
 {
 	/* Load the kernel at this address: "." means the current address */
-	. = 0xF0100000;
+        /* Must be equal to KERNLINK */
+	. = 0x80100000;
 
 	.text : AT(0x100000) {
 		*(.text .stub .text.* .gnu.linkonce.t.*)
