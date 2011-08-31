@@ -44,11 +44,11 @@ entry:
   orl     $(CR4_PSE), %eax
   movl    %eax, %cr4
   # Set page directory
-  movl    $(V2P_WO(enterpgdir)), %eax
+  movl    $(V2P_WO(entrypgdir)), %eax
   movl    %eax, %cr3
   # Turn on paging.
   movl    %cr0, %eax
-  orl     $(CR0_PE|CR0_PG|CR0_WP), %eax
+  orl     $(CR0_PG|CR0_WP), %eax
   movl    %eax, %cr0
 
   # now switch to using addresses above KERNBASE

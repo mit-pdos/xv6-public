@@ -1,3 +1,4 @@
+#include "param.h"
 #include "types.h"
 #include "stat.h"
 #include "user.h"
@@ -240,8 +241,10 @@ pipe1(void)
       if(cc > sizeof(buf))
         cc = sizeof(buf);
     }
-    if(total != 5 * 1033)
+    if(total != 5 * 1033){
       printf(1, "pipe1 oops 3 total %d\n", total);
+      exit();
+    }
     close(fds[0]);
     wait();
   } else {
@@ -401,10 +404,12 @@ sharedfd(void)
   }
   close(fd);
   unlink("sharedfd");
-  if(nc == 10000 && np == 10000)
+  if(nc == 10000 && np == 10000){
     printf(1, "sharedfd ok\n");
-  else
+  } else {
     printf(1, "sharedfd oops %d %d\n", nc, np);
+    exit();
+  }
 }
 
 // two processes write two different files at the same
@@ -423,7 +428,7 @@ twofiles(void)
   pid = fork();
   if(pid < 0){
     printf(1, "fork failed\n");
-    return;
+    exit();
   }
 
   fname = pid ? "f1" : "f2";
@@ -1580,6 +1585,14 @@ fsfull()
   }
 
   printf(1, "fsfull test finished\n");
+}
+
+unsigned long randstate = 1;
+unsigned int
+rand()
+{
+  randstate = randstate * 1664525 + 1013904223;
+  return randstate;
 }
 
 int
