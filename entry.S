@@ -51,15 +51,14 @@ entry:
   orl     $(CR0_PG|CR0_WP), %eax
   movl    %eax, %cr0
 
-  # now switch to using addresses above KERNBASE
-  # call addresses are pc-relative so we jump though this hoop:
-  mov     $relocated, %eax
-  jmp     *%eax
-relocated:
-  # Set up the stack pointer and call into C.
+  # Set up the stack pointer.
   movl $(stack + STACK), %esp
-  call main
-spin:
-  jmp spin
+
+  # Call main(), which switches to executing at
+  # high addresses. The indirect call is needed because
+  # the assembler produces a PC-relative instruction
+  # for a direct call. 
+  mov $main, %eax
+  jmp *%eax
 
 .comm stack, STACK
