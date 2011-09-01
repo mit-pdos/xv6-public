@@ -17,8 +17,7 @@
 #include "asm.h"
 #include "memlayout.h"
 #include "mmu.h"
-
-#define STACK 4096
+#include "param.h"
 
 # Multiboot header.  Data to direct multiboot loader.
 .p2align 2
@@ -52,7 +51,7 @@ entry:
   movl    %eax, %cr0
 
   # Set up the stack pointer.
-  movl $(stack + STACK), %esp
+  movl $(stack + KSTACKSIZE), %esp
 
   # Jump to main(), and switch to executing at
   # high addresses. The indirect call is needed because
@@ -61,4 +60,4 @@ entry:
   mov $main, %eax
   jmp *%eax
 
-.comm stack, STACK
+.comm stack, KSTACKSIZE
