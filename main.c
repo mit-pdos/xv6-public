@@ -33,7 +33,7 @@ main(void)
   ideinit();       // disk
   if(!ismp)
     timerinit();   // uniprocessor timer
-  startothers();    // start other processors (must come before kinit; must use enter_alloc)
+  startothers();    // start other processors (must come before kinit)
   kinit();         // initialize memory allocator
   userinit();      // first user process  (must come after kinit)
   // Finish setting up this processor in mpmain.
@@ -81,13 +81,14 @@ startothers(void)
     if(c == cpus+cpunum())  // We've started already.
       continue;
 
-    // Tell entryother.S what stack to use, the address of mpenter and pgdir;
-    // We cannot use kpgdir yet, because the AP processor is running in low 
-    // memory, so we use entrypgdir for the APs too.  kalloc can return addresses
-    // above 4Mbyte (the machine may have much more physical memory than 4Mbyte), which 
-    // aren't mapped by entrypgdir, so we must allocate a stack using enter_alloc();
-    // This introduces the constraint that xv6 cannot use kalloc until after these 
-    // last enter_alloc invocations.
+    // Tell entryother.S what stack to use, where to enter, and what 
+    // pgdir to use. We cannot use kpgdir yet, because the AP processor
+    // is running in low  memory, so we use entrypgdir for the APs too.
+    // kalloc can return addresses above 4Mbyte (the machine may have 
+    // much more physical memory than 4Mbyte), which aren't mapped by
+    // entrypgdir, so we must allocate a stack using enter_alloc(); 
+    // this introduces the constraint that xv6 cannot use kalloc until 
+    // after these last enter_alloc invocations.
     stack = enter_alloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpenter;
