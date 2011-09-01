@@ -54,10 +54,10 @@ entry:
   # Set up the stack pointer.
   movl $(stack + STACK), %esp
 
-  # Call main(), which switches to executing at
+  # Jump to main(), and switch to executing at
   # high addresses. The indirect call is needed because
   # the assembler produces a PC-relative instruction
-  # for a direct call. 
+  # for a direct jump.
   mov $main, %eax
   jmp *%eax
 

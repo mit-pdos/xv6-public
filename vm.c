@@ -68,7 +68,8 @@ walkpgdir(pde_t *pgdir, const void *va, char* (*alloc)(void))
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
 static int
-mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm, char* (*alloc)(void))
+mappages(pde_t *pgdir, void *va, uint size, uint pa,
+         int perm, char* (*alloc)(void))
 {
   char *a, *last;
   pte_t *pte;
@@ -343,7 +344,7 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 {
   char *buf, *pa0;
   uint n, va0;
-  
+
   buf = (char*)p;
   while(len > 0){
     va0 = (uint)PGROUNDDOWN(va);
