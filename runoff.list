@@ -8,10 +8,6 @@ asm.h
 mmu.h
 elf.h
 
-# bootloader
-bootasm.S
-bootmain.c
-
 # entering xv6
 entry.S
 entryother.S
@@ -22,12 +18,13 @@ spinlock.h
 spinlock.c
 
 # processes
+vm.c
 proc.h
 proc.c
 swtch.S
 kalloc.c
 data.S
-vm.c
+
 # system calls
 traps.h
 vectors.pl
@@ -45,15 +42,14 @@ fs.h
 file.h
 ide.c
 bio.c
-fs.c
 log.c
+fs.c
 file.c
 sysfile.c
 exec.c
 
 # pipes
 pipe.c
-
 
 # string operations
 string.c
@@ -76,7 +72,7 @@ usys.S
 init.c
 sh.c
 
-
-
-
+# bootloader
+bootasm.S
+bootmain.c
 
