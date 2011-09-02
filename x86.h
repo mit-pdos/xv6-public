@@ -106,46 +106,6 @@ loadgs(ushort v)
 }
 
 static inline void
-loadfs(ushort v)
-{
-  __asm volatile("movw %0, %%fs" : : "r" (v));
-}
-
-static inline void
-loades(ushort v)
-{
-  __asm volatile("movw %0, %%es" : : "r" (v));
-}
-
-static inline void
-loadds(ushort v)
-{
-  __asm volatile("movw %0, %%ds" : : "r" (v));
-}
-
-static inline void
-loadss(ushort v)
-{
-  __asm volatile("movw %0, %%ss" : : "r" (v));
-}
-
-static inline uint
-rebp(void)
-{
-  uint val;
-  asm volatile("movl %%ebp,%0" : "=r" (val));
-  return val;
-}
-
-static inline uint
-resp(void)
-{
-  uint val;
-  asm volatile("movl %%esp,%0" : "=r" (val));
-  return val;
-}
-
-static inline void
 cli(void)
 {
   asm volatile("cli");
@@ -170,20 +130,6 @@ xchg(volatile uint *addr, uint newval)
   return result;
 }
 
-static inline void
-lcr0(uint val)
-{
-  asm volatile("movl %0,%%cr0" : : "r" (val));
-}
-
-static inline uint
-rcr0(void)
-{
-  uint val;
-  asm volatile("movl %%cr0,%0" : "=r" (val));
-  return val;
-}
-
 static inline uint
 rcr2(void)
 {
@@ -196,14 +142,6 @@ static inline void
 lcr3(uint val) 
 {
   asm volatile("movl %0,%%cr3" : : "r" (val));
-}
-
-static inline uint
-rcr3(void)
-{
-  uint val;
-  asm volatile("movl %%cr3,%0" : "=r" (val));
-  return val;
 }
 
 //PAGEBREAK: 36
