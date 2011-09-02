@@ -38,7 +38,7 @@ BUILDING AND RUNNING XV6
 To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run "make".
 On non-x86 or non-ELF machines (like OS X, even on x86), you will
 need to install a cross-compiler gcc suite capable of producing x86 ELF
-binaries.  See http://pdos.csail.mit.edu/6.828/2007/tools.html.
+binaries.  See http://pdos.csail.mit.edu/6.828/2011/tools.html.
 Then run "make TOOLPREFIX=i386-jos-elf-".
 
 To run xv6, you can use Bochs or QEMU, both PC simulators.
