@@ -92,10 +92,9 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa,
 
 // The mappings from logical to virtual are one to one (i.e.,
 // segmentation doesn't do anything). There is one page table per
-// process, plus one that's used when a CPU is not running any
-// process (kpgdir). A user process uses the same page table as
-// the kernel; the page protection bits prevent it from using
-// anything other than its memory.
+// process, plus one that's used when a CPU is not running any process
+// (kpgdir). A user process uses the same page table as the kernel; the
+// page protection bits prevent it from accessing kernel memory.
 // 
 // setupkvm() and exec() set up every page table like this:
 //   0..KERNBASE: user memory (text+data+stack+heap), mapped to some free
@@ -108,10 +107,9 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa,
 //   0xfe000000..0: mapped direct (devices such as ioapic)
 //
 // The kernel allocates memory for its heap and for user memory
-// between kernend and the end of physical memory (PHYSTOP).
-// The virtual address space of each user program includes the kernel
-// (which is inaccessible in user mode).  The user program sits in
-// the bottom of the address space, and the kernel at the top at KERNBASE.
+// between KERNBASE+end and the end of physical memory (PHYSTOP).
+// The user program sits in the bottom of the address space, and the
+// kernel at the top at KERNBASE.
 static struct kmap {
   void *virt;
   uint phys_start;
@@ -134,14 +132,12 @@ setupkvm(char* (*alloc)(void))
   if((pgdir = (pde_t*)alloc()) == 0)
     return 0;
   memset(pgdir, 0, PGSIZE);
-  k = kmap;
   if (p2v(PHYSTOP) > (void*)DEVSPACE)
     panic("PHYSTOP too high");
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start, 
                 (uint)k->phys_start, k->perm, alloc) < 0)
       return 0;
-
   return pgdir;
 }
 
