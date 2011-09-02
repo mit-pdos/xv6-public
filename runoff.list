@@ -23,7 +23,6 @@ proc.h
 proc.c
 swtch.S
 kalloc.c
-data.S
 
 # system calls
 traps.h
