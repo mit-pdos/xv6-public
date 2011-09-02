@@ -19,8 +19,8 @@
 // for example an i-node block.
 //
 // Read-only system calls don't need to use transactions, though
-// this means that they may observe uncommitted data. I-node
-// and buffer locks prevent read-only calls from seeing inconsistent data.
+// this means that they may observe uncommitted data. I-node and
+// buffer locks prevent read-only calls from seeing inconsistent data.
 //
 // The log is a physical re-do log containing disk blocks.
 // The on-disk log format:
