@@ -7,7 +7,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-	/* Load the kernel at this address: "." means the current address */
+	/* Link the kernel at this address: "." means the current address */
         /* Must be equal to KERNLINK */
 	. = 0x80100000;
 
