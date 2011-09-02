@@ -1,4 +1,4 @@
-sheet1: left
+sheet1: right
 
 # "left" and "right" specify which page of a two-page spread a file
 # must start on.  "left" means that a file must start on the first of
@@ -20,17 +20,15 @@ sheet1: left
 # elf.h either
 # mp.h either
 
-even: bootasm.S  # mild preference
-even: bootother.S  # mild preference
-even: bootmain.c  # mild preference
+even: entry.S  # mild preference
+even: entryother.S  # mild preference
 even: main.c
 # mp.c don't care at all
 # even: initcode.S
 # odd: init.c
 
-# spinlock.h either
-left: spinlock.h  # mild preference
-even: spinlock.h  # mild preference
+left: spinlock.h
+even: spinlock.h
 
 # This gets struct proc and allocproc on the same spread
 left: proc.h
@@ -46,13 +44,12 @@ even: proc.c   # VERY important
 
 # A few more action packed spreads
 # page table creation and process loading
-#     walkpgdir mappages setupkvm vmenable switch[ku]vm inituvm loaduvm
+#     walkpgdir mappages setupkvm switch[ku]vm inituvm (loaduvm)
 # process memory management
 #     allocuvm deallocuvm freevm
 left: vm.c
-odd: vm.c
 
-# kalloc.c either
+even: kalloc.c  # mild preference
 
 # syscall.h either
 # trapasm.S either
@@ -73,11 +70,15 @@ odd: vm.c
 even: ide.c
 # odd: bio.c
 
+# log.c fits nicely in a spread
+even: log.c
+left: log.c
+
 # with fs.c starting on 2nd column of a left page, we get these 2-page spreads:
 #	ialloc iupdate iget idup ilock iunlock iput iunlockput
 #	bmap itrunc stati readi writei
 #	namecmp dirlookup dirlink skipelem namex namei
-#	fielinit filealloc filedup fileclose filestat fileread filewrite
+#	fileinit filealloc filedup fileclose filestat fileread filewrite
 # starting on 2nd column of a right page is not terrible either
 odd: fs.c   # VERY important
 left: fs.c  # mild preference
@@ -85,9 +86,16 @@ left: fs.c  # mild preference
 # exec.c either
 # sysfile.c either
 
+# Mild preference, but makes spreads of mp.c, lapic.c, and ioapic.c+picirq.c
+even: mp.c
+left: mp.c
+
 # even: pipe.c  # mild preference
 # string.c either
 # left: kbd.h  # mild preference
 even: kbd.h
 even: console.c
 odd: sh.c
+
+even: bootasm.S   # mild preference
+even: bootmain.c  # mild preference
