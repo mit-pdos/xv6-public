@@ -77,8 +77,7 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa,
   a = (char *) PGROUNDDOWN((uint) va);
   last = (char *) PGROUNDDOWN(((uint) va) + size - 1);
   for(;;){
-    pte = walkpgdir(pgdir, a, alloc);
-    if(pte == 0)
+    if((pte = walkpgdir(pgdir, a, alloc) == 0)
       return -1;
     if(*pte & PTE_P)
       panic("remap");
