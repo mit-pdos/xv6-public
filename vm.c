@@ -74,8 +74,8 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa,
   char *a, *last;
   pte_t *pte;
   
-  a = (char *) PGROUNDDOWN((uint) va);
-  last = (char *) PGROUNDDOWN(((uint) va) + size - 1);
+  a = (char*)PGROUNDDOWN((uint)va);
+  last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
   for(;;){
     if((pte = walkpgdir(pgdir, a, alloc) == 0)
       return -1;
@@ -119,7 +119,7 @@ static struct kmap {
   int perm;
 } kmap[] = {
   { P2V(0), 0, 1024*1024, PTE_W},  // I/O space
-  { (void *)KERNLINK, V2P(KERNLINK), V2P(data),  0}, // kernel text+rodata
+  { (void*)KERNLINK, V2P(KERNLINK), V2P(data),  0}, // kernel text+rodata
   { data, V2P(data), PHYSTOP,  PTE_W},  // kernel data, memory
   { (void*)DEVSPACE, DEVSPACE, 0, PTE_W},  // more devices
 };
@@ -135,7 +135,7 @@ setupkvm(char* (*alloc)(void))
     return 0;
   memset(pgdir, 0, PGSIZE);
   k = kmap;
-  if (p2v(PHYSTOP) > (void *) DEVSPACE)
+  if (p2v(PHYSTOP) > (void*)DEVSPACE)
     panic("PHYSTOP too high");
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start, 
@@ -201,7 +201,7 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   uint i, pa, n;
   pte_t *pte;
 
-  if((uint)addr % PGSIZE != 0)
+  if((uint) addr % PGSIZE != 0)
     panic("loaduvm: addr must be page aligned");
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, addr+i, 0)) == 0)
@@ -285,7 +285,7 @@ freevm(pde_t *pgdir)
     panic("freevm: no pgdir");
   deallocuvm(pgdir, KERNBASE, 0);
   for(i = 0; i < NPDENTRIES; i++){
-    if(pgdir[i] & PTE_P) {
+    if(pgdir[i] & PTE_P){
       char * v = p2v(PTE_ADDR(pgdir[i]));
       kfree(v);
     }
@@ -306,7 +306,7 @@ copyuvm(pde_t *pgdir, uint sz)
   if((d = setupkvm(kalloc)) == 0)
     return 0;
   for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
+    if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
