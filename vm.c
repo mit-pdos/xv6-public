@@ -289,6 +289,19 @@ freevm(pde_t *pgdir)
   kfree((char*)pgdir);
 }
 
+// Clear PTE_U on a page. Used to create an inaccessible
+// page beneath the user stack.
+void
+clear_pte_u(pde_t *pgdir, char *uva)
+{
+  pte_t *pte;
+
+  pte = walkpgdir(pgdir, uva, 0);
+  if(pte == 0)
+    panic("clear_pte_u");
+  *pte &= ~PTE_U;
+}
+
 // Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
@@ -359,17 +372,4 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
     va = va0 + PGSIZE;
   }
   return 0;
-}
-
-// Clear PTE_U on a page. Used to create an inaccessible
-// page beneath the user stack.
-void
-clear_pte_u(pde_t *pgdir, char *uva)
-{
-  pte_t *pte;
-
-  pte = walkpgdir(pgdir, uva, 0);
-  if(pte == 0)
-    panic("clear_pte_u");
-  *pte &= ~PTE_U;
 }
