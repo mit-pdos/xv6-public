@@ -71,8 +71,6 @@ install_trans(void)
 {
   int tail;
 
-  //if (log.lh.n > 0)
-  //  cprintf("install_trans %d\n", log.lh.n);
   for (tail = 0; tail < log.lh.n; tail++) {
     struct buf *lbuf = bread(log.dev, log.start+tail+1); // read log block
     struct buf *dbuf = bread(log.dev, log.lh.sector[tail]); // read dst
@@ -95,17 +93,12 @@ read_head(void)
     log.lh.sector[i] = lh->sector[i];
   }
   brelse(buf);
-  //if (log.lh.n > 0)
-  //  cprintf("read_head: %d\n", log.lh.n);
 }
 
 // Write in-memory log header to disk, committing log entries till head
 static void
 write_head(void)
 {
-  // if (log.lh.n > 0)
-  //   cprintf("write_head: %d\n", log.lh.n);
-
   struct buf *buf = bread(log.dev, log.start);
   struct logheader *hb = (struct logheader *) (buf->data);
   int i;
@@ -170,8 +163,6 @@ log_write(struct buf *b)
     panic("too big a transaction");
   if (!log.intrans)
     panic("write outside of trans");
-
-  // cprintf("log_write: %d %d\n", b->sector, log.lh.n);
 
   for (i = 0; i < log.lh.n; i++) {
     if (log.lh.sector[i] == b->sector)   // log absorbtion?
