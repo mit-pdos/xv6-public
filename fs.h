@@ -1,8 +1,7 @@
 // On-disk file system format. 
 // Both the kernel and user programs use this header file.
 
-// Block 0 is unused.
-// Block 1 is super block.
+// Block 0 is unused.  Block 1 is super block.
 // Inodes start at block 2.
 
 #define ROOTINO 1  // root i-number
