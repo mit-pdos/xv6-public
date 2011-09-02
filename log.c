@@ -38,14 +38,15 @@ struct logheader {
   int sector[LOGSIZE];
 };
 
-struct {
+struct log {
   struct spinlock lock;
   int start;
   int size;
   int intrans;
   int dev;
   struct logheader lh;
-} log;
+};
+struct log log;
 
 static void recover_from_log(void);
 
