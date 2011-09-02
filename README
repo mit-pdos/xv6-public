@@ -11,7 +11,7 @@ provides pointers to on-line resources for v6.
 
 xv6 borrows code from the following sources:
     JOS (asm.h, elf.h, mmu.h, bootasm.S, ide.c, console.c, and others)
-    Plan 9 (bootother.S, mp.h, mp.c, lapic.c)
+    Plan 9 (entryother.S, mp.h, mp.c, lapic.c)
     FreeBSD (ioapic.c)
     NetBSD (console.c)
 
