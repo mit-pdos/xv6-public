@@ -25,15 +25,16 @@
 .globl multiboot_header
 multiboot_header:
   #define magic 0x1badb002
-  #define flags (1<<16 | 1<<0)
+  #define flags 0
   .long magic
   .long flags
   .long (-magic-flags)
-  .long multiboot_header  # beginning of image
-  .long multiboot_header
-  .long edata
-  .long end
-  .long entry
+
+# By convention, the _start symbol specifies the ELF entry point.
+# Since we haven't set up virtual memory yet, our entry point is
+# the physical address of 'entry'.
+.globl _start
+_start = V2P_WO(entry)
 
 # Entering xv6 on boot processor.  Machine is mostly set up.
 .globl entry
