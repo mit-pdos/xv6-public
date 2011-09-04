@@ -11,11 +11,11 @@
 # Because this code sets DS to zero, it must sit
 # at an address in the low 2^16 bytes.
 #
-# Bootothers (in main.c) sends the STARTUPs one at a time.
+# Startothers (in main.c) sends the STARTUPs one at a time.
 # It copies this code (start) at 0x7000.  It puts the address of
 # a newly allocated per-core stack in start-4,the address of the
 # place to jump to (mpenter) in start-8, and the physical address
-# of enterpgdir in start-12.
+# of entrypgdir in start-12.
 #
 # This code is identical to bootasm.S except:
 #   - it does not need to enable A20
