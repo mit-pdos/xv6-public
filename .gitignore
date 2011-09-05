@@ -7,8 +7,7 @@ _*
 *.img
 vectors.S
 bootblock
-bootother
-bootother.out
+entryother
 initcode
 initcode.out
 kernel
