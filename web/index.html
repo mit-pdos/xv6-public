@@ -43,22 +43,15 @@ systems Engineering</a>. We hope that xv6 will be useful in other
 courses too.  This page collects resources to aid the use of xv6 in
 other courses, including a commentary on the source code itself.
 
-<p><font color="red">Status: The xv6 code is in pretty good shape, but
-the commentary is rough.</font>
-
 <h2>History and Background</h2>
 
-<p>For many years, MIT had no operating systems course.  In the fall
-of 2002, Frans Kaashoek, Josh Cates, and Emil Sit created a new,
-experimental course (6.097) to teach operating systems engineering.
-In the course lectures, the class worked through <a href="#v6">Sixth
-Edition Unix (aka V6)</a> using John Lions's famous commentary.  In
-the lab assignments, students wrote most of an exokernel operating
-system, eventually named Jos, for the Intel x86.  Exposing students to
-multiple systems&ndash;V6 and Jos&ndash;helped develop a sense of the
-spectrum of operating system designs.  In the fall of 2003, the
-experimental 6.097 became the official course 6.828; the course has
-been offered each fall since then.
+<p>For many years, MIT had no operating systems course.  In the fall of 2002,
+one was created to teach operating systems engineering.  In the course lectures,
+the class worked through <a href="#v6">Sixth Edition Unix (aka V6)</a> using
+John Lions's famous commentary.  In the lab assignments, students wrote most of
+an exokernel operating system, eventually named Jos, for the Intel x86.
+Exposing students to multiple systems&ndash;V6 and Jos&ndash;helped develop a
+sense of the spectrum of operating system designs.
 
 <p>
 V6 presented pedagogic challenges from the start.
@@ -80,27 +73,18 @@ uniprocessors such as
 enabling/disabling interrupts) and helps relevance.
 Finally, writing a new system allowed us to write cleaner versions
 of the rougher parts of V6, like the scheduler and file system.
-<p> 6.828 substituted xv6 for V6 in the fall of 2006.  Based on
-that experience, we cleaned up rough patches of xv6.  Since then, xv6
-has stabilized, so we are making it available in the hopes that others
-will find it useful too.
-
-<p>
-6.828 uses both xv6 and Jos.
-Courses taught at UCLA, NYU, Peking University, Stanford, Tsinghua,
-and University Texas (Austin) have used
-Jos without xv6; we believe other courses could use
-xv6 without Jos, though we are not aware of any that have.
+6.828 substituted xv6 for V6 in the fall of 2006. 
 
 <h2>Xv6 sources</h2>
 
-The latest xv6 is <a href="xv6-rev5.tar.gz">xv6-rev5.tar.gz</a>.
-We distribute the sources in electronic form but also as
-a printed booklet with line numbers that keep everyone
-together during lectures.  The booklet is available as
-<a href="xv6-rev5.pdf">xv6-rev5.pdf</a>.
-The xv6 source code is licensed under the traditional <a href="http://www.opensource.org/licenses/mit-license.php">MIT license</a>;
-see the LICENSE file in the source distribution.
+The latest xv6 is <a href="xv6-rev5.tar.gz">xv6-rev5.tar.gz</a>.  We distribute
+the sources in electronic form but also as a printed booklet with line numbers
+that keep everyone together during lectures.  The booklet is available as <a
+ href="xv6-rev5.pdf">xv6-rev5.pdf</a>.  The xv6 source code is licensed under
+the traditional <a href="http://www.opensource.org/licenses/mit-license.php">MIT
+license</a>; see the LICENSE file in the source distribution.  To help students
+read through xv6 and learn about the main ideas in operating systems we also
+distribute a <a href="book-rev6.pdf">textbook/commentary</a> for the latest xv6.
 
 <p>
 xv6 compiles using the GNU C compiler,
@@ -115,89 +99,10 @@ can be found on the <a href="../2010/tools.html">6.828 tools page</a>.
 
 <h2>Xv6 lecture material</h2>
 
-In 6.828, the lectures in the first half of the course introduce the
-PC hardware, the Intel x86, and then xv6.  The lectures in the second
-half consider advanced topics using research papers; for some, xv6
-serves as a useful base for making discussions concrete.  The lecture
-notes are available from the 6.828 schedule page, and the chapters of
-the commentary are below.
-
-<h2>Xv6 commentary (rough)</h2>
-
-<p>The chapters are rough drafts.
-
-<p>Introduction yet to be written.<br>
-<ul>
-<li>read with the code side by side
-<li>code references look like (xxxx) or (xxxx-yyyy) in small text.
-<li><a href="xv6-rev5.pdf">this pdf</a> is the one with matching line numbers.
-<li>each chapter starts with an introduction to the topic,
-spends most of the text on code,
-and then wraps up talking about how xv6
-compares to real-world operating systems.
-</ul>
-
-<a href="unix.pdf">Chapter 0: Operating system interfaces</a>
-<blockquote>
-The Unix system call interface.  (rev 4)
-</blockquote>
-
-<a href="boot.pdf">Chapter 1: Bootstrap</a>
-<blockquote>
-From power on to kernel start. (rev 4)
-</blockquote>
-
-<a href="mem.pdf">Chapter 2: Processes</a>
-<blockquote>
-Memory and process allocation, segments, the first user process. (rev 4)
-</blockquote>
-
-<a href="trap.pdf">Chapter 3: Traps</a>
-<blockquote>
-Low-level trap mechanism, trap handler, system call arguments, sbrk, fork.
-</blockquote>
-
-<a href="lock.pdf">Chapter 4: Locks</a>
-<blockquote>
-Locks and interrupts.
-</blockquote>
-
-<a href="sched.pdf">Chapter 5: Scheduling and coordination</a>
-<blockquote>
-Scheduling, sleep and wakeup, pipes, wait and exit.
-</blockquote>
-
-<a href="disk.pdf">Chapter 6: Buffer cache</a>
-<blockquote>
-Buffer cache and IDE disk driver.
-</blockquote>
-
-<a href="fsdata.pdf">Chapter 7: File system data</a>
-<blockquote>
-Block in use bitmap, block allocation, inode structure, inode contents,
-directories, path names.
-</blockquote>
-
-<a href="fscall.pdf">Chapter 8: File system calls</a>
-<blockquote>
-FIle descriptors, open, close, dup, read, write.
-</blockquote>
-
-<a href="exec.pdf">Chapter 9: Exec</a>
-<blockquote>
-Exec
-</blockquote>
-
-Appendix A: Low-level C and inline assembly
-<blockquote>
-Intro to C and inline assembly for people who only know Java (say).
-Examples drawn entirely from xv6 source.
-</blockquote>
-
-Appendix B: Additional drivers.
-<blockquote>
-Keyboard, screen, probably MP hardware.
-</blockquote>
+In 6.828, the lectures in the first half of the course cover the xv6 sources and
+text.  The lectures in the second half consider advanced topics using research
+papers; for some, xv6 serves as a useful base for making discussions concrete.
+The lecture notes are available from the 6.828 schedule page.
 
 <a name="v6"></a>
 <h2>Unix Version 6</h2>
