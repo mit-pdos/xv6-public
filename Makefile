@@ -9,6 +9,7 @@ OBJS = \
 	kalloc.o\
 	kbd.o\
 	lapic.o\
+	log.o\
 	main.o\
 	mp.o\
 	picirq.o\
@@ -26,7 +27,6 @@ OBJS = \
 	uart.o\
 	vectors.o\
 	vm.o\
-	log.o\
 
 # Cross-compiling (e.g., on Mac OS X)
 #TOOLPREFIX = i386-jos-elf-
