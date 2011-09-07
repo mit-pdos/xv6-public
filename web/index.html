@@ -77,14 +77,21 @@ of the rougher parts of V6, like the scheduler and file system.
 
 <h2>Xv6 sources and text</h2>
 
-The latest xv6 is <a href="xv6-rev5.tar.gz">xv6-rev5.tar.gz</a>.  We distribute
-the sources in electronic form but also as a printed booklet with line numbers
+The latest xv6 source is available via
+<pre>git clone git://pdos.csail.mit.edu/xv6/xv6.git</pre>
+We also distribute the sources as a printed booklet with line numbers
 that keep everyone together during lectures.  The booklet is available as <a
- href="xv6-rev5.pdf">xv6-rev5.pdf</a>.  The xv6 source code is licensed under
+ href="xv6-rev6.pdf">xv6-rev6.pdf</a>.  To get the version
+corresponding to this booklet, run
+<pre>git checkout -b xv6-rev6 xv6-rev6</pre>
+
+<p>
+The xv6 source code is licensed under
 the traditional <a href="http://www.opensource.org/licenses/mit-license.php">MIT
 license</a>; see the LICENSE file in the source distribution.  To help students
 read through xv6 and learn about the main ideas in operating systems we also
 distribute a <a href="book-rev6.pdf">textbook/commentary</a> for the latest xv6.
+The line numbers in this book refer to the above source booklet.
 
 <p>
 xv6 compiles using the GNU C compiler,
@@ -93,9 +100,9 @@ On BSD and Linux systems, you can use the native compilers;
 On OS X, which doesn't use ELF binaries,
 you must use a cross-compiler.
 Xv6 does boot on real hardware, but typically
-we run it using the Bochs emulator.
-Both the GCC cross compiler and Bochs
-can be found on the <a href="../2010/tools.html">6.828 tools page</a>.
+we run it using the QEMU emulator.
+Both the GCC cross compiler and QEMU
+can be found on the <a href="../2011/tools.html">6.828 tools page</a>.
 
 <h2>Xv6 lecture material</h2>
 
