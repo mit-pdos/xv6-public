@@ -9,6 +9,7 @@
 static void startothers(void);
 static void mpmain(void)  __attribute__((noreturn));
 extern pde_t *kpgdir;
+extern char end[]; // first address after kernel loaded from ELF file
 
 // Bootstrap processor starts running C code here.
 // Allocate a real stack and switch to it, first
@@ -16,6 +17,7 @@ extern pde_t *kpgdir;
 int
 main(void)
 {
+  kinit1(end, P2V(4*1024*1024)); // phys page allocator
   kvmalloc();      // kernel page table
   mpinit();        // collect info about this machine
   lapicinit(mpbcpu());
@@ -33,9 +35,9 @@ main(void)
   ideinit();       // disk
   if(!ismp)
     timerinit();   // uniprocessor timer
-  startothers();    // start other processors (must come before kinit)
-  kinit();         // initialize memory allocator
-  userinit();      // first user process  (must come after kinit)
+  startothers();   // start other processors
+  kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
+  userinit();      // first user process
   // Finish setting up this processor in mpmain.
   mpmain();
 }
@@ -84,12 +86,7 @@ startothers(void)
     // Tell entryother.S what stack to use, where to enter, and what 
     // pgdir to use. We cannot use kpgdir yet, because the AP processor
     // is running in low  memory, so we use entrypgdir for the APs too.
-    // kalloc can return addresses above 4Mbyte (the machine may have 
-    // much more physical memory than 4Mbyte), which aren't mapped by
-    // entrypgdir, so we must allocate a stack using enter_alloc(); 
-    // this introduces the constraint that xv6 cannot use kalloc until 
-    // after these last enter_alloc invocations.
-    stack = enter_alloc();
+    stack = kalloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpenter;
     *(int**)(code-12) = (void *) v2p(entrypgdir);

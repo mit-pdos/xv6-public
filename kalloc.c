@@ -9,42 +9,45 @@
 #include "mmu.h"
 #include "spinlock.h"
 
+void freerange(void *vstart, void *vend);
+extern char end[]; // first address after kernel loaded from ELF file
+
 struct run {
   struct run *next;
 };
 
 struct {
   struct spinlock lock;
+  int use_lock;
   struct run *freelist;
 } kmem;
 
-extern char end[]; // first address after kernel loaded from ELF file
-static char *newend;
-
-// A simple page allocator to get off the ground during entry
-char *
-enter_alloc(void)
+// Initialization happens in two phases.
+// 1. main() calls kinit1() while still using entrypgdir to place just
+// the pages mapped by entrypgdir on free list.
+// 2. main() calls kinit2() with the rest of the physical pages
+// after installing a full page table that maps them on all cores.
+void
+kinit1(void *vstart, void *vend)
 {
-  if (newend == 0)
-    newend = end;
-
-  if ((uint) newend >= KERNBASE + 0x400000)
-    panic("only first 4Mbyte are mapped during entry");
-  void *p = (void*)PGROUNDUP((uint)newend);
-  memset(p, 0, PGSIZE);
-  newend = newend + PGSIZE;
-  return p;
+  initlock(&kmem.lock, "kmem");
+  kmem.use_lock = 0;
+  freerange(vstart, vend);
 }
 
-// Initialize free list of physical pages.
 void
-kinit(void)
+kinit2(void *vstart, void *vend)
+{
+  freerange(vstart, vend);
+  kmem.use_lock = 1;
+}
+
+void
+freerange(void *vstart, void *vend)
 {
   char *p;
-
-  initlock(&kmem.lock, "kmem");
-  p = (char*)PGROUNDUP((uint)newend);
-  for(; p + PGSIZE <= (char*)p2v(PHYSTOP); p += PGSIZE)
+  p = (char*)PGROUNDUP((uint)vstart);
+  for(; p + PGSIZE <= (char*)vend; p += PGSIZE)
     kfree(p);
 }
 
@@ -64,11 +67,13 @@ kfree(char *v)
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);
 
-  acquire(&kmem.lock);
+  if(kmem.use_lock)
+    acquire(&kmem.lock);
   r = (struct run*)v;
   r->next = kmem.freelist;
   kmem.freelist = r;
-  release(&kmem.lock);
+  if(kmem.use_lock)
+    release(&kmem.lock);
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -79,11 +84,13 @@ kalloc(void)
 {
   struct run *r;
 
-  acquire(&kmem.lock);
+  if(kmem.use_lock)
+    acquire(&kmem.lock);
   r = kmem.freelist;
   if(r)
     kmem.freelist = r->next;
-  release(&kmem.lock);
+  if(kmem.use_lock)
+    release(&kmem.lock);
   return (char*)r;
 }
 
