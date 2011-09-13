@@ -36,7 +36,7 @@ multiboot_header:
 .globl _start
 _start = V2P_WO(entry)
 
-# Entering xv6 on boot processor.  Machine is mostly set up.
+# Entering xv6 on boot processor, with paging off.
 .globl entry
 entry:
   # Turn on page size extension for 4Mbyte pages
