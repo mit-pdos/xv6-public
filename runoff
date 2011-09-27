@@ -223,11 +223,17 @@ awk '
 grep Pages: all.ps
 
 # if we have the nice font, use it
-nicefont=../LucidaSans-Typewriter83
-if [ -f $nicefont ]
+nicefont=LucidaSans-Typewriter83
+if [ ! -f ../$nicefont ]
+then
+	if git cat-file blob font:$nicefont > ../$nicefont~; then
+		mv ../$nicefont~ ../$nicefont
+	fi
+fi
+if [ -f ../$nicefont ]
 then
 	echo nicefont
-	(sed 1q all.ps; cat $nicefont; sed '1d; s/Courier/LucidaSans-Typewriter83/' all.ps) >allf.ps
+	(sed 1q all.ps; cat ../$nicefont; sed "1d; s/Courier/$nicefont/" all.ps) >allf.ps
 else
 	echo ugly font!
 	cp all.ps allf.ps

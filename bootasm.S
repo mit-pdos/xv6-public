@@ -12,8 +12,8 @@
 start:
   cli                         # BIOS enabled interrupts; disable
 
-  # Set up the important data segment registers (DS, ES, SS).
-  xorw    %ax,%ax             # Segment number zero
+  # Zero data segment registers DS, ES, and SS.
+  xorw    %ax,%ax             # Set %ax to zero
   movw    %ax,%ds             # -> Data Segment
   movw    %ax,%es             # -> Extra Segment
   movw    %ax,%ss             # -> Stack Segment
@@ -37,7 +37,7 @@ seta20.2:
   outb    %al,$0x60
 
   # Switch from real to protected mode.  Use a bootstrap GDT that makes
-  # virtual addresses map dierctly to  physical addresses so that the
+  # virtual addresses map directly to physical addresses so that the
   # effective memory map doesn't change during the transition.
   lgdt    gdtdesc
   movl    %cr0, %eax
