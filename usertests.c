@@ -1514,10 +1514,9 @@ bsstest(void)
 void
 bigargtest(void)
 {
-  int pid, ppid, fd;
+  int pid, fd;
 
   unlink("bigarg-ok");
-  ppid = getpid();
   pid = fork();
   if(pid == 0){
     static char *args[MAXARG];
