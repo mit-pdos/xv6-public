@@ -110,41 +110,51 @@ bfree(int dev, uint b)
 // to inodes used by multiple processes. The cached
 // inodes include book-keeping information that is
 // not stored on disk: ip->ref and ip->flags.
-// 
-// ip->ref counts the number of pointer references to this cached
-// inode; references are typically kept in struct file and in proc->cwd.
-// When ip->ref falls to zero, the inode is no longer cached.
-// It is an error to use an inode without holding a reference to it.
 //
-// Processes are only allowed to read and write inode
-// metadata and contents when holding the inode's lock,
-// represented by the I_BUSY bit in ip->flags.
-// Because inode locks are held during disk accesses, 
-// they are implemented using a flag rather than with
-// spin locks.  ilock() and iunlock() manipulate an
-// inode's I_BUSY flag. Many routines in this file expect
-// the caller to have already locked the inode; leaving
-// this responsibility with the caller makes it possible for them
-// to create arbitrarily-sized atomic operations.
+// An inode and its in-memory represtative go through a
+// sequence of states before they can be used by the
+// rest of the file system code.
 //
-// To give maximum control over locking to the callers, 
-// the routines in this file that return inode pointers 
-// return pointers to *unlocked* inodes.  It is the callers'
-// responsibility to lock them before using them.  A non-zero
-// ip->ref keeps these unlocked inodes in the cache.
+// * Allocation: an inode is allocated if its type (on disk)
+//   is non-zero. ialloc() allocates, iput() frees if
+//   the link count has fallen to zero.
 //
-// In order for the file system code to look at an inode, the inode
-// must pass through a number of states, with transitions
-// driven by the indicated functions:
-//  
-// * Allocated on disk, indicated by a non-zero type.
-//   ialloc() and iput().
-// * Referenced in the cache, indicated by ip->ref > 0.
-//   iget() and iput().
-// * Cached inode is valid, indicated by I_VALID.
-//   ilock() and iput().
-// * Locked, indicated by I_BUSY.
-//   ilock() and iunlock().
+// * Referencing in cache: an entry in the inode cache
+//   is free if ip->ref is zero. Otherwise ip->ref tracks
+//   the number of in-memory pointers to the entry (open
+//   files and current directories). iget() to find or
+//   create a cache entry and increment its ref, iput()
+//   to decrement ref.
+//
+// * Valid: the information (type, size, &c) in an inode
+//   cache entry is only correct when the I_VALID bit
+//   is set in ip->flags. ilock() reads the inode from
+//   the disk and sets I_VALID, while iput() clears
+//   I_VALID if ip->ref has fallen to zero.
+//
+// * Locked: file system code may only examine and modify
+//   the information in an inode and its content if it
+//   has first locked the inode. The I_BUSY flag indicates
+//   that the inode is locked. ilock() sets I_BUSY,
+//   while iunlock clears it.
+//
+// Thus a typical sequence is:
+//   ip = iget(dev, inum)
+//   ilock(ip)
+//   ... examine and modify ip->xxx ...
+//   iunlock(ip)
+//   iput(ip)
+//
+// ilock() is separate from iget() so that system calls can
+// get a long-term reference to an inode (as for an open file)
+// and only lock it for short periods (e.g., in read()).
+// The separation also helps avoid deadlock and races during
+// pathname lookup. iget() increments ip->ref so that the inode
+// stays cached and pointers to it remain valid.
+//
+// Many internal file system functions expect the caller to
+// have locked the inodes involved; this lets callers create
+// multi-step atomic operations.
 
 struct {
   struct spinlock lock;
@@ -187,7 +197,7 @@ ialloc(uint dev, short type)
   panic("ialloc: no inodes");
 }
 
-// Copy inode, which has changed, from memory to disk.
+// Copy a modified in-memory inode to disk.
 void
 iupdate(struct inode *ip)
 {
@@ -207,7 +217,8 @@ iupdate(struct inode *ip)
 }
 
 // Find the inode with number inum on device dev
-// and return the in-memory copy.
+// and return the in-memory copy. Does not lock
+// the inode and does not read it from disk.
 static struct inode*
 iget(uint dev, uint inum)
 {
@@ -215,7 +226,7 @@ iget(uint dev, uint inum)
 
   acquire(&icache.lock);
 
-  // Try for cached inode.
+  // Is the inode already cached?
   empty = 0;
   for(ip = &icache.inode[0]; ip < &icache.inode[NINODE]; ip++){
     if(ip->ref > 0 && ip->dev == dev && ip->inum == inum){
@@ -227,7 +238,7 @@ iget(uint dev, uint inum)
       empty = ip;
   }
 
-  // Allocate fresh inode.
+  // Recycle an inode cache entry.
   if(empty == 0)
     panic("iget: no inodes");
 
@@ -253,6 +264,7 @@ idup(struct inode *ip)
 }
 
 // Lock the given inode.
+// Reads the inode from disk if necessary.
 void
 ilock(struct inode *ip)
 {
@@ -297,13 +309,17 @@ iunlock(struct inode *ip)
   release(&icache.lock);
 }
 
-// Caller holds reference to unlocked ip.  Drop reference.
+// Drop a reference to an in-memory inode.
+// If that was the last reference, the inode cache entry can
+// be recycled.
+// If that was the last reference and the inode has no links
+// to it, free the inode (and its content) on disk.
 void
 iput(struct inode *ip)
 {
   acquire(&icache.lock);
   if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0){
-    // inode is no longer used: truncate and free inode.
+    // inode has no links: truncate and free inode.
     if(ip->flags & I_BUSY)
       panic("iput busy");
     ip->flags |= I_BUSY;
@@ -328,12 +344,12 @@ iunlockput(struct inode *ip)
 }
 
 //PAGEBREAK!
-// Inode contents
+// Inode content
 //
-// The contents (data) associated with each inode is stored
-// in a sequence of blocks on the disk.  The first NDIRECT blocks
+// The content (data) associated with each inode is stored
+// in blocks on the disk. The first NDIRECT block numbers
 // are listed in ip->addrs[].  The next NINDIRECT blocks are 
-// listed in the block ip->addrs[NDIRECT].
+// listed in block ip->addrs[NDIRECT].
 
 // Return the disk block address of the nth block in inode ip.
 // If there is no such block, bmap allocates one.
@@ -368,8 +384,10 @@ bmap(struct inode *ip, uint bn)
 }
 
 // Truncate inode (discard contents).
-// Only called after the last dirent referring
-// to this inode has been erased on disk.
+// Only called when the inode has no links
+// to it (no directory entries referring to it)
+// and has no in-memory reference to it (is
+// not an open file or current directory).
 static void
 itrunc(struct inode *ip)
 {
@@ -484,7 +502,6 @@ namecmp(const char *s, const char *t)
 
 // Look for a directory entry in a directory.
 // If found, set *poff to byte offset of entry.
-// Caller must have already locked dp.
 struct inode*
 dirlookup(struct inode *dp, char *name, uint *poff)
 {
