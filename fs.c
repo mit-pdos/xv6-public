@@ -1,10 +1,9 @@
-// File system implementation.  Four layers:
+// File system implementation.  Five layers:
 //   + Blocks: allocator for raw disk blocks.
+//   + Log: crash recovery for multi-step updates.
 //   + Files: inode allocator, reading, writing, metadata.
 //   + Directories: inode with special contents (list of other inodes!)
 //   + Names: paths like /usr/rtm/xv6/fs.c for convenient naming.
-//
-// Disk layout is: superblock, inodes, block in-use bitmap, data blocks.
 //
 // This file contains the low-level file system manipulation 
 // routines.  The (higher-level) system call implementations
@@ -61,10 +60,10 @@ balloc(uint dev)
   readsb(dev, &sb);
   for(b = 0; b < sb.size; b += BPB){
     bp = bread(dev, BBLOCK(b, sb.ninodes));
-    for(bi = 0; bi < BPB && bi < (sb.size - b); bi++){
+    for(bi = 0; bi < BPB && b + bi < sb.size; bi++){
       m = 1 << (bi % 8);
       if((bp->data[bi/8] & m) == 0){  // Is block free?
-        bp->data[bi/8] |= m;  // Mark block in use on disk.
+        bp->data[bi/8] |= m;  // Mark block in use.
         log_write(bp);
         brelse(bp);
         bzero(dev, b + bi);
@@ -90,22 +89,27 @@ bfree(int dev, uint b)
   m = 1 << (bi % 8);
   if((bp->data[bi/8] & m) == 0)
     panic("freeing free block");
-  bp->data[bi/8] &= ~m;  // Mark block free on disk.
+  bp->data[bi/8] &= ~m;
   log_write(bp);
   brelse(bp);
 }
 
 // Inodes.
 //
-// An inode is a single, unnamed file in the file system.
-// The inode disk structure holds metadata (the type, device numbers,
-// and data size) along with a list of blocks where the associated
-// data can be found.
+// An inode describes a single unnamed file.
+// The inode disk structure holds metadata: the file's type,
+// its size, the number of links referring to it, and the
+// list of blocks holding the file's content.
 //
 // The inodes are laid out sequentially on disk immediately after
-// the superblock.  The kernel keeps a cache of the in-use
-// on-disk structures to provide a place for synchronizing access
-// to inodes shared between multiple processes.
+// the superblock. Each inode has a number, indicating its
+// position on the disk.
+//
+// The kernel keeps a cache of in-use inodes in memory
+// to provide a place for synchronizing access
+// to inodes used by multiple processes. The cached
+// inodes include book-keeping information that is
+// not stored on disk: ip->ref and ip->flags.
 // 
 // ip->ref counts the number of pointer references to this cached
 // inode; references are typically kept in struct file and in proc->cwd.
@@ -114,11 +118,12 @@ bfree(int dev, uint b)
 //
 // Processes are only allowed to read and write inode
 // metadata and contents when holding the inode's lock,
-// represented by the I_BUSY flag in the in-memory copy.
+// represented by the I_BUSY bit in ip->flags.
 // Because inode locks are held during disk accesses, 
 // they are implemented using a flag rather than with
-// spin locks.  Callers are responsible for locking
-// inodes before passing them to routines in this file; leaving
+// spin locks.  ilock() and iunlock() manipulate an
+// inode's I_BUSY flag. Many routines in this file expect
+// the caller to have already locked the inode; leaving
 // this responsibility with the caller makes it possible for them
 // to create arbitrarily-sized atomic operations.
 //
@@ -127,6 +132,19 @@ bfree(int dev, uint b)
 // return pointers to *unlocked* inodes.  It is the callers'
 // responsibility to lock them before using them.  A non-zero
 // ip->ref keeps these unlocked inodes in the cache.
+//
+// In order for the file system code to look at an inode, the inode
+// must pass through a number of states, with transitions
+// driven by the indicated functions:
+//  
+// * Allocated on disk, indicated by a non-zero type.
+//   ialloc() and iput().
+// * Referenced in the cache, indicated by ip->ref > 0.
+//   iget() and iput().
+// * Cached inode is valid, indicated by I_VALID.
+//   ilock() and iput().
+// * Locked, indicated by I_BUSY.
+//   ilock() and iunlock().
 
 struct {
   struct spinlock lock;
@@ -143,6 +161,7 @@ static struct inode* iget(uint dev, uint inum);
 
 //PAGEBREAK!
 // Allocate a new inode with the given type on device dev.
+// A free inode has a type of zero.
 struct inode*
 ialloc(uint dev, short type)
 {
@@ -152,7 +171,8 @@ ialloc(uint dev, short type)
   struct superblock sb;
 
   readsb(dev, &sb);
-  for(inum = 1; inum < sb.ninodes; inum++){  // loop over inode blocks
+
+  for(inum = 1; inum < sb.ninodes; inum++){
     bp = bread(dev, IBLOCK(inum));
     dip = (struct dinode*)bp->data + inum%IPB;
     if(dip->type == 0){  // a free inode

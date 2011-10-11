@@ -1,8 +1,12 @@
 // On-disk file system format. 
 // Both the kernel and user programs use this header file.
 
-// Block 0 is unused.  Block 1 is super block.
-// Inodes start at block 2.
+// Block 0 is unused.
+// Block 1 is super block.
+// Blocks 2 through sb.ninodes/IPB hold inodes.
+// Then free bitmap blocks holding sb.size bits.
+// Then sb.nblocks data blocks.
+// Then sb.nlog log blocks.
 
 #define ROOTINO 1  // root i-number
 #define BSIZE 512  // block size

@@ -93,7 +93,7 @@ ideintr(void)
 {
   struct buf *b;
 
-  // Take first buffer off queue.
+  // First queued buffer is the active request.
   acquire(&idelock);
   if((b = idequeue) == 0){
     release(&idelock);
@@ -134,11 +134,11 @@ iderw(struct buf *b)
   if(b->dev != 0 && !havedisk1)
     panic("iderw: ide disk 1 not present");
 
-  acquire(&idelock);  // DOC:acquire-lock
+  acquire(&idelock);  //DOC: acquire-lock
 
   // Append b to idequeue.
   b->qnext = 0;
-  for(pp=&idequeue; *pp; pp=&(*pp)->qnext)  // DOC:insert-queue
+  for(pp=&idequeue; *pp; pp=&(*pp)->qnext)  //DOC: insert-queue
     ;
   *pp = b;
   
@@ -147,7 +147,6 @@ iderw(struct buf *b)
     idestart(b);
   
   // Wait for request to finish.
-  // Assuming will not sleep too long: ignore proc->killed.
   while((b->flags & (B_VALID|B_DIRTY)) != B_VALID){
     sleep(b, &idelock);
   }
