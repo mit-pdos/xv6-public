@@ -1,3 +1,7 @@
+//
+// File descriptors
+//
+
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -87,7 +91,7 @@ filestat(struct file *f, struct stat *st)
   return -1;
 }
 
-// Read from file f.  Addr is kernel address.
+// Read from file f.
 int
 fileread(struct file *f, char *addr, int n)
 {
@@ -108,7 +112,7 @@ fileread(struct file *f, char *addr, int n)
 }
 
 //PAGEBREAK!
-// Write to file f.  Addr is kernel address.
+// Write to file f.
 int
 filewrite(struct file *f, char *addr, int n)
 {
