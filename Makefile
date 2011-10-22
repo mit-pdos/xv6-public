@@ -3,6 +3,7 @@
 OBJS = \
 	asm.o \
 	main.o \
+	uart.o \
 	trap.o
 
 # Cross-compiling (e.g., on Mac OS X)
@@ -44,7 +45,7 @@ clean:
 ifndef CPUS
 CPUS := 2
 endif
-QEMUOPTS = -smp $(CPUS) -m 512
+QEMUOPTS = -smp $(CPUS) -m 512 -nographic
 
 qemu: kernel
-	$(QEMU) -serial mon:stdio $(QEMUOPTS) -kernel kernel
+	$(QEMU) $(QEMUOPTS) -kernel kernel

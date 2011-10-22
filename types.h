@@ -1,4 +1,12 @@
-typedef unsigned int   uint;
-typedef unsigned short ushort;
-typedef unsigned char  uchar;
-typedef uint pde_t;
+typedef unsigned short uint16;
+typedef unsigned int uint32;
+typedef long int64;
+typedef unsigned long uint64;
+typedef unsigned char uint8;
+typedef uint64 uintptr;
+
+typedef uint8 u8;
+typedef uint16 u16;
+typedef uint32 u32;
+typedef int64 s64;
+typedef uint64 u64;
