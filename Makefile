@@ -13,7 +13,7 @@ TOOLPREFIX ?= x86_64-jos-elf-
 QEMU = qemu-system-x86_64
 
 NM = $(TOOLPREFIX)nm
-CC = $(TOOLPREFIX)gcc
+CC = $(TOOLPREFIX)clang
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
