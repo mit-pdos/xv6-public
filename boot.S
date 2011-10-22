@@ -10,7 +10,7 @@
 # ask the loader to load the kernel at physical 2MB and then set up the
 # necessary memory mapping to switch to the higher address.
 # The value of KBASE must match the definitions in vmx.h and kernel.ld.
-#define KBASE 0xffffff0000000000 /* last TB */
+#define KBASE 0xFFFFFFFF80000000 /* -2GB */
 
 # PADDR(x) is the physical memory address corresponding to x.
 # Until we set up the memory map, fairly late in this file, we have to
@@ -270,16 +270,17 @@ colorbar:
 .align 4096
 pml4:
 	.quad PADDR(pdpt) + (1<<0) + (1<<1)  // present, read/write
-	.quad 0
-	.space 4096 - 2*16
+	.space 4096 - 16
 	.quad PADDR(pdpt) + (1<<0) + (1<<1)  // present, read/write
-	.quad 0
 
 .align 4096
 pdpt:
 	.quad PADDR(pdt) + (1<<0) + (1<<1)  // present, read/write
-	.space 4096 - 8
-
+	.quad 0
+	.space 4096 - 2*16
+	.quad PADDR(pdt) + (1<<0) + (1<<1)  // present, read/write
+	.quad 0
+        
 .align 4096
 pdt:
 	// Filled in below.

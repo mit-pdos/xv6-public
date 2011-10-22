@@ -32,7 +32,7 @@ void	lidt(void*, int);
 void	ltr(int);
 void	lgdt(void*, int);
 
-#define KBASE 0xffffff0000000000ull
+#define KBASE 0xFFFFFFFF80000000ull
 #define KADDR(x) ((void*)(KBASE+(uintptr)(x)))
 #define PADDR(x) ((uintptr)(x) - KBASE)
 #define PGSIZE (2*1024*1024ull)
