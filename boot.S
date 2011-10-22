@@ -172,12 +172,14 @@ start64hi:
 	jz 1f
 	PANIC("Data segment is not loaded correctly.")
 1:
-
+	# Load VA stack pointer
+	movabsq $(stack+STACK), %rsp
+	# Kill 1GB identity mapping
+	movq $0, pml4
 	# Clear frame pointer for stack walks, and call into C code.
-	movl $0, %ebp
+	movq $0, %rbp
 	call cmain
-
-	PANIC("Unexpected return from main.")
+1:      jmp 1b
 
 .code32
 .globl bootpanic
@@ -260,27 +262,32 @@ colorbar:
 .comm stack, STACK
 
 # Page tables.  See section 4.5 of 253668.pdf.
-# We map the first GB of physical memory at 0 and at 1 TB (not GB) before
-# the end of physical memory.  At boot time we are using the mapping at 0
+# We map the first GB of physical memory at 0 and at -2 GB (or 2 GB before
+# the end of physical memory).  At boot time we are using the mapping at 0
 # but during ordinary execution we use the high mapping.
 # The intent is that after bootstrap the kernel can expand this mapping
 # to cover all the available physical memory.
 # This would be easier if we could use the PS bit to create GB-sized entries
 # and skip the pdt table, but not all chips support it, and QEMU doesn't.
 .align 4096
+.global pml4
 pml4:
-	.quad PADDR(pdpt) + (1<<0) + (1<<1)  // present, read/write
+	.quad PADDR(pdpt0) + (1<<0) + (1<<1)  // present, read/write
 	.space 4096 - 16
-	.quad PADDR(pdpt) + (1<<0) + (1<<1)  // present, read/write
+	.quad PADDR(pdpt1) + (1<<0) + (1<<1)  // present, read/write
 
 .align 4096
-pdpt:
+pdpt0:
 	.quad PADDR(pdt) + (1<<0) + (1<<1)  // present, read/write
 	.quad 0
-	.space 4096 - 2*16
+	.space 4096 - 16
+       
+.align 4096
+pdpt1:
+	.space 4096 - 16
 	.quad PADDR(pdt) + (1<<0) + (1<<1)  // present, read/write
 	.quad 0
-        
+       
 .align 4096
 pdt:
 	// Filled in below.

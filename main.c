@@ -1,4 +1,4 @@
-#include "vmx.h"
+#include "types.h"
 #include "multiboot.h"
 
 extern void uartinit(void);
