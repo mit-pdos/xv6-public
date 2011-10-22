@@ -1,10 +1,12 @@
 #include "types.h"
 #include "multiboot.h"
 
-extern void uartinit(void);
+extern void inituart(void);
+extern void initcga(void);
 
 void
 cmain(void)
 {
-  uartinit();
+  inituart();
+  initcga();
 }

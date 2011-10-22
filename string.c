@@ -2,16 +2,16 @@
 #include "x86.h"
 
 void*
-memset(void *dst, int c, uint n)
+memset(void *dst, int c, u32 n)
 {
   stosb(dst, c, n);
   return dst;
 }
 
 int
-memcmp(const void *v1, const void *v2, uint n)
+memcmp(const void *v1, const void *v2, u32 n)
 {
-  const uchar *s1, *s2;
+  const u8 *s1, *s2;
   
   s1 = v1;
   s2 = v2;
@@ -25,7 +25,7 @@ memcmp(const void *v1, const void *v2, uint n)
 }
 
 void*
-memmove(void *dst, const void *src, uint n)
+memmove(void *dst, const void *src, u32 n)
 {
   const char *s;
   char *d;
@@ -46,23 +46,23 @@ memmove(void *dst, const void *src, uint n)
 
 // memcpy exists to placate GCC.  Use memmove.
 void*
-memcpy(void *dst, const void *src, uint n)
+memcpy(void *dst, const void *src, u32 n)
 {
   return memmove(dst, src, n);
 }
 
 int
-strncmp(const char *p, const char *q, uint n)
+strncmp(const char *p, const char *q, u32 n)
 {
   while(n > 0 && *p && *p == *q)
     n--, p++, q++;
   if(n == 0)
     return 0;
-  return (uchar)*p - (uchar)*q;
+  return (u8)*p - (u8)*q;
 }
 
 char*
-strncpy(char *s, const char *t, int n)
+strncpy(char *s, const char *t, u32 n)
 {
   char *os;
   
@@ -76,7 +76,7 @@ strncpy(char *s, const char *t, int n)
 
 // Like strncpy but guaranteed to NUL-terminate.
 char*
-safestrcpy(char *s, const char *t, int n)
+safestrcpy(char *s, const char *t, u32 n)
 {
   char *os;
   
@@ -104,6 +104,5 @@ strcmp(const char *p, const char *q)
 {
   while(*p && *p == *q)
     p++, q++;
-  return (uchar)*p - (uchar)*q;
+  return (u8)*p - (u8)*q;
 }
-

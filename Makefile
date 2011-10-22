@@ -2,7 +2,9 @@
 
 OBJS = \
 	asm.o \
+	cga.o \
 	main.o \
+	string.o \
 	uart.o \
 	trap.o
 
@@ -45,7 +47,7 @@ clean:
 ifndef CPUS
 CPUS := 2
 endif
-QEMUOPTS = -smp $(CPUS) -m 512 -nographic
+QEMUOPTS = -smp $(CPUS) -m 512
 
 qemu: kernel
 	$(QEMU) $(QEMUOPTS) -kernel kernel

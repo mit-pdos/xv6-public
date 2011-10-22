@@ -19,7 +19,6 @@ uint8	inb(uint16);
 void	outb(uint16, uint8);
 void	microdelay(int);
 uint32	readeflags(void);
-void	setcursor(int);
 void	memmove(void *dst, void *src, int64 n);
 int memcmp(const void*, const void*, int64);
 void	hlt(void);

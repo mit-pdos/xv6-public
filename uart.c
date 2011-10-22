@@ -19,7 +19,7 @@ uartputc(int c)
 }
 
 void
-uartinit(void)
+inituart(void)
 {
     char *p;
 
