@@ -40,3 +40,5 @@ void            cgaputc(char c);
 // uart.c
 void            uartputc(char c);
 
+// mp.c
+extern int      ncpu;

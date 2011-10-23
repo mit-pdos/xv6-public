@@ -14,10 +14,11 @@ cmain(void)
   inituart();
   initcga();
   initconsole();
-#if 0
   initmp();
+#if 0
   inittrap();
 #endif
 
+  cprintf("ncpu %d\n", ncpu);
   panic("end");
 }
