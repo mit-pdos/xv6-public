@@ -58,7 +58,7 @@ mpsearch(void)
   paddr p;
   struct mp *mp;
 
-  bda = (u8*)0x400;
+  bda = (u8*)p2v(0x400);
   if((p = ((bda[0x0F]<<8)|bda[0x0E]) << 4)){
     if((mp = mpsearch1((u8*)p, 1024)))
       return mp;
