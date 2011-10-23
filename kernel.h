@@ -1,5 +1,5 @@
 #define KBASE 0xFFFFFFFF80000000ull
-#define PGSIZE (2*1024*1024ull)
+#define PBASE 0xFFFFFF0000000000ull
 
 #define KCSEG (2<<3)  /* kernel code segment */
 #define KDSEG (3<<3)  /* kernel data segment */

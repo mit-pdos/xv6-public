@@ -1,4 +1,4 @@
-// Rflags register
+// Eflags register
 #define FL_CF           0x00000001      // Carry Flag
 #define FL_PF           0x00000004      // Parity Flag
 #define FL_AF           0x00000010      // Auxiliary carry Flag
@@ -20,3 +20,21 @@
 #define FL_VIF          0x00080000      // Virtual Interrupt Flag
 #define FL_VIP          0x00100000      // Virtual Interrupt Pending
 #define FL_ID           0x00200000      // ID flag
+
+// Page fault error codes
+#define FEC_PR          0x1     // Page fault caused by protection violation
+#define FEC_WR          0x2     // Page fault caused by a write
+#define FEC_U           0x4     // Page fault occured while in user mode
+
+// Control Register flags
+#define CR0_PE		0x00000001	// Protection Enable
+#define CR0_MP		0x00000002	// Monitor coProcessor
+#define CR0_EM		0x00000004	// Emulation
+#define CR0_TS		0x00000008	// Task Switched
+#define CR0_ET		0x00000010	// Extension Type
+#define CR0_NE		0x00000020	// Numeric Errror
+#define CR0_WP		0x00010000	// Write Protect
+#define CR0_AM		0x00040000	// Alignment Mask
+#define CR0_NW		0x20000000	// Not Writethrough
+#define CR0_CD		0x40000000	// Cache Disable
+#define CR0_PG		0x80000000	// Paging

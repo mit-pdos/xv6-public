@@ -39,7 +39,7 @@
 #define TCCR    (0x0390/4)   // Timer Current Count
 #define TDCR    (0x03E0/4)   // Timer Divide Configuration
 
-volatile u32 *lapic = (u32 *)(KBASE + 0xfee00000);
+volatile u32 *lapic = (u32 *)(PBASE + 0xfee00000);
 
 static void
 lapicw(int index, int value)

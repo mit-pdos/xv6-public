@@ -13,4 +13,9 @@ typedef uint64 u64;
 typedef uint64 uptr;
 typedef uptr paddr;
 
+typedef u64 pml4e_t;
+typedef u64 pdpe_t;
+typedef u64 pde_t;
+typedef u64 pte_t;
+
 #define __mpalign__ __attribute__((aligned(CACHELINE)))

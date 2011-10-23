@@ -5,11 +5,13 @@ OBJS = \
 	cga.o \
 	console.o \
 	lapic.o \
+	kalloc.o \
 	main.o \
 	mp.o \
 	spinlock.o \
 	string.o \
 	uart.o \
+	vm.o \
 	trap.o
 
 # Cross-compiling (e.g., on Mac OS X)

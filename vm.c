@@ -1,22 +1,17 @@
 #include "param.h"
 #include "types.h"
-#include "defs.h"
 #include "x86.h"
-#include "memlayout.h"
 #include "mmu.h"
-#include "spinlock.h"
-#include "condvar.h"
-#include "queue.h"
-#include "proc.h"
-#include "elf.h"
-#include "kalloc.h"
+#include "kernel.h"
+#include "memlayout.h"
 
 extern char data[];  // defined in data.S
 
-static pde_t *kpgdir __attribute__ ((aligned (CACHELINE)));  // for use in scheduler()
+extern pml4e_t kpml4[];
 
-struct segdesc gdt[NSEGS];
+extern char* pgalloc(void);
 
+#if 0
 // page map for during boot
 // XXX build a static page table in assembly
 static void
@@ -43,37 +38,66 @@ pgmap(void *va, void *last, uint pa)
     pa += PGSIZE;
   }
 }
+#endif
+
+static void
+pgmap(void *va, void *last, paddr pa)
+{
+  pml4e_t *pml4;
+  pml4e_t pml4e;
+  pdpe_t *pdp;
+  pdpe_t pdpe;
+  pde_t *pd;
+  pde_t pde;
+  pte_t *pt;
+
+  for(;;){
+    pml4 = &kpml4[PML4X(va)];
+    pml4e = *pml4;
+    if (pml4e == 0) {
+      pdp = (pdpe_t *) pgalloc();
+      *pml4 = v2p(pdp) | PTE_P | PTE_W;
+    } else {
+      pdp = (pdpe_t*)p2v(PTE_ADDR(pml4e));
+    }
+
+    pdp = &pdp[PDPX(va)];
+    pdpe = *pdp;
+    if (pdpe == 0) {
+      pd = (pde_t *) pgalloc();
+      *pdp = v2p(pd) | PTE_P | PTE_W;
+    } else {
+      pd = (pde_t*)p2v(PTE_ADDR(pdpe));
+    }
+
+    pd = &pd[PDX(va)];
+    pde = *pd;
+    if (pde == 0) {
+      pt = (pte_t *) pgalloc();
+      *pd = v2p(pt) | PTE_P | PTE_W;
+    } else {
+      pt = (pde_t*)p2v(PTE_ADDR(pde));
+    }
+
+    pt = &pt[PTX(va)];
+    *pt = pa | PTE_W | PTE_P;
+    if(va == last)
+      break;
+    va += PGSIZE;
+    pa += PGSIZE;
+  }
+}
 
 // set up a page table to get off the ground
 void
-pginit(char* (*alloc)(void))
+initpg(char* (*alloc)(void))
 {
-  uint cr0;
-
-  kpgdir = (pde_t *) alloc();
   pgmap((void *) 0, (void *) PHYSTOP, 0);
-  pgmap((void *) KERNBASE, (void *) (KERNBASE+PHYSTOP), 0);
-  pgmap((void*)0xFE000000, 0, 0xFE000000);
-
-  switchkvm(); // load kpgdir into cr3
-
-  cr0 = rcr0();
-  cr0 |= CR0_PG;
-  lcr0(cr0);   // paging on
-
-  // new gdt
-  gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
-  gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  lgdt((void *)v2p(gdt), sizeof(gdt));
-  loadgs(SEG_KDATA << 3);
-  loadfs(SEG_KDATA << 3);
-  loades(SEG_KDATA << 3);
-  loadds(SEG_KDATA << 3);
-  loadss(SEG_KDATA << 3);
-
-  __asm volatile("ljmp %0,$1f\n 1:\n" :: "i" (SEG_KCODE << 3));  // reload cs
+  pgmap((void *) PBASE, (void *) (PBASE+(1UL<<32)), 0);
+  //switchkvm(); // load kpgdir into cr3
 }
 
+#if 0
 // Set up CPU's kernel segment descriptors.
 // Run once at boot time on each CPU.
 void
@@ -900,3 +924,4 @@ pagefault(struct vmap *vmap, uint va, uint err)
   rcu_end_read();
   return 1;
 }
+#endif

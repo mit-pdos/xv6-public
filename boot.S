@@ -134,7 +134,7 @@ start32:
 	movl %eax, %cr4
 
 	# Load CR3 with physical base address of level 4 page table.
-	movl $PADDR(pml4), %eax
+	movl $PADDR(kpml4), %eax
 	movl %eax, %cr3
 	
 	# Enable IA-32e mode by setting IA32_EFER.LME = 1.
@@ -175,7 +175,7 @@ start64hi:
 	# Load VA stack pointer
 	movabsq $(stack+STACK), %rsp
 	# Kill 1GB identity mapping
-	movq $0, pml4
+	movq $0, kpml4
 	# Clear frame pointer for stack walks, and call into C code.
 	movq $0, %rbp
 	call cmain
@@ -270,8 +270,8 @@ colorbar:
 # This would be easier if we could use the PS bit to create GB-sized entries
 # and skip the pdt table, but not all chips support it, and QEMU doesn't.
 .align 4096
-.global pml4
-pml4:
+.global kpml4
+kpml4:
 	.quad PADDR(pdpt0) + (1<<0) + (1<<1)  // present, read/write
 	.space 4096 - 16
 	.quad PADDR(pdpt1) + (1<<0) + (1<<1)  // present, read/write

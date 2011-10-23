@@ -3,26 +3,15 @@
 // and pipe buffers. Allocates 4096-byte pages.
 
 #include "types.h"
-#include "defs.h"
 #include "param.h"
-#include "memlayout.h"
 #include "mmu.h"
-#include "spinlock.h"
-#include "condvar.h"
-#include "queue.h"
-#include "proc.h"
-#include "kalloc.h"
-#include "xv6-mtrace.h"
+#include "kernel.h"
 
 void kminit(void);
 
-struct kmem kmems[NCPU];
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
 enum { kalloc_memset = 0 };
-
-static int kinited __attribute__ ((aligned (CACHELINE)));
-
 
 // simple page allocator to get off the ground during boot
 char *
@@ -31,12 +20,13 @@ pgalloc(void)
   if (newend == 0)
     newend = end;
 
-  void *p = (void*)PGROUNDUP((uint)newend);
+  void *p = (void*)PGROUNDUP((uptr)newend);
   memset(p, 0, PGSIZE);
   newend = newend + PGSIZE;
   return p;
 }
 
+#if 0
 static void __attribute__((unused))
 kmemprint(void)
 {
@@ -276,3 +266,4 @@ kmalloc(uint nbytes)
 			  RET_EIP());
   return r;
 }
+#endif
