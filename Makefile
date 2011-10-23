@@ -4,6 +4,7 @@ OBJS = \
 	asm.o \
 	cga.o \
 	console.o \
+	lapic.o \
 	main.o \
 	mp.o \
 	spinlock.o \

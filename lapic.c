@@ -2,11 +2,11 @@
 // See Chapter 8 & Appendix C of Intel processor manual volume 3.
 
 #include "types.h"
-#include "defs.h"
-#include "traps.h"
-#include "mmu.h"
 #include "x86.h"
 #include "param.h"
+#include "kernel.h"
+#include "traps.h"
+#include "bits.h"
 
 // Local APIC registers, divided by 4 for use as uint[] indices.
 #define ID      (0x0020/4)   // ID
@@ -39,7 +39,7 @@
 #define TCCR    (0x0390/4)   // Timer Current Count
 #define TDCR    (0x03E0/4)   // Timer Divide Configuration
 
-volatile uint *lapic;  // Initialized in mp.c
+volatile u32 *lapic = (u32 *)(KBASE + 0xfee00000);
 
 static void
 lapicw(int index, int value)
@@ -48,8 +48,8 @@ lapicw(int index, int value)
   lapic[ID];  // wait for write to finish, by reading
 }
 
-static uint
-lapicr(uint off)
+static u32
+lapicr(u32 off)
 {
   return lapic[off];
 }
@@ -57,7 +57,7 @@ lapicr(uint off)
 static int
 apic_icr_wait()
 {
-  uint i = 100000;
+  int i = 100000;
   while ((lapicr(ICRLO) & BUSY) != 0) {
     nop_pause();
     i--;
@@ -69,17 +69,13 @@ apic_icr_wait()
   return 0;
 }
 
-//PAGEBREAK!
 void
-lapicinit(int c)
+initlapic(void)
 {
-  cprintf("lapicinit: %d 0x%x\n", c, lapic);
-  if(!lapic) 
-    return;
-
   // Enable local APIC; set spurious interrupt vector.
   lapicw(SVR, ENABLE | (T_IRQ0 + IRQ_SPURIOUS));
 
+  // XXX(sbw)
   // The timer repeatedly counts down at bus frequency
   // from lapic[TICR] and then issues an interrupt.  
   // If xv6 cared more about precise timekeeping,
@@ -125,8 +121,8 @@ cpunum(void)
   // Would prefer to panic but even printing is chancy here:
   // almost everything, including cprintf and panic, calls cpu,
   // often indirectly through acquire and release.
-  if(readeflags()&FL_IF){
-    static int n __attribute__ ((aligned (CACHELINE)));
+  if(readrflags()&FL_IF){
+    static int n __mpalign__;
     if(n == 0) {
       n++;
       cprintf("cpu called from %x with interrupts enabled\n",
@@ -147,13 +143,6 @@ lapiceoi(void)
     lapicw(EOI, 0);
 }
 
-// Spin for a given number of microseconds.
-// On real hardware would want to tune this dynamically.
-void
-microdelay(int us)
-{
-}
-
 // Send IPI
 void
 lapic_ipi(int cpu, int ino)
@@ -165,7 +154,7 @@ lapic_ipi(int cpu, int ino)
 }
 
 void
-lapic_tlbflush(uint cpu)
+lapic_tlbflush(u32 cpu)
 {
   lapic_ipi(cpu, T_TLBFLUSH);
 }
@@ -175,17 +164,17 @@ lapic_tlbflush(uint cpu)
 // Start additional processor running bootstrap code at addr.
 // See Appendix B of MultiProcessor Specification.
 void
-lapicstartap(uchar apicid, uint addr)
+lapicstartap(u8 apicid, u32 addr)
 {
   int i;
-  ushort *wrv;
+  u16 *wrv;
   
   // "The BSP must initialize CMOS shutdown code to 0AH
   // and the warm reset vector (DWORD based at 40:67) to point at
   // the AP startup code prior to the [universal startup algorithm]."
   outb(IO_RTC, 0xF);  // offset 0xF is shutdown code
   outb(IO_RTC+1, 0x0A);
-  wrv = (ushort*)(0x40<<4 | 0x67);  // Warm reset vector
+  wrv = (u16*)(0x40<<4 | 0x67);  // Warm reset vector
   wrv[0] = 0;
   wrv[1] = addr >> 4;
 

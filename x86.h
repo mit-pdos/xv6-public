@@ -63,3 +63,9 @@ sti(void)
 {
   __asm volatile("sti");
 }
+
+static inline void
+nop_pause(void)
+{
+  __asm volatile("pause" : :);
+}
