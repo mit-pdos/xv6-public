@@ -3,7 +3,7 @@
 # http://www.gnu.org/software/grub/manual/multiboot/multiboot.html
 # GRUB is a MultiBoot loader, as is qemu's -kernel option.
 
-#include "amd64.h"
+#include "mmu.h"
 
 # KADDR is the kernel virtual address of the first byte of physical memory.
 # The linker loads the executable as if starting at KBASE+2MB, but we
@@ -24,6 +24,9 @@
 
 # STACK is the size of the bootstrap stack.
 #define STACK 8192
+
+# CGATEXTMEM is the physical address of the CGA text memory.
+#define CGATEXTMEM 0xB8000
 
 # PANIC prints a message on the screen and stops execution.
 #define PANIC(x) \
@@ -107,7 +110,7 @@ start:
 	# Load GDT.
 	subl $8, %esp
 	movl $PADDR(bootgdt), 4(%esp)
-	movw $(8*NUMSEG-1), 2(%esp)
+	movw $(8*NSEGS-1), 2(%esp)
 	lgdt 2(%esp)
 	addl $8, %esp
 

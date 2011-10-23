@@ -38,6 +38,7 @@
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)	((uptr)(pte) & ~0xFFF)
 
+#ifndef __ASSEMBLER__
 struct segdesc {
   u16 limit0;
   u16 base0;
@@ -46,6 +47,7 @@ struct segdesc {
   u8 bitslimit1;
   u8 base2;
 };
+#endif
 
 // SEGDESC constructs a segment descriptor literal
 // with the given, base, limit, and type bits.
@@ -98,6 +100,7 @@ struct segdesc {
 #define SEG_D      (1<<10)     /* default operation size 32-bit */
 #define SEG_G      (1<<11)     /* granularity */
 
+#ifndef __ASSEMBLER__
 struct intdesc
 {
   u16 rip0;
@@ -115,6 +118,7 @@ struct desctr
   u16 limit;
   u64 base;
 } __attribute__((packed, aligned(16)));
+#endif
 
 #define INT_P      (1<<7)      /* interrupt descriptor present */
 
