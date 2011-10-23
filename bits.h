@@ -38,3 +38,7 @@
 #define CR0_NW		0x20000000	// Not Writethrough
 #define CR0_CD		0x40000000	// Cache Disable
 #define CR0_PG		0x80000000	// Paging
+
+// FS/GS base registers
+#define MSR_FS_BASE     0xc0000100
+#define MSR_GS_BASE     0xc0000101

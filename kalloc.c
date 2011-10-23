@@ -6,8 +6,12 @@
 #include "param.h"
 #include "mmu.h"
 #include "kernel.h"
+#include "spinlock.h"
+#include "kalloc.h"
 
 void kminit(void);
+
+struct kmem kmems[NCPU];
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;

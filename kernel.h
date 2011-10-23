@@ -42,3 +42,6 @@ void            uartputc(char c);
 
 // mp.c
 extern int      ncpu;
+
+// lapic.c
+int             cpunum(void);

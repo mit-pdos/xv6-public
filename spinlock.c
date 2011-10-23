@@ -61,7 +61,7 @@ acquire(struct spinlock *lk)
 
 #if SPINLOCK_DEBUG
   // Record info about lock acquisition for debugging.
-  lk->cpu = cpu;
+  lk->cpu = mycpu();
   getcallerpcs(&lk, lk->pcs);
 #endif
 }
@@ -129,7 +129,7 @@ getcallerpcs(void *v, uptr pcs[])
 int
 holding(struct spinlock *lock)
 {
-  return lock->locked && lock->cpu == cpu;
+    return lock->locked && lock->cpu == mycpu();
 }
 #endif
 
@@ -145,8 +145,8 @@ pushcli(void)
 
   rflags = readrflags();
   cli();
-  if(cpu->ncli++ == 0)
-    cpu->intena = rflags & FL_IF;
+  if(mycpu()->ncli++ == 0)
+    mycpu()->intena = rflags & FL_IF;
 }
 
 void
@@ -154,8 +154,8 @@ popcli(void)
 {
   if(readrflags()&FL_IF)
     panic("popcli - interruptible");
-  if(--cpu->ncli < 0)
+  if(--mycpu()->ncli < 0)
     panic("popcli");
-  if(cpu->ncli == 0 && cpu->intena)
+  if(mycpu()->ncli == 0 && mycpu()->intena)
     sti();
 }

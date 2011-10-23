@@ -2,43 +2,18 @@
 #include "types.h"
 #include "x86.h"
 #include "mmu.h"
+#include "cpu.h"
 #include "kernel.h"
 #include "memlayout.h"
+#include "bits.h"
+#include "spinlock.h"
+#include "kalloc.h"
 
 extern char data[];  // defined in data.S
 
 extern pml4e_t kpml4[];
 
 extern char* pgalloc(void);
-
-#if 0
-// page map for during boot
-// XXX build a static page table in assembly
-static void
-pgmap(void *va, void *last, uint pa)
-{
-  pde_t *pde;
-  pte_t *pgtab;
-  pte_t *pte;
-
-  for(;;){
-    pde = &kpgdir[PDX(va)];
-    pde_t pdev = *pde;
-    if (pdev == 0) {
-      pgtab = (pte_t *) pgalloc();
-      *pde = v2p(pgtab) | PTE_P | PTE_W;
-    } else {
-      pgtab = (pte_t*)p2v(PTE_ADDR(pdev));
-    }
-    pte = &pgtab[PTX(va)];
-    *pte = pa | PTE_W | PTE_P;
-    if(va == last)
-      break;
-    va += PGSIZE;
-    pa += PGSIZE;
-  }
-}
-#endif
 
 static void
 pgmap(void *va, void *last, paddr pa)
@@ -94,39 +69,26 @@ initpg(char* (*alloc)(void))
 {
   pgmap((void *) 0, (void *) PHYSTOP, 0);
   pgmap((void *) PBASE, (void *) (PBASE+(1UL<<32)), 0);
-  //switchkvm(); // load kpgdir into cr3
+  // boot.S gets us running with kpml4
 }
 
-#if 0
 // Set up CPU's kernel segment descriptors.
 // Run once at boot time on each CPU.
 void
-seginit(void)
+initseg(void)
 {
   struct cpu *c;
 
-  // Map virtual addresses to linear addresses using identity map.
-  // Cannot share a CODE descriptor for both kernel and user
-  // because it would have to have DPL_USR, but the CPU forbids
-  // an interrupt from CPL=0 to DPL=3.
-  c = &cpus[cpunum()];
-  c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
-  c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
-  c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
-
-  // Map cpu, curproc, kmem
-  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 12, 0);
-
-  lgdt((void *)(c->gdt), sizeof(c->gdt));
-  loadgs(SEG_KCPU << 3);
-  
   // Initialize cpu-local storage.
-  cpu = c;
-  proc = 0;
-  kmem = &kmems[cpunum()];
+  c = &cpus[cpunum()];
+  writegs(KDSEG);
+  writemsr(MSR_GS_BASE, (u64)&c->cpu);
+  c->cpu = c;
+  c->proc = NULL;
+  c->kmem = &kmems[cpunum()];
 }
 
+#if 0
 void
 printpgdir(pde_t *pgdir)
 {

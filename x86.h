@@ -69,3 +69,25 @@ nop_pause(void)
 {
   __asm volatile("pause" : :);
 }
+
+static inline void
+writegs(u16 v)
+{
+  __asm volatile("movw %0, %%gs" : : "r" (v));
+}
+
+static inline u64
+readmsr(u32 msr)
+{
+  u32 hi, lo;
+  __asm volatile("rdmsr" : "=d" (hi), "=a" (lo) : "c" (msr));
+  return ((u64) lo) | (((u64) hi) << 32);
+}
+
+static inline void
+writemsr(u32 msr, u64 val)
+{
+  u32 lo = val & 0xffffffff;
+  u32 hi = val >> 32;
+  __asm volatile("wrmsr" : : "c" (msr), "a" (lo), "d" (hi));
+}

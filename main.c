@@ -9,6 +9,7 @@ extern void initmp(void);
 extern void initlapic(void);
 extern void inittrap(void);
 extern void initpg(void);
+extern void initseg(void);
 
 void
 cmain(void)
@@ -19,6 +20,7 @@ cmain(void)
   initpg();
   initmp();
   initlapic();
+  initseg();
 #if 0
   inittrap();
 #endif
