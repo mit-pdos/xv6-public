@@ -17,12 +17,12 @@ static struct {
 
 static void
 printint(void (*putch) (void*, char), void *putarg,
-         int xx, int base, int sign)
+         u64 xx, int base, int sign)
 {
   static char digits[] = "0123456789abcdef";
   char buf[16];
   int i;
-  u32 x;
+  u64 x;
 
   if(sign && (sign = xx < 0))
     x = -xx;
@@ -49,7 +49,7 @@ writecons(void *arg, char c)
   cgaputc(c);
 }
 
-// Only understands %d, %x, %s.
+// Only understands %d, %x, %s, %lx.
 void
 vprintfmt(void (*putch) (void*, char), void *putarg,
           const char *fmt, va_list ap)
@@ -71,6 +71,9 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
         printint(putch, putarg, va_arg(ap, u32), 10, 1);
       } else if(c == 'x') {
         printint(putch, putarg, va_arg(ap, u32), 16, 0);
+      } else if(c == 'l') {
+        state = 'l';
+        continue;
       } else if(c == 's'){
         s = (char*) va_arg(ap, char*);
         if(s == 0)
@@ -84,6 +87,16 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
       } else if(c == '%'){
         putch(putarg, c);
       } else {
+        // Unknown % sequence.  Print it to draw attention.
+        putch(putarg, '%');
+        putch(putarg, c);
+      }
+      state = 0;
+    } else if(state == 'l') {
+      if(c == 'x') {
+        printint(putch, putarg, va_arg(ap, u64), 16, 0);
+      }
+      else {
         // Unknown % sequence.  Print it to draw attention.
         putch(putarg, '%');
         putch(putarg, c);
