@@ -10,3 +10,7 @@ typedef uint16 u16;
 typedef uint32 u32;
 typedef int64 s64;
 typedef uint64 u64;
+typedef uint64 uptr;
+typedef uptr paddr;
+
+#define __mpalign__ __attribute__((aligned(CACHELINE)))

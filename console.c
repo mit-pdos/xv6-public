@@ -2,25 +2,13 @@
 // Input is from the keyboard or serial port.
 // Output is written to the screen and serial port.
 
-#include "types.h"
-#include "defs.h"
 #include "param.h"
-#include "traps.h"
+#include "types.h"
+#include "cpu.h"
+#include "kernel.h"
 #include "spinlock.h"
-#include "condvar.h"
-#include "fs.h"
-#include "file.h"
-#include "memlayout.h"
-#include "mmu.h"
-#include "queue.h"
-#include "proc.h"
-#include "x86.h"
 
 #include <stdarg.h>
-
-static void consputc(int);
-
-static int panicked = 0;
 
 static struct {
   struct spinlock lock;
@@ -34,7 +22,7 @@ printint(void (*putch) (void*, char), void *putarg,
   static char digits[] = "0123456789abcdef";
   char buf[16];
   int i;
-  uint x;
+  u32 x;
 
   if(sign && (sign = xx < 0))
     x = -xx;
@@ -53,11 +41,18 @@ printint(void (*putch) (void*, char), void *putarg,
     putch(putarg, buf[i]);
 }
 
-//PAGEBREAK: 50
-// Only understands %d, %x, %p, %s.
+// Print to the console.
+static void
+writecons(void *arg, char c)
+{
+  uartputc(c);
+  cgaputc(c);
+}
+
+// Only understands %d, %x, %s.
 void
 vprintfmt(void (*putch) (void*, char), void *putarg,
-          char *fmt, va_list ap)
+          const char *fmt, va_list ap)
 {
   char *s;
   int c, i, state;
@@ -73,9 +68,9 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
       }
     } else if(state == '%'){
       if(c == 'd'){
-        printint(putch, putarg, va_arg(ap, uint), 10, 1);
-      } else if(c == 'x' || c == 'p'){
-        printint(putch, putarg, va_arg(ap, uint), 16, 0);
+        printint(putch, putarg, va_arg(ap, u32), 10, 1);
+      } else if(c == 'x') {
+        printint(putch, putarg, va_arg(ap, u32), 16, 0);
       } else if(c == 's'){
         s = (char*) va_arg(ap, char*);
         if(s == 0)
@@ -85,7 +80,7 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
           s++;
         }
       } else if(c == 'c'){
-        putch(putarg, va_arg(ap, uint));
+        putch(putarg, va_arg(ap, u32));
       } else if(c == '%'){
         putch(putarg, c);
       } else {
@@ -98,15 +93,8 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
   }
 }
 
-// Print to the console.
-static void
-writecons(void *arg, char c)
-{
-  consputc(c);
-}
-
 void
-cprintf(char *fmt, ...)
+cprintf(const char *fmt, ...)
 {
   va_list ap;
 
@@ -122,233 +110,33 @@ cprintf(char *fmt, ...)
     release(&cons.lock);
 }
 
-// Print to a buffer.
-struct bufstate {
-  char *p;
-  char *e;
-};
-
-static void
-writebuf(void *arg, char c)
+void
+puts(const char *s)
 {
-  struct bufstate *bs = arg;
-  if (bs->p < bs->e) {
-    bs->p[0] = c;
-    bs->p++;
-  }
+  uint8 *p, *ep;
+
+  p = (uint8*)s;
+  ep = p+strlen(s);
+
+  for (; p < ep; p++)
+    writecons(NULL, *p);
+
+}
+
+void __attribute__((noreturn))
+panic(const char *s)
+{
+  puts("panic: ");
+  puts(s);
+  puts("\n");
+
+  for (;;);
 }
 
 void
-vsnprintf(char *buf, uint n, char *fmt, va_list ap)
-{
-  struct bufstate bs = { buf, buf+n-1 };
-  vprintfmt(writebuf, (void*) &bs, fmt, ap);
-  bs.p[0] = '\0';
-}
-
-void
-snprintf(char *buf, uint n, char *fmt, ...)
-{
-  va_list ap;
-
-  va_start(ap, fmt);
-  vsnprintf(buf, n, fmt, ap);
-  va_end(ap);
-}
-
-void
-panic(char *s)
-{
-  int i;
-  uint pcs[10];
-  
-  cli();
-  cons.locking = 0;
-  cprintf("cpu%d: panic: ", cpu->id);
-  cprintf(s);
-  cprintf("\n");
-  getcallerpcs(&s, pcs);
-  for(i=0; i<10; i++)
-    cprintf(" %p", pcs[i]);
-  cprintf("\n");
-  panicked = 1; // freeze other CPU
-
-  extern void sys_halt();
-  sys_halt();
-
-  for(;;)
-    ;
-}
-
-//PAGEBREAK: 50
-#define BACKSPACE 0x100
-#define CRTPORT 0x3d4
-static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
-
-static void
-cgaputc(int c)
-{
-  int pos;
-  
-  // Cursor position: col + 80*row.
-  outb(CRTPORT, 14);
-  pos = inb(CRTPORT+1) << 8;
-  outb(CRTPORT, 15);
-  pos |= inb(CRTPORT+1);
-
-  if(c == '\n')
-    pos += 80 - pos%80;
-  else if(c == BACKSPACE){
-    if(pos > 0) --pos;
-  } else
-    crt[pos++] = (c&0xff) | 0x0700;  // black on white
-  
-  if((pos/80) >= 24){  // Scroll up.
-    memmove(crt, crt+80, sizeof(crt[0])*23*80);
-    pos -= 80;
-    memset(crt+pos, 0, sizeof(crt[0])*(24*80 - pos));
-  }
-  
-  outb(CRTPORT, 14);
-  outb(CRTPORT+1, pos>>8);
-  outb(CRTPORT, 15);
-  outb(CRTPORT+1, pos);
-  crt[pos] = ' ' | 0x0700;
-}
-
-void
-consputc(int c)
-{
-  if(panicked){
-    cli();
-    for(;;)
-      ;
-  }
-
-  if(c == BACKSPACE){
-    uartputc('\b'); uartputc(' '); uartputc('\b');
-  } else
-    uartputc(c);
-  cgaputc(c);
-}
-
-#define INPUT_BUF 128
-struct {
-  struct spinlock lock;
-  struct condvar cv;
-  char buf[INPUT_BUF];
-  uint r;  // Read index
-  uint w;  // Write index
-  uint e;  // Edit index
-} input;
-
-#define C(x)  ((x)-'@')  // Control-x
-
-void
-consoleintr(int (*getc)(void))
-{
-  int c;
-
-  acquire(&input.lock);
-  while((c = getc()) >= 0){
-    switch(c){
-    case C('P'):  // Process listing.
-      procdumpall();
-      break;
-    case C('U'):  // Kill line.
-      while(input.e != input.w &&
-            input.buf[(input.e-1) % INPUT_BUF] != '\n'){
-        input.e--;
-        consputc(BACKSPACE);
-      }
-      break;
-    case C('H'): case '\x7f':  // Backspace
-      if(input.e != input.w){
-        input.e--;
-        consputc(BACKSPACE);
-      }
-      break;
-    default:
-      if(c != 0 && input.e-input.r < INPUT_BUF){
-        c = (c == '\r') ? '\n' : c;
-        input.buf[input.e++ % INPUT_BUF] = c;
-        consputc(c);
-        if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
-          input.w = input.e;
-          cv_wakeup(&input.cv);
-        }
-      }
-      break;
-    }
-  }
-  release(&input.lock);
-}
-
-int
-consoleread(struct inode *ip, char *dst, int n)
-{
-  uint target;
-  int c;
-
-  iunlock(ip);
-  target = n;
-  acquire(&input.lock);
-  while(n > 0){
-    while(input.r == input.w){
-      if(proc->killed){
-        release(&input.lock);
-        ilock(ip, 1);
-        return -1;
-      }
-      cv_sleep(&input.cv, &input.lock);
-    }
-    c = input.buf[input.r++ % INPUT_BUF];
-    if(c == C('D')){  // EOF
-      if(n < target){
-        // Save ^D for next time, to make sure
-        // caller gets a 0-byte result.
-        input.r--;
-      }
-      break;
-    }
-    *dst++ = c;
-    --n;
-    if(c == '\n')
-      break;
-  }
-  release(&input.lock);
-  ilock(ip, 1);
-
-  return target - n;
-}
-
-int
-consolewrite(struct inode *ip, char *buf, int n)
-{
-  int i;
-
-  iunlock(ip);
-  acquire(&cons.lock);
-  for(i = 0; i < n; i++)
-    consputc(buf[i] & 0xff);
-  release(&cons.lock);
-  ilock(ip, 1);
-
-  return n;
-}
-
-void
-consoleinit(void)
+initconsole(void)
 {
   initlock(&cons.lock, "console");
-  initlock(&input.lock, "input");
-  initcondvar(&input.cv, "input");
-
-  devsw[CONSOLE].write = consolewrite;
-  devsw[CONSOLE].read = consoleread;
-  cons.locking = 1;
-
-  picenable(IRQ_KBD);
-  ioapicenable(IRQ_KBD, 0);
+  // XXX(sbw) enable once we setup %gs
+  cons.locking = 0;
 }
-

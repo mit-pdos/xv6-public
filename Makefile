@@ -3,7 +3,10 @@
 OBJS = \
 	asm.o \
 	cga.o \
+	console.o \
 	main.o \
+	mp.o \
+	spinlock.o \
 	string.o \
 	uart.o \
 	trap.o
@@ -15,7 +18,7 @@ TOOLPREFIX ?= x86_64-jos-elf-
 QEMU = qemu-system-x86_64
 
 NM = $(TOOLPREFIX)nm
-CC = $(TOOLPREFIX)clang
+CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
@@ -50,4 +53,4 @@ endif
 QEMUOPTS = -smp $(CPUS) -m 512
 
 qemu: kernel
-	$(QEMU) $(QEMUOPTS) -kernel kernel
+	$(QEMU) $(QEMUOPTS) -kernel kernel -nographic

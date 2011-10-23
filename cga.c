@@ -8,45 +8,35 @@ static int cursor;
 
 extern void setcursor(int);
 
-void
-putsn(const char *s, int n)
-{
-  int i;
-  uint8 *p, *ep;
-
-  p = (uint8*)s;
-  ep = p+n;
-  for(; p < ep; p++) {
-    if(*p == '\n') {
-      cursor += 80 - cursor%80;
-    } else {
-      screen[cursor] = color | *p;
-      cursor++;
-    }
-    if(cursor == 25*80) {
-      memmove((void*)screen+80*2, (void*)screen+80*3, 80*(25-3)*2);
-      for(i=0; i<80; i++)
-        screen[(24*80+i)] = color | ' ' & 0xff;
-      cursor -= 80;
-    }
-  }
-}
-
 static void
 cgaputs(const char *s)
 {
-  putsn(s, strlen(s));
+  uint8 *p, *ep;
+
+  p = (uint8*)s;
+  ep = p+strlen(s);
+
+  for (; p < ep; p++)
+    cgaputc(*p);
 }
 
 void
-panic(const char *s)
+cgaputc(char c)
 {
-  cgaputs("panic: ");
-  cgaputs(s);
-  cgaputs("\n");
-  setcursor(cursor);
-  for(;;)
-    screen[0] = screen[0];
+  int i;
+
+  if(c == '\n') {
+    cursor += 80 - cursor%80;
+  } else {
+    screen[cursor] = color | c;
+    cursor++;
+  }
+  if(cursor == 25*80) {
+    memmove((void*)screen+80*2, (void*)screen+80*3, 80*(25-3)*2);
+    for(i=0; i<80; i++)
+      screen[(24*80+i)] = color | (' ' & 0xff);
+    cursor -= 80;
+  }
 }
 
 void
@@ -57,6 +47,6 @@ initcga(void)
   cursor = 2*80;
   setcursor(cursor);
   
-  cgaputs("booting...\n");
+  cgaputs("cga...\n");
   setcursor(cursor);
 }

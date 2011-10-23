@@ -30,3 +30,36 @@ microdelay(u32 delay)
 {
   
 }
+
+static inline u32
+xchg32(volatile u32 *addr, u32 newval)
+{
+  u32 result;
+  
+  // The + in "+m" denotes a read-modify-write operand.
+  __asm volatile("lock; xchgl %0, %1" :
+                 "+m" (*addr), "=a" (result) :
+                 "1" (newval) :
+                 "cc");
+  return result;
+}
+
+static inline u64
+readrflags(void)
+{
+  u64 rflags;
+  __asm volatile("pushfq; popq %0" : "=r" (rflags));
+  return rflags;
+}
+
+static inline void
+cli(void)
+{
+  __asm volatile("cli");
+}
+
+static inline void
+sti(void)
+{
+  __asm volatile("sti");
+}

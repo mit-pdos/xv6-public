@@ -1,15 +1,12 @@
 // Mutual exclusion spin locks.
 
 #include "types.h"
-#include "defs.h"
+#include "kernel.h"
 #include "param.h"
 #include "x86.h"
-#include "memlayout.h"
-#include "mmu.h"
+#include "cpu.h"
+#include "bits.h"
 #include "spinlock.h"
-#include "condvar.h"
-#include "queue.h"
-#include "proc.h"
 #include "xv6-mtrace.h"
 
 void
@@ -49,7 +46,7 @@ acquire(struct spinlock *lk)
   // The xchg is atomic.
   // It also serializes, so that reads after acquire are not
   // reordered before it.
-  while(xchg(&lk->locked, 1) != 0)
+  while(xchg32(&lk->locked, 1) != 0)
     ;
 
   mtrace_lock_register(RET_EIP(),
@@ -104,24 +101,24 @@ release(struct spinlock *lk)
   // after a store. So lock->locked = 0 would work here.
   // The xchg being asm volatile ensures gcc emits it after
   // the above assignments (and after the critical section).
-  xchg(&lk->locked, 0);
+  xchg32(&lk->locked, 0);
 
   popcli();
 }
 
 // Record the current call stack in pcs[] by following the %ebp chain.
 void
-getcallerpcs(void *v, uint pcs[])
+getcallerpcs(void *v, uptr pcs[])
 {
-  uint *ebp;
+  uptr *rbp;
   int i;
 
-  ebp = (uint*)v - 2;
+  rbp = (uptr*)v - 2;
   for(i = 0; i < 10; i++){
-    if(ebp == 0 || ebp < (uint*)KERNBASE || ebp == (uint*)0xffffffff)
+    if(rbp == 0 || rbp < (uptr*)KBASE || rbp == (uptr*)(~0UL))
       break;
-    pcs[i] = ebp[1];     // saved %eip
-    ebp = (uint*)ebp[0]; // saved %ebp
+    pcs[i] = rbp[1];     // saved %rip
+    rbp = (uptr*)rbp[0]; // saved %rbp
   }
   for(; i < 10; i++)
     pcs[i] = 0;
@@ -144,22 +141,21 @@ holding(struct spinlock *lock)
 void
 pushcli(void)
 {
-  int eflags;
+  u64 rflags;
 
-  eflags = readeflags();
+  rflags = readrflags();
   cli();
   if(cpu->ncli++ == 0)
-    cpu->intena = eflags & FL_IF;
+    cpu->intena = rflags & FL_IF;
 }
 
 void
 popcli(void)
 {
-  if(readeflags()&FL_IF)
+  if(readrflags()&FL_IF)
     panic("popcli - interruptible");
   if(--cpu->ncli < 0)
     panic("popcli");
   if(cpu->ncli == 0 && cpu->intena)
     sti();
 }
-

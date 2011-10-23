@@ -1,4 +1,5 @@
 // Intel 8250 serial port (UART).
+#include "types.h"
 #include "kernel.h"
 #include "x86.h"
 
@@ -7,7 +8,7 @@
 static int uart;    // is there a uart?
 
 void
-uartputc(int c)
+uartputc(char c)
 {
   int i;
 
@@ -45,6 +46,6 @@ inituart(void)
   inb(COM1+0);
 
   // Announce that we're here.
-  for(p="xv6...\n"; *p; p++)
+  for(p="uart...\n"; *p; p++)
     uartputc(*p);
 }
