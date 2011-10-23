@@ -67,9 +67,9 @@ pgmap(void *va, void *last, paddr pa)
 void
 initpg(char* (*alloc)(void))
 {
-  pgmap((void *) 0, (void *) PHYSTOP, 0);
+  // Map first 4GB to PBASE
   pgmap((void *) PBASE, (void *) (PBASE+(1UL<<32)), 0);
-  // boot.S gets us running with kpml4
+  // boot.S maps first 1GB to KBASE and gets us running with kpml4
 }
 
 // Set up CPU's kernel segment descriptors.

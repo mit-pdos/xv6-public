@@ -2,8 +2,8 @@
 // See Chapter 8 & Appendix C of Intel processor manual volume 3.
 
 #include "types.h"
-#include "x86.h"
 #include "param.h"
+#include "x86.h"
 #include "kernel.h"
 #include "traps.h"
 #include "bits.h"

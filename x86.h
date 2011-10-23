@@ -71,6 +71,18 @@ nop_pause(void)
 }
 
 static inline void
+lidt(void *p)
+{
+  __asm volatile("lidt (%0)" : : "r" (p) : "memory");
+}
+
+static inline void
+lgdt(void *p)
+{
+  __asm volatile("lgdt (%0)" : : "r" (p) : "memory");
+}
+
+static inline void
 writegs(u16 v)
 {
   __asm volatile("movw %0, %%gs" : : "r" (v));

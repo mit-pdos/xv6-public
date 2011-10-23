@@ -39,20 +39,29 @@
 #define PTE_ADDR(pte)	((uptr)(pte) & ~0xFFF)
 
 struct segdesc {
-  int lim_15_0 : 16;  // Low bits of segment limit
-  int base_15_0 : 16; // Low bits of segment base address
-  int base_23_16 : 8; // Middle bits of segment base address
-  int type : 4;       // Segment type (see STS_ constants)
-  int s : 1;          // 0 = system, 1 = application
-  int dpl : 2;        // Descriptor Privilege Level
-  int p : 1;          // Present
-  int lim_19_16 : 4;  // High bits of segment limit
-  int avl : 1;        // Unused (available for software use)
-  int rsv1 : 1;       // Reserved
-  int db : 1;         // 0 = 16-bit segment, 1 = 32-bit segment
-  int g : 1;          // Granularity: limit scaled by 4K when set
-  int base_31_24 : 8; // High bits of segment base address
+  u16 limit0;
+  u16 base0;
+  u8 base1;
+  u8 bits;
+  u8 bitslimit1;
+  u8 base2;
 };
+
+// SEGDESC constructs a segment descriptor literal
+// with the given, base, limit, and type bits.
+#define SEGDESC(base, limit, bits) (struct segdesc){ \
+  (limit)&0xffff, (base)&0xffff, \
+  ((base)>>16)&0xff, \
+  (bits)&0xff, \
+  (((bits)>>4)&0xf0) | ((limit>>16)&0xf), \
+  ((base)>>24)&0xff, \
+}
+
+// SEGDESCHI constructs an extension segment descriptor
+// literal that records the high bits of base.
+#define SEGDESCHI(base) (struct segdesc){ \
+  ((base)>>32)&0xffff, ((base)>>48)&0xffff, \
+}
 
 // Segment selectors (indexes) in our GDTs.
 // Defined by our convention, not the architecture.
@@ -63,3 +72,56 @@ struct segdesc {
 #define UCSEG   (6<<3)  /* user code segment */
 #define UDSEG   (7<<3)  /* user data segment */
 #define NSEGS   8
+
+// User segment bits (SEG_S set).
+#define SEG_A      (1<<0)      /* segment accessed bit */
+#define SEG_R      (1<<1)      /* readable (code) */
+#define SEG_W      (1<<1)      /* writable (data) */
+#define SEG_C      (1<<2)      /* conforming segment (code) */
+#define SEG_E      (1<<2)      /* expand-down bit (data) */
+#define SEG_CODE   (1<<3)      /* code segment (instead of data) */
+
+// System segment bits (SEG_S is clear).
+#define SEG_LDT    (2<<0)      /* local descriptor table */
+#define SEG_TSS64A (9<<0)      /* available 64-bit TSS */
+#define SEG_TSS64B (11<<0)     /* busy 64-bit TSS */
+#define SEG_CALL64 (12<<0)     /* 64-bit call gate */
+#define SEG_INTR64 (14<<0)     /* 64-bit interrupt gate */
+#define SEG_TRAP64 (15<<0)     /* 64-bit trap gate */
+
+// User and system segment bits.
+#define SEG_S      (1<<4)      /* if 0, system descriptor */
+#define SEG_DPL(x) ((x)<<5)    /* descriptor privilege level (2 bits) */
+#define SEG_P      (1<<7)      /* segment present */
+#define SEG_AVL    (1<<8)      /* available for operating system use */
+#define SEG_L      (1<<9)      /* long mode */
+#define SEG_D      (1<<10)     /* default operation size 32-bit */
+#define SEG_G      (1<<11)     /* granularity */
+
+struct intdesc
+{
+  u16 rip0;
+  u16 cs;
+  u8 reserved0;
+  u8 bits;
+  u16 rip1;
+  u32 rip2;
+  u32 reserved1;
+};
+
+// See section 4.6 of amd64 vol2
+struct desctr
+{
+  u16 limit;
+  u64 base;
+} __attribute__((packed, aligned(16)));
+
+#define INT_P      (1<<7)      /* interrupt descriptor present */
+
+// INTDESC constructs an interrupt descriptor literal
+// that records the given code segment, instruction pointer,
+// and type bits.
+#define INTDESC(cs, rip, bits) (struct intdesc){ \
+	(rip)&0xffff, (cs), 0, bits, ((rip)>>16)&0xffff, \
+	(uint64)(rip)>>32, 0, \
+}

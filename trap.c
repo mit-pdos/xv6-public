@@ -1,63 +1,50 @@
-#include "vmx.h"
-#include "amd64.h"
+#include "types.h"
+#include "mmu.h"
+#include "kernel.h"
+#include "x86.h"
 
-extern Segdesc bootgdt[NUMSEG];
-
-void
-inittrap(void)
-{
-  
-}
-
-// Bootstrap GDT.  Used by boot.S but defined in C
-// so we can use the data structure macros in amd64.h.
-Segdesc bootgdt[NUMSEG] = {
-  SEGDESC(0, 0, 0),  // null
-  SEGDESC(0, 0xfffff, SEG_R|SEG_CODE|SEG_S|SEG_DPL(0)|SEG_P|SEG_D|SEG_G),  // 32-bit kernel code
-  SEGDESC(0, 0, SEG_R|SEG_CODE|SEG_S|SEG_DPL(0)|SEG_P|SEG_L|SEG_G),  // 64-bit kernel code
-  SEGDESC(0, 0xfffff, SEG_W|SEG_S|SEG_DPL(0)|SEG_P|SEG_D|SEG_G),       // kernel data
+struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
+  // null
+  SEGDESC(0, 0, 0),
+  // 32-bit kernel code
+  SEGDESC(0, 0xfffff, SEG_R|SEG_CODE|SEG_S|SEG_DPL(0)|SEG_P|SEG_D|SEG_G),
+  // 64-bit kernel code
+  SEGDESC(0, 0, SEG_R|SEG_CODE|SEG_S|SEG_DPL(0)|SEG_P|SEG_L|SEG_G),
+  // kernel data
+  SEGDESC(0, 0xfffff, SEG_W|SEG_S|SEG_DPL(0)|SEG_P|SEG_D|SEG_G)
 };
 
+struct intdesc idt[256] __attribute__((aligned(16)));
 
-#if 0
-
-Intdesc idt[256];
-Segdesc gdt[NUMSEG];
-
-extern Segdesc bootgdt[NUMSEG];
-
-extern uint64 trapentry[];
-static Taskseg ts;
-static char istack[8192];
-
-void
-inittrap(void)
-{
-	int i;
-	uint32 bits;
-	uint64 base, entry;
-	
-	bits = INT_P | SEG_INTR64;  // present, interrupt gate
-	for(i=0; i<256; i++) {
-		entry = trapentry[i];
-		idt[i] = INTDESC(KCSEG, entry, bits);
-	}
-
-	memmove(gdt, bootgdt, sizeof gdt);
-	base = (uintptr)&ts;
-	gdt[TSSSEG>>3] = SEGDESC(base, (sizeof ts-1), SEG_P|SEG_TSS64A);
-	gdt[(TSSSEG>>3)+1] = SEGDESCHI(base);
-	
-	ts.rsp0 = (uintptr)istack+sizeof istack;
-
-	lidt(idt, sizeof idt);
-	lgdt(gdt, sizeof gdt);
-	ltr(TSSSEG);
-}
+// boot.S
+extern u64 trapentry[];
 
 void
 trap(void)
 {
-	panic("trap");
+  panic("trap");
 }
-#endif
+
+void
+inittrap(void)
+{
+  volatile struct desctr dtr;
+  uint64 entry;
+  uint32 bits;
+  int i;
+  
+  bits = INT_P | SEG_INTR64;  // present, interrupt gate
+  for(i=0; i<256; i++) {
+    entry = trapentry[i];
+    idt[i] = INTDESC(KCSEG, entry, bits);
+  }
+
+  dtr.limit = sizeof(idt) - 1;
+  dtr.base = (u64)idt;
+  lidt((void *)&dtr.limit);
+
+  // Reload GDT from kernel VA
+  dtr.limit = sizeof(bootgdt) - 1;
+  dtr.base = (u64)bootgdt;
+  lgdt((void *)&dtr.limit);
+}

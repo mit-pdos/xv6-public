@@ -12,7 +12,8 @@ OBJS = \
 	string.o \
 	uart.o \
 	vm.o \
-	trap.o
+	trap.o \
+	trapasm.o
 
 # Cross-compiling (e.g., on Mac OS X)
 TOOLPREFIX ?= x86_64-jos-elf-
