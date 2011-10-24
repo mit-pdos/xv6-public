@@ -19,4 +19,5 @@ char* strncpy(char *s, const char *t, int n);
 #include "mtrace-magic.h"
 #else
 #define mtrace_lock_register(ip, x, name, op, y)
+#define mtrace_label_register(t, r, x, y, z, ip)
 #endif
