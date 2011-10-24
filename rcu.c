@@ -1,13 +1,14 @@
 #include "types.h"
-#include "defs.h"
 #include "param.h"
+#include "kernel.h"
 #include "mmu.h"
 #include "x86.h"
 #include "spinlock.h"
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
-#include "xv6-kmtrace.h"
+#include "cpu.h"
+#include "xv6-mtrace.h"
 
 struct rcu {
   unsigned long epoch;
@@ -19,9 +20,9 @@ struct rcu {
     } f1;
 
     struct {
-      void (*dofree)(int, uint);
+      void (*dofree)(int, u64);
       int arg1;
-      uint arg2;
+      u64 arg2;
     } f2;
   };
   int type;
@@ -29,23 +30,13 @@ struct rcu {
 
 TAILQ_HEAD(rcu_head, rcu);
 
-static struct { struct rcu_head x __attribute__((aligned (CACHELINE))); } rcu_q[NCPU];
-static uint global_epoch __attribute__ ((aligned (CACHELINE)));
-static struct { struct spinlock l __attribute__((aligned (CACHELINE))); } rcu_lock[NCPU];
-static struct { int v __attribute__((aligned (CACHELINE))); } delayed_nfree[NCPU];
-static struct { struct condvar cv __attribute__((aligned (CACHELINE))); } rcu_cv[NCPU];
+static struct { struct rcu_head x __mpalign__; } rcu_q[NCPU];
+static u64 global_epoch __mpalign__;
+static struct { struct spinlock l __mpalign__; } rcu_lock[NCPU];
+static struct { int v __mpalign__; } delayed_nfree[NCPU];
+static struct { struct condvar cv __mpalign__; } rcu_cv[NCPU];
 
 enum { rcu_debug = 0 };
-
-void
-rcuinit(void)
-{
-  for (int i = 0; i < NCPU; i++) {
-    initlock(&rcu_lock[i].l, "rcu");
-    TAILQ_INIT(&rcu_q[i].x);
-    initcondvar(&rcu_cv[i].cv, "rcu_gc_cv");
-  }
-}
 
 struct rcu *
 rcu_alloc()
@@ -55,7 +46,7 @@ rcu_alloc()
 
 void *
 rcu_min(void *vkey, void *v, void *arg){
-  uint *min_epoch_p = arg;
+  u64 *min_epoch_p = arg;
   struct proc *p = (struct proc *) v;
   if (*min_epoch_p > p->epoch) {
       *min_epoch_p = p->epoch;
@@ -69,18 +60,18 @@ void
 rcu_gc_work(void)
 {
   struct rcu *r, *nr;
-  uint min_epoch = global_epoch;
+  u64 min_epoch = global_epoch;
   int n = 0;
 
   ns_enumerate(nspid, rcu_min, &min_epoch);
 
   // pushcli(); // not necessary: rcup->cpu_pin==1
-  acquire(&rcu_lock[cpu->id].l);
+  acquire(&rcu_lock[mycpu()->id].l);
 
-  for (r = TAILQ_FIRST(&rcu_q[cpu->id].x); r != NULL; r = nr) {
+  for (r = TAILQ_FIRST(&rcu_q[mycpu()->id].x); r != NULL; r = nr) {
     if (r->epoch >= min_epoch)
       break;
-    release(&rcu_lock[cpu->id].l);
+    release(&rcu_lock[mycpu()->id].l);
 
     // cprintf("free: %d (%x %x)\n", r->epoch, r->dofree, r->item);
     switch (r->type) {
@@ -94,17 +85,17 @@ rcu_gc_work(void)
       panic("rcu type");
     }
 
-    acquire(&rcu_lock[cpu->id].l);
-    delayed_nfree[cpu->id].v--;
+    acquire(&rcu_lock[mycpu()->id].l);
+    delayed_nfree[mycpu()->id].v--;
     n++;
     nr = TAILQ_NEXT(r, link);
-    TAILQ_REMOVE(&rcu_q[cpu->id].x, r, link);
+    TAILQ_REMOVE(&rcu_q[mycpu()->id].x, r, link);
     kmfree(r);
   }
-  release(&rcu_lock[cpu->id].l);
+  release(&rcu_lock[mycpu()->id].l);
   if (rcu_debug)
     cprintf("rcu_gc: cpu %d n %d delayed_nfree=%d min_epoch=%d\n",
-	    cpu->id, n, delayed_nfree[cpu->id], min_epoch);
+	    mycpu()->id, n, delayed_nfree[mycpu()->id], min_epoch);
   // popcli(); // not necessary: rcup->cpu_pin==1
 
   // global_epoch can be bumped anywhere; this seems as good a place as any
@@ -114,9 +105,9 @@ rcu_gc_work(void)
 void
 rcu_gc_worker(void)
 {
-  release(&proc->lock);	// initially held by scheduler
+  release(&myproc()->lock);	// initially held by scheduler
 
-  mtrace_kstack_start(rcu_gc_worker, proc);
+  mtrace_kstack_start(rcu_gc_worker, myproc());
 
   struct spinlock wl;
   initlock(&wl, "rcu_gc_worker");   // dummy lock
@@ -125,7 +116,7 @@ rcu_gc_worker(void)
     rcu_gc_work();
 
     acquire(&wl);
-    cv_sleep(&rcu_cv[cpu->id].cv, &wl);
+    cv_sleep(&rcu_cv[mycpu()->id].cv, &wl);
     release(&wl);
   }
 }
@@ -133,7 +124,7 @@ rcu_gc_worker(void)
 void
 rcu_gc(void)
 {
-  cv_wakeup(&rcu_cv[cpu->id].cv);
+  cv_wakeup(&rcu_cv[mycpu()->id].cv);
 }
 
 // XXX Use atomic instruction to update list (instead of holding lock)
@@ -141,11 +132,11 @@ static void
 rcu_delayed_int(struct rcu *r)
 {
   pushcli();
-  acquire(&rcu_lock[cpu->id].l);
+  acquire(&rcu_lock[mycpu()->id].l);
   // cprintf("rcu_delayed: %d\n", global_epoch);
-  TAILQ_INSERT_TAIL(&rcu_q[cpu->id].x, r, link);
-  delayed_nfree[cpu->id].v++;
-  release(&rcu_lock[cpu->id].l);
+  TAILQ_INSERT_TAIL(&rcu_q[mycpu()->id].x, r, link);
+  delayed_nfree[mycpu()->id].v++;
+  release(&rcu_lock[mycpu()->id].l);
   popcli();
 }
 
@@ -166,7 +157,7 @@ rcu_delayed(void *e, void (*dofree)(void *))
 }
 
 void
-rcu_delayed2(int a1, uint a2, void (*dofree)(int,uint))
+rcu_delayed2(int a1, u64 a2, void (*dofree)(int,u64))
 {
   struct rcu *r = rcu_alloc();
   if (r == 0)
@@ -182,24 +173,25 @@ rcu_delayed2(int a1, uint a2, void (*dofree)(int,uint))
 void
 rcu_begin_read(void)
 {
-  if (proc && proc->rcu_read_depth++ == 0)
-    proc->epoch = global_epoch;
+  if (myproc() && myproc()->rcu_read_depth++ == 0)
+    myproc()->epoch = global_epoch;
   __sync_synchronize();
 }
 
 void
 rcu_end_read(void)
 {
-  if (proc && proc->rcu_read_depth > 0 && --proc->rcu_read_depth == 0)
-    proc->epoch = INF;
+  if (myproc() && myproc()->rcu_read_depth > 0 &&
+      --myproc()->rcu_read_depth == 0)
+    myproc()->epoch = INF;
 }
 
 void
 rcu_begin_write(struct spinlock *l)
 {
-  if (l) acquire(l);
+  if (l)
+    acquire(l);
   __sync_synchronize();
-
   rcu_begin_read();
 }
 
@@ -207,7 +199,16 @@ void
 rcu_end_write(struct spinlock *l)
 {
   rcu_end_read();
-
-  if (l) release(l);
+  if (l)
+    release(l);
 }
 
+void
+initrcu(void)
+{
+  for (int i = 0; i < NCPU; i++) {
+    initlock(&rcu_lock[i].l, "rcu");
+    TAILQ_INIT(&rcu_q[i].x);
+    initcondvar(&rcu_cv[i].cv, "rcu_gc_cv");
+  }
+}

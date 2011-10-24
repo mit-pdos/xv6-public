@@ -1,5 +1,5 @@
 #include "types.h"
-#include "defs.h"
+#include "kernel.h"
 #include "param.h"
 #include "memlayout.h"
 #include "mmu.h"
@@ -8,13 +8,24 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
-#include "xv6-kmtrace.h"
 
-int __attribute__ ((aligned (CACHELINE))) idle[NCPU];
-struct ns *nspid __attribute__ ((aligned (CACHELINE)));
-struct ns *nsrunq __attribute__ ((aligned (CACHELINE)));
-static struct proc *initproc __attribute__ ((aligned (CACHELINE)));
+int __mpalign__ idle[NCPU];
+struct ns *nspid __mpalign__;
+struct ns *nsrunq __mpalign__;
 
+void
+sched(void)
+{
+    panic("sched");
+}
+
+void
+addrun(struct proc *p)
+{
+    panic("addrun");
+}
+
+#if 0
 extern void forkret(void);
 extern void trapret(void);
 
@@ -720,3 +731,4 @@ procdumpall(void)
 {
   ns_enumerate(nspid, procdump, 0);
 }
+#endif

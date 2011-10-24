@@ -3,11 +3,15 @@
 OBJS = \
 	asm.o \
 	cga.o \
+	condvar.o \
 	console.o \
 	lapic.o \
 	kalloc.o \
 	main.o \
 	mp.o \
+	ns.o \
+	proc.o \
+	rcu.o \
 	spinlock.o \
 	string.o \
 	uart.o \

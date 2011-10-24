@@ -1,5 +1,4 @@
 #include "types.h"
-#include "defs.h"
 #include "param.h"
 #include "x86.h"
 #include "mmu.h"
@@ -7,6 +6,8 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
+#include "kernel.h"
+#include "cpu.h"
 
 void
 initcondvar(struct condvar *cv, char *n)
@@ -18,7 +19,7 @@ initcondvar(struct condvar *cv, char *n)
 void
 cv_sleep(struct condvar *cv, struct spinlock *lk)
 {
-  if(proc == 0)
+  if(myproc() == 0)
     panic("sleep");
 
   if(lk == 0)
@@ -29,20 +30,20 @@ cv_sleep(struct condvar *cv, struct spinlock *lk)
 
   release(lk);
 
-  acquire(&proc->lock);
+  acquire(&myproc()->lock);
 
-  if(proc->cv_next || proc->oncv)
+  if(myproc()->cv_next || myproc()->oncv)
     panic("cv_sleep cv_next");
-  proc->cv_next = cv->waiters;
-  cv->waiters = proc;
-  proc->state = SLEEPING;
-  proc->oncv = cv;
+  myproc()->cv_next = cv->waiters;
+  cv->waiters = myproc();
+  myproc()->state = SLEEPING;
+  myproc()->oncv = cv;
 
   release(&cv->lock);
 
   sched();
 
-  release(&proc->lock);
+  release(&myproc()->lock);
 
   // Reacquire original lock.
   acquire(lk);

@@ -1,4 +1,14 @@
 #include "types.h"
+#include "kernel.h"
+
+void *
+ns_enumerate(struct ns *ns, void *(*f)(void *, void *, void *), void *arg)
+{
+    panic("ns_enumerate");
+}
+
+#if 0
+#include "types.h"
 #include "defs.h"
 #include "spinlock.h"
 #include "param.h"
@@ -321,4 +331,4 @@ ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *, void *), vo
   rcu_end_read();
   return 0;
 }
-
+#endif
