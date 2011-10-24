@@ -6,15 +6,15 @@
 # exec(init, argv)
 .globl start
 start:
-  pushl $argv
-  pushl $init
-  pushl $0  // where caller pc would be
-  movl $SYS_exec, %eax
+  pushq $argv
+  pushq $init
+  pushq $0  // where caller pc would be
+  movq $SYS_exec, %rax
   int $T_SYSCALL
 
 # for(;;) exit();
 exit:
-  movl $SYS_exit, %eax
+  movq $SYS_exit, %rax
   int $T_SYSCALL
   jmp exit
 
@@ -25,6 +25,6 @@ init:
 # char *argv[] = { init, 0 };
 .p2align 2
 argv:
-  .long init
-  .long 0
+  .quad init
+  .quad 0
 
