@@ -10,6 +10,7 @@ extern void initmp(void);
 extern void initlapic(void);
 extern void initseg(void);
 extern void inittrap(void);
+extern void initkalloc(void);
 
 void
 cmain(void)
@@ -23,6 +24,8 @@ cmain(void)
   initmp();
   initlapic();
   initseg();
+
+  initkalloc();
 
   cprintf("ncpu %d\n", ncpu);
   panic("end");

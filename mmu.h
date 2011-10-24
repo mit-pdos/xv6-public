@@ -51,7 +51,7 @@ struct segdesc {
 
 // SEGDESC constructs a segment descriptor literal
 // with the given, base, limit, and type bits.
-#define SEGDESC(base, limit, bits) (struct segdesc){ \
+#define SEGDESC(base, limit, bits) { \
   (limit)&0xffff, (base)&0xffff, \
   ((base)>>16)&0xff, \
   (bits)&0xff, \
@@ -61,7 +61,7 @@ struct segdesc {
 
 // SEGDESCHI constructs an extension segment descriptor
 // literal that records the high bits of base.
-#define SEGDESCHI(base) (struct segdesc){ \
+#define SEGDESCHI(base) { \
   ((base)>>32)&0xffff, ((base)>>48)&0xffff, \
 }
 

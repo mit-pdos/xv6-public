@@ -8,14 +8,15 @@
 #include "kernel.h"
 #include "spinlock.h"
 #include "kalloc.h"
-
-void kminit(void);
+#include "xv6-mtrace.h"
 
 struct kmem kmems[NCPU];
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
 enum { kalloc_memset = 0 };
+
+static int kinited __mpalign__;
 
 // simple page allocator to get off the ground during boot
 char *
@@ -29,6 +30,86 @@ pgalloc(void)
   newend = newend + PGSIZE;
   return p;
 }
+
+// Free the page of physical memory pointed at by v,
+// which normally should have been returned by a
+// call to kalloc().  (The exception is when
+// initializing the allocator; see kinit above.)
+static void
+kfree_pool(struct kmem *m, char *v)
+{
+  struct run *r;
+
+  if((uptr)v % PGSIZE || v < end || v2p(v) >= PHYSTOP)
+    panic("kfree_pool");
+
+  // Fill with junk to catch dangling refs.
+  if (kinited && kalloc_memset)
+    memset(v, 1, PGSIZE);
+
+  acquire(&m->lock);
+  r = (struct run*)v;
+  r->next = m->freelist;
+  m->freelist = r;
+  m->nfree++;
+  if (kinited)
+    mtrace_label_register(mtrace_label_block,
+			  r,
+			  0,
+			  0,
+			  0,
+			  RET_EIP());
+  release(&m->lock);
+}
+
+// Memory allocator by Kernighan and Ritchie,
+// The C programming Language, 2nd ed.  Section 8.7.
+
+typedef struct header {
+  struct header *ptr;
+  u64 size;   // in multiples of sizeof(Header)
+} __mpalign__ Header;
+
+static struct freelist {
+  Header base;
+  Header *freep;   // last allocated block
+  struct spinlock lock;
+  char name[MAXNAME];
+} freelists[NCPU];
+
+static void
+kminit(void)
+{
+  for (int c = 0; c < NCPU; c++) {
+    freelists[c].name[0] = (char) c + '0';
+    safestrcpy(freelists[c].name+1, "freelist", MAXNAME-1);
+    initlock(&freelists[c].lock, freelists[c].name);
+  }
+}
+
+// Initialize free list of physical pages.
+void
+initkalloc(void)
+{
+  char *p;
+
+  for (int c = 0; c < NCPU; c++) {
+    kmems[c].name[0] = (char) c + '0';
+    safestrcpy(kmems[c].name+1, "kmem", MAXNAME-1);
+    initlock(&kmems[c].lock, kmems[c].name);
+  }
+
+  p = (char*)PGROUNDUP((uptr)newend);
+  for(; p + PGSIZE <= (char*)KBASE + PHYSTOP; p += PGSIZE)
+    kfree_pool(&kmems[((uptr) v2p(p)) / (PHYSTOP/NCPU)], p);
+  kminit();
+  kinited = 1;
+}
+
+
+
+
+
 
 #if 0
 static void __attribute__((unused))

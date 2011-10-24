@@ -13,3 +13,4 @@
 #define INF          (~0UL)
 #define CACHELINE    64  // cache line size
 #define MTRACE       0
+#define PHYSTOP      0xE000000 // use phys mem up to here as free pool
