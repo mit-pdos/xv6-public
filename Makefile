@@ -40,9 +40,16 @@ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 &
 ASFLAGS = -m64 -gdwarf-2
 LDFLAGS += -m elf_x86_64
 
-kernel: boot.o $(OBJS)
-	$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start -o $@ boot.o $(OBJS)
+kernel: boot.o $(OBJS) initcode
+	$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
+		-o $@ boot.o $(OBJS) -b binary initcode
 	$(OBJDUMP) -S $@ >$@.asm
+
+initcode: initcode.S
+	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o initcode.out initcode.o
+	$(OBJCOPY) -S -O binary initcode.out initcode
+	$(OBJDUMP) -S initcode.o > initcode.asm
 
 xv6memfs.img: bootblock kernelmemfs
 	dd if=/dev/zero of=xv6memfs.img count=10000

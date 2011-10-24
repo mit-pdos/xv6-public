@@ -15,6 +15,12 @@ namei(char *path)
   return NULL;
 }
 
+void
+iput(struct inode *ip)
+{
+  panic("iput");
+}
+
 #if 0
 // File system implementation.  Four layers:
 //   + Blocks: allocator for raw disk blocks.

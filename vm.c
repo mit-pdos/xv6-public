@@ -8,6 +8,9 @@
 #include "bits.h"
 #include "spinlock.h"
 #include "kalloc.h"
+#include "queue.h"
+#include "condvar.h"
+#include "proc.h"
 
 extern char data[];  // defined in data.S
 
@@ -87,6 +90,230 @@ initseg(void)
   c->proc = NULL;
   c->kmem = &kmems[cpunum()];
 }
+
+// Set up kernel part of a page table.
+static pml4e_t*
+setupkvm(void)
+{
+  pml4e_t *pml4;
+
+  if((pml4 = (pml4e_t*)kalloc()) == 0)
+    return 0;
+  memmove(pml4, kpml4, PGSIZE);
+
+  return pml4;
+}
+
+static struct vma *
+vma_alloc(void)
+{
+  struct vma *e = kmalloc(sizeof(struct vma));
+  if (e == 0)
+    return 0;
+  memset(e, 0, sizeof(struct vma));
+  e->va_type = PRIVATE;
+  snprintf(e->lockname, sizeof(e->lockname), "vma:%p", e);
+  initlock(&e->lock, e->lockname);
+  return e;
+}
+
+// Does any vma overlap start..start+len?
+// If yes, return the vma pointer.
+// If no, return 0.
+// This code can't handle regions at the very end
+// of the address space, e.g. 0xffffffff..0x0
+// We key vma's by their end address.
+struct vma *
+vmap_lookup(struct vmap *m, uptr start, uptr len)
+{
+  if(start + len < start)
+    panic("vmap_lookup bad len");
+
+#ifdef TREE
+  struct kv *kv = tree_find_gt(m->root, start);   // find vma with va_end > start
+  if (kv != 0) {
+    struct vma *e = (struct vma *) (kv->val);
+    if (e->va_end <= e->va_start) 
+      panic("malformed va");
+    if (e->va_start < start+len && e->va_end > start) {
+        return e;
+    }
+  }
+#else
+  for(u64 i = 0; i < NELEM(m->e); i++){
+    struct vma *e = m->e[i];
+    if(e) {
+      if(e->va_end <= e->va_start)  // XXX shouldn't this involve start and len?
+        panic("vmap_lookup bad vma");
+      if(e->va_start < start+len && e->va_end > start)
+        return e;
+    }
+  }
+#endif
+  return 0;
+}
+
+struct vmap *
+vmap_alloc(void)
+{
+  struct vmap *m = kmalloc(sizeof(struct vmap));
+  if (m == 0)
+    return 0;
+
+  memset(m, 0, sizeof(struct vmap));
+  snprintf(m->lockname, sizeof(m->lockname), "vmap:%p", m);
+  initlock(&m->lock, m->lockname);
+  m->ref = 1;
+  m->pml4 = setupkvm();
+  if (m->pml4 == 0) {
+    cprintf("vmap_alloc: setupkvm out of memory\n");
+    kmfree(m);
+    return 0;
+  }
+  return m;
+}
+
+int
+vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
+{
+  acquire(&m->lock);
+  u64 len = n->npages * PGSIZE;
+
+  if(vmap_lookup(m, va_start, len)){
+    cprintf("vmap_insert: overlap\n");
+    release(&m->lock);
+    return -1;
+  }
+
+#ifdef TREE
+  struct vma *e = vma_alloc();
+  struct kv kv;
+  if (e == 0) {
+    release(&m->lock);
+    return -1;
+  }
+  e->va_start = va_start;
+  e->va_end = va_start + len;
+  e->n = n;
+  __sync_fetch_and_add(&n->ref, 1);
+  kv.key = e->va_end;
+  kv.val = e;
+  m->root = tree_insert(m->root, &kv);
+  release(&m->lock);
+  return 0;
+#else 
+  for(u64 i = 0; i < NELEM(m->e); i++) {
+    if(m->e[i])
+      continue;
+    m->e[i] = vma_alloc();
+    if (m->e[i] == 0)
+      return -1;
+    m->e[i]->va_start = va_start;
+    m->e[i]->va_end = va_start + len;
+    m->e[i]->n = n;
+    __sync_fetch_and_add(&n->ref, 1);
+    release(&m->lock);
+    return 0;
+  }
+  release(&m->lock);
+
+  cprintf("vmap_insert: out of vma slots\n");
+  return -1;
+#endif
+}
+
+struct vmnode *
+vmn_alloc(u64 npg, enum vmntype type)
+{
+  struct vmnode *n = kmalloc(sizeof(struct vmnode));
+  if (n == 0) {
+    cprintf("out of vmnodes");
+    return 0;
+  }
+  if(npg > NELEM(n->page)) {
+    panic("vmnode too big\n");
+  }
+  memset(n, 0, sizeof(struct vmnode));
+  n->npages = npg;
+  n->type = type;
+  return n;
+}
+
+static int
+vmn_doallocpg(struct vmnode *n)
+{
+  for(u64 i = 0; i < n->npages; i++) {
+    if((n->page[i] = kalloc()) == 0)
+      return -1;
+    memset((char *) n->page[i], 0, PGSIZE);
+  }
+  return 0;
+}
+
+struct vmnode *
+vmn_allocpg(u64 npg)
+{
+  struct vmnode *n = vmn_alloc(npg, EAGER);
+  if (n == 0) return 0;
+  if (vmn_doallocpg(n) < 0) {
+    vmn_free(n);
+    return 0;
+  }
+  return n;
+}
+
+void
+vmn_free(struct vmnode *n)
+{
+  for(u64 i = 0; i < n->npages; i++) {
+    if (n->page[i]) {
+      kfree(n->page[i]);
+      n->page[i] = 0;
+    }
+  }
+  if (n->ip)
+    iput(n->ip);
+  n->ip = 0;
+  kmfree(n);
+}
+
+// Copy len bytes from p to user address va in vmap.
+// Most useful when vmap is not the current page table.
+int
+copyout(struct vmap *vmap, uptr va, void *p, u64 len)
+{
+  char *buf = (char*)p;
+  while(len > 0){
+    uptr va0 = (uptr)PGROUNDDOWN(va);
+    rcu_begin_read();
+    struct vma *vma = vmap_lookup(vmap, va, 1);
+    if(vma == 0) {
+      rcu_end_read();
+      return -1;
+    }
+
+    acquire(&vma->lock);
+    uptr pn = (va0 - vma->va_start) / PGSIZE;
+    char *p0 = vma->n->page[pn];
+    if(p0 == 0)
+      panic("copyout: missing page");
+    uptr n = PGSIZE - (va - va0);
+    if(n > len)
+      n = len;
+    memmove(p0 + (va - va0), buf, n);
+    len -= n;
+    buf += n;
+    va = va0 + PGSIZE;
+    release(&vma->lock);
+    rcu_end_read();
+  }
+  return 0;
+}
+
+
+
+
+
 
 #if 0
 void

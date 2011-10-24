@@ -9,10 +9,13 @@
 static inline uptr v2p(void *a) { return (uptr) a  - KBASE; }
 static inline void *p2v(uptr a) { return (void *) a + KBASE; }
 
+#define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
 struct spinlock;
 struct condvar;
-struct proc;
 struct vmnode;
+struct inode;
+struct proc;
 struct vmap;
 
 // bio.c
@@ -37,6 +40,7 @@ void            snprintf(char *buf, u32 n, char *fmt, ...);
 // fs.c
 int             namecmp(const char*, const char*);
 struct inode*   namei(char*);
+void            iput(struct inode*);
 
 // ide.c
 void            ideinit(void);
@@ -151,6 +155,9 @@ void            uartputc(char c);
 
 // vm.c
 struct vmap *   vmap_alloc(void);
-struct vmnode*  vmn_allocpg(u64 npg);
-int             vmap_insert(struct vmap *, struct vmnode *n, uptr);
+struct vmnode*  vmn_alloc(u64, u32);
+struct vmnode*  vmn_allocpg(u64);
+int             vmap_insert(struct vmap*, struct vmnode *, uptr);
+struct vma *    vmap_lookup(struct vmap*, uptr, uptr);
 int             copyout(struct vmap *, uptr, void*, u64);
+void            vmn_free(struct vmnode *);
