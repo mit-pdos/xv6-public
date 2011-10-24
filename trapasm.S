@@ -1,3 +1,5 @@
+#include "mmu.h"
+
 #define _TRAP(x, l) \
 	.globl trap ## x; \
 	.align 8; \
@@ -32,12 +34,25 @@ trapcommon:
         pushq   %r13
         pushq   %r14
         pushq   %r15
-	movq	%rsp, %rdi  // first argument to trap
-	call	trap
+
+        # Set up data and per-cpu segments.
+        movw    $KDSEG, %ax
+        movw    %ax, %ds
+        movw    %ax, %es
+        // XXX(sbw) we should do something with fs, gs, gs.base
+
+        movq	%rsp, %rdi  // first argument to trap
+        call	trap
 
 .globl trapret
 .align 8
 trapret:
+        movw $UDSEG, %ax
+        movw %ax, %ds
+        movw %ax, %es
+        movw %ax, %ss
+        // XXX(sbw) we should do something with fs, gs, gs.base
+        
         popq    %r15
         popq    %r14
         popq    %r13
