@@ -51,7 +51,7 @@ xv6memfs.img: bootblock kernelmemfs
 
 -include *.d
 
-.PHONY: clean qemu
+.PHONY: clean qemu ud0
 
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
@@ -65,3 +65,6 @@ QEMUOPTS = -smp $(CPUS) -m 512
 
 qemu: kernel
 	$(QEMU) $(QEMUOPTS) -kernel kernel -nographic
+
+ud0: kernel
+	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/ud0/kernel.xv6
