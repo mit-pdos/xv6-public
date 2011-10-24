@@ -103,3 +103,38 @@ writemsr(u32 msr, u64 val)
   u32 hi = val >> 32;
   __asm volatile("wrmsr" : : "c" (msr), "a" (lo), "d" (hi));
 }
+
+// Layout of the trap frame built on the stack by the
+// hardware and by trapasm.S, and passed to trap().
+struct trapframe {
+  u64 r15;
+  u64 r14;
+  u64 r13;
+  u64 r12;
+  u64 rbp;
+  u64 rbx;
+
+  // amd64 ABI callee saved registers
+  u64 r11;
+  u64 r10;
+  u64 r9;
+  u64 r8;
+  u64 rax;
+  u64 rcx;
+  u64 rdx;
+  u64 rsi;
+  u64 rdi;
+  u64 trapno;
+
+  // Below here defined by amd64 hardware
+  u32 err;
+  u16 padding2[2];
+  u64 rip;
+  u16 cs;
+  u16 padding1[3];
+  u64 rflags;
+  // Unlike 32-bit, amd64 hardware always pushes below
+  u64 rsp;
+  u16 ss;
+  u16 padding0[3];
+} __attribute__((packed));

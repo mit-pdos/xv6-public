@@ -1,5 +1,11 @@
 #include "spinlock.h"
 
+
+// Saved registers for kernel context switches.
+struct context {
+    u64 rip;
+};
+
 // Per-process, per-stack meta data for mtrace
 #define MTRACE_NSTACKS 16
 #define MTRACE_TAGSHIFT 28

@@ -21,4 +21,5 @@ char* strncpy(char *s, const char *t, int n);
 #define mtrace_lock_register(ip, x, name, op, y)
 #define mtrace_label_register(t, r, x, y, z, ip)
 #define mtrace_kstack_start(x, y)
+#define mtrace_kstack_stop(x)
 #endif

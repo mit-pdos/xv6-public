@@ -12,6 +12,8 @@ static inline void *p2v(uptr a) { return (void *) a + KBASE; }
 struct spinlock;
 struct condvar;
 struct proc;
+struct vmnode;
+struct vmap;
 
 // bio.c
 void            binit(void);
@@ -34,6 +36,7 @@ void            snprintf(char *buf, u32 n, char *fmt, ...);
 
 // fs.c
 int             namecmp(const char*, const char*);
+struct inode*   namei(char*);
 
 // ide.c
 void            ideinit(void);
@@ -145,3 +148,9 @@ int             strcmp(const char *p, const char *q);
 
 // uart.c
 void            uartputc(char c);
+
+// vm.c
+struct vmap *   vmap_alloc(void);
+struct vmnode*  vmn_allocpg(u64 npg);
+int             vmap_insert(struct vmap *, struct vmnode *n, uptr);
+int             copyout(struct vmap *, uptr, void*, u64);

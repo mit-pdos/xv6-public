@@ -17,26 +17,45 @@
 trappush:
 	pushq $0  // error code
 trapcommon:
-	// TODO(rsc): Do we need to push ds, es, fs, gs?
-	pushq	%r15
-	pushq	%r14
-	pushq	%r13
-	pushq	%r12
-	pushq	%r11
-	pushq	%r10
-	pushq	%r9
-	pushq	%r8
-	pushq	%rdi
-	pushq	%rsi
-	pushq	%rbp
-	pushq	$0  // sp
-	pushq	%rbx
-	pushq	%rdx
-	pushq	%rcx
-	pushq	%rax
+        pushq   %rdi
+        pushq   %rsi
+        pushq   %rdx
+        pushq   %rcx
+        pushq   %rax
+        pushq   %r8
+        pushq   %r9
+        pushq   %r10
+        pushq   %r11
+        pushq   %rbx
+        pushq   %rbp
+        pushq   %r12
+        pushq   %r13
+        pushq   %r14
+        pushq   %r15
 	movq	%rsp, %rdi  // first argument to trap
 	call	trap
 
+.globl trapret
+.align 8
+trapret:
+        popq    %r15
+        popq    %r14
+        popq    %r13
+        popq    %r12
+        popq    %rbp
+        popq    %rbx
+        popq    %r11
+        popq    %r10
+        popq    %r9
+        popq    %r8
+        popq    %rax
+        popq    %rcx
+        popq    %rdx
+        popq    %rsi
+        popq    %rdi
+        addq    $0x12, %rsp  // trapno, err
+        iret
+        
 .data
 .align 8
 .globl trapentry

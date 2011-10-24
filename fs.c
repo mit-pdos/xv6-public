@@ -8,6 +8,13 @@ namecmp(const char *s, const char *t)
   return strncmp(s, t, DIRSIZ);
 }
 
+struct inode*
+namei(char *path)
+{
+  panic("namei");
+  return NULL;
+}
+
 #if 0
 // File system implementation.  Four layers:
 //   + Blocks: allocator for raw disk blocks.

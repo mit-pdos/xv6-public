@@ -14,6 +14,7 @@ extern void initkalloc(void);
 extern void initrcu(void);
 extern void initproc(void);
 extern void initbio(void);
+extern void inituser(void);
 
 void
 cmain(void)
@@ -38,6 +39,8 @@ cmain(void)
   ideinit();       // disk
 #endif
 
+  inituser();      // first user process
+  
   cprintf("ncpu %d\n", ncpu);
   panic("end");
 }

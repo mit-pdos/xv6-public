@@ -8,10 +8,16 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
+#include "cpu.h"
+#include "bits.h"
+#include "xv6-mtrace.h"
+
+extern void trapret(void);
 
 int __mpalign__ idle[NCPU];
 struct ns *nspid __mpalign__;
 struct ns *nsrunq __mpalign__;
+static struct proc *bootproc __mpalign__;
 
 void
 sched(void)
@@ -23,6 +29,127 @@ void
 addrun(struct proc *p)
 {
     panic("addrun");
+}
+
+// A fork child's very first scheduling by scheduler()
+// will swtch here.  "Return" to user space.
+static void
+forkret(void)
+{
+  // Still holding proc->lock from scheduler.
+  release(&myproc()->lock);
+
+  // Just for the first process. can't do it earlier
+  // b/c file system code needs a process context
+  // in which to call cv_sleep().
+  if(myproc()->cwd == 0) {
+    mtrace_kstack_start(forkret, myproc());
+    myproc()->cwd = namei("/");
+    mtrace_kstack_stop(myproc());
+  }
+
+  // Return to "caller", actually trapret (see allocproc).
+}
+
+// Look in the process table for an UNUSED proc.
+// If found, change state to EMBRYO and initialize
+// state required to run in the kernel.
+// Otherwise return 0.
+static struct proc*
+allocproc(void)
+{
+  struct proc *p;
+  char *sp;
+
+  p = kmalloc(sizeof(struct proc));
+  if (p == 0) return 0;
+  memset(p, 0, sizeof(*p));
+
+  p->state = EMBRYO;
+  p->pid = ns_allockey(nspid);
+  p->epoch = INF;
+  p->cpuid = mycpu()->id;
+  p->on_runq = -1;
+  p->cpu_pin = 0;
+  p->mtrace_stacks.curr = -1;
+
+  snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
+  initlock(&p->lock, p->lockname+3);
+  initcondvar(&p->cv, p->lockname);
+
+  if (ns_insert(nspid, KI(p->pid), (void *) p) < 0)
+    panic("allocproc: ns_insert");
+
+  // Allocate kernel stack if possible.
+  if((p->kstack = kalloc()) == 0){
+    if (ns_remove(nspid, KI(p->pid), p) == 0)
+      panic("allocproc: ns_remove");
+    rcu_delayed(p, kmfree);
+    return 0;
+  }
+  sp = p->kstack + KSTACKSIZE;
+  
+  // Leave room for trap frame.
+  sp -= sizeof *p->tf;
+  p->tf = (struct trapframe*)sp;
+  
+  // Set up new context to start executing at forkret,
+  // which returns to trapret.
+  sp -= 8;
+  *(u64*)sp = (u64)trapret;
+
+  sp -= sizeof *p->context;
+  p->context = (struct context*)sp;
+  memset(p->context, 0, sizeof *p->context);
+  p->context->rip = (uptr)forkret;
+
+  return p;
+}
+
+// Set up first user process.
+void
+inituser(void)
+{
+  struct proc *p;
+  extern char _binary_initcode_start[], _binary_initcode_size[];
+  
+  p = allocproc();
+  bootproc = p;
+  if((p->vmap = vmap_alloc()) == 0)
+    panic("userinit: out of vmaps?");
+  struct vmnode *vmn = 
+    vmn_allocpg(PGROUNDUP((uptr)_binary_initcode_size) / PGSIZE);
+  if(vmn == 0)
+    panic("userinit: vmn_allocpg");
+  if(vmap_insert(p->vmap, vmn, 0) < 0)
+    panic("userinit: vmap_insert");
+  if(copyout(p->vmap, 0, _binary_initcode_start, (uptr)_binary_initcode_size) < 0)
+    panic("userinit: copyout");
+  memset(p->tf, 0, sizeof(*p->tf));
+  p->tf->rflags = FL_IF;
+  p->tf->rsp = PGSIZE;
+  p->tf->rip = 0;  // beginning of initcode.S
+
+  safestrcpy(p->name, "initcode", sizeof(p->name));
+  p->cwd = 0; // forkret will fix in the process's context
+  acquire(&p->lock);
+  addrun(p);
+  p->state = RUNNABLE;
+  release(&p->lock);
+
+  for (u32 c = 0; c < NCPU; c++) {
+    struct proc *rcup = allocproc();
+    rcup->vmap = vmap_alloc();
+    rcup->context->rip = (u64) rcu_gc_worker;
+    rcup->cwd = 0;
+    rcup->cpuid = c;
+    rcup->cpu_pin = 1;
+
+    acquire(&rcup->lock);
+    rcup->state = RUNNABLE;
+    addrun(rcup);
+    release(&rcup->lock);
+  }
 }
 
 void
@@ -115,7 +242,7 @@ allocproc(void)
   
   // Set up new context to start executing at forkret,
   // which returns to trapret.
-  sp -= 4;
+  sp -= 8;
   *(uint*)sp = (uint)trapret;
 
   sp -= sizeof *p->context;
