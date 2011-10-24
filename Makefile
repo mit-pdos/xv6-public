@@ -1,5 +1,3 @@
--include config.mk
-
 OBJS = \
 	asm.o \
 	bio.o \
@@ -22,11 +20,12 @@ OBJS = \
 	trap.o \
 	trapasm.o
 
-# Cross-compiling (e.g., on Mac OS X)
-TOOLPREFIX ?= x86_64-jos-elf-
+# Custom config file?  Set the default below..
+-include config.mk
 
-# If the makefile can't find QEMU, specify its path here
-QEMU = qemu-system-x86_64
+TOOLPREFIX ?= x86_64-jos-elf-
+QEMU ?= qemu-system-x86_64
+CPUS ?= 2
 
 NM = $(TOOLPREFIX)nm
 CC = $(TOOLPREFIX)gcc
@@ -43,7 +42,6 @@ LDFLAGS += -m elf_x86_64
 kernel: boot.o $(OBJS) initcode
 	$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
 		-o $@ boot.o $(OBJS) -b binary initcode
-	$(OBJDUMP) -S $@ >$@.asm
 
 initcode: initcode.S
 	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
@@ -61,17 +59,11 @@ xv6memfs.img: bootblock kernelmemfs
 .PHONY: clean qemu ud0
 
 clean: 
-	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
-	*.o *.d *.asm *.sym vectors.S parport.out \
-	bootblock kernel xv6.img fs.img mkfs
+	rm -f *.o *.d *.asm *.sym initcode kernel
 
-ifndef CPUS
-CPUS := 2
-endif
-QEMUOPTS = -smp $(CPUS) -m 512
-
+QEMUOPTS = -smp $(CPUS) -m 512  -nographic
 qemu: kernel
-	$(QEMU) $(QEMUOPTS) -kernel kernel -nographic
+	$(QEMU) $(QEMUOPTS) -kernel kernel
 
 ud0: kernel
 	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/ud0/kernel.xv6
