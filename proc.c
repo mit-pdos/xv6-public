@@ -25,10 +25,25 @@ sched(void)
     panic("sched");
 }
 
+// Mark a process RUNNABLE and add it to the runq
+// of its cpu. Caller must hold p->lock so that
+// some other core doesn't start running the
+// process before the caller has finished setting
+// the process up, and to cope with racing callers
+// e.g. two wakeups on same process. and to
+// allow atomic addrun(); sched();
 void
 addrun(struct proc *p)
 {
-    panic("addrun");
+#if SPINLOCK_DEBUG
+  if(!holding(&p->lock))
+    panic("addrun no p->lock");
+#endif
+
+  if (p->on_runq >= 0)
+    panic("addrun on runq already");
+  ns_insert(nsrunq, KI(p->cpuid), p);
+  p->on_runq = p->cpuid;
 }
 
 // A fork child's very first scheduling by scheduler()
