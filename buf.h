@@ -1,14 +1,14 @@
 struct buf {
   int flags;
-  uint dev;
-  uint sector;
+  u32 dev;
+  u64 sector;
   struct buf *prev; // LRU cache list
   struct buf *next;
   struct buf *qnext; // disk queue
   char lockname[16];
   struct condvar cv;
   struct spinlock lock;
-  uchar data[512];
+  u8 data[512];
 };
 #define B_BUSY  0x1  // buffer is locked by some process
 #define B_VALID 0x2  // buffer has been read from disk

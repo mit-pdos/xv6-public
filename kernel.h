@@ -13,6 +13,12 @@ struct spinlock;
 struct condvar;
 struct proc;
 
+// bio.c
+void            binit(void);
+struct buf*     bread(u32, u64, int writer);
+void            brelse(struct buf*, int writer);
+void            bwrite(struct buf*);
+
 // cga.c
 void            cgaputc(char c);
 
@@ -24,9 +30,15 @@ void            cv_wakeup(struct condvar *cv);
 // console.c
 void            cprintf(const char*, ...);
 void            panic(const char*) __attribute__((noreturn));
+void            snprintf(char *buf, u32 n, char *fmt, ...);
 
 // fs.c
 int             namecmp(const char*, const char*);
+
+// ide.c
+void            ideinit(void);
+void            ideintr(void);
+void            iderw(struct buf*);
 
 // kalloc.c
 char*           kalloc(void);

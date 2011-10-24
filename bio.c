@@ -22,7 +22,7 @@
 //     and needs to be written to disk.
 
 #include "types.h"
-#include "defs.h"
+#include "kernel.h"
 #include "param.h"
 #include "spinlock.h"
 #include "condvar.h"
@@ -31,23 +31,6 @@
 static struct ns *bufns;
 
 enum { writeback = 0 };
-
-void
-binit(void)
-{
-  bufns = nsalloc(0);
-
-  for (uint i = 0; i < NBUF; i++) {
-    struct buf *b = kmalloc(sizeof(*b));
-    b->dev = 0xdeadbeef;
-    b->sector = -i;	/* dummy to pre-allocate NBUF spaces for evict */
-    b->flags = 0;
-    initlock(&b->lock, "bcache-lock");
-    initcondvar(&b->cv, "bcache-cv");
-    if (ns_insert(bufns, KII(b->dev, b->sector), b) < 0)
-      panic("binit ns_insert");
-  }
-}
 
 static void *
 evict(void *vkey, void *bp, void *arg)
@@ -75,7 +58,7 @@ evict_valid(void *vkey, void *bp, void *arg)
 // If not found, allocate fresh block.
 // In either case, return locked buffer.
 static struct buf*
-bget(uint dev, uint sector, int *writer)
+bget(u32 dev, u64 sector, int *writer)
 {
   struct buf *b;
 
@@ -136,7 +119,7 @@ bget(uint dev, uint sector, int *writer)
 
 // Return a B_BUSY buf with the contents of the indicated disk sector.
 struct buf*
-bread(uint dev, uint sector, int writer)
+bread(u32 dev, u64 sector, int writer)
 {
   struct buf *b;
 
@@ -176,3 +159,19 @@ brelse(struct buf *b, int writer)
   rcu_end_read();
 }
 
+void
+initbio(void)
+{
+  bufns = nsalloc(0);
+
+  for (u64 i = 0; i < NBUF; i++) {
+    struct buf *b = kmalloc(sizeof(*b));
+    b->dev = 0xdeadbeef;
+    b->sector = -i;	/* dummy to pre-allocate NBUF spaces for evict */
+    b->flags = 0;
+    initlock(&b->lock, "bcache-lock");
+    initcondvar(&b->cv, "bcache-cv");
+    if (ns_insert(bufns, KII(b->dev, b->sector), b) < 0)
+      panic("binit ns_insert");
+  }
+}

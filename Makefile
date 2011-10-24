@@ -2,10 +2,12 @@
 
 OBJS = \
 	asm.o \
+	bio.o \
 	cga.o \
 	condvar.o \
 	console.o \
 	fs.o \
+	ide.o \
 	lapic.o \
 	kalloc.o \
 	main.o \

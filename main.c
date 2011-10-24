@@ -13,6 +13,7 @@ extern void inittrap(void);
 extern void initkalloc(void);
 extern void initrcu(void);
 extern void initproc(void);
+extern void initbio(void);
 
 void
 cmain(void)
@@ -29,7 +30,13 @@ cmain(void)
 
   initkalloc();
   initrcu();       // initialize rcu module
-  initproc();
+  initproc();      // process table
+  initbio();       // buffer cache
+#if 0
+  fileinit();      // file table
+  iinit();         // inode cache
+  ideinit();       // disk
+#endif
 
   cprintf("ncpu %d\n", ncpu);
   panic("end");

@@ -106,6 +106,40 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
   }
 }
 
+// Print to a buffer.
+struct bufstate {
+  char *p;
+  char *e;
+};
+
+static void
+writebuf(void *arg, char c)
+{
+  struct bufstate *bs = arg;
+  if (bs->p < bs->e) {
+    bs->p[0] = c;
+    bs->p++;
+  }
+}
+
+void
+vsnprintf(char *buf, u32 n, char *fmt, va_list ap)
+{
+  struct bufstate bs = { buf, buf+n-1 };
+  vprintfmt(writebuf, (void*) &bs, fmt, ap);
+  bs.p[0] = '\0';
+}
+
+void
+snprintf(char *buf, u32 n, char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vsnprintf(buf, n, fmt, ap);
+  va_end(ap);
+}
+
 void
 cprintf(const char *fmt, ...)
 {
