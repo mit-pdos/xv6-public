@@ -1,15 +1,5 @@
 #include "types.h"
 #include "kernel.h"
-
-void *
-ns_enumerate(struct ns *ns, void *(*f)(void *, void *, void *), void *arg)
-{
-    panic("ns_enumerate");
-}
-
-#if 0
-#include "types.h"
-#include "defs.h"
 #include "spinlock.h"
 #include "param.h"
 #include "fs.h"
@@ -29,16 +19,16 @@ struct elem {
   int next_lock;
   struct elem * volatile next;
   union {
-    uint ikey;
+    u64 ikey;
     struct {
-      uint a;
-      uint b;
+      u64 a;
+      u64 b;
     } iikey;
     char skey[0];
     char dnkey[DIRSIZ];
     struct {
-      uint a;
-      uint b;
+      u64 a;
+      u64 b;
       char s[0];
     } iiskey;
   };
@@ -50,7 +40,7 @@ struct bucket {
 
 struct ns {
   int allowdup;
-  uint nextkey;
+  u64 nextkey;
   struct bucket table[NHASH];
 };
 
@@ -120,7 +110,7 @@ elemalloc(struct nskey *k)
   return e;
 }
 
-static int
+static u64
 h(struct nskey *k)
 {
   switch (k->type) {
@@ -188,10 +178,10 @@ cmpkey(struct elem *e, struct nskey *k)
 }
 
 // XXX need something more scalable; partition the name space?
-int
+u64
 ns_allockey(struct ns *ns)
 {
-  uint n = __sync_fetch_and_add(&ns->nextkey, 1);
+  u64 n = __sync_fetch_and_add(&ns->nextkey, 1);
   return n;
 }
 
@@ -202,7 +192,7 @@ ns_insert(struct ns *ns, struct nskey key, void *val)
   if (e) {
     setkey(e, &key);
     e->val = val;
-    uint i = h(&key);
+    u64 i = h(&key);
     rcu_begin_write(0);
 
    retry:
@@ -231,7 +221,7 @@ ns_insert(struct ns *ns, struct nskey key, void *val)
 void*
 ns_lookup(struct ns *ns, struct nskey key)
 {
-  uint i = h(&key);
+  u64 i = h(&key);
 
   rcu_begin_read();
   struct elem *e = ns->table[i].chain;
@@ -251,7 +241,7 @@ ns_lookup(struct ns *ns, struct nskey key)
 void*
 ns_remove(struct ns *ns, struct nskey key, void *v)
 {
-  uint i = h(&key);
+  u64 i = h(&key);
   rcu_begin_write(0);
 
  retry:
@@ -315,7 +305,7 @@ ns_enumerate(struct ns *ns, void *(*f)(void *, void *, void *), void *arg)
 void *
 ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *, void *), void *arg)
 {
-  uint i = h(&key);
+  u64 i = h(&key);
   rcu_begin_read();
   struct elem *e = ns->table[i].chain;
   while (e) {
@@ -331,4 +321,3 @@ ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *, void *), vo
   rcu_end_read();
   return 0;
 }
-#endif

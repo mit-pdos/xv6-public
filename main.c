@@ -12,6 +12,7 @@ extern void initseg(void);
 extern void inittrap(void);
 extern void initkalloc(void);
 extern void initrcu(void);
+extern void initproc(void);
 
 void
 cmain(void)
@@ -28,6 +29,7 @@ cmain(void)
 
   initkalloc();
   initrcu();       // initialize rcu module
+  initproc();
 
   cprintf("ncpu %d\n", ncpu);
   panic("end");

@@ -1,3 +1,7 @@
+// Directory is a file containing a sequence of dirent structures.
+#define DIRSIZ 14
+
+#if 0
 // On-disk file system format. 
 // Both the kernel and user programs use this header file.
 
@@ -51,3 +55,4 @@ struct dirent {
   char name[DIRSIZ];
 };
 
+#endif

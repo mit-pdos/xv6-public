@@ -25,6 +25,26 @@ addrun(struct proc *p)
     panic("addrun");
 }
 
+void
+initproc(void)
+{
+  int c;
+
+  nspid = nsalloc(0);
+  if (nspid == 0)
+    panic("pinit");
+
+  nsrunq = nsalloc(1);
+  if (nsrunq == 0)
+    panic("pinit runq");
+
+  for (c = 0; c < NCPU; c++)
+    idle[c] = 1;
+}
+
+
+
+
 #if 0
 extern void forkret(void);
 extern void trapret(void);

@@ -25,6 +25,9 @@ void            cv_wakeup(struct condvar *cv);
 void            cprintf(const char*, ...);
 void            panic(const char*) __attribute__((noreturn));
 
+// fs.c
+int             namecmp(const char*, const char*);
+
 // kalloc.c
 char*           kalloc(void);
 void            kfree(void *);
@@ -75,7 +78,7 @@ struct nskey {
 void            nsinit(void);
 struct ns*      nsalloc(int allowdup);
 void		nsfree(struct ns*);
-int             ns_allockey(struct ns*);
+u64             ns_allockey(struct ns*);
 int             ns_insert(struct ns*, struct nskey key, void*);
 void*           ns_lookup(struct ns*, struct nskey key);
 void*           ns_remove(struct ns *ns, struct nskey key, void *val); // removed val
@@ -97,6 +100,17 @@ void            userinit(void);
 int             wait(void);
 void            yield(void);
 void            migrate(struct proc *);
+
+// rcu.c
+void            rcuinit(void);
+void            rcu_begin_write(struct spinlock *);
+void            rcu_end_write(struct spinlock *);
+void            rcu_begin_read(void);
+void            rcu_end_read(void);
+void            rcu_delayed(void*, void (*dofree)(void*));
+void            rcu_delayed2(int, u64, void (*dofree)(int, u64));
+void		rcu_gc(void);
+void		rcu_gc_worker(void);
 
 // spinlock.c
 void            acquire(struct spinlock*);

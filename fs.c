@@ -1,3 +1,14 @@
+#include "types.h"
+#include "kernel.h"
+#include "fs.h"
+
+int
+namecmp(const char *s, const char *t)
+{
+  return strncmp(s, t, DIRSIZ);
+}
+
+#if 0
 // File system implementation.  Four layers:
 //   + Blocks: allocator for raw disk blocks.
 //   + Files: inode allocator, reading, writing, metadata.
@@ -764,3 +775,4 @@ nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
 }
+#endif

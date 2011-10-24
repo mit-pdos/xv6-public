@@ -5,6 +5,7 @@ OBJS = \
 	cga.o \
 	condvar.o \
 	console.o \
+	fs.o \
 	lapic.o \
 	kalloc.o \
 	main.o \
