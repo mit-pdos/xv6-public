@@ -5,10 +5,10 @@ OBJS = \
 	condvar.o \
 	console.o \
 	fs.o \
-	ide.o \
 	lapic.o \
 	kalloc.o \
 	main.o \
+	memide.o \
 	mp.o \
 	ns.o \
 	proc.o \
@@ -40,9 +40,9 @@ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 &
 ASFLAGS = -m64 -gdwarf-2
 LDFLAGS += -m elf_x86_64
 
-kernel: boot.o $(OBJS) initcode bootother
+kernel: boot.o $(OBJS) initcode bootother fs.img
 	$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
-		-o $@ boot.o $(OBJS) -b binary initcode bootother
+		-o $@ boot.o $(OBJS) -b binary initcode bootother fs.img
 
 initcode: initcode.S
 	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
@@ -61,12 +61,18 @@ xv6memfs.img: bootblock kernelmemfs
 	dd if=bootblock of=xv6memfs.img conv=notrunc
 	dd if=kernelmemfs of=xv6memfs.img seek=1 conv=notrunc
 
+mkfs: mkfs.c fs.h
+	gcc -m32 -Werror -Wall -o mkfs mkfs.c
+
+fs.img: mkfs README $(UPROGS)
+	./mkfs fs.img README $(UPROGS)
+
 -include *.d
 
 .PHONY: clean qemu ud0
 
 clean: 
-	rm -f *.o *.d *.asm *.sym initcode kernel bootother
+	rm -f *.o *.d *.asm *.sym initcode kernel bootother mkfs fs.img
 
 QEMUOPTS = -smp $(CPUS) -m 512 -nographic
 qemu: kernel
