@@ -4,6 +4,7 @@
 #include "kernel.h"
 #include "x86.h"
 #include "cpu.h"
+#include "traps.h"
 
 u64 ticks __mpalign__;
 
@@ -30,7 +31,11 @@ extern u64 trapentry[];
 void
 trap(struct trapframe *tf)
 {
-  cprintf("rip %lx rsp %lx\n", tf->rip, tf->rsp);
+  u32 no = tf->trapno;
+  if (no == T_PGFLT)
+    cprintf("va %lx rip %lx rsp %lx\n", rcr2(), tf->rip, tf->rsp);
+  else
+    cprintf("no %d rip %lx rsp %lx\n", tf->trapno, tf->rip, tf->rsp);
   panic("trap");
 }
 
