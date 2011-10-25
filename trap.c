@@ -24,8 +24,9 @@ struct intdesc idt[256] __attribute__((aligned(16)));
 extern u64 trapentry[];
 
 void
-trap(void)
+trap(struct trapframe *tf)
 {
+  cprintf("rip %lx rsp %lx\n", tf->rip, tf->rsp);
   panic("trap");
 }
 
