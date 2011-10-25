@@ -78,7 +78,7 @@ initpg(char* (*alloc)(void))
 // Set up CPU's kernel segment descriptors.
 // Run once at boot time on each CPU.
 void
-initseg(void)
+inittls(void)
 {
   struct cpu *c;
 

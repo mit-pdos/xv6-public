@@ -10,7 +10,7 @@ extern void initconsole(void);
 extern void initpg(void);
 extern void initmp(void);
 extern void initlapic(void);
-extern void initseg(void);
+extern void inittls(void);
 extern void inittrap(void);
 extern void initkalloc(void);
 extern void initrcu(void);
@@ -19,8 +19,6 @@ extern void initbio(void);
 extern void inituser(void);
 
 static volatile int bstate;
-
-
 
 #if 1
 // Common CPU setup code.
@@ -79,7 +77,7 @@ cmain(void)
   initpg();
   initmp();
   initlapic();
-  initseg();
+  inittls();
 
   initkalloc();
   initrcu();       // initialize rcu module
