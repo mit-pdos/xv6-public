@@ -110,7 +110,7 @@ struct intdesc
   u16 rip1;
   u32 rip2;
   u32 reserved1;
-};
+} __attribute__((packed, aligned(16)));
 
 // See section 4.6 of amd64 vol2
 struct desctr
@@ -121,8 +121,13 @@ struct desctr
 
 struct taskstate
 {
-  u64 rsp0;
-} __attribute__((packed));
+  u8 reserved0[4];
+  u64 rsp[3];
+  u64 ist[8];
+  u8 reserved1[10];
+  u16 iomba;
+  u8 iopb[];
+} __attribute__ ((packed, aligned(16)));
 #endif
 
 #define INT_P      (1<<7)      /* interrupt descriptor present */

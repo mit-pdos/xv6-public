@@ -11,6 +11,7 @@
 #include "queue.h"
 #include "condvar.h"
 #include "proc.h"
+#include <stddef.h>
 
 extern char data[];  // defined in data.S
 
@@ -123,7 +124,8 @@ switchuvm(struct proc *p)
   mycpu()->gdt[TSSSEG>>3] = (struct segdesc)
     SEGDESC(base, (sizeof(mycpu()->ts)-1), SEG_P|SEG_TSS64A);
   mycpu()->gdt[(TSSSEG>>3)+1] = (struct segdesc) SEGDESCHI(base);
-  mycpu()->ts.rsp0 = (u64) myproc()->kstack + KSTACKSIZE;
+  mycpu()->ts.rsp[0] = (u64) myproc()->kstack + KSTACKSIZE;
+  mycpu()->ts.iomba = (u16)offsetof(struct taskstate, iopb);
   ltr(TSSSEG);
   if(p->vmap == 0 || p->vmap->pml4 == 0)
     panic("switchuvm: no vmap/pml4");
