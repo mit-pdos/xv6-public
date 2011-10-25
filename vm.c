@@ -100,9 +100,8 @@ setupkvm(void)
 
   if((pml4 = (pml4e_t*)kalloc()) == 0)
     return 0;
-  k = 512 - PML4X(PBASE);
+  k = PML4X(PBASE);
   memmove(&pml4[k], &kpml4[k], 8*(512-k));
-
   return pml4;
 }
 
