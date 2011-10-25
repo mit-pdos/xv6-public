@@ -145,7 +145,12 @@ allocproc(void)
   // Leave room for trap frame.
   sp -= sizeof *p->tf;
   p->tf = (struct trapframe*)sp;
-  
+
+  // amd64 ABI mandates sp % 16 == 0 before a call instruction
+  // (or after executing a ret instruction)
+  if ((uptr) sp % 16)
+    panic("allocproc: misaligned sp");
+
   // Set up new context to start executing at forkret,
   // which returns to trapret.
   sp -= 8;
