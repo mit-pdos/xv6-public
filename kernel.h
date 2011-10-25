@@ -55,6 +55,7 @@ void            kmfree(void*);
 
 // lapic.c
 int             cpunum(void);
+void            lapicstartap(u8, u32 addr);
 
 // mp.c
 extern int      ncpu;

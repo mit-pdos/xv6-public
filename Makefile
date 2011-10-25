@@ -39,15 +39,21 @@ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 &
 ASFLAGS = -m64 -gdwarf-2
 LDFLAGS += -m elf_x86_64
 
-kernel: boot.o $(OBJS) initcode
+kernel: boot.o $(OBJS) initcode bootother
 	$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
-		-o $@ boot.o $(OBJS) -b binary initcode
+		-o $@ boot.o $(OBJS) -b binary initcode bootother
 
 initcode: initcode.S
 	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
 	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o initcode.out initcode.o
 	$(OBJCOPY) -S -O binary initcode.out initcode
 	$(OBJDUMP) -S initcode.o > initcode.asm
+
+bootother: bootother.S
+	$(CC) $(CFLAGS) -nostdinc -I. -c bootother.S
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
+	$(OBJCOPY) -S -O binary bootother.out bootother
+	$(OBJDUMP) -S bootother.out > bootother.asm
 
 xv6memfs.img: bootblock kernelmemfs
 	dd if=/dev/zero of=xv6memfs.img count=10000
@@ -59,11 +65,11 @@ xv6memfs.img: bootblock kernelmemfs
 .PHONY: clean qemu ud0
 
 clean: 
-	rm -f *.o *.d *.asm *.sym initcode kernel
+	rm -f *.o *.d *.asm *.sym initcode kernel bootother
 
-QEMUOPTS = -smp $(CPUS) -m 512  -nographic
+QEMUOPTS = -smp $(CPUS) -m 512
 qemu: kernel
-	$(QEMU) $(QEMUOPTS) -kernel kernel
+	$(QEMU) $(QEMUOPTS) -kernel kernel #-S -s
 
 ud0: kernel
 	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/ud0/kernel.xv6

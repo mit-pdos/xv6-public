@@ -1,6 +1,3 @@
-#include "asm.h"
-#include "memlayout.h"
-
 # Each non-boot CPU ("AP") is started up in response to a STARTUP
 # IPI from the boot CPU.  Section B.4.2 of the Multi-Processor
 # Specification says that the AP will start in real mode with CS:IP
@@ -20,66 +17,50 @@
 #   - it uses the address at start-4 for the %esp
 #   - it jumps to the address at start-8 instead of calling bootmain
 
-#define SEG_KCODE 1
-#define SEG_KDATA 2
-
-#define CR0_PE    1
-
-#define RELOC1(x) ((x) + KERNBASE)    // same as V2P, but without casts
-
+#define SEG_ASM(type,base,lim)                                  \
+        .word (((lim) >> 12) & 0xffff), ((base) & 0xffff);      \
+        .byte (((base) >> 16) & 0xff), (0x90 | (type)),         \
+                (0xC0 | (((lim) >> 28) & 0xf)), (((base) >> 24) & 0xff)
+        
+#define PROT_MODE_CSEG 0x8
+#define PROT_MODE_DSEG 0x10
+#define CR0_PE_ON      0x1
+        
 .code16           
 .globl start
 start:
-  cli
-
-  ## movw $0xb800, %ax
-  ## movw %ax, %es
-  ## movw $65, %es:(0x0)
-
-  xorw    %ax,%ax
-  movw    %ax,%ds
-  movw    %ax,%es
-  movw    %ax,%ss
-
-  lgdt    gdtdesc
-  movl    %cr0, %eax
-  orl     $CR0_PE, %eax
-  movl    %eax, %cr0
-  ljmpl  $(SEG_KCODE<< 3), $(start32+KERNBASE)
+        cli
+        cld
+        
+	lgdt gdtdesc
+	movl %cr0, %eax
+	orl $CR0_PE_ON, %eax
+	movl %eax, %cr0
+        # Jump to next instruction, but in 32-bit code segment.
+        # Switches processor into 32-bit mode.
+	ljmp $PROT_MODE_CSEG, $protcseg
 
 .code32
-start32:
-  # movw $65, 0xb8002
+protcseg:
+	movw $PROT_MODE_DSEG, %ax
+	movw %ax, %ds
+	movw %ax, %es
+	movw %ax, %fs
+	movw %ax, %gs
+	movw %ax, %ss
 
-  movw    $(SEG_KDATA<<3), %ax
+        movl $start-12, %esp
+	movl start-4, %ecx
+	jmp *%ecx
 
-  movw    %ax, %ds
-  movw    %ax, %es
-  movw    %ax, %ss
-  movw    $0, %ax
-  movw    %ax, %fs
-  movw    %ax, %gs
-
-  # switch to the stack allocated by bootothers()
-  movl    RELOC1(start-4), %esp
-
-  # call mpmain()
-  call	*(RELOC1(start)-8)
-
-  movw    $0x8a00, %ax
-  movw    %ax, %dx
-  outw    %ax, %dx
-  movw    $0x8ae0, %ax
-  outw    %ax, %dx
-spin:
-  jmp     spin
-
-.p2align 2
+.align 4
 gdt:
-  SEG_NULLASM
-  SEG_ASM(STA_X|STA_R, -KERNBASE, 0xffffffff)
-  SEG_ASM(STA_W, -KERNBASE, 0xffffffff)
+	.quad 0 # null seg
+	SEG_ASM(0xa, 0x0, 0xffffffff) # code seg
+	SEG_ASM(0x2, 0x0, 0xffffffff) # data seg
 
+.align 16
 gdtdesc:
-  .word   (gdtdesc - gdt - 1)
-  .long   gdt
+	.word	0x17 # sizeof(gdt) - 1
+gdtaddr:
+	.long	gdt  # address gdt

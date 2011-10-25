@@ -23,7 +23,7 @@
 #define DATAMAGIC 0x123456789abcdef0
 
 # STACK is the size of the bootstrap stack.
-#define STACK 8192
+#define STACK 4096
 
 # CGATEXTMEM is the physical address of the CGA text memory.
 #define CGATEXTMEM 0xB8000
@@ -107,66 +107,23 @@ start:
 	rep stosb
 	movl %edx, %edi
 
-	# Load GDT.
-	subl $8, %esp
-	movl $PADDR(bootgdt), 4(%esp)
-	movw $(8*NSEGS-1), 2(%esp)
-	lgdt 2(%esp)
-	addl $8, %esp
+        call loadgdt
 
-	movl $KDSEG, %eax  // data segment selector
-	movw %ax, %ds
-	movw %ax, %es
-	movw %ax, %ss
-	movl $0, %eax  // null segment selector
-	movw %ax, %fs
-	movw %ax, %gs
-
+       
 	# Enter new 32-bit code segment (already in 32-bit mode).
 	ljmp $KCSEG32, $PADDR(start32)  // code32 segment selector
 
 start32:
 	# Initialize page table.
 	call initpagetables
+        call init32e
 
-	# Initialize IA-32e mode.  See section 9.8.5 of 253668.pdf.
-	
-	# Set CR4.PAE and CR4.PSE = 1.
-	movl %cr4, %eax
-	orl $0x30, %eax
-	movl %eax, %cr4
-
-	# Load CR3 with physical base address of level 4 page table.
-	movl $PADDR(kpml4), %eax
-	movl %eax, %cr3
-	
-	# Enable IA-32e mode by setting IA32_EFER.LME = 1.
-	# Also turn on IA32_EFER.SCE (syscall enable).
-	movl $0xc0000080, %ecx
-	rdmsr
-	orl $0x101, %eax
-	wrmsr
-
-	# Enable paging by setting CR0.PG = 1.
-	movl %cr0, %eax
-	orl $0x80000000, %eax	
-	movl %eax, %cr0
-	nop
-	nop
-
+        movl $PADDR(start64), %edi
 	# Enter 64-bit mode.
-	ljmp $KCSEG, $PADDR(start64)  // code64 segment selector
+	ljmp $KCSEG, $PADDR(trap64)  // code64 segment selector
 
 .code64
 start64:
-	# The linker thinks we are running at start64, but we're actually
-	# running at PADDR(start64), so use an explicit calculation to
-	# load and jump to the correct address.
-	movq $KBASE, %rax
-	addq $PADDR(start64hi), %rax
-	jmp *%rax
-
-start64hi:
 	# Now executing at the real link address.
 	# Double-check that data segment is set up correctly.
 	movq $DATAMAGIC, %rax
@@ -177,12 +134,40 @@ start64hi:
 1:
 	# Load VA stack pointer
 	movabsq $(stack+STACK), %rsp
-	# Kill 1GB identity mapping
-	movq $0, kpml4
 	# Clear frame pointer for stack walks, and call into C code.
 	movq $0, %rbp
 	call cmain
 1:      jmp 1b
+
+.code32
+.globl apstart
+apstart:
+        call loadgdt
+	ljmp $KCSEG32, $PADDR(apstart32)  // code32 segment selector
+
+apstart32:
+        call init32e
+        movl $PADDR(apstart64), %edi
+	ljmp $KCSEG, $PADDR(trap64)  // code64 segment selector
+
+.code64       
+apstart64:
+	# Remember (from bootothers), that our kernel stack pointer is
+        # at the top of our temporary stack.
+        popq %rax
+        movq %rax, %rsp
+	movq $0, %rbp
+	call mpboot
+1:      jmp 1b
+        
+.code64
+trap64:
+	# The linker thinks we are running at trap64, but we're actually
+	# running at PADDR(trap64), so use an explicit calculation to
+	# load and jump to the correct address.  %rdi should hold the
+        # physical address of the jmp target.
+	addq $KBASE, %rdi
+	jmp *%rdi
 
 .code32
 .globl bootpanic
@@ -248,19 +233,6 @@ setcursor:
 	popl %edx
 	ret
 
-# Google color bar: spaces with background colors.
-colorbar:
-	.ascii " \x40 \x40 \x40 \x40 \x40 \x40 \x40 \x40 \x40 \x40"
-	.ascii " \x40 \x40 \x40 \x40 \x40 \x40 \x40 \x40 \x40 \x40"
-	.ascii " \x10 \x10 \x10 \x10 \x10 \x10 \x10 \x10 \x10 \x10"
-	.ascii " \x10 \x10 \x10 \x10 \x10 \x10 \x10 \x10 \x10 \x10"
-	.ascii " \x20 \x20 \x20 \x20 \x20 \x20 \x20 \x20 \x20 \x20"
-	.ascii " \x20 \x20 \x20 \x20 \x20 \x20 \x20 \x20 \x20 \x20"
-	.ascii "\xDB\x0E\xDB\x0E\xDB\x0E\xDB\x0E\xDB\x0E"
-	.ascii "\xDB\x0E\xDB\x0E\xDB\x0E\xDB\x0E\xDB\x0E"
-	.ascii "\xDB\x0E\xDB\x0E\xDB\x0E\xDB\x0E\xDB\x0E"
-	.ascii "\xDB\x0E\xDB\x0E\xDB\x0E\xDB\x0E\xDB\x0E"
-
 # Initial stack
 .comm stack, STACK
 
@@ -325,6 +297,50 @@ initpagetables:
 	popl %edi
 	ret
 
+# Initialize IA-32e mode.  See section 9.8.5 of 253668.pdf.
+init32e:
+        # Set CR4.PAE and CR4.PSE = 1.
+	movl %cr4, %eax
+	orl $0x30, %eax
+	movl %eax, %cr4
+
+	# Load CR3 with physical base address of level 4 page table.
+	movl $PADDR(kpml4), %eax
+	movl %eax, %cr3
+	
+	# Enable IA-32e mode by setting IA32_EFER.LME = 1.
+	# Also turn on IA32_EFER.SCE (syscall enable).
+	movl $0xc0000080, %ecx
+	rdmsr
+	orl $0x101, %eax
+	wrmsr
+
+	# Enable paging by setting CR0.PG = 1.
+	movl %cr0, %eax
+	orl $0x80000000, %eax	
+	movl %eax, %cr0
+	nop
+	nop
+
+        ret
+
+loadgdt:
+	subl $8, %esp
+	movl $PADDR(bootgdt), 4(%esp)
+	movw $(8*NSEGS-1), 2(%esp)
+	lgdt 2(%esp)
+	addl $8, %esp
+
+	movl $KDSEG, %eax  // data segment selector
+	movw %ax, %ds
+	movw %ax, %es
+	movw %ax, %ss
+	movl $0, %eax  // null segment selector
+	movw %ax, %fs
+	movw %ax, %gs
+
+        ret
+        
 # For sanity check above.
 .data
 datamagic:

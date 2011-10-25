@@ -167,8 +167,8 @@ void
 lapicstartap(u8 apicid, u32 addr)
 {
   int i;
-  u16 *wrv;
-  
+  volatile u16 *wrv;
+
   // "The BSP must initialize CMOS shutdown code to 0AH
   // and the warm reset vector (DWORD based at 40:67) to point at
   // the AP startup code prior to the [universal startup algorithm]."
@@ -181,9 +181,9 @@ lapicstartap(u8 apicid, u32 addr)
   // "Universal startup algorithm."
   // Send INIT (level-triggered) interrupt to reset other CPU.
   lapicw(ICRHI, apicid<<24);
-  lapicw(ICRLO, INIT | LEVEL | ASSERT);
+  lapicw(ICRLO, apicid | INIT | LEVEL | ASSERT);
   microdelay(200);
-  lapicw(ICRLO, INIT | LEVEL);
+  lapicw(ICRLO, apicid |INIT | LEVEL);
   microdelay(100);    // should be 10ms, but too slow in Bochs!
   
   // Send startup IPI (twice!) to enter bootstrap code.
