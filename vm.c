@@ -339,10 +339,60 @@ copyout(struct vmap *vmap, uptr va, void *p, u64 len)
   return 0;
 }
 
+int
+pagefault(struct vmap *vmap, u64 va, u32 err)
+{
+  cprintf("va %lx\n", va);
+  panic("pagefault");
+  return 0;
+#if 0
+  pte_t *pte = walkpgdir(vmap->pgdir, (const void *)va, 1);
 
+  if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W)) {   // optimize checks of args to syscals
+    return 0;
+  }
 
+  // cprintf("%d: pagefault 0x%x err 0x%x pte 0x%x\n", proc->pid, va, err, *pte);
 
+  rcu_begin_read();
+  struct vma *m = vmap_lookup(vmap, va, 1);
+  if(m == 0) {
+    // cprintf("pagefault: no vma\n");
+    rcu_end_read();
+    return -1;
+  }
 
+  acquire(&m->lock);
+  uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
+
+  // cprintf("%d: pagefault: valid vma 0x%x 0x%x %d (cow=%d)\n", proc->pid, m->va_start, 
+  // m->va_type, COW);
+  // if (m->n) 
+  // cprintf("page %d 0x%x %d %d\n", npg, m->n->page[npg], m->n->type, ONDEMAND);
+
+  if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0) {
+    m = pagefault_ondemand(vmap, va, err, m);
+  }
+  if (m->va_type == COW && (err & FEC_WR)) {
+    if (pagefault_wcow(vmap, va, pte, m, npg) < 0) {
+      release(&m->lock);
+      rcu_end_read();
+      return -1;
+    }
+  } else if (m->va_type == COW) {
+    *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
+  } else {
+    if (m->n->ref != 1) {
+      panic("pagefault");
+    }
+    *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+  }
+  lcr3(v2p(vmap->pgdir));  // Reload hardware page tables
+  release(&m->lock);
+  rcu_end_read();
+  return 1;
+#endif
+}
 
 #if 0
 void

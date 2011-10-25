@@ -5,8 +5,17 @@
 #include "x86.h"
 #include "cpu.h"
 #include "traps.h"
+#include "queue.h"
+#include "spinlock.h"
+#include "condvar.h"
+#include "proc.h"
+#include "xv6-mtrace.h"
+#include "bits.h"
 
 u64 ticks __mpalign__;
+
+static struct spinlock tickslock __mpalign__;
+static struct condvar cv_ticks __mpalign__;
 
 struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
   // null
@@ -31,12 +40,116 @@ extern u64 trapentry[];
 void
 trap(struct trapframe *tf)
 {
-  u32 no = tf->trapno;
-  if (no == T_PGFLT)
-    cprintf("va %lx rip %lx rsp %lx\n", rcr2(), tf->rip, tf->rsp);
-  else
-    cprintf("no %d rip %lx rsp %lx\n", tf->trapno, tf->rip, tf->rsp);
-  panic("trap");
+  // XXX(sbw) eventually these should be moved into trapasm.S
+  writegs(KDSEG);
+  writemsr(MSR_GS_BASE, (u64)&cpus[cpunum()].cpu);
+
+  // XXX(sbw) sysenter/sysexit
+#if 0
+  if(tf->trapno == T_SYSCALL){
+    if(proc->killed) {
+      mtrace_kstack_start(trap, proc);
+      exit();
+    }
+    proc->tf = tf;
+    syscall();
+    if(proc->killed) {
+      mtrace_kstack_start(trap, proc);
+      exit();
+    }
+    return;
+  }
+#endif
+
+  if (myproc()->mtrace_stacks.curr >= 0)
+    mtrace_kstack_pause(myproc());
+  mtrace_kstack_start(trap, myproc());
+
+  switch(tf->trapno){
+  case T_IRQ0 + IRQ_TIMER:
+    if(mycpu()->id == 0){
+      acquire(&tickslock);
+      ticks++;
+      cv_wakeup(&cv_ticks);
+      release(&tickslock);
+    }
+    lapiceoi();
+    break;
+  case T_IRQ0 + IRQ_IDE:
+    ideintr();
+    lapiceoi();
+    break;
+  case T_IRQ0 + IRQ_IDE+1:
+    // Bochs generates spurious IDE1 interrupts.
+    break;
+  case T_IRQ0 + IRQ_KBD:
+#if 0
+    kbdintr();
+    lapiceoi();
+#endif
+    panic("IRQ_KBD");
+    break;
+  case T_IRQ0 + IRQ_COM1:
+#if 0
+    uartintr();
+    lapiceoi();
+#endif
+    panic("IRQ_COM1");
+    break;
+  case T_IRQ0 + 7:
+  case T_IRQ0 + IRQ_SPURIOUS:
+    cprintf("cpu%d: spurious interrupt at %x:%x\n",
+            mycpu()->id, tf->cs, tf->rip);
+    lapiceoi();
+  case T_TLBFLUSH:
+    lapiceoi();
+    lcr3(rcr3());
+    break;
+   
+  //PAGEBREAK: 13
+  default:
+    if(myproc() == 0 || (tf->cs&3) == 0){
+      // In kernel, it must be our mistake.
+      cprintf("unexpected trap %d from cpu %d rip %lx (cr2=0x%lx)\n",
+              tf->trapno, mycpu()->id, tf->rip, rcr2());
+      panic("trap");
+    }
+
+    if(tf->trapno == T_PGFLT){
+      if(pagefault(myproc()->vmap, rcr2(), tf->err) >= 0){
+        mtrace_kstack_stop(myproc());
+        if (myproc()->mtrace_stacks.curr >= 0)
+          mtrace_kstack_resume(myproc());
+        return;
+      }
+    }
+
+    // In user space, assume process misbehaved.
+    cprintf("pid %d %s: trap %d err %d on cpu %d "
+            "eip 0x%x addr 0x%x--kill proc\n",
+            myproc()->pid, myproc()->name, tf->trapno, tf->err,
+            mycpu()->id, tf->rip, rcr2());
+    myproc()->killed = 1;
+  }
+
+  // Force process exit if it has been killed and is in user space.
+  // (If it is still executing in the kernel, let it keep running 
+  // until it gets to the regular system call return.)
+  if(myproc() && myproc()->killed && (tf->cs&3) == 0x3)
+    exit();
+
+  // Force process to give up CPU on clock tick.
+  // If interrupts were on while locks held, would need to check nlock.
+  if(myproc() && myproc()->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER)
+    yield();
+
+  // Check if the process has been killed since we yielded
+  if(myproc() && myproc()->killed && (tf->cs&3) == 0x3)
+    exit();
+
+  mtrace_kstack_stop(myproc());
+  if (myproc()->mtrace_stacks.curr >= 0)
+    mtrace_kstack_resume(myproc());
 }
 
 void

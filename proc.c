@@ -48,6 +48,16 @@ sched(void)
   mycpu()->intena = intena;
 }
 
+// Give up the CPU for one scheduling round.
+void
+yield(void)
+{
+  acquire(&myproc()->lock);  //DOC: yieldlock
+  myproc()->state = RUNNABLE;
+  sched();
+  release(&myproc()->lock);
+}
+
 // Mark a process RUNNABLE and add it to the runq
 // of its cpu. Caller must hold p->lock so that
 // some other core doesn't start running the
@@ -102,6 +112,59 @@ forkret(void)
   }
 
   // Return to "caller", actually trapret (see allocproc).
+}
+
+// Exit the current process.  Does not return.
+// An exited process remains in the zombie state
+// until its parent calls wait() to find out it exited.
+void
+exit(void)
+{
+  struct proc *p, *np;
+  int fd;
+  int wakeupinit;
+
+  if(myproc() == bootproc)
+    panic("init exiting");
+
+  // Close all open files.
+  for(fd = 0; fd < NOFILE; fd++){
+    if(myproc()->ofile[fd]){
+      fileclose(myproc()->ofile[fd]);
+      myproc()->ofile[fd] = 0;
+    }
+  }
+
+  iput(myproc()->cwd);
+  myproc()->cwd = 0;
+
+  // Pass abandoned children to init.
+  wakeupinit = 0;
+  SLIST_FOREACH_SAFE(p, &(myproc()->childq), child_next, np) {
+    acquire(&p->lock);
+    p->parent = bootproc;
+    if(p->state == ZOMBIE)
+      wakeupinit = 1;
+    SLIST_REMOVE(&(myproc()->childq), p, proc, child_next);
+    release(&p->lock);
+
+    acquire(&bootproc->lock);
+    SLIST_INSERT_HEAD(&bootproc->childq, p, child_next);
+    release(&bootproc->lock);
+  }
+
+  // Parent might be sleeping in wait().
+  acquire(&(myproc()->lock));
+
+  cv_wakeup(&(myproc()->parent->cv));
+
+  if (wakeupinit)
+    cv_wakeup(&bootproc->cv); 
+
+  // Jump into the scheduler, never to return.
+  myproc()->state = ZOMBIE;
+  sched();
+  panic("zombie exit");
 }
 
 // Look in the process table for an UNUSED proc.
