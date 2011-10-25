@@ -1,13 +1,14 @@
 #include "types.h"
-#include "defs.h"
 #include "param.h"
 #include "mmu.h"
+#include "kernel.h"
 #include "spinlock.h"
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
 #include "fs.h"
 #include "file.h"
+#include "cpu.h"
 
 #define PIPESIZE 512
 
@@ -15,8 +16,8 @@ struct pipe {
   struct spinlock lock;
   struct condvar  cv;
   char data[PIPESIZE];
-  uint nread;     // number of bytes read
-  uint nwrite;    // number of bytes written
+  u32 nread;      // number of bytes read
+  u32 nwrite;     // number of bytes written
   int readopen;   // read fd is still open
   int writeopen;  // write fd is still open
 };
@@ -85,7 +86,7 @@ pipewrite(struct pipe *p, char *addr, int n)
   acquire(&p->lock);
   for(i = 0; i < n; i++){
     while(p->nwrite == p->nread + PIPESIZE){  //DOC: pipewrite-full
-      if(p->readopen == 0 || proc->killed){
+      if(p->readopen == 0 || myproc()->killed){
         release(&p->lock);
         return -1;
       }
@@ -106,7 +107,7 @@ piperead(struct pipe *p, char *addr, int n)
 
   acquire(&p->lock);
   while(p->nread == p->nwrite && p->writeopen){  //DOC: pipe-empty
-    if(proc->killed){
+    if(myproc()->killed){
       release(&p->lock);
       return -1;
     }

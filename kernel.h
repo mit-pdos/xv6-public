@@ -18,8 +18,11 @@ struct condvar;
 struct context;
 struct vmnode;
 struct inode;
+struct file;
+struct stat;
 struct proc;
 struct vmap;
+struct pipe;
 
 // bio.c
 void            binit(void);
@@ -40,6 +43,15 @@ void            cprintf(const char*, ...);
 void            panic(const char*) __attribute__((noreturn));
 void            snprintf(char *buf, u32 n, char *fmt, ...);
 
+// file.c
+struct file*    filealloc(void);
+void            fileclose(struct file*);
+struct file*    filedup(struct file*);
+void            fileinit(void);
+int             fileread(struct file*, char*, int n);
+int             filestat(struct file*, struct stat*);
+int             filewrite(struct file*, char*, int n);
+
 // fs.c
 int             namecmp(const char*, const char*);
 struct inode*   namei(char*);
@@ -49,6 +61,9 @@ void            ilock(struct inode*, int writer);
 void            iunlockput(struct inode*);
 void            iupdate(struct inode*);
 void            iunlock(struct inode*);
+int             readi(struct inode*, char*, u32, u32);
+void            stati(struct inode*, struct stat*);
+int             writei(struct inode*, char*, u32, u32);
 
 // ide.c
 void            ideinit(void);
@@ -65,6 +80,7 @@ void            kmfree(void*);
 // lapic.c
 int             cpunum(void);
 void            lapicstartap(u8, u32 addr);
+void            lapiceoi(void);
 
 // mp.c
 extern int      ncpu;
@@ -113,6 +129,12 @@ void*           ns_lookup(struct ns*, struct nskey key);
 void*           ns_remove(struct ns *ns, struct nskey key, void *val); // removed val
 void*           ns_enumerate(struct ns *ns, void *(*f)(void *, void *, void *), void *arg);
 void*           ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *, void *), void *arg);
+
+// pipe.c
+int             pipealloc(struct file**, struct file**);
+void            pipeclose(struct pipe*, int);
+int             piperead(struct pipe*, char*, int);
+int             pipewrite(struct pipe*, char*, int);
 
 // proc.c
 void            addrun(struct proc *);
@@ -180,3 +202,4 @@ int             copyout(struct vmap *, uptr, void*, u64);
 void            vmn_free(struct vmnode *);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
+int             pagefault(struct vmap *, uptr, u32);

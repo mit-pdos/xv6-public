@@ -4,6 +4,7 @@ OBJS = \
 	cga.o \
 	condvar.o \
 	console.o \
+	file.o \
 	fs.o \
 	lapic.o \
 	kalloc.o \
@@ -11,6 +12,7 @@ OBJS = \
 	memide.o \
 	mp.o \
 	ns.o \
+	pipe.o \
 	proc.o \
 	rcu.o \
 	spinlock.o \
@@ -76,9 +78,9 @@ clean:
 
 QEMUOPTS = -smp $(CPUS) -m 512 -nographic
 qemu: kernel
-	$(QEMU) $(QEMUOPTS) -kernel kernel -d int
+	$(QEMU) $(QEMUOPTS) -kernel kernel
 gdb: kernel
-	$(QEMU) $(QEMUOPTS) -kernel kernel -d int -S -s
+	$(QEMU) $(QEMUOPTS) -kernel kernel -S -s
 
 ud0: kernel
 	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/ud0/kernel.xv6
