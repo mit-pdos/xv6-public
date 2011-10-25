@@ -179,9 +179,12 @@ inituser(void)
   if(copyout(p->vmap, 0, _binary_initcode_start, (uptr)_binary_initcode_size) < 0)
     panic("userinit: copyout");
   memset(p->tf, 0, sizeof(*p->tf));
+  p->tf->cs = UCSEG | 0x3;
+  p->tf->ds = UDSEG | 0x3;
+  p->tf->ss = p->tf->ds;
   p->tf->rflags = FL_IF;
   p->tf->rsp = PGSIZE;
-  p->tf->rip = 0;  // beginning of initcode.S
+  p->tf->rip = 0x0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = 0; // forkret will fix in the process's context

@@ -127,9 +127,19 @@ static inline void lcr3(u64 val)
   __asm volatile("movq %0,%%cr3" : : "r" (val));
 }
 
+static inline uptr
+rcr2(void)
+{
+  uptr val;
+  __asm volatile("movq %%cr2,%0" : "=r" (val));
+  return val;
+}
+
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
 struct trapframe {
+  u16 ds;
+
   // amd64 ABI callee saved registers
   u64 r15;
   u64 r14;

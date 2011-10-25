@@ -76,7 +76,7 @@ clean:
 
 QEMUOPTS = -smp $(CPUS) -m 512 -nographic
 qemu: kernel
-	$(QEMU) $(QEMUOPTS) -kernel kernel #-S -s
+	$(QEMU) $(QEMUOPTS) -kernel kernel
 
 ud0: kernel
 	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/ud0/kernel.xv6

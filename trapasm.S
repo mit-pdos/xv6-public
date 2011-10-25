@@ -34,7 +34,9 @@ trapcommon:
         pushq   %r13
         pushq   %r14
         pushq   %r15
-
+        movw    %ds, %ax
+        pushw   %ax
+        
         # Set up data and per-cpu segments.
         movw    $KDSEG, %ax
         movw    %ax, %ds
@@ -47,10 +49,9 @@ trapcommon:
 .globl trapret
 .align 8
 trapret:
-        movw $UDSEG, %ax
+        popw %ax
         movw %ax, %ds
         movw %ax, %es
-        movw %ax, %ss
         // XXX(sbw) we should do something with fs, gs, gs.base
         
         popq    %r15
@@ -68,8 +69,8 @@ trapret:
         popq    %rdx
         popq    %rsi
         popq    %rdi
-        addq    $0x12, %rsp  // trapno, err
-        iret
+        addq    $0x16, %rsp  // trapno, err
+        iretq
         
 .data
 .align 8
