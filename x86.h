@@ -110,21 +110,32 @@ writemsr(u32 msr, u64 val)
   __asm volatile("wrmsr" : : "c" (msr), "a" (lo), "d" (hi));
 }
 
-static inline u64 rdtsc(void)
+static inline
+u64 rdtsc(void)
 {
   u32 hi, lo;
   __asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
   return ((u64)lo)|(((u64)hi)<<32);
 }
 
-static inline void hlt(void)
+static inline
+void hlt(void)
 {
   __asm volatile("hlt");
 }
 
-static inline void lcr3(u64 val)
+static inline void
+lcr3(u64 val)
 {
   __asm volatile("movq %0,%%cr3" : : "r" (val));
+}
+
+static inline u64
+rcr3(void)
+{
+  u64 val;
+  __asm volatile("movq %%cr3,%0" : "=r" (val));
+  return val;
 }
 
 static inline uptr
