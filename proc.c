@@ -24,7 +24,28 @@ enum { sched_debug = 0 };
 void
 sched(void)
 {
-    panic("sched");
+  int intena;
+
+#if SPINLOCK_DEBUG
+  if(!holding(&myproc()->lock))
+    panic("sched proc->lock");
+#endif
+  if(mycpu()->ncli != 1)
+    panic("sched locks");
+  if(myproc()->state == RUNNING)
+    panic("sched running");
+  if(readrflags()&FL_IF)
+    panic("sched interruptible");
+  intena = mycpu()->intena;
+  myproc()->curcycles += rdtsc() - myproc()->tsc;
+  if (myproc()->state == ZOMBIE)
+    mtrace_kstack_stop(myproc());
+  else
+    mtrace_kstack_pause(myproc());
+  mtrace_call_set(0, mycpu()->id);
+
+  swtch(&myproc()->context, mycpu()->scheduler);
+  mycpu()->intena = intena;
 }
 
 // Mark a process RUNNABLE and add it to the runq
