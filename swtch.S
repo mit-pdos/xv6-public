@@ -4,29 +4,23 @@
 # 
 # Save current register context in old
 # and then load register context from new.
-
+# %rdi holds old, %rsi holds new.
 .globl swtch
 swtch:
-        jmp swtch
-#if 0
-  movl 4(%esp), %eax
-  movl 8(%esp), %edx
+        pushq %rbx
+        pushq %rbp
+        pushq %r12
+        pushq %r13
+        pushq %r14
+        pushq %r15
 
-  # Save old callee-save registers
-  pushl %ebp
-  pushl %ebx
-  pushl %esi
-  pushl %edi
+        movq %rsp, (%rdi)
+        movq %rsi, %rsp
 
-  # Switch stacks
-  movl %esp, (%eax)
-  movl %edx, %esp
-
-  # Load new callee-save registers
-  popl %edi
-  popl %esi
-  popl %ebx
-  popl %ebp
-  ret
-#endif
-        
+        popq %r15
+        popq %r14
+        popq %r13
+        popq %r12
+        popq %rbp
+        popq %rbx
+        ret

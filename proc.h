@@ -40,9 +40,16 @@ struct vmap {
 };
 
 // Saved registers for kernel context switches.
+// (also implicitly defined in swtch.S)
 struct context {
-    u64 rip;
-};
+  u64 r15;
+  u64 r14;
+  u64 r13;
+  u64 r12;
+  u64 rbp;
+  u64 rbx;
+  u64 rip;
+} __attribute__((packed));
 
 // Per-process, per-stack meta data for mtrace
 #define MTRACE_NSTACKS 16

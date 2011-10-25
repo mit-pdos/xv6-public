@@ -130,6 +130,7 @@ static inline void lcr3(u64 val)
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
 struct trapframe {
+  // amd64 ABI callee saved registers
   u64 r15;
   u64 r14;
   u64 r13;
@@ -137,7 +138,7 @@ struct trapframe {
   u64 rbp;
   u64 rbx;
 
-  // amd64 ABI callee saved registers
+  // amd64 ABI caller saved registers
   u64 r11;
   u64 r10;
   u64 r9;
