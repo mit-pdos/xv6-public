@@ -96,12 +96,39 @@ static pml4e_t*
 setupkvm(void)
 {
   pml4e_t *pml4;
+  int k;
 
   if((pml4 = (pml4e_t*)kalloc()) == 0)
     return 0;
-  memmove(pml4, kpml4, PGSIZE);
+  k = 512 - PML4X(PBASE);
+  memmove(&pml4[k], &kpml4[k], 8*(512-k));
 
   return pml4;
+}
+
+// Switch h/w page table register to the kernel-only page table,
+// for when no process is running.
+void
+switchkvm(void)
+{
+  lcr3(v2p(kpml4));   // switch to the kernel page table
+}
+
+// Switch TSS and h/w page table to correspond to process p.
+void
+switchuvm(struct proc *p)
+{
+  u64 base = (u64) &mycpu()->ts;
+  pushcli();
+  mycpu()->gdt[TSSSEG>>3] = (struct segdesc)
+    SEGDESC(base, (sizeof(mycpu()->ts)-1), SEG_P|SEG_TSS64A);
+  mycpu()->gdt[(TSSSEG>>3)+1] = (struct segdesc) SEGDESCHI(base);
+  mycpu()->ts.rsp0 = (u64) myproc()->kstack + KSTACKSIZE;
+  ltr(TSSSEG);
+  if(p->vmap == 0 || p->vmap->pml4 == 0)
+    panic("switchuvm: no vmap/pml4");
+  lcr3(v2p(p->vmap->pml4));  // switch to new address space
+  popcli();
 }
 
 static struct vma *
@@ -498,29 +525,7 @@ vmenable(void)
   __asm volatile("ljmp %0,$1f\n 1:\n" :: "i" (SEG_KCODE << 3));  // reload cs
 }
 
-// Switch h/w page table register to the kernel-only page table,
-// for when no process is running.
-void
-switchkvm(void)
-{
-  lcr3(v2p(kpgdir));   // switch to the kernel page table
-}
 
-// Switch TSS and h/w page table to correspond to process p.
-void
-switchuvm(struct proc *p)
-{
-  pushcli();
-  cpu->gdt[SEG_TSS] = SEG16(STS_T32A, &cpu->ts, sizeof(cpu->ts)-1, 0);
-  cpu->gdt[SEG_TSS].s = 0;
-  cpu->ts.ss0 = SEG_KDATA << 3;
-  cpu->ts.esp0 = (uint) proc->kstack + KSTACKSIZE;
-  ltr(SEG_TSS << 3);
-  if(p->vmap == 0 || p->vmap->pgdir == 0)
-    panic("switchuvm: no vmap/pgdir");
-  lcr3(v2p(p->vmap->pgdir));  // switch to new address space
-  popcli();
-}
 
 // Free a page table and all the physical memory pages
 // in the user part.

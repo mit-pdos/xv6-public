@@ -27,8 +27,11 @@ static volatile int bstate;
 void
 mpboot(void)
 {
-  // XXX(sbw) load VA for gdt, etc
   initseg();
+  initlapic();
+  inittls();
+  scheduler();     // start running processes
+  bstate = 1;
   panic("mpboot");
 }
 
@@ -74,8 +77,8 @@ cmain(void)
   initcga();
   initconsole();
   inittrap();
-  initseg();
   initpg();
+  initseg();
   initmp();
   initlapic();
   inittls();

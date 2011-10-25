@@ -83,6 +83,12 @@ lgdt(void *p)
 }
 
 static inline void
+ltr(u16 sel)
+{
+  __asm volatile("ltr %0" : : "r" (sel));
+}
+
+static inline void
 writegs(u16 v)
 {
   __asm volatile("movw %0, %%gs" : : "r" (v));
@@ -102,6 +108,23 @@ writemsr(u32 msr, u64 val)
   u32 lo = val & 0xffffffff;
   u32 hi = val >> 32;
   __asm volatile("wrmsr" : : "c" (msr), "a" (lo), "d" (hi));
+}
+
+static inline u64 rdtsc(void)
+{
+  u32 hi, lo;
+  __asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+  return ((u64)lo)|(((u64)hi)<<32);
+}
+
+static inline void hlt(void)
+{
+  __asm volatile("hlt");
+}
+
+static inline void lcr3(u64 val)
+{
+  __asm volatile("movq %0,%%cr3" : : "r" (val));
 }
 
 // Layout of the trap frame built on the stack by the

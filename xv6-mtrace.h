@@ -22,4 +22,7 @@ char* strncpy(char *s, const char *t, int n);
 #define mtrace_label_register(t, r, x, y, z, ip)
 #define mtrace_kstack_start(x, y)
 #define mtrace_kstack_stop(x)
+#define mtrace_kstack_pause(x)
+#define mtrace_kstack_resume(x)
+#define mtrace_call_set(x, y)
 #endif

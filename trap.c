@@ -1,7 +1,11 @@
 #include "types.h"
+#include "param.h"
 #include "mmu.h"
 #include "kernel.h"
 #include "x86.h"
+#include "cpu.h"
+
+u64 ticks __mpalign__;
 
 struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
   // null
@@ -48,13 +52,17 @@ void
 initseg(void)
 {
   volatile struct desctr dtr;
+  struct cpu *c;
 
   dtr.limit = sizeof(idt) - 1;
   dtr.base = (u64)idt;
   lidt((void *)&dtr.limit);
 
-  // Reload GDT from kernel VA
-  dtr.limit = sizeof(bootgdt) - 1;
-  dtr.base = (u64)bootgdt;
+  // TLS might not be ready
+  c = &cpus[cpunum()];
+  // Load per-CPU GDT
+  memmove(c->gdt, bootgdt, sizeof(bootgdt));
+  dtr.limit = sizeof(c->gdt) - 1;
+  dtr.base = (u64)c->gdt;
   lgdt((void *)&dtr.limit);
 }

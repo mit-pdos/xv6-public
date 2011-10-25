@@ -7,6 +7,8 @@
 
 .globl swtch
 swtch:
+        jmp swtch
+#if 0
   movl 4(%esp), %eax
   movl 8(%esp), %edx
 
@@ -26,3 +28,5 @@ swtch:
   popl %ebx
   popl %ebp
   ret
+#endif
+        

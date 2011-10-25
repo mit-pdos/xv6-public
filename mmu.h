@@ -118,6 +118,11 @@ struct desctr
   u16 limit;
   u64 base;
 } __attribute__((packed, aligned(16)));
+
+struct taskstate
+{
+  u64 rsp0;
+} __attribute__((packed));
 #endif
 
 #define INT_P      (1<<7)      /* interrupt descriptor present */

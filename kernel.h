@@ -1,3 +1,5 @@
+#include "mmu.h"
+
 #define KBASE 0xFFFFFFFF80000000ull
 #define PBASE 0xFFFFFF0000000000ull
 
@@ -13,6 +15,7 @@ static inline void *p2v(uptr a) { return (void *) a + KBASE; }
 
 struct spinlock;
 struct condvar;
+struct context;
 struct vmnode;
 struct inode;
 struct proc;
@@ -151,6 +154,13 @@ int             strncmp(const char*, const char*, u32);
 char*           strncpy(char*, const char*, int);
 int             strcmp(const char *p, const char *q);
 
+// swtch.S
+void            swtch(struct context**, struct context*);
+
+// trap.c
+extern struct segdesc bootgdt[NSEGS];
+extern u64     ticks;
+
 // uart.c
 void            uartputc(char c);
 
@@ -162,3 +172,5 @@ int             vmap_insert(struct vmap*, struct vmnode *, uptr);
 struct vma *    vmap_lookup(struct vmap*, uptr, uptr);
 int             copyout(struct vmap *, uptr, void*, u64);
 void            vmn_free(struct vmnode *);
+void            switchuvm(struct proc*);
+void            switchkvm(void);

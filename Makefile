@@ -14,6 +14,7 @@ OBJS = \
 	proc.o \
 	rcu.o \
 	spinlock.o \
+	swtch.o \
 	string.o \
 	uart.o \
 	vm.o \

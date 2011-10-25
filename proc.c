@@ -19,6 +19,8 @@ struct ns *nspid __mpalign__;
 struct ns *nsrunq __mpalign__;
 static struct proc *bootproc __mpalign__;
 
+enum { sched_debug = 0 };
+
 void
 sched(void)
 {
@@ -44,6 +46,21 @@ addrun(struct proc *p)
     panic("addrun on runq already");
   ns_insert(nsrunq, KI(p->cpuid), p);
   p->on_runq = p->cpuid;
+}
+
+void
+delrun(struct proc *p)
+{
+#if SPINLOCK_DEBUG
+  if(!holding(&p->lock))
+    panic("delrun no p->lock");
+#endif
+
+  if (p->on_runq < 0)
+    panic("delrun not on runq");
+  if (ns_remove(nsrunq, KI(p->on_runq), p) == 0)
+    panic("delrun: ns_remove");
+  p->on_runq = -1;
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -183,6 +200,140 @@ initproc(void)
   for (c = 0; c < NCPU; c++)
     idle[c] = 1;
 }
+
+// Per-CPU process scheduler.
+// Each CPU calls scheduler() after setting itself up.
+// Scheduler never returns.  It loops, doing:
+//  - choose a process to run
+//  - swtch to start running that process
+//  - eventually that process transfers control
+//      via swtch back to the scheduler.
+
+static void *
+choose_runnable(void *pp, void *arg)
+{
+  struct proc *p = pp;
+  if (p->state == RUNNABLE)
+    return p;
+  return 0;
+}
+
+static void *
+steal_cb(void *vk, void *v, void *arg)
+{
+  struct proc *p = v;
+  
+  acquire(&p->lock);
+  if (p->state != RUNNABLE || p->cpuid == mycpu()->id || p->cpu_pin) {
+    release(&p->lock);
+    return 0;
+  }
+
+  if (p->curcycles == 0 || p->curcycles > MINCYCTHRESH) {
+    if (sched_debug)
+      cprintf("cpu%d: steal %d (cycles=%d) from %d\n",
+	      mycpu()->id, p->pid, (int)p->curcycles, p->cpuid);
+    delrun(p);
+    p->curcycles = 0;
+    p->cpuid = mycpu()->id;
+    addrun(p);
+    release(&p->lock);
+    return p;
+  }
+
+  release(&p->lock);
+  return 0;
+}
+
+int
+steal(void)
+{
+  void *stole = ns_enumerate(nsrunq, steal_cb, 0);
+  return stole ? 1 : 0;
+}
+
+void
+scheduler(void)
+{
+  // allocate a fake PID for each scheduler thread
+  struct proc *schedp = allocproc();
+  if (!schedp)
+    panic("scheduler allocproc");
+
+  mycpu()->proc = schedp;
+  myproc()->cpu_pin = 1;
+
+  // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
+  // mtrace_call_set(1, cpu->id);
+  mtrace_kstack_start(scheduler, schedp);
+
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+
+    struct proc *p = ns_enumerate_key(nsrunq, KI(mycpu()->id), choose_runnable, 0);
+    if (p) {
+      acquire(&p->lock);
+      if (p->state != RUNNABLE) {
+	release(&p->lock);
+      } else {
+        if (idle[mycpu()->id])
+	  idle[mycpu()->id] = 0;
+
+	// Switch to chosen process.  It is the process's job
+	// to release proc->lock and then reacquire it
+	// before jumping back to us.
+	mycpu()->proc = p;
+	switchuvm(p);
+	p->state = RUNNING;
+	p->tsc = rdtsc();
+
+        mtrace_kstack_pause(schedp);
+        if (p->context->rip != (uptr)forkret && 
+            p->context->rip != (uptr)rcu_gc_worker)
+        {
+          mtrace_kstack_resume(proc);
+        }
+	mtrace_call_set(1, mycpu()->id);
+
+	swtch(&mycpu()->scheduler, myproc()->context);
+        mtrace_kstack_resume(schedp);
+	mtrace_call_set(0, mycpu()->id);
+	switchkvm();
+
+	// Process is done running for now.
+	// It should have changed its p->state before coming back.
+	mycpu()->proc = schedp;
+	if (p->state != RUNNABLE)
+	  delrun(p);
+	release(&p->lock);
+      }
+    } else {
+      if (steal()) {
+	if (idle[mycpu()->id])
+	  idle[mycpu()->id] = 0;
+      } else {
+	if (!idle[mycpu()->id])
+	  idle[mycpu()->id] = 1;
+      }
+    }
+
+    int now = ticks;
+    if (now - mycpu()->last_rcu_gc_ticks > 100) {
+      rcu_gc();
+      mycpu()->last_rcu_gc_ticks = now;
+    }
+
+    if (idle[mycpu()->id]) {
+      sti();
+      hlt();
+    }
+  }
+}
+
+
+
+
 
 
 
@@ -632,40 +783,6 @@ migrate(struct proc *p)
       return;
     }
   }
-}
-
-static void *
-steal_cb(void *vk, void *v, void *arg)
-{
-  struct proc *p = v;
-  
-  acquire(&p->lock);
-  if (p->state != RUNNABLE || p->cpuid == cpu->id || p->cpu_pin) {
-    release(&p->lock);
-    return 0;
-  }
-
-  if (p->curcycles == 0 || p->curcycles > MINCYCTHRESH) {
-    if (sched_debug)
-      cprintf("cpu%d: steal %d (cycles=%d) from %d\n",
-	      cpu->id, p->pid, (int)p->curcycles, p->cpuid);
-    delrun(p);
-    p->curcycles = 0;
-    p->cpuid = cpu->id;
-    addrun(p);
-    release(&p->lock);
-    return p;
-  }
-
-  release(&p->lock);
-  return 0;
-}
-
-int
-steal(void)
-{
-  void *stole = ns_enumerate(nsrunq, steal_cb, 0);
-  return stole ? 1 : 0;
 }
 
 //PAGEBREAK: 42
