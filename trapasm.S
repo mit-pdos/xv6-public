@@ -36,6 +36,7 @@ trapcommon:
         pushq   %r15
         movw    %ds, %ax
         pushw   %ax
+        subq    $0xe, %rsp
         
         # Set up data and per-cpu segments.
         movw    $KDSEG, %ax
@@ -53,6 +54,7 @@ trapret:
         movw %ax, %ds
         movw %ax, %es
         // XXX(sbw) we should do something with fs, gs, gs.base
+        addq    $0xe, %rsp  // padding
         
         popq    %r15
         popq    %r14
@@ -69,7 +71,7 @@ trapret:
         popq    %rdx
         popq    %rsi
         popq    %rdi
-        addq    $0x16, %rsp  // trapno, err
+        addq    $0x10, %rsp  // trapno, err
         iretq
         
 .data

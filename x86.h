@@ -139,6 +139,7 @@ rcr2(void)
 // hardware and by trapasm.S, and passed to trap().
 struct trapframe {
   u16 ds;
+  u16 padding3[7];
 
   // amd64 ABI callee saved registers
   u64 r15;
