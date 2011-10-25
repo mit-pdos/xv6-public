@@ -57,6 +57,7 @@ void            iderw(struct buf*);
 
 // kalloc.c
 char*           kalloc(void);
+char*           ksalloc(void);
 void            kfree(void *);
 void*           kmalloc(u64);
 void            kmfree(void*);

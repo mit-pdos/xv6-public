@@ -6,7 +6,8 @@ struct kmem {
   char name[MAXNAME];
   struct spinlock lock;
   struct run *freelist;
+  u64 size;
   u64 nfree;
-} __attribute__ ((aligned (CACHELINE)));
+} __mpalign__;
 
 extern struct kmem kmems[NCPU];

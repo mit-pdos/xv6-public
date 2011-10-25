@@ -12,6 +12,7 @@
 #include "cpu.h"
 
 struct kmem kmems[NCPU];
+struct kmem kstacks[NCPU];
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
@@ -46,7 +47,7 @@ kfree_pool(struct kmem *m, char *v)
 
   // Fill with junk to catch dangling refs.
   if (kinited && kalloc_memset)
-    memset(v, 1, PGSIZE);
+    memset(v, 1, m->size);
 
   acquire(&m->lock);
   r = (struct run*)v;
@@ -75,20 +76,16 @@ kmemprint(void)
   cprintf("]\n");
 }
 
-// Allocate one 4096-byte page of physical memory.
-// Returns a pointer that the kernel can use.
-// Returns 0 if the memory cannot be allocated.
-char*
-kalloc(void)
+static char*
+kmemalloc(struct kmem *km)
 {
   struct run *r = 0;
-
-  //  cprintf("%d: kalloc 0x%x 0x%x 0x%x 0x%x 0%x\n", cpu->id, kmem, &kmems[cpu->id], kmem->freelist, PHYSTOP, kmems[1].freelist);
+  struct kmem *m;
 
   u32 startcpu = mycpu()->id;
   for (u32 i = 0; r == 0 && i < NCPU; i++) {
     int cn = (i + startcpu) % NCPU;
-    struct kmem *m = &kmems[cn];
+    m = &km[cn];
     acquire(&m->lock);
     r = m->freelist;
     if (r) {
@@ -106,14 +103,30 @@ kalloc(void)
 
   mtrace_label_register(mtrace_label_block,
 			r,
-			4096,
+			m->size,
 			"kalloc",
 			sizeof("kalloc"),
 			RET_EIP());
 
   if (kalloc_memset)
-    memset(r, 2, PGSIZE);
+    memset(r, 2, m->size);
   return (char*)r;
+}
+
+// Allocate one 4096-byte page of physical memory.
+// Returns a pointer that the kernel can use.
+// Returns 0 if the memory cannot be allocated.
+char*
+kalloc(void)
+{
+  return kmemalloc(kmems);
+}
+
+// Allocate KSTACKSIZE bytes.
+char *
+ksalloc(void)
+{
+  return kmemalloc(kstacks);
 }
 
 // Memory allocator by Kernighan and Ritchie,
@@ -146,16 +159,36 @@ void
 initkalloc(void)
 {
   char *p;
+  char *e;
 
   for (int c = 0; c < NCPU; c++) {
     kmems[c].name[0] = (char) c + '0';
     safestrcpy(kmems[c].name+1, "kmem", MAXNAME-1);
     initlock(&kmems[c].lock, kmems[c].name);
+    kmems[c].size = PGSIZE;
+  }
+
+  for (int c = 0; c < NCPU; c++) {
+    kstacks[c].name[0] = (char) c + '0';
+    safestrcpy(kstacks[c].name+1, "kstack", MAXNAME-1);
+    initlock(&kstacks[c].lock, kstacks[c].name);
+    kstacks[c].size = KSTACKSIZE;
   }
 
   p = (char*)PGROUNDUP((uptr)newend);
-  for(; p + PGSIZE <= (char*)KBASE + PHYSTOP; p += PGSIZE)
-    kfree_pool(&kmems[((uptr) v2p(p)) / (PHYSTOP/NCPU)], p);
+  e = (char*)KBASE;
+  for (int c = 0; c < NCPU; c++) {
+    char *sp = p + CPUKSTACKS*KSTACKSIZE;
+    char *ep = e + (PHYSTOP/NCPU);
+    if (sp >= ep)
+      panic("Too many stacks");
+    for (; p < sp; p += KSTACKSIZE)
+      kfree_pool(&kstacks[c], p);
+    for (; p < ep; p += PGSIZE)
+      kfree_pool(&kmems[c], p);
+    e = p;
+  }
+
   kminit();
   kinited = 1;
 }

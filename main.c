@@ -65,7 +65,7 @@ bootothers(void)
     // Tell bootother.S what stack to use and the address of apstart;
     // it expects to find these two addresses stored just before
     // its first instruction.
-    stack = kalloc();
+    stack = ksalloc();
     *(u32*)(code-4) = (u32)v2p(&apstart);
     *(u64*)(code-12) = (u64)stack + KSTACKSIZE;
 
