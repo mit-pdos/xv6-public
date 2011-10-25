@@ -69,14 +69,16 @@ fs.img: mkfs README $(UPROGS)
 
 -include *.d
 
-.PHONY: clean qemu ud0
+.PHONY: clean qemu gdb ud0
 
 clean: 
 	rm -f *.o *.d *.asm *.sym initcode kernel bootother mkfs fs.img
 
 QEMUOPTS = -smp $(CPUS) -m 512 -nographic
 qemu: kernel
-	$(QEMU) $(QEMUOPTS) -kernel kernel
+	$(QEMU) $(QEMUOPTS) -kernel kernel -d int
+gdb: kernel
+	$(QEMU) $(QEMUOPTS) -kernel kernel -d int -S -s
 
 ud0: kernel
 	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/ud0/kernel.xv6
