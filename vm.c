@@ -19,46 +19,40 @@ extern pml4e_t kpml4[];
 
 extern char* pgalloc(void);
 
+static pme_t*
+descend(pme_t *dir, void *va, u64 flags, int create, int level)
+{
+  pme_t entry;
+  pme_t *next;
+
+  dir = &dir[PX(level, va)];
+  entry = *dir;
+  if (entry == 0) {
+    if (!create)
+      return NULL;
+    next = (u64*) pgalloc();
+    if (!next)
+      return NULL;
+    *dir = v2p(next) | PTE_P | PTE_W | flags;
+  } else {
+    next = p2v(PTE_ADDR(entry));
+  }
+  
+  return next;
+}
+
 static void
 pgmap(void *va, void *last, paddr pa)
 {
-  pml4e_t *pml4;
-  pml4e_t pml4e;
-  pdpe_t *pdp;
-  pdpe_t pdpe;
-  pde_t *pd;
-  pde_t pde;
-  pte_t *pt;
+  pme_t *pdp;
+  pme_t *pd;
+  pme_t *pt;
 
-  for(;;){
-    pml4 = &kpml4[PML4X(va)];
-    pml4e = *pml4;
-    if (pml4e == 0) {
-      pdp = (pdpe_t *) pgalloc();
-      *pml4 = v2p(pdp) | PTE_P | PTE_W;
-    } else {
-      pdp = (pdpe_t*)p2v(PTE_ADDR(pml4e));
-    }
-
-    pdp = &pdp[PDPX(va)];
-    pdpe = *pdp;
-    if (pdpe == 0) {
-      pd = (pde_t *) pgalloc();
-      *pdp = v2p(pd) | PTE_P | PTE_W;
-    } else {
-      pd = (pde_t*)p2v(PTE_ADDR(pdpe));
-    }
-
-    pd = &pd[PDX(va)];
-    pde = *pd;
-    if (pde == 0) {
-      pt = (pte_t *) pgalloc();
-      *pd = v2p(pt) | PTE_P | PTE_W;
-    } else {
-      pt = (pde_t*)p2v(PTE_ADDR(pde));
-    }
-
-    pt = &pt[PTX(va)];
+  for (;;) {
+    pdp = descend(kpml4, va, 0, 1, 3);
+    pd = descend(pdp, va, 0, 1, 2);
+    pt = descend(pd, va, 0, 1, 1);
+    pt = &pt[PX(0,va)];
     *pt = pa | PTE_W | PTE_P;
     if(va == last)
       break;
@@ -101,7 +95,7 @@ setupkvm(void)
 
   if((pml4 = (pml4e_t*)kalloc()) == 0)
     return 0;
-  k = PML4X(PBASE);
+  k = PX(3, PBASE);
   memset(&pml4[0], 0, 8*k);
   memmove(&pml4[k], &kpml4[k], 8*(512-k));
   return pml4;

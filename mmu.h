@@ -3,22 +3,8 @@
 #define PGSIZE          4096
 #define PGSHIFT		12		// log2(PGSIZE)
 
-#define PTXSHIFT	12		// offset of PTX in a linear address
-#define PDXSHIFT	21		// offset of PDX in a linear address
-#define PDPXSHIFT       30              // offset of PDPX in a linear address
-#define PML4XSHIFT      39              // offset of PML4X in a linear address
-
-// page table index
-#define PTX(la)		(((uptr)(la) >> PTXSHIFT) & 0x1FF)
-
-// page directory index
-#define PDX(la)		(((uptr)(la) >> PDXSHIFT) & 0x1FF)
-
-// page diretory pointer index
-#define PDPX(la)       (((uptr)(la) >> PDPXSHIFT) & 0x1FF)
-
-// page map level 4 index
-#define PML4X(la)       (((uptr)(la) >> PML4XSHIFT) & 0x1FF)
+#define PXSHIFT(n)	(PGSHIFT+(9*(n)))
+#define PX(n, la)	((((uptr) (la)) >> PXSHIFT(n)) & 0x1FF)
 
 // Page table/directory entry flags.
 #define PTE_P		0x001	// Present
