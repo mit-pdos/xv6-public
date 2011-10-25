@@ -1,7 +1,3 @@
-// Directory is a file containing a sequence of dirent structures.
-#define DIRSIZ 14
-
-#if 0
 // On-disk file system format. 
 // Both the kernel and user programs use this header file.
 
@@ -14,13 +10,13 @@
 
 // File system super block
 struct superblock {
-  uint size;         // Size of file system image (blocks)
-  uint nblocks;      // Number of data blocks
-  uint ninodes;      // Number of inodes.
+  u32 size;         // Size of file system image (blocks)
+  u32 nblocks;      // Number of data blocks
+  u32 ninodes;      // Number of inodes.
 };
 
 #define NDIRECT 11
-#define NINDIRECT (BSIZE / sizeof(uint))
+#define NINDIRECT (BSIZE / sizeof(u32))
 #define MAXFILE (NDIRECT + NINDIRECT)
 
 // On-disk inode structure
@@ -30,9 +26,9 @@ struct dinode {
   short major;          // Major device number (T_DEV only)
   short minor;          // Minor device number (T_DEV only)
   short nlink;          // Number of links to inode in file system
-  uint size;            // Size of file (bytes)
-  uint gen;             // Generation # (to check name cache)
-  uint addrs[NDIRECT+1];   // Data block addresses
+  u32 size;             // Size of file (bytes)
+  u32 gen;              // Generation # (to check name cache)
+  u32 addrs[NDIRECT+1]; // Data block addresses
 };
 
 // Inodes per block.
@@ -51,8 +47,6 @@ struct dinode {
 #define DIRSIZ 14
 
 struct dirent {
-  ushort inum;
+  u16 inum;
   char name[DIRSIZ];
 };
-
-#endif

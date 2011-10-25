@@ -17,6 +17,8 @@ extern void initkalloc(void);
 extern void initrcu(void);
 extern void initproc(void);
 extern void initbio(void);
+extern void initinode(void);
+extern void initdisk(void);
 extern void inituser(void);
 
 static volatile int bstate;
@@ -30,9 +32,14 @@ mpboot(void)
   initseg();
   initlapic();
   inittls();
+  // XXX
+  // XXX
+  // XXX
   scheduler();     // start running processes
+#if 0
   bstate = 1;
-  panic("mpboot");
+  scheduler();     // start running processes
+#endif
 }
 
 // Start the non-boot processors.
@@ -87,12 +94,10 @@ cmain(void)
   initrcu();       // initialize rcu module
   initproc();      // process table
   initbio();       // buffer cache
+  initinode();     // inode cache
+  initdisk();      // disk
 
-#if 0
-  fileinit();      // file table
-  iinit();         // inode cache
-  ideinit();       // disk
-#endif
+  cprintf("booting others..\n");
 
   inituser();      // first user process
   bootothers();    // start other processors

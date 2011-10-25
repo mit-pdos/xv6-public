@@ -1,27 +1,3 @@
-#include "types.h"
-#include "kernel.h"
-#include "fs.h"
-
-int
-namecmp(const char *s, const char *t)
-{
-  return strncmp(s, t, DIRSIZ);
-}
-
-struct inode*
-namei(char *path)
-{
-  panic("namei");
-  return NULL;
-}
-
-void
-iput(struct inode *ip)
-{
-  panic("iput");
-}
-
-#if 0
 // File system implementation.  Four layers:
 //   + Blocks: allocator for raw disk blocks.
 //   + Files: inode allocator, reading, writing, metadata.
@@ -35,10 +11,10 @@ iput(struct inode *ip)
 // are in sysfile.c.
 
 #include "types.h"
-#include "defs.h"
 #include "param.h"
 #include "stat.h"
 #include "mmu.h"
+#include "kernel.h"
 #include "spinlock.h"
 #include "condvar.h"
 #include "queue.h"
@@ -46,6 +22,7 @@ iput(struct inode *ip)
 #include "buf.h"
 #include "fs.h"
 #include "file.h"
+#include "cpu.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
@@ -76,8 +53,8 @@ bzero(int dev, int bno)
 // Blocks. 
 
 // Allocate a disk block.
-static uint
-balloc(uint dev)
+static u32
+balloc(u32 dev)
 {
   int b, bi, m;
   struct buf *bp;
@@ -103,11 +80,12 @@ balloc(uint dev)
 
 // Free a disk block.
 static void
-bfree(int dev, uint b)
+bfree(int dev, u64 x)
 {
   struct buf *bp;
   struct superblock sb;
   int bi, m;
+  u32 b = x;
 
   bzero(dev, b);
 
@@ -157,10 +135,10 @@ bfree(int dev, uint b)
 
 static struct ns *ins;
 
-static struct { uint x __attribute__((aligned (CACHELINE))); } icache_free[NCPU];
+static struct { u32 x __mpalign__; } icache_free[NCPU];
 
 void
-iinit(void)
+initinode(void)
 {
   ins = nsalloc(0);
   for (int i = 0; i < NCPU; i++)
@@ -171,7 +149,7 @@ iinit(void)
 // Allocate a new inode with the given type on device dev.
 // Returns a locked inode.
 struct inode*
-ialloc(uint dev, short type)
+ialloc(u32 dev, short type)
 {
   int inum;
   struct buf *bp;
@@ -261,7 +239,7 @@ ifree(void *arg)
 }
 
 struct inode*
-iget(uint dev, uint inum)
+iget(u32 dev, u32 inum)
 {
   struct inode *ip;
 
@@ -291,7 +269,7 @@ iget(uint dev, uint inum)
   // Allocate fresh inode cache slot.
  retry_evict:
   (void) 0;
-  uint cur_free = icache_free[cpu->id].x;
+  u32 cur_free = icache_free[mycpu()->id].x;
   if (cur_free == 0) {
     struct inode *victim = ns_enumerate(ins, evict, 0);
     if (!victim)
@@ -307,7 +285,7 @@ iget(uint dev, uint inum)
     ns_remove(ins, KII(victim->dev, victim->inum), victim);
     rcu_delayed(victim, ifree);
   } else {
-    if (!__sync_bool_compare_and_swap(&icache_free[cpu->id].x, cur_free, cur_free-1))
+    if (!__sync_bool_compare_and_swap(&icache_free[mycpu()->id].x, cur_free, cur_free-1))
       goto retry_evict;
   }
 
@@ -429,7 +407,7 @@ iput(struct inode *ip)
 
       ns_remove(ins, KII(ip->dev, ip->inum), ip);
       rcu_delayed(ip, ifree);
-      __sync_fetch_and_add(&icache_free[cpu->id].x, 1);
+      __sync_fetch_and_add(&icache_free[mycpu()->id].x, 1);
       return;
     }
     release(&ip->lock);
@@ -454,10 +432,10 @@ iunlockput(struct inode *ip)
 
 // Return the disk block address of the nth block in inode ip.
 // If there is no such block, bmap allocates one.
-static uint
-bmap(struct inode *ip, uint bn)
+static u32
+bmap(struct inode *ip, u32 bn)
 {
-  uint addr, *a;
+  u32 addr, *a;
   struct buf *bp;
 
   if(bn < NDIRECT){
@@ -472,7 +450,7 @@ bmap(struct inode *ip, uint bn)
     if((addr = ip->addrs[NDIRECT]) == 0)
       ip->addrs[NDIRECT] = addr = balloc(ip->dev);
     bp = bread(ip->dev, addr, 1);
-    a = (uint*)bp->data;
+    a = (u32*)bp->data;
     if((addr = a[bn]) == 0){
       a[bn] = addr = balloc(ip->dev);
       bwrite(bp);
@@ -492,7 +470,7 @@ itrunc(struct inode *ip)
 {
   int i, j;
   struct buf *bp;
-  uint *a;
+  u32 *a;
 
   for(i = 0; i < NDIRECT; i++){
     if(ip->addrs[i]){
@@ -503,7 +481,7 @@ itrunc(struct inode *ip)
   
   if(ip->addrs[NDIRECT]){
     bp = bread(ip->dev, ip->addrs[NDIRECT], 0);
-    a = (uint*)bp->data;
+    a = (u32*)bp->data;
     for(j = 0; j < NINDIRECT; j++){
       if(a[j])
         rcu_delayed2(ip->dev, a[j], bfree);
@@ -531,15 +509,19 @@ stati(struct inode *ip, struct stat *st)
 //PAGEBREAK!
 // Read data from inode.
 int
-readi(struct inode *ip, char *dst, uint off, uint n)
+readi(struct inode *ip, char *dst, u32 off, u32 n)
 {
-  uint tot, m;
+  u32 tot, m;
   struct buf *bp;
 
   if(ip->type == T_DEV){
+    // XXX(sbw)
+    panic("readi T_DEV");
+#if 0
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
     return devsw[ip->major].read(ip, dst, n);
+#endif
   }
 
   if(off > ip->size || off + n < off)
@@ -559,15 +541,19 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 // PAGEBREAK!
 // Write data to inode.
 int
-writei(struct inode *ip, char *src, uint off, uint n)
+writei(struct inode *ip, char *src, u32 off, u32 n)
 {
-  uint tot, m;
+  u32 tot, m;
   struct buf *bp;
 
   if(ip->type == T_DEV){
+    // XXX(sbw)
+    panic("writei T_DEV");
+#if 0
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
     return devsw[ip->major].write(ip, src, n);
+#endif
   }
 
   if(off > ip->size || off + n < off)
@@ -608,7 +594,7 @@ dir_init(struct inode *dp)
     panic("dir_init not DIR");
 
   struct ns *dir = nsalloc(0);
-  for (uint off = 0; off < dp->size; off += BSIZE) {
+  for (u32 off = 0; off < dp->size; off += BSIZE) {
     struct buf *bp = bread(dp->dev, bmap(dp, off / BSIZE), 0);
     for (struct dirent *de = (struct dirent *) bp->data;
 	 de < (struct dirent *) (bp->data + BSIZE);
@@ -616,7 +602,7 @@ dir_init(struct inode *dp)
       if (de->inum == 0)
 	continue;
 
-      ns_insert(dir, KD(de->name), (void*) (uint) de->inum);
+      ns_insert(dir, KD(de->name), (void*) (u64) de->inum);
     }
     brelse(bp, 0);
   }
@@ -628,7 +614,7 @@ dir_init(struct inode *dp)
 
 struct flush_state {
   struct inode *dp;
-  uint off;
+  u32 off;
 };
 
 static void *
@@ -636,7 +622,7 @@ dir_flush_cb(void *key, void *val, void *arg)
 {
   struct flush_state *fs = arg;
   char *name = key;
-  uint inum = (uint) val;
+  u32 inum = (u64) val;
 
   struct dirent de;
   strncpy(de.name, name, DIRSIZ);
@@ -668,7 +654,7 @@ dirlookup(struct inode *dp, char *name)
   dir_init(dp);
 
   void *vinum = ns_lookup(dp->dir, KD(name));
-  uint inum = (uint) vinum;
+  u32 inum = (u64) vinum;
 
   //cprintf("dirlookup: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
   if (inum == 0)
@@ -679,15 +665,14 @@ dirlookup(struct inode *dp, char *name)
 
 // Write a new directory entry (name, inum) into the directory dp.
 int
-dirlink(struct inode *dp, char *name, uint inum)
+dirlink(struct inode *dp, char *name, u32 inum)
 {
   dir_init(dp);
 
   //cprintf("dirlink: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
-  return ns_insert(dp->dir, KD(name), (void*)inum);
+  return ns_insert(dp->dir, KD(name), (void*)(u64)inum);
 }
 
-//PAGEBREAK!
 // Paths
 
 // Copy the next path element from path into name.
@@ -739,7 +724,7 @@ namex(char *path, int nameiparent, char *name)
   if(*path == '/') 
     ip = iget(ROOTDEV, ROOTINO);
   else
-    ip = idup(proc->cwd);
+    ip = idup(myproc()->cwd);
 
   while((path = skipelem(path, name)) != 0){
     next = 0;
@@ -788,4 +773,4 @@ nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
 }
-#endif
+

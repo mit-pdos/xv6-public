@@ -2,25 +2,27 @@
 // Useful for running kernel without scratch disk.
 
 #include "types.h"
-#include "defs.h"
 #include "param.h"
 #include "mmu.h"
+#include "kernel.h"
+#include "spinlock.h"
+#include "queue.h"
+#include "condvar.h"
 #include "proc.h"
 #include "x86.h"
 #include "traps.h"
-#include "spinlock.h"
 #include "buf.h"
 
-extern uchar _binary_fs_img_start[], _binary_fs_img_size[];
+extern u8 _binary_fs_img_start[], _binary_fs_img_size[];
 
-static int disksize;
-static uchar *memdisk;
+static u64 disksize;
+static u8 *memdisk;
 
 void
-ideinit(void)
+initdisk(void)
 {
   memdisk = _binary_fs_img_start;
-  disksize = (uint)_binary_fs_img_size/512;
+  disksize = (u64)_binary_fs_img_size/512;
 }
 
 // Interrupt handler.
@@ -36,7 +38,7 @@ ideintr(void)
 void
 iderw(struct buf *b)
 {
-  uchar *p;
+  u8 *p;
 
   if(!(b->flags & B_BUSY))
     panic("iderw: buf not busy");

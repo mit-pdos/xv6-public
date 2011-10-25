@@ -44,6 +44,11 @@ void            snprintf(char *buf, u32 n, char *fmt, ...);
 int             namecmp(const char*, const char*);
 struct inode*   namei(char*);
 void            iput(struct inode*);
+struct inode*   iget(u32 dev, u32 inum);
+void            ilock(struct inode*, int writer);
+void            iunlockput(struct inode*);
+void            iupdate(struct inode*);
+void            iunlock(struct inode*);
 
 // ide.c
 void            ideinit(void);
