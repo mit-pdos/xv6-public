@@ -12,6 +12,7 @@ extern void initmp(void);
 extern void initlapic(void);
 extern void inittls(void);
 extern void inittrap(void);
+extern void initseg(void);
 extern void initkalloc(void);
 extern void initrcu(void);
 extern void initproc(void);
@@ -20,7 +21,6 @@ extern void inituser(void);
 
 static volatile int bstate;
 
-#if 1
 // Common CPU setup code.
 // Bootstrap CPU comes here from mainc().
 // Other CPUs jump here from bootother.S.
@@ -28,9 +28,9 @@ void
 mpboot(void)
 {
   // XXX(sbw) load VA for gdt, etc
+  initseg();
   panic("mpboot");
 }
-#endif
 
 // Start the non-boot processors.
 static void
@@ -74,6 +74,7 @@ cmain(void)
   initcga();
   initconsole();
   inittrap();
+  initseg();
   initpg();
   initmp();
   initlapic();

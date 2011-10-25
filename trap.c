@@ -33,7 +33,6 @@ trap(struct trapframe *tf)
 void
 inittrap(void)
 {
-  volatile struct desctr dtr;
   uint64 entry;
   uint32 bits;
   int i;
@@ -43,6 +42,12 @@ inittrap(void)
     entry = trapentry[i];
     idt[i] = INTDESC(KCSEG, entry, bits);
   }
+}
+
+void
+initseg(void)
+{
+  volatile struct desctr dtr;
 
   dtr.limit = sizeof(idt) - 1;
   dtr.base = (u64)idt;
