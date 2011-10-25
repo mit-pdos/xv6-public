@@ -13,6 +13,8 @@ static inline void *p2v(uptr a) { return (void *) a + KBASE; }
 
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
 
+#define cmpswap(ptr, old, new) __sync_bool_compare_and_swap(ptr, old, new)
+
 struct spinlock;
 struct condvar;
 struct context;

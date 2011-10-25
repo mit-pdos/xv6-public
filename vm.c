@@ -25,17 +25,21 @@ descend(pme_t *dir, void *va, u64 flags, int create, int level)
   pme_t entry;
   pme_t *next;
 
+retry:
   dir = &dir[PX(level, va)];
   entry = *dir;
-  if (entry == 0) {
+  if (entry & PTE_P) {
+    next = p2v(PTE_ADDR(entry));
+  } else {
     if (!create)
       return NULL;
-    next = (u64*) pgalloc();
+    next = (pme_t*) pgalloc();
     if (!next)
       return NULL;
-    *dir = v2p(next) | PTE_P | PTE_W | flags;
-  } else {
-    next = p2v(PTE_ADDR(entry));
+    if (!cmpswap(dir, entry, v2p(next) | PTE_P | PTE_W | flags)) {
+      kfree((void*) next);
+      goto retry;
+    }
   }
   
   return next;
