@@ -149,8 +149,8 @@ rcr2(void)
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
 struct trapframe {
-  u16 ds;
   u16 padding3[7];
+  u16 ds;
 
   // amd64 ABI callee saved registers
   u64 r15;

@@ -24,60 +24,60 @@ sysentry:
         jmp sysentry
 
 trapcommon:
-        pushq   %rdi
-        pushq   %rsi
-        pushq   %rdx
-        pushq   %rcx
-        pushq   %rax
-        pushq   %r8
-        pushq   %r9
-        pushq   %r10
-        pushq   %r11
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        movw    %ds, %ax
-        pushw   %ax
-        subq    $0xe, %rsp
+        pushq %rdi
+        pushq %rsi
+        pushq %rdx
+        pushq %rcx
+        pushq %rax
+        pushq %r8
+        pushq %r9
+        pushq %r10
+        pushq %r11
+        pushq %rbx
+        pushq %rbp
+        pushq %r12
+        pushq %r13
+        pushq %r14
+        pushq %r15
+        movw  %ds, %ax
+        pushw %ax
+        subq  $0xe, %rsp
         
         # Set up data and per-cpu segments.
-        movw    $KDSEG, %ax
-        movw    %ax, %ds
-        movw    %ax, %es
+        movw $KDSEG, %ax
+        movw %ax, %ds
+        movw %ax, %es
         // XXX(sbw) we should do something with fs, gs, gs.base
 
-        movq	%rsp, %rdi  // first argument to trap
-        call	trap
+        movq %rsp, %rdi  // first argument to trap
+        call trap
         // Fall through to trapret
         
 .globl trapret
 .align 8
 trapret:
+        addq $0xe, %rsp  // padding
         popw %ax
         movw %ax, %ds
         movw %ax, %es
         // XXX(sbw) we should do something with fs, gs, gs.base
-        addq    $0xe, %rsp  // padding
         
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        popq    %r11
-        popq    %r10
-        popq    %r9
-        popq    %r8
-        popq    %rax
-        popq    %rcx
-        popq    %rdx
-        popq    %rsi
-        popq    %rdi
-        addq    $0x10, %rsp  // trapno, err
+        popq %r15
+        popq %r14
+        popq %r13
+        popq %r12
+        popq %rbp
+        popq %rbx
+        popq %r11
+        popq %r10
+        popq %r9
+        popq %r8
+        popq %rax
+        popq %rcx
+        popq %rdx
+        popq %rsi
+        popq %rdi
+        addq $0x10, %rsp  // trapno, err
         iretq
         
 .data
