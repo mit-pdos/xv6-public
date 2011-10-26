@@ -1,3 +1,26 @@
+#
+# XXX compiling user progs with -mcmodel=kernel
+#
+
+# Custom config file?  Set the default below..
+-include config.mk
+
+TOOLPREFIX ?= x86_64-jos-elf-
+QEMU ?= qemu-system-x86_64
+CPUS ?= 2
+
+NM = $(TOOLPREFIX)nm
+CC = $(TOOLPREFIX)gcc
+AS = $(TOOLPREFIX)gas
+LD = $(TOOLPREFIX)ld
+OBJCOPY = $(TOOLPREFIX)objcopy
+OBJDUMP = $(TOOLPREFIX)objdump
+CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m64 \
+         -Werror -std=c99 -fms-extensions -mno-sse -mcmodel=kernel
+CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+ASFLAGS = -m64 -gdwarf-2
+LDFLAGS += -m elf_x86_64
+
 OBJS = \
 	asm.o \
 	bio.o \
@@ -26,24 +49,10 @@ OBJS = \
 	trap.o \
 	trapasm.o
 
-# Custom config file?  Set the default below..
--include config.mk
+ULIB = ulib.o usys.o printf.o umalloc.o
 
-TOOLPREFIX ?= x86_64-jos-elf-
-QEMU ?= qemu-system-x86_64
-CPUS ?= 2
-
-NM = $(TOOLPREFIX)nm
-CC = $(TOOLPREFIX)gcc
-AS = $(TOOLPREFIX)gas
-LD = $(TOOLPREFIX)ld
-OBJCOPY = $(TOOLPREFIX)objcopy
-OBJDUMP = $(TOOLPREFIX)objdump
-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m64 \
-         -Werror -std=c99 -fms-extensions -mno-sse -mcmodel=kernel
-CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
-ASFLAGS = -m64 -gdwarf-2
-LDFLAGS += -m elf_x86_64
+UPROGS= \
+	_init \
 
 kernel: boot.o $(OBJS) initcode bootother fs.img
 	$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
@@ -65,6 +74,11 @@ xv6memfs.img: bootblock kernelmemfs
 	dd if=/dev/zero of=xv6memfs.img count=10000
 	dd if=bootblock of=xv6memfs.img conv=notrunc
 	dd if=kernelmemfs of=xv6memfs.img seek=1 conv=notrunc
+
+_%: %.o $(ULIB)
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
+	$(OBJDUMP) -S $@ > $*.asm
+	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $*.sym
 
 mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o mkfs mkfs.c

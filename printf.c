@@ -11,7 +11,7 @@ printint(void (*putch) (void*, char), void *putarg,
   static char digits[] = "0123456789ABCDEF";
   char buf[16];
   int i, neg;
-  uint x;
+  int x;
 
   neg = 0;
   if(sgn && xx < 0){
@@ -51,9 +51,9 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
       }
     } else if(state == '%'){
       if(c == 'd'){
-        printint(putch, putarg, va_arg(ap, uint), 10, 1);
-      } else if(c == 'x' || c == 'p'){
-        printint(putch, putarg, va_arg(ap, uint), 16, 0);
+        printint(putch, putarg, va_arg(ap, u32), 10, 1);
+      } else if(c == 'x') {
+        printint(putch, putarg, va_arg(ap, u32), 16, 0);
       } else if(c == 's'){
         s = (char*) va_arg(ap, char*);
         if(s == 0)
@@ -63,7 +63,7 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
           s++;
         }
       } else if(c == 'c'){
-        putch(putarg, va_arg(ap, uint));
+        putch(putarg, va_arg(ap, u32));
       } else if(c == '%'){
         putch(putarg, c);
       } else {
@@ -80,7 +80,7 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
 static void
 writec(void *arg, char c)
 {
-  int fd = (int) arg;
+    int fd = (int) (u64) arg;
   write(fd, &c, 1);
 }
 
@@ -90,7 +90,7 @@ printf(int fd, char *fmt, ...)
   va_list ap;
 
   va_start(ap, fmt);
-  vprintfmt(writec, (void*) fd, fmt, ap);
+  vprintfmt(writec, (void*) (u64)fd, fmt, ap);
   va_end(ap);
 }
 
@@ -111,7 +111,7 @@ writebuf(void *arg, char c)
 }
 
 void
-vsnprintf(char *buf, uint n, char *fmt, va_list ap)
+vsnprintf(char *buf, u32 n, char *fmt, va_list ap)
 {
   struct bufstate bs = { buf, buf+n-1 };
   vprintfmt(writebuf, (void*) &bs, fmt, ap);
@@ -119,7 +119,7 @@ vsnprintf(char *buf, uint n, char *fmt, va_list ap)
 }
 
 void
-snprintf(char *buf, uint n, char *fmt, ...)
+snprintf(char *buf, u32 n, char *fmt, ...)
 {
   va_list ap;
 

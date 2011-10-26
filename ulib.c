@@ -30,10 +30,10 @@ strcmp(const char *p, const char *q)
 {
   while(*p && *p == *q)
     p++, q++;
-  return (uchar)*p - (uchar)*q;
+  return (u8)*p - (u8)*q;
 }
 
-uint
+unsigned int
 strlen(char *s)
 {
   int n;
@@ -44,7 +44,7 @@ strlen(char *s)
 }
 
 void*
-memset(void *dst, int c, uint n)
+memset(void *dst, int c, unsigned int n)
 {
   stosb(dst, c, n);
   return dst;
@@ -103,7 +103,7 @@ atoi(const char *s)
 }
 
 void*
-memcpy(void *dst, const void *src, uint n)
+memcpy(void *dst, const void *src, unsigned int n)
 {
   return memmove(dst, (void *)src, n);
 }
