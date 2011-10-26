@@ -572,6 +572,49 @@ kill(int pid)
   return 0;
 }
 
+void *procdump(void *vk, void *v, void *arg)
+{
+  struct proc *p = (struct proc *) v;
+
+  static char *states[] = {
+  [UNUSED]    "unused",
+  [EMBRYO]    "embryo",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
+  };
+  char *state;
+
+  if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+    state = states[p->state];
+  else
+    state = "???";
+  cprintf("%d %s %s %d, ", p->pid, state, p->name, p->cpuid);
+
+  // XXX(sbw)
+#if 0
+  uint pc[10];
+  if(p->state == SLEEPING){
+    getcallerpcs((uint*)p->context->ebp+2, pc);
+    for(int i=0; i<10 && pc[i] != 0; i++)
+      cprintf(" %p", pc[i]);
+  }
+#endif
+  cprintf("\n");
+  return 0;
+}
+
+//PAGEBREAK: 36
+// Print a process listing to console.  For debugging.
+// Runs when user types ^P on console.
+// No lock to avoid wedging a stuck machine further.
+void
+procdumpall(void)
+{
+  ns_enumerate(nspid, procdump, 0);
+}
+
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.

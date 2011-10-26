@@ -11,7 +11,8 @@
 #include "condvar.h"
 #include "file.h"
 #include "x86.h"
-
+#include "queue.h"
+#include "proc.h"
 #include <stdarg.h>
 
 #define BACKSPACE 0x100
@@ -227,10 +228,94 @@ consolewrite(struct inode *ip, char *buf, int n)
   return n;
 }
 
+#define INPUT_BUF 128
+struct {
+  struct spinlock lock;
+  struct condvar cv;
+  char buf[INPUT_BUF];
+  int r;  // Read index
+  int w;  // Write index
+  int e;  // Edit index
+} input;
+
+#define C(x)  ((x)-'@')  // Control-x
+
+void
+consoleintr(int (*getc)(void))
+{
+  int c;
+
+  acquire(&input.lock);
+  while((c = getc()) >= 0){
+    switch(c){
+    case C('P'):  // Process listing.
+      procdumpall();
+      break;
+    case C('U'):  // Kill line.
+      while(input.e != input.w &&
+            input.buf[(input.e-1) % INPUT_BUF] != '\n'){
+        input.e--;
+        consputc(BACKSPACE);
+      }
+      break;
+    case C('H'): case '\x7f':  // Backspace
+      if(input.e != input.w){
+        input.e--;
+        consputc(BACKSPACE);
+      }
+      break;
+    default:
+      if(c != 0 && input.e-input.r < INPUT_BUF){
+        c = (c == '\r') ? '\n' : c;
+        input.buf[input.e++ % INPUT_BUF] = c;
+        consputc(c);
+        if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
+          input.w = input.e;
+          cv_wakeup(&input.cv);
+        }
+      }
+      break;
+    }
+  }
+  release(&input.lock);
+}
+
 static int
 consoleread(struct inode *ip, char *dst, int n)
 {
-  panic("consoleread");
+  int target;
+  int c;
+
+  iunlock(ip);
+  target = n;
+  acquire(&input.lock);
+  while(n > 0){
+    while(input.r == input.w){
+      if(myproc()->killed){
+        release(&input.lock);
+        ilock(ip, 1);
+        return -1;
+      }
+      cv_sleep(&input.cv, &input.lock);
+    }
+    c = input.buf[input.r++ % INPUT_BUF];
+    if(c == C('D')){  // EOF
+      if(n < target){
+        // Save ^D for next time, to make sure
+        // caller gets a 0-byte result.
+        input.r--;
+      }
+      break;
+    }
+    *dst++ = c;
+    --n;
+    if(c == '\n')
+      break;
+  }
+  release(&input.lock);
+  ilock(ip, 1);
+
+  return target - n;
 }
 
 void
