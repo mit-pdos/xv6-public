@@ -20,7 +20,7 @@ extern pml4e_t kpml4[];
 extern char* pgalloc(void);
 
 static pme_t*
-descend(pme_t *dir, void *va, u64 flags, int create, int level)
+descend(pme_t *dir, const void *va, u64 flags, int create, int level)
 {
   pme_t entry;
   pme_t *next;
@@ -36,6 +36,7 @@ retry:
     next = (pme_t*) pgalloc();
     if (!next)
       return NULL;
+    memset(next, 0, PGSIZE);
     if (!cmpswap(dir, entry, v2p(next) | PTE_P | PTE_W | flags)) {
       kfree((void*) next);
       goto retry;
