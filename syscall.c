@@ -64,7 +64,7 @@ argint32(int n, int *ip)
   u64 i;
 
   r = fetchint64(myproc()->tf->rsp + 8 + 8*n, &i);
-  if (r > 0)
+  if (r >= 0)
     *ip = i;
   return r;
 }
