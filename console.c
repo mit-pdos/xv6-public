@@ -7,6 +7,7 @@
 #include "cpu.h"
 #include "kernel.h"
 #include "spinlock.h"
+#include "x86.h"
 
 #include <stdarg.h>
 
@@ -173,11 +174,17 @@ puts(const char *s)
 void __attribute__((noreturn))
 panic(const char *s)
 {
-  puts("panic: ");
-  puts(s);
-  puts("\n");
+  cli();
+  cons.locking = 0;
+  cprintf("cpu%d: panic: ", mycpu()->id);
+  cprintf(s);
+  cprintf("\n");
 
-  for (;;);
+  extern void sys_halt();
+  sys_halt();
+
+  for(;;)
+    ;
 }
 
 void

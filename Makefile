@@ -44,6 +44,7 @@ OBJS = \
 	string.o \
 	syscall.o \
 	sysfile.o \
+	sysproc.o \
 	uart.o \
 	vm.o \
 	trap.o \

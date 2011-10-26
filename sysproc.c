@@ -1,6 +1,6 @@
 #include "types.h"
 #include "x86.h"
-#include "defs.h"
+#include "kernel.h"
 #include "param.h"
 #include "memlayout.h"
 #include "mmu.h"
@@ -9,6 +9,7 @@
 #include "queue.h"
 #include "proc.h"
 
+#if 0
 int
 sys_fork(void)
 {
@@ -143,6 +144,7 @@ sys_unmap(void)
   sti();
   return 0;
 }
+#endif
 
 int
 sys_halt(void)
