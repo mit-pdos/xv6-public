@@ -5,6 +5,7 @@
 #include "cpu.h"
 
 extern void initpic(void);
+extern void initioapic(void);
 extern void inituart(void);
 extern void initcga(void);
 extern void initconsole(void);
@@ -77,12 +78,13 @@ cmain(void)
 {
   extern pml4e_t kpml4[];
 
+  initpg();
   initpic();       // interrupt controller
+  initioapic();
   inituart();
   initcga();
   initconsole();
   inittrap();
-  initpg();
   initseg();
   initmp();
   initlapic();

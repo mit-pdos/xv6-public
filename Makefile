@@ -30,8 +30,10 @@ OBJS = \
 	exec.o \
 	file.o \
 	fs.o \
+	ioapic.o \
 	lapic.o \
 	kalloc.o \
+	kbd.o \
 	main.o \
 	memide.o \
 	mp.o \
@@ -56,6 +58,7 @@ ULIB = ulib.o usys.o printf.o umalloc.o
 UPROGS= \
 	_init \
 	_sh \
+	_ls \
 
 kernel: boot.o $(OBJS) initcode bootother fs.img
 	$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \

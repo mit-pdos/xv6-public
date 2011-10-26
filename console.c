@@ -13,6 +13,7 @@
 #include "x86.h"
 #include "queue.h"
 #include "proc.h"
+#include "traps.h"
 #include <stdarg.h>
 
 #define BACKSPACE 0x100
@@ -325,6 +326,8 @@ initconsole(void)
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;
 
+  picenable(IRQ_KBD);
+  ioapicenable(IRQ_KBD, 0);
   // XXX(sbw) enable once we setup %gs
   cons.locking = 0;
 }

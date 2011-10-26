@@ -85,18 +85,12 @@ trap(struct trapframe *tf)
     // Bochs generates spurious IDE1 interrupts.
     break;
   case T_IRQ0 + IRQ_KBD:
-#if 0
     kbdintr();
     lapiceoi();
-#endif
-    panic("IRQ_KBD");
     break;
   case T_IRQ0 + IRQ_COM1:
-#if 0
     uartintr();
     lapiceoi();
-#endif
-    panic("IRQ_COM1");
     break;
   case T_IRQ0 + 7:
   case T_IRQ0 + IRQ_SPURIOUS:
