@@ -36,6 +36,7 @@ OBJS = \
 	memide.o \
 	mp.o \
 	ns.o \
+	picirq.o \
 	pipe.o \
 	proc.o \
 	rcu.o \
