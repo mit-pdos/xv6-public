@@ -56,9 +56,10 @@ OBJS = \
 ULIB = ulib.o usys.o printf.o umalloc.o
 
 UPROGS= \
+	_cat \
 	_init \
-	_sh \
 	_ls \
+	_sh \
 
 kernel: boot.o $(OBJS) initcode bootother fs.img
 	$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
