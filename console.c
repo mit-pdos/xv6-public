@@ -50,7 +50,7 @@ writecons(void *arg, char c)
   cgaputc(c);
 }
 
-// Only understands %d, %x, %s, %lx.
+// Only understands %d, %u, %x, %s, %lx.
 void
 vprintfmt(void (*putch) (void*, char), void *putarg,
           const char *fmt, va_list ap)
@@ -68,8 +68,10 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
         putch(putarg, c);
       }
     } else if(state == '%'){
-      if(c == 'd'){
+      if(c == 'd') {
         printint(putch, putarg, va_arg(ap, u32), 10, 1);
+      } else if(c == 'u') {
+        printint(putch, putarg, va_arg(ap, u32), 10, 0);
       } else if(c == 'x') {
         printint(putch, putarg, va_arg(ap, u32), 16, 0);
       } else if(c == 'l') {
