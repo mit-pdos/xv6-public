@@ -14,8 +14,8 @@
 
 u64 ticks __mpalign__;
 
-static struct spinlock tickslock __mpalign__;
-static struct condvar cv_ticks __mpalign__;
+struct spinlock tickslock __mpalign__;
+struct condvar cv_ticks __mpalign__;
 
 struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
   // null

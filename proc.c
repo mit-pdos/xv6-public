@@ -458,6 +458,228 @@ scheduler(void)
   }
 }
 
+// Grow/shrink current process's memory by n bytes.
+// Growing may allocate vmas and physical memory,
+// but avoids interfering with any existing vma.
+// Assumes vmas around proc->brk are part of the growable heap.
+// Shrinking just decreases proc->brk; doesn't deallocate.
+// Return 0 on success, -1 on failure.
+int
+growproc(int n)
+{
+  struct vmap *m = myproc()->vmap;
+
+  if(n < 0 && 0 - n <= myproc()->brk){
+    myproc()->brk += n;
+    return 0;
+  }
+
+  if(n < 0 || n > USERTOP || myproc()->brk + n > USERTOP)
+    return -1;
+
+  acquire(&m->lock);
+
+  // find first unallocated address in brk..brk+n
+  uptr newstart = myproc()->brk;
+  u64 newn = n;
+  rcu_begin_read();
+  while(newn > 0){
+    struct vma *e = vmap_lookup(m, newstart, 1);
+    if(e == 0)
+      break;
+    if(e->va_end >= newstart + newn){
+      newstart += newn;
+      newn = 0;
+      break;
+    }
+    newn -= e->va_end - newstart;
+    newstart = e->va_end;
+  }
+  rcu_end_read();
+
+  if(newn <= 0){
+    // no need to allocate
+    myproc()->brk += n;
+    release(&m->lock);
+    switchuvm(myproc());
+    return 0;
+  }
+
+  // is there space for newstart..newstart+newn?
+  if(vmap_lookup(m, newstart, newn) != 0){
+    cprintf("growproc: not enough room in address space; brk %d n %d\n",
+            myproc()->brk, n);
+    return -1;
+  }
+
+  // would the newly allocated region abut the next-higher
+  // vma? we can't allow that, since then a future sbrk()
+  // would start to use the next region (e.g. the stack).
+  if(vmap_lookup(m, PGROUNDUP(newstart+newn), 1) != 0){
+    cprintf("growproc: would abut next vma; brk %d n %d\n",
+            myproc()->brk, n);
+    return -1;
+  }
+
+  struct vmnode *vmn = vmn_allocpg(PGROUNDUP(newn) / PGSIZE);
+  if(vmn == 0){
+    release(&m->lock);
+    cprintf("growproc: vmn_allocpg failed\n");
+    return -1;
+  }
+
+  release(&m->lock); // XXX
+
+  if(vmap_insert(m, vmn, newstart) < 0){
+    vmn_free(vmn);
+    cprintf("growproc: vmap_insert failed\n");
+    return -1;
+  }
+
+  myproc()->brk += n;
+  switchuvm(myproc());
+  return 0;
+}
+
+// Kill the process with the given pid.
+// Process won't exit until it returns
+// to user space (see trap in trap.c).
+int
+kill(int pid)
+{
+  struct proc *p;
+
+  p = (struct proc *) ns_lookup(nspid, KI(pid));
+  if (p == 0) {
+    panic("kill");
+    return -1;
+  }
+  acquire(&p->lock);
+  p->killed = 1;
+  if(p->state == SLEEPING){
+    // XXX
+    // we need to wake p up if it is cv_sleep()ing.
+    // can't change p from SLEEPING to RUNNABLE since that
+    //   would make some condvar->waiters a dangling reference,
+    //   and the non-zero p->cv_next will cause a future panic.
+    // can't call cv_wakeup(p->oncv) since that results in
+    //   deadlock (addrun() acquires p->lock).
+    // can't release p->lock then call cv_wakeup() since the
+    //   cv might be deallocated while we're using it
+    //   (pipes dynamically allocate condvars).
+  }
+  release(&p->lock);
+  return 0;
+}
+
+// Create a new process copying p as the parent.
+// Sets up stack to return as if from system call.
+// Caller must set state of returned proc to RUNNABLE.
+int
+fork(int flags)
+{
+  int i, pid;
+  struct proc *np;
+  int cow = 1;
+
+  //  cprintf("%d: fork\n", proc->pid);
+
+  // Allocate process.
+  if((np = allocproc()) == 0)
+    return -1;
+
+  if(flags == 0) {
+    // Copy process state from p.
+    if((np->vmap = vmap_copy(myproc()->vmap, cow)) == 0){
+      kfree(np->kstack);
+      np->kstack = 0;
+      np->state = UNUSED;
+      if (ns_remove(nspid, KI(np->pid), np) == 0)
+	panic("fork: ns_remove");
+      rcu_delayed(np, kmfree);
+      return -1;
+    }
+  } else {
+    np->vmap = myproc()->vmap;
+    __sync_fetch_and_add(&np->vmap->ref, 1);
+  }
+
+  np->brk = myproc()->brk;
+  np->parent = myproc();
+  *np->tf = *myproc()->tf;
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->rax = 0;
+
+  for(i = 0; i < NOFILE; i++)
+    if(myproc()->ofile[i])
+      np->ofile[i] = filedup(myproc()->ofile[i]);
+  np->cwd = idup(myproc()->cwd);
+  pid = np->pid;
+  safestrcpy(np->name, myproc()->name, sizeof(myproc()->name));
+  acquire(&myproc()->lock);
+  SLIST_INSERT_HEAD(&myproc()->childq, np, child_next);
+  release(&myproc()->lock);
+
+  acquire(&np->lock);
+  addrun(np);
+  np->state = RUNNABLE;
+  release(&np->lock);
+
+  migrate(np);
+
+  //  cprintf("%d: fork done (pid %d)\n", myproc()->pid, pid);
+  return pid;
+}
+
+// Wait for a child process to exit and return its pid.
+// Return -1 if this process has no children.
+int
+wait(void)
+{
+  struct proc *p, *np;
+  int havekids, pid;
+
+  for(;;){
+    // Scan children for ZOMBIEs
+    havekids = 0;
+    acquire(&myproc()->lock);
+    SLIST_FOREACH_SAFE(p, &myproc()->childq, child_next, np) {
+	havekids = 1;
+	acquire(&p->lock);
+	if(p->state == ZOMBIE){
+	  release(&p->lock);	// noone else better be trying to lock p
+	  pid = p->pid;
+	  SLIST_REMOVE(&myproc()->childq, p, proc, child_next);
+	  release(&myproc()->lock);
+	  kfree(p->kstack);
+	  p->kstack = 0;
+	  vmap_decref(p->vmap);
+	  p->state = UNUSED;
+	  if (ns_remove(nspid, KI(p->pid), p) == 0)
+	    panic("wait: ns_remove");
+	  p->pid = 0;
+	  p->parent = 0;
+	  p->name[0] = 0;
+	  p->killed = 0;
+	  rcu_delayed(p, kmfree);
+	  return pid;
+	}
+	release(&p->lock);
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || myproc()->killed){
+      release(&myproc()->lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    cv_sleep(&myproc()->cv, &myproc()->lock);  
+
+    release(&myproc()->lock);
+  }
+}
 
 
 

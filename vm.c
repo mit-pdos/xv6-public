@@ -505,6 +505,66 @@ vmn_doload(struct vmnode *vmn, struct inode *ip, u64 offset, u64 sz)
   return 0;
 }
 
+struct vmap *
+vmap_copy(struct vmap *m, int share)
+{
+  struct vmap *c = vmap_alloc();
+  if(c == 0)
+    return 0;
+
+  acquire(&m->lock);
+#ifdef TREE
+  struct state *st = kmalloc(sizeof(struct state));
+  st->share = share;
+  st->pgdir = m->pgdir;
+  st->root = c->root;
+  if (!tree_foreach(m->root, vmap_copy_vma, st)) {
+    vmap_free(c);
+    release(&m->lock);
+    kmfree(st);
+    return 0;
+  }
+  c->root = st->root;
+  kmfree(st);
+#else
+  for(int i = 0; i < NELEM(m->e); i++) {
+    if(m->e[i] == 0)
+      continue;
+    c->e[i] = vma_alloc();
+    if (c->e[i] == 0) {
+      release(&m->lock);
+      vmap_free(c);
+      return 0;
+    }
+    c->e[i]->va_start = m->e[i]->va_start;
+    c->e[i]->va_end = m->e[i]->va_end;
+    if (share) {
+      c->e[i]->n = m->e[i]->n;
+      c->e[i]->va_type = COW;
+
+      acquire(&m->e[i]->lock);
+      m->e[i]->va_type = COW;
+      updatepages(m->pml4, (void *) (m->e[i]->va_start), (void *) (m->e[i]->va_end), PTE_COW);
+      release(&m->e[i]->lock);
+    } else {
+      c->e[i]->n = vmn_copy(m->e[i]->n);
+      c->e[i]->va_type = m->e[i]->va_type;
+    }
+    if(c->e[i]->n == 0) {
+      release(&m->lock);
+      vmap_free(c);
+      return 0;
+    }
+    __sync_fetch_and_add(&c->e[i]->n->ref, 1);
+  }
+#endif
+  if (share)
+    lcr3(v2p(m->pml4));  // Reload hardware page table
+
+  release(&m->lock);
+  return c;
+}
+
 static struct vma *
 pagefault_ondemand(struct vmap *vmap, uptr va, u32 err, struct vma *m)
 {
@@ -604,9 +664,39 @@ vmn_load(struct vmnode *vmn, struct inode *ip, u64 offset, u64 sz)
   }
 }
 
-
-
-
+int
+vmap_remove(struct vmap *m, uptr va_start, u64 len)
+{
+  acquire(&m->lock);
+  uptr va_end = va_start + len;
+#ifdef TREE
+  struct kv *kv = tree_find_gt(m->root, va_start);
+  if (kv == 0)
+    panic("no vma?");
+  struct vma *e = (struct vma *) kv->val;
+  if(e->va_start != va_start || e->va_end != va_end) {
+    cprintf("vmap_remove: partial unmap unsupported\n");
+    release(&m->lock);
+    return -1;
+  }
+  m->root = tree_remove(m->root, va_start+len);
+  rcu_delayed(e, vma_free);
+#else
+  for(int i = 0; i < NELEM(m->e); i++) {
+    if(m->e[i] && (m->e[i]->va_start < va_end && m->e[i]->va_end > va_start)) {
+      if(m->e[i]->va_start != va_start || m->e[i]->va_end != va_end) {
+	release(&m->lock);
+	cprintf("vmap_remove: partial unmap unsupported\n");
+	return -1;
+      }
+      rcu_delayed(m->e[i], vma_free);
+      m->e[i] = 0;
+    }
+  }
+#endif
+  release(&m->lock);
+  return 0;
+}
 
 
 

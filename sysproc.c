@@ -8,14 +8,14 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
+#include "cpu.h"
 
-#if 0
 int
 sys_fork(void)
 {
   int flags;
 
-  if(argint(0, &flags) < 0)
+  if(argint32(0, &flags) < 0)
     return -1;
   return fork(flags);
 }
@@ -38,7 +38,7 @@ sys_kill(void)
 {
   int pid;
 
-  if(argint(0, &pid) < 0)
+  if(argint32(0, &pid) < 0)
     return -1;
   return kill(pid);
 }
@@ -46,18 +46,18 @@ sys_kill(void)
 int
 sys_getpid(void)
 {
-  return proc->pid;
+  return myproc()->pid;
 }
 
 int
 sys_sbrk(void)
 {
-  int addr;
+  uptr addr;
   int n;
 
-  if(argint(0, &n) < 0)
+  if(argint32(0, &n) < 0)
     return -1;
-  addr = proc->brk;
+  addr = myproc()->brk;
   if(growproc(n) < 0)
     return -1;
   return addr;
@@ -67,14 +67,14 @@ int
 sys_sleep(void)
 {
   int n;
-  uint ticks0;
+  u32 ticks0;
   
-  if(argint(0, &n) < 0)
+  if(argint32(0, &n) < 0)
     return -1;
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
-    if(proc->killed){
+    if(myproc()->killed){
       release(&tickslock);
       return -1;
     }
@@ -89,7 +89,7 @@ sys_sleep(void)
 int
 sys_uptime(void)
 {
-  uint xticks;
+  u64 xticks;
   
   acquire(&tickslock);
   xticks = ticks;
@@ -100,19 +100,19 @@ sys_uptime(void)
 int
 sys_map(void)
 {
-  uint addr;
-  uint len;
+  uptr addr;
+  u64 len;
 
-  if (argint(0, (int*) &addr) < 0)
+  if (argint64(0, &addr) < 0)
     return -1;
-  if (argint(1, (int*) &len) < 0)
+  if (argint64(1, &len) < 0)
     return -1;
 
   struct vmnode *vmn = vmn_allocpg(PGROUNDUP(len) / PGSIZE);
   if (vmn == 0)
     return -1;
 
-  if (vmap_insert(proc->vmap, vmn, PGROUNDDOWN(addr)) < 0) {
+  if (vmap_insert(myproc()->vmap, vmn, PGROUNDDOWN(addr)) < 0) {
     vmn_free(vmn);
     return -1;
   }
@@ -123,28 +123,27 @@ sys_map(void)
 int
 sys_unmap(void)
 {
-  uint addr;
-  uint len;
+  uptr addr;
+  u64 len;
 
-  if (argint(0, (int*) &addr) < 0)
+  if (argint64(0, &addr) < 0)
     return -1;
-  if (argint(1, (int*) &len) < 0)
+  if (argint64(1, &len) < 0)
     return -1;
-  if (vmap_remove(proc->vmap, PGROUNDDOWN(addr), PGROUNDUP(len)) < 0)
+  if (vmap_remove(myproc()->vmap, PGROUNDDOWN(addr), PGROUNDUP(len)) < 0)
     return -1;
 
-  updatepages(proc->vmap->pgdir,
+  updatepages(myproc()->vmap->pml4,
 	     (void*) (PGROUNDDOWN(addr)),
 	     (void*) (PGROUNDDOWN(addr)+PGROUNDUP(len)), 0);
   cli();
-  lcr3(v2p(proc->vmap->pgdir));
-  for (uint i = 0; i < ncpu; i++)
-    if (i != cpu->id)
+  lcr3(v2p(myproc()->vmap->pml4));
+  for (int i = 0; i < ncpu; i++)
+    if (i != mycpu()->id)
       lapic_tlbflush(i);
   sti();
   return 0;
 }
-#endif
 
 int
 sys_halt(void)

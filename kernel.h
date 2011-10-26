@@ -96,6 +96,7 @@ void            kmfree(void*);
 int             cpunum(void);
 void            lapicstartap(u8, u32 addr);
 void            lapiceoi(void);
+void            lapic_tlbflush(u32);
 
 // mp.c
 extern int      ncpu;
@@ -212,6 +213,9 @@ void            swtch(struct context**, struct context*);
 // trap.c
 extern struct segdesc bootgdt[NSEGS];
 extern u64     ticks;
+extern struct spinlock tickslock;
+extern struct condvar cv_ticks;
+
 
 // uart.c
 void            uartputc(char c);
@@ -229,3 +233,6 @@ void            switchkvm(void);
 int             pagefault(struct vmap *, uptr, u32);
 void            vmap_decref(struct vmap *);
 int             vmn_load(struct vmnode *, struct inode*, u64, u64);
+int             vmap_remove(struct vmap *, uptr, u64);
+void            updatepages(pml4e_t*, void*, void*, int);
+struct vmap *   vmap_copy(struct vmap *, int);

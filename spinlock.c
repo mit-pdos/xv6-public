@@ -29,8 +29,10 @@ acquire(struct spinlock *lk)
   pushcli(); // disable interrupts to avoid deadlock.
 
 #if SPINLOCK_DEBUG
-  if(holding(lk))
+  if(holding(lk)) {
+    cprintf("%lx\n", __builtin_return_address(0));
     panic("acquire");
+  }
 #endif
 
   mtrace_lock_register(RET_EIP(),
