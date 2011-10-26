@@ -32,14 +32,8 @@ mpboot(void)
   initseg();
   initlapic();
   inittls();
-  // XXX
-  // XXX
-  // XXX
-  scheduler();     // start running processes
-#if 0
   bstate = 1;
   scheduler();     // start running processes
-#endif
 }
 
 // Start the non-boot processors.
@@ -80,6 +74,8 @@ bootothers(void)
 void
 cmain(void)
 {
+  extern pml4e_t kpml4[];
+
   inituart();
   initcga();
   initconsole();
@@ -97,13 +93,12 @@ cmain(void)
   initinode();     // inode cache
   initdisk();      // disk
 
-  cprintf("booting others..\n");
+  cprintf("ncpu %d\n", ncpu);
 
   inituser();      // first user process
   bootothers();    // start other processors
-  
-  // XXX(sbw) kill ident. mapping
-  
-  cprintf("ncpu %d\n", ncpu);
-  panic("end");
+  kpml4[0] = 0;    // don't need 1 GB identity mapping anymore
+
+  scheduler();
+  panic("Unreachable");
 }
