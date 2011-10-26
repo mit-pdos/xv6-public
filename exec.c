@@ -14,6 +14,8 @@
 #include "elf.h"
 #include "cpu.h"
 
+#define USTACKPAGES 2
+
 int
 exec(char *path, char **argv)
 {
@@ -28,7 +30,7 @@ exec(char *path, char **argv)
   int i;
   uptr sp;
   int argc;
-  uptr ustack[3+MAXARG+1];
+  uptr ustack[1+MAXARG+1];
   char *s, *last;
   struct vmap *oldvmap;
 
@@ -56,6 +58,7 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
+    // XXX(sbw) vaddr doesn't have to be page aligned..
     if(ph.vaddr % PGSIZE) {
       cprintf("unaligned ph.va\n");
       goto bad;
@@ -98,9 +101,9 @@ exec(char *path, char **argv)
   vmn = 0;
 
   // Allocate a one-page stack at the top of the (user) address space
-  if((vmn = vmn_allocpg(1)) == 0)
+  if((vmn = vmn_allocpg(USTACKPAGES)) == 0)
     goto bad;
-  if(vmap_insert(vmap, vmn, USERTOP-PGSIZE) < 0)
+  if(vmap_insert(vmap, vmn, USERTOP-(USTACKPAGES*PGSIZE)) < 0)
     goto bad;
   vmn = 0;
 
@@ -113,16 +116,16 @@ exec(char *path, char **argv)
     sp &= ~7;
     if(copyout(vmap, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
-    ustack[3+argc] = sp;
+    ustack[1+argc] = sp;
   }
-  ustack[3+argc] = 0;
+  ustack[1+argc] = 0;
 
-  ustack[0] = 0xffffffff;  // fake return PC
-  ustack[1] = argc;
-  ustack[2] = sp - (argc+1)*8;  // argv pointer
+  ustack[0] = 0xffffffffffffffffull;  // fake return PC
+  myproc()->tf->rdi = argc;
+  myproc()->tf->rsi = sp - (argc+1)*8;
 
-  sp -= (3+argc+1) * 8;
-  if(copyout(vmap, sp, ustack, (3+argc+1)*8) < 0)
+  sp -= (1+argc+1) * 8;
+  if(copyout(vmap, sp, ustack, (1+argc+1)*8) < 0)
     goto bad;
 
   // Save program name for debugging.
@@ -137,6 +140,7 @@ exec(char *path, char **argv)
   myproc()->brk = brk + 8;  // XXX so that brk-1 points within heap vma..
   myproc()->tf->rip = elf.entry;  // main
   myproc()->tf->rsp = sp;
+  
   switchuvm(myproc());
   vmap_decref(oldvmap);
 
