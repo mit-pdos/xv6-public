@@ -169,8 +169,10 @@ inittrap(void)
 void
 initseg(void)
 {
+  extern void sysentry(void);
   volatile struct desctr dtr;
   struct cpu *c;
+  u64 star;
 
   dtr.limit = sizeof(idt) - 1;
   dtr.base = (u64)idt;
@@ -183,4 +185,13 @@ initseg(void)
   dtr.limit = sizeof(c->gdt) - 1;
   dtr.base = (u64)c->gdt;
   lgdt((void *)&dtr.limit);
+
+  // When executing a syscall instruction the CPU sets the SS selector
+  // to (star >> 32) + 8 and the CS selector to (star >> 32).
+  // When executing a sysret instruction the CPU sets the SS selector
+  // to (star >> 48) + 8 and the CS selector to (star >> 48) + 16.
+  star = ((((u64)UCSEG|0x3) - 16)<<48)|((u64)KCSEG<<32);
+  writemsr(MSR_STAR, star);
+  writemsr(MSR_LSTAR, (u64)&sysentry);
+  writemsr(MSR_SFMASK, FL_TF);
 }

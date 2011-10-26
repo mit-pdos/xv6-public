@@ -57,8 +57,8 @@ struct segdesc {
 #define KCSEG   (2<<3)  /* kernel code segment */
 #define KDSEG   (3<<3)  /* kernel data segment */
 #define TSSSEG  (4<<3)  /* tss segment - takes two slots */
-#define UCSEG   (6<<3)  /* user code segment */
-#define UDSEG   (7<<3)  /* user data segment */
+#define UDSEG   (6<<3)  /* user data segment */
+#define UCSEG   (7<<3)  /* user code segment */
 #define NSEGS   8
 
 // User segment bits (SEG_S set).

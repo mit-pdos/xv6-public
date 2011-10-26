@@ -14,6 +14,11 @@
 #define TRAPCODE(x) _TRAP(x, trapcommon)
 
 .code64
+.globl sysentry
+.align 8
+sysentry:
+        jmp sysentry
+
 .globl trappush
 .align 8
 trappush:
