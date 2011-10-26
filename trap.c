@@ -26,10 +26,12 @@ struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
   [2]=SEGDESC(0, 0, SEG_R|SEG_CODE|SEG_S|SEG_DPL(0)|SEG_P|SEG_L|SEG_G),
   // kernel data
   [3]=SEGDESC(0, 0xfffff, SEG_W|SEG_S|SEG_DPL(0)|SEG_P|SEG_D|SEG_G),
-  // 64-bit user code
-  [6]=SEGDESC(0, 0, SEG_R|SEG_CODE|SEG_S|SEG_DPL(3)|SEG_P|SEG_L|SEG_G),  
+  // The order of the user data and user code segments is
+  // important for syscall instructions.  See initseg.
   // 64-bit user data
-  [7]=SEGDESC(0, 0xfffff, SEG_W|SEG_S|SEG_DPL(3)|SEG_P|SEG_D|SEG_G)
+  [6]=SEGDESC(0, 0xfffff, SEG_W|SEG_S|SEG_DPL(3)|SEG_P|SEG_D|SEG_G),
+  // 64-bit user code
+  [7]=SEGDESC(0, 0, SEG_R|SEG_CODE|SEG_S|SEG_DPL(3)|SEG_P|SEG_L|SEG_G),  
 };
 
 struct intdesc idt[256] __attribute__((aligned(16)));
@@ -41,12 +43,15 @@ void
 trap(struct trapframe *tf)
 {
   // XXX(sbw) eventually these should be moved into trapasm.S
+  cli();
   writegs(KDSEG);
   writemsr(MSR_GS_BASE, (u64)&cpus[cpunum()].cpu);
+  sti();
 
   // XXX(sbw) sysenter/sysexit
-#if 0
   if(tf->trapno == T_SYSCALL){
+    panic("syscall..");
+#if 0
     if(proc->killed) {
       mtrace_kstack_start(trap, proc);
       exit();
@@ -57,9 +62,9 @@ trap(struct trapframe *tf)
       mtrace_kstack_start(trap, proc);
       exit();
     }
+#endif
     return;
   }
-#endif
 
   if (myproc()->mtrace_stacks.curr >= 0)
     mtrace_kstack_pause(myproc());
@@ -164,6 +169,8 @@ inittrap(void)
     entry = trapentry[i];
     idt[i] = INTDESC(KCSEG, entry, bits);
   }
+  entry = trapentry[T_SYSCALL];
+  idt[T_SYSCALL] = INTDESC(KCSEG, entry, SEG_DPL(3) | SEG_TRAP64 |INT_P);
 }
 
 void

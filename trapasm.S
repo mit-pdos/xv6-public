@@ -1,17 +1,21 @@
 #include "mmu.h"
 
-#define _TRAP(x, l) \
+#define NOEC pushq $0
+#define EC
+
+#define _TRAP(x, code) \
 	.globl trap ## x; \
 	.align 8; \
 	trap ## x: \
-		pushq $x; \
-		jmp l; \
+                code; \
+	        pushq $x; \
+		jmp trapcommon; \
 	.data; \
 	.quad trap ## x; \
 	.previous
-
-#define TRAP(x) _TRAP(x, trappush)
-#define TRAPCODE(x) _TRAP(x, trapcommon)
+        
+#define TRAP(x) _TRAP(x, NOEC)
+#define TRAPCODE(x) _TRAP(x, EC)
 
 .code64
 .globl sysentry
@@ -51,7 +55,8 @@ trapcommon:
 
         movq	%rsp, %rdi  // first argument to trap
         call	trap
-
+        // Fall through to trapret
+        
 .globl trapret
 .align 8
 trapret:
