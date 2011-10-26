@@ -338,40 +338,159 @@ copyout(struct vmap *vmap, uptr va, void *p, u64 len)
   return 0;
 }
 
+// Return the address of the PTE in page table pgdir
+// that corresponds to linear address va.  If create!=0,
+// create any required page table pages.
+static pme_t *
+walkpgdir(pml4e_t *pml4, const void *va, int create)
+{
+  pme_t *pdp;
+  pme_t *pd;
+  pme_t *pt;
+
+  pdp = descend(pml4, va, PTE_U, create, 3);
+  if (pdp == NULL)
+    return NULL;
+  pd = descend(pdp, va, PTE_U, create, 2);
+  if (pd == NULL)
+    return NULL;
+  pt = descend(pd, va, PTE_U, create, 1);
+  if (pt == NULL)
+    return NULL;
+  return &pt[PX(0,va)];
+}
+
+void
+updatepages(pme_t *pml4, void *begin, void *end, int perm)
+{
+  char *a, *last;
+  pme_t *pte;
+
+  a = PGROUNDDOWN(begin);
+  last = PGROUNDDOWN(end);
+  for (;;) {
+    pte = walkpgdir(pml4, a, 1);
+    if(pte != 0) {
+      if (perm == 0) *pte = 0;
+      else *pte = PTE_ADDR(*pte) | perm | PTE_P;
+    }
+    if (a == last)
+      break;
+    a += PGSIZE;
+  }
+}
+
+static void
+vmn_decref(struct vmnode *n)
+{
+  if(subfetch(&n->ref, 1) == 0)
+    vmn_free(n);
+}
+
+struct vmnode *
+vmn_copy(struct vmnode *n)
+{
+  struct vmnode *c = vmn_alloc(n->npages, n->type);
+  if(c != 0) {
+    c->type = n->type;
+    if (n->type == ONDEMAND) {
+      c->ip = idup(n->ip);
+      c->offset = n->offset;
+      c->sz = c->sz;
+    } 
+    if (n->page[0]) {   // If the first page is present, all of them are present
+      if (vmn_doallocpg(c) < 0) {
+	cprintf("vmn_copy: out of memory\n");
+	vmn_free(c);
+	return 0;
+      }
+      for(u64 i = 0; i < n->npages; i++) {
+	memmove(c->page[i], n->page[i], PGSIZE);
+      }
+    }
+  }
+  return c;
+}
+
+static int
+vmn_doload(struct vmnode *vmn, struct inode *ip, u64 offset, u64 sz)
+{
+  for(u64 i = 0; i < sz; i += PGSIZE){
+    char *p = vmn->page[i / PGSIZE];
+    u64 n;
+    if(sz - i < PGSIZE)
+      n = sz - i;
+    else
+      n = PGSIZE;
+    if(readi(ip, p, offset+i, n) != n)
+      return -1;
+  }
+  return 0;
+}
+
+static struct vma *
+pagefault_ondemand(struct vmap *vmap, uptr va, u32 err, struct vma *m)
+{
+  if (vmn_doallocpg(m->n) < 0) {
+    panic("pagefault: couldn't allocate pages");
+  }
+  release(&m->lock);
+  if (vmn_doload(m->n, m->n->ip, m->n->offset, m->n->sz) < 0) {
+    panic("pagefault: couldn't load");
+  }
+  m = vmap_lookup(vmap, va, 1);
+  if (!m)
+    panic("pagefault_ondemand");
+  acquire(&m->lock); // re-acquire lock on m
+  return m;
+}
+
+static int
+pagefault_wcow(struct vmap *vmap, uptr va, pme_t *pte, struct vma *m, u64 npg)
+{
+  // Always make a copy of n, even if this process has the only ref, 
+  // because other processes may change ref count while this process 
+  // is handling wcow.
+  struct vmnode *n = m->n;
+  struct vmnode *c = vmn_copy(m->n);
+  if (c == 0) {
+    cprintf("pagefault_wcow: out of mem\n");
+    return -1;
+  }
+  c->ref = 1;
+  m->va_type = PRIVATE;
+  m->n = c;
+  // Update the hardware page tables to reflect the change to the vma
+  updatepages(vmap->pml4, (void *) m->va_start, (void *) m->va_end, 0);
+  pte = walkpgdir(vmap->pml4, (const void *)va, 0);
+  *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+  // drop my ref to vmnode
+  vmn_decref(n);
+  return 0;
+}
+
 int
 pagefault(struct vmap *vmap, u64 va, u32 err)
 {
-  cprintf("va %lx\n", va);
-  panic("pagefault");
-  return 0;
-#if 0
-  pte_t *pte = walkpgdir(vmap->pgdir, (const void *)va, 1);
+  pme_t *pte = walkpgdir(vmap->pml4, (const void *)va, 1);
 
-  if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W)) {   // optimize checks of args to syscals
+  // optimize checks of args to syscals
+  if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
     return 0;
-  }
-
-  // cprintf("%d: pagefault 0x%x err 0x%x pte 0x%x\n", proc->pid, va, err, *pte);
 
   rcu_begin_read();
   struct vma *m = vmap_lookup(vmap, va, 1);
-  if(m == 0) {
-    // cprintf("pagefault: no vma\n");
+  if (m == 0) {
     rcu_end_read();
     return -1;
   }
 
   acquire(&m->lock);
-  uint npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
+  u64 npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
 
-  // cprintf("%d: pagefault: valid vma 0x%x 0x%x %d (cow=%d)\n", proc->pid, m->va_start, 
-  // m->va_type, COW);
-  // if (m->n) 
-  // cprintf("page %d 0x%x %d %d\n", npg, m->n->page[npg], m->n->type, ONDEMAND);
-
-  if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0) {
+  if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0)
     m = pagefault_ondemand(vmap, va, err, m);
-  }
+
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(vmap, va, pte, m, npg) < 0) {
       release(&m->lock);
@@ -381,16 +500,17 @@ pagefault(struct vmap *vmap, u64 va, u32 err)
   } else if (m->va_type == COW) {
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
-    if (m->n->ref != 1) {
+    if (m->n->ref != 1)
       panic("pagefault");
-    }
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
-  lcr3(v2p(vmap->pgdir));  // Reload hardware page tables
+
+  // XXX(sbw) Why reload hardware page tables?
+  lcr3(v2p(vmap->pml4));  // Reload hardware page tables
   release(&m->lock);
   rcu_end_read();
+
   return 1;
-#endif
 }
 
 #if 0
