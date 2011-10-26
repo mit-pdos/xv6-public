@@ -120,7 +120,7 @@ start32:
 
         movl $PADDR(start64), %edi
 	# Enter 64-bit mode.
-	ljmp $KCSEG, $PADDR(trap64)  // code64 segment selector
+	ljmp $KCSEG, $PADDR(tramp64)  // code64 segment selector
 
 .code64
 start64:
@@ -148,7 +148,7 @@ apstart:
 apstart32:
         call init32e
         movl $PADDR(apstart64), %edi
-	ljmp $KCSEG, $PADDR(trap64)  // code64 segment selector
+	ljmp $KCSEG, $PADDR(tramp64)  // code64 segment selector
 
 .code64       
 apstart64:
@@ -161,9 +161,9 @@ apstart64:
 1:      jmp 1b
         
 .code64
-trap64:
-	# The linker thinks we are running at trap64, but we're actually
-	# running at PADDR(trap64), so use an explicit calculation to
+tramp64:
+	# The linker thinks we are running at tramp64, but we're actually
+	# running at PADDR(tramp64), so use an explicit calculation to
 	# load and jump to the correct address.  %rdi should hold the
         # physical address of the jmp target.
 	addq $KBASE, %rdi
