@@ -515,13 +515,9 @@ readi(struct inode *ip, char *dst, u32 off, u32 n)
   struct buf *bp;
 
   if(ip->type == T_DEV){
-    // XXX(sbw)
-    panic("readi T_DEV");
-#if 0
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
     return devsw[ip->major].read(ip, dst, n);
-#endif
   }
 
   if(off > ip->size || off + n < off)
@@ -547,13 +543,9 @@ writei(struct inode *ip, char *src, u32 off, u32 n)
   struct buf *bp;
 
   if(ip->type == T_DEV){
-    // XXX(sbw)
-    panic("writei T_DEV");
-#if 0
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
     return devsw[ip->major].write(ip, src, n);
-#endif
   }
 
   if(off > ip->size || off + n < off)

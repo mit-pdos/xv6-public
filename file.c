@@ -7,7 +7,7 @@
 #include "file.h"
 #include "stat.h"
 
-struct devsw __attribute__ ((aligned (CACHELINE))) devsw[NDEV];
+struct devsw __mpalign__ devsw[NDEV];
 
 // Allocate a file structure.
 struct file*

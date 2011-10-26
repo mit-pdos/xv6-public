@@ -7,9 +7,14 @@
 #include "cpu.h"
 #include "kernel.h"
 #include "spinlock.h"
+#include "fs.h"
+#include "condvar.h"
+#include "file.h"
 #include "x86.h"
 
 #include <stdarg.h>
+
+#define BACKSPACE 0x100
 
 static struct {
   struct spinlock lock;
@@ -42,12 +47,30 @@ printint(void (*putch) (void*, char), void *putarg,
     putch(putarg, buf[i]);
 }
 
+static void
+consputc(int c)
+{
+  // XXX(sbw)
+#if 0
+  if(panicked){
+    cli();
+    for(;;)
+      ;
+  }
+#endif
+
+  if(c == BACKSPACE){
+    uartputc('\b'); uartputc(' '); uartputc('\b');
+  } else
+    uartputc(c);
+  cgaputc(c);
+}
+
 // Print to the console.
 static void
 writecons(void *arg, char c)
 {
-  uartputc(c);
-  cgaputc(c);
+  consputc(c);
 }
 
 // Only understands %d, %u, %x, %s, %lx.
@@ -189,10 +212,34 @@ panic(const char *s)
     ;
 }
 
+static int
+consolewrite(struct inode *ip, char *buf, int n)
+{
+  int i;
+
+  iunlock(ip);
+  acquire(&cons.lock);
+  for(i = 0; i < n; i++)
+    consputc(buf[i] & 0xff);
+  release(&cons.lock);
+  ilock(ip, 1);
+
+  return n;
+}
+
+static int
+consoleread(struct inode *ip, char *dst, int n)
+{
+  panic("consoleread");
+}
+
 void
 initconsole(void)
 {
   initlock(&cons.lock, "console");
+  devsw[CONSOLE].write = consolewrite;
+  devsw[CONSOLE].read = consoleread;
+
   // XXX(sbw) enable once we setup %gs
   cons.locking = 0;
 }
