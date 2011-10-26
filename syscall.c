@@ -1,15 +1,16 @@
 #include "types.h"
-#include "defs.h"
 #include "param.h"
 #include "memlayout.h"
 #include "mmu.h"
+#include "kernel.h"
 #include "spinlock.h"
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
 #include "x86.h"
 #include "syscall.h"
-#include "xv6-kmtrace.h"
+#include "xv6-mtrace.h"
+#include "cpu.h"
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
@@ -19,13 +20,13 @@
 
 // Fetch the int at addr from process p.
 int
-fetchint(uint addr, int *ip)
+fetchint64(uptr addr, u64 *ip)
 {
-  if(pagefault(proc->vmap, addr, 0) < 0)
+  if(pagefault(myproc()->vmap, addr, 0) < 0)
     return -1;
-  if(pagefault(proc->vmap, addr+3, 0) < 0)
+  if(pagefault(myproc()->vmap, addr+sizeof(*ip)-1, 0) < 0)
     return -1;
-  *ip = *(int*)(addr);
+  *ip = *(u64*)(addr);
   return 0;
 }
 
@@ -33,12 +34,12 @@ fetchint(uint addr, int *ip)
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
 int
-fetchstr(uint addr, char **pp)
+fetchstr(uptr addr, char **pp)
 {
   char *s = (char *) addr;
 
   while(1){
-    if(pagefault(proc->vmap, (uint) s, 0) < 0)
+    if(pagefault(myproc()->vmap, (uptr) s, 0) < 0)
       return -1;
     if(*s == 0){
       *pp = (char*)addr;
@@ -49,11 +50,23 @@ fetchstr(uint addr, char **pp)
   return -1;
 }
 
-// Fetch the nth 32-bit system call argument.
+// Fetch the nth 64-bit system call argument.
 int
-argint(int n, int *ip)
+argint64(int n, u64 *ip)
 {
-  return fetchint(proc->tf->esp + 4 + 4*n, ip);
+  return fetchint64(myproc()->tf->rsp + 8 + 8*n, ip);
+}
+
+int
+argint32(int n, int *ip)
+{
+  int r;
+  u64 i;
+
+  r = fetchint64(myproc()->tf->rsp + 8 + 8*n, &i);
+  if (r > 0)
+    *ip = i;
+  return r;
 }
 
 // Fetch the nth word-sized system call argument as a pointer
@@ -62,12 +75,12 @@ argint(int n, int *ip)
 int
 argptr(int n, char **pp, int size)
 {
-  int i;
+  u64 i;
   
-  if(argint(n, &i) < 0)
+  if(argint64(n, &i) < 0)
     return -1;
-  for(uint va = PGROUNDDOWN(i); va < i+size; va = va + PGSIZE)
-    if(pagefault(proc->vmap, va, 0) < 0)
+  for(uptr va = PGROUNDDOWN(i); va < i+size; va = va + PGSIZE)
+    if(pagefault(myproc()->vmap, va, 0) < 0)
       return -1;
   *pp = (char*)i;
   return 0;
@@ -80,8 +93,8 @@ argptr(int n, char **pp, int size)
 int
 argstr(int n, char **pp)
 {
-  int addr;
-  if(argint(n, &addr) < 0)
+  uptr addr;
+  if(argint64(n, &addr) < 0)
     return -1;
   return fetchstr(addr, pp);
 }
@@ -112,10 +125,13 @@ extern int sys_unmap(void);
 extern int sys_halt(void);
 
 static int (*syscalls[])(void) = {
-[SYS_chdir]   sys_chdir,
-[SYS_close]   sys_close,
-[SYS_dup]     sys_dup,
-[SYS_exec]    sys_exec,
+#if 0
+  [SYS_chdir] =  sys_chdir,
+  [SYS_close] =  sys_close,
+  [SYS_dup]   =  sys_dup,
+#endif
+  [SYS_exec]  =  sys_exec,
+#if 0
 [SYS_exit]    sys_exit,
 [SYS_fork]    sys_fork,
 [SYS_fstat]   sys_fstat,
@@ -136,6 +152,7 @@ static int (*syscalls[])(void) = {
 [SYS_map]     sys_map,
 [SYS_unmap]   sys_unmap,
 [SYS_halt]    sys_halt,
+#endif
 };
 
 void
@@ -143,16 +160,16 @@ syscall(void)
 {
   int num;
 
-  num = proc->tf->eax;
+  num = myproc()->tf->rax;
   if(num >= 0 && num < NELEM(syscalls) && syscalls[num]) {
     mtrace_kstack_start(syscalls[num], proc);
     mtrace_call_set(1, cpunum());
-    proc->tf->eax = syscalls[num]();
-    mtrace_kstack_stop(proc);
+    myproc()->tf->rax = syscalls[num]();
+    mtrace_kstack_stop(myproc());
     mtrace_call_set(0, cpunum());
   } else {
     cprintf("%d %s: unknown sys call %d\n",
-            proc->pid, proc->name, num);
-    proc->tf->eax = -1;
+            myproc()->pid, myproc()->name, num);
+    myproc()->tf->rax = -1;
   }
 }

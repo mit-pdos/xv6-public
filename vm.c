@@ -470,7 +470,7 @@ pagefault_wcow(struct vmap *vmap, uptr va, pme_t *pte, struct vma *m, u64 npg)
 }
 
 int
-pagefault(struct vmap *vmap, u64 va, u32 err)
+pagefault(struct vmap *vmap, uptr va, u32 err)
 {
   pme_t *pte = walkpgdir(vmap->pml4, (const void *)va, 1);
 

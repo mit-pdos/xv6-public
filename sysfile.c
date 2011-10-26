@@ -1,8 +1,8 @@
 #include "types.h"
-#include "defs.h"
 #include "param.h"
 #include "stat.h"
 #include "mmu.h"
+#include "kernel.h"
 #include "spinlock.h"
 #include "condvar.h"
 #include "queue.h"
@@ -10,6 +10,7 @@
 #include "fs.h"
 #include "file.h"
 #include "fcntl.h"
+#include "cpu.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -19,9 +20,9 @@ argfd(int n, int *pfd, struct file **pf)
   int fd;
   struct file *f;
 
-  if(argint(n, &fd) < 0)
+  if(argint32(n, &fd) < 0)
     return -1;
-  if(fd < 0 || fd >= NOFILE || (f=proc->ofile[fd]) == 0)
+  if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
     return -1;
   if(pfd)
     *pfd = fd;
@@ -38,8 +39,8 @@ fdalloc(struct file *f)
   int fd;
 
   for(fd = 0; fd < NOFILE; fd++){
-    if(proc->ofile[fd] == 0){
-      proc->ofile[fd] = f;
+    if(myproc()->ofile[fd] == 0){
+      myproc()->ofile[fd] = f;
       return fd;
     }
   }
@@ -67,7 +68,7 @@ sys_read(void)
   int n;
   char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
+  if(argfd(0, 0, &f) < 0 || argint32(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
   return fileread(f, p, n);
 }
@@ -79,7 +80,7 @@ sys_write(void)
   int n;
   char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
+  if(argfd(0, 0, &f) < 0 || argint32(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
   return filewrite(f, p, n);
 }
@@ -92,7 +93,7 @@ sys_close(void)
   
   if(argfd(0, &fd, &f) < 0)
     return -1;
-  proc->ofile[fd] = 0;
+  myproc()->ofile[fd] = 0;
   fileclose(f);
   return 0;
 }
@@ -200,7 +201,7 @@ sys_unlink(void)
   }
 
   dir_init(dp);
-  if (ns_remove(dp->dir, KD(name), (void*)ip->inum) == 0) {
+  if (ns_remove(dp->dir, KD(name), (void*)(u64)ip->inum) == 0) {
     iunlockput(ip);
     goto retry;
   }
@@ -279,7 +280,7 @@ sys_open(void)
   struct file *f;
   struct inode *ip;
 
-  if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
+  if(argstr(0, &path) < 0 || argint32(1, &omode) < 0)
     return -1;
   if(omode & O_CREATE){
     if((ip = create(path, T_FILE, 0, 0)) == 0)
@@ -340,8 +341,8 @@ sys_mknod(void)
   int major, minor;
   
   if((len=argstr(0, &path)) < 0 ||
-     argint(1, &major) < 0 ||
-     argint(2, &minor) < 0 ||
+     argint32(1, &major) < 0 ||
+     argint32(2, &minor) < 0 ||
      (ip = create(path, T_DEV, major, minor)) == 0)
     return -1;
   iunlockput(ip);
@@ -362,8 +363,8 @@ sys_chdir(void)
     return -1;
   }
   iunlock(ip);
-  iput(proc->cwd);
-  proc->cwd = ip;
+  iput(myproc()->cwd);
+  myproc()->cwd = ip;
   return 0;
 }
 
@@ -372,16 +373,17 @@ sys_exec(void)
 {
   char *path, *argv[MAXARG];
   int i;
-  uint uargv, uarg;
+  uptr uargv;
+  u64 uarg;
 
-  if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0){
+  if(argstr(0, &path) < 0 || argint64(1, &uargv) < 0){
     return -1;
   }
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv))
       return -1;
-    if(fetchint(uargv+4*i, (int*)&uarg) < 0)
+    if(fetchint64(uargv+8*i, &uarg) < 0)
       return -1;
     if(uarg == 0){
       argv[i] = 0;
@@ -407,7 +409,7 @@ sys_pipe(void)
   fd0 = -1;
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
     if(fd0 >= 0)
-      proc->ofile[fd0] = 0;
+      myproc()->ofile[fd0] = 0;
     fileclose(rf);
     fileclose(wf);
     return -1;

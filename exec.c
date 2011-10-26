@@ -6,16 +6,22 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
-#include "defs.h"
+#include "kernel.h"
 #include "x86.h"
-#include "elf.h"
 #include "stat.h"
 #include "fs.h"
 #include "file.h"
 
+#if 0
+#include "elf.h"
+#endif
+
 int
 exec(char *path, char **argv)
 {
+  panic("exec");
+  return 0;
+#if 0
   char *s, *last;
   int i, off, brk = 0;
   uint argc, sp, ustack[3+MAXARG+1];
@@ -149,4 +155,5 @@ exec(char *path, char **argv)
     vmn_free(vmn);
   rcu_end_read();
   return -1;
+#endif
 }

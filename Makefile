@@ -4,6 +4,7 @@ OBJS = \
 	cga.o \
 	condvar.o \
 	console.o \
+	exec.o \
 	file.o \
 	fs.o \
 	lapic.o \
@@ -18,6 +19,8 @@ OBJS = \
 	spinlock.o \
 	swtch.o \
 	string.o \
+	syscall.o \
+	sysfile.o \
 	uart.o \
 	vm.o \
 	trap.o \

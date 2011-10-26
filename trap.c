@@ -50,19 +50,16 @@ trap(struct trapframe *tf)
 
   // XXX(sbw) sysenter/sysexit
   if(tf->trapno == T_SYSCALL){
-    panic("syscall..");
-#if 0
-    if(proc->killed) {
+    if(myproc()->killed) {
       mtrace_kstack_start(trap, proc);
       exit();
     }
-    proc->tf = tf;
+    myproc()->tf = tf;
     syscall();
-    if(proc->killed) {
-      mtrace_kstack_start(trap, proc);
+    if(myproc()->killed) {
+      mtrace_kstack_start(trap, myproc());
       exit();
     }
-#endif
     return;
   }
 

@@ -46,6 +46,9 @@ void            cprintf(const char*, ...);
 void            panic(const char*) __attribute__((noreturn));
 void            snprintf(char *buf, u32 n, char *fmt, ...);
 
+// exec.c
+int             exec(char*, char**);
+
 // file.c
 struct file*    filealloc(void);
 void            fileclose(struct file*);
@@ -57,6 +60,8 @@ int             filewrite(struct file*, char*, int n);
 
 // fs.c
 int             namecmp(const char*, const char*);
+struct inode*   dirlookup(struct inode*, char*);
+struct inode*   ialloc(u32, short);
 struct inode*   namei(char*);
 void            iput(struct inode*);
 struct inode*   iget(u32 dev, u32 inum);
@@ -68,6 +73,10 @@ int             readi(struct inode*, char*, u32, u32);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, u32, u32);
 struct inode*   idup(struct inode*);
+struct inode*   nameiparent(char*, char*);
+int             dirlink(struct inode*, char*, u32);
+void            dir_init(struct inode *dp);
+void	        dir_flush(struct inode *dp);
 
 // ide.c
 void            ideinit(void);
@@ -175,6 +184,15 @@ void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
 void            pushcli(void);
 void            popcli(void);
+
+// syscall.c
+int             argint64(int, u64*);
+int             argint32(int n, int *ip);
+int             argptr(int, char**, int);
+int             argstr(int, char**);
+int             fetchint64(uptr, u64*);
+int             fetchstr(uptr, char**);
+void            syscall(void);
 
 // string.c
 int             memcmp(const void*, const void*, u32);
