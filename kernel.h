@@ -14,6 +14,7 @@ static inline void *p2v(uptr a) { return (void *) a + KBASE; }
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
 
 #define cmpswap(ptr, old, new) __sync_bool_compare_and_swap(ptr, old, new)
+#define subfetch(ptr, val)     __sync_sub_and_fetch(ptr, val)
 
 struct spinlock;
 struct condvar;
@@ -66,6 +67,7 @@ void            iunlock(struct inode*);
 int             readi(struct inode*, char*, u32, u32);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, u32, u32);
+struct inode*   idup(struct inode*);
 
 // ide.c
 void            ideinit(void);
