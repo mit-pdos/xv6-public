@@ -11,30 +11,29 @@
 #include "stat.h"
 #include "fs.h"
 #include "file.h"
-
-#if 0
 #include "elf.h"
-#endif
+#include "cpu.h"
 
 int
 exec(char *path, char **argv)
 {
-  panic("exec");
-  return 0;
-#if 0
-  char *s, *last;
-  int i, off, brk = 0;
-  uint argc, sp, ustack[3+MAXARG+1];
+  struct inode *ip = NULL;
+  struct vmap *vmap = NULL;
+  struct vmnode *vmn = NULL;
   struct elfhdr elf;
-  struct inode *ip = 0;
   struct proghdr ph;
-  struct vmap *vmap = 0, *oldvmap;
-  struct vmnode *vmn = 0;
+  uptr brk = 0;
   int odp = 1;
+  u64 off;
+  int i;
+  uptr sp;
+  int argc;
+  uptr ustack[3+MAXARG+1];
+  char *s, *last;
+  struct vmap *oldvmap;
 
   if((ip = namei(path)) == 0)
     return -1;
-  // ilock(ip, 0);
 
   rcu_begin_read();
 
@@ -57,13 +56,13 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
-    if(ph.va % PGSIZE) {
+    if(ph.vaddr % PGSIZE) {
       cprintf("unaligned ph.va\n");
       goto bad;
     }
 
-    uint va_start = PGROUNDDOWN(ph.va);
-    uint va_end = PGROUNDUP(ph.va + ph.memsz);
+    uptr va_start = PGROUNDDOWN(ph.vaddr);
+    uptr va_end = PGROUNDUP(ph.vaddr + ph.memsz);
     if(va_end > brk)
       brk = va_end;
 
@@ -75,9 +74,10 @@ exec(char *path, char **argv)
       if ((vmn = vmn_allocpg(npg)) == 0)
 	goto bad;
     }
+
     if(vmn_load(vmn, ip, ph.offset, ph.filesz) < 0)
       goto bad;
-    if(vmap_insert(vmap, vmn, ph.va) < 0)
+    if(vmap_insert(vmap, vmn, ph.vaddr) < 0)
       goto bad;
     vmn = 0;
   }
@@ -110,7 +110,7 @@ exec(char *path, char **argv)
     if(argc >= MAXARG)
       goto bad;
     sp -= strlen(argv[argc]) + 1;
-    sp &= ~3;
+    sp &= ~7;
     if(copyout(vmap, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
     ustack[3+argc] = sp;
@@ -119,41 +119,39 @@ exec(char *path, char **argv)
 
   ustack[0] = 0xffffffff;  // fake return PC
   ustack[1] = argc;
-  ustack[2] = sp - (argc+1)*4;  // argv pointer
+  ustack[2] = sp - (argc+1)*8;  // argv pointer
 
-  sp -= (3+argc+1) * 4;
-  if(copyout(vmap, sp, ustack, (3+argc+1)*4) < 0)
+  sp -= (3+argc+1) * 8;
+  if(copyout(vmap, sp, ustack, (3+argc+1)*8) < 0)
     goto bad;
 
   // Save program name for debugging.
   for(last=s=path; *s; s++)
     if(*s == '/')
       last = s+1;
-  safestrcpy(proc->name, last, sizeof(proc->name));
+  safestrcpy(myproc()->name, last, sizeof(myproc()->name));
 
   // Commit to the user image.
-  oldvmap = proc->vmap;
-  proc->vmap = vmap;
-  proc->brk = brk + 4;  // XXX so that brk-1 points within heap vma..
-  proc->tf->eip = elf.entry;  // main
-  proc->tf->esp = sp;
-  switchuvm(proc);
+  oldvmap = myproc()->vmap;
+  myproc()->vmap = vmap;
+  myproc()->brk = brk + 8;  // XXX so that brk-1 points within heap vma..
+  myproc()->tf->rip = elf.entry;  // main
+  myproc()->tf->rsp = sp;
+  switchuvm(myproc());
   vmap_decref(oldvmap);
 
-  migrate(proc);
+  migrate(myproc());
 
   rcu_end_read();
   return 0;
 
  bad:
   cprintf("exec failed\n");
-  // if(ip)
-  //   iunlockput(ip);
   if(vmap)
     vmap_decref(vmap);
   if(vmn)
     vmn_free(vmn);
   rcu_end_read();
-  return -1;
-#endif
+
+  return 0;
 }

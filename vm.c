@@ -145,6 +145,90 @@ vma_alloc(void)
   return e;
 }
 
+static void
+vmn_decref(struct vmnode *n)
+{
+  if(subfetch(&n->ref, 1) == 0)
+    vmn_free(n);
+}
+
+static void
+vma_free(void *p)
+{
+  struct vma *e = (struct vma *) p;
+  if(e->n)
+    vmn_decref(e->n);
+  kmfree(e);
+}
+
+// Free a page table and all the physical memory pages
+// in the user part.
+static void
+freevm(pml4e_t *pml4)
+{
+  if(pml4 == 0)
+    panic("freevm: no pgdir");
+  cprintf("freevm: XXX leaking..\n");
+#if 0
+  for(i = 0; i < 1024; i++){
+    if(pgdir[i] & PTE_P)
+      kfree(p2v(PTE_ADDR(pgdir[i])));
+  }
+#endif
+  kfree(pml4);
+}
+
+#ifdef TREE
+struct state {
+  int share;
+  void *pgdir;
+  struct node *root;
+};
+
+static int
+vmap_free_vma(struct kv *kv, void *p)
+{  
+  struct state *st = (struct state *) p;
+  vma_free(kv->val);
+  st->root = tree_remove(st->root, kv->key);
+  return 1;
+}
+
+static void
+vmap_free(void *p)
+{
+  struct vmap *m = (struct vmap *) p;
+  struct state *st = kmalloc(sizeof(struct state));
+  st->root = m->root;
+  tree_foreach(m->root, vmap_free_vma, st);
+  m->root = st->root;
+  freevm(m->pgdir);
+  kmfree(st);
+  m->pgdir = 0;
+  m->alloc = 0;
+}
+#else
+static void
+vmap_free(void *p)
+{
+  struct vmap *m = (struct vmap *) p;
+  for(u64 i = 0; i < NELEM(m->e); i++) {
+    if (m->e[i])
+      vma_free(m->e[i]);
+  }
+  freevm(m->pml4);
+  m->pml4 = 0;
+  m->alloc = 0;
+}
+#endif
+
+void
+vmap_decref(struct vmap *m)
+{
+  if(subfetch(&m->ref, 1) == 0)
+    vmap_free(m);
+}
+
 // Does any vma overlap start..start+len?
 // If yes, return the vma pointer.
 // If no, return 0.
@@ -380,13 +464,6 @@ updatepages(pme_t *pml4, void *begin, void *end, int perm)
   }
 }
 
-static void
-vmn_decref(struct vmnode *n)
-{
-  if(subfetch(&n->ref, 1) == 0)
-    vmn_free(n);
-}
-
 struct vmnode *
 vmn_copy(struct vmnode *n)
 {
@@ -512,6 +589,33 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
 
   return 1;
 }
+
+// Load a program segment into a vmnode.
+int
+vmn_load(struct vmnode *vmn, struct inode *ip, u64 offset, u64 sz)
+{
+  if (vmn->type == ONDEMAND) {
+    vmn->ip = ip;
+    vmn->offset = offset;
+    vmn->sz = sz;
+    return 0;
+  } else {
+    return vmn_doload(vmn, ip, offset, sz);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #if 0
 void

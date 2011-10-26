@@ -94,6 +94,41 @@ delrun(struct proc *p)
   p->on_runq = -1;
 }
 
+void
+migrate(struct proc *p)
+{
+  int c;
+
+  for (c = 0; c < NCPU; c++) {
+    if (c == mycpu()->id)
+      continue;
+    if (idle[c]) {    // OK if there is a race
+      acquire(&p->lock);
+      if (p->state != RUNNABLE || p->cpu_pin) {
+	release(&p->lock);
+	continue;
+      }
+
+      if (sched_debug)
+	cprintf("cpu%d: migrate %d to %d\n", mycpu()->id, p->pid, c);
+
+      delrun(p);
+      p->curcycles = 0;
+      p->cpuid = c;
+      addrun(p);
+      idle[c] = 0;
+
+      if (p == myproc()) {
+        myproc()->state = RUNNABLE;
+	sched();
+      }
+
+      release(&p->lock);
+      return;
+    }
+  }
+}
+
 // A fork child's very first scheduling by scheduler()
 // will swtch here.  "Return" to user space.
 static void

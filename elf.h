@@ -1,36 +1,43 @@
 // Format of an ELF executable file
+// From linux/include/linux/elf.h
 
 #define ELF_MAGIC 0x464C457FU  // "\x7FELF" in little endian
 
-// File header
+typedef u64 Elf64_Addr;
+typedef u64 Elf64_Off;
+typedef u16 Elf64_Half;
+typedef u32 Elf64_Word;
+typedef s32 Elf64_Sword;
+typedef u64 Elf64_Xword;
+typedef s64 Elf64_Sxword;
+typedef s16 Elf64_Section;
+
 struct elfhdr {
-  uint magic;  // must equal ELF_MAGIC
-  uchar elf[12];
-  ushort type;
-  ushort machine;
-  uint version;
-  uint entry;
-  uint phoff;
-  uint shoff;
-  uint flags;
-  ushort ehsize;
-  ushort phentsize;
-  ushort phnum;
-  ushort shentsize;
-  ushort shnum;
-  ushort shstrndx;
+  Elf64_Word magic;             // Must equal ELF_MAGIC
+  u8 ident[12];
+  Elf64_Half machine;
+  Elf64_Word version;
+  Elf64_Addr entry;             // Entry point virtual address
+  Elf64_Off phoff;              // Program header table file offset
+  Elf64_Off shoff;              // Section header table file offset
+  Elf64_Word flags;
+  Elf64_Half ehsize;
+  Elf64_Half phentsize;
+  Elf64_Half phnum;
+  Elf64_Half shentsize;
+  Elf64_Half shnum;
+  Elf64_Half shstrndx;
 };
 
-// Program section header
 struct proghdr {
-  uint type;
-  uint offset;
-  uint va;
-  uint pa;
-  uint filesz;
-  uint memsz;
-  uint flags;
-  uint align;
+  Elf64_Word type;
+  Elf64_Word flags;
+  Elf64_Off offset;             // Segment file offset
+  Elf64_Addr vaddr;             // Segment virtual address
+  Elf64_Addr paddr;             // Segment physical address
+  Elf64_Xword filesz;           // Segment size in file
+  Elf64_Xword memsz;            // Segment size in memory
+  Elf64_Xword align;            // Segment alignment, file & memory
 };
 
 // Values for Proghdr type

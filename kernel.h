@@ -2,6 +2,8 @@
 
 #define KBASE 0xFFFFFFFF80000000ull
 #define PBASE 0xFFFFFF0000000000ull
+// XXX(sbw) arbitrary for right now..
+#define USERTOP 0x0000000040000000ull
 
 #define KCSEG (2<<3)  /* kernel code segment */
 #define KDSEG (3<<3)  /* kernel data segment */
@@ -225,3 +227,5 @@ void            vmn_free(struct vmnode *);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             pagefault(struct vmap *, uptr, u32);
+void            vmap_decref(struct vmap *);
+int             vmn_load(struct vmnode *, struct inode*, u64, u64);

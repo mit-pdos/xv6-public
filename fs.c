@@ -720,6 +720,8 @@ namex(char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
 
+  //cprintf("namex %s\n", path);
+
   rcu_begin_read();
   if(*path == '/') 
     ip = iget(ROOTDEV, ROOTINO);
