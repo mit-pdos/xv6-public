@@ -7,7 +7,7 @@
 
 TOOLPREFIX ?= x86_64-jos-elf-
 QEMU ?= qemu-system-x86_64
-CPUS ?= 2
+CPUS ?= 4
 
 NM = $(TOOLPREFIX)nm
 CC = $(TOOLPREFIX)gcc
