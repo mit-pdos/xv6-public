@@ -4,15 +4,15 @@
 #define EC
 
 #define _TRAP(x, code) \
-	.globl trap ## x; \
-	.align 8; \
-	trap ## x: \
+        .globl trap ## x; \
+        .align 8; \
+        trap ## x: \
                 code; \
-	        pushq $x; \
-		jmp trapcommon; \
-	.data; \
-	.quad trap ## x; \
-	.previous
+                pushq $x; \
+                jmp trapcommon; \
+        .data; \
+        .quad trap ## x; \
+        .previous
         
 #define TRAP(x) _TRAP(x, NOEC)
 #define TRAPCODE(x) _TRAP(x, EC)
@@ -23,10 +23,6 @@
 sysentry:
         jmp sysentry
 
-.globl trappush
-.align 8
-trappush:
-	pushq $0  // error code
 trapcommon:
         pushq   %rdi
         pushq   %rsi
