@@ -1,17 +1,17 @@
 #include "types.h"
 #include "x86.h"
-#include "defs.h"
+#include "kernel.h"
 #include "kbd.h"
 #include "param.h"
 
 int
 kbdgetc(void)
 {
-  static uint shift __attribute__ ((aligned (CACHELINE)));
-  static uchar *charcode[4] = {
+  static int shift __mpalign__;
+  static u8 *charcode[4] = {
     normalmap, shiftmap, ctlmap, ctlmap
   };
-  uint st, data, c;
+  u32 st, data, c;
 
   st = inb(KBSTATP);
   if((st & KBS_DIB) == 0)
