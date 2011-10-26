@@ -47,6 +47,7 @@ void            cv_wakeup(struct condvar *cv);
 void            cprintf(const char*, ...);
 void            panic(const char*) __attribute__((noreturn));
 void            snprintf(char *buf, u32 n, char *fmt, ...);
+void            consoleintr(int(*)(void));
 
 // exec.c
 int             exec(char*, char**);
@@ -85,12 +86,18 @@ void            ideinit(void);
 void            ideintr(void);
 void            iderw(struct buf*);
 
+// ioapic.c
+void            ioapicenable(int irq, int cpu);
+
 // kalloc.c
 char*           kalloc(void);
 char*           ksalloc(void);
 void            kfree(void *);
 void*           kmalloc(u64);
 void            kmfree(void*);
+
+// kbd.c
+void            kbdintr(void);
 
 // lapic.c
 int             cpunum(void);
@@ -145,6 +152,9 @@ void*           ns_lookup(struct ns*, struct nskey key);
 void*           ns_remove(struct ns *ns, struct nskey key, void *val); // removed val
 void*           ns_enumerate(struct ns *ns, void *(*f)(void *, void *, void *), void *arg);
 void*           ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *, void *), void *arg);
+
+// picirq.c
+void            picenable(int);
 
 // pipe.c
 int             pipealloc(struct file**, struct file**);
@@ -216,9 +226,9 @@ extern u64     ticks;
 extern struct spinlock tickslock;
 extern struct condvar cv_ticks;
 
-
 // uart.c
 void            uartputc(char c);
+void            uartintr(void);
 
 // vm.c
 struct vmap *   vmap_alloc(void);
