@@ -18,6 +18,8 @@
 
 #define BACKSPACE 0x100
 
+static int panicked = 0;
+
 static struct {
   struct spinlock lock;
   int locking;
@@ -52,14 +54,11 @@ printint(void (*putch) (void*, char), void *putarg,
 static void
 consputc(int c)
 {
-  // XXX(sbw)
-#if 0
   if(panicked){
     cli();
     for(;;)
       ;
   }
-#endif
 
   if(c == BACKSPACE){
     uartputc('\b'); uartputc(' '); uartputc('\b');
@@ -201,15 +200,20 @@ puts(const char *s)
 void __attribute__((noreturn))
 panic(const char *s)
 {
+  extern void sys_halt();
+
   cli();
+  
+  if (cons.locking)
+    acquire(&cons.lock);
   cons.locking = 0;
+
   cprintf("cpu%d: panic: ", mycpu()->id);
   cprintf(s);
   cprintf("\n");
-
-  extern void sys_halt();
+  panicked = 1;
+  // Never release cons.lock
   sys_halt();
-
   for(;;)
     ;
 }
@@ -323,11 +327,11 @@ void
 initconsole(void)
 {
   initlock(&cons.lock, "console");
+  cons.locking = 1;
+
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;
 
   picenable(IRQ_KBD);
   ioapicenable(IRQ_KBD, 0);
-  // XXX(sbw) enable once we setup %gs
-  cons.locking = 0;
 }
