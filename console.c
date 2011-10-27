@@ -74,7 +74,7 @@ writecons(void *arg, char c)
   consputc(c);
 }
 
-// Only understands %d, %u, %x, %s, %lx.
+// Only understands %d, %u, %x, %s, %lx, %lu.
 void
 vprintfmt(void (*putch) (void*, char), void *putarg,
           const char *fmt, va_list ap)
@@ -122,6 +122,9 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
     } else if(state == 'l') {
       if(c == 'x') {
         printint(putch, putarg, va_arg(ap, u64), 16, 0);
+      }
+      else if(c == 'u') {
+        printint(putch, putarg, va_arg(ap, u64), 10, 0);
       }
       else {
         // Unknown % sequence.  Print it to draw attention.
