@@ -63,9 +63,11 @@ trap(struct trapframe *tf)
     return;
   }
 
+#if MTRACE
   if (myproc()->mtrace_stacks.curr >= 0)
     mtrace_kstack_pause(myproc());
   mtrace_kstack_start(trap, myproc());
+#endif
 
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
@@ -113,9 +115,11 @@ trap(struct trapframe *tf)
 
     if(tf->trapno == T_PGFLT){
       if(pagefault(myproc()->vmap, rcr2(), tf->err) >= 0){
+#if MTRACE
         mtrace_kstack_stop(myproc());
         if (myproc()->mtrace_stacks.curr >= 0)
           mtrace_kstack_resume(myproc());
+#endif
         return;
       }
     }
@@ -143,9 +147,11 @@ trap(struct trapframe *tf)
   if(myproc() && myproc()->killed && (tf->cs&3) == 0x3)
     exit();
 
+#if MTRACE
   mtrace_kstack_stop(myproc());
   if (myproc()->mtrace_stacks.curr >= 0)
     mtrace_kstack_resume(myproc());
+#endif
 }
 
 void

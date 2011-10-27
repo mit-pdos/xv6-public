@@ -222,7 +222,9 @@ allocproc(void)
   p->cpuid = mycpu()->id;
   p->on_runq = -1;
   p->cpu_pin = 0;
+#if MTRACE
   p->mtrace_stacks.curr = -1;
+#endif
 
   snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
   initlock(&p->lock, p->lockname+3);

@@ -52,16 +52,17 @@ struct context {
 } __attribute__((packed));
 
 // Per-process, per-stack meta data for mtrace
+#if MTRACE
 #define MTRACE_NSTACKS 16
 #define MTRACE_TAGSHIFT 28
 #if NCPU > 16
 #error Oops -- decrease MTRACE_TAGSHIFT
 #endif
-
 struct mtrace_stacks {
   int curr;
   unsigned long tag[MTRACE_NSTACKS];
 };
+#endif
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
@@ -93,7 +94,9 @@ struct proc {
   char lockname[16];
   int on_runq;
   int cpu_pin;
+#if MTRACE
   struct mtrace_stacks mtrace_stacks;
+#endif
 };
 
 extern struct ns *nspid;
