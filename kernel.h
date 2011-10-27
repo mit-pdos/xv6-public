@@ -81,6 +81,9 @@ int             dirlink(struct inode*, char*, u32);
 void            dir_init(struct inode *dp);
 void	        dir_flush(struct inode *dp);
 
+// hz.c
+void            microdelay(u64);
+
 // ide.c
 void            ideinit(void);
 void            ideintr(void);

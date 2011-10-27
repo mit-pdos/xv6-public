@@ -22,12 +22,10 @@ extern void initbio(void);
 extern void initinode(void);
 extern void initdisk(void);
 extern void inituser(void);
+extern void inithz(void);
 
 static volatile int bstate;
 
-// Common CPU setup code.
-// Bootstrap CPU comes here from mainc().
-// Other CPUs jump here from bootother.S.
 void
 mpboot(void)
 {
@@ -38,7 +36,6 @@ mpboot(void)
   scheduler();     // start running processes
 }
 
-// Start the non-boot processors.
 static void
 bootothers(void)
 {
@@ -77,10 +74,12 @@ void
 cmain(void)
 {
   extern pml4e_t kpml4[];
+  extern u64 cpuhz;
 
   initpg();
   initseg();
-  inittls();
+  inittls();       // thread local storage
+  inithz();        // CPU Hz, microdelay
   initpic();       // interrupt controller
   initioapic();
   inituart();
@@ -97,7 +96,7 @@ cmain(void)
   initinode();     // inode cache
   initdisk();      // disk
 
-  cprintf("ncpu %d\n", ncpu);
+  cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
 
   inituser();      // first user process
   bootothers();    // start other processors

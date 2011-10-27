@@ -25,12 +25,6 @@ stosb(void *addr, int data, int cnt)
                  "memory", "cc");
 }
 
-static inline void
-microdelay(u32 delay)
-{
-  
-}
-
 static inline u32
 xchg32(volatile u32 *addr, u32 newval)
 {

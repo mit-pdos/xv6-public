@@ -23,7 +23,6 @@ ASFLAGS = -m64 -gdwarf-2
 LDFLAGS += -m elf_x86_64
 
 OBJS = \
-	asm.o \
 	bio.o \
 	cga.o \
 	condvar.o \
@@ -33,6 +32,7 @@ OBJS = \
 	fs.o \
 	ioapic.o \
 	lapic.o \
+	hz.o \
 	kalloc.o \
 	kbd.o \
 	main.o \
