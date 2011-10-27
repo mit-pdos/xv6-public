@@ -1,13 +1,6 @@
 #include "types.h"
 #include "kernel.h"
 
-void
-iderw(struct buf *b)
-{
-    panic("iderw");
-}
-
-#if 0
 // Simple PIO-based (non-DMA) IDE driver code.
 
 #include "types.h"
@@ -169,4 +162,4 @@ iderw(struct buf *b)
 
   release(&idelock);
 }
-#endif
+
