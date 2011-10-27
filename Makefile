@@ -101,7 +101,7 @@ fs.img: mkfs README $(UPROGS)
 clean: 
 	rm -f *.o *.d *.asm *.sym initcode kernel bootother mkfs fs.img
 
-QEMUOPTS = -smp $(CPUS) -m 512 -nographic
+QEMUOPTS = -smp $(CPUS) -m 512 -serial mon:stdio -nographic
 qemu: kernel
 	$(QEMU) $(QEMUOPTS) -kernel kernel
 gdb: kernel

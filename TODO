@@ -3,8 +3,6 @@
 * get something like asm labels working in clang
   - (is there a way to use address_space(256) attributes?)
 * bring mtrace back
-* clock APIC with PIT
-* implement microdelay
 * finish syscall/sysret implementation
   - pass syscall args via argument registers
   - (adjust argint and friends)

@@ -39,7 +39,10 @@
 #define TCCR    (0x0390/4)   // Timer Current Count
 #define TDCR    (0x03E0/4)   // Timer Divide Configuration
 
-volatile u32 *lapic = (u32 *)(PBASE + 0xfee00000);
+#define IO_RTC  0x70
+
+static volatile u32 *lapic = (u32 *)(PBASE + 0xfee00000);
+static u64 lapichz;
 
 static void
 lapicw(int index, int value)
@@ -72,17 +75,30 @@ lapicwait()
 void
 initlapic(void)
 {
+  u64 count;
+
   // Enable local APIC; set spurious interrupt vector.
   lapicw(SVR, ENABLE | (T_IRQ0 + IRQ_SPURIOUS));
 
-  // XXX(sbw)
+  if (lapichz == 0) {
+    // Measure the TICR frequency
+    lapicw(TDCR, X1);    
+    lapicw(TICR, 0xffffffff); 
+    u64 ccr0 = lapicr(TCCR);
+    microdelay(10 * 1000);    // 1/100th of a second
+    u64 ccr1 = lapicr(TCCR);
+    lapichz = 100 * (ccr0 - ccr1);
+  }
+
+  count = (QUANTUN*lapichz) / 1000;
+  if (count > 0xffffffff)
+    panic("initlapic: QUANTUN too large");
+
   // The timer repeatedly counts down at bus frequency
   // from lapic[TICR] and then issues an interrupt.  
-  // If xv6 cared more about precise timekeeping,
-  // TICR would be calibrated using an external time source.
   lapicw(TDCR, X1);
   lapicw(TIMER, PERIODIC | (T_IRQ0 + IRQ_TIMER));
-  lapicw(TICR, 10000000); 
+  lapicw(TICR, count); 
 
   // Disable logical interrupt lines.
   lapicw(LINT0, MASKED);
@@ -158,8 +174,6 @@ lapic_tlbflush(u32 cpu)
 {
   lapic_ipi(cpu, T_TLBFLUSH);
 }
-
-#define IO_RTC  0x70
 
 // Start additional processor running bootstrap code at addr.
 // See Appendix B of MultiProcessor Specification.
