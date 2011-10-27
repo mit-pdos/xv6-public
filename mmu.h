@@ -112,7 +112,7 @@ struct taskstate
   u64 ist[8];
   u8 reserved1[10];
   u16 iomba;
-  u8 iopb[];
+  u8 iopb[0];
 } __attribute__ ((packed, aligned(16)));
 #endif
 

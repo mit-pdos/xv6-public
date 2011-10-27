@@ -10,6 +10,7 @@ QEMU ?= qemu-system-x86_64
 CPUS ?= 4
 
 NM = $(TOOLPREFIX)nm
+#CC = $(TOOLPREFIX)clang
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
