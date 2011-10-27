@@ -18,21 +18,8 @@
 # physical address.
 #define PADDR(x) ((x) - KBASE)
 
-# DATAMAGIC is a magic value we set in the data segment and then
-# look for to make sure that the data segment was loaded in the right place.
-#define DATAMAGIC 0x123456789abcdef0
-
 # STACK is the size of the bootstrap stack.
-#define STACK 4096
-
-# CGATEXTMEM is the physical address of the CGA text memory.
-#define CGATEXTMEM 0xB8000
-
-# PANIC prints a message on the screen and stops execution.
-#define PANIC(x) \
-	movl $PADDR(10f), %edi; \
-	call bootpanic; \
-	10: .asciz x
+#define STACK 8192
 
 # MultiBoot header.
 # http://www.gnu.org/software/grub/manual/multiboot/multiboot.html#Header-layout
@@ -74,22 +61,6 @@ start:
 
 	# Initialize stack.
 	movl $PADDR(stack+STACK), %esp
-	
-	# Check for page size extensions.
-	movl $1, %eax
-	cpuid
-	testl $(1<<3), %edx
-	jnz 1f
-	PANIC("This processor does not support PSE.")
-1:
-
-	# Check for 64-bit support.
-	movl $0x80000001, %eax
-	cpuid
-	testl $(1<<29),%edx
-	jnz 1f
-	PANIC("This processor does not support 64-bit execution.")
-1:
 
 	# Zero bss.  QEMU's MultiBoot seems not to.
 	# It's possible that the header above is not right, but it looks right.
@@ -121,14 +92,6 @@ start32:
 
 .code64
 start64:
-	# Now executing at the real link address.
-	# Double-check that data segment is set up correctly.
-	movq $DATAMAGIC, %rax
-	movq PADDR(datamagic), %rbx
-	cmpq %rax, %rbx
-	jz 1f
-	PANIC("Data segment is not loaded correctly.")
-1:
 	# Load VA stack pointer
 	movabsq $(stack+STACK), %rsp
 	# Clear frame pointer for stack walks, and call into C code.
@@ -166,29 +129,6 @@ tramp64:
 	addq $KBASE, %rdi
 	jmp *%rdi
 
-.code32
-.globl bootpanic
-bootpanic:
-	# This is 32-bit code but can be called from either
-	# 32- or 64-bit code, since it only uses instructions
-	# in the intersection of both.
-	movl $(CGATEXTMEM+80*12*2), %esi  # line 12
-1:
-	movb (%edi), %bl     # get next char, check for NUL
-	testb %bl, %bl
-	jz 2f
-	movb %bl, (%esi)     # write to screen
-	addl $2, %esi        # advance screen pointer
-	addl $1, %edi        # advance string pointer
-	jmp 1b
-
-2:
-	# If we just busy loop here, QEMU will never finish
-	# writing our output to the screen.  Instead, keep
-	# writing the zero byte over and over.
-	movb %bl, (%esi)
-	jmp 2b
-
 # Initial stack
 .comm stack, STACK
 
@@ -224,6 +164,7 @@ pdt:
 	// Filled in below.
 	.space 4096
 
+.code32        
 initpagetables:
 	pushl %edi
 	pushl %ecx
@@ -296,8 +237,3 @@ loadgdt:
 	movw %ax, %gs
 
         ret
-        
-# For sanity check above.
-.data
-datamagic:
-	.quad DATAMAGIC
