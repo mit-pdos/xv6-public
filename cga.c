@@ -27,9 +27,9 @@ cgaputc(int c)
     crt[pos++] = (c&0xff) | color;
   
   if((pos/80) >= 24){  // Scroll up.
-    memmove((void*)crt, (void*)crt+80, sizeof(crt[0])*23*80);
+    memmove((void *)crt, (void*)(crt+80), sizeof(crt[0])*23*80);
     pos -= 80;
-    memset((void*)crt+pos, 0, sizeof(crt[0])*(24*80 - pos));
+    memset((void *)(crt+pos), 0, sizeof(crt[0])*(24*80 - pos));
   }
   
   outb(CRTPORT, 14);

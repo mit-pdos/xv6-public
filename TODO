@@ -1,4 +1,3 @@
-* fix cga console (it doesn't scroll correctly)
 * get gcc asm labels working for cpu, proc, kmem
   - (I couldn't stop gcc from generating RIP-relative movs)
 * get something like asm labels working in clang
