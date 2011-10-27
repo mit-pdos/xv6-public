@@ -32,8 +32,8 @@ void
 mpboot(void)
 {
   initseg();
-  initlapic();
   inittls();
+  initlapic();
   bstate = 1;
   scheduler();     // start running processes
 }
@@ -79,16 +79,16 @@ cmain(void)
   extern pml4e_t kpml4[];
 
   initpg();
+  initseg();
+  inittls();
   initpic();       // interrupt controller
   initioapic();
   inituart();
   initcga();
   initconsole();
   inittrap();
-  initseg();
   initmp();
   initlapic();
-  inittls();
 
   initkalloc();
   initrcu();       // initialize rcu module
