@@ -18,11 +18,13 @@
 #define TRAPCODE(x) _TRAP(x, EC)
 
 .code64
+#if 0
 .globl sysentry
 .align 8
 sysentry:
         jmp sysentry
-
+#endif
+        
 trapcommon:
         pushq %rdi
         pushq %rsi
