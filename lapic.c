@@ -55,14 +55,14 @@ lapicr(u32 off)
 }
 
 static int
-apic_icr_wait()
+lapicwait()
 {
   int i = 100000;
   while ((lapicr(ICRLO) & BUSY) != 0) {
     nop_pause();
     i--;
     if (i == 0) {
-      cprintf("apic_icr_wait: wedged?\n");
+      cprintf("lapicwait: wedged?\n");
       return -1;
     }
   }
@@ -149,8 +149,8 @@ lapic_ipi(int cpu, int ino)
 {
   lapicw(ICRHI, cpu << 24);
   lapicw(ICRLO, FIXED | DEASSERT | ino);
-  if (apic_icr_wait() < 0)
-    panic("lapic_ipi: icr_wait failure");
+  if (lapicwait() < 0)
+    panic("lapic_ipi: lapicwait failure");
 }
 
 void
@@ -182,9 +182,11 @@ lapicstartap(u8 apicid, u32 addr)
   // Send INIT (level-triggered) interrupt to reset other CPU.
   lapicw(ICRHI, apicid<<24);
   lapicw(ICRLO, apicid | INIT | LEVEL | ASSERT);
-  microdelay(200);
+  lapicwait();
+  microdelay(10000);
   lapicw(ICRLO, apicid |INIT | LEVEL);
-  microdelay(100);    // should be 10ms, but too slow in Bochs!
+  lapicwait();
+  microdelay(10000);    // should be 10ms, but too slow in Bochs!
   
   // Send startup IPI (twice!) to enter bootstrap code.
   // Regular hardware is supposed to only accept a STARTUP
