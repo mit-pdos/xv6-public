@@ -161,20 +161,40 @@ vma_free(void *p)
   kmfree(e);
 }
 
+static void
+freepm(pme_t *pm, int level)
+{
+  int i;
+
+  if (level != 0) {
+    for (i = 0; i < 512; i++) {
+      if (pm[i] & PTE_P)
+        freepm(p2v(PTE_ADDR(pm[i])), level - 1);
+    }
+  }
+
+  kfree(pm);
+}
+
 // Free a page table and all the physical memory pages
 // in the user part.
 static void
 freevm(pml4e_t *pml4)
 {
+  int k;
+  int i;
+
   if(pml4 == 0)
     panic("freevm: no pgdir");
-  cprintf("freevm: XXX leaking..\n");
-#if 0
-  for(i = 0; i < 1024; i++){
-    if(pgdir[i] & PTE_P)
-      kfree(p2v(PTE_ADDR(pgdir[i])));
+
+  // Don't free kernel portion of the pml4
+  k = PX(3, PBASE);
+  for (i = 0; i < k; i++) {
+    if (pml4[i] & PTE_P) {
+      freepm(p2v(PTE_ADDR(pml4[i])), 2);
+    }
   }
-#endif
+  
   kfree(pml4);
 }
 

@@ -15,7 +15,6 @@ typedef uint64 u64;
 typedef uint64 uptr;
 typedef uptr paddr;
 
-
 typedef u64 pme_t; // Page Map Entry (refers to any entry in any level)
 typedef pme_t pml4e_t;
 
