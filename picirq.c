@@ -28,6 +28,18 @@ picenable(int irq)
   picsetmask(irqmask & ~(1<<irq));
 }
 
+void
+piceoi(void)
+{
+  // OCW2: rse00xxx
+  //   r: rotate
+  //   s: specific
+  //   e: end-of-interrupt
+  // xxx: specific interrupt line
+  outb(IO_PIC1, 0x20);
+  outb(IO_PIC2, 0x20);
+}
+
 // Initialize the 8259A interrupt controllers.
 void
 initpic(void)
@@ -59,15 +71,15 @@ initpic(void)
   //      can be hardwired).
   //    a:  1 = Automatic EOI mode
   //    p:  0 = MCS-80/85 mode, 1 = intel x86 mode
-  outb(IO_PIC1+1, 0x3);
+  outb(IO_PIC1+1, 0x1);
 
   // Set up slave (8259A-2)
   outb(IO_PIC2, 0x11);                  // ICW1
-  outb(IO_PIC2+1, T_IRQ0 + 8);      // ICW2
+  outb(IO_PIC2+1, T_IRQ0 + 8);          // ICW2
   outb(IO_PIC2+1, IRQ_SLAVE);           // ICW3
   // NB Automatic EOI mode doesn't tend to work on the slave.
   // Linux source code says it's "to be investigated".
-  outb(IO_PIC2+1, 0x3);                 // ICW4
+  outb(IO_PIC2+1, 0x1);                 // ICW4
 
   // OCW3:  0ef01prs
   //   ef:  0x = NOP, 10 = clear specific mask, 11 = set specific mask

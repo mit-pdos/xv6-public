@@ -155,6 +155,7 @@ void*           ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(voi
 
 // picirq.c
 void            picenable(int);
+void            piceoi(void);
 
 // pipe.c
 int             pipealloc(struct file**, struct file**);

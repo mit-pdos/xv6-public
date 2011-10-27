@@ -82,6 +82,7 @@ trap(struct trapframe *tf)
   case T_IRQ0 + IRQ_IDE:
     ideintr();
     lapiceoi();
+    piceoi();
     break;
   case T_IRQ0 + IRQ_IDE+1:
     // Bochs generates spurious IDE1 interrupts.
@@ -89,14 +90,16 @@ trap(struct trapframe *tf)
   case T_IRQ0 + IRQ_KBD:
     kbdintr();
     lapiceoi();
+    piceoi();
     break;
   case T_IRQ0 + IRQ_COM1:
     uartintr();
     lapiceoi();
+    piceoi();
     break;
   case T_IRQ0 + 7:
   case T_IRQ0 + IRQ_SPURIOUS:
-    cprintf("cpu%d: spurious interrupt at %x:%x\n",
+    cprintf("cpu%d: spurious interrupt at %x:%lx\n",
             mycpu()->id, tf->cs, tf->rip);
     lapiceoi();
   case T_TLBFLUSH:
