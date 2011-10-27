@@ -39,7 +39,7 @@ uartintr(void)
 void
 inituart(void)
 {
-    char *p;
+  char *p;
 
   // Turn off the FIFO
   outb(COM1+2, 0);
@@ -65,6 +65,6 @@ inituart(void)
   ioapicenable(IRQ_COM1, 0);
 
   // Announce that we're here.
-  for(p="uart...\n"; *p; p++)
+  for(p="uart..\n"; *p; p++)
     uartputc(*p);
 }

@@ -74,9 +74,6 @@ start:
 
 	# Initialize stack.
 	movl $PADDR(stack+STACK), %esp
-
-	# Initialize screen.
-	call initscreen
 	
 	# Check for page size extensions.
 	movl $1, %eax
@@ -191,47 +188,6 @@ bootpanic:
 	# writing the zero byte over and over.
 	movb %bl, (%esi)
 	jmp 2b
-
-initscreen:
-	pushal
-
-	# Initialize screen.
-	# 25 lines of white on black.
-	cld
-	movl $CGATEXTMEM, %edi
-	movl $0x0f20, %eax
-	movl $(80*25), %ecx
-	rep stosw
-
-	# Hide cursor at beginning of first line.
-	movw $0, %di
-	call setcursor
-
-	popal
-	ret
-
-.globl setcursor
-setcursor:
-	pushl %edx
-	pushl %eax
-	pushl %ebx
-	movl %edi, %ebx
-	movw $0x3d4, %dx
-	movw $14, %ax
-	outb %al, %dx
-	movw $0x3d5, %dx
-	movb %bh, %al
-	outb %al, %dx
-	movw $0x3d4, %dx
-	movw $15, %ax
-	outb %al, %dx
-	movw $0x3d5, %dx
-	movb %bl, %al
-	outb %al, %dx
-	popl %ebx
-	popl %eax
-	popl %edx
-	ret
 
 # Initial stack
 .comm stack, STACK

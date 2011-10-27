@@ -36,7 +36,7 @@ void            brelse(struct buf*, int writer);
 void            bwrite(struct buf*);
 
 // cga.c
-void            cgaputc(char c);
+void            cgaputc(int c);
 
 // condvar.c
 void            initcondvar(struct condvar *, char *);
