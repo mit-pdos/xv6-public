@@ -1,0 +1,16 @@
+* fix cga console (it doesn't scroll correctly)
+* get gcc asm labels working for cpu, proc, kmem
+  - (I couldn't stop gcc from generating RIP-relative movs)
+* get something like asm labels working in clang
+  - (is there a way to use address_space(256) attributes?)
+* bring mtrace back
+* clock APIC with PIT
+* implement microdelay
+* finish syscall/sysret implementation
+  - pass syscall args via argument registers
+  - (adjust argint and friends)
+* make uart console work over IPMI SOL
+* make syslinux/pxelinux work over IPMI SOL
+* the elf loader in exec.c is a bit sketchy
+  - e.g. mandates vaddr page-alignment
+* $grep "XXX(sbw)" *
