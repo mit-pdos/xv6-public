@@ -4,7 +4,6 @@
 #include "mmu.h"
 #include "cpu.h"
 #include "kernel.h"
-#include "memlayout.h"
 #include "bits.h"
 #include "spinlock.h"
 #include "kalloc.h"
