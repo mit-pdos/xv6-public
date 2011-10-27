@@ -1,5 +1,5 @@
 #include "types.h"
-#include "x86.h"
+#include "amd64.h"
 
 void*
 memset(void *dst, int c, u32 n)

@@ -2,7 +2,7 @@
 #include "stat.h"
 #include "user.h"
 #include "xv6-mtrace.h"
-#include "x86.h"
+#include "amd64.h"
 #include "param.h"
 #include "fcntl.h"
 

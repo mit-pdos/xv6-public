@@ -1,6 +1,6 @@
 #include "types.h"
 #include "kernel.h"
-#include "x86.h"
+#include "amd64.h"
 
 #define BACKSPACE 0x100
 #define CRTPORT 0x3d4

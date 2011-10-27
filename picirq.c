@@ -1,7 +1,7 @@
 // Intel 8259A programmable interrupt controllers.
 
 #include "types.h"
-#include "x86.h"
+#include "amd64.h"
 #include "traps.h"
 
 // I/O Addresses of the two programmable interrupt controllers

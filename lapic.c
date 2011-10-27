@@ -3,7 +3,7 @@
 
 #include "types.h"
 #include "param.h"
-#include "x86.h"
+#include "amd64.h"
 #include "kernel.h"
 #include "traps.h"
 #include "bits.h"

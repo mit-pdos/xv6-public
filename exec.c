@@ -7,7 +7,7 @@
 #include "queue.h"
 #include "proc.h"
 #include "kernel.h"
-#include "x86.h"
+#include "amd64.h"
 #include "stat.h"
 #include "fs.h"
 #include "file.h"

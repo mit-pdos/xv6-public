@@ -9,7 +9,7 @@
 #include "queue.h"
 #include "condvar.h"
 #include "proc.h"
-#include "x86.h"
+#include "amd64.h"
 #include "traps.h"
 #include "buf.h"
 

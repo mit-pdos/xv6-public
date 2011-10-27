@@ -7,7 +7,7 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
-#include "x86.h"
+#include "amd64.h"
 #include "syscall.h"
 #include "xv6-mtrace.h"
 #include "cpu.h"

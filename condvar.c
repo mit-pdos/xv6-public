@@ -1,6 +1,6 @@
 #include "types.h"
 #include "param.h"
-#include "x86.h"
+#include "amd64.h"
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"

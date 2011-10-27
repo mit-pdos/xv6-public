@@ -2,7 +2,7 @@
 #include "param.h"
 #include "mmu.h"
 #include "kernel.h"
-#include "x86.h"
+#include "amd64.h"
 #include "cpu.h"
 #include "traps.h"
 #include "queue.h"

@@ -1,6 +1,6 @@
 #include "param.h"
 #include "types.h"
-#include "x86.h"
+#include "amd64.h"
 #include "mmu.h"
 #include "cpu.h"
 #include "kernel.h"

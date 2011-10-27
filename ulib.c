@@ -2,7 +2,7 @@
 #include "stat.h"
 #include "fcntl.h"
 #include "user.h"
-#include "x86.h"
+#include "amd64.h"
 
 char*
 strncpy(char *s, const char *t, int n)

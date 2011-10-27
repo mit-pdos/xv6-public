@@ -10,7 +10,7 @@
 #include "fs.h"
 #include "condvar.h"
 #include "file.h"
-#include "x86.h"
+#include "amd64.h"
 #include "queue.h"
 #include "proc.h"
 #include "traps.h"

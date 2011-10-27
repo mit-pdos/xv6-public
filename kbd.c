@@ -1,5 +1,5 @@
 #include "types.h"
-#include "x86.h"
+#include "amd64.h"
 #include "kernel.h"
 #include "kbd.h"
 #include "param.h"
