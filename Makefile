@@ -71,13 +71,11 @@ initcode: initcode.S
 	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
 	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o initcode.out initcode.o
 	$(OBJCOPY) -S -O binary initcode.out initcode
-	$(OBJDUMP) -S initcode.o > initcode.asm
 
 bootother: bootother.S
 	$(CC) $(CFLAGS) -nostdinc -I. -c bootother.S
 	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7000 -o bootother.out bootother.o
 	$(OBJCOPY) -S -O binary bootother.out bootother
-	$(OBJDUMP) -S bootother.out > bootother.asm
 
 xv6memfs.img: bootblock kernelmemfs
 	dd if=/dev/zero of=xv6memfs.img count=10000
@@ -86,8 +84,6 @@ xv6memfs.img: bootblock kernelmemfs
 
 _%: %.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
-	$(OBJDUMP) -S $@ > $*.asm
-	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $*.sym
 
 mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o mkfs mkfs.c
