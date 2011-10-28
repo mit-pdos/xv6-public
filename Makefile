@@ -32,6 +32,7 @@ OBJS = \
 	fs.o \
 	ioapic.o \
 	lapic.o \
+	hwvm.o \
 	hz.o \
 	kalloc.o \
 	kbd.o \

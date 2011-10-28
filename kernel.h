@@ -81,6 +81,11 @@ int             dirlink(struct inode*, char*, u32);
 void            dir_init(struct inode *dp);
 void	        dir_flush(struct inode *dp);
 
+// hwvm.c
+void            freevm(pml4e_t*);
+pml4e_t*        setupkvm(void);
+pme_t *         walkpgdir(pml4e_t*, const void*, int);
+
 // hz.c
 void            microdelay(u64);
 
