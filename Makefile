@@ -103,15 +103,22 @@ mscan.kernel: kernel
 .PHONY: clean qemu gdb ud0
 
 QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic
-MTRACEOPTS = -rtc clock=vm -mtrace-enable -mtrace-file mtrace.out \
-	     -mtrace-quantum 100
 
 qemu: kernel
 	$(QEMU) $(QEMUOPTS) -kernel kernel
 gdb: kernel
 	$(QEMU) $(QEMUOPTS) -kernel kernel -S -s
+
+##
+## mtrace
+##
+MTRACEOPTS = -rtc clock=vm -mtrace-enable -mtrace-file mtrace.out \
+	     -mtrace-quantum 100
 mtrace: mscan.kernel mscan.syms 
 	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel kernel
+
+mscan.out: mtrace.out $(QEMUSRC)/mtrace-tools/mscan
+	$(QEMUSRC)/mtrace-tools/mscan > $@ || (rm -f $@; exit 2)
 
 ud0: kernel
 	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/ud0/kernel.xv6
