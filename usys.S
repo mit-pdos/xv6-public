@@ -4,16 +4,8 @@
 #define SYSCALL(name) \
   .globl name; \
   name: \
-    pushq %r9; \
-    pushq %r8; \
-    pushq %rcx; \
-    pushq %rdx; \
-    pushq %rsi; \
-    pushq %rdi; \
-    pushq $0; \
     movq $SYS_ ## name, %rax; \
     int $T_SYSCALL; \
-    addq $(7 * 8), %rsp; \
     ret
 
 SYSCALL(fork)

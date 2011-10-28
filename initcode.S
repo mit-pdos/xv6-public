@@ -6,9 +6,8 @@
 # exec(init, argv)
 .globl start
 start:
-  pushq $argv
-  pushq $init
-  pushq $0  // where caller pc would be
+  movq $argv, %rsi
+  movq $init, %rdi
   movq $SYS_exec, %rax
   int $T_SYSCALL
 

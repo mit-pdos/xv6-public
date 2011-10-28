@@ -53,7 +53,19 @@ fetchstr(uptr addr, char **pp)
 int
 argint64(int n, u64 *ip)
 {
-  return fetchint64(myproc()->tf->rsp + 8 + 8*n, ip);
+  switch(n) {
+  case 0: *ip = myproc()->tf->rdi; break;
+  case 1: *ip = myproc()->tf->rsi; break;
+  case 2: *ip = myproc()->tf->rdx; break;
+  case 3: *ip = myproc()->tf->rcx; break;
+  case 4: *ip = myproc()->tf->r8;  break;
+  case 5: *ip = myproc()->tf->r9;  break;
+  default:
+    cprintf("argint64: bad arg %d\n", n);
+    return -1;
+  }
+
+  return 0;
 }
 
 int
@@ -62,7 +74,7 @@ argint32(int n, int *ip)
   int r;
   u64 i;
 
-  r = fetchint64(myproc()->tf->rsp + 8 + 8*n, &i);
+  r = argint64(n, &i);
   if (r >= 0)
     *ip = i;
   return r;

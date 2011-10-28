@@ -4,8 +4,6 @@
   - (is there a way to use address_space(256) attributes?)
 * bring mtrace back
 * finish syscall/sysret implementation
-  - pass syscall args via argument registers
-  - (adjust argint and friends)
 * make uart console work over IPMI SOL
 * make syslinux/pxelinux work over IPMI SOL
 * the elf loader in exec.c is a bit sketchy
