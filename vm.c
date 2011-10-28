@@ -10,23 +10,7 @@
 #include "queue.h"
 #include "condvar.h"
 #include "proc.h"
-#include <stddef.h>
-
-// Set up CPU's kernel segment descriptors.
-// Run once at boot time on each CPU.
-void
-inittls(void)
-{
-  struct cpu *c;
-
-  // Initialize cpu-local storage.
-  c = &cpus[cpunum()];
-  writegs(KDSEG);
-  writemsr(MSR_GS_BASE, (u64)&c->cpu);
-  c->cpu = c;
-  c->proc = NULL;
-  c->kmem = &kmems[cpunum()];
-}
+#include "vm.h"
 
 static struct vma *
 vma_alloc(void)

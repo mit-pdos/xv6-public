@@ -8,6 +8,7 @@
 #include "queue.h"
 #include "proc.h"
 #include "cpu.h"
+#include "vm.h"
 
 int
 sys_fork(void)

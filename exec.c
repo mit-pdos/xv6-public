@@ -12,6 +12,7 @@
 #include "file.h"
 #include "elf.h"
 #include "cpu.h"
+#include "vm.h"
 
 #define USTACKPAGES 2
 

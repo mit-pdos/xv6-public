@@ -10,6 +10,7 @@
 #include "cpu.h"
 #include "bits.h"
 #include "xv6-mtrace.h"
+#include "vm.h"
 
 extern void trapret(void);
 

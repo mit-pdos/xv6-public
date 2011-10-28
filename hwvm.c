@@ -10,6 +10,7 @@
 #include "queue.h"
 #include "condvar.h"
 #include "proc.h"
+#include "vm.h"
 #include <stddef.h>
 
 extern pml4e_t kpml4[];
@@ -188,4 +189,20 @@ freevm(pml4e_t *pml4)
   }
   
   kfree(pml4);
+}
+
+// Set up CPU's kernel segment descriptors.
+// Run once at boot time on each CPU.
+void
+inittls(void)
+{
+  struct cpu *c;
+
+  // Initialize cpu-local storage.
+  c = &cpus[cpunum()];
+  writegs(KDSEG);
+  writemsr(MSR_GS_BASE, (u64)&c->cpu);
+  c->cpu = c;
+  c->proc = NULL;
+  c->kmem = &kmems[cpunum()];
 }
