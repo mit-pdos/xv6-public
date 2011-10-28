@@ -21,7 +21,7 @@ enum { kalloc_memset = 0 };
 static int kinited __mpalign__;
 
 // simple page allocator to get off the ground during boot
-char *
+static char *
 pgalloc(void)
 {
   if (newend == 0)
@@ -119,6 +119,8 @@ kmemalloc(struct kmem *km)
 char*
 kalloc(void)
 {
+  if (!kinited)
+    return pgalloc();
   return kmemalloc(kmems);
 }
 
