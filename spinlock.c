@@ -7,7 +7,7 @@
 #include "cpu.h"
 #include "bits.h"
 #include "spinlock.h"
-#include "xv6-mtrace.h"
+#include "mtrace.h"
 
 void
 initlock(struct spinlock *lk, char *name)
@@ -35,31 +35,13 @@ acquire(struct spinlock *lk)
   }
 #endif
 
-  mtrace_lock_register(RET_EIP(),
-		       lk,
-#if SPINLOCK_DEBUG
-		       lk->name ?: "null",
-#else
-		       "unknown",
-#endif
-		       mtrace_lockop_acquire,
-		       0);
-
+  mtlock(lk);
   // The xchg is atomic.
   // It also serializes, so that reads after acquire are not
   // reordered before it.
   while(xchg32(&lk->locked, 1) != 0)
     ;
-
-  mtrace_lock_register(RET_EIP(),
-		       lk,
-#if SPINLOCK_DEBUG
-		       lk->name ?: "null",
-#else
-		       "unknown",
-#endif
-		       mtrace_lockop_acquired,
-		       0);
+  mtacquired(lk);
 
 #if SPINLOCK_DEBUG
   // Record info about lock acquisition for debugging.
@@ -79,15 +61,7 @@ release(struct spinlock *lk)
   }
 #endif
 
-  mtrace_lock_register(RET_EIP(),
-		       lk,
-#if SPINLOCK_DEBUG
-		       lk->name ?: "null",
-#else
-		       "unknown",
-#endif
-		       mtrace_lockop_release,
-		       0);
+  mtunlock(lk);
 
 #if SPINLOCK_DEBUG
   lk->pcs[0] = 0;

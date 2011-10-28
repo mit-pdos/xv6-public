@@ -9,15 +9,17 @@
 #include "proc.h"
 #include "cpu.h"
 #include "bits.h"
-#include "xv6-mtrace.h"
+#include "kmtrace.h"
 #include "vm.h"
-
-extern void trapret(void);
 
 int __mpalign__ idle[NCPU];
 struct ns *nspid __mpalign__;
 struct ns *nsrunq __mpalign__;
 static struct proc *bootproc __mpalign__;
+
+#if MTRACE
+struct kstack_tag kstack_tag[NCPU];
+#endif
 
 enum { sched_debug = 0 };
 
@@ -39,10 +41,10 @@ sched(void)
   intena = mycpu()->intena;
   myproc()->curcycles += rdtsc() - myproc()->tsc;
   if (myproc()->state == ZOMBIE)
-    mtrace_kstack_stop(myproc());
+    mtstop(myproc());
   else
-    mtrace_kstack_pause(myproc());
-  mtrace_call_set(0, mycpu()->id);
+    mtpause(myproc());
+  mtign(mycpu()->id);
 
   swtch(&myproc()->context, mycpu()->scheduler);
   mycpu()->intena = intena;
@@ -141,9 +143,9 @@ forkret(void)
   // b/c file system code needs a process context
   // in which to call cv_sleep().
   if(myproc()->cwd == 0) {
-    mtrace_kstack_start(forkret, myproc());
+    mtstart(forkret, myproc());
     myproc()->cwd = namei("/");
-    mtrace_kstack_stop(myproc());
+    mtstop(myproc());
   }
 
   // Return to "caller", actually trapret (see allocproc).
@@ -209,6 +211,7 @@ exit(void)
 static struct proc*
 allocproc(void)
 {
+  extern void trapret(void);
   struct proc *p;
   char *sp;
 
@@ -394,7 +397,7 @@ scheduler(void)
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);
-  mtrace_kstack_start(scheduler, schedp);
+  mtstart(scheduler, schedp);
 
   for(;;){
     // Enable interrupts on this processor.
@@ -417,17 +420,17 @@ scheduler(void)
 	p->state = RUNNING;
 	p->tsc = rdtsc();
 
-        mtrace_kstack_pause(schedp);
+        mtpause(schedp);
         if (p->context->rip != (uptr)forkret && 
             p->context->rip != (uptr)rcu_gc_worker)
         {
-          mtrace_kstack_resume(proc);
+          mtresume(p);
         }
-	mtrace_call_set(1, mycpu()->id);
+	mtrec(mycpu()->id);
 
 	swtch(&mycpu()->scheduler, myproc()->context);
-        mtrace_kstack_resume(schedp);
-	mtrace_call_set(0, mycpu()->id);
+        mtresume(schedp);
+	mtign(mycpu()->id);
 	switchkvm();
 
 	// Process is done running for now.

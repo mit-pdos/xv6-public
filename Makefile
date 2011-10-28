@@ -2,22 +2,23 @@
 # XXX compiling user progs with -mcmodel=kernel
 #
 
-# Custom config file?  Set the default below..
+# Custom config file?  Otherwise use defaults.
 -include config.mk
-
 TOOLPREFIX ?= x86_64-jos-elf-
-QEMU ?= qemu-system-x86_64
-CPUS ?= 4
+QEMU 	   ?= qemu-system-x86_64
+QEMUSMP	   ?= 4
+QEMUSRC    ?= ../mtrace
+MTRACE	   ?= $(QEMU)
 
-NM = $(TOOLPREFIX)nm
-#CC = $(TOOLPREFIX)clang
+CC = $(TOOLPREFIX)clang
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
+NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
-OBJDUMP = $(TOOLPREFIX)objdump
-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m64 \
-         -Werror -std=c99 -fms-extensions -mno-sse -mcmodel=kernel
+
+CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb \
+	 -m64 -Werror -std=c99 -fms-extensions -mno-sse -mcmodel=kernel -I$(QEMUSRC)
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ASFLAGS = -m64 -gdwarf-2
 LDFLAGS += -m elf_x86_64
@@ -91,18 +92,29 @@ mkfs: mkfs.c fs.h
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
 
+mscan.syms: kernel
+	$(NM) -S $< > $@
+
+mscan.kernel: kernel
+	cp $< $@
+
 -include *.d
 
 .PHONY: clean qemu gdb ud0
 
-clean: 
-	rm -f *.o *.d *.asm *.sym initcode kernel bootother mkfs fs.img
+QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic
+MTRACEOPTS = -rtc clock=vm -mtrace-enable -mtrace-file mtrace.out \
+	     -mtrace-quantum 100
 
-QEMUOPTS = -smp $(CPUS) -m 512 -serial mon:stdio -nographic
 qemu: kernel
 	$(QEMU) $(QEMUOPTS) -kernel kernel
 gdb: kernel
 	$(QEMU) $(QEMUOPTS) -kernel kernel -S -s
+mtrace: mscan.kernel mscan.syms 
+	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel kernel
 
 ud0: kernel
 	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/ud0/kernel.xv6
+
+clean: 
+	rm -f *.o *.d *.asm *.sym initcode kernel bootother mkfs fs.img

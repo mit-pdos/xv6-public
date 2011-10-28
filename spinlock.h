@@ -15,3 +15,11 @@ struct spinlock {
 #endif
 };
 
+static inline const char *lockname(struct spinlock *s)
+{
+#if SPINLOCK_DEBUG
+  return s->name ?: "null";
+#else
+  return "unknown";
+#endif
+}

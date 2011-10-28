@@ -8,7 +8,7 @@
 #include "queue.h"
 #include "proc.h"
 #include "cpu.h"
-#include "xv6-mtrace.h"
+#include "kmtrace.h"
 
 struct rcu {
   unsigned long epoch;
@@ -107,7 +107,7 @@ rcu_gc_worker(void)
 {
   release(&myproc()->lock);	// initially held by scheduler
 
-  mtrace_kstack_start(rcu_gc_worker, myproc());
+  mtstart(rcu_gc_worker, myproc());
 
   struct spinlock wl;
   initlock(&wl, "rcu_gc_worker");   // dummy lock

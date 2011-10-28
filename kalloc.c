@@ -8,7 +8,7 @@
 #include "kernel.h"
 #include "spinlock.h"
 #include "kalloc.h"
-#include "xv6-mtrace.h"
+#include "mtrace.h"
 #include "cpu.h"
 
 struct kmem kmems[NCPU];
@@ -55,12 +55,7 @@ kfree_pool(struct kmem *m, char *v)
   m->freelist = r;
   m->nfree++;
   if (kinited)
-    mtrace_label_register(mtrace_label_block,
-			  r,
-			  0,
-			  0,
-			  0,
-			  RET_EIP());
+    mtunlabel(mtrace_label_block, r);
   release(&m->lock);
 }
 
@@ -101,12 +96,7 @@ kmemalloc(struct kmem *km)
     return 0;
   }
 
-  mtrace_label_register(mtrace_label_block,
-			r,
-			m->size,
-			"kalloc",
-			sizeof("kalloc"),
-			RET_EIP());
+  mtlabel(mtrace_label_block, r, m->size, "kalloc", sizeof("kalloc"));
 
   if (kalloc_memset)
     memset(r, 2, m->size);
@@ -224,12 +214,7 @@ kmfree(void *ap)
 {
   acquire(&freelists[mycpu()->id].lock);
   domfree(ap);
-  mtrace_label_register(mtrace_label_heap,
-			ap,
-			0,
-			0,
-			0,
-			RET_EIP());
+  mtunlabel(mtrace_label_heap, ap);
   release(&freelists[mycpu()->id].lock);
 }
 
@@ -289,12 +274,7 @@ kmalloc(u64 nbytes)
   release(&freelists[mycpu()->id].lock);
 
   if (r)
-    mtrace_label_register(mtrace_label_heap,
-			  r,
-			  nbytes,
-			  "kmalloc'ed",
-			  sizeof("kmalloc'ed"),
-			  RET_EIP());
+    mtlabel(mtrace_label_heap, r, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
   return r;
 }
 

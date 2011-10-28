@@ -8,8 +8,8 @@
 #include "proc.h"
 #include "amd64.h"
 #include "syscall.h"
-#include "xv6-mtrace.h"
 #include "cpu.h"
+#include "kmtrace.h"
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
@@ -169,11 +169,11 @@ syscall(void)
 
   num = myproc()->tf->rax;
   if(num >= 0 && num < NELEM(syscalls) && syscalls[num]) {
-    mtrace_kstack_start(syscalls[num], proc);
-    mtrace_call_set(1, cpunum());
+    mtstart(syscalls[num], myproc());
+    mtrec(cpunum());
     myproc()->tf->rax = syscalls[num]();
-    mtrace_kstack_stop(myproc());
-    mtrace_call_set(0, cpunum());
+    mtstop(myproc());
+    mtign(cpunum());
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             myproc()->pid, myproc()->name, num);

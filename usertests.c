@@ -5,7 +5,7 @@
 #include "fcntl.h"
 #include "syscall.h"
 #include "traps.h"
-#include "xv6-mtrace.h"
+#include "mtrace.h"
 
 char buf[2048];
 char name[3];

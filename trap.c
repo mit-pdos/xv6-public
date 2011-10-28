@@ -9,7 +9,7 @@
 #include "spinlock.h"
 #include "condvar.h"
 #include "proc.h"
-#include "xv6-mtrace.h"
+#include "kmtrace.h"
 #include "bits.h"
 
 u64 ticks __mpalign__;
@@ -51,13 +51,13 @@ trap(struct trapframe *tf)
   // XXX(sbw) sysenter/sysexit
   if(tf->trapno == T_SYSCALL){
     if(myproc()->killed) {
-      mtrace_kstack_start(trap, proc);
+      mtstart(trap, myproc());
       exit();
     }
     myproc()->tf = tf;
     syscall();
     if(myproc()->killed) {
-      mtrace_kstack_start(trap, myproc());
+      mtstart(trap, myproc());
       exit();
     }
     return;
@@ -65,8 +65,8 @@ trap(struct trapframe *tf)
 
 #if MTRACE
   if (myproc()->mtrace_stacks.curr >= 0)
-    mtrace_kstack_pause(myproc());
-  mtrace_kstack_start(trap, myproc());
+    mtpause(myproc());
+  mtstart(trap, myproc());
 #endif
 
   switch(tf->trapno){
@@ -119,9 +119,9 @@ trap(struct trapframe *tf)
     if(tf->trapno == T_PGFLT){
       if(pagefault(myproc()->vmap, rcr2(), tf->err) >= 0){
 #if MTRACE
-        mtrace_kstack_stop(myproc());
+        mtstop(myproc());
         if (myproc()->mtrace_stacks.curr >= 0)
-          mtrace_kstack_resume(myproc());
+          mtresume(myproc());
 #endif
         return;
       }
@@ -151,9 +151,9 @@ trap(struct trapframe *tf)
     exit();
 
 #if MTRACE
-  mtrace_kstack_stop(myproc());
+  mtstop(myproc());
   if (myproc()->mtrace_stacks.curr >= 0)
-    mtrace_kstack_resume(myproc());
+    mtresume(myproc());
 #endif
 }
 

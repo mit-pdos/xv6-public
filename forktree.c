@@ -1,7 +1,7 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-#include "xv6-mtrace.h"
+#include "mtrace.h"
 
 #define NCHILD 2
 #define NDEPTH 5

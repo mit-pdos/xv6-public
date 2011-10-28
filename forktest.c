@@ -4,7 +4,7 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-#include "xv6-mtrace.h"
+#include "mtrace.h"
 
 #define N 100
 #define DEBUG 0
