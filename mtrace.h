@@ -1,3 +1,4 @@
+#include "param.h"
 #if MTRACE
 typedef __signed char int8_t;
 typedef unsigned char uint8_t;
@@ -32,9 +33,17 @@ char* strncpy(char *s, const char *t, int n);
 #define mtunlock(ptr) \
   mtrace_lock_register(RET_IP(), ptr, lockname(ptr), mtrace_lockop_release, 0)
 
-// Tell mtrace to start/stop recording call and ret
-#define mtrec(cpu) mtrace_call_set(1, cpu)
-#define mtign(cpu) mtrace_call_set(0, cpu)
+// Enable/disable all mtrace logging
+#define mtenable(name)  mtrace_enable_set(1, name)
+#define mtdisable(name) mtrace_enable_set(0, name)
+
+// Log the number of operations 
+static inline void mtops(u64 n)
+{
+  struct mtrace_appdata_entry entry;
+  entry.u64 = 0;
+  mtrace_appdata_register(&entry);
+}
 
 #include "mtrace-magic.h"
 #else
@@ -45,4 +54,7 @@ char* strncpy(char *s, const char *t, int n);
 #define mtunlock(ptr) do { } while (0)
 #define mtrec(cpu) do { } while (0)
 #define mtign(cpu) do { } while (0)
+#define mtenable(name) do { } while (0)
+#define mtdisable(name) do { } while (0)
+#define mtops(n) do { } while (0)
 #endif

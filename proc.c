@@ -44,7 +44,7 @@ sched(void)
     mtstop(myproc());
   else
     mtpause(myproc());
-  mtign(mycpu()->id);
+  mtign();
 
   swtch(&myproc()->context, mycpu()->scheduler);
   mycpu()->intena = intena;
@@ -426,11 +426,11 @@ scheduler(void)
         {
           mtresume(p);
         }
-	mtrec(mycpu()->id);
+	mtrec();
 
 	swtch(&mycpu()->scheduler, myproc()->context);
         mtresume(schedp);
-	mtign(mycpu()->id);
+	mtign();
 	switchkvm();
 
 	// Process is done running for now.

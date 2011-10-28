@@ -6,6 +6,7 @@ struct kstack_tag {
 };
 extern struct kstack_tag kstack_tag[NCPU];
 
+// Tell mtrace about switching threads/processes
 static inline void mtstart(void *ip, struct proc *p)
 {
   unsigned long new_tag;
@@ -54,9 +55,18 @@ static inline void mtresume(struct proc *p)
     panic("mtrace_kstack_resume: bad stack");
   mtrace_fcall_register(p->pid, 0, p->mtrace_stacks.tag[i], i, mtrace_resume);
 }
+
+// Tell mtrace to start/stop recording call and ret
+#define mtrec() mtrace_call_set(1, ~0ull)
+#define mtign() mtrace_call_set(0, ~0ull)
+
 #else
 #define mtstart(ip, p) do { } while (0)
 #define mtstop(p) do { } while (0)
 #define mtpause(p) do { } while (0)
 #define mtresume(p) do { } while (0)
+#define mtrec(cpu) do { } while (0)
+#define mtign(cpu) do { } while (0)
+#define mtrec(cpu) do { } while (0)
+#define mtign(cpu) do { } while (0)
 #endif

@@ -61,6 +61,7 @@ ULIB = ulib.o usys.o printf.o umalloc.o
 UPROGS= \
 	_cat \
 	_init \
+	_forktree \
 	_ls \
 	_sh \
 
@@ -95,13 +96,16 @@ fs.img: mkfs README $(UPROGS)
 mscan.syms: kernel
 	$(NM) -S $< > $@
 
-mscan.kernel: kernel
+mscan.kern: kernel
 	cp $< $@
 
 -include *.d
 
-.PHONY: clean qemu gdb ud0
+.PHONY: clean qemu gdb mtrace ud0
 
+##
+## qemu
+##
 QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic
 
 qemu: kernel
@@ -114,8 +118,8 @@ gdb: kernel
 ##
 MTRACEOPTS = -rtc clock=vm -mtrace-enable -mtrace-file mtrace.out \
 	     -mtrace-quantum 100
-mtrace: mscan.kernel mscan.syms 
-	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel kernel
+mtrace: mscan.kern mscan.syms 
+	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel mscan.kern
 
 mscan.out: mtrace.out $(QEMUSRC)/mtrace-tools/mscan
 	$(QEMUSRC)/mtrace-tools/mscan > $@ || (rm -f $@; exit 2)

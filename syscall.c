@@ -170,10 +170,10 @@ syscall(void)
   num = myproc()->tf->rax;
   if(num >= 0 && num < NELEM(syscalls) && syscalls[num]) {
     mtstart(syscalls[num], myproc());
-    mtrec(cpunum());
+    mtrec();
     myproc()->tf->rax = syscalls[num]();
     mtstop(myproc());
-    mtign(cpunum());
+    mtign();
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             myproc()->pid, myproc()->name, num);
