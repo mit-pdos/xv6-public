@@ -57,7 +57,7 @@ OBJS = \
 	trap.o \
 	trapasm.o \
 
-ULIB = ulib.o usys.o printf.o umalloc.o
+ULIB = ulib.o usys.o printf.o umalloc.o uthread.o
 
 UPROGS= \
 	_cat \
