@@ -8,7 +8,7 @@ static void
 printint(void (*putch) (void*, char), void *putarg,
 	 int xx, int base, int sgn)
 {
-  static char digits[] = "0123456789ABCDEF";
+  const static char digits[] = "0123456789ABCDEF";
   char buf[16];
   int i, neg;
   int x;
@@ -54,6 +54,9 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
         printint(putch, putarg, va_arg(ap, u32), 10, 1);
       } else if(c == 'x') {
         printint(putch, putarg, va_arg(ap, u32), 16, 0);
+      } else if(c == 'l') {
+        state = 'l';
+        continue;
       } else if(c == 's'){
         s = (char*) va_arg(ap, char*);
         if(s == 0)
@@ -67,6 +70,19 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
       } else if(c == '%'){
         putch(putarg, c);
       } else {
+        // Unknown % sequence.  Print it to draw attention.
+        putch(putarg, '%');
+        putch(putarg, c);
+      }
+      state = 0;
+    } else if(state == 'l') {
+      if(c == 'x') {
+        printint(putch, putarg, va_arg(ap, u64), 16, 0);
+      }
+      else if(c == 'u') {
+        printint(putch, putarg, va_arg(ap, u64), 10, 0);
+      }
+      else {
         // Unknown % sequence.  Print it to draw attention.
         putch(putarg, '%');
         putch(putarg, c);
