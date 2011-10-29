@@ -6,14 +6,14 @@
 #include "uspinlock.h"
 
 static struct uspinlock l;
-static volatile uint tcount;
+static volatile int tcount;
 enum { nthread = 4 };
 
 void
-thr(uint arg)
+thr(void *arg)
 {
   acquire(&l);
-  printf(1, "thrtest[%d]: arg 0x%x esp %x\n", getpid(), arg, resp());
+  printf(1, "thrtest[%d]: arg 0x%lx rsp %lx\n", getpid(), arg, rrsp());
   tcount++;
   release(&l);
   exit();
@@ -23,19 +23,17 @@ int
 main(void)
 {
   acquire(&l);
-  printf(1, "thrtest[%d]: start esp %x\n", getpid(), resp());
+  printf(1, "thrtest[%d]: start esp %x\n", getpid(), rrsp());
 
-  for(uint i = 0; i < nthread; i++) {
+  for(int i = 0; i < nthread; i++) {
     sbrk(4096);
-    uint *tstack = (uint*) sbrk(0);
-    tstack[-1] = 0xc0ffee00 | i;
-
-    int tid = forkt(&tstack[-2], thr);
+    void *tstack = sbrk(0);
+    int tid = forkt(tstack, thr, (void*)(u64)(0xc0ffee00|i));
     printf(1, "thrtest[%d]: child %d\n", getpid(), tid);
   }
 
   for(;;){
-    uint lastc = tcount;
+    int lastc = tcount;
     printf(1, "thrtest[%d]: tcount=%d\n", getpid(), lastc);
     release(&l);
     if(lastc==nthread)
@@ -47,7 +45,7 @@ main(void)
   release(&l);
   printf(1, "thrtest[%d]: done\n", getpid());
 
-  for(uint i = 0; i < nthread; i++)
+  for(int i = 0; i < nthread; i++)
     wait();
   exit();
 }

@@ -67,6 +67,7 @@ UPROGS= \
 	_mapbench \
 	_maptest \
 	_sh \
+	_thrtest \
 
 %.o: %.c
 	@echo "  CC     $@"

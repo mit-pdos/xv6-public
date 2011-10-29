@@ -55,7 +55,7 @@ main(void)
   }
 
   sbrk(4096);
-  forkt(sbrk(0), thr);
+  forkt(sbrk(0), thr, 0);
 
   acquire(&l);
   state = 1;

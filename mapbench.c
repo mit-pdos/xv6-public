@@ -11,8 +11,10 @@ enum { nthread = 4 };
 enum { readaccess = 0 };
 
 void
-thr(int tid)
+thr(void *arg)
 {
+  u64 tid = (u64)arg;
+    
   for (int i = 0; i < 100; i++) {
     volatile char *p = (char*) (0x40000UL + tid * 8 * 4096);
     if (map((void *) p, 8 * 4096) < 0) {
@@ -35,7 +37,6 @@ thr(int tid)
   // printf(1, "mapbench[%d]: done\n", getpid());
   tcount++;
   release(&l);
-  exit();
 }
 
 int
@@ -47,9 +48,10 @@ main(void)
   printf(1, "mapbench[%d]: start esp %x\n", getpid(), rrsp());
 
   for(int i = 0; i < nthread; i++) {
-    sbrk(4096);
+    sbrk(8192);
     void *tstack = sbrk(0);
-    int tid = forkt(tstack, thr);
+    printf(1, "tstack %lx\n", tstack);
+    int tid = forkt(tstack, thr, (void *)(u64)i);
     if (0) printf(1, "mapbench[%d]: child %d\n", getpid(), tid);
   }
 
