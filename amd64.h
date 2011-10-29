@@ -118,6 +118,14 @@ void hlt(void)
   __asm volatile("hlt");
 }
 
+static inline u64
+rrsp(void)
+{
+  u64 val;
+  __asm volatile("movq %%rsp,%0" : "=r" (val));
+  return val;
+}
+
 static inline void
 lcr3(u64 val)
 {

@@ -19,5 +19,5 @@ mkfs
 /mscan.out
 /mscan.sorted
 /mscan.syms
-/mscan.kernel
+/mscan.kern
 config.mk
