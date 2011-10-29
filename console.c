@@ -200,6 +200,29 @@ puts(const char *s)
 
 }
 
+static inline void
+stacktrace(void)
+{
+#define PRINT_RET(i)                                       \
+  do {                                                     \
+    uptr addr = (uptr) __builtin_return_address(i);        \
+    if ((addr & KBASE) == KBASE)                           \
+      cprintf("  %lx\n", addr);                            \
+    else                                                   \
+      return;                                              \
+} while (0)
+
+  PRINT_RET(0);
+  PRINT_RET(1);
+  PRINT_RET(2);
+  PRINT_RET(3);
+  PRINT_RET(4);
+  PRINT_RET(5);
+  PRINT_RET(6);
+
+#undef PRINT_RET
+}
+
 void __attribute__((noreturn))
 panic(const char *s)
 {
@@ -214,6 +237,7 @@ panic(const char *s)
   cprintf("cpu%d: panic: ", mycpu()->id);
   cprintf(s);
   cprintf("\n");
+  stacktrace();
   panicked = 1;
   // Never release cons.lock
   sys_halt();
