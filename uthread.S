@@ -1,17 +1,29 @@
+#include "syscall.h"
+#include "traps.h"
+
+# We assume that the kernel follows the amd64 ABI, but not
+# that it saves caller-saved registers.
 .globl forkt
 forkt:
-        pushq %rdi              ## new stack ptr
-        pushq %rsi              ## function ptr
-        movq $1, %rdi           ## flag for sys_fork
-        callq fork
-        popq %r10               ## function ptr
-        popq %r11               ## new stack ptr
-        cmpl $0, %eax           ## pid/tid
+        pushq %r12
+        andq $(~0xf), %rdi      # new stack ptr amd64 ABI alignment 
+        movq %rdi, %r12
+        movq %rdx, -16(%r12)    # arg
+        movq %rsi, -8(%r12)     # function ptr
+
+        movq $1, %rdi           # flag for sys_fork
+        movq $SYS_fork, %rax
+        int $T_SYSCALL
+
+        cmpq $0, %rax           # pid/tid
         jne 1f
-        movq %r11, %rsp
-        andq $(~0xf), %rsp      ## alignment for amd64 ABI
-        movq %rax, %rdi
-        call *%r10
+
+        # child
+        movq -8(%r12), %rax
+        movq -16(%r12), %rdi
+        movq %r12, %rsp
+        call *%rax
         call exit
-1:
+1:      # parent
+        popq %r12
         ret

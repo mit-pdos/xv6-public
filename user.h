@@ -42,5 +42,4 @@ void free(void*);
 int atoi(const char*);
 
 // uthread.S
-int forkt(void *sp, void *pc);
-
+int forkt(void *sp, void *pc, void *arg);
