@@ -64,6 +64,7 @@ UPROGS= \
 	_init \
 	_forktree \
 	_ls \
+	_maptest \
 	_sh \
 
 %.o: %.c

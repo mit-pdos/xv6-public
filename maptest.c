@@ -7,12 +7,12 @@
 
 static volatile char *p;
 static struct uspinlock l;
-static volatile uint state;
+static volatile int state;
 
 static void
 spin(void)
 {
-  volatile uint i;
+  volatile int i;
   for (i = 0; i < 10000; i++)
     ;
 }
@@ -85,5 +85,6 @@ main(void)
     acquire(&l);
   }
 
+  printf(1, "maptest done\n");
   exit();
 }
