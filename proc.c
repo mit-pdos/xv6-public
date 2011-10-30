@@ -11,10 +11,10 @@
 #include "bits.h"
 #include "kmtrace.h"
 #include "vm.h"
+#include "sched.h"
 
 int __mpalign__ idle[NCPU];
 struct ns *nspid __mpalign__;
-struct ns *nsrunq __mpalign__;
 static struct proc *bootproc __mpalign__;
 
 #if MTRACE
@@ -58,42 +58,6 @@ yield(void)
   myproc()->state = RUNNABLE;
   sched();
   release(&myproc()->lock);
-}
-
-// Mark a process RUNNABLE and add it to the runq
-// of its cpu. Caller must hold p->lock so that
-// some other core doesn't start running the
-// process before the caller has finished setting
-// the process up, and to cope with racing callers
-// e.g. two wakeups on same process. and to
-// allow atomic addrun(); sched();
-void
-addrun(struct proc *p)
-{
-#if SPINLOCK_DEBUG
-  if(!holding(&p->lock))
-    panic("addrun no p->lock");
-#endif
-
-  if (p->on_runq >= 0)
-    panic("addrun on runq already");
-  ns_insert(nsrunq, KI(p->cpuid), p);
-  p->on_runq = p->cpuid;
-}
-
-void
-delrun(struct proc *p)
-{
-#if SPINLOCK_DEBUG
-  if(!holding(&p->lock))
-    panic("delrun no p->lock");
-#endif
-
-  if (p->on_runq < 0)
-    panic("delrun not on runq");
-  if (ns_remove(nsrunq, KI(p->on_runq), p) == 0)
-    panic("delrun: ns_remove");
-  p->on_runq = -1;
 }
 
 void
@@ -325,9 +289,7 @@ initproc(void)
   if (nspid == 0)
     panic("pinit");
 
-  nsrunq = nsalloc(1);
-  if (nsrunq == 0)
-    panic("pinit runq");
+  initsched();
 
   for (c = 0; c < NCPU; c++)
     idle[c] = 1;
@@ -340,49 +302,6 @@ initproc(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-
-static void *
-choose_runnable(void *pp, void *arg)
-{
-  struct proc *p = pp;
-  if (p->state == RUNNABLE)
-    return p;
-  return 0;
-}
-
-static void *
-steal_cb(void *vk, void *v, void *arg)
-{
-  struct proc *p = v;
-  
-  acquire(&p->lock);
-  if (p->state != RUNNABLE || p->cpuid == mycpu()->id || p->cpu_pin) {
-    release(&p->lock);
-    return 0;
-  }
-
-  if (p->curcycles == 0 || p->curcycles > MINCYCTHRESH) {
-    if (sched_debug)
-      cprintf("cpu%d: steal %d (cycles=%d) from %d\n",
-	      mycpu()->id, p->pid, (int)p->curcycles, p->cpuid);
-    delrun(p);
-    p->curcycles = 0;
-    p->cpuid = mycpu()->id;
-    addrun(p);
-    release(&p->lock);
-    return p;
-  }
-
-  release(&p->lock);
-  return 0;
-}
-
-int
-steal(void)
-{
-  void *stole = ns_enumerate(nsrunq, steal_cb, 0);
-  return stole ? 1 : 0;
-}
 
 void
 scheduler(void)
@@ -403,7 +322,7 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
-    struct proc *p = ns_enumerate_key(nsrunq, KI(mycpu()->id), choose_runnable, 0);
+    struct proc *p = schednext();
     if (p) {
       acquire(&p->lock);
       if (p->state != RUNNABLE) {
@@ -595,7 +514,7 @@ void *procdump(void *vk, void *v, void *arg)
     state = states[p->state];
   else
     state = "???";
-  cprintf("%d %s %s %d, ", p->pid, state, p->name, p->cpuid);
+  cprintf("%d %s %s %d %lu", p->pid, state, p->name, p->cpuid, p->tsc);
 
   // XXX(sbw)
 #if 0

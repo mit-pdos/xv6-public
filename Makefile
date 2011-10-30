@@ -46,6 +46,7 @@ OBJS = \
 	pipe.o \
 	proc.o \
 	rcu.o \
+	sched.o \
 	spinlock.o \
 	swtch.o \
 	string.o \
