@@ -42,7 +42,7 @@ thr(void *arg)
 int
 main(void)
 {
-  mtrace_enable_set(1, "xv6-mapbench");
+  mtenable("xv6-mapbench");
 
   acquire(&l);
   printf(1, "mapbench[%d]: start esp %x\n", getpid(), rrsp());
@@ -71,7 +71,7 @@ main(void)
   for(int i = 0; i < nthread; i++)
     wait();
 
-  mtrace_enable_set(0, "xv6-mapbench");
+  mtdisable("xv6-mapbench");
   halt();
   exit();
 }
