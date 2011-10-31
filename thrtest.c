@@ -7,7 +7,7 @@
 
 static struct uspinlock l;
 static volatile int tcount;
-enum { nthread = 4 };
+enum { nthread = 8 };
 
 void
 thr(void *arg)
@@ -26,7 +26,7 @@ main(void)
   printf(1, "thrtest[%d]: start esp %x\n", getpid(), rrsp());
 
   for(int i = 0; i < nthread; i++) {
-    sbrk(4096);
+    sbrk(8192);
     void *tstack = sbrk(0);
     int tid = forkt(tstack, thr, (void*)(u64)(0xc0ffee00|i));
     printf(1, "thrtest[%d]: child %d\n", getpid(), tid);

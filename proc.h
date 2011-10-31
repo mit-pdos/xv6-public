@@ -58,6 +58,8 @@ struct proc {
 #if MTRACE
   struct mtrace_stacks mtrace_stacks;
 #endif
+  struct runq *runq;
+  STAILQ_ENTRY(proc) runqlink;
 };
 
 extern struct ns *nspid;

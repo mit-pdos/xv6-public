@@ -12,8 +12,127 @@
 #include "kmtrace.h"
 #include "vm.h"
 #include "sched.h"
+#include <stddef.h>
 
 enum { sched_debug = 0 };
+
+struct runq {
+  STAILQ_HEAD(queue, proc) q;
+  struct spinlock lock;
+  __padout__;
+};
+
+static struct runq runq[NCPU] __mpalign__;
+
+void
+addrun(struct proc *p)
+{
+  // Always called with p->lock held
+  struct runq *q;
+
+  q = &runq[cpunum()];
+  acquire(&q->lock);
+  STAILQ_INSERT_HEAD(&q->q, p, runqlink);
+  p->runq = q;
+  release(&q->lock);
+}
+
+void
+delrun(struct proc *p)
+{
+  // Always called with p->lock held
+  struct runq *q;
+
+  q = p->runq;
+  acquire(&q->lock);
+  STAILQ_REMOVE(&q->q, p, proc, runqlink);
+  release(&q->lock);
+}
+
+int
+steal(void)
+{
+  struct proc *steal;
+  int i;
+  int r = 0;
+
+  pushcli();
+  
+  for (i = 1; i < NCPU; i++) {
+    struct runq *q = &runq[(i+cpunum()) % NCPU];
+    struct proc *p;
+
+    // XXX(sbw) Look for a process to steal.  Acquiring q->lock
+    // then p->lock can result in deadlock.  So we acquire
+    // q->lock, scan for a process, drop q->lock, acquire p->lock,
+    // and then check that it's still ok to steal p.
+    steal = NULL;
+    acquire(&q->lock);
+    STAILQ_FOREACH(p, &q->q, runqlink) {
+      if (p->state == RUNNABLE && !p->cpu_pin && 
+          p->curcycles != 0 && p->curcycles > MINCYCTHRESH)
+      {
+        steal = p;
+        break;
+      }
+    }
+    release(&q->lock);
+
+    if (steal) {
+      acquire(&steal->lock);
+      if (steal->state == RUNNABLE && !steal->cpu_pin &&
+          steal->curcycles != 0 && steal->curcycles > MINCYCTHRESH)
+      {
+        delrun(steal);
+        steal->curcycles = 0;
+        steal->cpuid = mycpu()->id;
+        addrun(steal);
+        release(&steal->lock);
+        r = 1;
+        break;
+      }
+      release(&steal->lock);
+    }
+  }
+
+  popcli();
+  return r;
+}
+
+struct proc *
+schednext(void)
+{
+  // No locks, interrupts enabled
+  struct runq *q;
+  struct proc *p = NULL;
+
+  pushcli();
+  q = &runq[cpunum()];
+  acquire(&q->lock);
+  p = STAILQ_LAST(&q->q, proc, runqlink);
+  if (p) {
+    STAILQ_REMOVE(&q->q, p, proc, runqlink);
+    STAILQ_INSERT_HEAD(&q->q, p, runqlink);    
+  }
+  release(&q->lock);
+  popcli();
+  return p;
+}
+
+void
+initsched(void)
+{
+  int i;
+
+  for (i = 0; i < NCPU; i++) {
+    initlock(&runq[i].lock, "runq");
+    STAILQ_INIT(&runq[i].q);
+  }
+}
+
+#if 0
+// XXX(sbw) This code is broken.  It essentially implements "LIFO"
+// scheduling, which leads to starvation and deadlock (in userspace).
 
 struct ns *nsrunq __mpalign__;
 
@@ -100,6 +219,9 @@ choose_runnable(void *pp, void *arg)
 struct proc *
 schednext(void)
 {
+  // XXX(sbw) Yikes!  If two processes are runnable on the same
+  // CPU this will always return to process addrun inserted last 
+  // into the ns.
   return ns_enumerate_key(nsrunq, KI(mycpu()->id), choose_runnable, 0);
 }
 
@@ -110,3 +232,4 @@ initsched(void)
   if (nsrunq == 0)
     panic("pinit runq");
 }
+#endif

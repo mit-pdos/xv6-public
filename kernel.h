@@ -17,6 +17,7 @@ static inline void *p2v(uptr a) { return (void *) a + KBASE; }
 
 #define cmpswap(ptr, old, new) __sync_bool_compare_and_swap(ptr, old, new)
 #define subfetch(ptr, val)     __sync_sub_and_fetch(ptr, val)
+#define __offsetof             offsetof
 
 struct spinlock;
 struct condvar;
