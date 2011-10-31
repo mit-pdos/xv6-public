@@ -26,6 +26,7 @@ LDFLAGS += -m elf_x86_64
 
 OBJS = \
 	bio.o \
+	bonsai.o \
 	cga.o \
 	condvar.o \
 	console.o \

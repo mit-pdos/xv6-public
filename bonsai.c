@@ -1,7 +1,6 @@
 #include "types.h"
-#include "defs.h"
 #include "param.h"
-#include "memlayout.h"
+#include "kernel.h"
 #include "mmu.h"
 #include "spinlock.h"
 
@@ -26,7 +25,7 @@ struct node {
   struct kv kv;
   int size;
   node_t *r, *l;
-} __attribute__ ((aligned (CACHELINE)));
+} __mpalign__;
 
 static node_t*
 alloc_node(struct kv *kv, node_t *l, node_t *r)
@@ -77,7 +76,7 @@ tree_print(node_t *n, int depth)
 }
 
 struct kv*
-tree_find(node_t *n, int key)
+tree_find(node_t *n, u64 key)
 {
   if (n == 0) return 0;
 
@@ -88,7 +87,7 @@ tree_find(node_t *n, int key)
 }
 
 struct kv*
-tree_find_gt(node_t *n, int key)
+tree_find_gt(node_t *n, u64 key)
 {
   struct kv *r = 0;
 
@@ -252,7 +251,7 @@ tree_delprime(node_t *l, node_t *r)
 }
 
 node_t*
-tree_remove(node_t *n, int key)
+tree_remove(node_t *n, u64 key)
 {
   node_t *t;
 

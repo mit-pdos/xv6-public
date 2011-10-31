@@ -44,7 +44,7 @@ vma_free(void *p)
 #ifdef TREE
 struct state {
   int share;
-  void *pgdir;
+  void *pml4;
   struct node *root;
 };
 
@@ -65,9 +65,9 @@ vmap_free(void *p)
   st->root = m->root;
   tree_foreach(m->root, vmap_free_vma, st);
   m->root = st->root;
-  freevm(m->pgdir);
+  freevm(m->pml4);
   kmfree(st);
-  m->pgdir = 0;
+  m->pml4 = 0;
   m->alloc = 0;
 }
 #else
@@ -311,6 +311,39 @@ vmn_copy(struct vmnode *n)
 }
 
 static int
+vmap_copy_vma(struct kv *kv, void *_st)
+{
+  struct state *st = (struct state *) _st;
+  struct vma *e = (struct vma *) kv->val;
+  struct vma *c = vma_alloc();
+  if (c == 0) {
+    return 0;
+  }
+  c->va_start = e->va_start;
+  c->va_end = e->va_end;
+  if (st->share) {
+    c->n = e->n;
+    c->va_type = COW;
+    acquire(&e->lock);
+    e->va_type = COW;
+    updatepages(st->pml4, (void *) (e->va_start), (void *) (e->va_end), PTE_COW);
+    release(&e->lock);
+  } else {
+    c->n = vmn_copy(e->n);
+    c->va_type = e->va_type;
+  }
+  if(c->n == 0) {
+    return 0;
+  }
+  __sync_fetch_and_add(&c->n->ref, 1);
+  struct kv kv1;
+  kv1.key = c->va_end;
+  kv1.val = (void *) c;
+  st->root = tree_insert(st->root, &kv1);
+  return 1;
+}
+
+static int
 vmn_doload(struct vmnode *vmn, struct inode *ip, u64 offset, u64 sz)
 {
   for(u64 i = 0; i < sz; i += PGSIZE){
@@ -337,7 +370,7 @@ vmap_copy(struct vmap *m, int share)
 #ifdef TREE
   struct state *st = kmalloc(sizeof(struct state));
   st->share = share;
-  st->pgdir = m->pgdir;
+  st->pml4 = m->pml4;
   st->root = c->root;
   if (!tree_foreach(m->root, vmap_copy_vma, st)) {
     vmap_free(c);

@@ -1,3 +1,5 @@
+#define TREE
+
 // A mapping of a chunk of an address space to
 // a specific memory object.
 enum vmatype { PRIVATE, COW};
