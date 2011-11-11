@@ -117,7 +117,8 @@ trap(struct trapframe *tf)
     }
 
     if(tf->trapno == T_PGFLT){
-      if(pagefault(myproc()->vmap, rcr2(), tf->err) >= 0){
+      uptr addr = rcr2();
+      if(addr < USERTOP && pagefault(myproc()->vmap, addr, tf->err) >= 0){
 #if MTRACE
         mtstop(myproc());
         if (myproc()->mtrace_stacks.curr >= 0)
