@@ -64,6 +64,8 @@ ULIB = ulib.o usys.o printf.o umalloc.o uthread.o
 UPROGS= \
 	_cat \
 	_init \
+	_forkexectree \
+	_forkexecbench \
 	_forktree \
 	_ls \
 	_mapbench \
