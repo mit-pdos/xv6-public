@@ -277,4 +277,5 @@ struct vmap *   vmap_copy(struct vmap *, int);
 void            wq_push(void *rip, u64 arg0, u64 arg1);
 void            wq_start(void);
 void            wq_end(void);
+void            wq_dump(void);
 void            initwqframe(struct wqframe *wq);

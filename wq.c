@@ -204,6 +204,15 @@ wq_end(void)
   popcli();
 }
 
+void
+wq_dump(void)
+{
+  int i;
+  for (i = 0; i < NCPU; i++)
+    cprintf("push %lu full %lu pop %lu steal %lu\n",
+            stat[i].push, stat[i].full, stat[i].pop, stat[i].steal);
+}
+
 static void
 __test_stub(uptr a0, uptr a1)
 {
@@ -228,9 +237,7 @@ testwq(void)
     wq_end();
     e = rdtsc();
     cprintf("testwq: %lu\n", (e-s)/iters);
-    for (i = 0; i < NCPU; i++)
-      cprintf("push %lu full %lu pop %lu steal %lu\n",
-              stat[i].push, stat[i].full, stat[i].pop, stat[i].steal);
+    wq_dump();
     running = 0;
   } else {
     while (running)
