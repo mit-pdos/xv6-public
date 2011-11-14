@@ -23,6 +23,7 @@ extern void initinode(void);
 extern void initdisk(void);
 extern void inituser(void);
 extern void inithz(void);
+extern void initwq(void);
 
 static volatile int bstate;
 
@@ -95,6 +96,7 @@ cmain(void)
   initbio();       // buffer cache
   initinode();     // inode cache
   initdisk();      // disk
+  initwq();        // work queues
 
   cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
 

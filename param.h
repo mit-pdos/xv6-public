@@ -17,3 +17,4 @@
 #define PHYSTOP      0xE000000 // use phys mem up to here as free pool
 #define CPUKSTACKS   (NPROC + NCPU)
 #define QUANTUN      10  // scheduling time quantum and tick length (in msec)
+#define WQSHIFT      4   // 2^WORKSHIFT work queue slots

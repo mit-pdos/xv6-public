@@ -58,6 +58,7 @@ OBJS = \
 	vm.o \
 	trap.o \
 	trapasm.o \
+	wq.o
 
 ULIB = ulib.o usys.o printf.o umalloc.o uthread.o
 

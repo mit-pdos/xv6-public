@@ -196,6 +196,7 @@ allocproc(void)
   snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
   initlock(&p->lock, p->lockname+3);
   initcondvar(&p->cv, p->lockname);
+  initwqframe(&p->wqframe);
 
   if (ns_insert(nspid, KI(p->pid), (void *) p) < 0)
     panic("allocproc: ns_insert");
@@ -313,6 +314,10 @@ scheduler(void)
 
   mycpu()->proc = schedp;
   myproc()->cpu_pin = 1;
+
+  // Test the work queue
+  extern void testwq(void);
+  testwq();
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);

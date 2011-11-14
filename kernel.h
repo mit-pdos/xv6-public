@@ -17,10 +17,12 @@ static inline void *p2v(uptr a) { return (void *) a + KBASE; }
 
 #define cmpswap(ptr, old, new) __sync_bool_compare_and_swap(ptr, old, new)
 #define subfetch(ptr, val)     __sync_sub_and_fetch(ptr, val)
+#define fetchadd(ptr, val)     __sync_fetch_and_add(ptr, val)
 #define __offsetof             offsetof
 
 struct spinlock;
 struct condvar;
+struct wqframe;
 struct context;
 struct vmnode;
 struct inode;
@@ -270,3 +272,9 @@ int             vmn_load(struct vmnode *, struct inode*, u64, u64);
 int             vmap_remove(struct vmap *, uptr, u64);
 void            updatepages(pml4e_t*, void*, void*, int);
 struct vmap *   vmap_copy(struct vmap *, int);
+
+// wq.c
+void            wq_push(void *rip, u64 arg0, u64 arg1);
+void            wq_start(void);
+void            wq_end(void);
+void            initwqframe(struct wqframe *wq);

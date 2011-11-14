@@ -12,6 +12,11 @@ struct context {
   u64 rip;
 } __attribute__((packed));
 
+// Work queue frame
+struct wqframe {
+  volatile u64 ref;
+};
+
 // Per-process, per-stack meta data for mtrace
 #if MTRACE
 #define MTRACE_NSTACKS 16
@@ -59,6 +64,7 @@ struct proc {
   struct mtrace_stacks mtrace_stacks;
 #endif
   struct runq *runq;
+  struct wqframe wqframe;
   STAILQ_ENTRY(proc) runqlink;
 };
 
