@@ -60,10 +60,19 @@ consputc(int c)
       ;
   }
 
-  if(c == BACKSPACE){
-    uartputc('\b'); uartputc(' '); uartputc('\b');
-  } else
-    uartputc(c);
+  switch(c) {
+  case BACKSPACE:
+    uartputc('\b');
+    uartputc(' ');
+    uartputc('\b');
+    break;
+  case '\n':
+    uartputc('\r');
+    // fall through
+  default:
+    uartputc(c);    
+  }
+
   cgaputc(c);
 }
 
