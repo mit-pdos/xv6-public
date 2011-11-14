@@ -316,8 +316,8 @@ scheduler(void)
   myproc()->cpu_pin = 1;
 
   // Test the work queue
-  extern void testwq(void);
-  testwq();
+  //extern void testwq(void);
+  //testwq();
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);
@@ -381,8 +381,13 @@ scheduler(void)
     }
 
     if (idle[mycpu()->id]) {
+      int worked;
+      do {
+        worked = wq_trywork();
+      } while(worked);
       sti();
-      hlt();
+      if (!WQENABLE)
+        hlt();
     }
   }
 }

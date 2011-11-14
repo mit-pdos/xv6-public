@@ -274,8 +274,21 @@ void            updatepages(pml4e_t*, void*, void*, int);
 struct vmap *   vmap_copy(struct vmap *, int);
 
 // wq.c
+#if WQENABLE
 void            wq_push(void *rip, u64 arg0, u64 arg1);
 void            wq_start(void);
 void            wq_end(void);
 void            wq_dump(void);
+int             wq_trywork(void);
 void            initwqframe(struct wqframe *wq);
+#else
+#define wq_push(rip, arg0, arg1) do { \
+  void (*fn)(uptr, uptr) = rip; \
+  fn(arg0, arg1); \
+} while(0)
+#define wq_start() do { } while(0)
+#define wq_end() do { } while(0)
+#define wq_dump() do { } while(0)
+#define wq_trywork() 0
+#define initwqframe(x) do { } while (0)
+#endif

@@ -96,7 +96,9 @@ cmain(void)
   initbio();       // buffer cache
   initinode();     // inode cache
   initdisk();      // disk
+#if WQENABLE
   initwq();        // work queues
+#endif
 
   cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
 

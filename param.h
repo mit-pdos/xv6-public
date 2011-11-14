@@ -18,3 +18,4 @@
 #define CPUKSTACKS   (NPROC + NCPU)
 #define QUANTUN      10  // scheduling time quantum and tick length (in msec)
 #define WQSHIFT      4   // 2^WORKSHIFT work queue slots
+#define WQENABLE     0   // Enable work queue

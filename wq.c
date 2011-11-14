@@ -1,6 +1,6 @@
+#if WQENABLE
 #include "types.h"
 #include "kernel.h"
-#include "param.h"
 #include "amd64.h"
 #include "cpu.h"
 #include "bits.h"
@@ -119,6 +119,7 @@ __wq_run(struct wqthread *th)
   void (*fn)(uptr arg0, uptr arg1) = (void*)th->rip;
   fn(th->arg0, th->arg1);
   subfetch(th->ref, 1);
+  kfree(th);
 }
 
 // Add the (rip, arg0, arg1) work to the local work queue.
@@ -140,9 +141,10 @@ wq_push(void *rip, u64 arg0, u64 arg1)
   th->arg1 = arg1;
   th->ref = &wq_frame()->ref;
 
-  if (__wq_push(wq_cur(), th))
+  if (__wq_push(wq_cur(), th)) {
+    kfree(th);
     fn(arg0, arg1);
-  else 
+  } else 
     fetchadd(&wq_frame()->ref, 1);
 }
 
@@ -265,3 +267,4 @@ initwq(void)
     initlock(&queue[i].lock, "queue lock");
   }
 }
+#endif // WQENABLE
