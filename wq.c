@@ -1,3 +1,30 @@
+// cilk style run queue
+// A work queue is built from NCPU per-core wqueues.
+// A core pushes work to the head of its per-core wqueue.
+// A core pops work from the head of its per-core wqueue.
+// A core pops work from the tail of another core's per-core wqueue.
+//
+// Usage:
+//   void goo(uptr a0, uptr a1) {
+//     char *arg = (char*) a0;
+//     cprintf("goo\n");
+//     arg[1] = 'g';
+//   }
+//   void foo(uptr a0, uptr a1) {
+//     char *arg = (char*) a0;
+//     wq_push(goo, a0, 0);
+//     arg[0] = 'f';
+//     cprintf("foo\n");
+//   }
+//   void example(void) {
+//     char arg[2];
+//     wq_start();
+//     wq_push(foo, (uptr)arg, 0);
+//     cprintf("example\n");     
+//     wq_end();
+//     cprintf("%c %c\n", arg[0], arg[1]);
+//   }
+
 #if WQENABLE
 #include "types.h"
 #include "kernel.h"
@@ -181,6 +208,8 @@ wq_trywork(void)
   return 0;
 }
 
+// Start a new work queue frame.
+// We don't allow nested work queue frames.
 void
 wq_start(void)
 { 
@@ -189,6 +218,9 @@ wq_start(void)
     panic("wq_start");
 }
 
+// End of the current work queue frame.
+// The core works while the reference count of the current
+// work queue frame is not 0.
 void
 wq_end(void)
 {
