@@ -51,7 +51,7 @@ struct wqthread {
   u64 rip;
   u64 arg0;
   u64 arg1;
-  volatile u64 *ref;  // pointer to parent wqframe.ref
+  struct wqframe *frame;  // parent wqframe
   __padout__;
 } __mpalign__;
 
@@ -75,7 +75,7 @@ wq_cur(void)
 static struct wqframe *
 wq_frame(void)
 {
-  return &myproc()->wqframe;
+  return mycpu()->wqframe;
 }
 
 static struct wqstat *
@@ -144,8 +144,12 @@ static void
 __wq_run(struct wqthread *th)
 {
   void (*fn)(uptr arg0, uptr arg1) = (void*)th->rip;
+  struct wqframe *old = mycpu()->wqframe;
+
+  mycpu()->wqframe = th->frame;
   fn(th->arg0, th->arg1);
-  subfetch(th->ref, 1);
+  mycpu()->wqframe = old;
+  subfetch(&th->frame->ref, 1);
   kfree(th);
 }
 
@@ -166,7 +170,7 @@ wq_push(void *rip, u64 arg0, u64 arg1)
   th->rip = (uptr) rip;
   th->arg0 = arg0;
   th->arg1 = arg1;
-  th->ref = &wq_frame()->ref;
+  th->frame = wq_frame();
 
   if (__wq_push(wq_cur(), th)) {
     kfree(th);
@@ -216,6 +220,7 @@ wq_start(void)
   pushcli();
   if (myproc()->wqframe.ref != 0)
     panic("wq_start");
+  mycpu()->wqframe = &myproc()->wqframe;
 }
 
 // End of the current work queue frame.
@@ -224,7 +229,7 @@ wq_start(void)
 void
 wq_end(void)
 {
-  while (myproc()->wqframe.ref != 0) {
+  while (wq_frame()->ref != 0) {
     struct wqthread *th;
     int i;
 
@@ -239,6 +244,7 @@ wq_end(void)
       }
     }
   }
+  mycpu()->wqframe = NULL;
   popcli();
 }
 

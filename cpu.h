@@ -1,8 +1,9 @@
 #include "mmu.h"
 
+struct wqframe;
+
 // Per-CPU state
 struct cpu {
-
   u8 id;                       // Local APIC ID; index into cpus[] below
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
@@ -10,6 +11,7 @@ struct cpu {
   struct taskstate ts;         // Used by x86 to find stack for interrupt
   struct context *scheduler;   // swtch() here to enter scheduler
   u64 last_rcu_gc_ticks;
+  struct wqframe *wqframe;
 
   // Cpu-local storage variables; see below
   struct cpu *cpu;
