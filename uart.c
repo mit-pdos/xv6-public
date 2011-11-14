@@ -8,9 +8,8 @@
 #define COM2    0x2f8
 #define COM1    0x3f8
 
-#define COM COM2
-#define IRQ_COM IRQ_COM2
-
+static int com;
+static int irq_com;
 static int uart;    // is there a uart?
 
 void
@@ -18,21 +17,21 @@ uartputc(char c)
 {
   int i;
 
-  if(!uart)
+  if (!uart)
     return;
-  for(i = 0; i < 128 && !(inb(COM+5) & 0x20); i++)
+  for (i = 0; i < 128 && !(inb(com+5) & 0x20); i++)
     microdelay(10);
-  outb(COM+0, c);
+  outb(com+0, c);
 }
 
 static int
 uartgetc(void)
 {
-  if(!uart)
+  if (!uart)
     return -1;
-  if(!(inb(COM+5) & 0x01))
+  if (!(inb(com+5) & 0x01))
     return -1;
-  return inb(COM+0);
+  return inb(com+0);
 }
 
 void
@@ -44,34 +43,50 @@ uartintr(void)
 void
 inituart(void)
 {
-  char *p;
+  static struct {
+    int com;
+    int irq;
+  } conf[] = {
+    // Try COM2 (aka ttyS1) first, because it usually does SOL for IPMI.
+    { .com = COM2, .irq = IRQ_COM2 },
+    // Still try COM1 (aka ttyS0), because it is what QEMU emulates.
+    { .com = COM1, .irq = IRQ_COM1 }
+  };
 
-  // Turn off the FIFO
-  outb(COM+2, 0);
-  
-  // 19200 baud
-  outb(COM+3, 0x80);    // Unlock divisor
-  outb(COM+0, 115200/19200);
-  outb(COM+1, 0);
-  // 8 bits, one stop bit, no parity
-  outb(COM+3, 0x03);    // Lock divisor, 8 data bits.
-  outb(COM+1, 0x01);    // Enable receive interrupts.
-  // Data terminal ready
-  outb(COM+4, 0x0);
+  int i;
+  for (i = 0; i < 2; i++) {
+    com = conf[i].com;
+    irq_com = conf[i].irq;
 
-  // If status is 0xFF, no serial port.
-  if(inb(COM+5) == 0xFF)
+    // Turn off the FIFO
+    outb(com+2, 0);
+    // 19200 baud
+    outb(com+3, 0x80);    // Unlock divisor
+    outb(com+0, 115200/19200);
+    outb(com+1, 0);
+    // 8 bits, one stop bit, no parity
+    outb(com+3, 0x03);    // Lock divisor, 8 data bits.
+    outb(com+1, 0x01);    // Enable receive interrupts.
+    // Data terminal ready
+    outb(com+4, 0x0);
+    
+    // If status is 0xFF, no serial port.
+    if(inb(com+5) != 0xFF)
+      break;
+  }
+  if (i == 2)
     return;
+
   uart = 1;
 
   // Acknowledge pre-existing interrupt conditions;
   // enable interrupts.
-  inb(COM+2);
-  inb(COM+0);
-  picenable(IRQ_COM);
-  ioapicenable(IRQ_COM, 0);
+  inb(com+2);
+  inb(com+0);
+  picenable(irq_com);
+  ioapicenable(irq_com, 0);
 
   // Announce that we're here.
-  for(p="uart..\n"; *p; p++)
+  for (char *p="uart..\n"; *p; p++)
     uartputc(*p);
 }
