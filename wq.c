@@ -154,9 +154,11 @@ wq_trywork(void)
   struct wqthread *th;
   int i;
 
+  pushcli();
   th = __wq_pop(wq_cur());
   if (th != NULL) {
     __wq_run(th);
+    popcli();
     return 1;
   }
 
@@ -168,10 +170,12 @@ wq_trywork(void)
     th = __wq_steal(&queue[i]);
     if (th != NULL) {
       __wq_run(th);
+      popcli();
       return 1;
     }
   }
 
+  popcli();
   return 0;
 }
 
