@@ -204,6 +204,11 @@ int             wait(void);
 void            yield(void);
 void            migrate(struct proc *);
 
+// prof.c
+extern int profenable;
+void            profreset(void);
+void            profdump(void);
+
 // rcu.c
 void            rcuinit(void);
 void            rcu_begin_write(struct spinlock *);

@@ -13,6 +13,12 @@ SECTIONS
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
 	}
 	. = ALIGN(0x1000);
+	PROVIDE(sprof = .);
+	.prof : {
+		*(.prof)
+	}
+	PROVIDE(eprof = .);
+	. = ALIGN(0x1000);
 	.data : {
 		*(.data)
 	}

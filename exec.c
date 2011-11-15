@@ -13,11 +13,14 @@
 #include "elf.h"
 #include "cpu.h"
 #include "vm.h"
+#include "prof.h"
 
 #define USTACKPAGES 2
 #define BRK (USERTOP >> 1)
 
 static const int odp = 1;
+
+DEFINE_PROFCTR(dosegment_prof);
 
 struct eargs {
   struct inode *ip;
@@ -32,6 +35,7 @@ dosegment(uptr a0, u64 a1)
   struct vmnode *vmn = NULL;
   struct proghdr ph;
 
+  prof_start(dosegment_prof);
   if(readi(args->ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
     goto bad;
   if(ph.type != ELF_PROG_LOAD) {
@@ -63,6 +67,7 @@ dosegment(uptr a0, u64 a1)
   if(vmap_insert(args->vmap, vmn, ph.vaddr) < 0)
     goto bad;
 
+  prof_end(dosegment_prof);
   return;
   
 bad:

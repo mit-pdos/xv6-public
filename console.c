@@ -308,6 +308,18 @@ consoleintr(int (*getc)(void))
     case C('W'):  // Work queue stats
       wq_dump();
       break;
+    case C('L'):  // Prof stats
+      profdump();
+      break;
+    case C('K'):  // Prof enable
+      profreset();
+      cprintf("prof enabled\n");
+      profenable = 1;
+      break;
+    case C('I'):  // Prof disable
+      profenable = 0;
+      cprintf("prof disabled\n");
+      break;
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;

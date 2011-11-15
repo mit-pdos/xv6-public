@@ -46,6 +46,7 @@ OBJS = \
 	picirq.o \
 	pipe.o \
 	proc.o \
+	prof.o \
 	rcu.o \
 	sched.o \
 	spinlock.o \
