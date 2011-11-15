@@ -14,6 +14,7 @@
 #include "cpu.h"
 #include "vm.h"
 #include "prof.h"
+#include <stddef.h>
 
 #define USTACKPAGES 2
 #define BRK (USERTOP >> 1)
@@ -38,9 +39,8 @@ dosegment(uptr a0, u64 a1)
   prof_start(dosegment_prof);
   if(readi(args->ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
     goto bad;
-  if(ph.type != ELF_PROG_LOAD) {
-    return;
-  }
+  if(ph.type != ELF_PROG_LOAD)
+    goto bad;
   if(ph.memsz < ph.filesz)
     goto bad;
   // XXX(sbw) vaddr doesn't have to be page aligned..
@@ -112,6 +112,13 @@ exec(char *path, char **argv)
   args.vmap = vmap;
   wq_start();
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
+    Elf64_Word type;
+    if(readi(ip, (char*)&type, 
+             off+offsetof(struct proghdr, type), 
+             sizeof(type)) != sizeof(type))
+      goto bad;
+    if(type != ELF_PROG_LOAD)
+      continue;
     wq_push(dosegment, (uptr)&args, (uptr)off);
   }
 
