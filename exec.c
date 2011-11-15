@@ -146,7 +146,6 @@ exec(char *path, char **argv)
   if(vmap_insert(vmap, vmn, USERTOP-(USTACKPAGES*PGSIZE)) < 0)
     goto bad;
   vmn = 0;
-  wq_end();
 
   // Push argument strings, prepare rest of stack in ustack.
   sp = USERTOP;
@@ -174,6 +173,7 @@ exec(char *path, char **argv)
     if(*s == '/')
       last = s+1;
   safestrcpy(myproc()->name, last, sizeof(myproc()->name));
+  wq_end();
 
   // Commit to the user image.
   oldvmap = myproc()->vmap;
