@@ -39,6 +39,17 @@ xchg32(volatile u32 *addr, u32 newval)
 }
 
 static inline u64
+xchg(u64 *ptr, u64 val)
+{
+  __asm volatile(
+    "lock; xchgq %0, %1\n\t"
+    : "+m" (*ptr), "+r" (val)
+    :
+    : "memory", "cc");
+  return val;
+}
+
+static inline u64
 readrflags(void)
 {
   u64 rflags;
@@ -62,6 +73,18 @@ static inline void
 nop_pause(void)
 {
   __asm volatile("pause" : :);
+}
+
+static inline void
+rep_nop(void)
+{
+  __asm volatile("rep; nop" ::: "memory");
+}
+
+static inline void
+barrier(void)
+{
+  __asm volatile("" ::: "memory");
 }
 
 static inline void
