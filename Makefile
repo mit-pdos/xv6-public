@@ -119,7 +119,7 @@ mscan.kern: kernel
 
 -include *.d
 
-.PHONY: clean qemu gdb mtrace ud0
+.PHONY: clean qemu gdb ud0
 
 ##
 ## qemu
@@ -136,10 +136,11 @@ gdb: kernel
 ##
 MTRACEOPTS = -rtc clock=vm -mtrace-enable -mtrace-file mtrace.out \
 	     -mtrace-quantum 100
-mtrace: mscan.kern mscan.syms 
+mtrace.out: mscan.kern mscan.syms 
+	$(Q)rm -f mtrace.out
 	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel mscan.kern
 
-mscan.out: $(QEMUSRC)/mtrace-tools/mscan
+mscan.out: $(QEMUSRC)/mtrace-tools/mscan mtrace.out
 	$(QEMUSRC)/mtrace-tools/mscan > $@ || (rm -f $@; exit 2)
 
 mscan.sorted: mscan.out $(QEMUSRC)/mtrace-tools/sersec-sort
