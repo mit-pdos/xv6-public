@@ -4,12 +4,13 @@
 #include "mtrace.h"
 #include "amd64.h"
 
-#define NITERS 64
+#define NITERS 16
 
 static void
 execbench(void)
 {
   u64 s = rdtsc();
+  mtenable("xv6-forkexecbench");
   for (int i = 0; i < NITERS; i++) {
     int pid = fork(0);
     if (pid < 0) {
@@ -25,6 +26,9 @@ execbench(void)
       wait();
     }
   }
+  mtops(NITERS);
+  mtdisable("xv6-forkexecbench");
+
   u64 e = rdtsc();
   printf(1, "%lu\n", (e-s) / NITERS);
 }
