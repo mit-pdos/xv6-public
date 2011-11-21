@@ -35,6 +35,8 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
+#include "mtrace.h"
+#include "qlock.h"
 
 #define NSLOTS (1 << WQSHIFT)
 
@@ -42,7 +44,7 @@ struct wqueue {
   struct wqthread *thread[NSLOTS];
   volatile int head __mpalign__;
 
-  struct spinlock lock;
+  qlock_t lock;
   volatile int tail;
   __padout__;
 } __mpalign__;
@@ -105,17 +107,18 @@ __wq_push(struct wqueue *q, struct wqthread *t)
 static struct wqthread *
 __wq_pop(struct wqueue *q)
 {
+  struct qnode qn;
   int i;
 
-  acquire(&q->lock);
+  ql_lock(&q->lock, &qn);
   i = q->head;
   if ((i - q->tail) == 0) {
-    release(&q->lock);
+    ql_unlock(&q->lock, &qn);
     return NULL;
   }
   i = (i-1) & (NSLOTS-1);
   q->head--;
-  release(&q->lock);
+  ql_unlock(&q->lock, &qn);
 
   wq_stat()->pop++;
   return q->thread[i];
@@ -124,17 +127,18 @@ __wq_pop(struct wqueue *q)
 static struct wqthread *
 __wq_steal(struct wqueue *q)
 {
+  struct qnode qn;
   int i;
 
-  acquire(&q->lock);
+  ql_lock(&q->lock, &qn);
   i = q->tail;
   if ((i - q->head) == 0) {
-    release(&q->lock);
+    ql_unlock(&q->lock, &qn);
     return NULL;
   }
   i = i & (NSLOTS-1);
   q->tail++;
-  release(&q->lock);
+  ql_unlock(&q->lock, &qn);
 
   wq_stat()->steal++;
   return q->thread[i];
@@ -301,8 +305,7 @@ initwq(void)
 {
   int i;
 
-  for (i = 0; i < NCPU; i++) {
-    initlock(&queue[i].lock, "queue lock");
-  }
+  for (i = 0; i < NCPU; i++)
+    ql_init(&queue[i].lock, "queue lock");
 }
 #endif // WQENABLE
