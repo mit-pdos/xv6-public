@@ -239,8 +239,6 @@ panic(const char *s)
 
   cli();
   
-  if (cons.locking)
-    acquire(&cons.lock);
   cons.locking = 0;
 
   cprintf("cpu%d: panic: ", mycpu()->id);
@@ -248,6 +246,8 @@ panic(const char *s)
   cprintf("\n");
   stacktrace();
   panicked = 1;
+  acquire(&cons.lock);
+
   // Never release cons.lock
   sys_halt();
   for(;;)
