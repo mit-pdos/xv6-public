@@ -11,10 +11,46 @@
 
 extern profctr_t sprof[];
 extern profctr_t eprof[];
-
 int profenable;
 
-static void (*profconfig)(u64 ctr, u64 sel, u64 val);
+struct pmu {
+  void (*config)(u64 ctr, u64 sel, u64 val);  
+  u64 cntval_bits;
+};
+struct pmu pmu;
+
+//
+// AMD stuff
+//
+static void
+amdconfig(u64 ctr, u64 sel, u64 val)
+{
+  writemsr(MSR_AMD_PERF_SEL0 | ctr, 0);
+  writemsr(MSR_AMD_PERF_CNT0 | ctr, val);
+  writemsr(MSR_AMD_PERF_SEL0 | ctr, sel);
+}
+
+struct pmu amdpmu = {
+  .config = amdconfig,
+  .cntval_bits = 48,
+};
+
+//
+// Intel stuff
+//
+static void
+intelconfig(u64 ctr, u64 sel, u64 val)
+{
+  writemsr(MSR_INTEL_PERF_SEL0 | ctr, 0);
+  writemsr(MSR_INTEL_PERF_CNT0 | ctr, val);
+  writemsr(MSR_INTEL_PERF_SEL0 | ctr, sel);
+}
+
+// XXX
+struct pmu intelpmu = {
+  .config = intelconfig,
+  .cntval_bits = 48,
+};
 
 void
 profreset(void)
@@ -46,30 +82,12 @@ profdump(void)
   }
 }
 
-static void
-amdconfig(u64 ctr, u64 sel, u64 val)
-{
-  writemsr(MSR_AMD_PERF_SEL0 | ctr, 0);
-  writemsr(MSR_AMD_PERF_CNT0 | ctr, val);
-  writemsr(MSR_AMD_PERF_SEL0 | ctr, sel);
-}
-
-static void
-intelconfig(u64 ctr, u64 sel, u64 val)
-{
-  writemsr(MSR_INTEL_PERF_SEL0 | ctr, 0);
-  writemsr(MSR_INTEL_PERF_CNT0 | ctr, val);
-  writemsr(MSR_INTEL_PERF_SEL0 | ctr, sel);
-}
-
 void
 profstart(void)
 {
   u64 ctr = 0;
   u64 sel = 0;
-  u64 val = -1000;
-
-  cprintf("profstart ...\n");
+  u64 val = -100000;
 
   sel = 0UL << 32 |
     1 << 24 | 
@@ -81,10 +99,16 @@ profstart(void)
     0x76;
 
   pushcli();
-  profconfig(ctr, sel, val);
+  pmu.config(ctr, sel, val);
   popcli();
+}
 
-  cprintf("rdpmc %lx\n", rdpmc(0));
+int
+profintr(void)
+{
+  lapicpc(0);
+  // Only level-triggered interrupts require an lapiceoi.
+  return 1;
 }
 
 void
@@ -97,10 +121,10 @@ initprof(void)
 
     cpuid(0, 0, &name[0], &name[2], &name[1]);
     cprintf("%s\n", s);
-    if (strcmp(s, "AuthenticAMD"))
-      profconfig = amdconfig;
-    else if (strcmp(s, "GenuineIntel"))
-      profconfig = intelconfig;
+    if (!strcmp(s, "AuthenticAMD"))
+      pmu = amdpmu;
+    else if (!strcmp(s, "GenuineIntel"))
+      pmu = intelpmu;
     else
       panic("Unknown Manufacturer");
   }

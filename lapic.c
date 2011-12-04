@@ -35,6 +35,8 @@
 #define LINT1   (0x0360/4)   // Local Vector Table 2 (LINT1)
 #define ERROR   (0x0370/4)   // Local Vector Table 3 (ERROR)
   #define MASKED     0x00010000   // Interrupt masked
+  #define MT_NMI     0x00000400   // NMI message type
+  #define MT_FIX     0x00000000   // Fixed message type
 #define TICR    (0x0380/4)   // Timer Initial Count
 #define TCCR    (0x0390/4)   // Timer Current Count
 #define TDCR    (0x03E0/4)   // Timer Divide Configuration
@@ -107,7 +109,7 @@ initlapic(void)
   // Disable performance counter overflow interrupts
   // on machines that provide that interrupt entry.
   if(((lapic[VER]>>16) & 0xFF) >= 4)
-    lapicw(PCINT, MASKED);
+    lapicpc(0);
 
   // Map error interrupt to IRQ_ERROR.
   lapicw(ERROR, T_IRQ0 + IRQ_ERROR);
@@ -127,6 +129,12 @@ initlapic(void)
 
   // Enable interrupts on the APIC (but not on the processor).
   lapicw(TPR, 0);
+}
+
+void
+lapicpc(char mask)
+{
+  lapicw(PCINT, mask ? MASKED : MT_NMI);
 }
 
 int

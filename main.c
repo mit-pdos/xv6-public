@@ -24,6 +24,7 @@ extern void initdisk(void);
 extern void inituser(void);
 extern void inithz(void);
 extern void initwq(void);
+extern void initprof(void);
 
 static volatile int bstate;
 
@@ -33,6 +34,7 @@ mpboot(void)
   initseg();
   inittls();
   initlapic();
+  initprof();
   bstate = 1;
   scheduler();     // start running processes
 }
@@ -99,6 +101,7 @@ cmain(void)
 #if WQENABLE
   initwq();        // work queues
 #endif
+  initprof();
 
   cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
 

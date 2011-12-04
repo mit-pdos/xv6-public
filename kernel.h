@@ -129,6 +129,7 @@ int             cpunum(void);
 void            lapicstartap(u8, u32 addr);
 void            lapiceoi(void);
 void            lapic_tlbflush(u32);
+void            lapicpc(char mask);
 
 // mp.c
 extern int      ncpu;
@@ -210,6 +211,7 @@ extern int profenable;
 void            profreset(void);
 void            profdump(void);
 void            profstart(void);
+int             profintr(void);
 
 // rcu.c
 void            rcuinit(void);

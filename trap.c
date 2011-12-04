@@ -48,6 +48,14 @@ trap(struct trapframe *tf)
   writemsr(MSR_GS_BASE, (u64)&cpus[cpunum()].cpu);
   sti();
 
+  if (tf->trapno == T_NMI) {
+    // The only locks that we can acquire during NMI are ones
+    // we acquire only during NMI.
+    if (profintr())
+      return;
+    panic("NMI");
+  }
+
   // XXX(sbw) sysenter/sysexit
   if(tf->trapno == T_SYSCALL){
     if(myproc()->killed) {
@@ -92,6 +100,7 @@ trap(struct trapframe *tf)
     lapiceoi();
     piceoi();
     break;
+  case T_IRQ0 + IRQ_COM2:
   case T_IRQ0 + IRQ_COM1:
     uartintr();
     lapiceoi();
