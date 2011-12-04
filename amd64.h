@@ -1,6 +1,24 @@
 #pragma once
 // Routines to let C code use special x86 instructions.
 
+static inline void
+cpuid(u32 info, u32 *eaxp, u32 *ebxp,
+      u32 *ecxp, u32 *edxp)
+{
+  u32 eax, ebx, ecx, edx;
+  __asm volatile("cpuid" 
+                 : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
+                 : "a" (info));
+  if (eaxp)
+    *eaxp = eax;
+  if (ebxp)
+    *ebxp = ebx;
+  if (ecxp)
+    *ecxp = ecx;
+  if (edxp)
+    *edxp = edx;
+}
+
 static inline u8
 inb(u16 port)
 {
@@ -127,13 +145,22 @@ writemsr(u32 msr, u64 val)
   __asm volatile("wrmsr" : : "c" (msr), "a" (lo), "d" (hi));
 }
 
-static inline
-u64 rdtsc(void)
+static inline u64
+rdtsc(void)
 {
   u32 hi, lo;
   __asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
   return ((u64)lo)|(((u64)hi)<<32);
 }
+
+static inline u64
+rdpmc(u32 ecx)
+{
+  u32 hi, lo;
+  __asm volatile("rdpmc" : "=a" (lo), "=d" (hi) : "c" (ecx));
+  return ((u64) lo) | (((u64) hi) << 32);
+}
+
 
 static inline
 void hlt(void)
@@ -146,6 +173,20 @@ rrsp(void)
 {
   u64 val;
   __asm volatile("movq %%rsp,%0" : "=r" (val));
+  return val;
+}
+
+static inline void
+lcr4(u64 val)
+{
+  __asm volatile("movq %0,%%cr4" : : "r" (val));
+}
+
+static inline u64
+rcr4(void)
+{
+  u64 val;
+  __asm volatile("movq %%cr4,%0" : "=r" (val));
   return val;
 }
 

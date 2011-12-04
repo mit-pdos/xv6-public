@@ -39,6 +39,8 @@
 #define CR0_CD		0x40000000	// Cache Disable
 #define CR0_PG		0x80000000	// Paging
 
+#define CR4_PCE         0x100           // RDPMC at CPL > 0
+
 // FS/GS base registers
 #define MSR_FS_BASE     0xc0000100
 #define MSR_GS_BASE     0xc0000101
@@ -48,3 +50,21 @@
 #define MSR_LSTAR       0xc0000082
 #define MSR_CSTAR       0xc0000083
 #define MSR_SFMASK      0xc0000084
+
+// AMD performance event-select registers
+#define MSR_AMD_PERF_SEL0  0xC0010000
+#define MSR_AMD_PERF_SEL1  0xC0010001
+#define MSR_AMD_PERF_SEL2  0xC0010002
+#define MSR_AMD_PERF_SEL3  0xC0010003
+// AMD performance event-count registers
+#define MSR_AMD_PERF_CNT0  0xC0010004
+#define MSR_AMD_PERF_CNT1  0xC0010005
+#define MSR_AMD_PERF_CNT2  0xC0010006
+#define MSR_AMD_PERF_CNT3  0xC0010007
+
+// Intel performance event-select registers
+#define MSR_INTEL_PERF_SEL0 0x00000186
+#define MSR_INTEL_PERF_SEL1 0x00000187
+// Intel performance event-count registers
+#define MSR_INTEL_PERF_CNT0 0x000000c1
+#define MSR_INTEL_PERF_CNT1 0x000000c2
