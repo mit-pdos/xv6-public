@@ -132,6 +132,7 @@ void            lapic_tlbflush(u32);
 
 // mp.c
 extern int      ncpu;
+int             mpbcpu(void);
 
 // ns.c
 enum {
@@ -208,6 +209,7 @@ void            migrate(struct proc *);
 extern int profenable;
 void            profreset(void);
 void            profdump(void);
+void            profstart(void);
 
 // rcu.c
 void            rcuinit(void);
