@@ -20,6 +20,7 @@ static inline void *p2v(uptr a) { return (void *) a + KBASE; }
 #define fetchadd(ptr, val)     __sync_fetch_and_add(ptr, val)
 #define __offsetof             offsetof
 
+struct trapframe;
 struct spinlock;
 struct condvar;
 struct wqframe;
@@ -211,7 +212,7 @@ extern int profenable;
 void            profreset(void);
 void            profdump(void);
 void            profstart(void);
-int             profintr(void);
+int             profintr(struct trapframe*);
 
 // rcu.c
 void            rcuinit(void);
