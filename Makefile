@@ -119,7 +119,7 @@ mscan.kern: kernel
 
 -include *.d
 
-.PHONY: clean qemu gdb ud0
+.PHONY: clean qemu gdb ud0 josmp
 
 ##
 ## qemu
@@ -146,8 +146,8 @@ mscan.out: $(QEMUSRC)/mtrace-tools/mscan mtrace.out
 mscan.sorted: mscan.out $(QEMUSRC)/mtrace-tools/sersec-sort
 	$(QEMUSRC)/mtrace-tools/sersec-sort < $< > $@
 
-ud0: kernel
-	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/ud0/kernel.xv6
+josmp ud0: kernel
+	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/$@/kernel.xv6
 
 clean: 
 	rm -f *.o *.d *.asm *.sym initcode kernel bootother mkfs fs.img _*
