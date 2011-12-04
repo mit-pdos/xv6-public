@@ -48,6 +48,7 @@ OBJS = \
 	proc.o \
 	prof.o \
 	rcu.o \
+	sampler.o \
 	sched.o \
 	spinlock.o \
 	swtch.o \

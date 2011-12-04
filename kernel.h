@@ -211,8 +211,6 @@ void            migrate(struct proc *);
 extern int profenable;
 void            profreset(void);
 void            profdump(void);
-void            profstart(void);
-int             profintr(struct trapframe*);
 
 // rcu.c
 void            rcuinit(void);
@@ -224,6 +222,11 @@ void            rcu_delayed(void*, void (*dofree)(void*));
 void            rcu_delayed2(int, u64, void (*dofree)(int, u64));
 void		rcu_gc(void);
 void		rcu_gc_worker(void);
+
+// sampler.c
+void            sampstart(void);
+int             sampintr(struct trapframe*);
+void            sampdump(void);
 
 // spinlock.c
 void            acquire(struct spinlock*);

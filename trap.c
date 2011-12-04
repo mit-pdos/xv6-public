@@ -48,7 +48,7 @@ trap(struct trapframe *tf)
   if (tf->trapno == T_NMI) {
     // The only locks that we can acquire during NMI are ones
     // we acquire only during NMI.
-    if (profintr(tf))
+    if (sampintr(tf))
       return;
     panic("NMI");
   }
