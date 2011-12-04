@@ -42,11 +42,8 @@ extern u64 trapentry[];
 void
 trap(struct trapframe *tf)
 {
-  // XXX(sbw) eventually these should be moved into trapasm.S
-  cli();
   writegs(KDSEG);
   writemsr(MSR_GS_BASE, (u64)&cpus[cpunum()].cpu);
-  sti();
 
   if (tf->trapno == T_NMI) {
     // The only locks that we can acquire during NMI are ones
@@ -58,6 +55,7 @@ trap(struct trapframe *tf)
 
   // XXX(sbw) sysenter/sysexit
   if(tf->trapno == T_SYSCALL){
+    sti();
     if(myproc()->killed) {
       mtstart(trap, myproc());
       exit();
@@ -180,7 +178,7 @@ inittrap(void)
     idt[i] = INTDESC(KCSEG, entry, bits);
   }
   entry = trapentry[T_SYSCALL];
-  idt[T_SYSCALL] = INTDESC(KCSEG, entry, SEG_DPL(3) | SEG_TRAP64 |INT_P);
+  idt[T_SYSCALL] = INTDESC(KCSEG, entry, SEG_DPL(3) | SEG_INTR64 |INT_P);
 }
 
 void
