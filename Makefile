@@ -12,6 +12,7 @@ QEMUSRC    ?= ../mtrace
 MTRACE	   ?= $(QEMU)
 HW	   ?= qemu
 
+O  = o.$(HW)
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
@@ -62,8 +63,10 @@ OBJS = \
 	trap.o \
 	trapasm.o \
 	wq.o
+OBJS := $(addprefix $(O)/, $(OBJS))
 
 ULIB = ulib.o usys.o printf.o umalloc.o uthread.o
+ULIB := $(addprefix $(O)/, $(ULIB))
 
 UPROGS= \
 	_cat \
@@ -75,26 +78,30 @@ UPROGS= \
 	_mapbench \
 	_maptest \
 	_sh \
-	_thrtest \
+	_thrtest
+UPROGS := $(addprefix $(O)/, $(UPROGS))
 
-%.o: %.c
+$(O)/kernel: $(O) $(O)/boot.o $(OBJS) initcode bootother fs.img
+	@echo "  LD     $@"
+	$(Q)$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
+		-o $@ $(O)/boot.o $(OBJS) -b binary initcode bootother fs.img
+
+$(O):
+	$(Q)mkdir $(O)
+
+$(O)/%.o: %.c
 	@echo "  CC     $@"
 	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
 
-%.o: %.S
+$(O)/%.o: %.S
 	@echo "  CC     $@"
 	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
-
-kernel: boot.o $(OBJS) initcode bootother fs.img
-	@echo "  LD     $@"
-	$(Q)$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
-		-o $@ boot.o $(OBJS) -b binary initcode bootother fs.img
 
 initcode: TTEXT = 0x0
 bootother: TTEXT = 0x7000
 %: %.S
 	@echo "  CC     $@"
-	$(Q)$(CC) $(CFLAGS) -nostdinc -I. -c $@.S
+	$(Q)$(CC) $(CFLAGS) -nostdinc -I. -c $< -o $@.o
 	$(Q)$(LD) $(LDFLAGS) -N -e start -Ttext $(TTEXT) -o $@.out $@.o
 	$(Q)$(OBJCOPY) -S -O binary $@.out $@
 
@@ -111,7 +118,8 @@ mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o mkfs mkfs.c
 
 fs.img: mkfs README $(UPROGS)
-	./mkfs fs.img README $(UPROGS)
+	@echo "  MKFS   $@"
+	$(Q)./mkfs $@ README $(UPROGS)
 
 mscan.syms: kernel
 	$(NM) -S $< > $@
@@ -120,18 +128,20 @@ mscan.kern: kernel
 	cp $< $@
 
 -include *.d
+-include $(O)/*.d
 
-.PHONY: clean qemu gdb ud0 josmp
+.PRECIOUS: $(O)/%.o
+.PHONY: clean qemu gdb rsync
 
 ##
 ## qemu
 ##
 QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic
 
-qemu: kernel
-	$(QEMU) $(QEMUOPTS) -kernel kernel
-gdb: kernel
-	$(QEMU) $(QEMUOPTS) -kernel kernel -S -s
+qemu: $(O)/kernel
+	$(QEMU) $(QEMUOPTS) -kernel $(O)/kernel
+gdb: $(O)/kernel
+	$(QEMU) $(QEMUOPTS) -kernel $(O)/kernel -S -s
 
 ##
 ## mtrace
@@ -148,8 +158,8 @@ mscan.out: $(QEMUSRC)/mtrace-tools/mscan mtrace.out
 mscan.sorted: mscan.out $(QEMUSRC)/mtrace-tools/sersec-sort
 	$(QEMUSRC)/mtrace-tools/sersec-sort < $< > $@
 
-josmp ud0: kernel
-	rsync -avP kernel amsterdam.csail.mit.edu:/tftpboot/$@/kernel.xv6
+rsync: $(O)/kernel
+	rsync -avP $(O)/kernel amsterdam.csail.mit.edu:/tftpboot/$(HW)/kernel.xv6
 
 clean: 
-	rm -f *.o *.d *.asm *.sym initcode kernel bootother mkfs fs.img _*
+	rm -fr $(O) *.d *.asm *.sym initcode kernel bootother mkfs fs.img
