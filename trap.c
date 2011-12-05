@@ -113,8 +113,10 @@ trap(struct trapframe *tf)
     lapiceoi();
     lcr3(rcr3());
     break;
-   
-  //PAGEBREAK: 13
+  case T_SAMPCONF:
+    lapiceoi();
+    sampconf();  
+    break;
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.

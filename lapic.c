@@ -183,6 +183,12 @@ lapic_tlbflush(u32 cpu)
   lapic_ipi(cpu, T_TLBFLUSH);
 }
 
+void
+lapic_sampconf(u32 cpu)
+{
+  lapic_ipi(cpu, T_SAMPCONF);
+}
+
 // Start additional processor running bootstrap code at addr.
 // See Appendix B of MultiProcessor Specification.
 void

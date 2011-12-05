@@ -130,6 +130,7 @@ int             cpunum(void);
 void            lapicstartap(u8, u32 addr);
 void            lapiceoi(void);
 void            lapic_tlbflush(u32);
+void            lapic_sampconf(u32);
 void            lapicpc(char mask);
 
 // mp.c
@@ -227,6 +228,7 @@ void		rcu_gc_worker(void);
 void            sampstart(void);
 int             sampintr(struct trapframe*);
 void            sampdump(void);
+void            sampconf(void);
 
 // spinlock.c
 void            acquire(struct spinlock*);

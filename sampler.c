@@ -8,6 +8,7 @@
 #include "kernel.h"
 #include "bits.h"
 #include "amd64.h"
+#include "cpu.h"
 
 static const u64 debug_sel = 
   0UL << 32 |
@@ -87,11 +88,23 @@ sampdump(void)
 }
 
 void
-sampstart(void)
+sampconf(void)
 {
   pushcli();
   pmu.config(0, debug_sel, -debug_cnt);
   popcli();
+}
+
+void
+sampstart(void)
+{
+  for(struct cpu *c = cpus; c < cpus+ncpu; c++) {
+    if(c == cpus+cpunum())
+      continue;
+    lapic_sampconf(c->id);
+  }
+
+  sampconf();
 }
 
 static int

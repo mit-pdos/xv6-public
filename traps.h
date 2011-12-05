@@ -26,6 +26,7 @@
 // processor defined exceptions or interrupt vectors.
 #define T_SYSCALL       64      // system call
 #define T_TLBFLUSH      65      // flush TLB
+#define T_SAMPCONF      66      // configure event counters
 #define T_DEFAULT      500      // catchall
 
 #define T_IRQ0          32      // IRQ 0 corresponds to int T_IRQ
