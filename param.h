@@ -24,6 +24,10 @@
 #define NCPU         4   // maximum number of CPUs
 #define MTRACE       0
 #define WQENABLE     0   // Enable work queue
+#elif defined(HW_ud0)
+#define NCPU         4   // maximum number of CPUs
+#define MTRACE       0
+#define WQENABLE     0   // Enable work queue
 #else
 #error "Unknown HW"
 #endif
