@@ -62,7 +62,8 @@ OBJS = \
 	vm.o \
 	trap.o \
 	trapasm.o \
-	wq.o
+	wq.o \
+	incbin.o
 OBJS := $(addprefix $(O)/, $(OBJS))
 
 ULIB = ulib.o usys.o printf.o umalloc.o uthread.o
@@ -81,10 +82,10 @@ UPROGS= \
 	_thrtest
 UPROGS := $(addprefix $(O)/, $(UPROGS))
 
-$(O)/kernel: $(O) $(O)/boot.o $(OBJS) initcode bootother fs.img
+$(O)/kernel: $(O) $(O)/boot.o $(OBJS)
 	@echo "  LD     $@"
 	$(Q)$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
-		-o $@ $(O)/boot.o $(OBJS) -b binary initcode bootother fs.img
+		-o $@ $(O)/boot.o $(OBJS)
 
 $(O):
 	$(Q)mkdir $(O)
@@ -93,13 +94,15 @@ $(O)/%.o: %.c
 	@echo "  CC     $@"
 	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
 
+$(O)/incbin.o: ASFLAGS+=-DMAKE_OUT=$(O)
+$(O)/incbin.o: $(O)/initcode $(O)/bootother $(O)/fs.img
 $(O)/%.o: %.S
 	@echo "  CC     $@"
 	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
 
-initcode: TTEXT = 0x0
-bootother: TTEXT = 0x7000
-%: %.S
+$(O)/initcode: TTEXT = 0x0
+$(O)/bootother: TTEXT = 0x7000
+$(O)/%: %.S
 	@echo "  CC     $@"
 	$(Q)$(CC) $(CFLAGS) -nostdinc -I. -c $< -o $@.o
 	$(Q)$(LD) $(LDFLAGS) -N -e start -Ttext $(TTEXT) -o $@.out $@.o
@@ -114,17 +117,17 @@ _%: %.o $(ULIB)
 	@echo "  LD     $@"
 	$(Q)$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
 
-mkfs: mkfs.c fs.h
-	gcc -m32 -Werror -Wall -o mkfs mkfs.c
+$(O)/mkfs: mkfs.c fs.h
+	gcc -m32 -Werror -Wall -o $@ mkfs.c
 
-fs.img: mkfs README $(UPROGS)
+$(O)/fs.img: $(O)/mkfs README $(UPROGS)
 	@echo "  MKFS   $@"
-	$(Q)./mkfs $@ README $(UPROGS)
+	$(Q)$(O)/mkfs $@ README $(UPROGS)
 
-mscan.syms: kernel
+$(O)/mscan.syms: $(O)/kernel
 	$(NM) -S $< > $@
 
-mscan.kern: kernel
+$(O)/mscan.kern: $(O)/kernel
 	cp $< $@
 
 -include *.d
@@ -148,9 +151,9 @@ gdb: $(O)/kernel
 ##
 MTRACEOPTS = -rtc clock=vm -mtrace-enable -mtrace-file mtrace.out \
 	     -mtrace-quantum 100
-mtrace.out: mscan.kern mscan.syms 
+mtrace.out: $(O)/mscan.kern $(O)/mscan.syms 
 	$(Q)rm -f mtrace.out
-	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel mscan.kern
+	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel $(O)/mscan.kern
 
 mscan.out: $(QEMUSRC)/mtrace-tools/mscan mtrace.out
 	$(QEMUSRC)/mtrace-tools/mscan > $@ || (rm -f $@; exit 2)
@@ -162,4 +165,4 @@ rsync: $(O)/kernel
 	rsync -avP $(O)/kernel amsterdam.csail.mit.edu:/tftpboot/$(HW)/kernel.xv6
 
 clean: 
-	rm -fr $(O) *.d *.asm *.sym initcode kernel bootother mkfs fs.img
+	rm -fr $(O)

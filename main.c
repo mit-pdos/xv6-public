@@ -41,7 +41,8 @@ mpboot(void)
 static void
 bootothers(void)
 {
-  extern u8 _binary_bootother_start[], _binary_bootother_size[];
+  extern u8 _bootother_start[];
+  extern u64 _bootother_size;
   extern void (*apstart)(void);
   struct cpu *c;
   char *stack;
@@ -51,7 +52,7 @@ bootothers(void)
   // The linker has placed the image of bootother.S in
   // _binary_bootother_start.
   code = p2v(0x7000);
-  memmove(code, _binary_bootother_start, (u64)_binary_bootother_size);
+  memmove(code, _bootother_start, _bootother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
     if(c == cpus+cpunum())  // We've started already.

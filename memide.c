@@ -12,7 +12,8 @@
 #include "traps.h"
 #include "buf.h"
 
-extern u8 _binary_fs_img_start[], _binary_fs_img_size[];
+extern u8 _fs_img_start[];
+extern u64 _fs_img_size;
 
 static u64 disksize;
 static u8 *memdisk;
@@ -20,8 +21,8 @@ static u8 *memdisk;
 void
 initdisk(void)
 {
-  memdisk = _binary_fs_img_start;
-  disksize = (u64)_binary_fs_img_size/512;
+  memdisk = _fs_img_start;
+  disksize = _fs_img_size/512;
 }
 
 // Interrupt handler.

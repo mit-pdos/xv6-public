@@ -236,19 +236,20 @@ void
 inituser(void)
 {
   struct proc *p;
-  extern char _binary_initcode_start[], _binary_initcode_size[];
-  
+  extern u8 _initcode_start[];
+  extern u64 _initcode_size;
+
   p = allocproc();
   bootproc = p;
   if((p->vmap = vmap_alloc()) == 0)
     panic("userinit: out of vmaps?");
   struct vmnode *vmn = 
-    vmn_allocpg(PGROUNDUP((uptr)_binary_initcode_size) / PGSIZE);
+    vmn_allocpg(PGROUNDUP(_initcode_size) / PGSIZE);
   if(vmn == 0)
     panic("userinit: vmn_allocpg");
   if(vmap_insert(p->vmap, vmn, 0) < 0)
     panic("userinit: vmap_insert");
-  if(copyout(p->vmap, 0, _binary_initcode_start, (uptr)_binary_initcode_size) < 0)
+  if(copyout(p->vmap, 0, _initcode_start, _initcode_size) < 0)
     panic("userinit: copyout");
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = UCSEG | 0x3;
