@@ -1,5 +1,4 @@
 #include "types.h"
-#include "param.h"
 #include "amd64.h"
 #include "mmu.h"
 #include "spinlock.h"

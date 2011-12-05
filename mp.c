@@ -3,7 +3,6 @@
 // http://developer.intel.com/design/pentium/datashts/24201606.pdf
 
 #include "types.h"
-#include "param.h"
 #include "amd64.h"
 #include "mp.h"
 #include "kernel.h"

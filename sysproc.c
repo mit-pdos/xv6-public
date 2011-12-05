@@ -1,7 +1,6 @@
 #include "types.h"
 #include "amd64.h"
 #include "kernel.h"
-#include "param.h"
 #include "mmu.h"
 #include "spinlock.h"
 #include "condvar.h"

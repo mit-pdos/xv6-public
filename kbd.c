@@ -2,7 +2,6 @@
 #include "amd64.h"
 #include "kernel.h"
 #include "kbd.h"
-#include "param.h"
 
 int
 kbdgetc(void)

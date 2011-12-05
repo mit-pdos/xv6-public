@@ -3,7 +3,6 @@
 #include "user.h"
 #include "mtrace.h"
 #include "amd64.h"
-#include "param.h"
 #include "fcntl.h"
 
 enum { nthread = 2 };

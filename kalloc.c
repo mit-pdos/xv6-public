@@ -3,7 +3,6 @@
 // and pipe buffers. Allocates 4096-byte pages.
 
 #include "types.h"
-#include "param.h"
 #include "mmu.h"
 #include "kernel.h"
 #include "spinlock.h"

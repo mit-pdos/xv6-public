@@ -1,5 +1,4 @@
 #include "types.h"
-#include "param.h"
 #include "multiboot.h"
 #include "kernel.h"
 #include "cpu.h"

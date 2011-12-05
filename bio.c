@@ -23,7 +23,6 @@
 
 #include "types.h"
 #include "kernel.h"
-#include "param.h"
 #include "spinlock.h"
 #include "condvar.h"
 #include "buf.h"

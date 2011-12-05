@@ -1,4 +1,3 @@
-#include "param.h"
 #include "types.h"
 #include "amd64.h"
 #include "mmu.h"

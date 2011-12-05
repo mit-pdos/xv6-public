@@ -2,7 +2,6 @@
 
 #include "types.h"
 #include "kernel.h"
-#include "param.h"
 #include "amd64.h"
 #include "cpu.h"
 #include "bits.h"

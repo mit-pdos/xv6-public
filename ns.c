@@ -1,7 +1,6 @@
 #include "types.h"
 #include "kernel.h"
 #include "spinlock.h"
-#include "param.h"
 #include "fs.h"
 #include <stddef.h>
 
