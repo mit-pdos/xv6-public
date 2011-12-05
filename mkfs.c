@@ -110,13 +110,15 @@ main(int argc, char *argv[])
   iappend(rootino, &de, sizeof(de));
 
   for(i = 2; i < argc; i++){
-    assert(index(argv[i], '/') == 0);
-
     if((fd = open(argv[i], 0)) < 0){
       perror(argv[i]);
       exit(1);
     }
-    
+
+    // Lop off parent directories
+    if (index(argv[i], '/'))
+      argv[i] = rindex(argv[i], '/') + 1;
+
     // Skip leading _ in name when writing to file system.
     // The binaries are named _rm, _cat, etc. to keep the
     // build operating system from trying to execute them
