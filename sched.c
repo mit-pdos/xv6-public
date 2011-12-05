@@ -69,7 +69,7 @@ steal(void)
     acquire(&q->lock);
     STAILQ_FOREACH(p, &q->q, runqlink) {
       if (p->state == RUNNABLE && !p->cpu_pin && 
-          p->curcycles != 0 && p->curcycles > MINCYCTHRESH)
+          p->curcycles != 0 && p->curcycles > VICTIMAGE)
       {
         steal = p;
         break;
@@ -80,7 +80,7 @@ steal(void)
     if (steal) {
       acquire(&steal->lock);
       if (steal->state == RUNNABLE && !steal->cpu_pin &&
-          steal->curcycles != 0 && steal->curcycles > MINCYCTHRESH)
+          steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
       {
         delrun(steal);
         steal->curcycles = 0;
@@ -182,7 +182,7 @@ steal_cb(void *vk, void *v, void *arg)
     return 0;
   }
 
-  if (p->curcycles == 0 || p->curcycles > MINCYCTHRESH) {
+  if (p->curcycles == 0 || p->curcycles > VICTIMAGE) {
     if (sched_debug)
       cprintf("cpu%d: steal %d (cycles=%d) from %d\n",
 	      mycpu()->id, p->pid, (int)p->curcycles, p->cpuid);
