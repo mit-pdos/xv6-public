@@ -107,7 +107,7 @@ void
 initpg(char* (*alloc)(void))
 {
   // Map first 4GB to KBASE
-  pgmap((void *) (KBASE+(1UL<<30)), (void *) (KBASE+(1UL<<32)), (1UL<<30));
+  pgmap((void *) (KBASE+(1ull<<30)), (void *) (KBASE+(128ull<<30)), (1ull<<30));
   // boot.S maps first 1GB to KBASE and gets us running with kpml4
 }
 
