@@ -9,8 +9,8 @@
 # The linker loads the executable as if starting at KBASE+2MB, but we
 # ask the loader to load the kernel at physical 2MB and then set up the
 # necessary memory mapping to switch to the higher address.
-# The value of KBASE must match the definitions in vmx.h and kernel.ld.
-#define KBASE 0xFFFFFFFF80000000 /* -2GB */
+# The value of KBASE must match the definitions in kernel.h and kernel.ld.
+#define KBASE 0xFFFFFF0000000000
 
 # PADDR(x) is the physical memory address corresponding to x.
 # Until we set up the memory map, fairly late in this file, we have to
@@ -102,7 +102,7 @@ start64:
 .code32
 .globl apstart
 apstart:
-        call loadgdt
+	call loadgdt
 	ljmp $KCSEG32, $PADDR(apstart32)  // code32 segment selector
 
 apstart32:
@@ -126,7 +126,8 @@ tramp64:
 	# running at PADDR(tramp64), so use an explicit calculation to
 	# load and jump to the correct address.  %rdi should hold the
         # physical address of the jmp target.
-	addq $KBASE, %rdi
+	movq $KBASE, %r11
+	addq %r11, %rdi
 	jmp *%rdi
 
 # Initial stack
@@ -144,20 +145,19 @@ tramp64:
 .global kpml4
 kpml4:
 	.quad PADDR(pdpt0) + (1<<0) + (1<<1)  // present, read/write
-	.space 4096 - 16
+	.quad 0
+	.space 4096 - 2*16
 	.quad PADDR(pdpt1) + (1<<0) + (1<<1)  // present, read/write
-
+        .quad 0
 .align 4096
 pdpt0:
 	.quad PADDR(pdt) + (1<<0) + (1<<1)  // present, read/write
-	.quad 0
-	.space 4096 - 16
+	.space 4096 - 8
        
 .align 4096
 pdpt1:
-	.space 4096 - 16
 	.quad PADDR(pdt) + (1<<0) + (1<<1)  // present, read/write
-	.quad 0
+	.space 4096 - 8
        
 .align 4096
 pdt:

@@ -4,7 +4,7 @@ ENTRY(xxx)
 
 SECTIONS
 {
-	. = 0xFFFFFFFF80100000;
+	. = 0xFFFFFF0000100000;
 	PROVIDE(text = .);
 	.text : AT(0x100000) {
 		*(.text .stub .text.* .gnu.linkonce.t.*)

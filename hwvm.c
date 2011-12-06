@@ -107,8 +107,8 @@ pgmap(void *va, void *last, paddr pa)
 void
 initpg(char* (*alloc)(void))
 {
-  // Map first 4GB to PBASE
-  pgmap((void *) PBASE, (void *) (PBASE+(1UL<<32)), 0);
+  // Map first 4GB to KBASE
+  pgmap((void *) (KBASE+(1UL<<30)), (void *) (KBASE+(1UL<<32)), (1UL<<30));
   // boot.S maps first 1GB to KBASE and gets us running with kpml4
 }
 
@@ -121,7 +121,7 @@ setupkvm(void)
 
   if((pml4 = (pml4e_t*)kalloc()) == 0)
     return 0;
-  k = PX(3, PBASE);
+  k = PX(3, KBASE);
   memset(&pml4[0], 0, 8*k);
   memmove(&pml4[k], &kpml4[k], 8*(512-k));
   return pml4;
@@ -180,7 +180,7 @@ freevm(pml4e_t *pml4)
     panic("freevm: no pgdir");
 
   // Don't free kernel portion of the pml4
-  k = PX(3, PBASE);
+  k = PX(3, KBASE);
   for (i = 0; i < k; i++) {
     if (pml4[i] & PTE_P) {
       freepm(p2v(PTE_ADDR(pml4[i])), 2);

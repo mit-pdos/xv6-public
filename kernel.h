@@ -1,7 +1,6 @@
 #include "mmu.h"
 
-#define KBASE 0xFFFFFFFF80000000ull
-#define PBASE 0xFFFFFF0000000000ull
+#define KBASE 0xFFFFFF0000000000ull
 // XXX(sbw) arbitrary for right now..
 #define USERTOP 0x0000000040000000ull
 

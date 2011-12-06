@@ -6,7 +6,7 @@
 #include "traps.h"
 #include "kernel.h"
 
-#define IOAPIC  (PBASE + 0xFEC00000)   // Default physical address of IO APIC
+#define IOAPIC  (KBASE + 0xFEC00000)   // Default physical address of IO APIC
 
 #define REG_ID     0x00  // Register index: ID
 #define REG_VER    0x01  // Register index: version

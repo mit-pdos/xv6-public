@@ -42,7 +42,7 @@
 
 #define IO_RTC  0x70
 
-static volatile u32 *lapic = (u32 *)(PBASE + 0xfee00000);
+static volatile u32 *lapic = (u32 *)(KBASE + 0xfee00000);
 static u64 lapichz;
 
 static void
