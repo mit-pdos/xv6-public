@@ -88,18 +88,17 @@ pgmap(void *va, void *last, paddr pa)
 {
   pme_t *pdp;
   pme_t *pd;
-  pme_t *pt;
+  pme_t *sp;
 
   for (;;) {
     pdp = descend(kpml4, va, 0, 1, 3);
     pd = descend(pdp, va, 0, 1, 2);
-    pt = descend(pd, va, 0, 1, 1);
-    pt = &pt[PX(0,va)];
-    *pt = pa | PTE_W | PTE_P;
+    sp = &pd[PX(1,va)];
+    *sp = pa | PTE_W | PTE_P | PTE_PS;
     if(va == last)
       break;
-    va += PGSIZE;
-    pa += PGSIZE;
+    va += PGSIZE*512;
+    pa += PGSIZE*512;
   }
 }
 
