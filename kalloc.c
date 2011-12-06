@@ -9,6 +9,7 @@
 #include "kalloc.h"
 #include "mtrace.h"
 #include "cpu.h"
+#include "e820.h"
 
 struct kmem kmems[NCPU];
 struct kmem kstacks[NCPU];
@@ -41,7 +42,7 @@ kfree_pool(struct kmem *m, char *v)
 {
   struct run *r;
 
-  if((uptr)v % PGSIZE || v < end || v2p(v) >= PHYSTOP)
+  if((uptr)v % PGSIZE || v < end || e820size(v) == -1ull)
     panic("kfree_pool");
 
   // Fill with junk to catch dangling refs.
@@ -150,7 +151,8 @@ void
 initkalloc(void)
 {
   char *p;
-  char *e;
+  u64 n;
+  u64 k;
 
   for (int c = 0; c < NCPU; c++) {
     kmems[c].name[0] = (char) c + '0';
@@ -166,18 +168,35 @@ initkalloc(void)
     kstacks[c].size = KSTACKSIZE;
   }
 
+  cprintf("%lu MBytes\n", e820bytes() / (1 << 20));
+  n = e820bytes() / NCPU;
+  if (n & (PGSIZE - 1)) {
+    cprintf("Oops: bytes/CPU isn't aligned\n");
+    n = PGROUNDDOWN(n);
+  }
+
   p = (char*)PGROUNDUP((uptr)newend);
-  e = (char*)KBASE;
+  k = (((uptr)p) - KBASE);
   for (int c = 0; c < NCPU; c++) {
-    char *sp = p + CPUKSTACKS*KSTACKSIZE;
-    char *ep = e + (PHYSTOP/NCPU);
-    if (sp >= ep)
-      panic("Too many stacks");
-    for (; p < sp; p += KSTACKSIZE)
+    // Fill the stack allocator
+    for (int i = 0; i < CPUKSTACKS; i++, k += KSTACKSIZE) {
+      if (p == (void *)-1)
+        panic("initkalloc: e820next");
+      // XXX(sbw) handle this condition
+      if (e820size(p) < KSTACKSIZE)
+        panic("initkalloc: e820size");
       kfree_pool(&kstacks[c], p);
-    for (; p < ep; p += PGSIZE)
+      p = e820next(p, KSTACKSIZE);
+    }
+   
+    // The rest goes to the page allocator
+    for (; k != n; k += PGSIZE, p = e820next(p, PGSIZE)) {
+      if (p == (void *)-1)
+        panic("initkalloc: e820next");
       kfree_pool(&kmems[c], p);
-    e = p;
+    }
+
+    k = 0;
   }
 
   kminit();
