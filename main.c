@@ -2,6 +2,7 @@
 #include "multiboot.h"
 #include "kernel.h"
 #include "cpu.h"
+#include "e820.h"
 
 extern void initpic(void);
 extern void initioapic(void);
@@ -14,7 +15,7 @@ extern void initlapic(void);
 extern void inittls(void);
 extern void inittrap(void);
 extern void initseg(void);
-extern void initkalloc(void);
+extern void initkalloc(u64 mbaddr);
 extern void initrcu(void);
 extern void initproc(void);
 extern void initbio(void);
@@ -74,7 +75,7 @@ bootothers(void)
 }
 
 void
-cmain(void)
+cmain(u64 mbmagic, u64 mbaddr)
 {
   extern pml4e_t kpml4[];
   extern u64 cpuhz;
@@ -91,9 +92,8 @@ cmain(void)
   inittrap();
   initmp();
   initlapic();
-
-  initkalloc();
-  initgc();       // initialize rcu module
+  initkalloc(mbaddr);
+  initgc();        // gc epochs
   initproc();      // process table
   initbio();       // buffer cache
   initinode();     // inode cache

@@ -86,7 +86,7 @@ start32:
 	call initpagetables
         call init32e
 
-        movl $PADDR(start64), %edi
+	movl $PADDR(start64), %eax
 	# Enter 64-bit mode.
 	ljmp $KCSEG, $PADDR(tramp64)  // code64 segment selector
 
@@ -107,7 +107,7 @@ apstart:
 
 apstart32:
         call init32e
-        movl $PADDR(apstart64), %edi
+	movl $PADDR(apstart64), %eax
 	ljmp $KCSEG, $PADDR(tramp64)  // code64 segment selector
 
 .code64       
@@ -124,11 +124,11 @@ apstart64:
 tramp64:
 	# The linker thinks we are running at tramp64, but we're actually
 	# running at PADDR(tramp64), so use an explicit calculation to
-	# load and jump to the correct address.  %rdi should hold the
-        # physical address of the jmp target.
+	# load and jump to the correct address.  %rax should hold the
+	# physical address of the jmp target.
 	movq $KBASE, %r11
-	addq %r11, %rdi
-	jmp *%rdi
+	addq %r11, %rax
+	jmp *%rax
 
 # Initial stack
 .comm stack, STACK

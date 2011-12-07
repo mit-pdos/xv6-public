@@ -9,6 +9,11 @@
 #include "kalloc.h"
 #include "mtrace.h"
 #include "cpu.h"
+#include "multiboot.h"
+
+static struct Mbmem mem[128];
+static u64 nmem;
+static u64 membytes;
 
 struct kmem kmems[NCPU];
 struct kmem kstacks[NCPU];
@@ -18,6 +23,77 @@ char *newend;
 enum { kalloc_memset = 0 };
 
 static int kinited __mpalign__;
+
+static struct Mbmem *
+memsearch(paddr pa)
+{
+  struct Mbmem *e;
+  struct Mbmem *q;
+
+  q = mem+nmem;
+  for (e = &mem[0]; e < q; e++)
+    if ((e->base <= pa) && ((e->base+e->length) > pa))
+      return e;
+  return NULL;
+}
+
+static u64
+memsize(void *va)
+{
+  struct Mbmem *e;
+  paddr pa = v2p(va);
+
+  e = memsearch(pa);
+  if (e == NULL)
+    return -1;
+  return (e->base+e->length) - pa;
+}
+
+static void *
+memnext(void *va, u64 inc)
+{
+  struct Mbmem *e, *q;
+  paddr pa = v2p(va);
+
+  e = memsearch(pa);
+  if (e == NULL)
+    return (void *)-1;
+
+  pa += inc;
+  if (pa < (e->base+e->length))
+    return p2v(pa);
+
+  q = mem+nmem;
+  for (e = e + 1; e < q; e++)
+      return p2v(e->base);
+
+  return (void *)-1;
+}
+
+static void
+initmem(u64 mbaddr)
+{
+  struct Mbdata *mb;
+  struct Mbmem *mbmem;
+  u8 *p, *ep;
+
+  mb = p2v(mbaddr);
+  if(!(mb->flags & (1<<6)))
+    panic("multiboot header has no memory map");
+
+  p = p2v(mb->mmap_addr);
+  ep = p + mb->mmap_length;
+
+  while (p < ep) {
+    mbmem = (Mbmem *)(p+4);
+    p += 4 + *(u32*)p;
+    if (mbmem->type == 1) {
+      membytes += mbmem->length;
+      mem[nmem] = *mbmem;
+      nmem++;
+    }
+  }
+}
 
 // simple page allocator to get off the ground during boot
 static char *
@@ -41,7 +117,7 @@ kfree_pool(struct kmem *m, char *v)
 {
   struct run *r;
 
-  if((uptr)v % PGSIZE || v < end || v2p(v) >= PHYSTOP)
+  if((uptr)v % PGSIZE || v < end || memsize(v) == -1ull)
     panic("kfree_pool");
 
   // Fill with junk to catch dangling refs.
@@ -147,10 +223,13 @@ kminit(void)
 
 // Initialize free list of physical pages.
 void
-initkalloc(void)
+initkalloc(u64 mbaddr)
 {
   char *p;
-  char *e;
+  u64 n;
+  u64 k;
+
+  initmem(mbaddr);
 
   for (int c = 0; c < NCPU; c++) {
     kmems[c].name[0] = (char) c + '0';
@@ -166,18 +245,35 @@ initkalloc(void)
     kstacks[c].size = KSTACKSIZE;
   }
 
+  cprintf("%lu mbytes\n", membytes / (1<<20));
+  n = membytes / NCPU;
+  if (n & (PGSIZE-1)) {
+    cprintf("bytes/CPU isn't aligned\n");
+    n = PGROUNDDOWN(n);
+  }
+
   p = (char*)PGROUNDUP((uptr)newend);
-  e = (char*)KBASE;
+  k = (((uptr)p) - KBASE);
   for (int c = 0; c < NCPU; c++) {
-    char *sp = p + CPUKSTACKS*KSTACKSIZE;
-    char *ep = e + (PHYSTOP/NCPU);
-    if (sp >= ep)
-      panic("Too many stacks");
-    for (; p < sp; p += KSTACKSIZE)
+    // Fill the stack allocator
+    for (int i = 0; i < CPUKSTACKS; i++, k += KSTACKSIZE) {
+      if (p == (void *)-1)
+        panic("initkalloc: e820next");
+      // XXX(sbw) handle this condition
+      if (memsize(p) < KSTACKSIZE)
+        panic("initkalloc: e820size");
       kfree_pool(&kstacks[c], p);
-    for (; p < ep; p += PGSIZE)
+      p = memnext(p, KSTACKSIZE);
+    }
+   
+    // The rest goes to the page allocator
+    for (; k != n; k += PGSIZE, p = memnext(p, PGSIZE)) {
+      if (p == (void *)-1)
+        panic("initkalloc: e820next");
       kfree_pool(&kmems[c], p);
-    e = p;
+    }
+
+    k = 0;
   }
 
   kminit();
