@@ -64,7 +64,7 @@ bget(u32 dev, u64 sector, int *writer)
  loop:
   // Try for cached block.
   // XXX ignore dev
-  rcu_begin_read();
+  gc_begin_epoch();
   b = ns_lookup(bufns, KII(dev, sector));
   if (b) {
     if (b->dev != dev || b->sector != sector)
@@ -74,7 +74,7 @@ bget(u32 dev, u64 sector, int *writer)
       if (b->flags & B_BUSY) {
 	cv_sleep(&b->cv, &b->lock);
 	release(&b->lock);
-	rcu_end_read();
+	gc_end_epoch();
 	goto loop;
       }
 
@@ -86,7 +86,7 @@ bget(u32 dev, u64 sector, int *writer)
     // rcu_end_read() happens in brelse
     return b;
   }
-  rcu_end_read();
+  gc_end_epoch();
 
   // Allocate fresh block.
   struct buf *victim = ns_enumerate(bufns, evict, 0);
@@ -97,7 +97,7 @@ bget(u32 dev, u64 sector, int *writer)
   victim->flags |= B_BUSY;
   ns_remove(bufns, KII(victim->dev, victim->sector), victim);
   release(&victim->lock);
-  rcu_delayed(victim, kmfree);
+  gc_delayed(victim, kmfree);
 
   b = kmalloc(sizeof(*b));
   b->dev = dev;
@@ -107,9 +107,9 @@ bget(u32 dev, u64 sector, int *writer)
   snprintf(b->lockname, sizeof(b->lockname), "cv:buf:%d", b->sector);
   initlock(&b->lock, b->lockname+3);
   initcondvar(&b->cv, b->lockname);
-  rcu_begin_read();
+  gc_begin_epoch();
   if (ns_insert(bufns, KII(b->dev, b->sector), b) < 0) {
-    rcu_delayed(b, kmfree);
+    gc_delayed(b, kmfree);
     goto loop;
   }
   // rcu_end_read() happens in brelse
@@ -155,7 +155,7 @@ brelse(struct buf *b, int writer)
     cv_wakeup(&b->cv);
   }
   // rcu_begin_read() happens in bread
-  rcu_end_read();
+  gc_end_epoch();
 }
 
 void

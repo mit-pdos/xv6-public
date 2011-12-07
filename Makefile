@@ -49,7 +49,7 @@ OBJS = \
 	pipe.o \
 	proc.o \
 	prof.o \
-	rcu.o \
+	gc.o \
 	sampler.o \
 	sched.o \
 	spinlock.o \

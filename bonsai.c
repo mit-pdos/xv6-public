@@ -48,7 +48,7 @@ free_node(void *p)
 static void
 rcu_free_node(node_t *n)
 {
-  rcu_delayed(n, free_node);
+  gc_delayed(n, free_node);
 }
 
 static void 

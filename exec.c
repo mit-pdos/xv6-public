@@ -169,7 +169,7 @@ exec(char *path, char **argv)
   if((ip = namei(path)) == 0)
     return -1;
 
-  rcu_begin_read();
+  gc_begin_epoch();
 
   // Check ELF header
   if(ip->type != T_FILE)
@@ -228,7 +228,7 @@ exec(char *path, char **argv)
   switchuvm(myproc());
   vmap_decref(oldvmap);
 
-  rcu_end_read();
+  gc_end_epoch();
   prof_end(exec_prof);
   return 0;
 
@@ -238,7 +238,7 @@ exec(char *path, char **argv)
     vmap_decref(vmap);
   if(vmn)
     vmn_free(vmn);
-  rcu_end_read();
+  gc_end_epoch();
 
   return 0;
 }

@@ -244,17 +244,17 @@ iget(u32 dev, u32 inum)
 
  retry:
   // Try for cached inode.
-  rcu_begin_read();
+  gc_begin_epoch();
   ip = ns_lookup(ins, KII(dev, inum));
   if (ip) {
     // tricky: first bump ref, then check free flag
     __sync_fetch_and_add(&ip->ref, 1);
     if (ip->flags & I_FREE) {
-      rcu_end_read();
+      gc_end_epoch();
       __sync_sub_and_fetch(&ip->ref, 1);
       goto retry;
     }
-    rcu_end_read();
+    gc_end_epoch();
     if (!(ip->flags & I_VALID)) {
       acquire(&ip->lock);
       while((ip->flags & I_VALID) == 0)
@@ -263,7 +263,7 @@ iget(u32 dev, u32 inum)
     }
     return ip;
   }
-  rcu_end_read();
+  gc_end_epoch();
 
   // Allocate fresh inode cache slot.
  retry_evict:
@@ -282,7 +282,7 @@ iget(u32 dev, u32 inum)
     }
     release(&victim->lock);
     ns_remove(ins, KII(victim->dev, victim->inum), victim);
-    rcu_delayed(victim, ifree);
+    gc_delayed(victim, ifree);
   } else {
     if (!__sync_bool_compare_and_swap(&icache_free[mycpu()->id].x, cur_free, cur_free-1))
       goto retry_evict;
@@ -299,7 +299,7 @@ iget(u32 dev, u32 inum)
   initcondvar(&ip->cv, ip->lockname);
   ip->dir = 0;
   if (ns_insert(ins, KII(ip->dev, ip->inum), ip) < 0) {
-    rcu_delayed(ip, kmfree);
+    gc_delayed(ip, kmfree);
     goto retry;
   }
   
@@ -405,7 +405,7 @@ iput(struct inode *ip)
       iupdate(ip);
 
       ns_remove(ins, KII(ip->dev, ip->inum), ip);
-      rcu_delayed(ip, ifree);
+      gc_delayed(ip, ifree);
       __sync_fetch_and_add(&icache_free[mycpu()->id].x, 1);
       return;
     }
@@ -473,7 +473,7 @@ itrunc(struct inode *ip)
 
   for(i = 0; i < NDIRECT; i++){
     if(ip->addrs[i]){
-      rcu_delayed2(ip->dev, ip->addrs[i], bfree);
+      gc_delayed2(ip->dev, ip->addrs[i], bfree);
       ip->addrs[i] = 0;
     }
   }
@@ -483,10 +483,10 @@ itrunc(struct inode *ip)
     a = (u32*)bp->data;
     for(j = 0; j < NINDIRECT; j++){
       if(a[j])
-        rcu_delayed2(ip->dev, a[j], bfree);
+        gc_delayed2(ip->dev, a[j], bfree);
     }
     brelse(bp, 0);
-    rcu_delayed2(ip->dev, ip->addrs[NDIRECT], bfree);
+    gc_delayed2(ip->dev, ip->addrs[NDIRECT], bfree);
     ip->addrs[NDIRECT] = 0;
   }
 
@@ -713,7 +713,7 @@ namex(char *path, int nameiparent, char *name)
 
   //cprintf("namex %s\n", path);
 
-  rcu_begin_read();
+  gc_begin_epoch();
   if(*path == '/') 
     ip = iget(ROOTDEV, ROOTINO);
   else
@@ -726,17 +726,17 @@ namex(char *path, int nameiparent, char *name)
         panic("namex");
       if(ip->type != T_DIR){
         iput(ip);
-	rcu_end_read();
+	gc_end_epoch();
         return 0;
       }
       if(nameiparent && *path == '\0'){
         // Stop one level early.
-	rcu_end_read();
+	gc_end_epoch();
         return ip;
       }
       if((next = dirlookup(ip, name)) == 0){
         iput(ip);
-	rcu_end_read();
+	gc_end_epoch();
         return 0;
       }
       iput(ip);
@@ -745,10 +745,10 @@ namex(char *path, int nameiparent, char *name)
   }
   if(nameiparent){
     iput(ip);
-    rcu_end_read();
+    gc_end_epoch();
     return 0;
   }
-  rcu_end_read();
+  gc_end_epoch();
   return ip;
 }
 

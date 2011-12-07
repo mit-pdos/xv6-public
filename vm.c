@@ -197,10 +197,10 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
   if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
     return 0;
 
-  rcu_begin_read();
+  gc_begin_epoch();
   struct vma *m = vmap_lookup(vmap, va, 1);
   if (m == 0) {
-    rcu_end_read();
+    gc_end_epoch();
     return -1;
   }
 
@@ -213,7 +213,7 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(vmap, va, pte, m, npg) < 0) {
       release(&m->lock);
-      rcu_end_read();
+      gc_end_epoch();
       return -1;
     }
   } else if (m->va_type == COW) {
@@ -227,7 +227,7 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
   // XXX(sbw) Why reload hardware page tables?
   lcr3(v2p(vmap->pml4));  // Reload hardware page tables
   release(&m->lock);
-  rcu_end_read();
+  gc_end_epoch();
 
   return 1;
 }
@@ -255,10 +255,10 @@ copyout(struct vmap *vmap, uptr va, void *p, u64 len)
   char *buf = (char*)p;
   while(len > 0){
     uptr va0 = (uptr)PGROUNDDOWN(va);
-    rcu_begin_read();
+    gc_begin_epoch();
     struct vma *vma = vmap_lookup(vmap, va, 1);
     if(vma == 0) {
-      rcu_end_read();
+      gc_end_epoch();
       return -1;
     }
 
@@ -275,7 +275,7 @@ copyout(struct vmap *vmap, uptr va, void *p, u64 len)
     buf += n;
     va = va0 + PGSIZE;
     release(&vma->lock);
-    rcu_end_read();
+    gc_end_epoch();
   }
   return 0;
 }
@@ -457,7 +457,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
     return -1;
   }
   m->root = tree_remove(m->root, va_start+len);
-  rcu_delayed(e, vma_free);
+  gc_delayed(e, vma_free);
   release(&m->lock);
   return 0;
 }
@@ -589,7 +589,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
 	cprintf("vmap_remove: partial unmap unsupported\n");
 	return -1;
       }
-      rcu_delayed(m->e[i], vma_free);
+      gc_delayed(m->e[i], vma_free);
       m->e[i] = 0;
     }
   }

@@ -92,9 +92,8 @@ cmain(u64 mbmagic, u64 mbaddr)
   inittrap();
   initmp();
   initlapic();
-
   initkalloc(mbaddr);
-  initrcu();       // initialize rcu module
+  initgc();        // gc epochs
   initproc();      // process table
   initbio();       // buffer cache
   initinode();     // inode cache

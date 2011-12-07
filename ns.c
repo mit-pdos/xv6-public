@@ -74,7 +74,7 @@ nsfree(struct ns *ns)
 {
   if (ns_enumerate(ns, &any, 0))
     panic("nsfree: not empty");
-  rcu_delayed(ns, kmfree);
+  gc_delayed(ns, kmfree);
 }
 
 static struct elem *
@@ -192,7 +192,7 @@ ns_insert(struct ns *ns, struct nskey key, void *val)
     setkey(e, &key);
     e->val = val;
     u64 i = h(&key);
-    rcu_begin_write(0);
+    gc_begin_epoch();
 
    retry:
     (void) 0;
@@ -200,8 +200,8 @@ ns_insert(struct ns *ns, struct nskey key, void *val)
     if (!ns->allowdup) {
       for (struct elem *x = root; x; x = x->next) {
 	if (cmpkey(x, &key)) {
-	  rcu_end_write(0);
-	  rcu_delayed(e, kmfree);
+	  gc_end_epoch();
+	  gc_delayed(e, kmfree);
 	  return -1;
 	}
       }
@@ -211,7 +211,7 @@ ns_insert(struct ns *ns, struct nskey key, void *val)
     if (!__sync_bool_compare_and_swap(&ns->table[i].chain, root, e))
       goto retry;
 
-    rcu_end_write(0);
+    gc_end_epoch();
     return 0;
   }
   return -1;
@@ -222,17 +222,17 @@ ns_lookup(struct ns *ns, struct nskey key)
 {
   u64 i = h(&key);
 
-  rcu_begin_read();
+  gc_begin_epoch();
   struct elem *e = ns->table[i].chain;
 
   while (e != NULL) {
     if (cmpkey(e, &key)) {
-      rcu_end_read();
+      gc_end_epoch();
       return e->val;
     }
     e = e->next;
   }
-  rcu_end_read();
+  gc_end_epoch();
 
   return 0;
 }
@@ -241,7 +241,7 @@ void*
 ns_remove(struct ns *ns, struct nskey key, void *v)
 {
   u64 i = h(&key);
-  rcu_begin_write(0);
+  gc_begin_epoch();
 
  retry:
   (void) 0;
@@ -270,34 +270,34 @@ ns_remove(struct ns *ns, struct nskey key, void *v)
 
       *pelock = 0;
       void *v = e->val;
-      rcu_end_write(0);
-      rcu_delayed(e, kmfree);
+      gc_end_epoch();
+      gc_delayed(e, kmfree);
       return v;
     }
 
     pe = &e->next;
   }
 
-  rcu_end_write(0);
+  gc_end_epoch();
   return 0;
 }
 
 void *
 ns_enumerate(struct ns *ns, void *(*f)(void *, void *, void *), void *arg)
 {
-  rcu_begin_read();
+  gc_begin_epoch();
   for (int i = 0; i < NHASH; i++) {
     struct elem *e = ns->table[i].chain;
     while (e != NULL) {
       void *r = (*f)(&e->ikey, e->val, arg);
       if (r) {
-	rcu_end_read();
+	gc_end_epoch();
 	return r;
       }
       e = e->next;
     }
   }
-  rcu_end_read();
+  gc_end_epoch();
   return 0;
 }
 
@@ -305,18 +305,18 @@ void *
 ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *, void *), void *arg)
 {
   u64 i = h(&key);
-  rcu_begin_read();
+  gc_begin_epoch();
   struct elem *e = ns->table[i].chain;
   while (e) {
     if (cmpkey(e, &key)) {
       void *r = (*f)(e->val, arg);
       if (r) {
-	rcu_end_read();
+	gc_end_epoch();
 	return r;
       }
     }
     e = e->next;
   }
-  rcu_end_read();
+  gc_end_epoch();
   return 0;
 }
