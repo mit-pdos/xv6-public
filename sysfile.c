@@ -46,7 +46,7 @@ fdalloc(struct file *f)
   return -1;
 }
 
-int
+long
 sys_dup(void)
 {
   struct file *f;
@@ -60,7 +60,7 @@ sys_dup(void)
   return fd;
 }
 
-int
+s64
 sys_read(void)
 {
   struct file *f;
@@ -72,7 +72,7 @@ sys_read(void)
   return fileread(f, p, n);
 }
 
-int
+long
 sys_write(void)
 {
   struct file *f;
@@ -84,7 +84,7 @@ sys_write(void)
   return filewrite(f, p, n);
 }
 
-int
+long
 sys_close(void)
 {
   int fd;
@@ -97,7 +97,7 @@ sys_close(void)
   return 0;
 }
 
-int
+long
 sys_fstat(void)
 {
   struct file *f;
@@ -109,7 +109,7 @@ sys_fstat(void)
 }
 
 // Create the path new as a link to the same inode as old.
-int
+long
 sys_link(void)
 {
   char name[DIRSIZ], *new, *old;
@@ -164,8 +164,7 @@ isdirempty(struct inode *dp)
   return 1;
 }
 
-//PAGEBREAK!
-int
+long
 sys_unlink(void)
 {
   struct inode *ip, *dp;
@@ -271,7 +270,7 @@ create(char *path, short type, short major, short minor)
   return ip;
 }
 
-int
+long
 sys_open(void)
 {
   char *path;
@@ -319,7 +318,7 @@ sys_open(void)
   return fd;
 }
 
-int
+long
 sys_mkdir(void)
 {
   char *path;
@@ -331,7 +330,7 @@ sys_mkdir(void)
   return 0;
 }
 
-int
+long
 sys_mknod(void)
 {
   struct inode *ip;
@@ -348,7 +347,7 @@ sys_mknod(void)
   return 0;
 }
 
-int
+long
 sys_chdir(void)
 {
   char *path;
@@ -367,7 +366,7 @@ sys_chdir(void)
   return 0;
 }
 
-int
+long
 sys_exec(void)
 {
   char *path, *argv[MAXARG];
@@ -394,7 +393,7 @@ sys_exec(void)
   return exec(path, argv);
 }
 
-int
+long
 sys_pipe(void)
 {
   int *fd;

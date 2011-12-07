@@ -109,32 +109,32 @@ argstr(int n, char **pp)
   return fetchstr(addr, pp);
 }
 
-extern int sys_chdir(void);
-extern int sys_close(void);
-extern int sys_dup(void);
-extern int sys_exec(void);
-extern int sys_exit(void);
-extern int sys_fork(void);
-extern int sys_fstat(void);
-extern int sys_getpid(void);
-extern int sys_kill(void);
-extern int sys_link(void);
-extern int sys_mkdir(void);
-extern int sys_mknod(void);
-extern int sys_open(void);
-extern int sys_pipe(void);
-extern int sys_read(void);
-extern int sys_sbrk(void);
-extern int sys_sleep(void);
-extern int sys_unlink(void);
-extern int sys_wait(void);
-extern int sys_write(void);
-extern int sys_uptime(void);
-extern int sys_map(void);
-extern int sys_unmap(void);
-extern int sys_halt(void);
+extern long sys_chdir(void);
+extern long sys_close(void);
+extern long sys_dup(void);
+extern long sys_exec(void);
+extern long sys_exit(void);
+extern long sys_fork(void);
+extern long sys_fstat(void);
+extern long sys_getpid(void);
+extern long sys_kill(void);
+extern long sys_link(void);
+extern long sys_mkdir(void);
+extern long sys_mknod(void);
+extern long sys_open(void);
+extern long sys_pipe(void);
+extern long sys_read(void);
+extern long sys_sbrk(void);
+extern long sys_sleep(void);
+extern long sys_unlink(void);
+extern long sys_wait(void);
+extern long sys_write(void);
+extern long sys_uptime(void);
+extern long sys_map(void);
+extern long sys_unmap(void);
+extern long sys_halt(void);
 
-static int (*syscalls[])(void) = {
+static long (*syscalls[])(void) = {
   [SYS_chdir] =  sys_chdir,
   [SYS_close] =  sys_close,
   [SYS_dup] =    sys_dup,

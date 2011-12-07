@@ -9,7 +9,7 @@
 #include "cpu.h"
 #include "vm.h"
 
-int
+long
 sys_fork(void)
 {
   int flags;
@@ -19,20 +19,20 @@ sys_fork(void)
   return fork(flags);
 }
 
-int
+long
 sys_exit(void)
 {
   exit();
   return 0;  // not reached
 }
 
-int
+long
 sys_wait(void)
 {
   return wait();
 }
 
-int
+long
 sys_kill(void)
 {
   int pid;
@@ -42,13 +42,13 @@ sys_kill(void)
   return kill(pid);
 }
 
-int
+long
 sys_getpid(void)
 {
   return myproc()->pid;
 }
 
-int
+long
 sys_sbrk(void)
 {
   uptr addr;
@@ -62,7 +62,7 @@ sys_sbrk(void)
   return addr;
 }
 
-int
+long
 sys_sleep(void)
 {
   int n;
@@ -85,7 +85,7 @@ sys_sleep(void)
 
 // return how many clock tick interrupts have occurred
 // since boot.
-int
+long
 sys_uptime(void)
 {
   u64 xticks;
@@ -96,7 +96,7 @@ sys_uptime(void)
   return xticks;
 }
 
-int
+long
 sys_map(void)
 {
   uptr addr;
@@ -119,7 +119,7 @@ sys_map(void)
   return 0;
 }
 
-int
+long
 sys_unmap(void)
 {
   uptr addr;
@@ -144,7 +144,7 @@ sys_unmap(void)
   return 0;
 }
 
-int
+long
 sys_halt(void)
 {
   int i;
