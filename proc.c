@@ -184,7 +184,7 @@ allocproc(void)
 
   p->state = EMBRYO;
   p->pid = ns_allockey(nspid);
-  p->epoch = INF;
+  p->epoch = 0;
   p->cpuid = mycpu()->id;
   p->on_runq = -1;
   p->cpu_pin = 0;
@@ -204,7 +204,7 @@ allocproc(void)
   if((p->kstack = ksalloc()) == 0){
     if (ns_remove(nspid, KI(p->pid), p) == 0)
       panic("allocproc: ns_remove");
-    rcu_delayed(p, kmfree);
+    gc_delayed(p, kmfree);
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
@@ -269,7 +269,7 @@ inituser(void)
   for (u32 c = 0; c < NCPU; c++) {
     struct proc *rcup = allocproc();
     rcup->vmap = vmap_alloc();
-    rcup->context->rip = (u64) rcu_gc_worker;
+    rcup->context->rip = (u64) gc_worker;
     rcup->cwd = 0;
     rcup->cpuid = c;
     rcup->cpu_pin = 1;
@@ -346,7 +346,7 @@ scheduler(void)
 
         mtpause(schedp);
         if (p->context->rip != (uptr)forkret && 
-            p->context->rip != (uptr)rcu_gc_worker)
+            p->context->rip != (uptr)gc_worker)
         {
           mtresume(p);
         }
@@ -376,7 +376,7 @@ scheduler(void)
 
     int now = ticks;
     if (now - mycpu()->last_rcu_gc_ticks > 100) {
-      rcu_gc();
+      gc_start();
       mycpu()->last_rcu_gc_ticks = now;
     }
 
@@ -416,7 +416,7 @@ growproc(int n)
   // find first unallocated address in brk..brk+n
   uptr newstart = myproc()->brk;
   u64 newn = n;
-  rcu_begin_read();
+  gc_begin_epoch();
   while(newn > 0){
     struct vma *e = vmap_lookup(m, newstart, 1);
     if(e == 0)
@@ -429,7 +429,7 @@ growproc(int n)
     newn -= e->va_end - newstart;
     newstart = e->va_end;
   }
-  rcu_end_read();
+  gc_end_epoch();
 
   if(newn <= 0){
     // no need to allocate
@@ -573,7 +573,7 @@ fork(int flags)
       np->state = UNUSED;
       if (ns_remove(nspid, KI(np->pid), np) == 0)
 	panic("fork: ns_remove");
-      rcu_delayed(np, kmfree);
+      gc_delayed(np, kmfree);
       return -1;
     }
   } else {
@@ -639,7 +639,7 @@ wait(void)
 	  p->parent = 0;
 	  p->name[0] = 0;
 	  p->killed = 0;
-	  rcu_delayed(p, kmfree);
+	  gc_delayed(p, kmfree);
 	  return pid;
 	}
 	release(&p->lock);

@@ -93,7 +93,7 @@ cmain(void)
   initlapic();
 
   initkalloc();
-  initrcu();       // initialize rcu module
+  initgc();       // initialize rcu module
   initproc();      // process table
   initbio();       // buffer cache
   initinode();     // inode cache
