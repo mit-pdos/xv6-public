@@ -168,10 +168,10 @@ initkalloc(void)
     kstacks[c].size = KSTACKSIZE;
   }
 
-  cprintf("%lu MBytes\n", e820bytes() / (1 << 20));
+  cprintf("%lu mbytes\n", e820bytes() / (1 << 20));
   n = e820bytes() / NCPU;
   if (n & (PGSIZE - 1)) {
-    cprintf("Oops: bytes/CPU isn't aligned\n");
+    cprintf("bytes/CPU isn't aligned\n");
     n = PGROUNDDOWN(n);
   }
 
