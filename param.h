@@ -14,7 +14,6 @@
 #define CPUKSTACKS   (NPROC + NCPU)
 #define QUANTUN      10  // scheduling time quantum and tick length (in msec)
 #define WQSHIFT       4  // 2^WORKSHIFT work queue slots
-#define PHYSTOP 0xE000000 // use phys mem up to here as free pool
 #define VICTIMAGE 1000000 // cycles a proc executes before an eligible victim
 #if defined(HW_josmp)
 #define NCPU         16  // maximum number of CPUs
