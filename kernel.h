@@ -1,8 +1,7 @@
 #include "mmu.h"
 
-#define KBASE 0xFFFFFF0000000000ull
-// XXX(sbw) arbitrary for right now..
-#define USERTOP 0x0000000040000000ull
+#define KBASE   0xFFFFFF0000000000ull
+#define USERTOP 0x0000800000000000ull
 
 #define KCSEG (2<<3)  /* kernel code segment */
 #define KDSEG (3<<3)  /* kernel data segment */
