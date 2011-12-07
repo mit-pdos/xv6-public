@@ -32,7 +32,6 @@ OBJS = \
 	cga.o \
 	condvar.o \
 	console.o \
-	e820.o \
 	exec.o \
 	file.o \
 	fs.o \
