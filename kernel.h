@@ -114,8 +114,12 @@ void            iderw(struct buf*);
 void            ioapicenable(int irq, int cpu);
 
 // kalloc.c
+typedef enum {
+  slab_stack,
+  slab_perf,
+} slab_t;
 char*           kalloc(void);
-char*           ksalloc(void);
+void*           ksalloc(slab_t);
 void            kfree(void *);
 void*           kmalloc(u64);
 void            kmfree(void*);

@@ -16,7 +16,18 @@ static u64 nmem;
 static u64 membytes;
 
 struct kmem kmems[NCPU];
-struct kmem kstacks[NCPU];
+static struct kmem slabmem[][NCPU] = {
+  [slab_stack][0 ... NCPU-1] = { 
+    .name  = "   kstack",
+    .size  = KSTACKSIZE,
+    .ninit = CPUKSTACKS,
+  },
+  [slab_perf][0 ... NCPU-1] = { 
+    .name  = "   kperf",
+    .size  = PERFSIZE,
+    .ninit = 1,
+  },
+};
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
@@ -189,11 +200,10 @@ kalloc(void)
   return kmemalloc(kmems);
 }
 
-// Allocate KSTACKSIZE bytes.
-char *
-ksalloc(void)
+void *
+ksalloc(slab_t slab)
 {
-  return kmemalloc(kstacks);
+  return kmemalloc(slabmem[slab]);
 }
 
 // Memory allocator by Kernighan and Ritchie,
@@ -221,6 +231,21 @@ kminit(void)
   }
 }
 
+void
+slabinit(struct kmem *k, char **p, u64 *off)
+{
+  for (int i = 0; i < k->ninit; i++) {
+    if (*p == (void *)-1)
+      panic("slabinit: memnext");
+    // XXX(sbw) handle this condition
+    if (memsize(p) < k->size)
+      panic("slabinit: memsize");
+    kfree_pool(k, *p);
+    *p = memnext(*p, k->size);
+    *off = *off+k->size;
+  }
+}  
+
 // Initialize free list of physical pages.
 void
 initkalloc(u64 mbaddr)
@@ -238,11 +263,12 @@ initkalloc(u64 mbaddr)
     kmems[c].size = PGSIZE;
   }
 
-  for (int c = 0; c < NCPU; c++) {
-    kstacks[c].name[0] = (char) c + '0';
-    safestrcpy(kstacks[c].name+1, "kstack", MAXNAME-1);
-    initlock(&kstacks[c].lock, kstacks[c].name);
-    kstacks[c].size = KSTACKSIZE;
+  for (int i = 0; i < NELEM(slabmem); i++) {
+    for (int c = 0; c < NCPU; c++) {
+      slabmem[i][c].name[0] = (char) c + '0';
+      initlock(&slabmem[i][c].lock,
+               slabmem[i][c].name);
+    }
   }
 
   cprintf("%lu mbytes\n", membytes / (1<<20));
@@ -255,16 +281,9 @@ initkalloc(u64 mbaddr)
   p = (char*)PGROUNDUP((uptr)newend);
   k = (((uptr)p) - KBASE);
   for (int c = 0; c < NCPU; c++) {
-    // Fill the stack allocator
-    for (int i = 0; i < CPUKSTACKS; i++, k += KSTACKSIZE) {
-      if (p == (void *)-1)
-        panic("initkalloc: e820next");
-      // XXX(sbw) handle this condition
-      if (memsize(p) < KSTACKSIZE)
-        panic("initkalloc: e820size");
-      kfree_pool(&kstacks[c], p);
-      p = memnext(p, KSTACKSIZE);
-    }
+    // Fill slab allocators
+    for (int i = 0; i < NELEM(slabmem); i++)
+      slabinit(&slabmem[i][c], &p, &k);
    
     // The rest goes to the page allocator
     for (; k != n; k += PGSIZE, p = memnext(p, PGSIZE)) {
