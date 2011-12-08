@@ -19,17 +19,17 @@
 #define NCPU         16  // maximum number of CPUs
 #define MTRACE       0
 #define WQENABLE     0   // Enable work queue
-#define PERFSIZE     1<<30ull
+#define PERFSIZE     (1<<30ull)
 #elif defined(HW_qemu)
 #define NCPU         4   // maximum number of CPUs
 #define MTRACE       0
 #define WQENABLE     0   // Enable work queue
-#define PERFSIZE     16<<20ull
+#define PERFSIZE     (16<<20ull)
 #elif defined(HW_ud0)
 #define NCPU         4   // maximum number of CPUs
 #define MTRACE       0
 #define WQENABLE     0   // Enable work queue
-#define PERFSIZE     512<<20ull
+#define PERFSIZE     (512<<20ull)
 #else
 #error "Unknown HW"
 #endif
