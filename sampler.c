@@ -35,7 +35,6 @@ struct pmulog {
   u64 head;
   u64 tail;
   u64 size;
-  u64 try;
   struct pmuevent *event;
   __padout__;
 } __mpalign__;
@@ -80,8 +79,8 @@ sampdump(void)
 {
   for (int c = 0; c < NCPU; c++) {
     struct pmulog *l = &pmulog[c];    
-    cprintf("%u samples:\n", c);
-    for (u64 i = l->tail; i < l->head; i++)
+    cprintf("%u samples %lu\n", c, l->head - l->tail);
+    for (u64 i = l->tail; i < l->tail+4 && i < l->head; i++)
       cprintf(" %lx\n", l->event[i % l->size].rip);
   }
 }
@@ -111,7 +110,6 @@ samplog(struct trapframe *tf)
 {
   struct pmulog *l;
   l = &pmulog[cpunum()];
-  l->try++;
 
   if ((l->head - l->tail) == l->size)
     return 0;
@@ -163,9 +161,9 @@ initsamp(void)
   u64 cr4 = rcr4();
   lcr4(cr4 | CR4_PCE);
   
-  void *p = kalloc();
+  void *p = ksalloc(slab_perf);
   if (p == NULL)
-    panic("initprof: kalloc");
+    panic("initprof: ksalloc");
   pmulog[cpunum()].event = p;
-  pmulog[cpunum()].size = PGSIZE / sizeof(struct pmuevent);
+  pmulog[cpunum()].size = PERFSIZE / sizeof(struct pmuevent);
 }
