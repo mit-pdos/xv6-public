@@ -58,11 +58,10 @@ ioapicenable(int irq, int cpunum)
 void
 initioapic(void)
 {
-  int i, id, maxintr;
+  int i, maxintr;
 
   ioapic = (volatile struct ioapic*)IOAPIC;
   maxintr = (ioapicread(REG_VER) >> 16) & 0xFF;
-  id = ioapicread(REG_ID) >> 24;
 
   // Mark all interrupts edge-triggered, active high, disabled,
   // and not routed to any CPUs.
