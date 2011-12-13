@@ -79,7 +79,8 @@ UPROGS= \
 	_mapbench \
 	_maptest \
 	_sh \
-	_thrtest
+	_thrtest \
+	_halt
 UPROGS := $(addprefix $(O)/, $(UPROGS))
 
 $(O)/kernel: $(O) $(O)/boot.o $(OBJS)
