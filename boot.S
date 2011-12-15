@@ -134,9 +134,9 @@ tramp64:
 .comm stack, STACK
 
 # Page tables.  See section 4.5 of 253668.pdf.
-# We map the first GB of physical memory at 0 and at -2 GB (or 2 GB before
-# the end of physical memory).  At boot time we are using the mapping at 0
-# but during ordinary execution we use the high mapping.
+# We map the first GB of physical memory at 0 and at KBASE.  At boot
+# time we are using the mapping at 0 but during ordinary execution we
+# use the high mapping.
 # The intent is that after bootstrap the kernel can expand this mapping
 # to cover all the available physical memory.
 # This would be easier if we could use the PS bit to create GB-sized entries
