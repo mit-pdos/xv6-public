@@ -32,6 +32,7 @@ OBJS = \
 	cga.o \
 	condvar.o \
 	console.o \
+	e1000.o \
 	exec.o \
 	file.o \
 	fs.o \
@@ -45,6 +46,7 @@ OBJS = \
 	memide.o \
 	mp.o \
 	ns.o \
+	pci.o \
 	picirq.o \
 	pipe.o \
 	proc.o \

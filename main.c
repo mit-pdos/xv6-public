@@ -25,6 +25,7 @@ extern void inituser(void);
 extern void inithz(void);
 extern void initwq(void);
 extern void initsamp(void);
+extern void initpci(void);
 
 static volatile int bstate;
 
@@ -102,6 +103,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initwq();        // work queues
 #endif
   initsamp();
+  initpci();
 
   cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
 
