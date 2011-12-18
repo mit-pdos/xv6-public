@@ -45,6 +45,7 @@ OBJS = \
 	main.o \
 	memide.o \
 	mp.o \
+	net.o \
 	ns.o \
 	pci.o \
 	picirq.o \
@@ -142,7 +143,9 @@ $(O)/mscan.kern: $(O)/kernel
 ##
 ## qemu
 ##
-QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic
+QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic \
+	-net user -net nic,model=e1000 \
+	-net dump,file=qemu.pcap
 
 qemu: $(O)/kernel
 	$(QEMU) $(QEMUOPTS) -kernel $(O)/kernel

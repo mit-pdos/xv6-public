@@ -30,11 +30,12 @@ struct pci_driver pci_attach_class[] = {
 };
 
 // pci_attach_vendor matches the vendor ID and device ID of a PCI device
+// http://www.intel.com/products/ethernet/resource.htm?wapkw=software%20manual%20pcie#s1=Gigabit%20Ethernet&s2=all&s3=Manual
 struct pci_driver pci_attach_vendor[] = {
   // [E1000 5.2] 
   // QEMU emulates an 82540EM, specifically.
   { 0x8086, 0x100e, &e1000attach },
-  // Both of ud0's e1000e
+  // Both of ud0's e1000e (82573E, 82573L)
   { 0x8086, 0x108c, &e1000attach },
   { 0x8086, 0x109A, &e1000attach },
   { 0, 0, 0 },

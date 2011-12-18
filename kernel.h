@@ -65,6 +65,11 @@ void            panic(const char*) __attribute__((noreturn));
 void            snprintf(char *buf, u32 n, char *fmt, ...);
 void            consoleintr(int(*)(void));
 
+// e1000.c
+extern int e1000irq;
+void            e1000intr(void);
+int             e1000tx(void *buf, u32 len);
+
 // exec.c
 int             exec(char*, char**);
 
@@ -138,6 +143,11 @@ void            lapicpc(char mask);
 // mp.c
 extern int      ncpu;
 int             mpbcpu(void);
+
+// net.c
+void            netfree(void *va);
+void*           netalloc(void);
+void            netrx(void *va, u16 len);
 
 // ns.c
 enum {
