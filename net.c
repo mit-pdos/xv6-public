@@ -1,6 +1,10 @@
 #include "types.h"
 #include "kernel.h"
 
+#ifdef LWIP
+#include "lwip/tcpip.h"
+#endif
+
 static u8 ping_packet[] = {
   0x52, 0x55, 0x0a, 0x00, 0x02, 0x02, 0x52, 0x54, 0x00, 0x12,
   0x34, 0x56, 0x08, 0x00, 0x45, 0x00, 0x00, 0x54, 0x00, 0x00,
@@ -45,3 +49,18 @@ nettest(void)
   
   //e1000tx(ping_packet, sizeof(ping_packet));
 }
+
+#ifdef LWIP
+static void
+tcpip_init_done(void *arg)
+{
+  cprintf("tcpip_init_done: %lx\n", arg);
+}
+
+void
+initnet(void)
+{
+  tcpip_init(&tcpip_init_done, NULL);
+  cprintf("initnet:\n");
+}
+#endif

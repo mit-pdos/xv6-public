@@ -86,6 +86,10 @@ UPROGS= \
 	_halt
 UPROGS := $(addprefix $(O)/, $(UPROGS))
 
+all: $(O)/kernel
+
+include net.mk
+
 $(O)/kernel: $(O) $(O)/boot.o $(OBJS)
 	@echo "  LD     $@"
 	$(Q)$(LD) $(LDFLAGS) -T kernel.ld -z max-page-size=4096 -e start \
