@@ -32,6 +32,7 @@ OBJS = \
 	cga.o \
 	condvar.o \
 	console.o \
+	crange.o \
 	exec.o \
 	file.o \
 	fs.o \
@@ -50,6 +51,7 @@ OBJS = \
 	proc.o \
 	prof.o \
 	gc.o \
+	rnd.o \
 	sampler.o \
 	sched.o \
 	spinlock.o \
