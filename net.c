@@ -51,6 +51,8 @@ nettest(void)
 }
 
 #ifdef LWIP
+int errno;
+
 static void
 tcpip_init_done(void *arg)
 {
@@ -62,5 +64,10 @@ initnet(void)
 {
   tcpip_init(&tcpip_init_done, NULL);
   cprintf("initnet:\n");
+}
+#else
+void
+initnet(void)
+{
 }
 #endif

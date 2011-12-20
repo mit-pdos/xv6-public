@@ -28,6 +28,7 @@ LWIP_SRCFILES += \
 	lwip/src/core/init.c \
 	lwip/src/core/tcp_in.c \
 	lwip/src/core/dhcp.c \
+	lwip/src/core/def.c \
 	lwip/src/core/mem.c \
 	lwip/src/core/memp.c \
 	lwip/src/core/netif.c \
@@ -36,6 +37,7 @@ LWIP_SRCFILES += \
 	lwip/src/core/stats.c \
 	lwip/src/core/sys.c \
 	lwip/src/core/tcp.c \
+	lwip/src/core/timers.c \
 	lwip/src/core/ipv4/ip_addr.c \
 	lwip/src/core/ipv4/icmp.c \
 	lwip/src/core/ipv4/ip.c \
@@ -45,9 +47,15 @@ LWIP_SRCFILES += \
 	lwip/src/core/tcp_out.c \
 	lwip/src/core/udp.c \
 	lwip/src/netif/etharp.c \
+	net/sys_arch.c \
 
 LWIP_OBJFILES := $(patsubst %.c, $(O)/%.o, $(LWIP_SRCFILES))
 LWIP_OBJFILES := $(patsubst %.S, $(O)/%.o, $(LWIP_OBJFILES))
+
+$(O)/net/%.o: net/%.c
+	@echo "  CC     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CC) $(LWIP_CFLAGS) $(LWIP_INCLUDES) -c -o $@ $<
 
 $(O)/lwip/src/%.o: lwip/src/%.c
 	@echo "  CC     $@"
