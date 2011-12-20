@@ -102,6 +102,15 @@ int             dirlink(struct inode*, char*, u32);
 void            dir_init(struct inode *dp);
 void	        dir_flush(struct inode *dp);
 
+// gc.c
+void            initgc(void);
+void            gc_begin_epoch();
+void            gc_end_epoch();
+void            gc_delayed(void*, void (*dofree)(void*));
+void            gc_delayed2(int, u64, void (*dofree)(int, u64));
+void		gc_start(void);
+void		gc_worker(void);
+
 // hwvm.c
 void            freevm(pml4e_t*);
 pml4e_t*        setupkvm(void);
@@ -225,14 +234,9 @@ extern int profenable;
 void            profreset(void);
 void            profdump(void);
 
-// rcu.c
-void            initgc(void);
-void            gc_begin_epoch();
-void            gc_end_epoch();
-void            gc_delayed(void*, void (*dofree)(void*));
-void            gc_delayed2(int, u64, void (*dofree)(int, u64));
-void		gc_start(void);
-void		gc_worker(void);
+
+// rnd.c
+u64             rnd();
 
 // sampler.c
 void            sampstart(void);

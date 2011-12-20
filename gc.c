@@ -31,7 +31,7 @@ struct gc {
   };
   int type;
 } __mpalign__;
-struct gc gc_epoch[NEPOCH] __mpalign__;
+struct gc gc_epoch[NEPOCH][NCPU] __mpalign__;
 u64 global_epoch __mpalign__;
 int ndelayed __mpalign__;
 
@@ -73,35 +73,39 @@ gc_free_elem(struct gc *r)
 static void
 gc_free_epoch(u64 epoch)
 {
-  if (__sync_bool_compare_and_swap(&global_epoch, epoch, epoch+1)) {
-    // only one core succeeds; that core in charge of freeing epoch
-    struct gc *head;
-    struct gc *r, *nr;
-    uint32 fe = (epoch - (NEPOCH-2)) % NEPOCH;
-    int cas;
+  cprintf("free epoch %d\n", epoch);
 
-    if (gc_epoch[fe].epoch != epoch - (NEPOCH-2))
+  for (int j = 0; j < NCPU; j++) {
+    if (__sync_bool_compare_and_swap(&global_epoch, epoch, epoch+1)) {
+      // only one core succeeds; that core in charge of freeing epoch
+      struct gc *head;
+      struct gc *r, *nr;
+      uint32 fe = (epoch - (NEPOCH-2)) % NEPOCH;
+      int cas;
+
+      if (gc_epoch[fe][j].epoch != epoch - (NEPOCH-2))
 	panic("gc_free_epoch");
 
-    // unhook list for fe epoch atomically
-    head = gc_epoch[fe].next;
-    // this shouldn't fail, because no core is modifying it.
-    cas = __sync_bool_compare_and_swap(&gc_epoch[fe].next, head, 0);
-    if (!cas) panic("gc_free_epoch");
-    // free list items on the delayed list
-    for (r = head; r != NULL; r = nr) {
-      if (r->epoch > epoch-(NEPOCH-2)) {
-	cprintf("%lu %lu\n", r->epoch, epoch-(NEPOCH-2));
-	panic("gc_free_epoch");
+      // unhook list for fe epoch atomically
+      head = gc_epoch[fe][j].next;
+      // this shouldn't fail, because no core is modifying it.
+      cas = __sync_bool_compare_and_swap(&gc_epoch[fe][j].next, head, 0);
+      if (!cas) panic("gc_free_epoch");
+      // free list items on the delayed list
+      for (r = head; r != NULL; r = nr) {
+	if (r->epoch > epoch-(NEPOCH-2)) {
+	  cprintf("%lu %lu\n", r->epoch, epoch-(NEPOCH-2));
+	  panic("gc_free_epoch");
+	}
+	nr = r->next;
+	gc_free_elem(r);
+	int x = __sync_fetch_and_sub(&ndelayed, 1);
+	if (x < 0) panic("gc_free_epoch");
       }
-      nr = r->next;
-      gc_free_elem(r);
-      int x = __sync_fetch_and_sub(&ndelayed, 1);
-      if (x < 0) panic("gc_free_epoch");
+      if (gc_epoch[fe][j].next != 0)
+	panic("gc_free_epoch");
+      gc_epoch[fe][j].epoch = gc_epoch[fe][j].epoch + NEPOCH;
     }
-    if (gc_epoch[fe].next != 0)
-      panic("gc_free_epoch");
-    gc_epoch[fe].epoch = gc_epoch[fe].epoch + NEPOCH;
   }
 }
 
@@ -148,7 +152,7 @@ gc_delayed_int(struct gc *r)
 {
   pushcli();
   u64 myepoch = myproc()->epoch;
-  u64 minepoch = gc_epoch[myepoch % NEPOCH].epoch;
+  u64 minepoch = gc_epoch[myepoch % NEPOCH][mycpu()->id].epoch;
   // cprintf("%d: gc_delayed: %lu ndelayed %d\n", myproc()->pid, global_epoch, ndelayed);
   if (myepoch != minepoch) {
     cprintf("%d: myepoch %lu minepoch %lu\n", myproc()->pid, myepoch, minepoch);
@@ -156,9 +160,9 @@ gc_delayed_int(struct gc *r)
   }
   r->epoch = myepoch;
   do {
-    r->next = gc_epoch[myepoch % NEPOCH].next;
-  } while (!__sync_bool_compare_and_swap(&(gc_epoch[myepoch % NEPOCH].next), r->next, r));
-  popcli();
+    r->next = gc_epoch[myepoch % NEPOCH][mycpu()->id].next;
+  } while (!__sync_bool_compare_and_swap(&(gc_epoch[myepoch % NEPOCH][mycpu()->id].next), r->next, r));
+   popcli();
 }
 
 void
@@ -210,5 +214,6 @@ initgc(void)
   }
   global_epoch = NEPOCH-2;
   for (int i = 0; i < NEPOCH; i++) 
-    gc_epoch[i].epoch = i;
+    for (int j = 0; j < NEPOCH; j++)
+      gc_epoch[i][j].epoch = i;
 }
