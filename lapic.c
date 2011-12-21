@@ -91,9 +91,9 @@ initlapic(void)
     lapichz = 100 * (ccr0 - ccr1);
   }
 
-  count = (QUANTUN*lapichz) / 1000;
+  count = (QUANTUM*lapichz) / 1000;
   if (count > 0xffffffff)
-    panic("initlapic: QUANTUN too large");
+    panic("initlapic: QUANTUM too large");
 
   // The timer repeatedly counts down at bus frequency
   // from lapic[TICR] and then issues an interrupt.  
