@@ -24,3 +24,9 @@ swtch:
         popq %rbp
         popq %rbx
         ret
+
+.globl threadstub
+threadstub:
+        movq %r12, %rdi
+        movq %r13, %rsi
+        jmp threadhelper

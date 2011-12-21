@@ -108,8 +108,7 @@ void            gc_begin_epoch();
 void            gc_end_epoch();
 void            gc_delayed(void*, void (*dofree)(void*));
 void            gc_delayed2(int, u64, void (*dofree)(int, u64));
-void		gc_start(void);
-void		gc_worker(void);
+void            gc_start(void);
 
 // hwvm.c
 void            freevm(pml4e_t*);
@@ -228,6 +227,7 @@ void            userinit(void);
 int             wait(void);
 void            yield(void);
 void            migrate(struct proc *);
+struct proc*    threadalloc(void (*fn)(void*), void *arg);
 
 // prof.c
 extern int profenable;

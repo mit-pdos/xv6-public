@@ -123,12 +123,8 @@ gc(void)
 
 
 void
-gc_worker(void)
+gc_worker(void *x)
 {
-  release(&myproc()->lock);	// initially held by scheduler
-
-  mtstart(rcu_gc_worker, myproc());
-
   struct spinlock wl;
   initlock(&wl, "rcu_gc_worker");   // dummy lock
 
