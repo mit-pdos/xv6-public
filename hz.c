@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "amd64.h"
+#include "kernel.h"
 
 #define IO_TIMER1       0x040           // 8253 Timer #1
 #define TIMER_FREQ      1193182
@@ -23,6 +24,13 @@ microdelay(u64 delay)
   u64 s = rdtsc();
   while (rdtsc() - s < tscdelay)
     nop_pause();
+}
+
+u64
+nsectime(void)
+{
+  u64 msec = ticks*QUANTUM;
+  return msec*1000000;
 }
 
 void

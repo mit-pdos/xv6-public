@@ -117,6 +117,7 @@ pme_t *         walkpgdir(pml4e_t*, const void*, int);
 
 // hz.c
 void            microdelay(u64);
+u64             nsectime(void);
 
 // ide.c
 void            ideinit(void);
