@@ -55,9 +55,14 @@ void            tree_test(void);
 void            cgaputc(int c);
 
 // condvar.c
+extern u64 ticks;
+extern struct spinlock tickslock;
+extern struct condvar cv_ticks;
 void            initcondvar(struct condvar *, char *);
 void            cv_sleep(struct condvar *cv, struct spinlock*);
+void            cv_sleepto(struct condvar *cv, struct spinlock*, u64);
 void            cv_wakeup(struct condvar *cv);
+void            cv_tick(void);
 
 // console.c
 void            cprintf(const char*, ...);
@@ -279,9 +284,6 @@ void            swtch(struct context**, struct context*);
 
 // trap.c
 extern struct segdesc bootgdt[NSEGS];
-extern u64     ticks;
-extern struct spinlock tickslock;
-extern struct condvar cv_ticks;
 
 // uart.c
 void            uartputc(char c);

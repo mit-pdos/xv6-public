@@ -42,8 +42,6 @@ struct proc {
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
-  struct condvar *oncv;        // Where it is sleeping, for kill()
-  struct proc *cv_next;        // Linked list of processes waiting for oncv
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
@@ -66,6 +64,11 @@ struct proc {
   struct runq *runq;
   struct wqframe wqframe;
   STAILQ_ENTRY(proc) runqlink;
+
+  struct condvar *oncv;        // Where it is sleeping, for kill()
+  u64 cv_wakeup;               // Wakeup time for this process
+  LIST_ENTRY(proc) cv_waiters; // Linked list of processes waiting for oncv
+  LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
 };
 
 extern struct ns *nspid;

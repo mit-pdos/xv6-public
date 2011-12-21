@@ -11,11 +11,6 @@
 #include "kmtrace.h"
 #include "bits.h"
 
-u64 ticks __mpalign__;
-
-struct spinlock tickslock __mpalign__;
-struct condvar cv_ticks __mpalign__;
-
 struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
   // null
   [0]=SEGDESC(0, 0, 0),
@@ -76,12 +71,8 @@ trap(struct trapframe *tf)
 
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
-    if(mycpu()->id == 0){
-      acquire(&tickslock);
-      ticks++;
-      cv_wakeup(&cv_ticks);
-      release(&tickslock);
-    }
+    if (mycpu()->id == 0)
+        cv_tick();
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:
