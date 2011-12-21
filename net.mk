@@ -2,6 +2,11 @@ HAVE_LWIP = $(shell (cd lwip 2> /dev/null && echo y) || echo n)
 
 ifeq ($(HAVE_LWIP),y)
 
+-include $(O)/lwip/src/api/*.d
+-include $(O)/lwip/src/netif/*.d
+-include $(O)/lwip/src/core/*.d
+-include $(O)/net/*.d
+
 OBJS += $(O)/liblwip.a
 CFLAGS += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -I. -DLWIP
 
