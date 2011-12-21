@@ -247,6 +247,7 @@ void            sampconf(void);
 
 // spinlock.c
 void            acquire(struct spinlock*);
+int             tryacquire(struct spinlock*);
 void            getcallerpcs(void*, uptr*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
