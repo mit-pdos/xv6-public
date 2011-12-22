@@ -38,21 +38,6 @@ struct buf*     bread(u32, u64, int writer);
 void            brelse(struct buf*, int writer);
 void            bwrite(struct buf*);
 
-#if 0
-// bonsai.c
-struct kv {
-  u64 key;
-  void *val;
-};
-
-struct kv*      tree_find(struct node *n, u64 key);
-struct kv*      tree_find_gt(struct node *n, u64 key);
-struct node*    tree_insert(struct node *n, struct kv *kv);
-struct node*    tree_remove(struct node *n, u64 key);
-int             tree_foreach(struct node *n, int (*cb)(struct kv* kv, void *), void *);
-void            tree_test(void);
-#endif
-
 // cga.c
 void            cgaputc(int c);
 
