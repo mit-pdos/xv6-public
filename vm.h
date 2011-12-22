@@ -28,7 +28,8 @@ struct vmnode {
 // The elements of e[] are not ordered by address.
 struct vmap {
 #ifdef TREE
-  struct node* root;
+  // struct node* root;
+  struct crange* cr;
 #else
   struct vma* e[16];
 #endif
