@@ -1,4 +1,6 @@
+#include "queue.h"
+
 struct condvar {
   struct spinlock lock;
-  struct proc *waiters;
+  LIST_HEAD(waiters, proc) waiters;
 };

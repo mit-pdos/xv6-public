@@ -57,15 +57,21 @@ void            tree_test(void);
 void            cgaputc(int c);
 
 // condvar.c
+extern u64 ticks;
+extern struct spinlock tickslock;
+extern struct condvar cv_ticks;
 void            initcondvar(struct condvar *, char *);
 void            cv_sleep(struct condvar *cv, struct spinlock*);
+void            cv_sleepto(struct condvar *cv, struct spinlock*, u64);
 void            cv_wakeup(struct condvar *cv);
+void            cv_tick(void);
 
 // console.c
 void            cprintf(const char*, ...);
 void            panic(const char*) __attribute__((noreturn));
 void            snprintf(char *buf, u32 n, char *fmt, ...);
 void            consoleintr(int(*)(void));
+
 
 // crange.c
 
@@ -88,6 +94,11 @@ void crange_add(struct crange *cr, u64 k, u64 sz, void *v);
 struct clist_range* crange_search(struct crange *cr, u64 k);
 int crange_foreach(struct crange *crk, int (*f)(struct clist_range *r, void *st), void *st);
 void crange_print(struct crange *cr, int);
+
+// e1000.c
+extern int e1000irq;
+void            e1000intr(void);
+int             e1000tx(void *buf, u32 len);
 
 // exec.c
 int             exec(char*, char**);
@@ -127,8 +138,7 @@ void            gc_begin_epoch();
 void            gc_end_epoch();
 void            gc_delayed(void*, void (*dofree)(void*));
 void            gc_delayed2(int, u64, void (*dofree)(int, u64));
-void		gc_start(void);
-void		gc_worker(void);
+void            gc_start(void);
 
 // hwvm.c
 void            freevm(pml4e_t*);
@@ -137,6 +147,7 @@ pme_t *         walkpgdir(pml4e_t*, const void*, int);
 
 // hz.c
 void            microdelay(u64);
+u64             nsectime(void);
 
 // ide.c
 void            ideinit(void);
@@ -171,6 +182,11 @@ void            lapicpc(char mask);
 // mp.c
 extern int      ncpu;
 int             mpbcpu(void);
+
+// net.c
+void            netfree(void *va);
+void*           netalloc(void);
+void            netrx(void *va, u16 len);
 
 // ns.c
 enum {
@@ -242,6 +258,7 @@ void            userinit(void);
 int             wait(void);
 void            yield(void);
 void            migrate(struct proc *);
+struct proc*    threadalloc(void (*fn)(void*), void *arg);
 
 // prof.c
 extern int profenable;
@@ -260,6 +277,7 @@ void            sampconf(void);
 
 // spinlock.c
 void            acquire(struct spinlock*);
+int             tryacquire(struct spinlock*);
 void            getcallerpcs(void*, uptr*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
@@ -291,9 +309,6 @@ void            swtch(struct context**, struct context*);
 
 // trap.c
 extern struct segdesc bootgdt[NSEGS];
-extern u64     ticks;
-extern struct spinlock tickslock;
-extern struct condvar cv_ticks;
 
 // uart.c
 void            uartputc(char c);

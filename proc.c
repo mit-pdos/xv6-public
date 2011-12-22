@@ -12,6 +12,8 @@
 #include "vm.h"
 #include "sched.h"
 
+extern void threadstub(void);
+
 int __mpalign__ idle[NCPU];
 struct ns *nspid __mpalign__;
 static struct proc *bootproc __mpalign__;
@@ -267,17 +269,19 @@ inituser(void)
   release(&p->lock);
 
   for (u32 c = 0; c < NCPU; c++) {
-    struct proc *rcup = allocproc();
-    rcup->vmap = vmap_alloc();
-    rcup->context->rip = (u64) gc_worker;
-    rcup->cwd = 0;
-    rcup->cpuid = c;
-    rcup->cpu_pin = 1;
+    extern void gc_worker(void*);
+    struct proc *gcp; 
 
-    acquire(&rcup->lock);
-    rcup->state = RUNNABLE;
-    addrun(rcup);
-    release(&rcup->lock);
+    gcp = threadalloc(gc_worker, NULL);
+    if (gcp == NULL)
+      panic("threadalloc: gc_worker");
+
+    gcp->cpuid = c;
+    gcp->cpu_pin = 1;
+    acquire(&gcp->lock);
+    gcp->state = RUNNABLE;
+    addrun(gcp);
+    release(&gcp->lock);
   }
 }
 
@@ -352,7 +356,7 @@ scheduler(void)
 
         mtpause(schedp);
         if (p->context->rip != (uptr)forkret && 
-            p->context->rip != (uptr)gc_worker)
+            p->context->rip != (uptr)threadstub)
         {
           mtresume(p);
         }
@@ -662,4 +666,35 @@ wait(void)
 
     release(&myproc()->lock);
   }
+}
+
+void
+threadhelper(void (*fn)(void *), void *arg)
+{
+  release(&myproc()->lock); // initially held by scheduler
+  mtstart(fn, myproc());
+  fn(arg);
+  exit();
+}
+
+struct proc*
+threadalloc(void (*fn)(void *), void *arg)
+{
+  struct proc *p;
+
+  p = allocproc();
+  if (p == NULL)
+    return NULL;
+  
+  p->vmap = vmap_alloc();
+  if (p->vmap == NULL) {
+    gc_delayed(p, kmfree);
+    return NULL;
+  }
+
+  p->context->rip = (u64)threadstub;
+  p->context->r12 = (u64)fn;
+  p->context->r13 = (u64)arg;
+  p->cwd = 0;
+  return p;
 }

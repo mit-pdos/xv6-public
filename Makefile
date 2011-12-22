@@ -32,6 +32,7 @@ OBJS = \
 	condvar.o \
 	console.o \
 	crange.o \
+	e1000.o \
 	exec.o \
 	file.o \
 	fs.o \
@@ -44,7 +45,9 @@ OBJS = \
 	main.o \
 	memide.o \
 	mp.o \
+	net.o \
 	ns.o \
+	pci.o \
 	picirq.o \
 	pipe.o \
 	proc.o \
@@ -83,6 +86,10 @@ UPROGS= \
 	_thrtest \
 	_halt
 UPROGS := $(addprefix $(O)/, $(UPROGS))
+
+all: $(O)/kernel
+
+include net.mk
 
 $(O)/kernel: $(O) $(O)/boot.o $(OBJS)
 	@echo "  LD     $@"
@@ -141,7 +148,9 @@ $(O)/mscan.kern: $(O)/kernel
 ##
 ## qemu
 ##
-QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic
+QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic \
+	-net user -net nic,model=e1000 \
+	-net dump,file=qemu.pcap
 
 qemu: $(O)/kernel
 	$(QEMU) $(QEMUOPTS) -kernel $(O)/kernel

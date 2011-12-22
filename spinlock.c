@@ -18,6 +18,33 @@ initlock(struct spinlock *lk, char *name)
   lk->locked = 0;
 }
 
+int
+tryacquire(struct spinlock *lk)
+{
+  pushcli(); // disable interrupts to avoid deadlock.
+
+#if SPINLOCK_DEBUG
+  if(holding(lk)) {
+    cprintf("%lx\n", __builtin_return_address(0));
+    panic("acquire");
+  }
+#endif
+
+  mtlock(lk);
+  if (xchg32(&lk->locked, 1) != 0) {
+      popcli();
+      return 0;
+  }
+  mtacquired(lk);
+
+#if SPINLOCK_DEBUG
+  // Record info about lock acquisition for debugging.
+  lk->cpu = mycpu();
+  getcallerpcs(&lk, lk->pcs);
+#endif
+  return 1;
+}
+
 // Acquire the lock.
 // Loops (spins) until the lock is acquired.
 // Holding a lock for a long time may cause

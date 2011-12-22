@@ -6,6 +6,7 @@ typedef unsigned char uint8;
 typedef uint64 uintptr;
 
 typedef uint8 u8;
+typedef char  s8;
 typedef uint16 u16;
 typedef short s16;
 typedef uint32 u32;

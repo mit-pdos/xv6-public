@@ -12,7 +12,7 @@
 #define INF          (~0UL)
 #define CACHELINE    64  // cache line size
 #define CPUKSTACKS   (NPROC + NCPU)
-#define QUANTUN      10  // scheduling time quantum and tick length (in msec)
+#define QUANTUM      10  // scheduling time quantum and tick length (in msec)
 #define WQSHIFT       4  // 2^WORKSHIFT work queue slots
 #define VICTIMAGE 1000000 // cycles a proc executes before an eligible victim
 #if defined(HW_josmp)
