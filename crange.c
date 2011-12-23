@@ -41,7 +41,7 @@ struct crange {
 } cr;
 
 struct crange*
-crange_init(int nlevel)
+crange_alloc(int nlevel)
 {
   struct crange *cr = kmalloc(sizeof(struct crange));
   cr->nlevel = (nlevel < MINNLEVEL) ? MINNLEVEL : nlevel;  // XXX
@@ -50,8 +50,26 @@ crange_init(int nlevel)
   initlock(cr->crange_head.lock, "head lock");
   cr->crange_head.next = kmalloc(sizeof(cr->crange_head.next[0]) * nlevel);
   for (int l = 0; l < nlevel; l++) cr->crange_head.next[l] = 0;
-  if (crange_debug) cprintf("crange_init: return 0x%x\n", cr);
+  if (crange_debug) cprintf("crange_alloc: return 0x%x\n", cr);
   return cr;
+}
+
+static void clist_range_free(void *p);
+
+void
+crange_free(struct crange *cr)
+
+{
+  assert(cr);
+  if (crange_debug) cprintf("crange_free: 0x%x\n", cr);
+  struct clist_range *e, *n;
+  for (e = RANGE_WOMARK(cr->crange_head.next[0]); e; e = n) {
+    n = RANGE_WOMARK(e->next[0]);
+    clist_range_free(e);
+  }
+  kmfree(cr->crange_head.next);
+  kmfree(cr->crange_head.lock);
+  kmfree(cr);
 }
 
 // draw nlevel in [1, nlevel]
@@ -137,7 +155,7 @@ crange_check(struct crange *cr, int lockcheck, struct clist_range *absent)
 }
 
 static void
-crange_free(void *p)
+clist_range_free(void *p)
 {
   struct clist_range *e = (struct clist_range *) p;
   // cprintf("crange_free: %u(%u)\n", e->key, e->size);
@@ -145,9 +163,9 @@ crange_free(void *p)
   for (int l = 0; l < e->nlevel; l++) {
     e->next[l] = (struct clist_range *) 0xDEADBEEF;
   }
-  kfree(e->lock);
-  kfree(e->next);
-  kfree(e);
+  kmfree(e->lock);
+  kmfree(e->next);
+  kmfree(e);
 }
 
 static void
@@ -155,7 +173,7 @@ crange_free_delayed(struct clist_range *e)
 {
   // cprintf("crange_free_delayed: 0x%lx %u(%u) %u\n", (long) e, (e)->key, (e)->size, myepoch);
   crange_check(e->cr, 0, e);
-  gc_delayed(e, crange_free);
+  gc_delayed(e, clist_range_free);
 }
 
 static struct clist_range *

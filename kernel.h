@@ -73,7 +73,8 @@ struct clist_range {
 
 struct crange;
 
-struct crange* crange_init(int nlevel);
+struct crange* crange_alloc(int nlevel);
+void crange_free(struct crange *cr);
 void crange_del(struct crange *cr, u64 k, u64 sz);
 void crange_add(struct crange *cr, u64 k, u64 sz, void *v);
 struct clist_range* crange_search(struct crange *cr, u64 k);

@@ -116,7 +116,7 @@ vmap_alloc(void)
     return 0;
   }
 #ifdef TREE
-  m->cr = crange_init(10);
+  m->cr = crange_alloc(10);
   if (m->cr == 0)
     return 0;
 #endif
@@ -326,6 +326,7 @@ vmap_free(void *p)
 {
   struct vmap *m = (struct vmap *) p;
   crange_foreach(m->cr, vmap_free_vma, NULL);
+  crange_free(m->cr);
   freevm(m->pml4);
   m->pml4 = 0;
   m->alloc = 0;
