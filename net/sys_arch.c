@@ -1,6 +1,9 @@
 #include "lwip/sys.h"
 #include "arch/sys_arch.h"
+
+#include "queue.h"
 #include "kernel.h"
+#include "proc.h"
 
 #define DIE panic(__func__)
 
@@ -14,6 +17,10 @@ sys_mbox_new(sys_mbox_t *mbox, int size)
     cprintf("sys_mbox_new: size %u\n", size);
     return ERR_MEM;
   }
+  mbox->head = 0;
+  mbox->tail = 0;
+  initlock(&mbox->s, "lwIP mbox");
+  initcondvar(&mbox->c, "lwIP mbox");
 
   return ERR_OK;
 }
@@ -51,7 +58,26 @@ sys_mbox_free(sys_mbox_t *mbox)
 u32_t
 sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 {
-  DIE;
+  u64 start, to;
+  u32 r;
+
+  acquire(&mbox->s);
+  start = nsectime();
+  to = (u64)timeout*1000000 + start;
+  while (mbox->head-mbox->tail == 0) {
+    if (to < nsectime()) {
+      r = SYS_ARCH_TIMEOUT;
+      goto done;
+    }
+    cv_sleepto(&mbox->c, &mbox->s, to);
+  }
+  r = nsectime()-start;
+  *msg = mbox->msg[mbox->tail % MBOXSLOTS];
+  mbox->tail++;
+
+done:
+  release(&mbox->s);
+  return r;
 }
 
 u32_t
@@ -137,7 +163,17 @@ sys_thread_t
 sys_thread_new(const char *name, lwip_thread_fn thread, void *arg,
                int stacksize, int prio)
 {
-  DIE;
+  struct proc *p;
+  
+  p = threadalloc(thread, arg);
+  safestrcpy(p->name, name, sizeof(p->name));
+
+  acquire(&p->lock);
+  p->state = RUNNABLE;
+  addrun(p);
+  release(&p->lock);
+
+  return p;
 }
 
 //

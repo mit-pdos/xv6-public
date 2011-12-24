@@ -4,10 +4,14 @@
 #include "spinlock.h"
 #include "condvar.h"
 
-typedef int sys_thread_t;
+typedef struct proc* sys_thread_t;
 
 typedef struct sys_mbox {
 #define MBOXSLOTS 32
+  struct spinlock s;
+  struct condvar c;
+  int head;
+  int tail;
   void *msg[MBOXSLOTS];
 } sys_mbox_t;
 
