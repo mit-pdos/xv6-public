@@ -569,7 +569,7 @@ fork(int flags)
   struct proc *np;
   int cow = 1;
 
-  //  cprintf("%d: fork\n", proc->pid);
+  // cprintf("%d: fork\n", myproc()->pid);
 
   // Allocate process.
   if((np = allocproc()) == 0)

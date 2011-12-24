@@ -38,19 +38,6 @@ struct buf*     bread(u32, u64, int writer);
 void            brelse(struct buf*, int writer);
 void            bwrite(struct buf*);
 
-// bonsai.c
-struct kv {
-  u64 key;
-  void *val;
-};
-
-struct kv*      tree_find(struct node *n, u64 key);
-struct kv*      tree_find_gt(struct node *n, u64 key);
-struct node*    tree_insert(struct node *n, struct kv *kv);
-struct node*    tree_remove(struct node *n, u64 key);
-int             tree_foreach(struct node *n, int (*cb)(struct kv* kv, void *), void *);
-void            tree_test(void);
-
 // cga.c
 void            cgaputc(int c);
 
@@ -69,6 +56,30 @@ void            cprintf(const char*, ...);
 void            panic(const char*) __attribute__((noreturn));
 void            snprintf(char *buf, u32 n, char *fmt, ...);
 void            consoleintr(int(*)(void));
+
+
+// crange.c
+
+struct clist_range {
+  u64 key;
+  u64 size;
+  void *value;
+  int curlevel;
+  int nlevel;
+  struct crange *cr;
+  struct clist_range** next;  // one next pointer per level
+  struct spinlock *lock; // on separate cache line?
+} __mpalign__;
+
+struct crange;
+
+struct crange* crange_alloc(int nlevel);
+void crange_free(struct crange *cr);
+void crange_del(struct crange *cr, u64 k, u64 sz);
+void crange_add(struct crange *cr, u64 k, u64 sz, void *v);
+struct clist_range* crange_search(struct crange *cr, u64 k);
+int crange_foreach(struct crange *crk, int (*f)(struct clist_range *r, void *st), void *st);
+void crange_print(struct crange *cr, int);
 
 // e1000.c
 extern int e1000irq;

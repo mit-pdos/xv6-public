@@ -13,6 +13,8 @@
 
 static void vmap_free(void *p);
 
+enum { vm_debug = 0 };
+
 static struct vma *
 vma_alloc(void)
 {
@@ -103,7 +105,6 @@ vmap_alloc(void)
   struct vmap *m = kmalloc(sizeof(struct vmap));
   if (m == 0)
     return 0;
-
   memset(m, 0, sizeof(struct vmap));
   snprintf(m->lockname, sizeof(m->lockname), "vmap:%p", m);
   initlock(&m->lock, m->lockname);
@@ -114,6 +115,11 @@ vmap_alloc(void)
     kmfree(m);
     return 0;
   }
+#ifdef TREE
+  m->cr = crange_alloc(10);
+  if (m->cr == 0)
+    return 0;
+#endif
   return m;
 }
 
@@ -210,6 +216,9 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
   if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0)
     m = pagefault_ondemand(vmap, va, err, m);
 
+  if (vm_debug)
+    cprintf("pagefault: err 0x%x va 0x%x type %d ref %d pid %d\n", err, va, m->va_type, m->n->ref, myproc()->pid);
+
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(vmap, va, pte, m, npg) < 0) {
       release(&m->lock);
@@ -301,15 +310,14 @@ vmn_alloc(u64 npg, enum vmntype type)
 struct state {
   int share;
   void *pml4;
-  struct node *root;
+  struct crange *cr;
 };
 
 static int
-vmap_free_vma(struct kv *kv, void *p)
+vmap_free_vma(struct clist_range *r, void *st)
 {  
-  struct state *st = (struct state *) p;
-  vma_free(kv->val);
-  st->root = tree_remove(st->root, kv->key);
+  vma_free(r->value);
+  crange_del(r->cr, r->key, r->size);
   return 1;
 }
 
@@ -317,12 +325,9 @@ static void
 vmap_free(void *p)
 {
   struct vmap *m = (struct vmap *) p;
-  struct state *st = kmalloc(sizeof(struct state));
-  st->root = m->root;
-  tree_foreach(m->root, vmap_free_vma, st);
-  m->root = st->root;
+  crange_foreach(m->cr, vmap_free_vma, NULL);
+  crange_free(m->cr);
   freevm(m->pml4);
-  kmfree(st);
   m->pml4 = 0;
   m->alloc = 0;
 }
@@ -339,9 +344,9 @@ vmap_lookup(struct vmap *m, uptr start, uptr len)
   if(start + len < start)
     panic("vmap_lookup bad len");
 
-  struct kv *kv = tree_find_gt(m->root, start);   // find vma with va_end > start
-  if (kv != 0) {
-    struct vma *e = (struct vma *) (kv->val);
+  struct clist_range *r = crange_search(m->cr, start);
+  if (r != 0) {
+    struct vma *e = (struct vma *) (r->value);
     if (e->va_end <= e->va_start) 
       panic("malformed va");
     if (e->va_start < start+len && e->va_end > start) {
@@ -365,7 +370,6 @@ vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
   }
 
   struct vma *e = vma_alloc();
-  struct kv kv;
   if (e == 0) {
     release(&m->lock);
     return -1;
@@ -374,18 +378,16 @@ vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
   e->va_end = va_start + len;
   e->n = n;
   __sync_fetch_and_add(&n->ref, 1);
-  kv.key = e->va_end;
-  kv.val = e;
-  m->root = tree_insert(m->root, &kv);
+  crange_add(m->cr, e->va_start, len, (void *) e);
   release(&m->lock);
   return 0;
 }
 
 static int
-vmap_copy_vma(struct kv *kv, void *_st)
+vmap_copy_vma(struct clist_range *r, void *_st)
 {
   struct state *st = (struct state *) _st;
-  struct vma *e = (struct vma *) kv->val;
+  struct vma *e = (struct vma *) r->value;
   struct vma *c = vma_alloc();
   if (c == 0) {
     return 0;
@@ -407,10 +409,7 @@ vmap_copy_vma(struct kv *kv, void *_st)
     return 0;
   }
   __sync_fetch_and_add(&c->n->ref, 1);
-  struct kv kv1;
-  kv1.key = c->va_end;
-  kv1.val = (void *) c;
-  st->root = tree_insert(st->root, &kv1);
+  crange_add(st->cr, c->va_start, c->va_end - c->va_start, (void *) c);
   return 1;
 }
 
@@ -425,14 +424,13 @@ vmap_copy(struct vmap *m, int share)
   struct state *st = kmalloc(sizeof(struct state));
   st->share = share;
   st->pml4 = m->pml4;
-  st->root = c->root;
-  if (!tree_foreach(m->root, vmap_copy_vma, st)) {
+  st->cr = c->cr;
+  if (!crange_foreach(m->cr, vmap_copy_vma, st)) {
     vmap_free(c);
     release(&m->lock);
     kmfree(st);
     return 0;
   }
-  c->root = st->root;
   kmfree(st);
 
   if (share)
@@ -447,16 +445,16 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
 {
   acquire(&m->lock);
   uptr va_end = va_start + len;
-  struct kv *kv = tree_find_gt(m->root, va_start);
-  if (kv == 0)
+  struct clist_range *r = crange_search(m->cr, va_start);
+  if (r == 0)
     panic("no vma?");
-  struct vma *e = (struct vma *) kv->val;
+  struct vma *e = (struct vma *) r->value;
   if(e->va_start != va_start || e->va_end != va_end) {
     cprintf("vmap_remove: partial unmap unsupported\n");
     release(&m->lock);
     return -1;
   }
-  m->root = tree_remove(m->root, va_start+len);
+  crange_del(m->cr, va_start, len);
   gc_delayed(e, vma_free);
   release(&m->lock);
   return 0;
