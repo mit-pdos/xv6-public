@@ -28,6 +28,7 @@ void
 cv_tick(void)
 {
   struct proc *p, *tmp;
+  struct condvar *cv;
   int again;
   u64 now;
   
@@ -45,10 +46,11 @@ cv_tick(void)
         if (tryacquire(&p->lock)) {
           if (tryacquire(&p->oncv->lock)) {
             LIST_REMOVE(p, cv_sleep);
+            cv = p->oncv;
             p->cv_wakeup = 0;
             wakeup(p);
             release(&p->lock);
-            release(&p->oncv->lock);
+            release(&cv->lock);
             continue;
           } else {
             release(&p->lock);
