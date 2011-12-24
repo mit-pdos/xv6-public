@@ -107,7 +107,7 @@ forkret(void)
   // Just for the first process. can't do it earlier
   // b/c file system code needs a process context
   // in which to call cv_sleep().
-  if(myproc()->cwd == 0) {
+  if(myproc()->cwd == NULL) {
     mtstart(forkret, myproc());
     myproc()->cwd = namei("/");
     mtstop(myproc());
@@ -137,8 +137,11 @@ exit(void)
     }
   }
 
-  iput(myproc()->cwd);
-  myproc()->cwd = 0;
+  // Kernel threads might not have a cwd
+  if (myproc()->cwd != NULL) {
+      iput(myproc()->cwd);
+      myproc()->cwd = NULL;
+  }
 
   // Pass abandoned children to init.
   wakeupinit = 0;
@@ -157,9 +160,9 @@ exit(void)
 
   // Parent might be sleeping in wait().
   acquire(&(myproc()->lock));
-
-  cv_wakeup(&(myproc()->parent->cv));
-
+  // Kernel threads might not have a parent
+  if (myproc()->parent != NULL)
+      cv_wakeup(&(myproc()->parent->cv));
   if (wakeupinit)
     cv_wakeup(&bootproc->cv); 
 
@@ -262,7 +265,7 @@ inituser(void)
   p->tf->rip = 0x0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
-  p->cwd = 0; // forkret will fix in the process's context
+  p->cwd = NULL; // forkret will fix in the process's context
   acquire(&p->lock);
   addrun(p);
   p->state = RUNNABLE;
@@ -677,6 +680,7 @@ threadalloc(void (*fn)(void *), void *arg)
   p->context->rip = (u64)threadstub;
   p->context->r12 = (u64)fn;
   p->context->r13 = (u64)arg;
-  p->cwd = 0;
+  p->parent = myproc();
+  p->cwd = NULL;
   return p;
 }
