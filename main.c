@@ -26,6 +26,8 @@ extern void inithz(void);
 extern void initwq(void);
 extern void initsamp(void);
 extern void initpci(void);
+extern void initnet(void);
+extern void initsched(void);
 
 static volatile int bstate;
 
@@ -94,8 +96,9 @@ cmain(u64 mbmagic, u64 mbaddr)
   initmp();
   initlapic();
   initkalloc(mbaddr);
-  initgc();        // gc epochs
   initproc();      // process table
+  initsched();     // scheduler run queues
+  initgc();        // gc epochs and threads
   initbio();       // buffer cache
   initinode();     // inode cache
   initdisk();      // disk
@@ -104,6 +107,7 @@ cmain(u64 mbmagic, u64 mbaddr)
 #endif
   initsamp();
   initpci();
+  initnet();
 
   cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
 

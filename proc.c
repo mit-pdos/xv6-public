@@ -267,22 +267,6 @@ inituser(void)
   addrun(p);
   p->state = RUNNABLE;
   release(&p->lock);
-
-  for (u32 c = 0; c < NCPU; c++) {
-    extern void gc_worker(void*);
-    struct proc *gcp; 
-
-    gcp = threadalloc(gc_worker, NULL);
-    if (gcp == NULL)
-      panic("threadalloc: gc_worker");
-
-    gcp->cpuid = c;
-    gcp->cpu_pin = 1;
-    acquire(&gcp->lock);
-    gcp->state = RUNNABLE;
-    addrun(gcp);
-    release(&gcp->lock);
-  }
 }
 
 void
@@ -293,8 +277,6 @@ initproc(void)
   nspid = nsalloc(0);
   if (nspid == 0)
     panic("pinit");
-
-  initsched();
 
   for (c = 0; c < NCPU; c++)
     idle[c] = 1;

@@ -122,10 +122,11 @@ gc(void)
 }
 
 
-void
+static void
 gc_worker(void *x)
 {
   struct spinlock wl;
+
   initlock(&wl, "rcu_gc_worker");   // dummy lock
 
   for (;;) {
@@ -212,4 +213,19 @@ initgc(void)
   for (int i = 0; i < NEPOCH; i++) 
     for (int j = 0; j < NEPOCH; j++)
       gc_epoch[i][j].epoch = i;
+
+  for (u32 c = 0; c < NCPU; c++) {
+    struct proc *gcp; 
+
+    gcp = threadalloc(gc_worker, NULL);
+    if (gcp == NULL)
+      panic("threadalloc: gc_worker");
+
+    gcp->cpuid = c;
+    gcp->cpu_pin = 1;
+    acquire(&gcp->lock);
+    gcp->state = RUNNABLE;
+    addrun(gcp);
+    release(&gcp->lock);
+  }
 }
