@@ -1,5 +1,8 @@
 * mtrace
 
+  You need to build and install mtrace:
+    git+ssh://amsterdam.csail.mit.edu/home/am6/mpdev/qemu.git -b mtrace
+
   #define MTRACE 1 in param.h
   $ make mscan.out
 
