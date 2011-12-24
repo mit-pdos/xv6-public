@@ -1,9 +1,11 @@
-#include "types.h"
-#include "kernel.h"
-
 #ifdef LWIP
 #include "lwip/tcpip.h"
 #endif
+
+#include "types.h"
+#include "kernel.h"
+#include "queue.h"
+#include "proc.h"
 
 static u8 ping_packet[] = {
   0x52, 0x55, 0x0a, 0x00, 0x02, 0x02, 0x52, 0x54, 0x00, 0x12,
@@ -56,14 +58,33 @@ int errno;
 static void
 tcpip_init_done(void *arg)
 {
-  cprintf("tcpip_init_done: %lx\n", arg);
+  volatile long *tcpip_done = arg;
+  *tcpip_done = 1;
+}
+
+void
+initnet_worker(void *x)
+{
+  volatile long tcpip_done = 0;
+
+  tcpip_init(&tcpip_init_done, (void*)&tcpip_done);
+  while (!tcpip_done)
+    yield();
 }
 
 void
 initnet(void)
 {
-  tcpip_init(&tcpip_init_done, NULL);
-  cprintf("initnet:\n");
+  struct proc *t;
+
+  t = threadalloc(initnet_worker, NULL);
+  if (t == NULL)
+    panic("initnet: threadalloc");
+
+  acquire(&t->lock);
+  t->state = RUNNABLE;
+  addrun(t);
+  release(&t->lock);
 }
 #else
 void
