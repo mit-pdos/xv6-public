@@ -134,10 +134,10 @@ $(O)/fs.img: $(O)/mkfs README $(UPROGS)
 	@echo "  MKFS   $@"
 	$(Q)$(O)/mkfs $@ README $(UPROGS)
 
-$(O)/mscan.syms: $(O)/kernel
+mscan.syms: $(O)/kernel
 	$(NM) -S $< > $@
 
-$(O)/mscan.kern: $(O)/kernel
+mscan.kern: $(O)/kernel
 	cp $< $@
 
 -include *.d
@@ -163,9 +163,9 @@ gdb: $(O)/kernel
 ##
 MTRACEOPTS = -rtc clock=vm -mtrace-enable -mtrace-file mtrace.out \
 	     -mtrace-quantum 100
-mtrace.out: $(O)/mscan.kern $(O)/mscan.syms 
+mtrace.out: mscan.kern mscan.syms 
 	$(Q)rm -f mtrace.out
-	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel $(O)/mscan.kern
+	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel mscan.kern
 
 mscan.out: $(QEMUSRC)/mtrace-tools/mscan mtrace.out
 	$(QEMUSRC)/mtrace-tools/mscan > $@ || (rm -f $@; exit 2)
