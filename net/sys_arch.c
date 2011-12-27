@@ -4,8 +4,15 @@
 #include "queue.h"
 #include "kernel.h"
 #include "proc.h"
+#include "cpu.h"
 
 #define DIE panic(__func__)
+
+static struct {
+  struct spinlock lk;
+  struct cpu *cpu;
+  u64 depth;
+} lwprot;
 
 //
 // mbox
@@ -129,31 +136,36 @@ sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
 }
 
 //
-// mutex
+// protect
 //
-err_t
-sys_mutex_new(sys_mutex_t *mutex)
+sys_prot_t
+sys_arch_protect(void)
 {
-  initlock(&mutex->s, "lwIP mutex");
-  return ERR_OK;
+  sys_prot_t r;
+
+  pushcli();
+  if (lwprot.cpu == mycpu())
+    r = lwprot.depth++;
+  else {
+    acquire(&lwprot.lk);
+    r = lwprot.depth++;
+    lwprot.cpu = mycpu();
+  }
+  popcli();
+
+  return r;
 }
 
 void
-sys_mutex_lock(sys_mutex_t *mutex)
+sys_arch_unprotect(sys_prot_t pval)
 {
-  DIE;
-}
-
-void
-sys_mutex_unlock(sys_mutex_t *mutex)
-{
-  DIE;
-}
-
-void
-sys_mutex_free(sys_mutex_t *mutex)
-{
-  DIE;
+  if (lwprot.cpu != mycpu() || lwprot.depth == 0)
+    panic("sys_arch_unprotect");
+  lwprot.depth--;
+  if (lwprot.depth == 0) {
+    lwprot.cpu = NULL;
+    release(&lwprot.lk);
+  }
 }
 
 //
@@ -184,6 +196,6 @@ sys_thread_new(const char *name, lwip_thread_fn thread, void *arg,
 void
 sys_init(void)
 {
-
+  initlock(&lwprot.lk, "lwIP lwprot");
 }
 
