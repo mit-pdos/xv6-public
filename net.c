@@ -164,10 +164,10 @@ initnet_worker(void *x)
   struct condvar cv;
   int dhcp_state = 0;
   const char *dhcp_states[] = {
-    [DHCP_RENEWING] "renewing",
-    [DHCP_SELECTING] "selecting",
-    [DHCP_CHECKING] "checking",
-    [DHCP_BOUND] "bound",
+    [DHCP_RENEWING]  = "renewing",
+    [DHCP_SELECTING] = "selecting",
+    [DHCP_CHECKING]  = "checking",
+    [DHCP_BOUND]     = "bound",
   };
 
   initlock(&lk, "dhcp sleep");
@@ -176,12 +176,12 @@ initnet_worker(void *x)
   for (;;) {
     if (dhcp_state != nif.dhcp->state) {
       dhcp_state = nif.dhcp->state;
-      cprintf("netd: DHCP state %d (%s)\n", dhcp_state,
+      cprintf("net: DHCP state %d (%s)\n", dhcp_state,
               dhcp_states[dhcp_state] ? : "unknown");
 
       if (dhcp_state == DHCP_BOUND) {
         u32 ip = ntohl(nif.ip_addr.addr);
-        cprintf("netd: %02x:%02x:%02x:%02x:%02x:%02x" 
+        cprintf("net: %02x:%02x:%02x:%02x:%02x:%02x" 
                 " bound to %u.%u.%u.%u\n", 
                 nif.hwaddr[0], nif.hwaddr[1], nif.hwaddr[2],
                 nif.hwaddr[3], nif.hwaddr[4], nif.hwaddr[5],
