@@ -72,11 +72,15 @@ sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
   start = nsectime();
   to = (u64)timeout*1000000 + start;
   while (mbox->head-mbox->tail == 0) {
-    if (to < nsectime()) {
-      r = SYS_ARCH_TIMEOUT;
-      goto done;
+    if (timeout != 0) {
+      if (to < nsectime()) {
+        r = SYS_ARCH_TIMEOUT;
+        goto done;
+      }
+      cv_sleepto(&mbox->c, &mbox->s, to);
+    } else {
+      cv_sleep(&mbox->c, &mbox->s);      
     }
-    cv_sleepto(&mbox->c, &mbox->s, to);
   }
   r = nsectime()-start;
   *msg = mbox->msg[mbox->tail % MBOXSLOTS];
@@ -126,13 +130,38 @@ sys_sem_valid(sys_sem_t *sem)
 void
 sys_sem_signal(sys_sem_t *sem)
 {
-  DIE;
+  acquire(&sem->s);  
+  sem->count++;
+  cv_wakeup(&sem->c);
+  release(&sem->s);
 }
 
 u32_t
 sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
 {
-  DIE;
+  u64 start, to;
+  u32 r;
+
+  acquire(&sem->s);
+  start = nsectime();
+  to = (u64)timeout*1000000 + start;
+  while (sem->count == 0) {
+    if (timeout != 0) {
+      if (to < nsectime()) {
+        r = SYS_ARCH_TIMEOUT;
+        goto done;
+      }
+      cv_sleepto(&sem->c, &sem->s, to);
+    } else {
+      cv_sleep(&sem->c, &sem->s);      
+    }
+  }
+  r = nsectime()-start;
+  sem->count--;
+
+done:
+  release(&sem->s);
+  return r;
 }
 
 //
