@@ -240,7 +240,6 @@ void e1000reset(void)
   ewr(WMREG_RADV, 0);
   ewr(WMREG_RCTL,
       RCTL_EN | RCTL_RDMTS_1_2 | RCTL_DPF | RCTL_BAM | RCTL_2k);
-  ewr(WMREG_RDT, RX_RING_SIZE-1);
 
   // [E1000 13.4.20]
   ewr(WMREG_IMC, ~0);
@@ -251,6 +250,7 @@ int
 e1000attach(struct pci_func *pcif)
 {
   int r;
+  int i;
 
   pci_func_enable(pcif);
   
@@ -271,6 +271,18 @@ e1000attach(struct pci_func *pcif)
   cprintf("%x:%x:%x:%x:%x:%x\n",
           e1000.hwaddr[0], e1000.hwaddr[1], e1000.hwaddr[2],
           e1000.hwaddr[3], e1000.hwaddr[4], e1000.hwaddr[5]);
+
+  u32 ralow = ((u32) e1000.hwaddr[0]) | ((u32) e1000.hwaddr[1] << 8) | 
+      ((u32) e1000.hwaddr[2] << 16) | ((u32) e1000.hwaddr[3] << 24);
+  u32 rahigh = ((u32) e1000.hwaddr[4] | ((u32) e1000.hwaddr[5] << 8));
+  
+  ewr(WMREG_RAL_LO(WMREG_CORDOVA_RAL_BASE, 0), ralow);
+  erd(WMREG_STATUS);
+  ewr(WMREG_RAL_HI(WMREG_CORDOVA_RAL_BASE, 0), rahigh|RAL_AV);
+  erd(WMREG_STATUS);
+
+  for (i = 0; i < WMREG_MTA; i+=4)
+    ewr(WMREG_CORDOVA_MTA+i, 0);
 
   return 0;
 }
