@@ -5,6 +5,7 @@
 #include "lwip/tcpip.h"
 #include "lwip/ip.h"
 #include "lwip/netif.h"
+#include "lwip/dhcp.h"
 #include "netif/etharp.h"
 #pragma GCC diagnostic pop
 #endif
@@ -67,10 +68,6 @@ struct timer_thread {
   struct spinlock waitlk;
   void (*func)(void);
 };
-
-static struct timer_thread t_arp;
-static struct timer_thread t_tcpf;
-static struct timer_thread t_tcps;
 
 int errno;
 
@@ -141,6 +138,7 @@ tcpip_init_done(void *arg)
 void
 initnet_worker(void *x)
 {
+  static struct timer_thread t_arp, t_tcpf, t_tcps, t_dhcpf, t_dhcpc;
   static struct netif nif;
   volatile long tcpip_done = 0;
 
@@ -151,9 +149,14 @@ initnet_worker(void *x)
   memset(&nif, 0, sizeof(nif));
   lwip_init(&nif, NULL, 0, 0, 0);
 
+  dhcp_start(&nif);
+
   start_timer(&t_arp, &etharp_tmr, "arp timer", ARP_TMR_INTERVAL);
   start_timer(&t_tcpf, &tcp_fasttmr, "tcp f timer", TCP_FAST_INTERVAL);
   start_timer(&t_tcps, &tcp_slowtmr, "tcp s timer", TCP_SLOW_INTERVAL);
+
+  start_timer(&t_dhcpf, &dhcp_fine_tmr,	"dhcp f timer",	DHCP_FINE_TIMER_MSECS);
+  start_timer(&t_dhcpc, &dhcp_coarse_tmr, "dhcp c timer", DHCP_COARSE_TIMER_MSECS);
 }
 
 void
