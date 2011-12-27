@@ -166,6 +166,8 @@ int             mpbcpu(void);
 void            netfree(void *va);
 void*           netalloc(void);
 void            netrx(void *va, u16 len);
+int             nettx(void *va, u16 len);
+void            nethwaddr(u8 *hwaddr);
 
 // ns.c
 enum {

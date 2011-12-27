@@ -16,7 +16,7 @@ low_level_init(struct netif *netif)
   netif->hwaddr_len = ETHARP_HWADDR_LEN;
 
   /* set MAC hardware address */
-  e1000hwaddr(netif->hwaddr);
+  nethwaddr(netif->hwaddr);
 
   /* maximum transfer unit */
   netif->mtu = 1500;
@@ -70,7 +70,7 @@ low_level_output(struct netif *netif, struct pbuf *p)
     size += q->len;
   }
 
-  e1000tx(buf, size);
+  nettx(buf, size);
 
 #if ETH_PAD_SIZE
   pbuf_header(p, ETH_PAD_SIZE); /* reclaim the padding word */

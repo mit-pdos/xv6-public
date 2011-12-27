@@ -40,6 +40,18 @@ netalloc(void)
   return kalloc();
 }
 
+int
+nettx(void *va, u16 len)
+{
+  return e1000tx(va, len);
+}
+
+void
+nethwaddr(u8 *hwaddr)
+{
+  e1000hwaddr(hwaddr);
+}
+
 void
 nettest(void)
 {
