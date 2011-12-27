@@ -9,7 +9,7 @@
 #include "mtrace.h"
 
 void
-initlock(struct spinlock *lk, char *name)
+initlock(struct spinlock *lk, const char *name)
 {
 #if SPINLOCK_DEBUG
   lk->name = name;

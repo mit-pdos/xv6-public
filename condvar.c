@@ -131,7 +131,7 @@ cv_wakeup(struct condvar *cv)
 }
 
 void
-initcondvar(struct condvar *cv, char *n)
+initcondvar(struct condvar *cv, const char *n)
 {
   initlock(&cv->lock, n);
   LIST_INIT(&cv->waiters);
