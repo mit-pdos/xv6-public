@@ -166,20 +166,13 @@ if_input(struct netif *netif, void *buf, u16 len)
   /* IP or ARP packet? */
   case ETHTYPE_IP:
   case ETHTYPE_ARP:
-#if PPPOE_SUPPORT
-  /* PPPoE packet? */
-  case ETHTYPE_PPPOEDISC:
-  case ETHTYPE_PPPOE:
-#endif /* PPPOE_SUPPORT */
-    /* full packet send to tcpip_thread to process */
-    if (netif->input(p, netif)!=ERR_OK)
-     { LWIP_DEBUGF(NETIF_DEBUG, ("ethernetif_input: IP input error\n"));
-       pbuf_free(p);
-       p = NULL;
-     }
+    if (ethernet_input(p, netif) != ERR_OK) {
+      cprintf("if_input: ethernet_input failed\n");
+      pbuf_free(p);
+    }
     break;
-
   default:
+    cprintf("if_input: unknown type %u\n", htons(ethhdr->type));
     pbuf_free(p);
     p = NULL;
     break;
