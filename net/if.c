@@ -23,7 +23,7 @@ low_level_init(struct netif *netif)
   
   /* device capabilities */
   /* don't set NETIF_FLAG_ETHARP if this device is not an ethernet one */
-  netif->flags = NETIF_FLAG_BROADCAST; //| NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
+  netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
  
   /* Do whatever else is needed to initialize interface. */  
 }
@@ -48,10 +48,15 @@ static err_t
 low_level_output(struct netif *netif, struct pbuf *p)
 {
   struct pbuf *q;
+  u32 size;
+  u8 *buf;
 
-  panic("low_level_output");
-
-//  initiate transfer();
+  size = 0;
+  buf = netalloc();
+  if (buf == NULL) {
+    cprintf("low_level_output: netalloc failed\n");
+    return ERR_MEM;
+  }
   
 #if ETH_PAD_SIZE
   pbuf_header(p, -ETH_PAD_SIZE); /* drop the padding word */
@@ -61,10 +66,11 @@ low_level_output(struct netif *netif, struct pbuf *p)
     /* Send the data from the pbuf to the interface, one pbuf at a
        time. The size of the data in each pbuf is kept in the ->len
        variable. */
-//    send data from(q->payload, q->len);
+    memmove(&buf[size], q->payload, q->len);
+    size += q->len;
   }
 
-//  signal that packet should be sent();
+  e1000tx(buf, size);
 
 #if ETH_PAD_SIZE
   pbuf_header(p, ETH_PAD_SIZE); /* reclaim the padding word */
