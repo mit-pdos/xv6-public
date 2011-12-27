@@ -53,6 +53,7 @@ LWIP_SRCFILES += \
 	lwip/src/core/udp.c \
 	lwip/src/netif/etharp.c \
 	net/sys_arch.c \
+	net/if.c \
 
 LWIP_OBJFILES := $(patsubst %.c, $(O)/%.o, $(LWIP_SRCFILES))
 LWIP_OBJFILES := $(patsubst %.S, $(O)/%.o, $(LWIP_OBJFILES))
