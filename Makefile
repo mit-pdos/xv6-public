@@ -35,6 +35,7 @@ OBJS = \
 	e1000.o \
 	exec.o \
 	file.o \
+	fmt.o \
 	fs.o \
 	ioapic.o \
 	lapic.o \

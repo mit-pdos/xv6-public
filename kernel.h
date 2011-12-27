@@ -1,4 +1,5 @@
 #include "mmu.h"
+#include "lib.h"
 
 #define KBASE   0xFFFFFF0000000000ull
 #define USERTOP 0x0000800000000000ull
@@ -6,17 +7,8 @@
 #define KCSEG (2<<3)  /* kernel code segment */
 #define KDSEG (3<<3)  /* kernel data segment */
 
-#define NULL ((void *)0)
-
 static inline uptr v2p(void *a) { return (uptr) a  - KBASE; }
 static inline void *p2v(uptr a) { return (void *) a + KBASE; }
-
-#define NELEM(x) (sizeof(x)/sizeof((x)[0]))
-
-#define cmpswap(ptr, old, new) __sync_bool_compare_and_swap(ptr, old, new)
-#define subfetch(ptr, val)     __sync_sub_and_fetch(ptr, val)
-#define fetchadd(ptr, val)     __sync_fetch_and_add(ptr, val)
-#define __offsetof             offsetof
 
 struct trapframe;
 struct spinlock;

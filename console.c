@@ -13,7 +13,10 @@
 #include "queue.h"
 #include "proc.h"
 #include "traps.h"
+#include "lib.h"
 #include <stdarg.h>
+#include "fmt.h"
+#include <stddef.h>
 
 #define BACKSPACE 0x100
 
@@ -23,32 +26,6 @@ static struct {
   struct spinlock lock;
   int locking;
 } cons;
-
-static void
-printint(void (*putch) (void*, char), void *putarg,
-         u64 xx, int base, int sign)
-{
-  static char digits[] = "0123456789abcdef";
-  char buf[16];
-  int i;
-  u64 x;
-
-  if(sign && (sign = xx < 0))
-    x = -xx;
-  else
-    x = xx;
-
-  i = 0;
-  do{
-    buf[i++] = digits[x % base];
-  }while((x /= base) != 0);
-
-  if(sign)
-    buf[i++] = '-';
-
-  while(--i >= 0)
-    putch(putarg, buf[i]);
-}
 
 static void
 consputc(int c)
@@ -77,72 +54,11 @@ consputc(int c)
 
 // Print to the console.
 static void
-writecons(void *arg, char c)
+writecons(int c, void *arg)
 {
   consputc(c);
 }
 
-// Only understands %d, %u, %x, %s, %lx, %lu.
-void
-vprintfmt(void (*putch) (void*, char), void *putarg,
-          const char *fmt, va_list ap)
-{
-  char *s;
-  int c, i, state;
-
-  state = 0;
-  for(i = 0; fmt[i]; i++){
-    c = fmt[i] & 0xff;
-    if(state == 0){
-      if(c == '%'){
-        state = '%';
-      } else {
-        putch(putarg, c);
-      }
-    } else if(state == '%'){
-      if(c == 'd') {
-        printint(putch, putarg, va_arg(ap, u32), 10, 1);
-      } else if(c == 'u') {
-        printint(putch, putarg, va_arg(ap, u32), 10, 0);
-      } else if(c == 'x') {
-        printint(putch, putarg, va_arg(ap, u32), 16, 0);
-      } else if(c == 'l') {
-        state = 'l';
-        continue;
-      } else if(c == 's'){
-        s = (char*) va_arg(ap, char*);
-        if(s == 0)
-          s = "(null)";
-        while(*s != 0){
-          putch(putarg, *s);
-          s++;
-        }
-      } else if(c == 'c'){
-        putch(putarg, va_arg(ap, u32));
-      } else if(c == '%'){
-        putch(putarg, c);
-      } else {
-        // Unknown % sequence.  Print it to draw attention.
-        putch(putarg, '%');
-        putch(putarg, c);
-      }
-      state = 0;
-    } else if(state == 'l') {
-      if(c == 'x') {
-        printint(putch, putarg, va_arg(ap, u64), 16, 0);
-      }
-      else if(c == 'u') {
-        printint(putch, putarg, va_arg(ap, u64), 10, 0);
-      }
-      else {
-        // Unknown % sequence.  Print it to draw attention.
-        putch(putarg, '%');
-        putch(putarg, c);
-      }
-      state = 0;
-    }
-  }
-}
 
 // Print to a buffer.
 struct bufstate {
@@ -151,7 +67,7 @@ struct bufstate {
 };
 
 static void
-writebuf(void *arg, char c)
+writebuf(int c, void *arg)
 {
   struct bufstate *bs = arg;
   if (bs->p < bs->e) {
@@ -204,7 +120,7 @@ puts(const char *s)
   ep = p+strlen(s);
 
   for (; p < ep; p++)
-    writecons(NULL, *p);
+    writecons(*p, NULL);
 
 }
 
