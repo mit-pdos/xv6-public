@@ -41,12 +41,6 @@ netalloc(void)
 }
 
 void
-netrx(void *va, u16 len)
-{
-  cprintf("netrx %lx len %x\n", va, len);
-}
-
-void
 nettest(void)
 {
   void *ping;
@@ -62,6 +56,8 @@ nettest(void)
 
 #ifdef LWIP
 
+static struct netif nif;
+
 struct timer_thread {
   u64 nsec;
   struct condvar waitcv;
@@ -70,6 +66,13 @@ struct timer_thread {
 };
 
 int errno;
+
+void
+netrx(void *va, u16 len)
+{
+  extern void if_input(struct netif *netif, void *buf, u16 len);
+  if_input(&nif, va, len);
+}
 
 static void __attribute__((noreturn))
 net_timer(void *x)
@@ -139,7 +142,6 @@ void
 initnet_worker(void *x)
 {
   static struct timer_thread t_arp, t_tcpf, t_tcps, t_dhcpf, t_dhcpc;
-  static struct netif nif;
   volatile long tcpip_done = 0;
 
   tcpip_init(&tcpip_init_done, (void*)&tcpip_done);
@@ -157,6 +159,8 @@ initnet_worker(void *x)
 
   start_timer(&t_dhcpf, &dhcp_fine_tmr,	"dhcp f timer",	DHCP_FINE_TIMER_MSECS);
   start_timer(&t_dhcpc, &dhcp_coarse_tmr, "dhcp c timer", DHCP_COARSE_TIMER_MSECS);
+
+  
 }
 
 void
@@ -177,5 +181,11 @@ initnet(void)
 void
 initnet(void)
 {
+}
+
+void
+netrx(void *va, u16 len)
+{
+  cprintf("netrx: %u\n", len);
 }
 #endif

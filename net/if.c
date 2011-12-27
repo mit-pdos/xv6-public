@@ -81,6 +81,110 @@ low_level_output(struct netif *netif, struct pbuf *p)
   return ERR_OK;
 }
 
+/**
+ * Should allocate a pbuf and transfer the bytes of the incoming
+ * packet from the interface into the pbuf.
+ *
+ * @param netif the lwip network interface structure for this ethernetif
+ * @return a pbuf filled with the received packet (including MAC header)
+ *         NULL on memory error
+ */
+static struct pbuf *
+low_level_input(struct netif *netif, void *buf, u16_t len)
+{
+  struct pbuf *p, *q;
+
+#if ETH_PAD_SIZE
+  len += ETH_PAD_SIZE; /* allow room for Ethernet padding */
+#endif
+
+  /* We allocate a pbuf chain of pbufs from the pool. */
+  p = pbuf_alloc(PBUF_RAW, len, PBUF_POOL);
+  
+  if (p != NULL) {
+
+#if ETH_PAD_SIZE
+    pbuf_header(p, -ETH_PAD_SIZE); /* drop the padding word */
+#endif
+
+    int copied = 0;
+    /* We iterate over the pbuf chain until we have read the entire
+     * packet into the pbuf. */
+    for(q = p; q != NULL; q = q->next) {
+      /* Read enough bytes to fill this pbuf in the chain. The
+       * available data in the pbuf is given by the q->len
+       * variable.
+       * This does not necessarily have to be a memcpy, you can also preallocate
+       * pbufs for a DMA-enabled MAC and after receiving truncate it to the
+       * actually received size. In this case, ensure the tot_len member of the
+       * pbuf is the sum of the chained pbuf len members.
+       */
+	int bytes = q->len;
+	if (bytes > (len - copied))
+	    bytes = len - copied;
+	memmove(q->payload, buf + copied, bytes);
+	copied += bytes;
+    }
+
+#if ETH_PAD_SIZE
+    pbuf_header(p, ETH_PAD_SIZE); /* reclaim the padding word */
+#endif
+
+    LINK_STATS_INC(link.recv);
+  } else {
+    LINK_STATS_INC(link.memerr);
+    LINK_STATS_INC(link.drop);
+  }
+
+  return p;  
+}
+
+/**
+ * This function should be called when a packet is ready to be read
+ * from the interface. It uses the function low_level_input() that
+ * should handle the actual reception of bytes from the network
+ * interface. Then the type of the received packet is determined and
+ * the appropriate input function is called.
+ *
+ * @param netif the lwip network interface structure for this ethernetif
+ */
+void
+if_input(struct netif *netif, void *buf, u16 len)
+{
+  struct eth_hdr *ethhdr;
+  struct pbuf *p;
+
+  /* move received packet into a new pbuf */
+  p = low_level_input(netif, buf, len);
+  netfree(buf);
+  /* no packet could be read, silently ignore this */
+  if (p == NULL) return;
+  /* points to packet payload, which starts with an Ethernet header */
+  ethhdr = p->payload;
+
+  switch (htons(ethhdr->type)) {
+  /* IP or ARP packet? */
+  case ETHTYPE_IP:
+  case ETHTYPE_ARP:
+#if PPPOE_SUPPORT
+  /* PPPoE packet? */
+  case ETHTYPE_PPPOEDISC:
+  case ETHTYPE_PPPOE:
+#endif /* PPPOE_SUPPORT */
+    /* full packet send to tcpip_thread to process */
+    if (netif->input(p, netif)!=ERR_OK)
+     { LWIP_DEBUGF(NETIF_DEBUG, ("ethernetif_input: IP input error\n"));
+       pbuf_free(p);
+       p = NULL;
+     }
+    break;
+
+  default:
+    pbuf_free(p);
+    p = NULL;
+    break;
+  }
+}
 
 /**
  * Should be called at the beginning of the program to set up the
