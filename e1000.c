@@ -20,6 +20,8 @@ static struct {
   u32 rxclean;
   u32 rxuse;
 
+  u8 hwaddr[6];
+
   struct wiseman_txdesc txd[TX_RING_SIZE] __attribute__((aligned (16)));
   struct wiseman_rxdesc rxd[RX_RING_SIZE] __attribute__((aligned (16)));
 } e1000;
@@ -183,6 +185,12 @@ e1000intr(void)
   }
 }
 
+void
+e1000hwaddr(u8 *hwaddr)
+{
+  memmove(hwaddr, e1000.hwaddr, sizeof(e1000.hwaddr));
+}
+
 static
 void e1000reset(void)
 {
@@ -239,8 +247,6 @@ void e1000reset(void)
   ewr(WMREG_IMS, ICR_TXDW | ICR_RXO | ICR_RXT0);
 }
 
-//#define E1000_WRITE_FLUSH() erd(WMREG_STATUS)
-
 int
 e1000attach(struct pci_func *pcif)
 {
@@ -259,14 +265,12 @@ e1000attach(struct pci_func *pcif)
   e1000reset();
 
   // Get the MAC address
-  u16 myaddr[3];
-  r = eeprom_read(&myaddr[0], EEPROM_OFF_MACADDR, 3);
+  r = eeprom_read((u16*)e1000.hwaddr, EEPROM_OFF_MACADDR, 3);
   if (r < 0)
     return 0;
-  u8 *addr = (u8*) &myaddr[0];
   cprintf("%x:%x:%x:%x:%x:%x\n",
-          addr[0], addr[1], addr[2],
-          addr[3], addr[4], addr[5]);
+          e1000.hwaddr[0], e1000.hwaddr[1], e1000.hwaddr[2],
+          e1000.hwaddr[3], e1000.hwaddr[4], e1000.hwaddr[5]);
 
   return 0;
 }

@@ -85,6 +85,7 @@ void crange_print(struct crange *cr, int);
 extern int e1000irq;
 void            e1000intr(void);
 int             e1000tx(void *buf, u32 len);
+void            e1000hwaddr(u8 *hwaddr);
 
 // exec.c
 int             exec(char*, char**);
