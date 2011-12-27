@@ -36,12 +36,21 @@
 
 // Print error messages when we run out of memory
 #define LWIP_DEBUG	1
-//#define TCP_DEBUG	LWIP_DBG_ON
-//#define MEMP_DEBUG	LWIP_DBG_ON
-//#define SOCKETS_DEBUG	LWIP_DBG_ON
-//#define DBG_TYPES_ON	LWIP_DBG_ON
-//#define PBUF_DEBUG      LWIP_DBG_ON
-//#define API_LIB_DEBUG   LWIP_DBG_ON
+
+#if 0
+#define ETHARP_DEBUG    LWIP_DBG_ON
+#define NETIF_DEBUG     LWIP_DBG_ON
+#define IP_DEBUG        LWIP_DBG_ON
+#define DHCP_DEBUG      LWIP_DBG_ON
+#define UDP_DEBUG       LWIP_DBG_ON
+#define IP_DEBUG        LWIP_DBG_ON
+#define TCP_DEBUG	LWIP_DBG_ON
+#define MEMP_DEBUG	LWIP_DBG_ON
+#define SOCKETS_DEBUG	LWIP_DBG_ON
+#define DBG_TYPES_ON	LWIP_DBG_ON
+#define PBUF_DEBUG      LWIP_DBG_ON
+#define API_LIB_DEBUG   LWIP_DBG_ON
+#endif
 
 #define DBG_MIN_LEVEL	DBG_LEVEL_SERIOUS
 #define LWIP_DBG_MIN_LEVEL	0
