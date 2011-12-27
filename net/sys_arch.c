@@ -166,6 +166,8 @@ sys_thread_new(const char *name, lwip_thread_fn thread, void *arg,
   struct proc *p;
   
   p = threadalloc(thread, arg);
+  if (p == NULL)
+    panic("lwip: sys_thread_new");
   safestrcpy(p->name, name, sizeof(p->name));
 
   acquire(&p->lock);
