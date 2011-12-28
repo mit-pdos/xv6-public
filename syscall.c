@@ -109,6 +109,18 @@ argstr(int n, char **pp)
   return fetchstr(addr, pp);
 }
 
+int
+umemcpy(void *dst, const void *umen, u64 size)
+{
+  uptr src = (uptr)umen;
+
+  for(uptr va = PGROUNDDOWN(src); va < src+size; va = va+PGSIZE)
+    if(pagefault(myproc()->vmap, va, 0) < 0)
+      return -1;
+  memmove(dst, umen, size);
+  return 0;
+}
+
 extern long sys_chdir(void);
 extern long sys_close(void);
 extern long sys_dup(void);

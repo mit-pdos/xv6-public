@@ -273,6 +273,7 @@ int             argptr(int, char**, int);
 int             argstr(int, char**);
 int             fetchint64(uptr, u64*);
 int             fetchstr(uptr, char**);
+int             umemcpy(void *, const void *, u64);
 void            syscall(void);
 
 // string.c
