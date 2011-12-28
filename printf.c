@@ -35,7 +35,7 @@ printint(void (*putch) (void*, char), void *putarg,
 // Only understands %d, %x, %p, %s.
 void
 vprintfmt(void (*putch) (void*, char), void *putarg,
-          char *fmt, va_list ap)
+          const char *fmt, va_list ap)
 {
   char *s;
   int c, i, state;
@@ -142,4 +142,16 @@ snprintf(char *buf, u32 n, char *fmt, ...)
   va_start(ap, fmt);
   vsnprintf(buf, n, fmt, ap);
   va_end(ap);
+}
+
+void __attribute__((noreturn))
+die(const char* errstr, ...)
+{
+  va_list ap;
+
+  va_start(ap, errstr);
+  vprintfmt(writec, (void*) (u64)1, errstr, ap);
+  va_end(ap);
+  printf(1, "\n");
+  exit();
 }

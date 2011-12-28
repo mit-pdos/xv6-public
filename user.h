@@ -32,8 +32,6 @@ char* strcpy(char*, char*);
 void *memmove(void*, void*, int);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
-void printf(int, char*, ...);
-void snprintf(char *buf, unsigned int n, char *fmt, ...);
 char* gets(char*, int max);
 unsigned int strlen(char*);
 void* memset(void*, int, unsigned int);
@@ -43,3 +41,8 @@ int atoi(const char*);
 
 // uthread.S
 int forkt(void *sp, void *pc, void *arg);
+
+// printf.c
+void printf(int, char*, ...);
+void snprintf(char *buf, unsigned int n, char *fmt, ...);
+void die(const char* errstr, ...) __attribute__((noreturn));
