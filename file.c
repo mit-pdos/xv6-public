@@ -30,13 +30,19 @@ filedup(struct file *f)
 void
 fileclose(struct file *f)
 {
-  if (__sync_sub_and_fetch(&f->ref, 1) > 0)
+  extern void netclose(int sock);
+
+  if (subfetch(&f->ref, 1) > 0)
     return;
 
   if(f->type == FD_PIPE)
     pipeclose(f->pipe, f->writable);
   else if(f->type == FD_INODE)
     iput(f->ip);
+  else if(f->type == FD_SOCKET)
+    netclose(f->socket);
+  else
+    panic("fileclose bad type");
   kmfree(f);
 }
 

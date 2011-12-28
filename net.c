@@ -261,6 +261,12 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
   return ss;
 }
 
+void
+netclose(int sock)
+{
+  lwip_close(sock);
+}
+
 #else
 
 void
