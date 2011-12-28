@@ -416,3 +416,119 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+static void
+freesocket(int fd)
+{
+  fileclose(myproc()->ofile[fd]);
+  myproc()->ofile[fd] = 0;  
+}
+
+static int
+getsocket(int fd, struct file **ret)
+{
+  struct file *f;
+  if (fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
+    return -1;
+  if (f->type != FD_SOCKET)
+    return -1;
+
+  *ret = f;
+  return 0;
+}
+
+static int
+allocsocket(struct file **rf, int *rfd)
+{
+  struct file *f;
+  int fd;
+
+  f = filealloc();
+  if (f == NULL)
+    return -1;
+
+  fd = fdalloc(f);
+  if (fd < 0) {
+    fileclose(f);
+    return fd;
+  }
+
+  f->type = FD_SOCKET;
+  f->off = 0;
+  f->readable = 1;
+  f->writable = 1;
+
+  *rf = f;
+  *rfd = fd;
+  return 0;
+}
+
+long
+sys_socket(int domain, int type, int protocol)
+{
+  extern long netsocket(int domain, int type, int protocol);
+  struct file *f;
+  int fd;
+  int s;
+
+  if (allocsocket(&f, &fd))
+    return -1;
+
+  s = netsocket(domain, type, protocol);
+  if (s < 0) {
+    myproc()->ofile[fd] = 0;
+    fileclose(f);
+    return s;
+  }
+
+  f->socket = s;
+  return fd;
+}
+
+long
+sys_bind(int xsock, void *xaddr, int xaddrlen)
+{
+  extern long netbind(int, void*, int);
+  struct file *f;
+
+  if (getsocket(xsock, &f))
+    return -1;
+
+  return netbind(f->socket, xaddr, xaddrlen);
+}
+
+long
+sys_listen(int xsock, int backlog)
+{
+  extern long netlisten(int, int);
+  struct file *f;
+
+  if (getsocket(xsock, &f))
+    return -1;
+
+  return netlisten(f->socket, backlog);
+}
+
+long
+sys_accept(int xsock, void *xaddr, void *xaddrlen)
+{
+  extern long netaccept(int, void*, void*);
+  struct file *f, *cf;
+  int cfd;
+  int ss;
+
+  if (getsocket(xsock, &f))
+    return -1;
+
+  if (allocsocket(&cf, &cfd))
+    return -1;
+
+  ss = netaccept(f->socket, xaddr, xaddrlen);
+  if (ss < 0) {
+    freesocket(cfd);
+    return ss;
+  }  
+
+  cf->socket = ss;
+  return cfd;
+}

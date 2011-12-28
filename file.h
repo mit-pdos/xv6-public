@@ -1,8 +1,10 @@
 struct file {
-  enum { FD_NONE, FD_PIPE, FD_INODE } type;
+  enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;
   int ref; // reference count
   char readable;
   char writable;
+
+  int socket;
   struct pipe *pipe;
   struct inode *ip;
   u32 off;

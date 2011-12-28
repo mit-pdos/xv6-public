@@ -6,6 +6,7 @@
 #include "lwip/ip.h"
 #include "lwip/netif.h"
 #include "lwip/dhcp.h"
+#include "lwip/sockets.h"
 #include "netif/etharp.h"
 #pragma GCC diagnostic pop
 #endif
@@ -14,6 +15,8 @@
 #include "kernel.h"
 #include "queue.h"
 #include "proc.h"
+#include "fs.h"
+#include "file.h"
 
 void
 netfree(void *va)
@@ -199,27 +202,63 @@ initnet(void)
 }
 
 long
-sys_socket(int domain, int type, int protocol)
+netsocket(int domain, int type, int protocol)
 {
-  return -1;
+  return lwip_socket(domain, type, protocol);
 }
 
 long
-sys_bind(int sock, void *xaddr, int xaddrlen)
+netbind(int sock, void *xaddr, int xaddrlen)
 {
-  return -1;
+  void *addr;
+  long r;
+  
+  addr = kmalloc(xaddrlen);
+  if (addr == NULL)
+    return -1;
+
+  if (umemcpy(addr, xaddr, xaddrlen))
+    return -1;
+
+  r = lwip_bind(sock, addr, xaddrlen);
+  kmfree(addr);
+  return r;
 }
 
 long
-sys_listen(int sock, int backlog)
+netlisten(int sock, int backlog)
 {
-  return -1;
+  return lwip_listen(sock, backlog);
 }
 
 long
-sys_accept(int sock, void *xaddr, void *xaddrlen)
+netaccept(int sock, void *xaddr, void *xaddrlen)
 {
-  return -1;
+  socklen_t *lenptr = xaddrlen;
+  socklen_t len;
+  void *addr;
+  int ss;
+
+  if (umemcpy(&len, lenptr, sizeof(*lenptr)))
+    return -1;
+
+  addr = kmalloc(len);
+  if (addr == NULL)
+    return -1;
+
+  ss = lwip_accept(sock, addr, &len);
+  if (ss < 0) {
+    kmfree(addr);
+    return ss;
+  }
+
+  if (kmemcpy(xaddrlen, &len, sizeof(len)) || kmemcpy(xaddr, addr, len)) {
+    lwip_close(ss);
+    kmfree(addr);
+    return -1;
+  }
+
+  return ss;
 }
 
 #else
@@ -236,25 +275,25 @@ netrx(void *va, u16 len)
 }
 
 long
-sys_socket(int domain, int type, int protocol)
+netsocket(int domain, int type, int protocol)
 {
   return -1;
 }
 
 long
-sys_bind(int sock, void *xaddr, int xaddrlen)
+netbind(int sock, void *xaddr, int xaddrlen)
 {
   return -1;
 }
 
 long
-sys_listen(int sock, int backlog)
+netlisten(int sock, int backlog)
 {
   return -1;
 }
 
 long
-sys_accept(int sock, void *xaddr, void *xaddrlen)
+netaccept(int sock, void *xaddr, void *xaddrlen)
 {
   return -1;
 }
