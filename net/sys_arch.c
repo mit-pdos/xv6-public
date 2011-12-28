@@ -39,16 +39,27 @@ sys_mbox_set_invalid(sys_mbox_t *mbox)
   mbox->invalid = 1;
 }
 
-err_t
-sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
-{
-  DIE;
-}
-
 int
 sys_mbox_valid(sys_mbox_t *mbox)
 {
   return !mbox->invalid;
+}
+
+err_t
+sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
+{
+  err_t r = ERR_MEM;
+
+  acquire(&mbox->s);
+  if (mbox->head - mbox->tail < MBOXSLOTS) {
+    mbox->msg[mbox->head % MBOXSLOTS] = msg;
+    mbox->head++;    
+    cv_wakeup(&mbox->c);
+    r = ERR_OK;
+  }
+  release(&mbox->s);
+
+  return r;
 }
 
 void
@@ -59,6 +70,7 @@ sys_mbox_post(sys_mbox_t *mbox, void *msg)
     cv_sleep(&mbox->c, &mbox->s);
   mbox->msg[mbox->head % MBOXSLOTS] = msg;
   mbox->head++;
+  cv_wakeup(&mbox->c);
   release(&mbox->s);
 }
 
