@@ -109,27 +109,40 @@ argstr(int n, char **pp)
   return fetchstr(addr, pp);
 }
 
-int
-umemcpy(void *dst, const void *umen, u64 size)
+static int
+umemptr(void *umem, void **ret, u64 size)
 {
-  uptr src = (uptr)umen;
+  uptr ptr = (uptr) umem;
 
-  for(uptr va = PGROUNDDOWN(src); va < src+size; va = va+PGSIZE)
+  for(uptr va = PGROUNDDOWN(ptr); va < ptr+size; va = va + PGSIZE)
     if(pagefault(myproc()->vmap, va, 0) < 0)
       return -1;
-  memmove(dst, umen, size);
+
+  *ret = umem;
   return 0;
 }
 
 int
-kmemcpy(void *umen, const void *src, u64 size)
+umemcpy(void *dst, void *umem, u64 size)
 {
-  uptr dst = (uptr)umen;
+  void *ptr;
 
-  for(uptr va = PGROUNDDOWN(dst); va < dst+size; va = va+PGSIZE)
-    if(pagefault(myproc()->vmap, va, 0) < 0)
-      return -1;
-  memmove(umen, src, size);
+  if (umemptr(umem, &ptr, size))
+    return -1;
+
+  memmove(dst, ptr, size);
+  return 0;
+}
+
+int
+kmemcpy(void *umem, void *src, u64 size)
+{
+  void *ptr;
+
+  if (umemptr(umem, &ptr, size))
+    return -1;
+
+  memmove(ptr, src, size);
   return 0;
 }
 
