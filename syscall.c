@@ -133,6 +133,10 @@ extern long sys_uptime(void);
 extern long sys_map(void);
 extern long sys_unmap(void);
 extern long sys_halt(void);
+extern long sys_socket(int, int, int);
+extern long sys_bind(int, void*, int);
+extern long sys_listen(int, int);
+extern long sys_accept(int, void*, void*);
 
 #define SYSCALL(name) [SYS_##name] = (void*)sys_##name
 
@@ -161,6 +165,10 @@ static long (*syscalls[])(u64, u64, u64, u64, u64, u64) = {
   SYSCALL(map),
   SYSCALL(unmap),
   SYSCALL(halt),
+  SYSCALL(socket),
+  SYSCALL(bind),
+  SYSCALL(listen),
+  SYSCALL(accept),
 };
 
 void

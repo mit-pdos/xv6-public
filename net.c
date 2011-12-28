@@ -197,7 +197,33 @@ initnet(void)
   addrun(t);
   release(&t->lock);
 }
+
+long
+sys_socket(int domain, int type, int protocol)
+{
+  return -1;
+}
+
+long
+sys_bind(int sock, void *xaddr, int xaddrlen)
+{
+  return -1;
+}
+
+long
+sys_listen(int sock, int backlog)
+{
+  return -1;
+}
+
+long
+sys_accept(int sock, void *xaddr, void *xaddrlen)
+{
+  return -1;
+}
+
 #else
+
 void
 initnet(void)
 {
@@ -207,5 +233,29 @@ void
 netrx(void *va, u16 len)
 {
   cprintf("netrx: %u\n", len);
+}
+
+long
+sys_socket(int domain, int type, int protocol)
+{
+  return -1;
+}
+
+long
+sys_bind(int sock, void *xaddr, int xaddrlen)
+{
+  return -1;
+}
+
+long
+sys_listen(int sock, int backlog)
+{
+  return -1;
+}
+
+long
+sys_accept(int sock, void *xaddr, void *xaddrlen)
+{
+  return -1;
 }
 #endif
