@@ -267,6 +267,19 @@ netclose(int sock)
   lwip_close(sock);
 }
 
+int
+netwrite(int sock, char *buf, int len)
+{
+  
+  return -1;
+}
+
+int
+netread(int sock, const char *buf, int len)
+{
+  return -1;
+}
+
 #else
 
 void
@@ -300,6 +313,23 @@ netlisten(int sock, int backlog)
 
 long
 netaccept(int sock, void *xaddr, void *xaddrlen)
+{
+  return -1;
+}
+
+void
+netclose(int sock)
+{
+}
+
+int
+netwrite(int sock, char *buf, int len)
+{
+  return -1;
+}
+
+int
+netread(int sock, const char *buf, int len)
 {
   return -1;
 }

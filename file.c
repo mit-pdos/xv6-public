@@ -65,6 +65,7 @@ filestat(struct file *f, struct stat *st)
 int
 fileread(struct file *f, char *addr, int n)
 {
+  extern int netread(int, const char *, int);
   int r;
 
   if(f->readable == 0)
@@ -80,6 +81,8 @@ fileread(struct file *f, char *addr, int n)
     iunlock(f->ip);
     return r;
   }
+  if(f->type == FD_SOCKET)
+    return netread(f->socket, addr, n);
   panic("fileread");
 }
 
@@ -87,6 +90,7 @@ fileread(struct file *f, char *addr, int n)
 int
 filewrite(struct file *f, char *addr, int n)
 {
+  extern int netwrite(int, char *, int);
   int r;
 
   if(f->writable == 0)
@@ -102,6 +106,7 @@ filewrite(struct file *f, char *addr, int n)
     iunlock(f->ip);
     return r;
   }
+  if(f->type == FD_SOCKET)
+    return netwrite(f->socket, addr, n);
   panic("filewrite");
 }
-
