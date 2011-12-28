@@ -134,48 +134,53 @@ extern long sys_map(void);
 extern long sys_unmap(void);
 extern long sys_halt(void);
 
-static long (*syscalls[])(void) = {
-  [SYS_chdir] =  sys_chdir,
-  [SYS_close] =  sys_close,
-  [SYS_dup] =    sys_dup,
-  [SYS_exec] =   sys_exec,
-  [SYS_exit] =   sys_exit,
-  [SYS_fork] =   sys_fork,
-  [SYS_fstat] =  sys_fstat,
-  [SYS_getpid] = sys_getpid,
-  [SYS_kill] =   sys_kill,
-  [SYS_link] =   sys_link,
-  [SYS_mkdir] =  sys_mkdir,
-  [SYS_mknod] =  sys_mknod,
-  [SYS_open] =   sys_open,
-  [SYS_pipe] =   sys_pipe,
-  [SYS_read] =   sys_read,
-  [SYS_sbrk] =   sys_sbrk,
-  [SYS_sleep] =  sys_sleep,
-  [SYS_unlink] = sys_unlink,
-  [SYS_wait] =   sys_wait,
-  [SYS_write] =  sys_write,
-  [SYS_uptime] = sys_uptime,
-  [SYS_map] =    sys_map,
-  [SYS_unmap] =  sys_unmap,
-  [SYS_halt] =   sys_halt,
+#define SYSCALL(name) [SYS_##name] = (void*)sys_##name
+
+static long (*syscalls[])(u64, u64, u64, u64, u64, u64) = {
+  SYSCALL(chdir),
+  SYSCALL(close),
+  SYSCALL(dup),
+  SYSCALL(exec),
+  SYSCALL(exit),
+  SYSCALL(fork),
+  SYSCALL(fstat),
+  SYSCALL(getpid),
+  SYSCALL(kill),
+  SYSCALL(link),
+  SYSCALL(mkdir),
+  SYSCALL(mknod),
+  SYSCALL(open),
+  SYSCALL(pipe),
+  SYSCALL(read),
+  SYSCALL(sbrk),
+  SYSCALL(sleep),
+  SYSCALL(unlink),
+  SYSCALL(wait),
+  SYSCALL(write),
+  SYSCALL(uptime),
+  SYSCALL(map),
+  SYSCALL(unmap),
+  SYSCALL(halt),
 };
 
 void
 syscall(void)
 {
+  struct trapframe *tf;
   int num;
 
-  num = myproc()->tf->rax;
+  tf = myproc()->tf;
+  num = tf->rax;
   if(num >= 0 && num < NELEM(syscalls) && syscalls[num]) {
     mtstart(syscalls[num], myproc());
     mtrec();
-    myproc()->tf->rax = syscalls[num]();
+    tf->rax = syscalls[num](tf->rdi, tf->rsi, tf->rdx, 
+                            tf->rcx, tf->r8, tf->r9);
     mtstop(myproc());
     mtign();
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             myproc()->pid, myproc()->name, num);
-    myproc()->tf->rax = -1;
+    tf->rax = -1;
   }
 }
