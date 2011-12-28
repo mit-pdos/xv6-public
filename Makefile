@@ -151,7 +151,7 @@ mscan.kern: $(O)/kernel
 ##
 QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic \
 	-net user -net nic,model=e1000 \
-	-net dump,file=qemu.pcap
+	-net dump,file=qemu.pcap -redir tcp:2323::23
 
 qemu: $(O)/kernel
 	$(QEMU) $(QEMUOPTS) -kernel $(O)/kernel

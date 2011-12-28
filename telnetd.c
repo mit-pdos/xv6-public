@@ -24,16 +24,38 @@ main(void)
   if (r < 0)
     die("telnetd listen: %d\n", r);
 
+  printf(1, "telnetd: port 23\n");
+
   for (;;) {
-    socklen_t socklen = sizeof(sin);
-    int ss = accept(s, (struct sockaddr *)&sin, &socklen);
+    socklen_t socklen;
+    int ss;
+    int pid;
+
+    socklen = sizeof(sin);
+    ss = accept(s, (struct sockaddr *)&sin, &socklen);
     if (ss < 0) {
-      printf(1, "telnetd accept: %d\n", ss);
+      printf(2, "telnetd accept: %d\n", ss);
       continue;
     }
-    
-    printf(1, "Got one!\n");
-    // XXX fork, exec sh, etc..
+    printf(1, "telnetd: connection\n");
+
+    pid = fork(0);
+    if (pid < 0) {
+      printf(2, "telnetd fork: %d\n", pid);
+      close(ss);
+      continue;
+    }
+    if (pid == 0) {
+      static char *argv[] = { "sh", 0 };
+      close(0);
+      close(1);
+      close(2);
+      dup(ss);
+      dup(ss);
+      dup(ss);
+      exec("sh", argv);
+      exit();
+    }
     close(ss);
   }
 }
