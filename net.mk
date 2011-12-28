@@ -9,6 +9,8 @@ ifeq ($(HAVE_LWIP),y)
 -include $(O)/net/*.d
 
 OBJS += $(O)/liblwip.a
+UPROGS += $(O)/_telnetd
+
 CFLAGS += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -I. -DLWIP
 
 LWIP_CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb \

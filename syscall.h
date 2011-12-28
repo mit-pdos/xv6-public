@@ -23,3 +23,7 @@
 #define SYS_map    22
 #define SYS_unmap  23
 #define SYS_halt   24
+#define SYS_socket 25
+#define SYS_bind   26
+#define SYS_listen 27
+#define SYS_accept 28
