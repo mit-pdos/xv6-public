@@ -65,7 +65,8 @@ sys_mbox_post(sys_mbox_t *mbox, void *msg)
 void
 sys_mbox_free(sys_mbox_t *mbox)
 {
-  DIE;
+  if (mbox->head != mbox->tail)
+    panic("sys_mbox_free");
 }
 
 u32_t
