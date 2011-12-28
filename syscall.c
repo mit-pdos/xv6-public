@@ -121,6 +121,18 @@ umemcpy(void *dst, const void *umen, u64 size)
   return 0;
 }
 
+int
+kmemcpy(void *umen, const void *src, u64 size)
+{
+  uptr dst = (uptr)umen;
+
+  for(uptr va = PGROUNDDOWN(dst); va < dst+size; va = va+PGSIZE)
+    if(pagefault(myproc()->vmap, va, 0) < 0)
+      return -1;
+  memmove(umen, src, size);
+  return 0;
+}
+
 extern long sys_chdir(void);
 extern long sys_close(void);
 extern long sys_dup(void);
