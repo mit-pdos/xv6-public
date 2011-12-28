@@ -90,7 +90,8 @@ sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
     }
   }
   r = nsectime()-start;
-  *msg = mbox->msg[mbox->tail % MBOXSLOTS];
+  if (msg)
+    *msg = mbox->msg[mbox->tail % MBOXSLOTS];
   mbox->tail++;
 
 done:
