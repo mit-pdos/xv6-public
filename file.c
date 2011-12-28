@@ -65,7 +65,7 @@ filestat(struct file *f, struct stat *st)
 int
 fileread(struct file *f, char *addr, int n)
 {
-  extern int netread(int, const char *, int);
+  extern int netread(int, char *, int);
   int r;
 
   if(f->readable == 0)

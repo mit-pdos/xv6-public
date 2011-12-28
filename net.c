@@ -268,16 +268,47 @@ netclose(int sock)
 }
 
 int
-netwrite(int sock, char *buf, int len)
+netwrite(int sock, char *ubuf, int len)
 {
-  
-  return -1;
+  void *kbuf;
+  int cc;
+  int r;
+
+  kbuf = kalloc();
+  if (kbuf == NULL)
+    return -1;
+
+  cc = MIN(len, PGSIZE);
+  if (umemcpy(kbuf, ubuf, cc)) {
+    kfree(kbuf);
+    return -1;
+  }
+  r = lwip_write(sock, kbuf, cc);
+  kfree(kbuf);
+  return r;
 }
 
 int
-netread(int sock, const char *buf, int len)
+netread(int sock, char *ubuf, int len)
 {
-  return -1;
+  void *kbuf;
+  int cc;
+  int r;
+
+  kbuf = kalloc();
+  if (kbuf == NULL)
+    return -1;
+
+  cc = MIN(len, PGSIZE);
+  r = lwip_read(sock, kbuf, cc);
+  if (r < 0) {
+    kfree(kbuf);
+    return r;
+  }
+
+  kmemcpy(ubuf, kbuf, r);
+  kfree(kbuf);
+  return r;
 }
 
 #else
