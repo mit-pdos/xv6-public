@@ -40,4 +40,23 @@ typedef uptr mem_ptr_t;
 #define BYTE_ORDER LITTLE_ENDIAN
 #endif
 
+// We define our own htonx so we can use them in userspace without
+// compiling any lwIP .cc files (otherwise we must compile core/def.c).
+#define LWIP_PLATFORM_BYTESWAP 1
+
+static inline u16_t
+LWIP_PLATFORM_HTONS(u16_t n)
+{
+  return ((n & 0xff) << 8) | ((n & 0xff00) >> 8);
+}
+
+static inline u32_t
+LWIP_PLATFORM_HTONL(u32_t n)
+{
+  return ((n & 0xff) << 24) |
+    ((n & 0xff00) << 8) |
+    ((n & 0xff0000UL) >> 8) |
+    ((n & 0xff000000UL) >> 24);
+}
+
 #endif
