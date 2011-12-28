@@ -114,7 +114,17 @@ done:
 u32_t
 sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg)
 {
-  DIE;
+  u32_t r = SYS_MBOX_EMPTY;
+
+  acquire(&mbox->s);
+  if (mbox->head - mbox->tail != 0) {
+    if (msg)
+      *msg = mbox->msg[mbox->tail % MBOXSLOTS];
+    mbox->tail++;
+    r = 0;
+  }
+  release(&mbox->s);
+  return r;
 }
 
 //
@@ -126,25 +136,25 @@ sys_sem_new(sys_sem_t *sem, u8_t count)
   initlock(&sem->s, "lwIP sem");
   initcondvar(&sem->c, "lwIP condvar");
   sem->count = count;
+  sem->invalid = 0;
   return ERR_OK;
 }
 
 void
 sys_sem_free(sys_sem_t *sem)
 {
-  DIE;
 }
 
 void
 sys_sem_set_invalid(sys_sem_t *sem)
 {
-  DIE;
+  sem->invalid = 1;
 }
 
 int
 sys_sem_valid(sys_sem_t *sem)
 {
-  DIE;
+  return !sem->invalid;
 }
 
 void

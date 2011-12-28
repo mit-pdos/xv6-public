@@ -21,6 +21,7 @@ typedef struct sys_mbox {
 typedef struct sys_sem {
   struct spinlock s;
   struct condvar c;
+  volatile int invalid;
   volatile u8 count;
 } sys_sem_t;
 
