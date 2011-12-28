@@ -26,6 +26,7 @@ sys_mbox_new(sys_mbox_t *mbox, int size)
   }
   mbox->head = 0;
   mbox->tail = 0;
+  mbox->invalid = 0;
   initlock(&mbox->s, "lwIP mbox");
   initcondvar(&mbox->c, "lwIP mbox");
 
@@ -35,7 +36,7 @@ sys_mbox_new(sys_mbox_t *mbox, int size)
 void
 sys_mbox_set_invalid(sys_mbox_t *mbox)
 {
-  DIE;
+  mbox->invalid = 1;
 }
 
 err_t
@@ -47,13 +48,18 @@ sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
 int
 sys_mbox_valid(sys_mbox_t *mbox)
 {
-  DIE;
+  return !mbox->invalid;
 }
 
 void
 sys_mbox_post(sys_mbox_t *mbox, void *msg)
 {
-  DIE;
+  acquire(&mbox->s);
+  while (mbox->head - mbox->tail == MBOXSLOTS)
+    cv_sleep(&mbox->c, &mbox->s);
+  mbox->msg[mbox->head % MBOXSLOTS] = msg;
+  mbox->head++;
+  release(&mbox->s);
 }
 
 void

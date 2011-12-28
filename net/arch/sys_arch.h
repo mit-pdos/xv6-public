@@ -12,15 +12,16 @@ typedef struct sys_mbox {
 #define MBOXSLOTS 32
   struct spinlock s;
   struct condvar c;
-  int head;
-  int tail;
+  volatile int invalid;
+  volatile int head;
+  volatile int tail;
   void *msg[MBOXSLOTS];
 } sys_mbox_t;
 
 typedef struct sys_sem {
   struct spinlock s;
   struct condvar c;
-  u8 count;
+  volatile u8 count;
 } sys_sem_t;
 
 #define SYS_ARCH_NOWAIT  0xfffffffe
