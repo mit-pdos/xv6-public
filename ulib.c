@@ -34,7 +34,7 @@ strcmp(const char *p, const char *q)
 }
 
 unsigned int
-strlen(char *s)
+strlen(const char *s)
 {
   int n;
 
@@ -109,10 +109,11 @@ memcpy(void *dst, const void *src, unsigned int n)
 }
 
 void*
-memmove(void *vdst, void *vsrc, int n)
+memmove(void *vdst, const void *vsrc, int n)
 {
-  char *dst, *src;
-  
+  const char *src;
+  char *dst;
+
   dst = vdst;
   src = vsrc;
   while(n-- > 0)
