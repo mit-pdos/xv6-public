@@ -66,8 +66,11 @@ void
 sys_mbox_post(sys_mbox_t *mbox, void *msg)
 {
   acquire(&mbox->s);
-  while (mbox->head - mbox->tail == MBOXSLOTS)
+  while (mbox->head - mbox->tail == MBOXSLOTS) {
+    lwip_core_unlock();
     cv_sleep(&mbox->c, &mbox->s);
+    lwip_core_lock();
+  }
   mbox->msg[mbox->head % MBOXSLOTS] = msg;
   mbox->head++;
   cv_wakeup(&mbox->c);
@@ -96,9 +99,13 @@ sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
         r = SYS_ARCH_TIMEOUT;
         goto done;
       }
+      lwip_core_unlock();
       cv_sleepto(&mbox->c, &mbox->s, to);
+      lwip_core_lock();
     } else {
+      lwip_core_unlock();
       cv_sleep(&mbox->c, &mbox->s);      
+      lwip_core_lock();
     }
   }
   r = nsectime()-start;
@@ -181,9 +188,13 @@ sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
         r = SYS_ARCH_TIMEOUT;
         goto done;
       }
+      lwip_core_unlock();
       cv_sleepto(&sem->c, &sem->s, to);
+      lwip_core_lock();
     } else {
+      lwip_core_unlock();
       cv_sleep(&sem->c, &sem->s);      
+      lwip_core_lock();
     }
   }
   r = nsectime()-start;
@@ -195,48 +206,37 @@ done:
 }
 
 //
-// protect
-//
-sys_prot_t
-sys_arch_protect(void)
-{
-  sys_prot_t r;
-
-  pushcli();
-  if (lwprot.cpu == mycpu())
-    r = lwprot.depth++;
-  else {
-    acquire(&lwprot.lk);
-    r = lwprot.depth++;
-    lwprot.cpu = mycpu();
-  }
-  popcli();
-
-  return r;
-}
-
-void
-sys_arch_unprotect(sys_prot_t pval)
-{
-  if (lwprot.cpu != mycpu() || lwprot.depth == 0)
-    panic("sys_arch_unprotect");
-  lwprot.depth--;
-  if (lwprot.depth == 0) {
-    lwprot.cpu = NULL;
-    release(&lwprot.lk);
-  }
-}
-
-//
 // thread
 //
+struct lwip_thread {
+  lwip_thread_fn thread;
+  void *arg;
+};
+
+static void
+lwip_thread(void *x)
+{
+  struct lwip_thread *lt = x;
+  lwip_core_lock();
+  lt->thread(lt->arg);
+  lwip_core_unlock();
+  kmfree(lt);
+}
+
 sys_thread_t
 sys_thread_new(const char *name, lwip_thread_fn thread, void *arg,
                int stacksize, int prio)
 {
+  struct lwip_thread *lt;
   struct proc *p;
-  
-  p = threadalloc(thread, arg);
+
+  lt = kmalloc(sizeof(*lt));
+  if (lt == NULL)
+    return NULL;
+  lt->thread = thread;
+  lt->arg = arg;
+
+  p = threadalloc(lwip_thread, lt);
   if (p == NULL)
     panic("lwip: sys_thread_new");
   safestrcpy(p->name, name, sizeof(p->name));
@@ -255,6 +255,25 @@ sys_thread_new(const char *name, lwip_thread_fn thread, void *arg,
 void
 sys_init(void)
 {
-  initlock(&lwprot.lk, "lwIP lwprot");
 }
 
+//
+// serialization
+//
+void
+lwip_core_unlock(void)
+{
+  release(&lwprot.lk);  
+}
+
+void
+lwip_core_lock(void)
+{
+  acquire(&lwprot.lk);
+}
+
+void
+lwip_core_init(void)
+{
+  initlock(&lwprot.lk, "lwIP lwprot");
+}

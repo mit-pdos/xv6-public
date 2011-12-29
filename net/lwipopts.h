@@ -6,7 +6,7 @@
 #define LWIP_DHCP		1
 #define LWIP_COMPAT_SOCKETS	0
 #define LWIP_COMPAT_MUTEX       1
-#define SYS_LIGHTWEIGHT_PROT	1
+#define SYS_LIGHTWEIGHT_PROT	0
 #define LWIP_PROVIDE_ERRNO      1
 
 #define MEM_ALIGNMENT		4
@@ -40,7 +40,6 @@
 #if 0
 #define ETHARP_DEBUG    LWIP_DBG_ON
 #define NETIF_DEBUG     LWIP_DBG_ON
-#define IP_DEBUG        LWIP_DBG_ON
 #define DHCP_DEBUG      LWIP_DBG_ON
 #define UDP_DEBUG       LWIP_DBG_ON
 #define IP_DEBUG        LWIP_DBG_ON

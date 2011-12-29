@@ -14,8 +14,10 @@
 #include "types.h"
 #include "kernel.h"
 #include "queue.h"
+#ifndef LWIP
 #include "spinlock.h"
 #include "condvar.h"
+#endif
 #include "proc.h"
 #include "fs.h"
 #include "file.h"
@@ -61,7 +63,10 @@ void
 netrx(void *va, u16 len)
 {
   extern void if_input(struct netif *netif, void *buf, u16 len);
+
+  lwip_core_lock();
   if_input(&nif, va, len);
+  lwip_core_unlock();
 }
 
 static void __attribute__((noreturn))
@@ -72,7 +77,9 @@ net_timer(void *x)
     for (;;) {
       u64 cur = nsectime();
 
+      lwip_core_lock();
       t->func();
+      lwip_core_unlock();
       acquire(&t->waitlk);
       cv_sleepto(&t->waitcv, &t->waitlk, cur + t->nsec);
       release(&t->waitlk);
@@ -134,10 +141,15 @@ initnet_worker(void *x)
   static struct timer_thread t_arp, t_tcpf, t_tcps, t_dhcpf, t_dhcpc;
   volatile long tcpip_done = 0;
 
+  lwip_core_init();
+
+  lwip_core_lock();
   tcpip_init(&tcpip_init_done, (void*)&tcpip_done);
+  lwip_core_unlock();
   while (!tcpip_done)
     yield();
 
+  lwip_core_lock();
   memset(&nif, 0, sizeof(nif));
   lwip_init(&nif, NULL, 0, 0, 0);
 
@@ -181,10 +193,12 @@ initnet_worker(void *x)
                 (ip & 0x000000ff));
       }
     }
-    
+
+    lwip_core_unlock();    
     acquire(&lk);
     cv_sleepto(&cv, &lk, nsectime() + 1000000000);
     release(&lk);
+    lwip_core_lock();
   }
 }
 
@@ -206,7 +220,11 @@ initnet(void)
 long
 netsocket(int domain, int type, int protocol)
 {
-  return lwip_socket(domain, type, protocol);
+  int r;
+  lwip_core_lock();
+  r = lwip_socket(domain, type, protocol);
+  lwip_core_unlock();
+  return r;
 }
 
 long
@@ -222,7 +240,9 @@ netbind(int sock, void *xaddr, int xaddrlen)
   if (umemcpy(addr, xaddr, xaddrlen))
     return -1;
 
+  lwip_core_lock();
   r = lwip_bind(sock, addr, xaddrlen);
+  lwip_core_unlock();
   kmfree(addr);
   return r;
 }
@@ -230,7 +250,12 @@ netbind(int sock, void *xaddr, int xaddrlen)
 long
 netlisten(int sock, int backlog)
 {
-  return lwip_listen(sock, backlog);
+  int r;
+  
+  lwip_core_lock();
+  r = lwip_listen(sock, backlog);
+  lwip_core_unlock();
+  return r;
 }
 
 long
@@ -248,14 +273,18 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
   if (addr == NULL)
     return -1;
 
+  lwip_core_lock();
   ss = lwip_accept(sock, addr, &len);
+  lwip_core_unlock();
   if (ss < 0) {
     kmfree(addr);
     return ss;
   }
 
   if (kmemcpy(xaddrlen, &len, sizeof(len)) || kmemcpy(xaddr, addr, len)) {
+    lwip_core_lock();
     lwip_close(ss);
+    lwip_core_unlock();
     kmfree(addr);
     return -1;
   }
@@ -266,7 +295,9 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
 void
 netclose(int sock)
 {
+  lwip_core_lock();
   lwip_close(sock);
+  lwip_core_unlock();
 }
 
 int
@@ -285,7 +316,9 @@ netwrite(int sock, char *ubuf, int len)
     kfree(kbuf);
     return -1;
   }
+  lwip_core_lock();
   r = lwip_write(sock, kbuf, cc);
+  lwip_core_unlock();
   kfree(kbuf);
   return r;
 }
@@ -302,7 +335,9 @@ netread(int sock, char *ubuf, int len)
     return -1;
 
   cc = MIN(len, PGSIZE);
+  lwip_core_lock();
   r = lwip_read(sock, kbuf, cc);
+  lwip_core_unlock();
   if (r < 0) {
     kfree(kbuf);
     return r;

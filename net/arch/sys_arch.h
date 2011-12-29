@@ -27,4 +27,8 @@ typedef struct sys_sem {
 
 #define SYS_ARCH_NOWAIT  0xfffffffe
 
+extern void lwip_core_unlock(void);
+extern void lwip_core_lock(void);
+extern void lwip_core_init(void);
+
 #endif
