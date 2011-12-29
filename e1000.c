@@ -2,6 +2,7 @@
 #include "amd64.h"
 #include "kernel.h"
 #include "pci.h"
+#include "spinlock.h"
 #include "e1000reg.h"
 
 #define TX_RING_SIZE 64
@@ -14,16 +15,18 @@ static struct {
   u32 iobase;
   u16 pcidevid;
   
-  u32 txclean;
-  u32 txinuse;
+  volatile u32 txclean;
+  volatile u32 txinuse;
 
-  u32 rxclean;
-  u32 rxuse;
+  volatile u32 rxclean;
+  volatile u32 rxuse;
 
   u8 hwaddr[6];
 
   struct wiseman_txdesc txd[TX_RING_SIZE] __attribute__((aligned (16)));
   struct wiseman_rxdesc rxd[RX_RING_SIZE] __attribute__((aligned (16)));
+
+  struct spinlock lk;
 } e1000;
 
 static inline u32
@@ -79,24 +82,27 @@ e1000tx(void *buf, u32 len)
   struct wiseman_txdesc *desc;
   u32 tail;
 
+  acquire(&e1000.lk);
   // WMREG_TDT should only equal WMREG_TDH when we have
   // nothing to transmit.  Therefore, we can accomodate
   // TX_RING_SIZE-1 buffers.
   if (e1000.txinuse == TX_RING_SIZE-1) {
     cprintf("TX ring overflow\n");
+    release(&e1000.lk);
     return -1;
   }
 
   tail = erd(WMREG_TDT);
   desc = &e1000.txd[tail];
   if (!(desc->wtx_fields.wtxu_status & WTX_ST_DD))
-    panic("oops");
+    panic("e1000tx");
 
   desc->wtx_addr = v2p(buf);
   desc->wtx_cmdlen = len | WTX_CMD_RS | WTX_CMD_EOP | WTX_CMD_IFCS;
-  memset(&desc->wtx_fields, 0, sizeof(&desc->wtx_fields));
+  memset(&desc->wtx_fields, 0, sizeof(desc->wtx_fields));
   ewr(WMREG_TDT, (tail+1) % TX_RING_SIZE);
   e1000.txinuse++;
+  release(&e1000.lk);
 
   return 0;
 }
@@ -107,6 +113,7 @@ cleantx(void)
   struct wiseman_txdesc *desc;
   void *va;
 
+  acquire(&e1000.lk);
   while (e1000.txinuse) {
     desc = &e1000.txd[e1000.txclean];
     if (!(desc->wtx_fields.wtxu_status & WTX_ST_DD))
@@ -114,12 +121,13 @@ cleantx(void)
 
     va = p2v(desc->wtx_addr);
     netfree(va);
-    desc->wtx_fields.wtxu_status = 0;
+    desc->wtx_fields.wtxu_status = WTX_ST_DD;
 
     e1000.txclean = (e1000.txclean+1) % TX_RING_SIZE;
     desc = &e1000.txd[e1000.txclean];
     e1000.txinuse--;
   }
+  release(&e1000.lk);
 }
 
 static void
@@ -137,7 +145,7 @@ allocrx(void)
   if (buf == NULL)
     panic("Oops");
   desc->wrx_addr = v2p(buf);
-  
+
   ewr(WMREG_RDT, (i+1) % RX_RING_SIZE);
 }
 
@@ -147,23 +155,25 @@ cleanrx(void)
   struct wiseman_rxdesc *desc;
   void *va;
   u16 len;
-  u32 i;
 
-  i = e1000.rxclean;
-  desc = &e1000.rxd[i];
-
+  acquire(&e1000.lk);
+  desc = &e1000.rxd[e1000.rxclean];
   while (desc->wrx_status & WRX_ST_DD) {
     va = p2v(desc->wrx_addr);
     len = desc->wrx_len;
 
     desc->wrx_status = 0;
     allocrx();
+
+    e1000.rxclean = (e1000.rxclean+1) % RX_RING_SIZE;
+
+    release(&e1000.lk);
     netrx(va, len);
-    
-    i = (i+1) % RX_RING_SIZE;
-    desc = &e1000.rxd[i];
+    acquire(&e1000.lk);    
+
+    desc = &e1000.rxd[e1000.rxclean];
   }
-  e1000.rxclean = i;
+  release(&e1000.lk);
 }
 
 void
@@ -254,6 +264,7 @@ e1000attach(struct pci_func *pcif)
 
   pci_func_enable(pcif);
   
+  initlock(&e1000.lk, "e1000");
   e1000.membase = pcif->reg_base[0];
   e1000.iobase = pcif->reg_base[2];
   e1000.pcidevid = pcif->dev_id;
