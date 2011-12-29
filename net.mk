@@ -9,7 +9,9 @@ ifeq ($(HAVE_LWIP),y)
 -include $(O)/net/*.d
 
 OBJS += $(O)/liblwip.a
-UPROGS += $(O)/_telnetd
+UPROGS += \
+       $(O)/_telnetd \
+       $(O)/_httpd
 
 CFLAGS += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -I. -DLWIP
 
