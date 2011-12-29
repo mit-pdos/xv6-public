@@ -33,6 +33,16 @@ strcmp(const char *p, const char *q)
   return (u8)*p - (u8)*q;
 }
 
+int
+strncmp(const char *p, const char *q, u32 n)
+{
+  while(n > 0 && *p && *p == *q)
+    n--, p++, q++;
+  if(n == 0)
+    return 0;
+  return (u8)*p - (u8)*q;
+}
+
 unsigned int
 strlen(const char *s)
 {
