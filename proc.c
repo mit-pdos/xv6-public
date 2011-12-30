@@ -503,38 +503,37 @@ kill(int pid)
 
 void *procdump(void *vk, void *v, void *arg)
 {
-  struct proc *p = (struct proc *) v;
-
   static char *states[] = {
-  [UNUSED] =   "unused",
-  [EMBRYO] =   "embryo",
-  [SLEEPING] = "sleep ",
-  [RUNNABLE] = "runble",
-  [RUNNING] =  "run   ",
-  [ZOMBIE] =   "zombie"
+    [UNUSED] =   "unused",
+    [EMBRYO] =   "embryo",
+    [SLEEPING] = "sleep ",
+    [RUNNABLE] = "runble",
+    [RUNNING] =  "run   ",
+    [ZOMBIE] =   "zombie"
   };
-  char *state;
+  struct proc *p = (struct proc *) v;
+  const char *name = "(no name)";
+  const char *state;
 
   if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
     state = states[p->state];
   else
     state = "???";
-  cprintf("%d %s %s %d %lu", p->pid, state, p->name, p->cpuid, p->tsc);
 
-  // XXX(sbw)
-#if 0
-  uint pc[10];
+  if (p->name && p->name[0] != 0)
+    name = p->name;
+
+  cprintf("\n%-3d %-10s %8s %2u  %lu\n", p->pid, name, state, p->cpuid, p->tsc);
+
+  uptr pc[10];
   if(p->state == SLEEPING){
-    getcallerpcs((uint*)p->context->ebp+2, pc);
+    getcallerpcs((void*)p->context->rbp, pc);
     for(int i=0; i<10 && pc[i] != 0; i++)
-      cprintf(" %p", pc[i]);
+      cprintf(" %p\n", pc[i]);
   }
-#endif
-  cprintf("\n");
   return 0;
 }
 
-//PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.

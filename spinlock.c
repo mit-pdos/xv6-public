@@ -115,7 +115,7 @@ getcallerpcs(void *v, uptr pcs[])
   uptr *rbp;
   int i;
 
-  rbp = (uptr*)v - 2;
+  rbp = (uptr*)v;
   for(i = 0; i < 10; i++){
     if(rbp == 0 || rbp < (uptr*)KBASE || rbp == (uptr*)(~0UL))
       break;
