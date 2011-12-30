@@ -19,6 +19,9 @@ main(void)
   dup(0);  // stdout
   dup(0);  // stderr
 
+  if (mknod("netif", 2, 1) < 0)
+      printf(2, "init: mknod netif failed\n");
+
   for(;;){
     printf(1, "init: starting sh\n");
     pid = fork(0);

@@ -135,6 +135,42 @@ tcpip_init_done(void *arg)
   *tcpip_done = 1;
 }
 
+static int
+netifread(struct inode *inode, char *dst, u32 off, u32 n)
+{
+  u32 ip, nm, gw;
+  char buf[512];
+  u32 len;
+
+  ip = ntohl(nif.ip_addr.addr);
+  nm = ntohl(nif.netmask.addr);
+  gw = ntohl(nif.gw.addr);
+
+#define IP(x)              \
+  (x & 0xff000000) >> 24, \
+  (x & 0x00ff0000) >> 16, \
+  (x & 0x0000ff00) >> 8,  \
+  (x & 0x000000ff)
+
+  snprintf(buf, sizeof(buf),
+           "hw %02x:%02x:%02x:%02x:%02x:%02x\n"
+           "ip %u.%u.%u.%u nm %u.%u.%u.%u gw %u.%u.%u.%u\n",
+           nif.hwaddr[0], nif.hwaddr[1], nif.hwaddr[2],
+           nif.hwaddr[3], nif.hwaddr[4], nif.hwaddr[5],
+           IP(ip), IP(nm), IP(gw));
+
+#undef IP
+
+  len = strlen(buf);
+
+  if (off >= len)
+    return 0;
+
+  n = MIN(len - off, n);
+  memmove(dst, &buf[off], n);
+  return n;
+}
+
 static void
 initnet_worker(void *x)
 {
@@ -162,6 +198,11 @@ initnet_worker(void *x)
   start_timer(&t_dhcpf, &dhcp_fine_tmr,	"dhcp_f_timer",	DHCP_FINE_TIMER_MSECS);
   start_timer(&t_dhcpc, &dhcp_coarse_tmr, "dhcp_c_timer", DHCP_COARSE_TIMER_MSECS);
 
+#if 1
+  lwip_core_unlock();
+#else
+  // This DHCP code is useful for debugging, but isn't necessary
+  // for the lwIP DHCP client.
   struct spinlock lk;
   struct condvar cv;
   int dhcp_state = 0;
@@ -200,12 +241,16 @@ initnet_worker(void *x)
     release(&lk);
     lwip_core_lock();
   }
+#endif
 }
 
 void
 initnet(void)
 {
   struct proc *t;
+
+  devsw[NETIF].write = NULL;
+  devsw[NETIF].read = netifread;
 
   t = threadalloc(initnet_worker, NULL);
   if (t == NULL)
