@@ -301,6 +301,7 @@ scheduler(void)
   if (!schedp)
     panic("scheduler allocproc");
 
+  snprintf(schedp->name, sizeof(schedp->name), "scheduler_%u", cpunum());
   mycpu()->proc = schedp;
   myproc()->cpu_pin = 1;
 
