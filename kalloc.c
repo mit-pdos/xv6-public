@@ -273,10 +273,8 @@ initkalloc(u64 mbaddr)
 
   cprintf("%lu mbytes\n", membytes / (1<<20));
   n = membytes / NCPU;
-  if (n & (PGSIZE-1)) {
-    cprintf("bytes/CPU isn't aligned\n");
+  if (n & (PGSIZE-1))
     n = PGROUNDDOWN(n);
-  }
 
   p = (char*)PGROUNDUP((uptr)newend);
   k = (((uptr)p) - KBASE);
