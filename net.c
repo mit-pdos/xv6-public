@@ -135,7 +135,7 @@ tcpip_init_done(void *arg)
   *tcpip_done = 1;
 }
 
-void
+static void
 initnet_worker(void *x)
 {
   static struct timer_thread t_arp, t_tcpf, t_tcps, t_dhcpf, t_dhcpc;
@@ -155,12 +155,12 @@ initnet_worker(void *x)
 
   dhcp_start(&nif);
 
-  start_timer(&t_arp, &etharp_tmr, "arp timer", ARP_TMR_INTERVAL);
-  start_timer(&t_tcpf, &tcp_fasttmr, "tcp f timer", TCP_FAST_INTERVAL);
-  start_timer(&t_tcps, &tcp_slowtmr, "tcp s timer", TCP_SLOW_INTERVAL);
+  start_timer(&t_arp, &etharp_tmr, "arp_timer", ARP_TMR_INTERVAL);
+  start_timer(&t_tcpf, &tcp_fasttmr, "tcp_f_timer", TCP_FAST_INTERVAL);
+  start_timer(&t_tcps, &tcp_slowtmr, "tcp_s_timer", TCP_SLOW_INTERVAL);
 
-  start_timer(&t_dhcpf, &dhcp_fine_tmr,	"dhcp f timer",	DHCP_FINE_TIMER_MSECS);
-  start_timer(&t_dhcpc, &dhcp_coarse_tmr, "dhcp c timer", DHCP_COARSE_TIMER_MSECS);
+  start_timer(&t_dhcpf, &dhcp_fine_tmr,	"dhcp_f_timer",	DHCP_FINE_TIMER_MSECS);
+  start_timer(&t_dhcpc, &dhcp_coarse_tmr, "dhcp_c_timer", DHCP_COARSE_TIMER_MSECS);
 
   struct spinlock lk;
   struct condvar cv;
@@ -212,6 +212,7 @@ initnet(void)
     panic("initnet: threadalloc");
 
   acquire(&t->lock);
+  safestrcpy(t->name, "initnet", sizeof(t->name));
   t->state = RUNNABLE;
   addrun(t);
   release(&t->lock);
