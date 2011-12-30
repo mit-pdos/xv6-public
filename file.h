@@ -42,10 +42,11 @@ struct inode {
 // device implementations
 
 struct devsw {
-  int (*read)(struct inode*, char*, int);
-  int (*write)(struct inode*, char*, int);
+  int (*read)(struct inode*, char*, u32, u32);
+  int (*write)(struct inode*, char*, u32, u32);
 };
 
 extern struct devsw devsw[];
 
 #define CONSOLE 1
+#define NETIF   2

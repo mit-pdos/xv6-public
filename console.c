@@ -170,7 +170,7 @@ panic(const char *s)
 }
 
 static int
-consolewrite(struct inode *ip, char *buf, int n)
+consolewrite(struct inode *ip, char *buf, u32 off, u32 n)
 {
   int i;
 
@@ -252,7 +252,7 @@ consoleintr(int (*getc)(void))
 }
 
 static int
-consoleread(struct inode *ip, char *dst, int n)
+consoleread(struct inode *ip, char *dst, u32 off, u32 n)
 {
   int target;
   int c;
