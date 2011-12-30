@@ -221,6 +221,7 @@ initgc(void)
     if (gcp == NULL)
       panic("threadalloc: gc_worker");
 
+    snprintf(gcp->name, sizeof(gcp->name), "gc_%u", c);
     gcp->cpuid = c;
     gcp->cpu_pin = 1;
     acquire(&gcp->lock);
