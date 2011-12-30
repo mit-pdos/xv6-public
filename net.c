@@ -72,18 +72,18 @@ netrx(void *va, u16 len)
 static void __attribute__((noreturn))
 net_timer(void *x)
 {
-    struct timer_thread *t = (struct timer_thread *) x;
+  struct timer_thread *t = (struct timer_thread *) x;
 
-    for (;;) {
-      u64 cur = nsectime();
-
-      lwip_core_lock();
-      t->func();
-      lwip_core_unlock();
-      acquire(&t->waitlk);
-      cv_sleepto(&t->waitcv, &t->waitlk, cur + t->nsec);
-      release(&t->waitlk);
-    }
+  for (;;) {
+    u64 cur = nsectime();
+    
+    lwip_core_lock();
+    t->func();
+    lwip_core_unlock();
+    acquire(&t->waitlk);
+    cv_sleepto(&t->waitcv, &t->waitlk, cur + t->nsec);
+    release(&t->waitlk);
+  }
 }
 
 static void
