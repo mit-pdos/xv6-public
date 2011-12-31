@@ -563,8 +563,8 @@ fork(int flags)
   if(flags == 0) {
     // Copy process state from p.
     if((np->vmap = vmap_copy(myproc()->vmap, cow)) == 0){
-      kfree(np->kstack);
-      np->kstack = 0;
+      ksfree(slab_stack, np->kstack);
+      np->kstack = NULL;
       np->state = UNUSED;
       if (ns_remove(nspid, KI(np->pid), np) == 0)
 	panic("fork: ns_remove");
@@ -624,8 +624,8 @@ wait(void)
 	  pid = p->pid;
 	  SLIST_REMOVE(&myproc()->childq, p, proc, child_next);
 	  release(&myproc()->lock);
-	  kfree(p->kstack);
-	  p->kstack = 0;
+	  ksfree(slab_stack, p->kstack);
+	  p->kstack = NULL;
 	  vmap_decref(p->vmap);
 	  p->state = UNUSED;
 	  if (ns_remove(nspid, KI(p->pid), p) == 0)

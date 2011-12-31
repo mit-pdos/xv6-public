@@ -395,3 +395,9 @@ kfree(void *v)
 {
   kfree_pool(mykmem(), v);
 }
+
+void
+ksfree(slab_t slab, void *v)
+{
+  kfree_pool(slabmem[slab], v);
+}

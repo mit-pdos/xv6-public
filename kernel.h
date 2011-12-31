@@ -142,8 +142,9 @@ typedef enum {
   slab_perf,
 } slab_t;
 char*           kalloc(void);
+void            kfree(void*);
 void*           ksalloc(slab_t);
-void            kfree(void *);
+void            ksfree(slab_t, void*);
 void*           kmalloc(u64);
 void            kmfree(void*);
 
