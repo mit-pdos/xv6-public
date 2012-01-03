@@ -8,6 +8,7 @@
 #include "bits.h"
 #include "amd64.h"
 #include "cpu.h"
+#include "sampler.h"
 
 static const u64 debug_sel = 
   0UL << 32 |
@@ -27,14 +28,9 @@ struct pmu {
 };
 struct pmu pmu;
 
-struct pmuevent {
-  u64 rip;
-};
-
 struct pmulog {
-  u64 head;
-  u64 tail;
-  u64 size;
+  u64 count;
+  u64 capacity;
   struct pmuevent *event;
   __padout__;
 } __mpalign__;
@@ -79,9 +75,9 @@ sampdump(void)
 {
   for (int c = 0; c < NCPU; c++) {
     struct pmulog *l = &pmulog[c];    
-    cprintf("%u samples %lu\n", c, l->head - l->tail);
-    for (u64 i = l->tail; i < l->tail+4 && i < l->head; i++)
-      cprintf(" %lx\n", l->event[i % l->size].rip);
+    cprintf("%u samples %lu\n", c, l->count);
+    for (u64 i = 0; i < 4 && i < l->count; i++)
+      cprintf(" %lx\n", l->event[i].rip);
   }
 }
 
@@ -111,11 +107,11 @@ samplog(struct trapframe *tf)
   struct pmulog *l;
   l = &pmulog[cpunum()];
 
-  if ((l->head - l->tail) == l->size)
+  if (l->count == l->capacity)
     return 0;
 
-  l->event[l->head % l->size].rip = tf->rip;
-  l->head++;
+  l->event[l->count].rip = tf->rip;
+  l->count++;
   return 1;
 }
 
@@ -139,6 +135,75 @@ sampintr(struct trapframe *tf)
   return 1;
 }
 
+static int
+readlog(char *dst, u32 off, u32 n)
+{
+  struct pmulog *q = &pmulog[NCPU];
+  struct pmulog *p;
+  int ret = 0;
+  u64 cur = 0;
+
+  for (p = &pmulog[0]; p != q && n != 0; p++) {
+    u64 len = p->count * sizeof(struct pmuevent);
+    char *buf = (char*)p->event;
+    if (cur <= off && off < cur+len) {
+      u64 boff = off-cur;
+      u64 cc = MIN(len-boff, n);
+      memmove(dst, buf+boff, cc);
+
+      n -= cc;
+      ret += cc;
+      off += cc;
+      dst += cc;
+    }
+    cur += len;
+  }
+
+  return ret;
+}
+
+static int
+sampread(struct inode *ip, char *dst, u32 off, u32 n)
+{
+  struct pmulog *q = &pmulog[NCPU];
+  struct pmulog *p;
+  struct logheader *hdr;
+  u64 hdrlen;
+  int ret;
+  int i;
+  
+  ret = 0;
+  hdrlen = sizeof(*hdr) + sizeof(hdr->cpu[0])*NCPU;
+  if (off < hdrlen) {
+    u64 len = hdrlen;
+    u64 cc;
+    
+    hdr = kmalloc(len);
+    if (hdr == NULL)
+      return -1;
+    hdr->ncpus = NCPU;
+    for (p = &pmulog[0]; p != q; p++) {
+      u64 sz = p->count * sizeof(struct pmuevent);
+      hdr->cpu[i].offset = len;
+      hdr->cpu[i].size = sz;
+      len += sz;
+    }
+
+    cc = MIN(hdrlen-off, n);
+    memmove(dst, (void*)hdr + off, cc);
+    kmfree(hdr);
+
+    n -= cc;
+    ret += cc;
+    off += cc;
+    dst += cc;
+  }
+
+  if (off > hdrlen)
+    ret += readlog(dst, off-hdrlen, n);
+  return ret;
+}
+
 void
 initsamp(void)
 {
@@ -148,7 +213,8 @@ initsamp(void)
     name[3] = 0;
 
     cpuid(0, 0, &name[0], &name[2], &name[1]);
-    cprintf("%s\n", s);
+    if (VERBOSE)
+      cprintf("%s\n", s);
     if (!strcmp(s, "AuthenticAMD"))
       pmu = amdpmu;
     else if (!strcmp(s, "GenuineIntel"))
@@ -165,5 +231,8 @@ initsamp(void)
   if (p == NULL)
     panic("initprof: ksalloc");
   pmulog[cpunum()].event = p;
-  pmulog[cpunum()].size = PERFSIZE / sizeof(struct pmuevent);
+  pmulog[cpunum()].capacity = PERFSIZE / sizeof(struct pmuevent);
+
+  devsw[SAMPLER].write = NULL;
+  devsw[SAMPLER].read = sampread;
 }

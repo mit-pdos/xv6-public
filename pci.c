@@ -246,10 +246,11 @@ pci_func_enable(struct pci_func *f)
               PCI_VENDOR(f->dev_id), PCI_PRODUCT(f->dev_id),
               regnum, base, size);
   }
-  
-  cprintf("PCI function %x:%x.%d (%x:%x) enabled\n",
-          f->bus->busno, f->dev, f->func,
-          PCI_VENDOR(f->dev_id), PCI_PRODUCT(f->dev_id));
+
+  if (VERBOSE)
+    cprintf("PCI function %x:%x.%d (%x:%x) enabled\n",
+            f->bus->busno, f->dev, f->func,
+            PCI_VENDOR(f->dev_id), PCI_PRODUCT(f->dev_id));
 }
 
 void

@@ -279,9 +279,10 @@ e1000attach(struct pci_func *pcif)
   r = eeprom_read((u16*)e1000.hwaddr, EEPROM_OFF_MACADDR, 3);
   if (r < 0)
     return 0;
-  cprintf("%x:%x:%x:%x:%x:%x\n",
-          e1000.hwaddr[0], e1000.hwaddr[1], e1000.hwaddr[2],
-          e1000.hwaddr[3], e1000.hwaddr[4], e1000.hwaddr[5]);
+  if (VERBOSE)
+      cprintf("%x:%x:%x:%x:%x:%x\n",
+              e1000.hwaddr[0], e1000.hwaddr[1], e1000.hwaddr[2],
+              e1000.hwaddr[3], e1000.hwaddr[4], e1000.hwaddr[5]);
 
   u32 ralow = ((u32) e1000.hwaddr[0]) | ((u32) e1000.hwaddr[1] << 8) | 
       ((u32) e1000.hwaddr[2] << 16) | ((u32) e1000.hwaddr[3] << 24);

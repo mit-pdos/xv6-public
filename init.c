@@ -21,9 +21,10 @@ main(void)
 
   if (mknod("netif", 2, 1) < 0)
       printf(2, "init: mknod netif failed\n");
+  if (mknod("sampler", 3, 1) < 0)
+      printf(2, "init: mknod sampler failed\n");
 
   for(;;){
-    printf(1, "init: starting sh\n");
     pid = fork(0);
     if(pid < 0){
       printf(1, "init: fork failed\n");
