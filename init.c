@@ -22,7 +22,7 @@ main(void)
   if (mknod("netif", 2, 1) < 0)
       printf(2, "init: mknod netif failed\n");
   if (mknod("sampler", 3, 1) < 0)
-      printf(2, "init: mknod netif failed\n");
+      printf(2, "init: mknod sampler failed\n");
 
   for(;;){
     pid = fork(0);
