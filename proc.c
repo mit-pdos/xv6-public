@@ -189,10 +189,10 @@ allocproc(void)
 
   p->state = EMBRYO;
   p->pid = ns_allockey(nspid);
-  p->epoch = 0;
   p->cpuid = mycpu()->id;
   p->on_runq = -1;
   p->cpu_pin = 0;
+  initprocgc(p);
 #if MTRACE
   p->mtrace_stacks.curr = -1;
 #endif

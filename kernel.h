@@ -23,6 +23,7 @@ struct stat;
 struct proc;
 struct vmap;
 struct pipe;
+struct gc;
 
 // bio.c
 void            binit(void);
@@ -49,6 +50,7 @@ void            panic(const char*) __attribute__((noreturn));
 void            snprintf(char *buf, u32 n, char *fmt, ...);
 void            consoleintr(int(*)(void));
 
+#define assert(c)   if (!(c)) { cprintf("%s:%d: ", __FILE__, __LINE__); panic("assertion failure"); }
 
 // crange.c
 
@@ -113,6 +115,7 @@ void	        dir_flush(struct inode *dp);
 
 // gc.c
 void            initgc(void);
+void            initprocgc(struct proc *);
 void            gc_begin_epoch();
 void            gc_end_epoch();
 void            gc_delayed(void*, void (*dofree)(void*));
