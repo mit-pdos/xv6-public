@@ -50,3 +50,4 @@ extern struct devsw devsw[];
 
 #define CONSOLE 1
 #define NETIF   2
+#define SAMPLER 3
