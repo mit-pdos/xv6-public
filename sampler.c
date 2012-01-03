@@ -213,7 +213,8 @@ initsamp(void)
     name[3] = 0;
 
     cpuid(0, 0, &name[0], &name[2], &name[1]);
-    cprintf("%s\n", s);
+    if (VERBOSE)
+      cprintf("%s\n", s);
     if (!strcmp(s, "AuthenticAMD"))
       pmu = amdpmu;
     else if (!strcmp(s, "GenuineIntel"))

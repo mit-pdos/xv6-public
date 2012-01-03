@@ -25,7 +25,6 @@ main(void)
       printf(2, "init: mknod netif failed\n");
 
   for(;;){
-    printf(1, "init: starting sh\n");
     pid = fork(0);
     if(pid < 0){
       printf(1, "init: fork failed\n");

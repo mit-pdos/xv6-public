@@ -109,7 +109,8 @@ cmain(u64 mbmagic, u64 mbaddr)
   initpci();
   initnet();
 
-  cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
+  if (VERBOSE)
+    cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
 
   inituser();      // first user process
   bootothers();    // start other processors

@@ -271,7 +271,8 @@ initkalloc(u64 mbaddr)
     }
   }
 
-  cprintf("%lu mbytes\n", membytes / (1<<20));
+  if (VERBOSE)
+    cprintf("%lu mbytes\n", membytes / (1<<20));
   n = membytes / NCPU;
   if (n & (PGSIZE-1))
     n = PGROUNDDOWN(n);
