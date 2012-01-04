@@ -1,4 +1,6 @@
+#ifndef NULL
 #define NULL ((void *)0)
+#endif
 
 #define MIN(_a, _b)             \
   ({                            \
