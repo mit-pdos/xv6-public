@@ -9,6 +9,23 @@
 #define HTTP_VERSION "1.0"
 #define BUFSIZE 512
 
+static int xwrite(int fd, const void *buf, u64 n)
+{
+  long r;
+  
+  while (n) {
+    r = write(fd, buf, n);
+    if (r < 0 || r == 0) {
+      printf(1, "xwrite: failed %d\n", r);
+      return -1;
+    }
+    buf += r;
+    n -= r;
+  }
+
+  return 0;
+}
+
 static void
 error(int s, int code)
 {
@@ -41,8 +58,8 @@ error(int s, int code)
            errors[i].code, errors[i].msg);
   r = strlen(buf);
 
-  if (write(s, buf, r) != r)
-    die("httpd error: incomplete write %d", r);
+  if (xwrite(s, buf, r))
+    printf(2, "httpd error: incomplete write");
 }
 
 static int
@@ -52,12 +69,10 @@ header(int s)
     "Server: xv6-httpd/" VERSION "\r\n";
 
   int len;
-  int r;
 
   len = strlen(h);
-  r = write(s, h, len);
-  if (r != len)
-    die("httpd header: incomplete write %d", r);
+  if (xwrite(s, h, len))
+    die("httpd header: incomplete write");
 
   return 0;
 }
@@ -68,12 +83,10 @@ header_fin(int s)
   static const char *f = "\r\n";
   
   int len;
-  int r;
 
   len = strlen(f);
-  r = write(s, f, len);
-  if (r != len)
-    die("httpd fin: incomplete write %d", r);
+  if (xwrite(s, f, len))
+    die("httpd fin: incomplete write");
 
   return 0;
 }
@@ -83,14 +96,13 @@ content_length(int s, u64 size)
 {
   char buf[128];
   int len;
-  int r;
 
   snprintf(buf, 128, "Content-Length: %lu\r\n", size);
   len = strlen(buf);
 
-  r = write(s, buf, len);
-  if (r != len)
-    die("httpd size: incomplete write %d", r);
+  if (xwrite(s, buf, len))
+    die("httpd size: incomplete write");
+
   return 0;
 }
 
@@ -100,12 +112,10 @@ content_type(int s)
   static const char *t = "Content-Type: text/plain\r\n";
 
   int len;
-  int r;
 
   len = strlen(t);
-  r = write(s, t, len);
-  if (r != len)
-    die("httpd content_type: incomplete write %d", r);
+  if (xwrite(s, t, len))
+    die("httpd content_type: incomplete write");
   return 0;
 }
 
@@ -114,7 +124,6 @@ content(int s, int fd)
 {
   char buf[256];
   int n;
-  int r;
 
   for (;;) {
     n = read(fd, buf, sizeof(buf));
@@ -125,9 +134,8 @@ content(int s, int fd)
       return 0;
     }
     
-    r = write(s, buf, n);
-    if (r != n)
-      die("httpd content: read failed %d", r);
+    if (xwrite(s, buf, n))
+      die("httpd content: write failed");
   }
 }
 
