@@ -23,7 +23,6 @@ struct stat;
 struct proc;
 struct vmap;
 struct pipe;
-struct gc;
 
 // bio.c
 void            binit(void);
