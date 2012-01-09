@@ -115,12 +115,8 @@ trap(struct trapframe *tf)
       break;
     }
 
-    if(myproc() == 0 || (tf->cs&3) == 0){
-      // In kernel, it must be our mistake.
-      cprintf("unexpected trap %d from cpu %d rip %lx (cr2=0x%lx)\n",
-              tf->trapno, mycpu()->id, tf->rip, rcr2());
-      panic("trap");
-    }
+    if (myproc() == 0 || (tf->cs&3) == 0)
+      kerneltrap(tf);
 
     if(tf->trapno == T_PGFLT){
       uptr addr = rcr2();

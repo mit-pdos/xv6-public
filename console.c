@@ -147,23 +147,44 @@ stacktrace(void)
 #undef PRINT_RET
 }
 
-void __attribute__((noreturn))
+void __noret__
+kerneltrap(struct trapframe *tf)
+{
+  extern void sys_halt();
+  uptr pc[10];
+  int i;
+
+  cli();
+  cons.locking = 0;
+
+  cprintf("unexpected trap %d from cpu %d rip %lx (cr2=0x%lx)\n",
+          tf->trapno, mycpu()->id, tf->rip, rcr2());
+  getcallerpcs((void*)tf->rbp, pc);
+  for (i = 0; i < NELEM(pc) && pc[i] != 0; i++)
+    cprintf("  %p\n", pc[i]);
+
+  panicked = 1;
+  acquire(&cons.lock);
+  sys_halt();
+  for(;;)
+    ;
+}
+
+void __noret__
 panic(const char *s)
 {
   extern void sys_halt();
 
   cli();
-  
   cons.locking = 0;
 
   cprintf("cpu%d: panic: ", mycpu()->id);
   cprintf(s);
   cprintf("\n");
   stacktrace();
+
   panicked = 1;
   acquire(&cons.lock);
-
-  // Never release cons.lock
   sys_halt();
   for(;;)
     ;
