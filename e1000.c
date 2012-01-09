@@ -9,6 +9,7 @@
 #define RX_RING_SIZE 64
 
 int e1000irq;
+int e1000init;
 
 static struct {
   u32 membase;
@@ -296,5 +297,6 @@ e1000attach(struct pci_func *pcif)
   for (i = 0; i < WMREG_MTA; i+=4)
     ewr(WMREG_CORDOVA_MTA+i, 0);
 
+  e1000init = 1;
   return 0;
 }

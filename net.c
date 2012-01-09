@@ -37,12 +37,16 @@ netalloc(void)
 int
 nettx(void *va, u16 len)
 {
+  if (e1000init == 0)
+    return -1;
   return e1000tx(va, len);
 }
 
 void
 nethwaddr(u8 *hwaddr)
 {
+  if (e1000init == 0)
+    return;
   e1000hwaddr(hwaddr);
 }
 
