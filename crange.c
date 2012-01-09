@@ -24,9 +24,7 @@
 // node for deletion by marking its next pointer.
 //
 
-#define assert(c)   if (!(c)) { panic("assertion failure"); }
-
-#define CRANGE_CHECKING 1
+#define CRANGE_CHECKING 0
 #define MINNLEVEL 10
 
 #define MARKED(x) (((uintptr) (x)) & 0x1)
@@ -158,7 +156,7 @@ static void
 clist_range_free(void *p)
 {
   struct clist_range *e = (struct clist_range *) p;
-  // cprintf("crange_free: %u(%u)\n", e->key, e->size);
+  if (crange_debug) cprintf("crange_free: %u(%u)\n", e->key, e->size);
   crange_check(e->cr, 0, p);
   for (int l = 0; l < e->nlevel; l++) {
     e->next[l] = (struct clist_range *) 0xDEADBEEF;

@@ -9,7 +9,7 @@
 #define ROOTDEV       1  // device number of file system root disk
 #define MAXARG       32  // max exec arguments
 #define MAXNAME      16  // max string names
-#define INF          (~0UL)
+#define NEPOCH        4
 #define CACHELINE    64  // cache line size
 #define CPUKSTACKS   (NPROC + NCPU)
 #define QUANTUM      10  // scheduling time quantum and tick length (in msec)

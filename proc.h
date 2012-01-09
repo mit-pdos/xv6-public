@@ -54,7 +54,8 @@ struct proc {
   SLIST_ENTRY(proc) child_next;
   struct condvar cv;
   u64 epoch;
-  u64 rcu_read_depth;
+  struct spinlock gc_epoch_lock;
+  u64 epoch_depth;
   char lockname[16];
   int on_runq;
   int cpu_pin;
