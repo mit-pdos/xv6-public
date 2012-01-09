@@ -3,7 +3,6 @@
 #include "condvar.h"
 #include "fs.h"
 #include "file.h"
-#include "prof.h"
 #include "kernel.h"
 #include "bits.h"
 #include "amd64.h"
