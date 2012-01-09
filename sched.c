@@ -29,7 +29,7 @@ addrun(struct proc *p)
   // Always called with p->lock held
   struct runq *q;
 
-  q = &runq[cpunum()];
+  q = &runq[p->cpuid];
   acquire(&q->lock);
   STAILQ_INSERT_HEAD(&q->q, p, runqlink);
   p->runq = q;
