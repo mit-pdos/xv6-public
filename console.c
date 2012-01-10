@@ -151,14 +151,22 @@ void __noret__
 kerneltrap(struct trapframe *tf)
 {
   extern void sys_halt();
+  const char *name = "(no name)";
   uptr pc[10];
   int i;
 
   cli();
   cons.locking = 0;
 
-  cprintf("unexpected trap %d from cpu %d rip %lx (cr2=0x%lx)\n",
-          tf->trapno, mycpu()->id, tf->rip, rcr2());
+  if (myproc()->name && myproc()->name[0] != 0)
+    name = myproc()->name;
+
+  cprintf("kernel trap %u cpu %u\n"
+          "  tf: rip %p rsp %p cr2 %p\n"
+          "  proc: name %s pid %u kstack %p\n",
+          tf->trapno, mycpu()->id, 
+          tf->rip, tf->rsp, rcr2(),
+          name, myproc()->pid, myproc()->kstack);
   getcallerpcs((void*)tf->rbp, pc);
   for (i = 0; i < NELEM(pc) && pc[i] != 0; i++)
     cprintf("  %p\n", pc[i]);
