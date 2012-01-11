@@ -45,7 +45,8 @@ void            cv_tick(void);
 
 // console.c
 void            cprintf(const char*, ...);
-void            panic(const char*) __attribute__((noreturn));
+void            panic(const char*) __noret__;
+void            kerneltrap(struct trapframe *tf) __noret__;
 void            snprintf(char *buf, u32 n, char *fmt, ...);
 void            consoleintr(int(*)(void));
 
@@ -76,6 +77,7 @@ void crange_print(struct crange *cr, int);
 
 // e1000.c
 extern int e1000irq;
+extern int e1000init;
 void            e1000intr(void);
 int             e1000tx(void *buf, u32 len);
 void            e1000hwaddr(u8 *hwaddr);
@@ -239,7 +241,7 @@ int             growproc(int);
 int             kill(int);
 void            pinit(void);
 void            procdumpall(void);
-void            scheduler(void) __attribute__((noreturn));
+void            scheduler(void) __noret__;
 void            sched(void);
 void            userinit(void);
 int             wait(void);

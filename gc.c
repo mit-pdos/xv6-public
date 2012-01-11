@@ -260,7 +260,8 @@ gc_worker(void *x)
 {
   struct spinlock wl;
 
-  cprintf("gc_worker: %d\n", mycpu()->id);
+  if (VERBOSE)
+    cprintf("gc_worker: %d\n", mycpu()->id);
 
   initlock(&wl, "rcu_gc_worker dummy");   // dummy lock
   for (;;) {

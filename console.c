@@ -95,6 +95,16 @@ snprintf(char *buf, u32 n, char *fmt, ...)
 }
 
 void
+__cprintf(const char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vprintfmt(writecons, 0, fmt, ap);
+  va_end(ap);
+}
+
+void
 cprintf(const char *fmt, ...)
 {
   va_list ap;
@@ -131,7 +141,7 @@ stacktrace(void)
   do {                                                     \
     uptr addr = (uptr) __builtin_return_address(i);        \
     if ((addr & KBASE) == KBASE)                           \
-      cprintf("  %lx\n", addr);                            \
+      __cprintf("  %lx\n", addr);                          \
     else                                                   \
       return;                                              \
 } while (0)
@@ -147,23 +157,55 @@ stacktrace(void)
 #undef PRINT_RET
 }
 
-void __attribute__((noreturn))
+void __noret__
+kerneltrap(struct trapframe *tf)
+{
+  extern void sys_halt();
+  const char *name = "(no name)";
+  void *kstack = NULL;
+  int pid = 0;
+  uptr pc[10];
+  int i;
+
+  cli();
+  acquire(&cons.lock);
+
+  if (myproc() != NULL) {
+    if (myproc()->name && myproc()->name[0] != 0)
+      name = myproc()->name;
+    pid = myproc()->pid;
+    kstack = myproc()->kstack;
+  }
+  __cprintf("kernel trap %u cpu %u\n"
+          "  tf: rip %p rsp %p cr2 %p\n"
+          "  proc: name %s pid %u kstack %p\n",
+          tf->trapno, mycpu()->id, 
+          tf->rip, tf->rsp, rcr2(),
+          name, pid, kstack);
+  getcallerpcs((void*)tf->rbp, pc);
+  for (i = 0; i < NELEM(pc) && pc[i] != 0; i++)
+    __cprintf("  %p\n", pc[i]);
+
+  panicked = 1;
+  sys_halt();
+  for(;;)
+    ;
+}
+
+void __noret__
 panic(const char *s)
 {
   extern void sys_halt();
 
   cli();
-  
-  cons.locking = 0;
-
-  cprintf("cpu%d: panic: ", mycpu()->id);
-  cprintf(s);
-  cprintf("\n");
-  stacktrace();
-  panicked = 1;
   acquire(&cons.lock);
 
-  // Never release cons.lock
+  __cprintf("cpu%d: panic: ", mycpu()->id);
+  __cprintf(s);
+  __cprintf("\n");
+  stacktrace();
+
+  panicked = 1;
   sys_halt();
   for(;;)
     ;
