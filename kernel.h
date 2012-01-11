@@ -149,6 +149,9 @@ void*           ksalloc(slab_t);
 void            ksfree(slab_t, void*);
 void*           kmalloc(u64);
 void            kmfree(void*);
+int             kmalign(void **p, int align, u64 size);
+void            kmalignfree(void *);
+
 
 // kbd.c
 void            kbdintr(void);

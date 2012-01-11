@@ -41,14 +41,16 @@ struct crange {
 struct crange*
 crange_alloc(int nlevel)
 {
-  struct crange *cr = kmalloc(sizeof(struct crange));
+  struct crange *cr;
+  assert(kmalign((void **) &cr, CACHELINE, sizeof(struct crange)) == 0);
   cr->nlevel = (nlevel < MINNLEVEL) ? MINNLEVEL : nlevel;  // XXX
   cr->crange_head.cr = cr;
-  cr->crange_head.lock = kmalloc(sizeof(struct spinlock));
+  assert(kmalign((void **) &cr->crange_head.lock, 
+			   CACHELINE, sizeof(struct spinlock)) == 0);
   initlock(cr->crange_head.lock, "head lock");
   cr->crange_head.next = kmalloc(sizeof(cr->crange_head.next[0]) * nlevel);
   for (int l = 0; l < nlevel; l++) cr->crange_head.next[l] = 0;
-  if (crange_debug) cprintf("crange_alloc: return 0x%x\n", cr);
+  if (crange_debug) cprintf("crange_alloc: return 0x%lx\n", (u64) cr);
   return cr;
 }
 
@@ -59,15 +61,15 @@ crange_free(struct crange *cr)
 
 {
   assert(cr);
-  if (crange_debug) cprintf("crange_free: 0x%x\n", cr);
+  if (crange_debug) cprintf("crange_free: 0x%lx\n", (u64) cr);
   struct clist_range *e, *n;
   for (e = RANGE_WOMARK(cr->crange_head.next[0]); e; e = n) {
     n = RANGE_WOMARK(e->next[0]);
     clist_range_free(e);
   }
   kmfree(cr->crange_head.next);
-  kmfree(cr->crange_head.lock);
-  kmfree(cr);
+  kmalignfree(cr->crange_head.lock);
+  kmalignfree(cr);
 }
 
 // draw nlevel in [1, nlevel]
@@ -76,7 +78,7 @@ crange_draw_nlevel(int nlevel)
 {
   int l;
   for (l = 0; l < nlevel-1; l++) {
-    if (rnd() % 1024 > 512)    // % 1 is not enough randomness
+    if (rnd() % 16777216 > 8388608)    // % 1 is not enough randomness
       //if (random() % 2 == 1) 
       break;
   }
@@ -143,7 +145,7 @@ crange_check(struct crange *cr, int lockcheck, struct clist_range *absent)
       s = RANGE_WOMARK(e->next[l]);
       assert(s != e);
       if (!MARKED(e->next[l]) && s && (e->key + e->size > s->key)) {
-	cprintf("%d: e(%lu,%lu) overlaps with s(%lu,%lu)\n", t, e->key, e->size, s->key, e->size);
+	if (crange_debug) cprintf("%d: e(%lu,%lu) overlaps with s(%lu,%lu)\n", t, e->key, e->size, s->key, e->size);
 	crange_print(cr, 1);
 	assert(0);
       }
@@ -156,14 +158,13 @@ static void
 clist_range_free(void *p)
 {
   struct clist_range *e = (struct clist_range *) p;
-  if (crange_debug) cprintf("crange_free: %u(%u)\n", e->key, e->size);
   crange_check(e->cr, 0, p);
   for (int l = 0; l < e->nlevel; l++) {
     e->next[l] = (struct clist_range *) 0xDEADBEEF;
   }
-  kmfree(e->lock);
+  kmalignfree(e->lock);
   kmfree(e->next);
-  kmfree(e);
+  kmalignfree(e);
 }
 
 static void
@@ -178,7 +179,7 @@ static struct clist_range *
 crange_new(struct crange *cr, u64 k, u64 sz, void *v, struct clist_range *n)
 {
   struct clist_range *r;
-  r = kmalloc(sizeof(struct clist_range));
+  kmalign((void **) &r, CACHELINE, sizeof(struct clist_range));
   assert(r);
   r->key = k;
   r->size = sz;
@@ -191,7 +192,8 @@ crange_new(struct crange *cr, u64 k, u64 sz, void *v, struct clist_range *n)
   assert(r->next);
   r->next[0] = n;
   for (int l = 1; l < r->nlevel; l++) r->next[l] = 0;
-  r->lock = kmalloc(sizeof(struct spinlock));
+  assert(kmalign((void **) &r->lock, CACHELINE, 
+			   sizeof(struct spinlock)) == 0);
   initlock(r->lock, "crange");
   r->cr = cr;
   return r;
@@ -498,7 +500,7 @@ crange_search(struct crange *cr, u64 k)
 {
   struct clist_range *p, *e, *r;
   gc_begin_epoch();
-  if (crange_debug) cprintf("crange_search: 0x%x 0x%lx\n", cr, k);
+  if (crange_debug) cprintf("crange_search: 0x%lx 0x%lx\n", (u64) cr, k);
   r = NULL;
   p = &cr->crange_head;
   for (int l = cr->nlevel-1; l >= 0; l--) {
@@ -533,11 +535,11 @@ crange_del(struct crange *cr, u64 k, u64 sz)
   struct clist_range *last;
   struct clist_range *repl = NULL;
 
-  if (crange_debug) cprintf("crange_del: 0x%x (0x%lx,0x%lx)\n", cr, k, sz);
+  if (crange_debug) cprintf("crange_del: 0x%lx (0x%lx,0x%lx)\n", (u64) cr, k, sz);
   assert(cr);
   gc_begin_epoch();
   if (!crange_find_and_lock(cr, k, sz, &prev, &first, &last, &succ)) { // done?
-    cprintf("crange_del: [0x%lx,0x%lx) not present\n", k, sz);
+    if (crange_debug) cprintf("crange_del: [0x%lx,0x%lx) not present\n", k, sz);
     release(prev->lock);
     goto done;
   }
@@ -574,11 +576,11 @@ crange_add(struct crange *cr, u64 k, u64 sz, void *v)
   struct clist_range *succ;
   struct clist_range *repl = NULL;
 
-  if (crange_debug) cprintf("crange_add: 0x%x (0x%lx,0x%lx)\n", cr, k, sz);
+  if (crange_debug) cprintf("crange_add: 0x%lx (0x%lx,0x%lx)\n", (u64) cr, k, sz);
   assert(cr);
   gc_begin_epoch();
   if (crange_find_and_lock(cr, k, sz, &prev, &first, &last, &succ)) {
-    cprintf("crange_add(0x%lx,0x%lx) overlaps with [0x%lx,0x%lx)\n", k, sz, first->key, first->size);
+    if (crange_debug) cprintf("crange_add(0x%lx,0x%lx) overlaps with [0x%lx,0x%lx)\n", k, sz, first->key, first->size);
     repl = crange_replace(k, sz, v, first, last, succ);
   } else {
     repl = succ;
