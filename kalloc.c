@@ -151,9 +151,9 @@ kmemprint(void)
   cprintf("free pages: [ ");
   for (u32 i = 0; i < NCPU; i++)
     if (i == mycpu()->id)
-      cprintf("<%d> ", kmems[i].nfree);
+      cprintf("<%lu> ", kmems[i].nfree);
     else
-      cprintf("%d ", kmems[i].nfree);
+      cprintf("%lu ", kmems[i].nfree);
   cprintf("]\n");
 }
 

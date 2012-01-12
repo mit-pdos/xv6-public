@@ -274,7 +274,7 @@ gc_worker(void *x)
       int nfree = gc_free_tofreelist(&(gc_state[mycpu()->id].tofree[i%NEPOCH].next), i);
       gc_state[mycpu()->id].tofree[i%NEPOCH].epoch += NEPOCH;
       if (gc_debug && nfree > 0) {
-	cprintf("%d: epoch %d freed %d\n", mycpu()->id, i, nfree);
+	cprintf("%d: epoch %lu freed %d\n", mycpu()->id, i, nfree);
       }
     }
     gc_state[mycpu()->id].min_epoch = i;
