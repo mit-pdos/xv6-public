@@ -276,6 +276,7 @@ ns_remove(struct ns *ns, struct nskey key, void *v)
     }
 
     pe = &e->next;
+    pelock = &e->next_lock;
   }
 
   gc_end_epoch();

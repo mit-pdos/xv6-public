@@ -7,7 +7,6 @@
 #include "queue.h"
 #include "proc.h"
 #include "cpu.h"
-#include "kmtrace.h"
 
 // GC scheme based on Fraser's:
 // a machine has a global_epoch
