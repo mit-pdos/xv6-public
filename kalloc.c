@@ -402,3 +402,19 @@ ksfree(slab_t slab, void *v)
 {
   kfree_pool(slabmem[slab], v);
 }
+
+int
+kmalign(void **p, int align, u64 size)
+{
+  void *mem = kmalloc(size + (align-1) + sizeof(void*));
+  char *amem = ((char*)mem) + sizeof(void*);
+  amem += align - ((uintptr)amem & (align - 1));
+  ((void**)amem)[-1] = mem;
+  *p = amem;
+  return 0;   
+}
+
+void kmalignfree(void *mem)
+{
+  kmfree(((void**)mem)[-1]);
+}
