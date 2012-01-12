@@ -128,8 +128,12 @@ kfree_pool(struct kmem *m, char *v)
 {
   struct run *r;
 
-  if((uptr)v % PGSIZE || v < end || memsize(v) == -1ull)
-    panic("kfree_pool");
+  if ((uptr)v % PGSIZE) 
+    panic("kfree_pool: misaligned %p", v);
+  if (v < end)
+    panic("kfree_pool: less than end %p", v);
+  if (memsize(v) == -1ull)
+    panic("kfree_pool: unknown region %p", v);
 
   // Fill with junk to catch dangling refs.
   if (kinited && kalloc_memset)
