@@ -94,7 +94,7 @@ snprintf(char *buf, u32 n, char *fmt, ...)
   va_end(ap);
 }
 
-void
+static void
 __cprintf(const char *fmt, ...)
 {
   va_list ap;
