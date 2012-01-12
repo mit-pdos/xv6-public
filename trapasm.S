@@ -52,6 +52,7 @@ trapcommon:
         // XXX(sbw) we should do something with fs, gs, gs.base
 
         movq %rsp, %rdi  // first argument to trap
+        xor %rbp, %rbp
         call trap
         // Fall through to trapret
         
