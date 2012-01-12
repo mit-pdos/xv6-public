@@ -45,7 +45,8 @@ void            cv_tick(void);
 
 // console.c
 void            cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
-void            panic(const char*) __noret__;
+void            panic(const char*, ...) 
+                  __noret__ __attribute__((format(printf, 1, 2)));
 void            kerneltrap(struct trapframe *tf) __noret__;
 void            snprintf(char *buf, u32 n, char *fmt, ...);
 void            consoleintr(int(*)(void));

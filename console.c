@@ -192,16 +192,19 @@ kerneltrap(struct trapframe *tf)
     ;
 }
 
-void __noret__
-panic(const char *s)
+void
+panic(const char *fmt, ...)
 {
   extern void sys_halt();
+  va_list ap;
 
   cli();
   acquire(&cons.lock);
 
   __cprintf("cpu%d: panic: ", mycpu()->id);
-  __cprintf(s);
+  va_start(ap, fmt);
+  vprintfmt(writecons, 0, fmt, ap);
+  va_end(ap);
   __cprintf("\n");
   stacktrace();
 
