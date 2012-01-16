@@ -26,5 +26,7 @@ SECTIONS
 	.bss : {
 		*(.bss)
 	}
+        /* 2MByte align, because we set NX on 2MByte super pages. */
+	. = ALIGN(0x200000);
 	PROVIDE(end = .);
 }

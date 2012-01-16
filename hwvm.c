@@ -83,32 +83,26 @@ updatepages(pme_t *pml4, void *begin, void *end, int perm)
   }
 }
 
-static void
-pgmap(void *va, void *last, paddr pa)
-{
-  pme_t *pdp;
-  pme_t *pd;
-  pme_t *sp;
-
-  for (;;) {
-    pdp = descend(kpml4, va, 0, 1, 3);
-    pd = descend(pdp, va, 0, 1, 2);
-    sp = &pd[PX(1,va)];
-    *sp = pa | PTE_W | PTE_P | PTE_PS;
-    if(va == last)
-      break;
-    va += PGSIZE*512;
-    pa += PGSIZE*512;
-  }
-}
-
-// set up a page table to get off the ground
+// Map from 0 to 128Gbytes starting at KBASE.
 void
 initpg(char* (*alloc)(void))
 {
-  // Map first 4GB to KBASE
-  pgmap((void *) (KBASE+(1ull<<30)), (void *) (KBASE+(128ull<<30)), (1ull<<30));
-  // boot.S maps first 1GB to KBASE and gets us running with kpml4
+  extern char end[]; 
+  void *va = (void*)KBASE;
+  paddr pa = 0;
+
+  while (va < (void*)(KBASE+(128ull<<30))) {
+    pme_t *pdp = descend(kpml4, va, 0, 1, 3);
+    pme_t *pd = descend(pdp, va, 0, 1, 2);
+    pme_t *sp = &pd[PX(1,va)];
+    u64 flags = PTE_W | PTE_P | PTE_PS;
+    // Set NX for non-code pages
+    if (va >= (void*) end)
+      flags |= PTE_NX;
+    *sp = pa | flags;
+    va += PGSIZE*512;
+    pa += PGSIZE*512;
+  }
 }
 
 // Set up kernel part of a page table.
