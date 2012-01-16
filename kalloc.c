@@ -31,7 +31,7 @@ static struct kmem slabmem[][NCPU] = {
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
-enum { kalloc_memset = 0 };
+enum { kalloc_memset = 1 };
 
 static int kinited __mpalign__;
 
@@ -136,7 +136,7 @@ kfree_pool(struct kmem *m, char *v)
     panic("kfree_pool: unknown region %p", v);
 
   // Fill with junk to catch dangling refs.
-  if (kinited && kalloc_memset)
+  if (kinited && kalloc_memset && m->size <= 16384)
     memset(v, 1, m->size);
 
   acquire(&m->lock);
@@ -188,7 +188,7 @@ kmemalloc(struct kmem *km)
 
   mtlabel(mtrace_label_block, r, m->size, "kalloc", sizeof("kalloc"));
 
-  if (kalloc_memset)
+  if (kalloc_memset && m->size <= 16384)
     memset(r, 2, m->size);
   return (char*)r;
 }
