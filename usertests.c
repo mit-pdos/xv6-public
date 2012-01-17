@@ -1556,7 +1556,7 @@ main(int argc, char *argv[])
   writetest1();
   createtest();
 
-  mem();
+  // mem();
   pipe1();
   preempt();
   exitwait();
