@@ -76,6 +76,7 @@ ULIB := $(addprefix $(O)/, $(ULIB))
 
 UPROGS= \
 	_cat \
+	_echo \
 	_init \
 	_forkexectree \
 	_forkexecbench \
@@ -85,7 +86,8 @@ UPROGS= \
 	_maptest \
 	_sh \
 	_thrtest \
-	_halt
+	_halt \
+	_usertests
 UPROGS := $(addprefix $(O)/, $(UPROGS))
 
 all: $(O)/kernel
