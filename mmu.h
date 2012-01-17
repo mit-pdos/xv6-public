@@ -17,6 +17,7 @@
 #define PTE_PS		0x080	// Page Size
 #define PTE_MBZ		0x180	// Bits must be zero
 #define PTE_COW         0x800   // copy-on-write
+#define PTE_NX		0x8000000000000000ull // No-execute enable
 
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) ((__typeof__(a))((((uptr)(a)) & ~(PGSIZE-1))))
@@ -123,5 +124,5 @@ struct taskstate
 // and type bits.
 #define INTDESC(cs, rip, bits) (struct intdesc){ \
 	(rip)&0xffff, (cs), 0, bits, ((rip)>>16)&0xffff, \
-	(uint64)(rip)>>32, 0, \
+	(u64)(rip)>>32, 0, \
 }

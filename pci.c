@@ -111,7 +111,7 @@ pci_attach_match(u32 key1, u32 key2,
         return r;
       if (r < 0)
         cprintf("pci_attach_match: attaching "
-                "%x.%x (%p): e\n",
+                "%x.%x (%p): %d\n",
                 key1, key2, list[i].attachfn, r);
     }
   }

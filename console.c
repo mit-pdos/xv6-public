@@ -94,7 +94,7 @@ snprintf(char *buf, u32 n, char *fmt, ...)
   va_end(ap);
 }
 
-void
+static void
 __cprintf(const char *fmt, ...)
 {
   va_list ap;
@@ -124,9 +124,9 @@ cprintf(const char *fmt, ...)
 void
 puts(const char *s)
 {
-  uint8 *p, *ep;
+  u8 *p, *ep;
 
-  p = (uint8*)s;
+  p = (u8*)s;
   ep = p+strlen(s);
 
   for (; p < ep; p++)
@@ -192,16 +192,19 @@ kerneltrap(struct trapframe *tf)
     ;
 }
 
-void __noret__
-panic(const char *s)
+void
+panic(const char *fmt, ...)
 {
   extern void sys_halt();
+  va_list ap;
 
   cli();
   acquire(&cons.lock);
 
   __cprintf("cpu%d: panic: ", mycpu()->id);
-  __cprintf(s);
+  va_start(ap, fmt);
+  vprintfmt(writecons, 0, fmt, ap);
+  va_end(ap);
   __cprintf("\n");
   stacktrace();
 

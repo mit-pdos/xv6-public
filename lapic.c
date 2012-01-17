@@ -148,7 +148,7 @@ cpunum(void)
     static int n __mpalign__;
     if(n == 0) {
       n++;
-      cprintf("cpu called from %lx with interrupts enabled\n",
+      cprintf("cpu called from %p with interrupts enabled\n",
         __builtin_return_address(0));
     }
   }

@@ -27,9 +27,9 @@
 #define CRANGE_CHECKING 0
 #define MINNLEVEL 10
 
-#define MARKED(x) (((uintptr) (x)) & 0x1)
-#define RANGE_MARK(x) ((struct clist_range *) (((uintptr) (x)) | 0x1))
-#define RANGE_WOMARK(x) ((struct clist_range *) (((uintptr) (x)) & ~0x1))
+#define MARKED(x) (((uptr) (x)) & 0x1)
+#define RANGE_MARK(x) ((struct clist_range *) (((uptr) (x)) | 0x1))
+#define RANGE_WOMARK(x) ((struct clist_range *) (((uptr) (x)) & ~0x1))
 
 enum { crange_debug = 0 };
 

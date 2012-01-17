@@ -25,7 +25,7 @@ tryacquire(struct spinlock *lk)
 
 #if SPINLOCK_DEBUG
   if(holding(lk)) {
-    cprintf("%lx\n", __builtin_return_address(0));
+    cprintf("%p\n", __builtin_return_address(0));
     panic("acquire");
   }
 #endif
@@ -56,7 +56,7 @@ acquire(struct spinlock *lk)
 
 #if SPINLOCK_DEBUG
   if(holding(lk)) {
-    cprintf("%lx\n", __builtin_return_address(0));
+    cprintf("%p\n", __builtin_return_address(0));
     panic("acquire");
   }
 #endif

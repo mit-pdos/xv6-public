@@ -31,7 +31,7 @@ static struct kmem slabmem[][NCPU] = {
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
-enum { kalloc_memset = 0 };
+enum { kalloc_memset = 1 };
 
 static int kinited __mpalign__;
 
@@ -128,11 +128,15 @@ kfree_pool(struct kmem *m, char *v)
 {
   struct run *r;
 
-  if((uptr)v % PGSIZE || v < end || memsize(v) == -1ull)
-    panic("kfree_pool");
+  if ((uptr)v % PGSIZE) 
+    panic("kfree_pool: misaligned %p", v);
+  if (v < end)
+    panic("kfree_pool: less than end %p", v);
+  if (memsize(v) == -1ull)
+    panic("kfree_pool: unknown region %p", v);
 
   // Fill with junk to catch dangling refs.
-  if (kinited && kalloc_memset)
+  if (kinited && kalloc_memset && m->size <= 16384)
     memset(v, 1, m->size);
 
   acquire(&m->lock);
@@ -151,9 +155,9 @@ kmemprint(void)
   cprintf("free pages: [ ");
   for (u32 i = 0; i < NCPU; i++)
     if (i == mycpu()->id)
-      cprintf("<%d> ", kmems[i].nfree);
+      cprintf("<%lu> ", kmems[i].nfree);
     else
-      cprintf("%d ", kmems[i].nfree);
+      cprintf("%lu ", kmems[i].nfree);
   cprintf("]\n");
 }
 
@@ -184,7 +188,7 @@ kmemalloc(struct kmem *km)
 
   mtlabel(mtrace_label_block, r, m->size, "kalloc", sizeof("kalloc"));
 
-  if (kalloc_memset)
+  if (kalloc_memset && m->size <= 16384)
     memset(r, 2, m->size);
   return (char*)r;
 }
@@ -408,7 +412,7 @@ kmalign(void **p, int align, u64 size)
 {
   void *mem = kmalloc(size + (align-1) + sizeof(void*));
   char *amem = ((char*)mem) + sizeof(void*);
-  amem += align - ((uintptr)amem & (align - 1));
+  amem += align - ((uptr)amem & (align - 1));
   ((void**)amem)[-1] = mem;
   *p = amem;
   return 0;   

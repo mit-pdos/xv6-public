@@ -46,8 +46,8 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  unsigned long long tsc;
-  unsigned long long curcycles;
+  u64 tsc;
+  u64 curcycles;
   unsigned cpuid;
   struct spinlock lock;
   SLIST_HEAD(childlist, proc) childq;

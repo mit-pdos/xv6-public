@@ -206,10 +206,11 @@ init32e:
 	movl %eax, %cr3
 	
 	# Enable IA-32e mode by setting IA32_EFER.LME = 1.
-	# Also turn on IA32_EFER.SCE (syscall enable).
+	# Also turn on IA32_EFER.SCE (syscall enable) and
+        # IA32_EFER.NXE (no-execute enable).
 	movl $0xc0000080, %ecx
 	rdmsr
-	orl $0x101, %eax
+	orl $((1<<8)|(1<<0)|(1<<11)), %eax
 	wrmsr
 
 	# Enable paging by setting CR0.PG = 1.

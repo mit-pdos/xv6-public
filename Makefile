@@ -76,6 +76,7 @@ ULIB := $(addprefix $(O)/, $(ULIB))
 
 UPROGS= \
 	_cat \
+	_echo \
 	_init \
 	_forkexectree \
 	_forkexecbench \
@@ -85,7 +86,8 @@ UPROGS= \
 	_maptest \
 	_sh \
 	_thrtest \
-	_halt
+	_halt \
+	_usertests
 UPROGS := $(addprefix $(O)/, $(UPROGS))
 
 all: $(O)/kernel
@@ -125,7 +127,7 @@ xv6memfs.img: bootblock kernelmemfs
 
 $(O)/_%: $(O)/%.o $(ULIB)
 	@echo "  LD     $@"
-	$(Q)$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
+	$(Q)$(LD) $(LDFLAGS) -N -e main -Ttext 0x100000 -o $@ $^
 
 $(O)/mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o $@ mkfs.c

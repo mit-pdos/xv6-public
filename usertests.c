@@ -5,7 +5,6 @@
 #include "fcntl.h"
 #include "syscall.h"
 #include "traps.h"
-#include "mtrace.h"
 
 char buf[2048];
 char name[3];
@@ -663,7 +662,7 @@ concreate(void)
   int i, pid, n, fd;
   char fa[40];
   struct {
-    ushort inum;
+    u16 inum;
     char name[14];
   } de;
 
@@ -1240,7 +1239,7 @@ sbrktest(void)
 {
   int fds[2], pid, pids[32], ppid;
   char *a, *b, *c, *lastaddr, *oldbrk, *p, scratch;
-  uint amt;
+  uptr amt;
 
   printf(stdout, "sbrk test\n");
   oldbrk = sbrk(0);
@@ -1275,7 +1274,7 @@ sbrktest(void)
   // can one allocate the full 640K?
   // less a stack page and an empty page at the top.
   a = sbrk(0);
-  amt = (632 * 1024) - (uint)a;
+  amt = (632 * 1024) - (uptr)a;
   p = sbrk(amt);
   if(p != a){
     printf(stdout, "sbrk test failed 632K test, p %x a %x\n", p, a);
@@ -1351,7 +1350,7 @@ sbrktest(void)
   for(i = 0; i < sizeof(pids)/sizeof(pids[0]); i++){
     if((pids[i] = fork(0)) == 0){
       // allocate the full 632K
-      sbrk((632 * 1024) - (uint)sbrk(0));
+      sbrk((632 * 1024) - (uptr)sbrk(0));
       write(fds[1], "x", 1);
       // sit around until killed
       for(;;) sleep(1000);
@@ -1380,31 +1379,22 @@ sbrktest(void)
 }
 
 void
-validateint(int *p)
-{
-  int res;
-  __asm("mov %%esp, %%ebx\n\t"
-        "mov %3, %%esp\n\t"
-        "int %2\n\t"
-        "mov %%ebx, %%esp" :
-        "=a" (res) :
-        "a" (SYS_sleep), "n" (T_SYSCALL), "c" (p) :
-        "ebx");
-}
-
-void
 validatetest(void)
 {
-  int hi, pid;
-  uint p;
+  int pid;
+  uptr lo, hi, p;
 
   printf(stdout, "validate test\n");
-  hi = 1100*1024;
+  // Do 16 pages below the bottom of userspace and 16 pages above,
+  // which should be code pages and read-only
+  lo = (1024*1024) - 16*4096;
+  hi = (1024*1024) + 16*4096;
 
-  for(p = 0; p <= (uint)hi; p += 4096){
+  for(p = lo; p <= hi; p += 4096){
     if((pid = fork(0)) == 0){
       // try to crash the kernel by passing in a badly placed integer
-      validateint((int*)p);
+      if (pipe((int*)p) == 0)
+        printf(stdout, "validatetest failed (pipe succeeded)\n");
       exit();
     }
     sleep(0);
@@ -1444,9 +1434,8 @@ bsstest(void)
 void
 bigargtest(void)
 {
-  int pid, ppid;
+  int pid;
 
-  ppid = getpid();
   pid = fork(0);
   if(pid == 0){
     char *args[32+1];
@@ -1548,8 +1537,6 @@ main(int argc, char *argv[])
 {
   printf(1, "usertests starting\n");
 
-  mtrace_enable_set(1, "xv6-forktest");
-
   if(open("usertests.ran", 0) >= 0){
     printf(1, "already ran user tests -- rebuild fs.img\n");
     exit();
@@ -1569,7 +1556,7 @@ main(int argc, char *argv[])
   writetest1();
   createtest();
 
-  mem();
+  // mem();
   pipe1();
   preempt();
   exitwait();

@@ -2,7 +2,7 @@
 #include "multiboot.h"
 #include "kernel.h"
 #include "cpu.h"
-#include "e820.h"
+#include "amd64.h"
 
 extern void initpic(void);
 extern void initioapic(void);
@@ -115,6 +115,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   inituser();      // first user process
   bootothers();    // start other processors
   kpml4[0] = 0;    // don't need 1 GB identity mapping anymore
+  lcr3(rcr3());
 
   scheduler();
   panic("Unreachable");

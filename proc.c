@@ -437,7 +437,7 @@ growproc(int n)
 
   // is there space for newstart..newstart+newn?
   if(vmap_lookup(m, newstart, newn) != 0){
-    cprintf("growproc: not enough room in address space; brk %d n %d\n",
+    cprintf("growproc: not enough room in address space; brk %lx n %d\n",
             myproc()->brk, n);
     return -1;
   }
@@ -446,7 +446,7 @@ growproc(int n)
   // vma? we can't allow that, since then a future sbrk()
   // would start to use the next region (e.g. the stack).
   if(vmap_lookup(m, PGROUNDUP(newstart+newn), 1) != 0){
-    cprintf("growproc: would abut next vma; brk %d n %d\n",
+    cprintf("growproc: would abut next vma; brk %lx n %d\n",
             myproc()->brk, n);
     return -1;
   }
@@ -530,7 +530,7 @@ void *procdump(void *vk, void *v, void *arg)
   if(p->state == SLEEPING){
     getcallerpcs((void*)p->context->rbp, pc);
     for(int i=0; i<10 && pc[i] != 0; i++)
-      cprintf(" %p\n", pc[i]);
+      cprintf(" %lx\n", pc[i]);
   }
   return 0;
 }
