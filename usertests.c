@@ -1379,31 +1379,22 @@ sbrktest(void)
 }
 
 void
-validateint(int *p)
-{
-  int res;
-  __asm("mov %%esp, %%ebx\n\t"
-        "mov %3, %%esp\n\t"
-        "int %2\n\t"
-        "mov %%ebx, %%esp" :
-        "=a" (res) :
-        "a" (SYS_sleep), "n" (T_SYSCALL), "c" (p) :
-        "ebx");
-}
-
-void
 validatetest(void)
 {
-  int hi, pid;
-  uptr p;
+  int pid;
+  uptr lo, hi, p;
 
   printf(stdout, "validate test\n");
-  hi = 1100*1024;
+  // Do 16 pages below the bottom of userspace and 16 pages above,
+  // which should be code pages and read-only
+  lo = (1024*1024) - 16*4096;
+  hi = (1024*1024) + 16*4096;
 
-  for(p = 0; p <= (uptr)hi; p += 4096){
+  for(p = lo; p <= hi; p += 4096){
     if((pid = fork(0)) == 0){
       // try to crash the kernel by passing in a badly placed integer
-      validateint((int*)p);
+      if (pipe((int*)p) == 0)
+        printf(stdout, "validatetest failed (pipe succeeded)\n");
       exit();
     }
     sleep(0);
