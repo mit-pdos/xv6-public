@@ -127,7 +127,7 @@ xv6memfs.img: bootblock kernelmemfs
 
 $(O)/_%: $(O)/%.o $(ULIB)
 	@echo "  LD     $@"
-	$(Q)$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
+	$(Q)$(LD) $(LDFLAGS) -N -e main -Ttext 0x100000 -o $@ $^
 
 $(O)/mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o $@ mkfs.c
