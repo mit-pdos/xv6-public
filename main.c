@@ -2,7 +2,7 @@
 #include "multiboot.h"
 #include "kernel.h"
 #include "cpu.h"
-#include "e820.h"
+#include "amd64.h"
 
 extern void initpic(void);
 extern void initioapic(void);
