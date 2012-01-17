@@ -412,7 +412,7 @@ kmalign(void **p, int align, u64 size)
 {
   void *mem = kmalloc(size + (align-1) + sizeof(void*));
   char *amem = ((char*)mem) + sizeof(void*);
-  amem += align - ((uintptr)amem & (align - 1));
+  amem += align - ((uptr)amem & (align - 1));
   ((void**)amem)[-1] = mem;
   *p = amem;
   return 0;   

@@ -124,9 +124,9 @@ cprintf(const char *fmt, ...)
 void
 puts(const char *s)
 {
-  uint8 *p, *ep;
+  u8 *p, *ep;
 
-  p = (uint8*)s;
+  p = (u8*)s;
   ep = p+strlen(s);
 
   for (; p < ep; p++)

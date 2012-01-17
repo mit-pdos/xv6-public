@@ -118,7 +118,7 @@ void *
 gc_move_to_tofree_cpu(int c, u64 epoch)
 {
   struct gc *head;
-  uint32 fe = (epoch - (NEPOCH-2)) % NEPOCH;
+  u32 fe = (epoch - (NEPOCH-2)) % NEPOCH;
   int cas;
   assert(gc_state[c].delayed[fe].epoch == epoch-(NEPOCH-2));   // XXX race with setting epoch = 0
   // unhook list for fe epoch atomically; this shouldn't fail

@@ -124,5 +124,5 @@ struct taskstate
 // and type bits.
 #define INTDESC(cs, rip, bits) (struct intdesc){ \
 	(rip)&0xffff, (cs), 0, bits, ((rip)>>16)&0xffff, \
-	(uint64)(rip)>>32, 0, \
+	(u64)(rip)>>32, 0, \
 }

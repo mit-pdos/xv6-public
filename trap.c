@@ -163,8 +163,8 @@ trap(struct trapframe *tf)
 void
 inittrap(void)
 {
-  uint64 entry;
-  uint32 bits;
+  u64 entry;
+  u32 bits;
   int i;
   
   bits = INT_P | SEG_INTR64;  // present, interrupt gate
