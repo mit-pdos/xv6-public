@@ -1065,6 +1065,23 @@ thirteen(void)
 }
 
 void
+longname(void)
+{
+  printf(stdout, "longname\n");
+  for (int i = 0; i < 100; i++) {
+    if (open("12345678901234", O_CREATE) != -1) {
+      printf(stdout, "open 12345678901234, O_CREATE succeeded!\n");
+      exit();
+    }  
+    if (mkdir("12345678901234") != -1) {
+      printf(stdout, "mkdir 12345678901234 succeeded!\n");
+      exit();
+    }
+  }
+  printf(stdout, "longname ok\n");
+}
+
+void
 rmdot(void)
 {
   printf(1, "rmdot test\n");
@@ -1563,6 +1580,7 @@ main(int argc, char *argv[])
 
   rmdot();
   thirteen();
+  longname();
   bigfile();
   subdir();
   concreate();
