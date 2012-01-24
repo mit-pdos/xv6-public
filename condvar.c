@@ -116,8 +116,12 @@ cv_wakeup(struct condvar *cv)
   acquire(&cv->lock);
   LIST_FOREACH_SAFE(p, &cv->waiters, cv_waiters, tmp) {
     acquire(&p->lock);
-    if(p->state != SLEEPING || p->oncv != cv)
-      panic("cv_wakeup");
+    if (p->state != SLEEPING)
+      panic("cv_wakeup: pid %u name %s state %u",
+            p->pid, p->name, p->state);
+    if (p->oncv != cv)
+      panic("cv_wakeup: pid %u name %s p->cv %p cv %p",
+            p->pid, p->name, p->oncv, cv);
     if (p->cv_wakeup) {
       acquire(&sleepers_lock);
       LIST_REMOVE(p, cv_sleep);
