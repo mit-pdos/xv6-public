@@ -1024,44 +1024,44 @@ bigfile(void)
 }
 
 void
-fourteen(void)
+thirteen(void)
 {
   int fd;
 
   // DIRSIZ is 14.
-  printf(1, "fourteen test\n");
+  printf(1, "thirteen test\n");
 
-  if(mkdir("12345678901234") != 0){
-    printf(1, "mkdir 12345678901234 failed\n");
+  if(mkdir("1234567890123") != 0){
+    printf(1, "mkdir 1234567890123 failed\n");
     exit();
   }
-  if(mkdir("12345678901234/123456789012345") != 0){
-    printf(1, "mkdir 12345678901234/123456789012345 failed\n");
+  if(mkdir("1234567890123/1234567890123") != 0){
+    printf(1, "mkdir 1234567890123/1234567890123 failed\n");
     exit();
   }
-  fd = open("123456789012345/123456789012345/123456789012345", O_CREATE);
+  fd = open("1234567890123/1234567890123/1234567890123", O_CREATE);
   if(fd < 0){
-    printf(1, "create 123456789012345/123456789012345/123456789012345 failed\n");
+    printf(1, "create 1234567890123/1234567890123/1234567890123 failed\n");
     exit();
   }
   close(fd);
-  fd = open("12345678901234/12345678901234/12345678901234", 0);
+  fd = open("1234567890123/1234567890123/1234567890123", 0);
   if(fd < 0){
-    printf(1, "open 12345678901234/12345678901234/12345678901234 failed\n");
+    printf(1, "open 1234567890123/1234567890123/1234567890123 failed\n");
     exit();
   }
   close(fd);
 
-  if(mkdir("12345678901234/12345678901234") == 0){
-    printf(1, "mkdir 12345678901234/12345678901234 succeeded!\n");
+  if(mkdir("1234567890123/1234567890123") == 0){
+    printf(1, "mkdir 1234567890123/1234567890123 succeeded!\n");
     exit();
   }
-  if(mkdir("123456789012345/12345678901234") == 0){
-    printf(1, "mkdir 12345678901234/123456789012345 succeeded!\n");
+  if(mkdir("1234567890123/1234567890123") == 0){
+    printf(1, "mkdir 1234567890123/1234567890123 succeeded!\n");
     exit();
   }
 
-  printf(1, "fourteen ok\n");
+  printf(1, "thirteen ok\n");
 }
 
 void
@@ -1562,7 +1562,7 @@ main(int argc, char *argv[])
   exitwait();
 
   rmdot();
-  fourteen();
+  thirteen();
   bigfile();
   subdir();
   concreate();
