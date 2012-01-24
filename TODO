@@ -1,11 +1,9 @@
+* stat.size is u32
 * get gcc asm labels working for cpu, proc, kmem
   - (I couldn't stop gcc from generating RIP-relative movs)
 * get something like asm labels working in clang
   - (is there a way to use address_space(256) attributes?)
 * on real hw, apicid != logical ID, but this breaks things.
-* allocate memory using PBASE
-  - adjust p2v and v2p
-* bring mtrace back
 * finish syscall/sysret implementation
 * make uart console work over IPMI SOL
 * make syslinux/pxelinux work over IPMI SOL

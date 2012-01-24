@@ -667,10 +667,13 @@ dirlink(struct inode *dp, char *name, u32 inum)
 // Paths
 
 // Copy the next path element from path into name.
-// Return a pointer to the element following the copied one.
+// Update the pointer to the element following the copied one.
 // The returned path has no leading slashes,
 // so the caller can check *path=='\0' to see if the name is the last one.
+// 
+// If copied into name, return 1.
 // If no name to remove, return 0.
+// If the name is longer than DIRSIZ, return -1;
 //
 // Examples:
 //   skipelem("a/bb/c", name) = "bb/c", setting name = "a"
@@ -678,9 +681,10 @@ dirlink(struct inode *dp, char *name, u32 inum)
 //   skipelem("a", name) = "", setting name = "a"
 //   skipelem("", name) = skipelem("////", name) = 0
 //
-static char*
-skipelem(char *path, char *name)
+static int
+skipelem(char **rpath, char *name)
 {
+  char *path = *rpath;
   char *s;
   int len;
 
@@ -693,14 +697,15 @@ skipelem(char *path, char *name)
     path++;
   len = path - s;
   if(len >= DIRSIZ)
-    memmove(name, s, DIRSIZ);
+    return -1;
   else {
     memmove(name, s, len);
     name[len] = 0;
   }
   while(*path == '/')
     path++;
-  return path;
+  *rpath = path;
+  return 1;
 }
 
 // Look up and return the inode for a path name.
@@ -710,8 +715,7 @@ static struct inode*
 namex(char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
-
-  //cprintf("namex %s\n", path);
+  int r;
 
   gc_begin_epoch();
   if(*path == '/') 
@@ -719,7 +723,7 @@ namex(char *path, int nameiparent, char *name)
   else
     ip = idup(myproc()->cwd);
 
-  while((path = skipelem(path, name)) != 0){
+  while((r = skipelem(&path, name)) == 1){
     next = 0;
     if(next == 0){
       if(ip->type == 0)
@@ -743,7 +747,7 @@ namex(char *path, int nameiparent, char *name)
     }
     ip = next;
   }
-  if(nameiparent){
+  if(r == -1 || nameiparent){
     iput(ip);
     gc_end_epoch();
     return 0;
