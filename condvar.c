@@ -21,7 +21,6 @@ wakeup(struct proc *p)
   LIST_REMOVE(p, cv_waiters);
   p->oncv = 0;
   addrun(p);
-  p->state = RUNNABLE;
 }
 
 void

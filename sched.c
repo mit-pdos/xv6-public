@@ -29,6 +29,8 @@ addrun(struct proc *p)
   // Always called with p->lock held
   struct runq *q;
 
+  p->state = RUNNABLE;
+
   q = &runq[p->cpuid];
   acquire(&q->lock);
   STAILQ_INSERT_HEAD(&q->q, p, runqlink);

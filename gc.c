@@ -315,7 +315,6 @@ initgc(void)
     gcp->cpuid = c;
     gcp->cpu_pin = 1;
     acquire(&gcp->lock);
-    gcp->state = RUNNABLE;
     addrun(gcp);
     release(&gcp->lock);
   }

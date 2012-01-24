@@ -247,7 +247,6 @@ void            sched(void);
 void            userinit(void);
 int             wait(void);
 void            yield(void);
-void            migrate(struct proc *);
 struct proc*    threadalloc(void (*fn)(void*), void *arg);
 
 // prof.c

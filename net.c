@@ -106,7 +106,6 @@ start_timer(struct timer_thread *t, void (*func)(void),
 
   acquire(&p->lock);
   safestrcpy(p->name, name, sizeof(p->name));
-  p->state = RUNNABLE;
   addrun(p);
   release(&p->lock);
 }
@@ -262,7 +261,6 @@ initnet(void)
 
   acquire(&t->lock);
   safestrcpy(t->name, "initnet", sizeof(t->name));
-  t->state = RUNNABLE;
   addrun(t);
   release(&t->lock);
 }

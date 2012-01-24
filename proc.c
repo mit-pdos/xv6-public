@@ -61,39 +61,38 @@ yield(void)
   release(&myproc()->lock);
 }
 
-void
+static int
 migrate(struct proc *p)
 {
+  // p should not be running, or be on a runqueue, or be myproc()
   int c;
+
+  if (p == myproc())
+    panic("migrate: myproc");
 
   for (c = 0; c < NCPU; c++) {
     if (c == mycpu()->id)
       continue;
     if (idle[c]) {    // OK if there is a race
       acquire(&p->lock);
-      if (p->state != RUNNABLE || p->cpu_pin) {
-	release(&p->lock);
-	continue;
-      }
+      if (p->state == RUNNING)
+        panic("migrate: pid %u name %s is running",
+              p->pid, p->name);
+      if (p->cpu_pin)
+        panic("migrate: pid %u name %s is pinned",
+              p->pid, p->name);
 
-      if (sched_debug)
-	cprintf("cpu%d: migrate %d to %d\n", mycpu()->id, p->pid, c);
-
-      delrun(p);
       p->curcycles = 0;
       p->cpuid = c;
       addrun(p);
       idle[c] = 0;
 
-      if (p == myproc()) {
-        myproc()->state = RUNNABLE;
-	sched();
-      }
-
       release(&p->lock);
-      return;
+      return 0;
     }
   }
+
+  return -1;
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -268,7 +267,6 @@ inituser(void)
   p->cwd = NULL; // forkret will fix in the process's context
   acquire(&p->lock);
   addrun(p);
-  p->state = RUNNABLE;
   release(&p->lock);
 }
 
@@ -327,7 +325,7 @@ scheduler(void)
     if (p) {
       acquire(&p->lock);
       if (p->state != RUNNABLE) {
-	release(&p->lock);
+        release(&p->lock);
       } else {
         if (idle[mycpu()->id])
 	  idle[mycpu()->id] = 0;
@@ -593,12 +591,12 @@ fork(int flags)
   SLIST_INSERT_HEAD(&myproc()->childq, np, child_next);
   release(&myproc()->lock);
 
-  acquire(&np->lock);
-  addrun(np);
-  np->state = RUNNABLE;
-  release(&np->lock);
-
-  migrate(np);
+  if (migrate(np)) {
+    acquire(&np->lock);
+    np->cpuid = mycpu()->id;
+    addrun(np);
+    release(&np->lock);
+  }
 
   //  cprintf("%d: fork done (pid %d)\n", myproc()->pid, pid);
   return pid;
