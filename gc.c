@@ -13,7 +13,7 @@
 // a process maintain an epoch (>= global_epoch)
 // one gc thread and state (e.g., NEPOCH delaylists and one tofreelists) per core
 // a process add to its core epoch's delayed freelist on delayed_free
-// a gcc performs two jobs:
+// a gcc thread performs two jobs:
 // 1. one gcc thread perform step 1:
 //   updates a thread's epoch, when not in an epoch
 //   compute min over all process's epochs, and sets global_epoch to min
@@ -23,6 +23,8 @@
 //   (costs linear in the number of elements to be freed)
 
 enum { gc_debug = 0 };
+
+#define NGC 10000
 
 struct gc {
   u64 epoch;
@@ -48,6 +50,9 @@ static struct gc_state {
   struct gc tofree[NEPOCH];
   int ndelayed;
   int min_epoch;
+  int nrun;
+  int nfree;
+  int cnt;
 } __mpalign__ gc_state[NCPU] __mpalign__;
 
 static struct { struct spinlock l __mpalign__; } gc_lock;
@@ -58,7 +63,7 @@ gc_alloc()
 {
   struct gc *r = kmalloc(sizeof(struct gc));
   assert(r);
-  gc_state[mycpu()->id].ndelayed++;
+  __sync_fetch_and_add(&gc_state[mycpu()->id].ndelayed, 1);
   return r;
 }
 
@@ -66,11 +71,14 @@ static void *
 gc_min(void *vkey, void *v, void *arg){
   u64 *min_epoch_p = arg;
   struct proc *p = (struct proc *) v;
+  // Some threads may never call begin/end_epoch(), and never update
+  // p->epoch, so gc_thread does it for them.  XXX get rid off lock?
   acquire(&p->gc_epoch_lock);
   if (p->epoch_depth == 0) {
     p->epoch = global_epoch;  
   }
   release(&p->gc_epoch_lock);
+  // cprintf("gc_min %d(%s): %lu %ld\n", p->pid, p->name, p->epoch, p->epoch_depth);
   if (*min_epoch_p > p->epoch) {
       *min_epoch_p = p->epoch;
   }
@@ -147,8 +155,8 @@ static void
 gc_move_to_tofree(u64 epoch)
 {
   if (gc_debug)
-    cprintf("%d: free epoch %ld\n", mycpu()->id, epoch);
-  for (int c = 0; c < NCPU; c++) {
+    cprintf("%d: move epoch %ld to tofreelist\n", mycpu()->id, epoch);
+  for (int c = 0; c < ncpu; c++) {
     gc_move_to_tofree_cpu(c, epoch);
   }
   int ok  = __sync_bool_compare_and_swap(&global_epoch, epoch, epoch+1);
@@ -166,11 +174,14 @@ gc_delayfreelist(void)
   u64 global = global_epoch;
   u64 min = global;
   // make that global_epoch doesn't run into a core's min_epoch
-  for (int c = 0; c < NCPU; c++) { 
+  for (int c = 0; c < ncpu; c++) { 
     int w = gc_state[c].min_epoch + NEPOCH-1;
     if (w < min) {
       min = w;
     }
+  }
+  if (gc_debug) {
+    cprintf("(%d,%d) (%s): min %lu global %lu\n", myproc()->cpuid, myproc()->pid, myproc()->name, min, global);
   }
   myproc()->epoch_depth++;// ensure ns_enumate's call to gc_begin_epoch doesn't have sideeffects
   ns_enumerate(nspid, gc_min, &min);
@@ -229,7 +240,9 @@ gc_delayed2(int a1, u64 a2, void (*dofree)(int,u64))
 void
 gc_start(void)
 {
-  cv_wakeup(&gc_state[mycpu()->id].cv);
+  // XXX hack?
+  if (gc_state[mycpu()->id].cnt++ % 10000 == 0)
+    cv_wakeup(&gc_state[mycpu()->id].cv);
 }
 
 void
@@ -252,7 +265,18 @@ gc_end_epoch(void)
   acquire(&myproc()->gc_epoch_lock);
   --myproc()->epoch_depth;
   release(&myproc()->gc_epoch_lock);
+  if (myproc()->epoch_depth == 0 && gc_state[mycpu()->id].ndelayed > NGC) 
+    gc_start();
+
 }
+
+void gc_dumpstat(void)
+{
+  for (int i = 0; i < ncpu; i++) {
+    cprintf("worker %d: %d %d\n", i, gc_state[i].nrun, gc_state[i].nfree);
+  }
+}
+
 
 static void
 gc_worker(void *x)
@@ -268,14 +292,17 @@ gc_worker(void *x)
     acquire(&wl);
     cv_sleep(&gc_state[mycpu()->id].cv, &wl);  
     release(&wl);
-
+    gc_state[mycpu()->id].nrun++;
     u64 global = global_epoch;
+    myproc()->epoch = global_epoch;      // move the gc thread to next epoch
     for (i = gc_state[mycpu()->id].min_epoch; i < global-2; i++) {
       int nfree = gc_free_tofreelist(&(gc_state[mycpu()->id].tofree[i%NEPOCH].next), i);
       gc_state[mycpu()->id].tofree[i%NEPOCH].epoch += NEPOCH;
-      if (gc_debug && nfree > 0) {
+      __sync_fetch_and_sub(&gc_state[mycpu()->id].ndelayed, nfree);
+      if (0 && nfree > 0) {
 	cprintf("%d: epoch %lu freed %d\n", mycpu()->id, i, nfree);
       }
+      gc_state[mycpu()->id].nfree += nfree;
     }
     gc_state[mycpu()->id].min_epoch = i;
     gc_delayfreelist();
@@ -286,9 +313,9 @@ void
 initprocgc(struct proc *p)
 {
   p->epoch = global_epoch;
+  p->epoch_depth = 0;
   initlock(&p->gc_epoch_lock, "per process gc_lock");
 }
-
 
 void
 initgc(void)
@@ -296,7 +323,7 @@ initgc(void)
   initlock(&gc_lock.l, "gc");
   global_epoch = NEPOCH-2;
 
-  for (int i = 0; i < NCPU; i++) {
+  for (int i = 0; i < ncpu; i++) {
     for (int j = 0; j < NEPOCH; j++) {
       gc_state[i].delayed[j].epoch = j;
       gc_state[i].tofree[j].epoch = j;
@@ -304,7 +331,7 @@ initgc(void)
     initcondvar(&gc_state[i].cv, "gc_cv");
   }
 
-  for (u32 c = 0; c < NCPU; c++) {
+  for (u32 c = 0; c < ncpu; c++) {
     struct proc *gcp; 
 
     gcp = threadalloc(gc_worker, NULL);
@@ -315,6 +342,7 @@ initgc(void)
     gcp->cpuid = c;
     gcp->cpu_pin = 1;
     acquire(&gcp->lock);
+    gcp->state = RUNNABLE;
     addrun(gcp);
     release(&gcp->lock);
   }
