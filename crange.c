@@ -2,26 +2,39 @@
 #include "kernel.h"
 #include "mmu.h"
 #include "spinlock.h"
+#include "condvar.h"
+#include "queue.h"
+#include "proc.h"
 #include "cpu.h"
 
 //
 // Concurrent atomic ranges operations using skip lists.  Overall approach is
-// that the bottom list contains the truth, and the index is an
-// performance-acceleration hint.  The implementation builds up the index
-// lazily.
+// that the bottom list (layer 0) contains the truth, and the index is an
+// performance-accelerating hint.  Inserts lazily adds a node to the index,
+// starting from layer 1, going up.  Delete marks nodes atomically as deleted,
+// but lazily removes it from layers [1,n], in any order.
 //
-// Searches run without locks.  Changes to the list take locks on the nodes that
-// are involved in the change.  Thus, if two changes are to different parts of
-// the list, they can happen in parallel. The invariant for deletion and
-// insertion is that we always lock the predecessor node. This
-// ensures we avoid the races for the skip list implementation (see skip_add()).
-// The locks ensure that range operations are atomic.
+// Searches run without locks, and ignore marked nodes (pretending that they are not
+// part of the index).
+//
+// Changes to the list take locks on the nodes that are involved in the change.
+// Thus, if two changes are to different parts of the list, they can happen in
+// parallel. The invariant for deletion and insertion is that we always lock the
+// predecessor node, to avoid races.
+// As with concurrent lists, the hard cases are: 1) a concurrent remove and
+// insert, and 2) concurrent removes of two nodes in sequence. Re 1: the risk is
+// that the insert updates the next pointer of a node to be removed.
+// Locking the predecessors avoids these races.
 //
 // A tricky case is that when we found the nodes corresponding to a range, we
 // must lock the predecessor first and then the first node of the range.  But,
 // while waiting for the lock for the predecessor, another core may be deleting
 // the predecessor. To handle this race, the core that deletes a node marks a
 // node for deletion by marking its next pointer.
+//
+// After a delete of a range, a node is not put on the delayed-free list until
+// it has been removed from the index (i.e., curlevel reaches 0), which maybe many
+// epochs later.
 //
 
 #define CRANGE_CHECKING 0
@@ -34,8 +47,8 @@
 enum { crange_debug = 0 };
 
 struct crange {
-  int nlevel;
-  struct clist_range crange_head;
+  int nlevel;                        // number of levels in the crange skip list
+  struct clist_range crange_head;    // a crange skip list starts with a sentinel node (key 0, sz 0)
 } cr;
 
 struct crange*
@@ -45,6 +58,8 @@ crange_alloc(int nlevel)
   assert(kmalign((void **) &cr, CACHELINE, sizeof(struct crange)) == 0);
   cr->nlevel = (nlevel < MINNLEVEL) ? MINNLEVEL : nlevel;  // XXX
   cr->crange_head.cr = cr;
+  cr->crange_head.key = 0;
+  cr->crange_head.size = 0;
   assert(kmalign((void **) &cr->crange_head.lock, 
 			   CACHELINE, sizeof(struct spinlock)) == 0);
   initlock(cr->crange_head.lock, "head lock");
@@ -58,7 +73,6 @@ static void clist_range_free(void *p);
 
 void
 crange_free(struct crange *cr)
-
 {
   assert(cr);
   if (crange_debug) cprintf("crange_free: 0x%lx\n", (u64) cr);
@@ -79,7 +93,6 @@ crange_draw_nlevel(int nlevel)
   int l;
   for (l = 0; l < nlevel-1; l++) {
     if (rnd() % 16777216 > 8388608)    // % 1 is not enough randomness
-      //if (random() % 2 == 1) 
       break;
   }
   return l+1;
@@ -88,7 +101,7 @@ crange_draw_nlevel(int nlevel)
 void 
 crange_print_elem(struct clist_range *e, int l)
 {
-  cprintf ("0x%lx(0x%lx, 0x%lx, c %d, t %d, l %d, n 0x%lx m 0x%lx\n", e->key, e->size, (long) e->value, e->curlevel, e->nlevel, e->lock->locked, (long) e->next, MARKED(e->next[l]));
+  cprintf ("0x%lx-0x%lx(%lu) 0x%lx, c %d, t %d, n 0x%lx m 0x%lx\n", e->key, e->key+e->size, e->size, (long) e->value, e->curlevel, e->nlevel, (long) e->next, MARKED(e->next[l]));
 }
 
 void
@@ -97,7 +110,7 @@ crange_print(struct crange *cr, int full)
   struct clist_range *e;
   for (int l = 0; l < cr->nlevel; l++) {
     int c = 0;
-    cprintf("crange %d (l %d): ", l, cr->crange_head.lock->locked);
+    cprintf("crange %d: ", l);
     for (e = cr->crange_head.next[l]; e; e = RANGE_WOMARK(e->next[l])) {
       c++;
       if (full) crange_print_elem(e, l);
@@ -116,8 +129,6 @@ crange_check(struct crange *cr, int lockcheck, struct clist_range *absent)
   for (int l = 0; l < cr->nlevel; l++) {
     p = &cr->crange_head;
     for (e = cr->crange_head.next[l]; e; e = s) {
-      assert((e != absent) || (l == 0 && e->lock->locked));
-      // assert(!lockcheck || e->lock.me != mycpu()->id);
       assert(e->curlevel < cr->nlevel);
       if (l > 0 && e->next[l] != 0 && !MARKED(e->next[l])) {
 	struct clist_range *n;
@@ -158,7 +169,10 @@ static void
 clist_range_free(void *p)
 {
   struct clist_range *e = (struct clist_range *) p;
+  if (crange_debug)
+    cprintf("%d: clist_range_free: 0x%lx 0x%lx-0x%lx(%ld)\n", myproc()->cpuid, (u64) e, e->key, e->key+e->size, e->size);
   crange_check(e->cr, 0, p);
+  assert(e->curlevel == -1);
   for (int l = 0; l < e->nlevel; l++) {
     e->next[l] = (struct clist_range *) 0xDEADBEEF;
   }
@@ -170,8 +184,10 @@ clist_range_free(void *p)
 static void
 crange_free_delayed(struct clist_range *e)
 {
-  // cprintf("crange_free_delayed: 0x%lx %u(%u) %u\n", (long) e, (e)->key, (e)->size, myepoch);
+  if (crange_debug)
+    cprintf("%d: crange_free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) e, e->key, e->key + (e)->size, e->size, myproc()->epoch);
   crange_check(e->cr, 0, e);
+  assert(e->curlevel == -1);
   gc_delayed(e, clist_range_free);
 }
 
@@ -244,6 +260,7 @@ crange_lockpred(struct clist_range *p, struct clist_range *e)
 }
 
 // Mark nodes f till s for deletion from top-level down through level l
+// XXX does it matter to top down?
 static void 
 crange_mark(struct clist_range *f, struct clist_range *s, int level) 
 {
@@ -276,12 +293,18 @@ crange_freen(struct clist_range *f, struct clist_range *l)
   struct clist_range *e;
   for (e = f; e != l; e = RANGE_WOMARK(e->next[0])) {
     assert(e);
-    if (e->curlevel == 0) {
+    assert(e->curlevel >= 0);
+    int n = __sync_fetch_and_sub(&(e->curlevel), 1);
+    if (n == 0) {    // now removed from all levels.
       crange_free_delayed(e);
     }
   }
-  if (l && l->curlevel == 0) {
-    crange_free_delayed(e);
+  if (l) {
+    assert(e->curlevel >= 0);
+    int n = __sync_fetch_and_sub(&(e->curlevel), 1);
+    if (n == 0) {    // now removed from all levels.
+      crange_free_delayed(e);
+    }
   }
 }
 
@@ -298,6 +321,7 @@ crange_del_index(struct crange *cr, struct clist_range *p0, struct clist_range *
   if (l == 0) return 0;    // but not on level 0; they are locked when removed
   // crange_check(0, NULL);
   while (*e && MARKED((*e)->next[l])) {
+#if 0
     if (l != (*e)->curlevel) {
       // node is still in the index one level up, back out.  we want to remove it first 
       // at higher levels so that we ensure the invariant nodes are removed top down.
@@ -305,16 +329,17 @@ crange_del_index(struct crange *cr, struct clist_range *p0, struct clist_range *
       r = -1;
       goto done;
     }
+#endif
     int cas = __sync_bool_compare_and_swap(&(p0->next[l]), *e, RANGE_WOMARK((*e)->next[l]));
     if (cas) {
-      __sync_fetch_and_sub(&((*e)->curlevel), 1);
-      if (l == 1 && !(*e)->lock->locked) {
-	// assert((*e)->curlevel == 0);   // XXX could it be 1 temporarily because of add_index?
+      assert((*e)->curlevel >= 0);
+      int n = __sync_fetch_and_sub(&((*e)->curlevel), 1);
+      if (n == 0) {    // now removed from all levels.
 	crange_free_delayed(*e);
       }
       *e = RANGE_WOMARK((*e)->next[l]);
     } else {  
-      // cprintf("%d: crange_del_index: retry del %u(%u)\n", mycpu()->id, (*e)->key, (*e)->size);
+      // cprintf("%d: crange_del_index: retry del %u(%u)\n", mycpu()->id, (*e)->key, (*e)->key + (*e)->size);
       r = -1;
       goto done;
     }
@@ -337,22 +362,19 @@ crange_add_index(struct crange *cr, int l, struct clist_range *e, struct clist_r
     // this is the core inserting at level l+1, but some core may be deleting
     struct clist_range *s = RANGE_WOMARK(s1);
     do {
-      struct clist_range *n = e->next[l+1];
+      struct clist_range *n = e->next[l+1];   // Null and perhaps marked
       if (MARKED(n)) {
-	// this node has been deleted, don't insert into index; it also maybe 0.
-	// repair curlevel so that it will be deleted at level l.  no other core will
-	// increase it anymore, because e is marked for deletion
+	// this node has been deleted, don't insert into index.
+	// undo increment of cur->level.
 	__sync_fetch_and_sub(&(e->curlevel), 1);
 	goto done;
       }
       assert (n == 0);
     } while (!__sync_bool_compare_and_swap(&(e->next[l+1]), 0, s));
-    if (__sync_bool_compare_and_swap(&(p1->next[l+1]), s, e)) {  // insert in list l+1
-      ; // pr[l+2] = e;   // XXX adding e on a level it shouldn't be?
-    } else {
-      (void) __sync_fetch_and_and(&(e->next[l+1]), 0x1);    // keep mark bit
+    if (!__sync_bool_compare_and_swap(&(p1->next[l+1]), s, e)) {  // insert in list l+1
+      (void) __sync_fetch_and_and(&(e->next[l+1]), 0x1);    // failed, keep mark bit
       __sync_fetch_and_sub(&(e->curlevel), 1);
-      // cprintf("%d: crange_add_index: retry add level %d %u(%u)\n", mycpu()->id, l+1, e->key, e->size);
+      // cprintf("%d: crange_add_index: retry add level %d %u(%u)\n", mycpu()->id, l+1, e->key, e->key+e->size);
     }
   }
  done:
@@ -409,7 +431,6 @@ crange_find_and_lock(struct crange *cr, u64 k, u64 sz, struct clist_range **p0,
     *p0 = (l == cr->nlevel-1) ? &cr->crange_head : p1;
     s1 = *s0;
     for (e = RANGE_WOMARK((*p0)->next[l]); e; *p0 = e, e = RANGE_WOMARK(e->next[l])) {
-      assert(!MARKED(e));
       assert(l < e->nlevel);
       int r = crange_del_index(cr, *p0, &e, l);
       if (r == -1) goto retry;   // deletion failed because some other core did it; try again
@@ -433,8 +454,6 @@ crange_find_and_lock(struct crange *cr, u64 k, u64 sz, struct clist_range **p0,
   if (*f0 == NULL) {   // range isn't present, lock predecessor of key
     if (!crange_lockpred(*p0, *s0)) goto retry;
   }
-  assert(!*f0 || ((*f0)->lock->locked));
-  assert(!*l0 || ((*l0)->lock->locked));
   assert(!*l0 || !MARKED((*l0)->next[0]));
   assert(!MARKED((*p0)->next));
   assert(!(*p0)->next[0] || !MARKED((*p0)->next[0]->next[0]));
@@ -444,15 +463,13 @@ crange_find_and_lock(struct crange *cr, u64 k, u64 sz, struct clist_range **p0,
 
 // Compute the sublist that will replace the to-be deleted range. Make copies to create
 // the new nodes, because readers may running through the list and looking at the old nodes.
+// If the whole list is replaced, it will return s.
 static struct clist_range *
 crange_replace(u64 k, u64 sz, void *v, struct clist_range *f, struct clist_range *l, 
 	       struct clist_range *s)
 {
   struct clist_range *r;
   
-  assert(!f || f->lock->locked);
-  assert(!l || l->lock->locked);
-
   if (f == l) {  // the first node covers range to be deleted
     if (k <= f->key && f->key + f->size <= k + sz) {  // range covers the first node
       r = s;
@@ -474,7 +491,7 @@ crange_replace(u64 k, u64 sz, void *v, struct clist_range *f, struct clist_range
   } else {  // first node covers part and last node other part?
     struct clist_range *left;
     struct clist_range *right;
-    // cprintf("f 0x%lx [%d, %d) l 0x%lx [%d, %d)\n", (long) f, f->key, f->size, (long) l, l->key, l->size);
+    // cprintf("f 0x%lx [%d, %d) l 0x%lx [%d, %d)\n", (long) f, f->key, f->key+f->size, (long) l, l->key, l->key+l->size);
     if (k <= f->key && k + sz >= f->key + f->size) {  // delete first node?
       left = NULL;
     } else {
@@ -494,9 +511,10 @@ crange_replace(u64 k, u64 sz, void *v, struct clist_range *f, struct clist_range
   return r;
 }
 
-// A node is marked for deletion when its next pointer has been marked; don't follow those
+// Search through the crange skip list for a node that intersects with [k, sz) and return that node.
+// Pretend that marked nodes don't exist.
 struct clist_range*
-crange_search(struct crange *cr, u64 k)
+crange_search(struct crange *cr, u64 k, u64 sz)
 {
   struct clist_range *p, *e, *r;
   gc_begin_epoch();
@@ -505,16 +523,20 @@ crange_search(struct crange *cr, u64 k)
   p = &cr->crange_head;
   for (int l = cr->nlevel-1; l >= 0; l--) {
     for (e = RANGE_WOMARK(p->next[l]); e; p = e, e = RANGE_WOMARK(e->next[l])) {
-      if (MARKED(e->next[l])) {   // drop down a level?  what if p's next is marked?
-	p = &cr->crange_head;
-	break;
+      if (crange_debug)
+	cprintf("level %d: 0x%lx 0x%lx-%lx(%lu) 0x%lx-0x%lx(%lu)\n", l, (u64) p, p->key, p->key+p->size, p->size, e->key, e->key+e->size, e->size);
+      // skip all marked nodes, but don't update p because
+      // we don't want to descend on a marked node down.
+      while (e && MARKED(e->next[l])) {
+	e = RANGE_WOMARK(e->next[l]);
       }
+      if (!e) break;
       if (k >= e->key+e->size)
 	continue;
-      if (e->key <= k && k < e->key + e->size) {
+      if (crange_intersect(k, sz, e->key, e->size)) {
 	r = e;
 	goto end;
-      } 
+      }
       // search on this level failed, drop a level. but continue at predecessor
       break;
     }
@@ -535,15 +557,16 @@ crange_del(struct crange *cr, u64 k, u64 sz)
   struct clist_range *last;
   struct clist_range *repl = NULL;
 
-  if (crange_debug) cprintf("crange_del: 0x%lx (0x%lx,0x%lx)\n", (u64) cr, k, sz);
   assert(cr);
   gc_begin_epoch();
+  if (crange_debug) 
+    cprintf("crange_del: 0x%lx 0x%lx-0x%lx(%ld)\n", (u64) cr, k, k+sz, sz);
   if (!crange_find_and_lock(cr, k, sz, &prev, &first, &last, &succ)) { // done?
     if (crange_debug) cprintf("crange_del: [0x%lx,0x%lx) not present\n", k, sz);
     release(prev->lock);
     goto done;
   }
-  repl = crange_replace(k, sz, NULL, first, last, succ); // XXX cannot be NULL
+  repl = crange_replace(k, sz, NULL, first, last, succ);
   crange_mark(first, succ, 0); // mark first till s on level >= 0
   while (1) {
     // hook new list into bottom list; if del resulted in a new list, use that (repl), otherwise
@@ -576,7 +599,7 @@ crange_add(struct crange *cr, u64 k, u64 sz, void *v)
   struct clist_range *succ;
   struct clist_range *repl = NULL;
 
-  if (crange_debug) cprintf("crange_add: 0x%lx (0x%lx,0x%lx)\n", (u64) cr, k, sz);
+  if (crange_debug) cprintf("crange_add: 0x%lx 0x%lx-0x%lx(%lu)\n", (u64) cr, k, k+sz, sz);
   assert(cr);
   gc_begin_epoch();
   if (crange_find_and_lock(cr, k, sz, &prev, &first, &last, &succ)) {

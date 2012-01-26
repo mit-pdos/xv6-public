@@ -72,7 +72,7 @@ struct crange* crange_alloc(int nlevel);
 void crange_free(struct crange *cr);
 void crange_del(struct crange *cr, u64 k, u64 sz);
 void crange_add(struct crange *cr, u64 k, u64 sz, void *v);
-struct clist_range* crange_search(struct crange *cr, u64 k);
+struct clist_range* crange_search(struct crange *cr, u64 k, u64 sz);
 int crange_foreach(struct crange *crk, int (*f)(struct clist_range *r, void *st), void *st);
 void crange_print(struct crange *cr, int);
 

@@ -345,7 +345,7 @@ vmap_lookup(struct vmap *m, uptr start, uptr len)
   if(start + len < start)
     panic("vmap_lookup bad len");
 
-  struct clist_range *r = crange_search(m->cr, start);
+  struct clist_range *r = crange_search(m->cr, start, len);
   if (r != 0) {
     struct vma *e = (struct vma *) (r->value);
     if (e->va_end <= e->va_start) 
@@ -446,7 +446,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
 {
   acquire(&m->lock);
   uptr va_end = va_start + len;
-  struct clist_range *r = crange_search(m->cr, va_start);
+  struct clist_range *r = crange_search(m->cr, va_start, len);
   if (r == 0)
     panic("no vma?");
   struct vma *e = (struct vma *) r->value;
