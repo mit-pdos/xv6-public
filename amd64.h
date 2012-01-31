@@ -153,11 +153,11 @@ readmsr(u32 msr)
 }
 
 static inline void
-writemsr(u32 msr, u64 val)
+writemsr(u64 msr, u64 val)
 {
   u32 lo = val & 0xffffffff;
   u32 hi = val >> 32;
-  __asm volatile("wrmsr" : : "c" (msr), "a" (lo), "d" (hi));
+  __asm volatile("wrmsr" : : "c" (msr), "a" (lo), "d" (hi) : "memory");
 }
 
 static inline u64
