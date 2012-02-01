@@ -307,12 +307,6 @@ scheduler(void)
   //extern void testwq(void);
   //testwq();
 
-#if defined(HW_josmp)
-  // XXX(sbw) this code is temporary
-  if (cpunum() == mpbcpu())
-    sampstart();
-#endif
-
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);
   mtstart(scheduler, schedp);
