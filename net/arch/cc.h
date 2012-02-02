@@ -3,8 +3,9 @@
 
 #include <types.h>
 
-void            panic(const char*) __attribute__((noreturn));
-void            cprintf(const char*, ...);
+void            cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
+void            panic(const char*, ...) 
+                  __noret__ __attribute__((format(printf, 1, 2)));
 
 typedef u32 u32_t;
 typedef s32 s32_t;
