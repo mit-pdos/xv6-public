@@ -11,3 +11,8 @@
   $ git clone git://git.savannah.nongnu.org/lwip.git
   $ (cd lwip && git checkout STABLE-1_4_0)
   $ make clean;make
+
+* Copies of e1000 and e1000e manuals are in manuals/.  There were
+  retrieved from:
+
+  http://www.intel.com/products/ethernet/resource.htm#s1=Gigabit%20Ethernet&s2=all&s3=Manual
