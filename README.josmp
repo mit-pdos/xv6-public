@@ -1,0 +1,25 @@
+## To build and run xv6 on josmp:
+
+make HW=josmp
+make HW=josmp rsync
+
+ssh root@pdos ed /tftpboot/josmp/pxelinux.cfg <<EOM
+/^default /s/^/#/
+/^# *default xv6/s/^# *//
+wq
+EOM
+
+ssh root@josmp reboot
+
+---
+
+## To restore booting into local Linux:
+
+ssh root@pdos ed /tftpboot/josmp/pxelinux.cfg <<EOM
+/^default /s/^/#/
+/^# *default localboot/s/^# *//
+wq
+EOM
+
+ipmitool -I lanplus -A MD5 -H josmpadm -U ADMIN -P <password> power cycle
+
