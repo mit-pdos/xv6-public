@@ -90,6 +90,7 @@ UPROGS= \
 	_halt \
 	_time \
 	_sleep \
+	_dirbench \
 	_usertests
 UPROGS := $(addprefix $(O)/, $(UPROGS))
 
