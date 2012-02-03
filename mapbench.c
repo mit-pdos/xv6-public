@@ -72,6 +72,6 @@ main(void)
     wait();
 
   mtdisable("xv6-mapbench");
-  halt();
+  // halt();
   exit();
 }

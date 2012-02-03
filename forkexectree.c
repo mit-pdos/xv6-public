@@ -52,7 +52,7 @@ forktree(int depth)
   mtdisable("xv6-forkexectree");
   
   printf(1, "%d: forkexectree OK\n", getpid());
-  halt();
+  // halt();
 }
 
 int

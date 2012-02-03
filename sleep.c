@@ -1,13 +1,17 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
+#include "fcntl.h"
+#include "amd64.h"
 
 int
-main(void)
+main(int ac, char *av[])
 {
-  int i;
-
-  for (i = 0; i < 10000000; i++) {
-    sleep(1);
+  if (ac != 2) {
+    printf(1, "Usage: %s ticks\n", av[0]);
+    exit();
   }
+
+  sleep(atoi(av[1]));
+  exit();
 }
