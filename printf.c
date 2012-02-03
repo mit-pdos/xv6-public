@@ -6,12 +6,12 @@
 
 static void
 printint(void (*putch) (void*, char), void *putarg,
-	 int xx, int base, int sgn)
+	 s64 xx, int base, int sgn)
 {
   const static char digits[] = "0123456789ABCDEF";
-  char buf[16];
+  char buf[21];
   int i, neg;
-  int x;
+  s64 x;
 
   neg = 0;
   if(sgn && xx < 0){
