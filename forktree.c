@@ -51,7 +51,7 @@ forktree(void)
   mtdisable("xv6-forktree");
   
   printf(1, "%d: fork tree OK\n", getpid());
-  halt();
+  // halt();
 }
 
 int

@@ -54,7 +54,7 @@ forktest(void)
   mtrace_enable_set(0, "xv6-forktest");
   
   printf(1, "fork test OK\n");
-  halt();
+  // halt();
 }
 
 int
