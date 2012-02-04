@@ -7,7 +7,6 @@
 
 static struct uspinlock l;
 static volatile int tcount;
-enum { nthread = 4 };
 enum { readaccess = 0 };
 
 void
@@ -40,12 +39,19 @@ thr(void *arg)
 }
 
 int
-main(void)
+main(int ac, char **av)
 {
   mtenable("xv6-mapbench");
 
+  if (ac != 2) {
+    printf(1, "usage: %s nthreads\n", av[0]);
+    exit();
+  }
+
+  int nthread = atoi(av[1]);
+
   acquire(&l);
-  printf(1, "mapbench[%d]: start esp %x\n", getpid(), rrsp());
+  printf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
 
   for(int i = 0; i < nthread; i++) {
     sbrk(8192);
