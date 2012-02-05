@@ -258,10 +258,20 @@ void e1000reset(void)
 }
 
 int
+e1000eattach(struct pci_func *pcif)
+{
+  panic("e1000eattach");
+  return 0;
+}
+
+int
 e1000attach(struct pci_func *pcif)
 {
   int r;
   int i;
+
+  if (e1000init)
+    return 0;
 
   pci_func_enable(pcif);
   
@@ -280,6 +290,13 @@ e1000attach(struct pci_func *pcif)
   r = eeprom_read((u16*)e1000.hwaddr, EEPROM_OFF_MACADDR, 3);
   if (r < 0)
     return 0;
+
+#ifdef HW_josmp
+  // Set the least significant bit on the dual-ported device so DHCP
+  // gives us josmp.csail.mit.edu/18.26.4.96
+  e1000.hwaddr[5] |= 0x01;
+#endif
+
   if (VERBOSE)
       cprintf("%x:%x:%x:%x:%x:%x\n",
               e1000.hwaddr[0], e1000.hwaddr[1], e1000.hwaddr[2],
@@ -298,5 +315,5 @@ e1000attach(struct pci_func *pcif)
     ewr(WMREG_CORDOVA_MTA+i, 0);
 
   e1000init = 1;
-  return 0;
+  return 1;
 }
