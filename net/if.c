@@ -172,7 +172,8 @@ if_input(struct netif *netif, void *buf, u16 len)
     }
     break;
   default:
-    cprintf("if_input: unknown type %u\n", htons(ethhdr->type));
+    if (VERBOSE)
+      cprintf("if_input: unknown type %04x\n", htons(ethhdr->type));
     pbuf_free(p);
     p = NULL;
     break;
