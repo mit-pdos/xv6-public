@@ -5,6 +5,7 @@
 #include "pcireg.h"
 
 extern int e1000attach(struct pci_func *pcif);
+extern int e1000eattach(struct pci_func *pcif);
 
 // Flag to do "lspci" at bootup
 static int pci_show_devs = 0;
@@ -30,14 +31,15 @@ struct pci_driver pci_attach_class[] = {
 };
 
 // pci_attach_vendor matches the vendor ID and device ID of a PCI device
-// http://www.intel.com/products/ethernet/resource.htm?wapkw=software%20manual%20pcie#s1=Gigabit%20Ethernet&s2=all&s3=Manual
 struct pci_driver pci_attach_vendor[] = {
   // [E1000 5.2] 
-  // QEMU emulates an 82540EM, specifically.
+  // QEMU emulates an e1000 82540EM
   { 0x8086, 0x100e, &e1000attach },
+  // josmp's dual ported e1000 82546GB copper
+  { 0x8086, 0x1079, &e1000attach },
   // Both of ud0's e1000e (82573E, 82573L)
-  { 0x8086, 0x108c, &e1000attach },
-  { 0x8086, 0x109A, &e1000attach },
+  { 0x8086, 0x108c, &e1000eattach },
+  { 0x8086, 0x109A, &e1000eattach },
   { 0, 0, 0 },
 };
 
@@ -169,14 +171,7 @@ pci_scan_bus(struct pci_bus *bus)
 static int
 pci_bridge_attach(struct pci_func *pcif)
 {
-  u32 ioreg  = pci_conf_read(pcif, PCI_BRIDGE_STATIO_REG);
   u32 busreg = pci_conf_read(pcif, PCI_BRIDGE_BUS_REG);
-
-  if (PCI_BRIDGE_IO_32BITS(ioreg)) {
-    cprintf("PCI: %x:%x.%d: 32-bit bridge IO not supported.\n",
-            pcif->bus->busno, pcif->dev, pcif->func);
-    return 0;
-  }
 
   struct pci_bus nbus;
   memset(&nbus, 0, sizeof(nbus));
