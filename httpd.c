@@ -11,7 +11,7 @@
 
 static int xwrite(int fd, const void *buf, u64 n)
 {
-  long r;
+  int r;
   
   while (n) {
     r = write(fd, buf, n);
@@ -59,7 +59,7 @@ error(int s, int code)
   r = strlen(buf);
 
   if (xwrite(s, buf, r))
-    printf(2, "httpd error: incomplete write");
+    printf(2, "httpd error: incomplete write\n");
 }
 
 static int
