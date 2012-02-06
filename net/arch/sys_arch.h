@@ -10,7 +10,6 @@ typedef u64 sys_prot_t;
 
 typedef struct sys_mbox {
 #define MBOXSLOTS 32
-  struct spinlock s;
   struct condvar c;
   volatile int invalid;
   volatile int head;
@@ -19,7 +18,6 @@ typedef struct sys_mbox {
 } sys_mbox_t;
 
 typedef struct sys_sem {
-  struct spinlock s;
   struct condvar c;
   volatile int invalid;
   volatile u8 count;
@@ -27,6 +25,7 @@ typedef struct sys_sem {
 
 #define SYS_ARCH_NOWAIT  0xfffffffe
 
+extern void lwip_core_sleep(struct condvar *);
 extern void lwip_core_unlock(void);
 extern void lwip_core_lock(void);
 extern void lwip_core_init(void);
