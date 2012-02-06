@@ -28,6 +28,7 @@ extern void initsamp(void);
 extern void initpci(void);
 extern void initnet(void);
 extern void initsched(void);
+extern void initlockstat(void);
 
 static volatile int bstate;
 
@@ -106,6 +107,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initwq();        // work queues
 #endif
   initsamp();
+  initlockstat();
   initpci();
   initnet();
 

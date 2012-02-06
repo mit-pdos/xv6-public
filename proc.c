@@ -171,6 +171,13 @@ exit(void)
   panic("zombie exit");
 }
 
+static void
+freeproc(struct proc *p)
+{
+  lockstat_stop(&p->lock);
+  gc_delayed(p, kmfree);
+}
+
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
@@ -198,6 +205,7 @@ allocproc(void)
 
   snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
   initlock(&p->lock, p->lockname+3);
+  lockstat_init(&p->lock);
   initcondvar(&p->cv, p->lockname);
   initwqframe(&p->wqframe);
 
@@ -208,7 +216,7 @@ allocproc(void)
   if((p->kstack = ksalloc(slab_stack)) == 0){
     if (ns_remove(nspid, KI(p->pid), p) == 0)
       panic("allocproc: ns_remove");
-    gc_delayed(p, kmfree);
+    freeproc(p);
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
@@ -560,7 +568,7 @@ fork(int flags)
       np->state = UNUSED;
       if (ns_remove(nspid, KI(np->pid), np) == 0)
 	panic("fork: ns_remove");
-      gc_delayed(np, kmfree);
+      freeproc(np);
       return -1;
     }
   } else {
@@ -626,7 +634,7 @@ wait(void)
 	  p->parent = 0;
 	  p->name[0] = 0;
 	  p->killed = 0;
-	  gc_delayed(p, kmfree);
+          freeproc(p);
 	  return pid;
 	}
 	release(&p->lock);
@@ -665,7 +673,7 @@ threadalloc(void (*fn)(void *), void *arg)
   
   p->vmap = vmap_alloc();
   if (p->vmap == NULL) {
-    gc_delayed(p, kmfree);
+    freeproc(p);
     return NULL;
   }
 

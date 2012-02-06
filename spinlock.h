@@ -1,4 +1,5 @@
 #pragma once
+#include "lockstat.h"
 
 // Mutual exclusion lock.
 struct spinlock {
@@ -10,6 +11,10 @@ struct spinlock {
   struct cpu *cpu;   // The cpu holding the lock.
   uptr pcs[10];      // The call stack (an array of program counters)
                      // that locked the lock.
+#endif
+
+#if LOCKSTAT
+  struct klockstat *stat;
 #endif
 };
 
