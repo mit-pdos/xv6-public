@@ -267,12 +267,9 @@ void            sampconf(void);
 // spinlock.c
 void            acquire(struct spinlock*);
 int             tryacquire(struct spinlock*);
-void            getcallerpcs(void*, uptr*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, const char*);
 void            release(struct spinlock*);
-void            pushcli(void);
-void            popcli(void);
 
 // syscall.c
 int             argint64(int, u64*);
@@ -300,6 +297,9 @@ void            swtch(struct context**, struct context*);
 
 // trap.c
 extern struct segdesc bootgdt[NSEGS];
+void            pushcli(void);
+void            popcli(void);
+void            getcallerpcs(void*, uptr*);
 
 // uart.c
 void            uartputc(char c);

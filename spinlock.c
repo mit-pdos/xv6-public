@@ -108,24 +108,6 @@ release(struct spinlock *lk)
   popcli();
 }
 
-// Record the current call stack in pcs[] by following the %ebp chain.
-void
-getcallerpcs(void *v, uptr pcs[])
-{
-  uptr *rbp;
-  int i;
-
-  rbp = (uptr*)v;
-  for(i = 0; i < 10; i++){
-    if(rbp == 0 || rbp < (uptr*)KBASE || rbp == (uptr*)(~0UL))
-      break;
-    pcs[i] = rbp[1];     // saved %rip
-    rbp = (uptr*)rbp[0]; // saved %rbp
-  }
-  for(; i < 10; i++)
-    pcs[i] = 0;
-}
-
 // Check whether this cpu is holding the lock.
 #if SPINLOCK_DEBUG
 int
@@ -134,30 +116,3 @@ holding(struct spinlock *lock)
     return lock->locked && lock->cpu == mycpu();
 }
 #endif
-
-
-// Pushcli/popcli are like cli/sti except that they are matched:
-// it takes two popcli to undo two pushcli.  Also, if interrupts
-// are off, then pushcli, popcli leaves them off.
-
-void
-pushcli(void)
-{
-  u64 rflags;
-
-  rflags = readrflags();
-  cli();
-  if(mycpu()->ncli++ == 0)
-    mycpu()->intena = rflags & FL_IF;
-}
-
-void
-popcli(void)
-{
-  if(readrflags()&FL_IF)
-    panic("popcli - interruptible");
-  if(--mycpu()->ncli < 0)
-    panic("popcli");
-  if(mycpu()->ncli == 0 && mycpu()->intena)
-    sti();
-}
