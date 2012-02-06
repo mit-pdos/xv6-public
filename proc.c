@@ -507,6 +507,7 @@ void *procdump(void *vk, void *v, void *arg)
   struct proc *p = (struct proc *) v;
   const char *name = "(no name)";
   const char *state;
+  uptr pc[10];
 
   if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
     state = states[p->state];
@@ -518,9 +519,8 @@ void *procdump(void *vk, void *v, void *arg)
 
   cprintf("\n%-3d %-10s %8s %2u  %lu\n", p->pid, name, state, p->cpuid, p->tsc);
 
-  uptr pc[10];
   if(p->state == SLEEPING){
-    getcallerpcs((void*)p->context->rbp, pc);
+    getcallerpcs((void*)p->context->rbp, pc, NELEM(pc));
     for(int i=0; i<10 && pc[i] != 0; i++)
       cprintf(" %lx\n", pc[i]);
   }

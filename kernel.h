@@ -299,7 +299,7 @@ void            swtch(struct context**, struct context*);
 extern struct segdesc bootgdt[NSEGS];
 void            pushcli(void);
 void            popcli(void);
-void            getcallerpcs(void*, uptr*);
+void            getcallerpcs(void*, uptr*, int);
 
 // uart.c
 void            uartputc(char c);

@@ -182,7 +182,7 @@ kerneltrap(struct trapframe *tf)
           tf->trapno, mycpu()->id, 
           tf->rip, tf->rsp, rcr2(),
           name, pid, kstack);
-  getcallerpcs((void*)tf->rbp, pc);
+  getcallerpcs((void*)tf->rbp, pc, NELEM(pc));
   for (i = 0; i < NELEM(pc) && pc[i] != 0; i++)
     __cprintf("  %p\n", pc[i]);
 

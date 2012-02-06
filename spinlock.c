@@ -40,7 +40,7 @@ tryacquire(struct spinlock *lk)
 #if SPINLOCK_DEBUG
   // Record info about lock acquisition for debugging.
   lk->cpu = mycpu();
-  getcallerpcs(&lk, lk->pcs);
+  getcallerpcs(&lk, lk->pcs, NELEM(lk->pcs));
 #endif
   return 1;
 }
@@ -72,7 +72,7 @@ acquire(struct spinlock *lk)
 #if SPINLOCK_DEBUG
   // Record info about lock acquisition for debugging.
   lk->cpu = mycpu();
-  getcallerpcs(&lk, lk->pcs);
+  getcallerpcs(&lk, lk->pcs, NELEM(lk->pcs));
 #endif
 }
 

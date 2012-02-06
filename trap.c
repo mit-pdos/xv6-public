@@ -234,18 +234,18 @@ popcli(void)
 
 // Record the current call stack in pcs[] by following the %rbp chain.
 void
-getcallerpcs(void *v, uptr pcs[])
+getcallerpcs(void *v, uptr pcs[], int n)
 {
   uptr *rbp;
   int i;
 
   rbp = (uptr*)v;
-  for(i = 0; i < 10; i++){
+  for(i = 0; i < n; i++){
     if(rbp == 0 || rbp < (uptr*)KBASE || rbp == (uptr*)(~0UL))
       break;
     pcs[i] = rbp[1];     // saved %rip
     rbp = (uptr*)rbp[0]; // saved %rbp
   }
-  for(; i < 10; i++)
+  for(; i < n; i++)
     pcs[i] = 0;
 }
