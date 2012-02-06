@@ -16,3 +16,18 @@
   retrieved from:
 
   http://www.intel.com/products/ethernet/resource.htm#s1=Gigabit%20Ethernet&s2=all&s3=Manual
+
+* qemu+gdb
+
+  # In a terminal..
+  $ make gdb
+
+  # ..In a different terminal
+  $ gdb o.qemu/kernel
+  (gdb) target remote :1234
+  (gdb) show arch
+  The target architecture is set automatically (currently i386:x86-64)
+  (gdb) set arch i386:x86-64:intel
+  (gdb) show arch
+  The target architecture is assumed to be i386:x86-64:intel
+  (gdb) c
