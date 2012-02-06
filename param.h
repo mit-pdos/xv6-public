@@ -16,6 +16,7 @@
 #define WQSHIFT       4  // 2^WORKSHIFT work queue slots
 #define VICTIMAGE 1000000 // cycles a proc executes before an eligible victim
 #define VERBOSE       0  // print kernel diagnostics
+#define	SPINLOCK_DEBUG 1 // Debug spin locks
 #if defined(HW_josmp)
 #define NCPU         16  // maximum number of CPUs
 #define MTRACE       0

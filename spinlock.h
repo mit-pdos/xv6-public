@@ -1,7 +1,5 @@
 #pragma once
 
-#define	SPINLOCK_DEBUG		1
-
 // Mutual exclusion lock.
 struct spinlock {
   u32 locked;       // Is the lock held?
