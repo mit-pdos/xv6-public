@@ -8,21 +8,9 @@
 #include "spinlock.h"
 #include "mtrace.h"
 
-void
-initlock(struct spinlock *lk, const char *name)
+static inline void
+locking(struct spinlock *lk)
 {
-#if SPINLOCK_DEBUG
-  lk->name = name;
-  lk->cpu = 0;
-#endif
-  lk->locked = 0;
-}
-
-int
-tryacquire(struct spinlock *lk)
-{
-  pushcli(); // disable interrupts to avoid deadlock.
-
 #if SPINLOCK_DEBUG
   if(holding(lk)) {
     cprintf("%p\n", __builtin_return_address(0));
@@ -31,44 +19,13 @@ tryacquire(struct spinlock *lk)
 #endif
 
   mtlock(lk);
-  if (xchg32(&lk->locked, 1) != 0) {
-      popcli();
-      return 0;
-  }
-  mtacquired(lk);
-
-#if SPINLOCK_DEBUG
-  // Record info about lock acquisition for debugging.
-  lk->cpu = mycpu();
-  getcallerpcs(&lk, lk->pcs, NELEM(lk->pcs));
-#endif
-  return 1;
 }
 
-// Acquire the lock.
-// Loops (spins) until the lock is acquired.
-// Holding a lock for a long time may cause
-// other CPUs to waste time spinning to acquire it.
-void
-acquire(struct spinlock *lk)
+static inline void
+locked(struct spinlock *lk)
 {
-  pushcli(); // disable interrupts to avoid deadlock.
-
-#if SPINLOCK_DEBUG
-  if(holding(lk)) {
-    cprintf("%p\n", __builtin_return_address(0));
-    panic("acquire");
-  }
-#endif
-
-  mtlock(lk);
-  // The xchg is atomic.
-  // It also serializes, so that reads after acquire are not
-  // reordered before it.
-  while(xchg32(&lk->locked, 1) != 0)
-    ;
   mtacquired(lk);
-
+  
 #if SPINLOCK_DEBUG
   // Record info about lock acquisition for debugging.
   lk->cpu = mycpu();
@@ -76,9 +33,8 @@ acquire(struct spinlock *lk)
 #endif
 }
 
-// Release the lock.
-void
-release(struct spinlock *lk)
+static inline void
+releasing(struct spinlock *lk)
 {
 #if SPINLOCK_DEBUG
   if(!holding(lk)) {
@@ -93,6 +49,62 @@ release(struct spinlock *lk)
   lk->pcs[0] = 0;
   lk->cpu = 0;
 #endif
+}
+
+// Check whether this cpu is holding the lock.
+#if SPINLOCK_DEBUG
+int
+holding(struct spinlock *lock)
+{
+  return lock->locked && lock->cpu == mycpu();
+}
+#endif
+
+void
+initlock(struct spinlock *lk, const char *name)
+{
+#if SPINLOCK_DEBUG
+  lk->name = name;
+  lk->cpu = 0;
+#endif
+  lk->locked = 0;
+}
+
+int
+tryacquire(struct spinlock *lk)
+{
+  pushcli();
+  locking(lk);
+  if (xchg32(&lk->locked, 1) != 0) {
+      popcli();
+      return 0;
+  }
+  locked(lk);
+  return 1;
+}
+
+// Acquire the lock.
+// Loops (spins) until the lock is acquired.
+// Holding a lock for a long time may cause
+// other CPUs to waste time spinning to acquire it.
+void
+acquire(struct spinlock *lk)
+{
+  pushcli();
+  locking(lk);
+  // The xchg is atomic.
+  // It also serializes, so that reads after acquire are not
+  // reordered before it.
+  while(xchg32(&lk->locked, 1) != 0)
+    ;
+  locked(lk);
+}
+
+// Release the lock.
+void
+release(struct spinlock *lk)
+{
+  releasing(lk);
 
   // The xchg serializes, so that reads before release are
   // not reordered after it.  The 1996 PentiumPro manual (Volume 3,
@@ -107,12 +119,3 @@ release(struct spinlock *lk)
 
   popcli();
 }
-
-// Check whether this cpu is holding the lock.
-#if SPINLOCK_DEBUG
-int
-holding(struct spinlock *lock)
-{
-    return lock->locked && lock->cpu == mycpu();
-}
-#endif
