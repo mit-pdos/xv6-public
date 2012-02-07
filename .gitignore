@@ -9,3 +9,4 @@ o.*
 /mscan.syms
 /mscan.kern
 config.mk
+lwip
