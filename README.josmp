@@ -10,6 +10,7 @@ wq
 EOM
 
 ssh root@josmp reboot
+ipmitool -I lanplus -A MD5 -H josmpadm -U ADMIN power reset
 
 ---
 
@@ -21,5 +22,5 @@ ssh root@pdos ed /tftpboot/josmp/pxelinux.cfg <<EOM
 wq
 EOM
 
-ipmitool -I lanplus -A MD5 -H josmpadm -U ADMIN -P <password> power cycle
+ipmitool -I lanplus -A MD5 -H josmpadm -U ADMIN power reset
 
