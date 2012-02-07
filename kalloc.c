@@ -137,7 +137,7 @@ kfree_pool(struct kmem *m, char *v)
     panic("kfree_pool: unknown region %p", v);
 
   // Fill with junk to catch dangling refs.
-  if (kinited && kalloc_memset && m->size <= 16384)
+  if (kalloc_memset && kinited && m->size <= 16384)
     memset(v, 1, m->size);
 
   acquire(&m->lock);
@@ -239,7 +239,7 @@ initkalloc(u64 mbaddr)
   for (int c = 0; c < NCPU; c++) {
     kmems[c].name[0] = (char) c + '0';
     safestrcpy(kmems[c].name+1, "kmem", MAXNAME-1);
-    initlock(&kmems[c].lock, kmems[c].name);
+    initlock(&kmems[c].lock, kmems[c].name, LOCKSTAT_KALLOC);
     kmems[c].size = PGSIZE;
   }
 
@@ -247,7 +247,7 @@ initkalloc(u64 mbaddr)
     for (int c = 0; c < NCPU; c++) {
       slabmem[i][c].name[0] = (char) c + '0';
       initlock(&slabmem[i][c].lock,
-               slabmem[i][c].name);
+               slabmem[i][c].name, LOCKSTAT_KALLOC);
     }
   }
 
@@ -281,6 +281,7 @@ initkalloc(u64 mbaddr)
 void
 kfree(void *v)
 {
+  verifyfree(v, mykmem()->size);
   kfree_pool(mykmem(), v);
 }
 
@@ -288,4 +289,23 @@ void
 ksfree(slab_t slab, void *v)
 {
   kfree_pool(slabmem[slab], v);
+}
+
+void
+verifyfree(char *ptr, u64 nbytes)
+{
+#if VERIFYFREE
+  char *p = ptr;
+  char *e = p + nbytes;
+  for (; p < e; p++) {
+    // Search for pointers in the ptr region
+    u64 x = *(uptr *)p;
+    if (KBASE < x && x < KBASE+(128ull<<30)) {
+      struct klockstat *kls = (struct klockstat *) x;
+      if (kls->magic == LOCKSTAT_MAGIC)
+        panic("verifyunmarked: LOCKSTAT_MAGIC %p(%lu):%p->%p", 
+              ptr, nbytes, p, kls);
+    }
+  }
+#endif
 }

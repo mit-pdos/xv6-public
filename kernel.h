@@ -154,7 +154,7 @@ void*           kmalloc(u64);
 void            kmfree(void*);
 int             kmalign(void **p, int align, u64 size);
 void            kmalignfree(void *);
-
+void            verifyfree(char *ptr, u64 nbytes);
 
 // kbd.c
 void            kbdintr(void);
@@ -268,10 +268,9 @@ void            sampconf(void);
 void            acquire(struct spinlock*);
 int             tryacquire(struct spinlock*);
 int             holding(struct spinlock*);
-void            initlock(struct spinlock*, const char*);
+void            initlock(struct spinlock*, const char*, int);
+void            destroylock(struct spinlock *lk);
 void            release(struct spinlock*);
-void            lockstat_init(struct spinlock *lk);
-void            lockstat_stop(struct spinlock *lk);
 
 // syscall.c
 int             argint64(int, u64*);

@@ -24,7 +24,7 @@ vma_alloc(void)
   memset(e, 0, sizeof(struct vma));
   e->va_type = PRIVATE;
   snprintf(e->lockname, sizeof(e->lockname), "vma:%p", e);
-  initlock(&e->lock, e->lockname);
+  initlock(&e->lock, e->lockname, LOCKSTAT_VM);
   return e;
 }
 
@@ -41,6 +41,7 @@ vma_free(void *p)
   struct vma *e = (struct vma *) p;
   if(e->n)
     vmn_decref(e->n);
+  destroylock(&e->lock);
   kmfree(e);
 }
 
@@ -107,11 +108,12 @@ vmap_alloc(void)
     return 0;
   memset(m, 0, sizeof(struct vmap));
   snprintf(m->lockname, sizeof(m->lockname), "vmap:%p", m);
-  initlock(&m->lock, m->lockname);
+  initlock(&m->lock, m->lockname, LOCKSTAT_VM);
   m->ref = 1;
   m->pml4 = setupkvm();
   if (m->pml4 == 0) {
     cprintf("vmap_alloc: setupkvm out of memory\n");
+    destroylock(&m->lock);
     kmfree(m);
     return 0;
   }
@@ -331,6 +333,8 @@ vmap_free(void *p)
   freevm(m->pml4);
   m->pml4 = 0;
   m->alloc = 0;
+  destroylock(&m->lock);
+  kmfree(m);
 }
 
 // Does any vma overlap start..start+len?

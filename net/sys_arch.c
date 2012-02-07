@@ -257,5 +257,5 @@ lwip_core_sleep(struct condvar *c)
 void
 lwip_core_init(void)
 {
-  initlock(&lwprot.lk, "lwIP lwprot");
+  initlock(&lwprot.lk, "lwIP lwprot", 1);
 }

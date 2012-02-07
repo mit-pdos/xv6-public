@@ -99,7 +99,7 @@ start_timer(struct timer_thread *t, void (*func)(void),
   t->nsec = 1000000000 / 1000*msec;
   t->func = func;
   initcondvar(&t->waitcv, name);
-  initlock(&t->waitlk, name);
+  initlock(&t->waitlk, name, LOCKSTAT_NET);
   p = threadalloc(net_timer, t);
   if (p == NULL)
     panic("net: start_timer");
@@ -406,7 +406,7 @@ initnet(void)
 void
 netrx(void *va, u16 len)
 {
-  cprintf("netrx: %u\n", len);
+  netfree(va);
 }
 
 long

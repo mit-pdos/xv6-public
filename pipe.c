@@ -36,7 +36,7 @@ pipealloc(struct file **f0, struct file **f1)
   p->writeopen = 1;
   p->nwrite = 0;
   p->nread = 0;
-  initlock(&p->lock, "pipe");
+  initlock(&p->lock, "pipe", LOCKSTAT_PIPE);
   initcondvar(&p->cv, "pipe");
   (*f0)->type = FD_PIPE;
   (*f0)->readable = 1;
@@ -50,8 +50,10 @@ pipealloc(struct file **f0, struct file **f1)
 
 //PAGEBREAK: 20
  bad:
-  if(p)
+  if(p) {
+    destroylock(&p->lock);
     kfree((char*)p);
+  }
   if(*f0)
     fileclose(*f0);
   if(*f1)
@@ -71,6 +73,7 @@ pipeclose(struct pipe *p, int writable)
   cv_wakeup(&p->cv);
   if(p->readopen == 0 && p->writeopen == 0){
     release(&p->lock);
+    destroylock(&p->lock);
     kfree((char*)p);
   } else
     release(&p->lock);

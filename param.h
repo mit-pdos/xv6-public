@@ -18,6 +18,7 @@
 #define VERBOSE       0  // print kernel diagnostics
 #define	SPINLOCK_DEBUG 1 // Debug spin locks
 #define LOCKSTAT      0
+#define VERIFYFREE    LOCKSTAT
 #if defined(HW_josmp)
 #define NCPU         16  // maximum number of CPUs
 #define MTRACE       0

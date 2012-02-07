@@ -135,26 +135,13 @@ puts(const char *s)
 }
 
 static inline void
-stacktrace(void)
+printtrace(u64 rbp)
 {
-#define PRINT_RET(i)                                       \
-  do {                                                     \
-    uptr addr = (uptr) __builtin_return_address(i);        \
-    if ((addr & KBASE) == KBASE)                           \
-      __cprintf("  %lx\n", addr);                          \
-    else                                                   \
-      return;                                              \
-} while (0)
+  uptr pc[10];
 
-  PRINT_RET(0);
-  PRINT_RET(1);
-  PRINT_RET(2);
-  PRINT_RET(3);
-  PRINT_RET(4);
-  PRINT_RET(5);
-  PRINT_RET(6);
-
-#undef PRINT_RET
+  getcallerpcs((void*)rbp, pc, NELEM(pc));
+  for (int i = 0; i < NELEM(pc) && pc[i] != 0; i++)
+    __cprintf("  %p\n", pc[i]);
 }
 
 void __noret__
@@ -164,8 +151,6 @@ kerneltrap(struct trapframe *tf)
   const char *name = "(no name)";
   void *kstack = NULL;
   int pid = 0;
-  uptr pc[10];
-  int i;
 
   cli();
   acquire(&cons.lock);
@@ -182,9 +167,7 @@ kerneltrap(struct trapframe *tf)
           tf->trapno, mycpu()->id, 
           tf->rip, tf->rsp, rcr2(),
           name, pid, kstack);
-  getcallerpcs((void*)tf->rbp, pc, NELEM(pc));
-  for (i = 0; i < NELEM(pc) && pc[i] != 0; i++)
-    __cprintf("  %p\n", pc[i]);
+  printtrace(tf->rbp);
 
   panicked = 1;
   sys_halt();
@@ -206,7 +189,7 @@ panic(const char *fmt, ...)
   vprintfmt(writecons, 0, fmt, ap);
   va_end(ap);
   __cprintf("\n");
-  stacktrace();
+  printtrace(rrbp());
 
   panicked = 1;
   sys_halt();
@@ -337,7 +320,7 @@ consoleread(struct inode *ip, char *dst, u32 off, u32 n)
 void
 initconsole(void)
 {
-  initlock(&cons.lock, "console");
+  initlock(&cons.lock, "console", LOCKSTAT_CONSOLE);
   cons.locking = 1;
 
   devsw[CONSOLE].write = consolewrite;

@@ -275,7 +275,7 @@ e1000attach(struct pci_func *pcif)
 
   pci_func_enable(pcif);
   
-  initlock(&e1000.lk, "e1000");
+  initlock(&e1000.lk, "e1000", 1);
   e1000.membase = pcif->reg_base[0];
   e1000.iobase = pcif->reg_base[2];
   e1000.pcidevid = pcif->dev_id;

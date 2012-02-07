@@ -62,7 +62,7 @@ crange_alloc(int nlevel)
   cr->crange_head.size = 0;
   assert(kmalign((void **) &cr->crange_head.lock, 
 			   CACHELINE, sizeof(struct spinlock)) == 0);
-  initlock(cr->crange_head.lock, "head lock");
+  initlock(cr->crange_head.lock, "head lock", LOCKSTAT_CRANGE);
   cr->crange_head.next = kmalloc(sizeof(cr->crange_head.next[0]) * nlevel);
   for (int l = 0; l < nlevel; l++) cr->crange_head.next[l] = 0;
   if (crange_debug) cprintf("crange_alloc: return 0x%lx\n", (u64) cr);
@@ -82,6 +82,7 @@ crange_free(struct crange *cr)
     clist_range_free(e);
   }
   kmfree(cr->crange_head.next);
+  destroylock(cr->crange_head.lock);
   kmalignfree(cr->crange_head.lock);
   kmalignfree(cr);
 }
@@ -176,6 +177,7 @@ clist_range_free(void *p)
   for (int l = 0; l < e->nlevel; l++) {
     e->next[l] = (struct clist_range *) 0xDEADBEEF;
   }
+  destroylock(e->lock);
   kmalignfree(e->lock);
   kmfree(e->next);
   kmalignfree(e);
@@ -210,7 +212,7 @@ crange_new(struct crange *cr, u64 k, u64 sz, void *v, struct clist_range *n)
   for (int l = 1; l < r->nlevel; l++) r->next[l] = 0;
   assert(kmalign((void **) &r->lock, CACHELINE, 
 			   sizeof(struct spinlock)) == 0);
-  initlock(r->lock, "crange");
+  initlock(r->lock, "crange", LOCKSTAT_CRANGE);
   r->cr = cr;
   return r;
 }

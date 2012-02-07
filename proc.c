@@ -174,7 +174,7 @@ exit(void)
 static void
 freeproc(struct proc *p)
 {
-  lockstat_stop(&p->lock);
+  destroylock(&p->lock);
   gc_delayed(p, kmfree);
 }
 
@@ -204,8 +204,7 @@ allocproc(void)
 #endif
 
   snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
-  initlock(&p->lock, p->lockname+3);
-  lockstat_init(&p->lock);
+  initlock(&p->lock, p->lockname+3, LOCKSTAT_PROC);
   initcondvar(&p->cv, p->lockname);
   initwqframe(&p->wqframe);
 
