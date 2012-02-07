@@ -2,7 +2,10 @@
 
 struct cpulockstat {
   u64 acquires;
-  u64 cycles;
+  u64 locking;
+  u64 locked;
+  u64 locking_ts;
+  u64 locked_ts;
   __padout__;
 } __mpalign__;
 

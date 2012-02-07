@@ -13,6 +13,12 @@
 
 #if LOCKSTAT
 static int lockstat_enable;
+
+static inline struct cpulockstat *
+mylockstat(struct spinlock *lk)
+{
+  return &lk->stat->s.cpu[cpunum()];
+}
 #endif
 
 static inline void
@@ -23,6 +29,11 @@ locking(struct spinlock *lk)
     cprintf("%p\n", __builtin_return_address(0));
     panic("acquire");
   }
+#endif
+
+#if LOCKSTAT
+  if (lockstat_enable && lk->stat != NULL)
+    mylockstat(lk)->locking_ts = rdtsc();
 #endif
 
   mtlock(lk);
@@ -41,7 +52,9 @@ locked(struct spinlock *lk)
 
 #if LOCKSTAT
   if (lockstat_enable && lk->stat != NULL) {
-    lk->stat->s.cpu[cpunum()].acquires++;
+    struct cpulockstat *s = mylockstat(lk);
+    s->acquires++;
+    s->locked_ts = rdtsc();
   }
 #endif
 }
@@ -61,6 +74,15 @@ releasing(struct spinlock *lk)
 #if SPINLOCK_DEBUG
   lk->pcs[0] = 0;
   lk->cpu = 0;
+#endif
+
+#if LOCKSTAT
+  if (lockstat_enable && lk->stat != NULL) {
+    struct cpulockstat *s = mylockstat(lk);
+    u64 ts = rdtsc();
+    s->locking += ts - s->locking_ts;
+    s->locked += ts - s->locked_ts;
+  }
 #endif
 }
 

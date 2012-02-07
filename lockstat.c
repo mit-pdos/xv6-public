@@ -24,7 +24,7 @@ stats(void)
   if (fd < 0)
     die("lockstat: open failed");
 
-  printf(1, "## name cycles acquires\n");
+  printf(1, "## name acquires locking locked\n");
   while (1) {
     r = read(fd, &ls, sz);
     if (r < 0)
@@ -34,13 +34,16 @@ stats(void)
     if (r != sz)
       die("lockstat: unexpected read");
 
-    u64 cycles = 0, acquires = 0;
+    u64 acquires = 0, locking = 0, locked = 0;
     
     for (int i = 0; i < NCPU; i++) {
-      cycles += ls.cpu[i].cycles;
-      acquires += ls.cpu[i].acquires;
+      acquires += ls.cpu[i].acquires;      
+      locking += ls.cpu[i].locking;
+      locked += ls.cpu[i].locked;
     }
-    printf(1, "%s %lu %lu\n", ls.name, cycles, acquires);
+    if (acquires > 0)
+      printf(1, "%s %lu %lu %lu\n", 
+             ls.name, acquires, locking, locked);
   }
 }
 
