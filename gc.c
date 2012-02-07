@@ -238,14 +238,6 @@ gc_delayed2(int a1, u64 a2, void (*dofree)(int,u64))
 }
 
 void
-gc_start(void)
-{
-  // XXX hack?
-  if (gc_state[mycpu()->id].cnt++ % 10000 == 0)
-    cv_wakeup(&gc_state[mycpu()->id].cv);
-}
-
-void
 gc_begin_epoch(void)
 {
   if (myproc() == NULL) return;
@@ -266,8 +258,7 @@ gc_end_epoch(void)
   --myproc()->epoch_depth;
   release(&myproc()->gc_epoch_lock);
   if (myproc()->epoch_depth == 0 && gc_state[mycpu()->id].ndelayed > NGC) 
-    gc_start();
-
+    cv_wakeup(&gc_state[mycpu()->id].cv);
 }
 
 void gc_dumpstat(void)
@@ -290,7 +281,7 @@ gc_worker(void *x)
   for (;;) {
     u64 i;
     acquire(&wl);
-    cv_sleep(&gc_state[mycpu()->id].cv, &wl);  
+    cv_sleepto(&gc_state[mycpu()->id].cv, &wl, nsectime() + 1000000000);
     release(&wl);
     gc_state[mycpu()->id].nrun++;
     u64 global = global_epoch;

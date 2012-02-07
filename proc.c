@@ -370,12 +370,6 @@ scheduler(void)
       }
     }
 
-    int now = ticks;
-    if (now - mycpu()->last_rcu_gc_ticks > 100) {
-      gc_start();
-      mycpu()->last_rcu_gc_ticks = now;
-    }
-
     if (idle[mycpu()->id]) {
       int worked;
       do {

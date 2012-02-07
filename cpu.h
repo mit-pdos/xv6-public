@@ -10,7 +10,6 @@ struct cpu {
   struct segdesc gdt[NSEGS];   // x86 global descriptor table
   struct taskstate ts;         // Used by x86 to find stack for interrupt
   struct context *scheduler;   // swtch() here to enter scheduler
-  u64 last_rcu_gc_ticks;
   struct wqframe *wqframe;
 
   // Cpu-local storage variables; see below
