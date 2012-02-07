@@ -334,6 +334,7 @@ vmap_free(void *p)
   m->pml4 = 0;
   m->alloc = 0;
   destroylock(&m->lock);
+  kmfree(m);
 }
 
 // Does any vma overlap start..start+len?
