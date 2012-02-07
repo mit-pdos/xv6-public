@@ -277,7 +277,7 @@ gc_worker(void *x)
   if (VERBOSE)
     cprintf("gc_worker: %d\n", mycpu()->id);
 
-  initlock(&wl, "rcu_gc_worker dummy");   // dummy lock
+  initlock(&wl, "rcu_gc_worker dummy", LOCKSTAT_GC);   // dummy lock
   for (;;) {
     u64 i;
     acquire(&wl);
@@ -305,13 +305,13 @@ initprocgc(struct proc *p)
 {
   p->epoch = global_epoch;
   p->epoch_depth = 0;
-  initlock(&p->gc_epoch_lock, "per process gc_lock");
+  initlock(&p->gc_epoch_lock, "per process gc_lock", 0);
 }
 
 void
 initgc(void)
 {
-  initlock(&gc_lock.l, "gc");
+  initlock(&gc_lock.l, "gc", LOCKSTAT_GC);
   global_epoch = NEPOCH-2;
 
   for (int i = 0; i < ncpu; i++) {

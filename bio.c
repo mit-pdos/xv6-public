@@ -97,6 +97,7 @@ bget(u32 dev, u64 sector, int *writer)
   victim->flags |= B_BUSY;
   ns_remove(bufns, KII(victim->dev, victim->sector), victim);
   release(&victim->lock);
+  destroylock(&victim->lock);
   gc_delayed(victim, kmfree);
 
   b = kmalloc(sizeof(*b));
@@ -105,10 +106,11 @@ bget(u32 dev, u64 sector, int *writer)
   b->flags = B_BUSY;
   *writer = 1;
   snprintf(b->lockname, sizeof(b->lockname), "cv:buf:%d", b->sector);
-  initlock(&b->lock, b->lockname+3);
+  initlock(&b->lock, b->lockname+3, LOCKSTAT_BIO);
   initcondvar(&b->cv, b->lockname);
   gc_begin_epoch();
   if (ns_insert(bufns, KII(b->dev, b->sector), b) < 0) {
+    destroylock(&b->lock);
     gc_delayed(b, kmfree);
     goto loop;
   }
@@ -168,7 +170,7 @@ initbio(void)
     b->dev = 0xdeadbeef;
     b->sector = -i;	/* dummy to pre-allocate NBUF spaces for evict */
     b->flags = 0;
-    initlock(&b->lock, "bcache-lock");
+    initlock(&b->lock, "bcache-lock", LOCKSTAT_BIO);
     initcondvar(&b->cv, "bcache-cv");
     if (ns_insert(bufns, KII(b->dev, b->sector), b) < 0)
       panic("binit ns_insert");

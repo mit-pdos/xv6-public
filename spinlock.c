@@ -114,6 +114,7 @@ lockstat_init(struct spinlock *lk)
   lk->stat = kmalloc(sizeof(*lk->stat));
   if (lk->stat == NULL)
     return;
+
   memset(lk->stat, 0, sizeof(*lk->stat));
 
   lk->stat->magic = LOCKSTAT_MAGIC;
@@ -140,6 +141,8 @@ lockstat_clear(void)
   LIST_FOREACH_SAFE(stat, &lockstat_list, link, tmp) {
     if (stat->magic == 0) {
       LIST_REMOVE(stat, link);
+      // So verifyfree doesn't follow le_next
+      stat->link.le_next = NULL;
       gc_delayed(stat, kmfree);
     } else {
       memset(&stat->s.cpu, 0, sizeof(stat->s.cpu));
@@ -211,14 +214,16 @@ initlockstat(void)
 #endif
 
 void
-initlock(struct spinlock *lk, const char *name)
+initlock(struct spinlock *lk, const char *name, int lockstat)
 {
 #if SPINLOCK_DEBUG
   lk->name = name;
   lk->cpu = 0;
 #endif
 #if LOCKSTAT
-  lockstat_init(lk);
+  lk->stat = NULL;
+  if (lockstat)
+    lockstat_init(lk);
 #endif
   lk->locked = 0;
 }

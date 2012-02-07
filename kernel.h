@@ -268,7 +268,7 @@ void            sampconf(void);
 void            acquire(struct spinlock*);
 int             tryacquire(struct spinlock*);
 int             holding(struct spinlock*);
-void            initlock(struct spinlock*, const char*);
+void            initlock(struct spinlock*, const char*, int);
 void            destroylock(struct spinlock *lk);
 void            release(struct spinlock*);
 

@@ -32,7 +32,7 @@ kminit(void)
   for (int c = 0; c < NCPU; c++) {
     freelists[c].name[0] = (char) c + '0';
     safestrcpy(freelists[c].name+1, "freelist", MAXNAME-1);
-    initlock(&freelists[c].lock, freelists[c].name);
+    initlock(&freelists[c].lock, freelists[c].name, LOCKSTAT_KMALLOC);
   }
 }
 
@@ -102,7 +102,7 @@ kmfree(void *ap)
   b = (long) h->next;
   if(b < 0 || b > KMMAX)
     panic("kmfree bad bucket");
-  verifyfree(ap, 1 << b);
+  verifyfree(ap, (1 << b) - sizeof(struct header));
   h->next = freelists[c].buckets[b];
   freelists[c].buckets[b] = h;
 

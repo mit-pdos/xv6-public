@@ -234,6 +234,7 @@ ifree(void *arg)
     ip->dir = 0;
   }
 
+  destroylock(&ip->lock);
   kmfree(ip);
 }
 
@@ -295,10 +296,11 @@ iget(u32 dev, u32 inum)
   ip->flags = I_BUSYR | I_BUSYW;
   ip->readbusy = 1;
   snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
-  initlock(&ip->lock, ip->lockname+3);
+  initlock(&ip->lock, ip->lockname+3, LOCKSTAT_FS);
   initcondvar(&ip->cv, ip->lockname);
   ip->dir = 0;
   if (ns_insert(ins, KII(ip->dev, ip->inum), ip) < 0) {
+    destroylock(&ip->lock);
     gc_delayed(ip, kmfree);
     goto retry;
   }

@@ -320,7 +320,7 @@ consoleread(struct inode *ip, char *dst, u32 off, u32 n)
 void
 initconsole(void)
 {
-  initlock(&cons.lock, "console");
+  initlock(&cons.lock, "console", LOCKSTAT_CONSOLE);
   cons.locking = 1;
 
   devsw[CONSOLE].write = consolewrite;

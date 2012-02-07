@@ -204,7 +204,7 @@ allocproc(void)
 #endif
 
   snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
-  initlock(&p->lock, p->lockname+3);
+  initlock(&p->lock, p->lockname+3, LOCKSTAT_PROC);
   initcondvar(&p->cv, p->lockname);
   initwqframe(&p->wqframe);
 
