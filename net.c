@@ -406,7 +406,7 @@ initnet(void)
 void
 netrx(void *va, u16 len)
 {
-  cprintf("netrx: %u\n", len);
+  netfree(va);
 }
 
 long
