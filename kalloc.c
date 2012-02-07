@@ -137,7 +137,7 @@ kfree_pool(struct kmem *m, char *v)
     panic("kfree_pool: unknown region %p", v);
 
   // Fill with junk to catch dangling refs.
-  if (kalloc_memset && kinited && m->size <= 16384)
+  if (ALLOC_MEMSET && kinited && m->size <= 16384)
     memset(v, 1, m->size);
 
   acquire(&m->lock);
@@ -189,7 +189,7 @@ kalloc_pool(struct kmem *km)
 
   mtlabel(mtrace_label_block, r, m->size, "kalloc", sizeof("kalloc"));
 
-  if (kalloc_memset && m->size <= 16384)
+  if (ALLOC_MEMSET && m->size <= 16384)
     memset(r, 2, m->size);
   return (char*)r;
 }
@@ -303,7 +303,7 @@ verifyfree(char *ptr, u64 nbytes)
     if (KBASE < x && x < KBASE+(128ull<<30)) {
       struct klockstat *kls = (struct klockstat *) x;
       if (kls->magic == LOCKSTAT_MAGIC)
-        panic("verifyunmarked: LOCKSTAT_MAGIC %p(%lu):%p->%p", 
+        panic("LOCKSTAT_MAGIC %p(%lu):%p->%p", 
               ptr, nbytes, p, kls);
     }
   }
