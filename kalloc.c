@@ -136,9 +136,12 @@ kfree_pool(struct kmem *m, char *v)
   if (memsize(v) == -1ull)
     panic("kfree_pool: unknown region %p", v);
 
-  // Fill with junk to catch dangling refs.
-  if (kinited && kalloc_memset && m->size <= 16384)
-    memset(v, 1, m->size);
+  if (kinited && m->size <= 16384) {
+    verifyfree(v, m->size);
+    // Fill with junk to catch dangling refs.
+    if (kalloc_memset)
+      memset(v, 1, m->size);
+  }
 
   acquire(&m->lock);
   r = (struct run*)v;
@@ -288,4 +291,21 @@ void
 ksfree(slab_t slab, void *v)
 {
   kfree_pool(slabmem[slab], v);
+}
+
+void
+verifyfree(char *ptr, u64 nbytes)
+{
+#if VERIFYFREE
+  char *e = ptr + nbytes;
+  for (; ptr < e; ptr++) {
+    // Search for pointers in the ptr region
+    u64 x = *(uptr *)ptr;
+    if (KBASE < x && x < KBASE+(128ull<<30)) {
+      struct klockstat *kls = (struct klockstat *) x;
+      if (kls->magic == LOCKSTAT_MAGIC)
+        panic("verifyunmarked: LOCKSTAT_MAGIC %p:%lu", ptr, nbytes);
+    }
+  }
+#endif
 }

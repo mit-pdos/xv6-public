@@ -154,7 +154,7 @@ void*           kmalloc(u64);
 void            kmfree(void*);
 int             kmalign(void **p, int align, u64 size);
 void            kmalignfree(void *);
-
+void            verifyfree(char *ptr, u64 nbytes);
 
 // kbd.c
 void            kbdintr(void);

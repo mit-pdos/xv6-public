@@ -102,6 +102,7 @@ kmfree(void *ap)
   b = (long) h->next;
   if(b < 0 || b > KMMAX)
     panic("kmfree bad bucket");
+  verifyfree(ap, 1 << b);
   h->next = freelists[c].buckets[b];
   freelists[c].buckets[b] = h;
 
