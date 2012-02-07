@@ -97,72 +97,7 @@ holding(struct spinlock *lock)
 }
 #endif
 
-void
-initlock(struct spinlock *lk, const char *name)
-{
-#if SPINLOCK_DEBUG
-  lk->name = name;
-  lk->cpu = 0;
-#endif
 #if LOCKSTAT
-  lk->stat = NULL;
-#endif
-  lk->locked = 0;
-}
-
-int
-tryacquire(struct spinlock *lk)
-{
-  pushcli();
-  locking(lk);
-  if (xchg32(&lk->locked, 1) != 0) {
-      popcli();
-      return 0;
-  }
-  locked(lk, 0);
-  return 1;
-}
-
-// Acquire the lock.
-// Loops (spins) until the lock is acquired.
-// Holding a lock for a long time may cause
-// other CPUs to waste time spinning to acquire it.
-void
-acquire(struct spinlock *lk)
-{
-  u64 retries;
-
-  pushcli();
-  locking(lk);
-
-  retries = 0;
-  while(xchg32(&lk->locked, 1) != 0)
-    retries++;
-  locked(lk, retries);
-}
-
-// Release the lock.
-void
-release(struct spinlock *lk)
-{
-  releasing(lk);
-
-  // The xchg serializes, so that reads before release are
-  // not reordered after it.  The 1996 PentiumPro manual (Volume 3,
-  // 7.2) says reads can be carried out speculatively and in
-  // any order, which implies we need to serialize here.
-  // But the 2007 Intel 64 Architecture Memory Ordering White
-  // Paper says that Intel 64 and IA-32 will not move a load
-  // after a store. So lock->locked = 0 would work here.
-  // The xchg being asm volatile ensures gcc emits it after
-  // the above assignments (and after the critical section).
-  xchg32(&lk->locked, 0);
-
-  popcli();
-}
-
-#if LOCKSTAT
-
 LIST_HEAD(lockstat_list, klockstat);
 static struct lockstat_list lockstat_list = LIST_HEAD_INITIALIZER(lockstat_list);
 static struct spinlock lockstat_lock = { 
@@ -176,15 +111,12 @@ static struct spinlock lockstat_lock = {
 void
 lockstat_init(struct spinlock *lk)
 {
-  if (lk->stat != NULL)
-    panic("initlockstat");
-
   lk->stat = kmalloc(sizeof(*lk->stat));
   if (lk->stat == NULL)
     return;
   memset(lk->stat, 0, sizeof(*lk->stat));
 
-  lk->stat->active = 1;
+  lk->stat->magic = LOCKSTAT_MAGIC;
   safestrcpy(lk->stat->s.name, lk->name, sizeof(lk->stat->s.name));
 
   acquire(&lockstat_lock);
@@ -192,13 +124,11 @@ lockstat_init(struct spinlock *lk)
   release(&lockstat_lock);
 }
 
-void
+static void
 lockstat_stop(struct spinlock *lk)
 {
-  if (lk->stat != NULL) {
-    lk->stat->active = 0;
-    lk->stat = NULL;
-  }
+  if (lk->stat != NULL)
+    lk->stat->magic = 0;
 }
 
 void
@@ -208,9 +138,9 @@ lockstat_clear(void)
 
   acquire(&lockstat_lock);
   LIST_FOREACH_SAFE(stat, &lockstat_list, link, tmp) {
-    if (stat->active == 0) {
+    if (stat->magic == 0) {
       LIST_REMOVE(stat, link);
-      kmfree(stat);
+      gc_delayed(stat, kmfree);
     } else {
       memset(&stat->s.cpu, 0, sizeof(stat->s.cpu));
     }
@@ -273,21 +203,81 @@ initlockstat(void)
   devsw[DEVLOCKSTAT].write = lockstat_write;
   devsw[DEVLOCKSTAT].read = lockstat_read;
 }
-
 #else
-
-void
-lockstat_init(struct spinlock *lk)
-{
-}
-
-void
-lockstat_stop(struct spinlock *lk)
-{
-}
-
 void
 initlockstat(void)
 {
 }
 #endif
+
+void
+initlock(struct spinlock *lk, const char *name)
+{
+#if SPINLOCK_DEBUG
+  lk->name = name;
+  lk->cpu = 0;
+#endif
+#if LOCKSTAT
+  lockstat_init(lk);
+#endif
+  lk->locked = 0;
+}
+
+void
+destroylock(struct spinlock *lk)
+{
+#if LOCKSTAT
+  lockstat_stop(lk);
+#endif
+}
+
+int
+tryacquire(struct spinlock *lk)
+{
+  pushcli();
+  locking(lk);
+  if (xchg32(&lk->locked, 1) != 0) {
+      popcli();
+      return 0;
+  }
+  locked(lk, 0);
+  return 1;
+}
+
+// Acquire the lock.
+// Loops (spins) until the lock is acquired.
+// Holding a lock for a long time may cause
+// other CPUs to waste time spinning to acquire it.
+void
+acquire(struct spinlock *lk)
+{
+  u64 retries;
+
+  pushcli();
+  locking(lk);
+
+  retries = 0;
+  while(xchg32(&lk->locked, 1) != 0)
+    retries++;
+  locked(lk, retries);
+}
+
+// Release the lock.
+void
+release(struct spinlock *lk)
+{
+  releasing(lk);
+
+  // The xchg serializes, so that reads before release are
+  // not reordered after it.  The 1996 PentiumPro manual (Volume 3,
+  // 7.2) says reads can be carried out speculatively and in
+  // any order, which implies we need to serialize here.
+  // But the 2007 Intel 64 Architecture Memory Ordering White
+  // Paper says that Intel 64 and IA-32 will not move a load
+  // after a store. So lock->locked = 0 would work here.
+  // The xchg being asm volatile ensures gcc emits it after
+  // the above assignments (and after the critical section).
+  xchg32(&lk->locked, 0);
+
+  popcli();
+}

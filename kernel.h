@@ -269,9 +269,8 @@ void            acquire(struct spinlock*);
 int             tryacquire(struct spinlock*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, const char*);
+void            destroylock(struct spinlock *lk);
 void            release(struct spinlock*);
-void            lockstat_init(struct spinlock *lk);
-void            lockstat_stop(struct spinlock *lk);
 
 // syscall.c
 int             argint64(int, u64*);

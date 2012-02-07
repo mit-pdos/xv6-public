@@ -1,5 +1,7 @@
 #include "queue.h"
 
+#define LOCKSTAT_MAGIC 0xb4cd79c1b2e46f40ull
+
 struct cpulockstat {
   u64 acquires;
   u64 contends;
@@ -17,7 +19,7 @@ struct lockstat {
 };
 
 struct klockstat {
-  u8 active;
+  u64 magic;
   LIST_ENTRY(klockstat) link;
   struct lockstat s;
 };
