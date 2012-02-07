@@ -191,6 +191,14 @@ rrsp(void)
   return val;
 }
 
+static inline u64
+rrbp(void)
+{
+  u64 val;
+  __asm volatile("movq %%rbp,%0" : "=r" (val));
+  return val;
+}
+
 static inline void
 lcr4(u64 val)
 {
