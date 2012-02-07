@@ -56,7 +56,7 @@ main(int ac, char **av)
   for(int i = 0; i < nthread; i++) {
     sbrk(8192);
     void *tstack = sbrk(0);
-    printf(1, "tstack %lx\n", tstack);
+    // printf(1, "tstack %lx\n", tstack);
     int tid = forkt(tstack, thr, (void *)(u64)i);
     if (0) printf(1, "mapbench[%d]: child %d\n", getpid(), tid);
   }
