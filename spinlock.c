@@ -40,7 +40,7 @@ locking(struct spinlock *lk)
 }
 
 static inline void
-locked(struct spinlock *lk)
+locked(struct spinlock *lk, u64 retries)
 {
   mtacquired(lk);
   
@@ -53,6 +53,8 @@ locked(struct spinlock *lk)
 #if LOCKSTAT
   if (lockstat_enable && lk->stat != NULL) {
     struct cpulockstat *s = mylockstat(lk);
+    if (retries > 0)
+      s->contends++;
     s->acquires++;
     s->locked_ts = rdtsc();
   }
@@ -117,7 +119,7 @@ tryacquire(struct spinlock *lk)
       popcli();
       return 0;
   }
-  locked(lk);
+  locked(lk, 0);
   return 1;
 }
 
@@ -128,14 +130,15 @@ tryacquire(struct spinlock *lk)
 void
 acquire(struct spinlock *lk)
 {
+  u64 retries;
+
   pushcli();
   locking(lk);
-  // The xchg is atomic.
-  // It also serializes, so that reads after acquire are not
-  // reordered before it.
+
+  retries = 0;
   while(xchg32(&lk->locked, 1) != 0)
-    ;
-  locked(lk);
+    retries++;
+  locked(lk, retries);
 }
 
 // Release the lock.
