@@ -275,7 +275,7 @@ main(void)
       printf(2, "telnetd accept: %d\n", ss);
       continue;
     }
-    printf(1, "httpd: connection\n");
+    printf(1, "httpd: connection %s\n", ipaddr(&sin));
 
     client(ss);
     close(ss);

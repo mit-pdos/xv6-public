@@ -37,7 +37,7 @@ main(void)
       printf(2, "telnetd accept: %d\n", ss);
       continue;
     }
-    printf(1, "telnetd: connection\n");
+    printf(1, "telnetd: connection %s\n", ipaddr(&sin));
 
     pid = fork(0);
     if (pid < 0) {
