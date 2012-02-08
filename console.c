@@ -162,10 +162,10 @@ kerneltrap(struct trapframe *tf)
     kstack = myproc()->kstack;
   }
   __cprintf("kernel trap %u cpu %u\n"
-          "  tf: rip %p rsp %p cr2 %p\n"
+          "  tf: rip %p rsp %p cr2 %p cs %p\n"
           "  proc: name %s pid %u kstack %p\n",
           tf->trapno, mycpu()->id, 
-          tf->rip, tf->rsp, rcr2(),
+          tf->rip, tf->rsp, rcr2(), tf->cs,
           name, pid, kstack);
   printtrace(tf->rbp);
 
