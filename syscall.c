@@ -174,6 +174,7 @@ extern long sys_socket(int, int, int);
 extern long sys_bind(int, void*, int);
 extern long sys_listen(int, int);
 extern long sys_accept(int, void*, void*);
+extern long sys_pread(int fd, void *ubuf, size_t count, off_t offset);
 
 #define SYSCALL(name) [SYS_##name] = (void*)sys_##name
 
@@ -206,6 +207,7 @@ static long (*syscalls[])(u64, u64, u64, u64, u64, u64) = {
   SYSCALL(bind),
   SYSCALL(listen),
   SYSCALL(accept),
+  SYSCALL(pread),
 };
 
 void

@@ -25,6 +25,7 @@ int uptime(void);
 int map(void *addr, int len);
 int unmap(void *addr, int len);
 void halt(void);
+ssize_t pread(int, void*, size_t, off_t);
 
 // ulib.c
 int stat(char*, struct stat*);

@@ -92,7 +92,8 @@ UPROGS= \
 	_sleep \
 	_dirbench \
 	_usertests \
-	_lockstat
+	_lockstat \
+	_preadtest
 UPROGS := $(addprefix $(O)/, $(UPROGS))
 
 all: $(O)/kernel
