@@ -3,6 +3,7 @@
 #include "fcntl.h"
 #include "user.h"
 #include "amd64.h"
+#include "ipc.h"
 
 // XXX(sbw) add a memlayout.h?
 #define KSHARED 0xFFFFF00000000000ull
@@ -12,11 +13,6 @@
 #define PSIZE (4*BSIZE)
 
 static char buf[BSIZE];
-
-struct ipcctl {
-  volatile char done;
-  volatile long result;
-};
 
 struct ipcctl *ipcctl = (struct ipcctl*)KSHARED;
 
@@ -46,6 +42,12 @@ main(int ac, char **av)
   t0 = rdtsc();
   for (k = 0; k < FSIZE; k+=PSIZE) {
     kernlet_pread(fd, PSIZE, k);
+    
+    while (ipcctl->done == 0)
+        nop_pause();
+
+    die("preadtest: %d\n", (int)ipcctl->result);
+
     for (i = k; i < k+PSIZE; i+=BSIZE)
       if (pread(fd, buf, BSIZE, i) != BSIZE)
         die("pread failed");
