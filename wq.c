@@ -47,13 +47,13 @@ wq_stat(void)
   return &stat[cpunum()];
 }
 
-static struct work *
+struct work *
 allocwork(void)
 {
   return (struct work *)kalloc();
 }
 
-static void
+void
 freework(struct work *w)
 {
   kfree(w);
@@ -159,8 +159,8 @@ __wq_steal(int c)
 static void
 __wq_run(struct work *w)
 {
-  void (*fn)(struct work*, void*, void*) = w->rip;
-  fn(w, w->arg0, w->arg1);
+  void (*fn)(struct work*, void*, void*, void*, void*) = w->rip;
+  fn(w, w->arg0, w->arg1, w->arg2, w->arg3);
   freework(w);
 }
 
