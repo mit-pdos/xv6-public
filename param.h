@@ -13,7 +13,7 @@
 #define CACHELINE    64  // cache line size
 #define CPUKSTACKS   (NPROC + NCPU)
 #define QUANTUM      10  // scheduling time quantum and tick length (in msec)
-#define WQSHIFT       4  // 2^WORKSHIFT work queue slots
+#define CILKSHIFT     4  // 2^WORKSHIFT work queue slots
 #define VICTIMAGE 1000000 // cycles a proc executes before an eligible victim
 #define VERBOSE       0  // print kernel diagnostics
 #define	SPINLOCK_DEBUG 1 // Debug spin locks
@@ -21,20 +21,19 @@
 #define VERIFYFREE    LOCKSTAT
 #define ALLOC_MEMSET  1
 #define KSHAREDSIZE   (32 << 10)
+#define WQENABLE      1
+#define WQSHIFT       4
 #if defined(HW_josmp)
 #define NCPU         16  // maximum number of CPUs
 #define MTRACE       0
-#define WQENABLE     0   // Enable work queue
 #define PERFSIZE     (1<<30ull)
 #elif defined(HW_qemu)
 #define NCPU         4   // maximum number of CPUs
 #define MTRACE       0
-#define WQENABLE     1   // Enable work queue
 #define PERFSIZE     (16<<20ull)
 #elif defined(HW_ud0)
 #define NCPU         4   // maximum number of CPUs
 #define MTRACE       0
-#define WQENABLE     0   // Enable work queue
 #define PERFSIZE     (512<<20ull)
 #else
 #error "Unknown HW"

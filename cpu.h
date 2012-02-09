@@ -1,6 +1,6 @@
 #include "mmu.h"
 
-struct wqframe;
+struct cilkframe;
 
 // Per-CPU state
 struct cpu {
@@ -10,7 +10,8 @@ struct cpu {
   struct segdesc gdt[NSEGS];   // x86 global descriptor table
   struct taskstate ts;         // Used by x86 to find stack for interrupt
   struct context *scheduler;   // swtch() here to enter scheduler
-  struct wqframe *wqframe;
+  struct cilkframe *cilkframe;
+  int timer_printpc;
 
   // Cpu-local storage variables; see below
   struct cpu *cpu;

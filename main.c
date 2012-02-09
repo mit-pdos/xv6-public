@@ -24,6 +24,7 @@ extern void initdisk(void);
 extern void inituser(void);
 extern void inithz(void);
 extern void initwq(void);
+extern void initcilk(void);
 extern void initsamp(void);
 extern void initpci(void);
 extern void initnet(void);
@@ -103,8 +104,9 @@ cmain(u64 mbmagic, u64 mbaddr)
   initbio();       // buffer cache
   initinode();     // inode cache
   initdisk();      // disk
-#if WQENABLE
-  initwq();        // work queues
+  initwq();
+#if CILKENABLE
+  initcilk();
 #endif
   initsamp();
   initlockstat();

@@ -162,10 +162,10 @@ kerneltrap(struct trapframe *tf)
     kstack = myproc()->kstack;
   }
   __cprintf("kernel trap %u cpu %u\n"
-          "  tf: rip %p rsp %p cr2 %p\n"
+          "  tf: rip %p rsp %p rbp %p cr2 %p cs %p\n"
           "  proc: name %s pid %u kstack %p\n",
           tf->trapno, mycpu()->id, 
-          tf->rip, tf->rsp, rcr2(),
+          tf->rip, tf->rsp, tf->rbp, rcr2(), tf->cs,
           name, pid, kstack);
   printtrace(tf->rbp);
 
@@ -235,6 +235,14 @@ consoleintr(int (*getc)(void))
     case C('P'):  // Process listing.
       procdumpall();
       break;
+    case C('E'):  // Print user-space PCs.
+      for (u32 i = 0; i < NCPU; i++)
+        cpus[i].timer_printpc = 1;
+      break;
+    case C('T'):  // Print user-space PCs and stack traces.
+      for (u32 i = 0; i < NCPU; i++)
+        cpus[i].timer_printpc = 2;
+      break;
     case C('U'):  // Kill line.
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
@@ -248,8 +256,8 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
-    case C('W'):  // Work queue stats
-      wq_dump();
+    case C('C'):  // cilk stats
+      cilk_dump();
       break;
     case C('L'):  // Prof stats
       profdump();

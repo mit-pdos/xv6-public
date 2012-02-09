@@ -12,9 +12,9 @@ static inline uptr v2p(void *a) { return (uptr) a  - KBASE; }
 static inline void *p2v(uptr a) { return (void *) a + KBASE; }
 
 struct trapframe;
+struct cilkframe;
 struct spinlock;
 struct condvar;
-struct wqframe;
 struct context;
 struct vmnode;
 struct inode;
@@ -328,20 +328,27 @@ struct vmap *   vmap_copy(struct vmap *, int);
 
 // wq.c
 #if WQENABLE
-void            wq_push(void *rip, u64 arg0, u64 arg1);
-void            wq_start(void);
-void            wq_end(void);
-void            wq_dump(void);
 int             wq_trywork(void);
-void            initwqframe(struct wqframe *wq);
 #else
-#define wq_push(rip, arg0, arg1) do { \
+#define wq_trywork() 0
+#endif
+
+// cilk.c
+#if CILKENABLE
+void            cilk_push(void *rip, u64 arg0, u64 arg1);
+void            cilk_start(void);
+void            cilk_end(void);
+void            cilk_dump(void);
+int             cilk_trywork(void);
+void            initcilkframe(struct cilkframe *wq);
+#else
+#define cilk_push(rip, arg0, arg1) do { \
   void (*fn)(uptr, uptr) = rip; \
   fn(arg0, arg1); \
 } while(0)
-#define wq_start() do { } while(0)
-#define wq_end() do { } while(0)
-#define wq_dump() do { } while(0)
-#define wq_trywork() 0
-#define initwqframe(x) do { } while (0)
+#define cilk_start() do { } while(0)
+#define cilk_end() do { } while(0)
+#define cilk_dump() do { } while(0)
+#define cilk_trywork() 0
+#define initcilkframe(x) do { } while (0)
 #endif

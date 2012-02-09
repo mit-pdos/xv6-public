@@ -206,7 +206,7 @@ allocproc(void)
   snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
   initlock(&p->lock, p->lockname+3, LOCKSTAT_PROC);
   initcondvar(&p->cv, p->lockname);
-  initwqframe(&p->wqframe);
+  initcilkframe(&p->cilkframe);
 
   if (ns_insert(nspid, KI(p->pid), (void *) p) < 0)
     panic("allocproc: ns_insert");

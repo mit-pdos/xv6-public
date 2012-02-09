@@ -71,8 +71,21 @@ trap(struct trapframe *tf)
 
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
+    if (mycpu()->timer_printpc) {
+      cprintf("cpu%d: proc %s rip %lx rsp %lx cs %x\n",
+              mycpu()->id,
+              myproc() ? myproc()->name : "(none)",
+              tf->rip, tf->rsp, tf->cs);
+      if (mycpu()->timer_printpc == 2 && tf->rbp > KBASE) {
+        uptr pc[10];
+        getcallerpcs((void *) tf->rbp, pc, NELEM(pc));
+        for (int i = 0; i < 10 && pc[i]; i++)
+          cprintf("cpu%d:   %lx\n", mycpu()->id, pc[i]);
+      }
+      mycpu()->timer_printpc = 0;
+    }
     if (mycpu()->id == 0)
-        cv_tick();
+      cv_tick();
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:
