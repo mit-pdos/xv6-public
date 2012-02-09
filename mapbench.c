@@ -51,7 +51,7 @@ main(int ac, char **av)
   int nthread = atoi(av[1]);
 
   acquire(&l);
-  printf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
+  // printf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
 
   for(int i = 0; i < nthread; i++) {
     sbrk(8192);
@@ -72,7 +72,7 @@ main(int ac, char **av)
     acquire(&l);
   }
   release(&l);
-  printf(1, "mapbench[%d]: done\n", getpid());
+  // printf(1, "mapbench[%d]: done\n", getpid());
 
   for(int i = 0; i < nthread; i++)
     wait();

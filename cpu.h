@@ -11,6 +11,7 @@ struct cpu {
   struct taskstate ts;         // Used by x86 to find stack for interrupt
   struct context *scheduler;   // swtch() here to enter scheduler
   struct cilkframe *cilkframe;
+  int timer_printpc;
 
   // Cpu-local storage variables; see below
   struct cpu *cpu;
