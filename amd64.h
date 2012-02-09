@@ -115,12 +115,6 @@ rep_nop(void)
 }
 
 static inline void
-barrier(void)
-{
-  __asm volatile("" ::: "memory");
-}
-
-static inline void
 lidt(void *p)
 {
   __asm volatile("lidt (%0)" : : "r" (p) : "memory");
