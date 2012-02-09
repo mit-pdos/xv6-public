@@ -21,7 +21,6 @@
 #define VERIFYFREE    LOCKSTAT
 #define ALLOC_MEMSET  1
 #define KSHAREDSIZE   (32 << 10)
-#define WQENABLE      1
 #define WQSHIFT       4
 #if defined(HW_josmp)
 #define NCPU         16  // maximum number of CPUs

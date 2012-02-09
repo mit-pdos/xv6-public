@@ -1,4 +1,3 @@
-#if WQENABLE
 #include "types.h"
 #include "kernel.h"
 #include "spinlock.h"
@@ -248,5 +247,3 @@ initwq(void)
   for (i = 0; i < NCPU; i++)
     initlock(&queue[i].lock, "wq lock", LOCKSTAT_WQ);
 }
-
-#endif // WQENABLE
