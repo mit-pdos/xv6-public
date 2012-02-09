@@ -190,7 +190,7 @@ exec(char *path, char **argv)
   args.path = path;
   args.argv = argv;
 
-  wq_start();
+  cilk_start();
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     Elf64_Word type;
     if(readi(ip, (char*)&type, 
@@ -199,7 +199,7 @@ exec(char *path, char **argv)
       goto bad;
     if(type != ELF_PROG_LOAD)
       continue;
-    wq_push(dosegment, (uptr)&args, (uptr)off);
+    cilk_push(dosegment, (uptr)&args, (uptr)off);
   }
 
   if (odp) {
@@ -210,14 +210,14 @@ exec(char *path, char **argv)
     ip = 0;
   }
 
-  wq_push(doheap, (uptr)&args, (uptr)0);
+  cilk_push(doheap, (uptr)&args, (uptr)0);
 
   // dostack reads from the user address space.  The wq
   // stuff doesn't switch to the user address space.
-  //wq_push(dostack, (uptr)&args, (uptr)0);
+  //cilk_push(dostack, (uptr)&args, (uptr)0);
   dostack((uptr)&args, (uptr)0);
 
-  wq_end();
+  cilk_end();
 
   // Commit to the user image.
   oldvmap = myproc()->vmap;

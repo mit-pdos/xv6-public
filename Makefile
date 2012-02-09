@@ -30,6 +30,7 @@ LDFLAGS += -m elf_x86_64
 OBJS = \
 	bio.o \
 	cga.o \
+	cilk.o \
 	condvar.o \
 	console.o \
 	crange.o \
@@ -69,7 +70,6 @@ OBJS = \
 	vm.o \
 	trap.o \
 	trapasm.o \
-	wq.o \
 	incbin.o
 OBJS := $(addprefix $(O)/, $(OBJS))
 

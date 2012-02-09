@@ -256,8 +256,8 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
-    case C('W'):  // Work queue stats
-      wq_dump();
+    case C('C'):  // cilk stats
+      cilk_dump();
       break;
     case C('L'):  // Prof stats
       profdump();

@@ -13,7 +13,7 @@ struct context {
 } __attribute__((packed));
 
 // Work queue frame
-struct wqframe {
+struct cilkframe {
   volatile u64 ref;
 };
 
@@ -63,7 +63,7 @@ struct proc {
   struct mtrace_stacks mtrace_stacks;
 #endif
   struct runq *runq;
-  struct wqframe wqframe;
+  struct cilkframe cilkframe;
   STAILQ_ENTRY(proc) runqlink;
 
   struct condvar *oncv;        // Where it is sleeping, for kill()
