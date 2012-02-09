@@ -12,5 +12,3 @@ struct kmem {
 } __mpalign__;
 
 extern struct kmem kmems[NCPU];
-
-enum { kalloc_memset = 1 };

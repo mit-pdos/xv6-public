@@ -155,15 +155,26 @@ static int
 lockstat_read(struct inode *ip, char *dst, u32 off, u32 n)
 {
   static const u64 sz = sizeof(struct lockstat);
+  static struct {
+    struct klockstat *stat;
+    u32 off;
+  } cache;
+
   struct klockstat *stat;
   u32 cur;
 
   if (off % sz || n < sz)
     return -1;
 
-  cur = 0;
   acquire(&lockstat_lock);
-  LIST_FOREACH(stat, &lockstat_list, link) {
+  if (cache.off == off && cache.stat != NULL) {
+    cur = cache.off;
+    stat = cache.stat;
+  } else {
+    cur = 0;
+    stat = LIST_FIRST(&lockstat_list);
+  }
+  for (; stat != NULL; stat = LIST_NEXT(stat, link)) {
     struct lockstat *ls = &stat->s;
     if (n < sizeof(*ls))
       break;
@@ -176,7 +187,15 @@ lockstat_read(struct inode *ip, char *dst, u32 off, u32 n)
   }
   release(&lockstat_lock);
 
-  return cur >= off ? cur - off : 0;
+  if (cur < off) {
+    cache.off = 0;
+    cache.stat = NULL;
+    return 0;
+  }
+
+  cache.off = cur;
+  cache.stat = stat;
+  return cur - off;
 }
 
 static int

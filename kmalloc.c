@@ -102,10 +102,13 @@ kmfree(void *ap)
   b = (long) h->next;
   if(b < 0 || b > KMMAX)
     panic("kmfree bad bucket");
-  verifyfree(ap, (1 << b) - sizeof(struct header));
+
+  verifyfree(ap, (1<<b) - sizeof(struct header));
+  if (ALLOC_MEMSET)
+    memset(ap, 3, (1<<b) - sizeof(struct header));
+
   h->next = freelists[c].buckets[b];
   freelists[c].buckets[b] = h;
-
   mtunlabel(mtrace_label_heap, ap);
   release(&freelists[c].lock);
 }
