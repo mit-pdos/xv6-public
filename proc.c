@@ -375,8 +375,6 @@ scheduler(void)
         worked = wq_trywork();
       } while(worked);
       sti();
-      if (!WQENABLE)
-        hlt();
     }
   }
 }
