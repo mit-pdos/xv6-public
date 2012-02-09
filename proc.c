@@ -212,12 +212,13 @@ allocproc(void)
     panic("allocproc: ns_insert");
 
   // Allocate kernel stack if possible.
-  if((p->kstack = ksalloc(slab_stack)) == 0){
+  if((p->kstack = ksalloc(slab_stack)) == NULL){
     if (ns_remove(nspid, KI(p->pid), p) == 0)
       panic("allocproc: ns_remove");
     freeproc(p);
     return 0;
   }
+
   sp = p->kstack + KSTACKSIZE;
   
   // Leave room for trap frame.

@@ -42,6 +42,7 @@ OBJS = \
 	hwvm.o \
 	hz.o \
 	kalloc.o \
+	kernlet.o \
 	kmalloc.o \
 	kbd.o \
 	main.o \

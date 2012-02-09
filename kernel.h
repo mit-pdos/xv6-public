@@ -2,6 +2,7 @@
 #include "lib.h"
 
 #define KBASE   0xFFFFFF0000000000ull
+#define KSHARED 0xFFFFF00000000000ull
 #define USERTOP 0x0000800000000000ull
 
 #define KCSEG (2<<3)  /* kernel code segment */
@@ -127,6 +128,7 @@ void            gc_start(void);
 // hwvm.c
 void            freevm(pml4e_t*);
 pml4e_t*        setupkvm(void);
+int             setupkshared(pml4e_t *pml4, char *kshared);
 pme_t *         walkpgdir(pml4e_t*, const void*, int);
 
 // hz.c
@@ -145,6 +147,7 @@ void            ioapicenable(int irq, int cpu);
 typedef enum {
   slab_stack,
   slab_perf,
+  slab_kshared,
 } slab_t;
 char*           kalloc(void);
 void            kfree(void*);

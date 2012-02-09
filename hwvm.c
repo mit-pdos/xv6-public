@@ -120,6 +120,18 @@ setupkvm(void)
   return pml4;
 }
 
+int
+setupkshared(pml4e_t *pml4, char *kshared)
+{
+  for (u64 off = 0; off < KSHAREDSIZE; off+=4096) {
+    pme_t *pte = walkpgdir(pml4, (void*)KSHARED+off, 1);
+    if (pte == NULL)
+      panic("setupkshared: oops");
+    *pte = v2p(kshared+off) | PTE_P | PTE_U | PTE_W;
+  }
+  return 0;
+}
+
 // Switch h/w page table register to the kernel-only page table,
 // for when no process is running.
 void

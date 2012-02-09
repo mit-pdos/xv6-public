@@ -28,6 +28,11 @@ static struct kmem slabmem[][NCPU] = {
     .size  = PERFSIZE,
     .ninit = 1,
   },
+  [slab_kshared][0 ... NCPU-1] = { 
+    .name  = "   kshared",
+    .size  = KSHAREDSIZE,
+    .ninit = CPUKSTACKS,
+  },
 };
 
 extern char end[]; // first address after kernel loaded from ELF file

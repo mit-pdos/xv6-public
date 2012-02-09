@@ -20,6 +20,7 @@
 #define LOCKSTAT      0
 #define VERIFYFREE    LOCKSTAT
 #define ALLOC_MEMSET  1
+#define KSHAREDSIZE   (32 << 10)
 #if defined(HW_josmp)
 #define NCPU         16  // maximum number of CPUs
 #define MTRACE       0
@@ -28,7 +29,7 @@
 #elif defined(HW_qemu)
 #define NCPU         4   // maximum number of CPUs
 #define MTRACE       0
-#define WQENABLE     0   // Enable work queue
+#define WQENABLE     1   // Enable work queue
 #define PERFSIZE     (16<<20ull)
 #elif defined(HW_ud0)
 #define NCPU         4   // maximum number of CPUs
