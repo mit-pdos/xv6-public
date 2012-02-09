@@ -42,3 +42,4 @@ struct klockstat {
 #define LOCKSTAT_PROC      1
 #define LOCKSTAT_SCHED     1
 #define LOCKSTAT_VM        1
+#define LOCKSTAT_WQ        1
