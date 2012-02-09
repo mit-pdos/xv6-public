@@ -12,20 +12,20 @@
 //   }
 //   void foo(uptr a0, uptr a1) {
 //     char *arg = (char*) a0;
-//     wq_push(goo, a0, 0);
+//     cilk_push(goo, a0, 0);
 //     arg[0] = 'f';
 //     cprintf("foo\n");
 //   }
 //   void example(void) {
 //     char arg[2];
-//     wq_start();
-//     wq_push(foo, (uptr)arg, 0);
+//     cilk_start();
+//     cilk_push(foo, (uptr)arg, 0);
 //     cprintf("example\n");     
-//     wq_end();
+//     cilk_end();
 //     cprintf("%c %c\n", arg[0], arg[1]);
 //   }
 
-#if WQENABLE
+#if CILKENABLE
 #include "types.h"
 #include "kernel.h"
 #include "amd64.h"
@@ -38,10 +38,10 @@
 #include "mtrace.h"
 #include "qlock.h"
 
-#define NSLOTS (1 << WQSHIFT)
+#define NSLOTS (1 << CILKSHIFT)
 
-struct wqueue {
-  struct wqthread *thread[NSLOTS];
+struct cilkqueue {
+  struct cilkthread *thread[NSLOTS];
   volatile int head __mpalign__;
 
   qlock_t lock;
@@ -49,15 +49,15 @@ struct wqueue {
   __padout__;
 } __mpalign__;
 
-struct wqthread {
+struct cilkthread {
   u64 rip;
   u64 arg0;
   u64 arg1;
-  struct wqframe *frame;  // parent wqframe
+  struct cilkframe *frame;  // parent cilkframe
   __padout__;
 } __mpalign__;
 
-struct wqstat {
+struct cilkstat {
   u64 push;
   u64 full;
   u64 pop;
@@ -65,47 +65,47 @@ struct wqstat {
   __padout__;
 } __mpalign__;
 
-struct wqueue queue[NCPU] __mpalign__;
-struct wqstat stat[NCPU] __mpalign__;
+struct cilkqueue queue[NCPU] __mpalign__;
+struct cilkstat stat[NCPU] __mpalign__;
 
-static struct wqueue *
-wq_cur(void)
+static struct cilkqueue *
+cilk_cur(void)
 {
   return &queue[mycpu()->id];
 }
 
-static struct wqframe *
-wq_frame(void)
+static struct cilkframe *
+cilk_frame(void)
 {
-  return mycpu()->wqframe;
+  return mycpu()->cilkframe;
 }
 
-static struct wqstat *
-wq_stat(void)
+static struct cilkstat *
+cilk_stat(void)
 {
   return &stat[mycpu()->id];
 }
 
 static int
-__wq_push(struct wqueue *q, struct wqthread *t)
+__cilk_push(struct cilkqueue *q, struct cilkthread *t)
 {
   int i;
 
   i = q->head;
   if ((i - q->tail) == NSLOTS) {
-    wq_stat()->full++;
+    cilk_stat()->full++;
     return -1;
   }
   i = i & (NSLOTS-1);
   q->thread[i] = t;
   q->head++;
 
-  wq_stat()->push++;
+  cilk_stat()->push++;
   return 0;
 }
 
-static struct wqthread *
-__wq_pop(struct wqueue *q)
+static struct cilkthread *
+__cilk_pop(struct cilkqueue *q)
 {
   struct qnode qn;
   int i;
@@ -120,12 +120,12 @@ __wq_pop(struct wqueue *q)
   q->head--;
   ql_unlock(&q->lock, &qn);
 
-  wq_stat()->pop++;
+  cilk_stat()->pop++;
   return q->thread[i];
 }
 
-static struct wqthread *
-__wq_steal(struct wqueue *q)
+static struct cilkthread *
+__cilk_steal(struct cilkqueue *q)
 {
   struct qnode qn;
   int i;
@@ -140,19 +140,19 @@ __wq_steal(struct wqueue *q)
   q->tail++;
   ql_unlock(&q->lock, &qn);
 
-  wq_stat()->steal++;
+  cilk_stat()->steal++;
   return q->thread[i];
 }
 
 static void
-__wq_run(struct wqthread *th)
+__cilk_run(struct cilkthread *th)
 {
   void (*fn)(uptr arg0, uptr arg1) = (void*)th->rip;
-  struct wqframe *old = mycpu()->wqframe;
+  struct cilkframe *old = mycpu()->cilkframe;
 
-  mycpu()->wqframe = th->frame;
+  mycpu()->cilkframe = th->frame;
   fn(th->arg0, th->arg1);
-  mycpu()->wqframe = old;
+  mycpu()->cilkframe = old;
   subfetch(&th->frame->ref, 1);
   kfree(th);
 }
@@ -161,12 +161,12 @@ __wq_run(struct wqthread *th)
 // Guarantees some core will at some point execute the work.
 // The current core might execute the work immediately.
 void
-wq_push(void *rip, u64 arg0, u64 arg1)
+cilk_push(void *rip, u64 arg0, u64 arg1)
 {
   void (*fn)(uptr, uptr) = rip;
-  struct wqthread *th;
+  struct cilkthread *th;
 
-  th = (struct wqthread *) kalloc();
+  th = (struct cilkthread *) kalloc();
   if (th == NULL) {
     fn(arg0, arg1);
     return;
@@ -174,27 +174,27 @@ wq_push(void *rip, u64 arg0, u64 arg1)
   th->rip = (uptr) rip;
   th->arg0 = arg0;
   th->arg1 = arg1;
-  th->frame = wq_frame();
+  th->frame = cilk_frame();
 
-  if (__wq_push(wq_cur(), th)) {
+  if (__cilk_push(cilk_cur(), th)) {
     kfree(th);
     fn(arg0, arg1);
   } else 
-    fetchadd(&wq_frame()->ref, 1);
+    fetchadd(&cilk_frame()->ref, 1);
 }
 
-// Try to execute one wqthread.
+// Try to execute one cilkthread.
 // Check local queue then steal from other queues. 
 int
-wq_trywork(void)
+cilk_trywork(void)
 {
-  struct wqthread *th;
+  struct cilkthread *th;
   int i;
 
   pushcli();
-  th = __wq_pop(wq_cur());
+  th = __cilk_pop(cilk_cur());
   if (th != NULL) {
-    __wq_run(th);
+    __cilk_run(th);
     popcli();
     return 1;
   }
@@ -204,9 +204,9 @@ wq_trywork(void)
     if (i == mycpu()->id)
         continue;
     
-    th = __wq_steal(&queue[i]);
+    th = __cilk_steal(&queue[i]);
     if (th != NULL) {
-      __wq_run(th);
+      __cilk_run(th);
       popcli();
       return 1;
     }
@@ -219,41 +219,41 @@ wq_trywork(void)
 // Start a new work queue frame.
 // We don't allow nested work queue frames.
 void
-wq_start(void)
+cilk_start(void)
 { 
   pushcli();
-  if (myproc()->wqframe.ref != 0)
-    panic("wq_start");
-  mycpu()->wqframe = &myproc()->wqframe;
+  if (myproc()->cilkframe.ref != 0)
+    panic("cilk_start");
+  mycpu()->cilkframe = &myproc()->cilkframe;
 }
 
 // End of the current work queue frame.
 // The core works while the reference count of the current
 // work queue frame is not 0.
 void
-wq_end(void)
+cilk_end(void)
 {
-  while (wq_frame()->ref != 0) {
-    struct wqthread *th;
+  while (cilk_frame()->ref != 0) {
+    struct cilkthread *th;
     int i;
 
-    while ((th = __wq_pop(wq_cur())) != NULL)
-      __wq_run(th);
+    while ((th = __cilk_pop(cilk_cur())) != NULL)
+      __cilk_run(th);
 
     for (i = 0; i < NCPU; i++) {
-      th = __wq_steal(&queue[i]);
+      th = __cilk_steal(&queue[i]);
       if (th != NULL) {
-        __wq_run(th);
+        __cilk_run(th);
         break;
       }
     }
   }
-  mycpu()->wqframe = NULL;
+  mycpu()->cilkframe = NULL;
   popcli();
 }
 
 void
-wq_dump(void)
+cilk_dump(void)
 {
   int i;
   for (i = 0; i < NCPU; i++)
@@ -268,7 +268,7 @@ __test_stub(uptr a0, uptr a1)
 }
 
 void
-testwq(void)
+testcilk(void)
 {
   enum { iters = 1000 };
   static volatile int running = 1;
@@ -279,33 +279,33 @@ testwq(void)
   if (mycpu()->id == 0) {
     microdelay(1);
     s = rdtsc();
-    wq_start();
+    cilk_start();
     for (i = 0; i < iters; i++)
-      wq_push(__test_stub, i, i);
-    wq_end();
+      cilk_push(__test_stub, i, i);
+    cilk_end();
     e = rdtsc();
-    cprintf("testwq: %lu\n", (e-s)/iters);
-    wq_dump();
+    cprintf("testcilk: %lu\n", (e-s)/iters);
+    cilk_dump();
     running = 0;
   } else {
     while (running)
-      wq_trywork();
+      cilk_trywork();
   }
   popcli();
 }
 
 void
-initwqframe(struct wqframe *wq)
+initcilkframe(struct cilkframe *cilk)
 {
-  memset(wq, 0, sizeof(*wq));
+  memset(cilk, 0, sizeof(*cilk));
 }
 
 void
-initwq(void)
+initcilk(void)
 {
   int i;
 
   for (i = 0; i < NCPU; i++)
     ql_init(&queue[i].lock, "queue lock");
 }
-#endif // WQENABLE
+#endif // CILKENABLE
