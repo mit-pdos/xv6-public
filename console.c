@@ -239,6 +239,10 @@ consoleintr(int (*getc)(void))
       for (u32 i = 0; i < NCPU; i++)
         cpus[i].timer_printpc = 1;
       break;
+    case C('T'):  // Print user-space PCs and stack traces.
+      for (u32 i = 0; i < NCPU; i++)
+        cpus[i].timer_printpc = 2;
+      break;
     case C('U'):  // Kill line.
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
