@@ -20,7 +20,8 @@ NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
 
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb \
-	 -m64 -Werror -std=c99 -fms-extensions -mno-sse -mcmodel=large -I$(QEMUSRC) \
+	 -m64 -Werror -std=c99 -fms-extensions -mno-sse -mcmodel=large -mno-red-zone \
+	 -I$(QEMUSRC) \
 	 -fno-omit-frame-pointer -DHW_$(HW) -include param.h -include compiler.h
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ASFLAGS = -m64 -gdwarf-2 -MD
