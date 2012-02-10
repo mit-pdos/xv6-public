@@ -2,6 +2,7 @@
 // Input is from the keyboard or serial port.
 // Output is written to the screen and serial port.
 
+extern "C" {
 #include "types.h"
 #include "cpu.h"
 #include "kernel.h"
@@ -17,6 +18,7 @@
 #include <stdarg.h>
 #include "fmt.h"
 #include <stddef.h>
+}
 
 #define BACKSPACE 0x100
 
@@ -69,7 +71,7 @@ struct bufstate {
 static void
 writebuf(int c, void *arg)
 {
-  struct bufstate *bs = arg;
+  struct bufstate *bs = (bufstate*) arg;
   if (bs->p < bs->e) {
     bs->p[0] = c;
     bs->p++;
@@ -147,7 +149,6 @@ printtrace(u64 rbp)
 void __noret__
 kerneltrap(struct trapframe *tf)
 {
-  extern void sys_halt();
   const char *name = "(no name)";
   void *kstack = NULL;
   int pid = 0;
@@ -178,7 +179,6 @@ kerneltrap(struct trapframe *tf)
 void
 panic(const char *fmt, ...)
 {
-  extern void sys_halt();
   va_list ap;
 
   cli();

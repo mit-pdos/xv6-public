@@ -1,9 +1,12 @@
 // Intel 8250 serial port (UART).
 // http://en.wikibooks.org/wiki/Serial_Programming/8250_UART_Programming
+
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "amd64.h"
 #include "traps.h"
+}
 
 #define COM2    0x2f8
 #define COM1    0x3f8
@@ -48,9 +51,9 @@ inituart(void)
     int irq;
   } conf[] = {
     // Try COM2 (aka ttyS1) first, because it usually does SOL for IPMI.
-    { .com = COM2, .irq = IRQ_COM2 },
+    { COM2, IRQ_COM2 },
     // Still try COM1 (aka ttyS0), because it is what QEMU emulates.
-    { .com = COM1, .irq = IRQ_COM1 }
+    { COM1, IRQ_COM1 }
   };
 
   int i;
@@ -87,6 +90,6 @@ inituart(void)
   ioapicenable(irq_com, 0);
 
   // Announce that we're here.
-  for (char *p="uart..\n"; *p; p++)
+  for (const char *p="uart..\n"; *p; p++)
     uartputc(*p);
 }

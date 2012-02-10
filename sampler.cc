@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "spinlock.h"
 #include "condvar.h"
@@ -8,6 +9,7 @@
 #include "amd64.h"
 #include "cpu.h"
 #include "sampler.h"
+}
 
 static const u64 debug_sel = 
   0UL << 32 |
@@ -47,10 +49,7 @@ amdconfig(u64 ctr, u64 sel, u64 val)
   writemsr(MSR_AMD_PERF_SEL0 | ctr, sel);
 }
 
-struct pmu amdpmu = {
-  .config = amdconfig,
-  .cntval_bits = 48,
-};
+struct pmu amdpmu = { amdconfig, 48 };
 
 //
 // Intel stuff
@@ -64,10 +63,7 @@ intelconfig(u64 ctr, u64 sel, u64 val)
 }
 
 // XXX
-struct pmu intelpmu = {
-  .config = intelconfig,
-  .cntval_bits = 48,
-};
+struct pmu intelpmu = { intelconfig, 48 };
 
 void
 sampdump(void)
@@ -177,7 +173,7 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
     u64 len = hdrlen;
     u64 cc;
     
-    hdr = kmalloc(len);
+    hdr = (logheader*) kmalloc(len);
     if (hdr == NULL)
       return -1;
     hdr->ncpus = NCPU;
@@ -189,7 +185,7 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
     }
 
     cc = MIN(hdrlen-off, n);
-    memmove(dst, (void*)hdr + off, cc);
+    memmove(dst, (char*)hdr + off, cc);
     kmfree(hdr);
 
     n -= cc;
@@ -229,9 +225,9 @@ initsamp(void)
   void *p = ksalloc(slab_perf);
   if (p == NULL)
     panic("initprof: ksalloc");
-  pmulog[cpunum()].event = p;
+  pmulog[cpunum()].event = (pmuevent*) p;
   pmulog[cpunum()].capacity = PERFSIZE / sizeof(struct pmuevent);
 
-  devsw[SAMPLER].write = NULL;
+  devsw[SAMPLER].write = 0;
   devsw[SAMPLER].read = sampread;
 }

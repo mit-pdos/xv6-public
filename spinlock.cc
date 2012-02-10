@@ -1,5 +1,6 @@
 // Mutual exclusion spin locks.
 
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "amd64.h"
@@ -10,6 +11,7 @@
 #include "condvar.h"
 #include "fs.h"
 #include "file.h"
+}
 
 #if LOCKSTAT
 static int lockstat_enable;

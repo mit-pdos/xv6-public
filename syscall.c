@@ -146,35 +146,6 @@ kmemcpy(void *umem, void *src, u64 size)
   return 0;
 }
 
-extern long sys_chdir(void);
-extern long sys_close(void);
-extern long sys_dup(void);
-extern long sys_exec(void);
-extern long sys_exit(void);
-extern long sys_fork(void);
-extern long sys_fstat(void);
-extern long sys_getpid(void);
-extern long sys_kill(void);
-extern long sys_link(void);
-extern long sys_mkdir(void);
-extern long sys_mknod(void);
-extern long sys_open(void);
-extern long sys_pipe(void);
-extern long sys_read(void);
-extern long sys_sbrk(void);
-extern long sys_sleep(void);
-extern long sys_unlink(void);
-extern long sys_wait(void);
-extern long sys_write(void);
-extern long sys_uptime(void);
-extern long sys_map(void);
-extern long sys_unmap(void);
-extern long sys_halt(void);
-extern long sys_socket(int, int, int);
-extern long sys_bind(int, void*, int);
-extern long sys_listen(int, int);
-extern long sys_accept(int, void*, void*);
-
 #define SYSCALL(name) [SYS_##name] = (void*)sys_##name
 
 static long (*syscalls[])(u64, u64, u64, u64, u64, u64) = {

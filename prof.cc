@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "spinlock.h"
@@ -7,6 +8,7 @@
 #include "prof.h"
 #include "bits.h"
 #include "amd64.h"
+}
 
 extern profctr_t sprof[];
 extern profctr_t eprof[];

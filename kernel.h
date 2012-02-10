@@ -288,10 +288,11 @@ void            syscall(void);
 int             memcmp(const void*, const void*, u32);
 void*           memmove(void*, const void*, u32);
 void*           memset(void*, int, u32);
-char*           safestrcpy(char*, const char*, int);
+void*           memcpy(void*, const void *, u32);
+char*           safestrcpy(char*, const char*, u32);
 int             strlen(const char*);
 int             strncmp(const char*, const char*, u32);
-char*           strncpy(char*, const char*, int);
+char*           strncpy(char*, const char*, u32);
 int             strcmp(const char *p, const char *q);
 
 // swtch.S
@@ -378,4 +379,39 @@ void initpci(void);
 void initnet(void);
 void initsched(void);
 void initlockstat(void);
+
+// syscalls
+long sys_chdir(void);
+long sys_close(void);
+long sys_dup(void);
+long sys_exec(void);
+long sys_exit(void);
+long sys_fork(void);
+long sys_fstat(void);
+long sys_getpid(void);
+long sys_kill(void);
+long sys_link(void);
+long sys_mkdir(void);
+long sys_mknod(void);
+long sys_open(void);
+long sys_pipe(void);
+long sys_read(void);
+long sys_sbrk(void);
+long sys_sleep(void);
+long sys_unlink(void);
+long sys_wait(void);
+long sys_write(void);
+long sys_uptime(void);
+long sys_map(void);
+long sys_unmap(void);
+long sys_halt(void);
+long sys_socket(int, int, int);
+long sys_bind(int, void*, int);
+long sys_listen(int, int);
+long sys_accept(int, void*, void*);
+
+// other exported functions
+void cmain(u64 mbmagic, u64 mbaddr);
+void mpboot(void);
+
 

@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "mmu.h"
@@ -7,6 +8,7 @@
 #include "proc.h"
 #include "kernel.h"
 #include "cpu.h"
+}
 
 struct spinlock tickslock __mpalign__;
 struct condvar cv_ticks __mpalign__;

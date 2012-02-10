@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "spinlock.h"
 #include "condvar.h"
@@ -5,6 +6,8 @@
 #include "fs.h"
 #include "file.h"
 #include "stat.h"
+#include "net.h"
+}
 
 struct devsw __mpalign__ devsw[NDEV];
 
@@ -12,7 +15,7 @@ struct devsw __mpalign__ devsw[NDEV];
 struct file*
 filealloc(void)
 {
-  struct file *f = kmalloc(sizeof(struct file));
+  struct file *f = (file*) kmalloc(sizeof(struct file));
   f->ref = 1;
   return f;
 }
@@ -30,16 +33,14 @@ filedup(struct file *f)
 void
 fileclose(struct file *f)
 {
-  extern void netclose(int sock);
-
   if (subfetch(&f->ref, 1) > 0)
     return;
 
-  if(f->type == FD_PIPE)
+  if(f->type == file::FD_PIPE)
     pipeclose(f->pipe, f->writable);
-  else if(f->type == FD_INODE)
+  else if(f->type == file::FD_INODE)
     iput(f->ip);
-  else if(f->type == FD_SOCKET)
+  else if(f->type == file::FD_SOCKET)
     netclose(f->socket);
   else
     panic("fileclose bad type");
@@ -50,7 +51,7 @@ fileclose(struct file *f)
 int
 filestat(struct file *f, struct stat *st)
 {
-  if(f->type == FD_INODE){
+  if(f->type == file::FD_INODE){
     ilock(f->ip, 0);
     if(f->ip->type == 0)
       panic("filestat");
@@ -65,14 +66,13 @@ filestat(struct file *f, struct stat *st)
 int
 fileread(struct file *f, char *addr, int n)
 {
-  extern int netread(int, char *, int);
   int r;
 
   if(f->readable == 0)
     return -1;
-  if(f->type == FD_PIPE)
+  if(f->type == file::FD_PIPE)
     return piperead(f->pipe, addr, n);
-  if(f->type == FD_INODE){
+  if(f->type == file::FD_INODE){
     ilock(f->ip, 0);
     if(f->ip->type == 0)
       panic("fileread");
@@ -81,7 +81,7 @@ fileread(struct file *f, char *addr, int n)
     iunlock(f->ip);
     return r;
   }
-  if(f->type == FD_SOCKET)
+  if(f->type == file::FD_SOCKET)
     return netread(f->socket, addr, n);
   panic("fileread");
 }
@@ -90,14 +90,13 @@ fileread(struct file *f, char *addr, int n)
 int
 filewrite(struct file *f, char *addr, int n)
 {
-  extern int netwrite(int, char *, int);
   int r;
 
   if(f->writable == 0)
     return -1;
-  if(f->type == FD_PIPE)
+  if(f->type == file::FD_PIPE)
     return pipewrite(f->pipe, addr, n);
-  if(f->type == FD_INODE){
+  if(f->type == file::FD_INODE){
     ilock(f->ip, 1);
     if(f->ip->type == 0 || f->ip->type == T_DIR)
       panic("filewrite but 0 or T_DIR");
@@ -106,7 +105,7 @@ filewrite(struct file *f, char *addr, int n)
     iunlock(f->ip);
     return r;
   }
-  if(f->type == FD_SOCKET)
+  if(f->type == file::FD_SOCKET)
     return netwrite(f->socket, addr, n);
   panic("filewrite");
 }

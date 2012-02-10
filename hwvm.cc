@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "mmu.h"
@@ -11,6 +12,7 @@
 #include "proc.h"
 #include "vm.h"
 #include <stddef.h>
+}
 
 extern pml4e_t kpml4[];
 
@@ -24,7 +26,7 @@ retry:
   dir = &dir[PX(level, va)];
   entry = *dir;
   if (entry & PTE_P) {
-    next = p2v(PTE_ADDR(entry));
+    next = (pme_t*) p2v(PTE_ADDR(entry));
   } else {
     if (!create)
       return NULL;
@@ -69,8 +71,8 @@ updatepages(pme_t *pml4, void *begin, void *end, int perm)
   char *a, *last;
   pme_t *pte;
 
-  a = PGROUNDDOWN(begin);
-  last = PGROUNDDOWN(end);
+  a = (char*) PGROUNDDOWN(begin);
+  last = (char*) PGROUNDDOWN(end);
   for (;;) {
     pte = walkpgdir(pml4, a, 1);
     if(pte != 0) {
@@ -100,7 +102,7 @@ initpg(void)
     if (va >= (void*) end)
       flags |= PTE_NX;
     *sp = pa | flags;
-    va += PGSIZE*512;
+    va = (char*)va + PGSIZE*512;
     pa += PGSIZE*512;
   }
 }
@@ -154,7 +156,7 @@ freepm(pme_t *pm, int level)
   if (level != 0) {
     for (i = 0; i < 512; i++) {
       if (pm[i] & PTE_P)
-        freepm(p2v(PTE_ADDR(pm[i])), level - 1);
+        freepm((pme_t*) p2v(PTE_ADDR(pm[i])), level - 1);
     }
   }
 
@@ -176,7 +178,7 @@ freevm(pml4e_t *pml4)
   k = PX(3, KBASE);
   for (i = 0; i < k; i++) {
     if (pml4[i] & PTE_P) {
-      freepm(p2v(PTE_ADDR(pml4[i])), 2);
+      freepm((pme_t*) p2v(PTE_ADDR(pml4[i])), 2);
     }
   }
   

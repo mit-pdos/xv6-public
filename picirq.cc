@@ -1,8 +1,11 @@
 // Intel 8259A programmable interrupt controllers.
 
+extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "traps.h"
+#include "kernel.h"
+}
 
 // I/O Addresses of the two programmable interrupt controllers
 #define IO_PIC1         0x20    // Master (IRQs 0-7)

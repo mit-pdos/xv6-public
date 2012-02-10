@@ -1,8 +1,10 @@
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include "fmt.h"
+}
 
 //
 // Print a number (base <= 16) in reverse order,

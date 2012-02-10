@@ -1,7 +1,9 @@
+extern "C" {
 #include "param.h"
 #include "types.h"
 #include "kernel.h"
 #include "cpu.h"
+}
 
 struct seed {
   u64 v;

@@ -1,6 +1,8 @@
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "amd64.h"
+}
 
 #define BACKSPACE 0x100
 #define CRTPORT 0x3d4
@@ -42,7 +44,7 @@ cgaputc(int c)
 void
 initcga(void)
 {
-  char *p;
+  const char *p;
   int i;
 
   for (i = 0; i < 80*25; i++)

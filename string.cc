@@ -1,5 +1,8 @@
+extern "C" {
 #include "types.h"
 #include "amd64.h"
+#include "kernel.h"
+}
 
 void*
 memset(void *dst, int c, u32 n)
@@ -13,8 +16,8 @@ memcmp(const void *v1, const void *v2, u32 n)
 {
   const u8 *s1, *s2;
   
-  s1 = v1;
-  s2 = v2;
+  s1 = (const u8*) v1;
+  s2 = (const u8*) v2;
   while(n-- > 0){
     if(*s1 != *s2)
       return *s1 - *s2;
@@ -30,8 +33,8 @@ memmove(void *dst, const void *src, u32 n)
   const char *s;
   char *d;
 
-  s = src;
-  d = dst;
+  s = (const char*) src;
+  d = (char*) dst;
   if(s < d && s + n > d){
     s += n;
     d += n;

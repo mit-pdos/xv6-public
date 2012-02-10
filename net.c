@@ -21,6 +21,7 @@
 #include "proc.h"
 #include "fs.h"
 #include "file.h"
+#include "net.h"
 
 void
 netfree(void *va)

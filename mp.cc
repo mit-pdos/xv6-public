@@ -2,11 +2,13 @@
 // Search memory for MP description structures.
 // http://developer.intel.com/design/pentium/datashts/24201606.pdf
 
+extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "mp.h"
 #include "kernel.h"
 #include "cpu.h"
+}
 
 struct cpu cpus[NCPU];
 static struct cpu *bcpu __mpalign__;
@@ -37,7 +39,7 @@ mpsearch1(u8 *addr, int len)
 {
   u8 *e, *p;
 
-  addr = p2v((uptr) addr);
+  addr = (u8*) p2v((uptr) addr);
   e = addr+len;
   for(p = addr; p < e; p += sizeof(struct mp))
     if(memcmp(p, "_MP_", 4) == 0 && sum(p, sizeof(struct mp)) == 0)

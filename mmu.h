@@ -39,17 +39,17 @@ struct segdesc {
 // SEGDESC constructs a segment descriptor literal
 // with the given, base, limit, and type bits.
 #define SEGDESC(base, limit, bits) { \
-  (limit)&0xffff, (base)&0xffff, \
-  ((base)>>16)&0xff, \
+  (limit)&0xffff, (u16) ((base)&0xffff), \
+  (u8) (((base)>>16)&0xff), \
   (bits)&0xff, \
   (((bits)>>4)&0xf0) | ((limit>>16)&0xf), \
-  ((base)>>24)&0xff, \
+  (u8) (((base)>>24)&0xff), \
 }
 
 // SEGDESCHI constructs an extension segment descriptor
 // literal that records the high bits of base.
 #define SEGDESCHI(base) { \
-  ((base)>>32)&0xffff, ((base)>>48)&0xffff, \
+  (u16) (((base)>>32)&0xffff), (u16) (((base)>>48)&0xffff), \
 }
 
 // Segment selectors (indexes) in our GDTs.

@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "mmu.h"
 #include "spinlock.h"
@@ -14,6 +15,7 @@
 #include "vm.h"
 #include "prof.h"
 #include <stddef.h>
+}
 
 #define USTACKPAGES 2
 #define BRK (USERTOP >> 1)
@@ -31,8 +33,7 @@ struct eargs {
 static void
 dosegment(uptr a0, u64 a1)
 {
-  static DEFINE_PROFCTR(dosegment_prof);
-  struct eargs *args = (void*) a0;
+  struct eargs *args = (eargs*) a0;
   u64 off = a1;
   struct vmnode *vmn = NULL;
   struct proghdr ph;
@@ -50,26 +51,28 @@ dosegment(uptr a0, u64 a1)
     goto bad;
   }
 
-  uptr va_start = PGROUNDDOWN(ph.vaddr);
-  uptr va_end = PGROUNDUP(ph.vaddr + ph.memsz);
+  {
+    uptr va_start = PGROUNDDOWN(ph.vaddr);
+    uptr va_end = PGROUNDUP(ph.vaddr + ph.memsz);
   
-  int npg = (va_end - va_start) / PGSIZE;
-  if (odp) {
-    if ((vmn = vmn_alloc(npg, ONDEMAND)) == 0)
+    int npg = (va_end - va_start) / PGSIZE;
+    if (odp) {
+      if ((vmn = vmn_alloc(npg, ONDEMAND)) == 0)
+        goto bad;
+    } else {
+      if ((vmn = vmn_allocpg(npg)) == 0)
+        goto bad;
+    }
+
+    if(vmn_load(vmn, args->ip, ph.offset, ph.filesz) < 0)
       goto bad;
-  } else {
-    if ((vmn = vmn_allocpg(npg)) == 0)
+
+    if(vmap_insert(args->vmap, vmn, ph.vaddr) < 0)
       goto bad;
+
+    prof_end(dosegment_prof);
+    return;
   }
-
-  if(vmn_load(vmn, args->ip, ph.offset, ph.filesz) < 0)
-    goto bad;
-
-  if(vmap_insert(args->vmap, vmn, ph.vaddr) < 0)
-    goto bad;
-
-  prof_end(dosegment_prof);
-  return;
   
 bad:
   panic("dosegment: Oops");
@@ -77,9 +80,8 @@ bad:
 
 static void dostack(uptr a0, u64 a1)
 {
-  static DEFINE_PROFCTR(dostack_prof);
   struct vmnode *vmn = NULL;
-  struct eargs *args = (void*) a0;  
+  struct eargs *args = (eargs*) a0;  
   int argc;
   uptr sp;
   uptr ustack[1+MAXARG+1];
@@ -132,9 +134,8 @@ bad:
 
 static void doheap(uptr a0, u64 a1)
 {
-  static DEFINE_PROFCTR(doheap_prof);
   struct vmnode *vmn = NULL;
-  struct eargs *args = (void*) a0;
+  struct eargs *args = (eargs*) a0;
 
   prof_start(doheap_prof);
   // Allocate a vmnode for the heap.
@@ -155,7 +156,6 @@ bad:
 int
 exec(char *path, char **argv)
 {
-  static DEFINE_PROFCTR(exec_prof);
   struct inode *ip = NULL;
   struct vmap *vmap = NULL;
   struct vmnode *vmn = NULL;

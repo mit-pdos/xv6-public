@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "mmu.h"
 #include "kernel.h"
@@ -8,6 +9,7 @@
 #include "fs.h"
 #include "file.h"
 #include "cpu.h"
+}
 
 #define PIPESIZE 512
 
@@ -38,11 +40,11 @@ pipealloc(struct file **f0, struct file **f1)
   p->nread = 0;
   initlock(&p->lock, "pipe", LOCKSTAT_PIPE);
   initcondvar(&p->cv, "pipe");
-  (*f0)->type = FD_PIPE;
+  (*f0)->type = file::FD_PIPE;
   (*f0)->readable = 1;
   (*f0)->writable = 0;
   (*f0)->pipe = p;
-  (*f1)->type = FD_PIPE;
+  (*f1)->type = file::FD_PIPE;
   (*f1)->readable = 0;
   (*f1)->writable = 1;
   (*f1)->pipe = p;

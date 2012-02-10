@@ -1,8 +1,10 @@
+extern "C" {
 #include "types.h"
 #include "multiboot.h"
 #include "kernel.h"
 #include "cpu.h"
 #include "amd64.h"
+}
 
 static volatile int bstate;
 
@@ -30,7 +32,7 @@ bootothers(void)
   // Write bootstrap code to unused memory at 0x7000.
   // The linker has placed the image of bootother.S in
   // _binary_bootother_start.
-  code = p2v(0x7000);
+  code = (u8*) p2v(0x7000);
   memmove(code, _bootother_start, _bootother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
@@ -40,7 +42,7 @@ bootothers(void)
     // Tell bootother.S what stack to use and the address of apstart;
     // it expects to find these two addresses stored just before
     // its first instruction.
-    stack = ksalloc(slab_stack);
+    stack = (char*) ksalloc(slab_stack);
     *(u32*)(code-4) = (u32)v2p(&apstart);
     *(u64*)(code-12) = (u64)stack + KSTACKSIZE;
 

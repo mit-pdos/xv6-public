@@ -2,9 +2,11 @@
 // http://www.intel.com/design/chipsets/datashts/29056601.pdf
 // See also picirq.c.
 
+extern "C" {
 #include "types.h"
 #include "traps.h"
 #include "kernel.h"
+}
 
 #define IOAPIC  (KBASE + 0xFEC00000)   // Default physical address of IO APIC
 
