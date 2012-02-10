@@ -21,11 +21,13 @@
 // * B_DIRTY: the buffer data has been modified
 //     and needs to be written to disk.
 
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "spinlock.h"
 #include "condvar.h"
 #include "buf.h"
+}
 
 static struct ns *bufns;
 
@@ -34,7 +36,7 @@ enum { writeback = 0 };
 static void *
 evict(void *vkey, void *bp, void *arg)
 {
-  struct buf *b = bp;
+  struct buf *b = (buf*) bp;
   acquire(&b->lock);
   if ((b->flags & (B_BUSY | B_DIRTY | B_VALID)) == 0)
     return b;
@@ -45,7 +47,7 @@ evict(void *vkey, void *bp, void *arg)
 static void *
 evict_valid(void *vkey, void *bp, void *arg)
 {
-  struct buf *b = bp;
+  struct buf *b = (buf*) bp;
   acquire(&b->lock);
   if ((b->flags & (B_BUSY | B_DIRTY)) == 0)
     return b;
@@ -65,7 +67,7 @@ bget(u32 dev, u64 sector, int *writer)
   // Try for cached block.
   // XXX ignore dev
   gc_begin_epoch();
-  b = ns_lookup(bufns, KII(dev, sector));
+  b = (buf*) ns_lookup(bufns, KII(dev, sector));
   if (b) {
     if (b->dev != dev || b->sector != sector)
       panic("block mismatch");
@@ -89,9 +91,9 @@ bget(u32 dev, u64 sector, int *writer)
   gc_end_epoch();
 
   // Allocate fresh block.
-  struct buf *victim = ns_enumerate(bufns, evict, 0);
+  struct buf *victim = (buf*) ns_enumerate(bufns, evict, 0);
   if (victim == 0)
-    victim = ns_enumerate(bufns, evict_valid, 0);
+    victim = (buf*) ns_enumerate(bufns, evict_valid, 0);
   if (victim == 0)
     panic("bget all busy");
   victim->flags |= B_BUSY;
@@ -100,7 +102,7 @@ bget(u32 dev, u64 sector, int *writer)
   destroylock(&victim->lock);
   gc_delayed(victim, kmfree);
 
-  b = kmalloc(sizeof(*b));
+  b = (buf*) kmalloc(sizeof(*b));
   b->dev = dev;
   b->sector = sector;
   b->flags = B_BUSY;
@@ -166,7 +168,7 @@ initbio(void)
   bufns = nsalloc(0);
 
   for (u64 i = 0; i < NBUF; i++) {
-    struct buf *b = kmalloc(sizeof(*b));
+    struct buf *b = (buf*) kmalloc(sizeof(*b));
     b->dev = 0xdeadbeef;
     b->sector = -i;	/* dummy to pre-allocate NBUF spaces for evict */
     b->flags = 0;
