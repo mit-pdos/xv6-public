@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "mmu.h"
@@ -12,6 +13,7 @@
 #include "vm.h"
 #include "sched.h"
 #include <stddef.h>
+}
 
 enum { sched_debug = 0 };
 

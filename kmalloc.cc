@@ -2,6 +2,7 @@
 // Allocate objects smaller than a page.
 //
 
+extern "C" {
 #include "types.h"
 #include "mmu.h"
 #include "kernel.h"
@@ -9,6 +10,7 @@
 #include "kalloc.h"
 #include "mtrace.h"
 #include "cpu.h"
+}
 
 // allocate in power-of-two sizes up to 2^KMMAX
 // must be < 12
@@ -78,7 +80,7 @@ kmalloc(u64 nbytes)
   if(h){
     freelists[c].buckets[b] = h->next;
     r = h + 1;
-    h->next = (void *) (long) b;
+    h->next = (header*) (long) b;
   }
   release(&freelists[c].lock);
 
@@ -103,7 +105,7 @@ kmfree(void *ap)
   if(b < 0 || b > KMMAX)
     panic("kmfree bad bucket");
 
-  verifyfree(ap, (1<<b) - sizeof(struct header));
+  verifyfree((char*) ap, (1<<b) - sizeof(struct header));
   if (ALLOC_MEMSET)
     memset(ap, 3, (1<<b) - sizeof(struct header));
 

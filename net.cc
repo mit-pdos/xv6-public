@@ -1,4 +1,5 @@
 #ifdef LWIP
+extern "C" {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "lwip/tcp_impl.h"
@@ -9,8 +10,10 @@
 #include "lwip/sockets.h"
 #include "netif/etharp.h"
 #pragma GCC diagnostic pop
+}
 #endif
 
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "queue.h"
@@ -22,6 +25,10 @@
 #include "fs.h"
 #include "file.h"
 #include "net.h"
+
+err_t if_init(struct netif *netif);
+void if_input(struct netif *netif, void *buf, u16 len);
+}
 
 void
 netfree(void *va)
@@ -67,8 +74,6 @@ int errno;
 void
 netrx(void *va, u16 len)
 {
-  extern void if_input(struct netif *netif, void *buf, u16 len);
-
   lwip_core_lock();
   if_input(&nif, va, len);
   lwip_core_unlock();
@@ -115,8 +120,6 @@ static void
 lwip_init(struct netif *nif, void *if_state,
 	  u32 init_addr, u32 init_mask, u32 init_gw)
 {
-  extern err_t if_init(struct netif *netif);
-
   struct ip_addr ipaddr, netmask, gateway;
   ipaddr.addr  = init_addr;
   netmask.addr = init_mask;
@@ -135,7 +138,7 @@ lwip_init(struct netif *nif, void *if_state,
 static void
 tcpip_init_done(void *arg)
 {
-  volatile long *tcpip_done = arg;
+  volatile long *tcpip_done = (volatile long*) arg;
   *tcpip_done = 1;
 }
 
@@ -290,7 +293,7 @@ netbind(int sock, void *xaddr, int xaddrlen)
     return -1;
 
   lwip_core_lock();
-  r = lwip_bind(sock, addr, xaddrlen);
+  r = lwip_bind(sock, (const sockaddr*) addr, xaddrlen);
   lwip_core_unlock();
   kmfree(addr);
   return r;
@@ -310,7 +313,7 @@ netlisten(int sock, int backlog)
 long
 netaccept(int sock, void *xaddr, void *xaddrlen)
 {
-  socklen_t *lenptr = xaddrlen;
+  socklen_t *lenptr = (socklen_t*) xaddrlen;
   socklen_t len;
   void *addr;
   int ss;
@@ -323,7 +326,7 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
     return -1;
 
   lwip_core_lock();
-  ss = lwip_accept(sock, addr, &len);
+  ss = lwip_accept(sock, (sockaddr*) addr, &len);
   lwip_core_unlock();
   if (ss < 0) {
     kmfree(addr);
