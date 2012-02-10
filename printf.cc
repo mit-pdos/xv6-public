@@ -37,7 +37,7 @@ void
 vprintfmt(void (*putch) (void*, char), void *putarg,
           const char *fmt, va_list ap)
 {
-  char *s;
+  const char *s;
   int c, i, state;
 
   state = 0;
@@ -58,7 +58,7 @@ vprintfmt(void (*putch) (void*, char), void *putarg,
         state = 'l';
         continue;
       } else if(c == 's'){
-        s = (char*) va_arg(ap, char*);
+        s = (const char*) va_arg(ap, const char*);
         if(s == 0)
           s = "(null)";
         while(*s != 0){
@@ -119,7 +119,7 @@ struct bufstate {
 static void
 writebuf(void *arg, char c)
 {
-  struct bufstate *bs = arg;
+  struct bufstate *bs = (bufstate*) arg;
   if (bs->p < bs->e) {
     bs->p[0] = c;
     bs->p++;

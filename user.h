@@ -1,6 +1,7 @@
 struct stat;
 
 // system calls
+extern "C" {
 int fork(int);
 int exit(void) __attribute__((noreturn));
 int wait(void);
@@ -25,6 +26,7 @@ int uptime(void);
 int map(void *addr, int len);
 int unmap(void *addr, int len);
 void halt(void);
+}
 
 // ulib.c
 int stat(char*, struct stat*);
@@ -42,7 +44,9 @@ void free(void*);
 int atoi(const char*);
 
 // uthread.S
+extern "C" {
 int forkt(void *sp, void *pc, void *arg);
+}
 
 // printf.c
 void printf(int, const char*, ...);

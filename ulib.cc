@@ -124,8 +124,8 @@ memmove(void *vdst, const void *vsrc, int n)
   const char *src;
   char *dst;
 
-  dst = vdst;
-  src = vsrc;
+  dst = (char*) vdst;
+  src = (const char*) vsrc;
   while(n-- > 0)
     *dst++ = *src++;
   return vdst;

@@ -1,8 +1,6 @@
-extern "C" {
 #include "types.h"
 #include "user.h"
 #include "unet.h"
-}
 
 int
 main(void)

@@ -1,11 +1,9 @@
-extern "C" {
 #include "types.h"
 #include "user.h"
 #include "lib.h"
 #include "unet.h"
 #include "fcntl.h"
 #include "stat.h"
-}
 
 #define VERSION "0.1"
 #define HTTP_VERSION "1.0"

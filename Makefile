@@ -26,7 +26,7 @@ COMFLAGS := -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
 	    -DHW_$(HW) -include param.h -include compiler.h
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS   := $(COMFLAGS) -std=c99
-CXXFLAGS := $(COMFLAGS) -std=c++0x
+CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare
 ASFLAGS = -m64 -gdwarf-2 -MD
 LDFLAGS += -m elf_x86_64
 

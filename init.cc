@@ -1,12 +1,10 @@
 // init: The initial user-level program
 
-extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "fcntl.h"
 #include "lib.h"
-}
 
 static const char *sh_argv[] = { "sh", 0 };
 static const char *app_argv[][MAXARG] = {

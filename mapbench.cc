@@ -1,11 +1,9 @@
-extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "mtrace.h"
 #include "amd64.h"
 #include "uspinlock.h"
-}
 
 static struct uspinlock l;
 static volatile int tcount;

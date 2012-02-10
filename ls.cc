@@ -1,9 +1,7 @@
-extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
-}
 
 const char*
 fmtname(const char *path)

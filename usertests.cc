@@ -1,4 +1,3 @@
-extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
@@ -6,7 +5,6 @@ extern "C" {
 #include "fcntl.h"
 #include "syscall.h"
 #include "traps.h"
-}
 
 char buf[2048];
 char name[3];

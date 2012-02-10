@@ -1,10 +1,8 @@
-extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "mtrace.h"
 #include "amd64.h"
-}
 
 #define NITERS 16
 

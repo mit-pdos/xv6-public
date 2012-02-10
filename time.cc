@@ -1,10 +1,8 @@
-extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "fcntl.h"
 #include "amd64.h"
-}
 
 int
 main(int ac, const char *av[])
