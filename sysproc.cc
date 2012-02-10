@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "kernel.h"
@@ -8,6 +9,7 @@
 #include "proc.h"
 #include "cpu.h"
 #include "vm.h"
+}
 
 long
 sys_fork(void)

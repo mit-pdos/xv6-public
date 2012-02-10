@@ -103,7 +103,7 @@ sys_fstat(void)
   struct file *f;
   struct stat *st;
   
-  if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
+  if(argfd(0, 0, &f) < 0 || argptr(1, (char**)&st, sizeof(*st)) < 0)
     return -1;
   return filestat(f, st);
 }
@@ -112,10 +112,10 @@ sys_fstat(void)
 long
 sys_link(void)
 {
-  char name[DIRSIZ], *new, *old;
+  char name[DIRSIZ], *newn, *old;
   struct inode *dp, *ip;
 
-  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
+  if(argstr(0, &old) < 0 || argstr(1, &newn) < 0)
     return -1;
   if((ip = namei(old)) == 0)
     return -1;
@@ -128,7 +128,7 @@ sys_link(void)
   iupdate(ip);
   iunlock(ip);
 
-  if((dp = nameiparent(new, name)) == 0)
+  if((dp = nameiparent(newn, name)) == 0)
     goto bad;
   if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0)
     goto bad;
@@ -149,7 +149,7 @@ bad:
 static void*
 check_empty(void *k, void *v, void *arg)
 {
-  char *name = k;
+  char *name = (char*) k;
   if (strcmp(name, ".") && strcmp(name, ".."))
     return (void*)1;
   return 0;
@@ -400,7 +400,7 @@ sys_pipe(void)
   struct file *rf, *wf;
   int fd0, fd1;
 
-  if(argptr(0, (void*)&fd, 2*sizeof(fd[0])) < 0)
+  if(argptr(0, (char**)&fd, 2*sizeof(fd[0])) < 0)
     return -1;
   if(pipealloc(&rf, &wf) < 0)
     return -1;
