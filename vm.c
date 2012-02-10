@@ -426,17 +426,15 @@ vmap_copy(struct vmap *m, int share)
     return 0;
 
   acquire(&m->lock);
-  struct state *st = kmalloc(sizeof(struct state));
-  st->share = share;
-  st->pml4 = m->pml4;
-  st->cr = c->cr;
-  if (!crange_foreach(m->cr, vmap_copy_vma, st)) {
+  struct state st;
+  st.share = share;
+  st.pml4 = m->pml4;
+  st.cr = c->cr;
+  if (!crange_foreach(m->cr, vmap_copy_vma, &st)) {
     vmap_free(c);
     release(&m->lock);
-    kmfree(st);
     return 0;
   }
-  kmfree(st);
 
   if (share)
     lcr3(v2p(m->pml4));  // Reload hardware page table
