@@ -112,7 +112,7 @@ void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, u32, u32);
 struct inode*   idup(struct inode*);
 struct inode*   nameiparent(char*, char*);
-int             dirlink(struct inode*, char*, u32);
+int             dirlink(struct inode*, const char*, u32);
 void            dir_init(struct inode *dp);
 void	        dir_flush(struct inode *dp);
 
@@ -199,7 +199,7 @@ struct nskey {
       u64 b;
     } ii;
     char *s;
-    char *dirname;
+    const char *dirname;
     struct {
       u64 a;
       u64 b;
@@ -211,7 +211,7 @@ struct nskey {
 #define KI(v)	    (struct nskey){type: nskey_int, u: { i: v }}
 #define KII(x,y)    (struct nskey){.type=nskey_ii,.u.ii.a=x,.u.ii.b=y}
 #define KS(v)	    (struct nskey){.type=nskey_str,.u.s=v}
-#define KD(v)	    (struct nskey){.type=nskey_dirname,.u.dirname=v}
+#define KD(v)	    (struct nskey){type: nskey_dirname, u: { dirname: v }}
 #define KIIS(x,y,z) (struct nskey){.type=nskey_iis,.u.iis.a=x, \
 						   .u.iis.b=y, \
 						   .u.iis.s=z}

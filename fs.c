@@ -658,7 +658,7 @@ dirlookup(struct inode *dp, char *name)
 
 // Write a new directory entry (name, inum) into the directory dp.
 int
-dirlink(struct inode *dp, char *name, u32 inum)
+dirlink(struct inode *dp, const char *name, u32 inum)
 {
   dir_init(dp);
 

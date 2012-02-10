@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "mmu.h"
@@ -10,6 +11,8 @@
 #include "file.h"
 #include "fcntl.h"
 #include "cpu.h"
+#include "net.h"
+}
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -310,7 +313,7 @@ sys_open(void)
   }
   iunlock(ip);
 
-  f->type = FD_INODE;
+  f->type = file::FD_INODE;
   f->ip = ip;
   f->off = 0;
   f->readable = !(omode & O_WRONLY);
@@ -430,7 +433,7 @@ getsocket(int fd, struct file **ret)
   struct file *f;
   if (fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
     return -1;
-  if (f->type != FD_SOCKET)
+  if (f->type != file::FD_SOCKET)
     return -1;
 
   *ret = f;
@@ -453,7 +456,7 @@ allocsocket(struct file **rf, int *rfd)
     return fd;
   }
 
-  f->type = FD_SOCKET;
+  f->type = file::FD_SOCKET;
   f->off = 0;
   f->readable = 1;
   f->writable = 1;
