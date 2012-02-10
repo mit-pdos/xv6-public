@@ -46,5 +46,5 @@ int forkt(void *sp, void *pc, void *arg);
 
 // printf.c
 void printf(int, char*, ...);
-void snprintf(char *buf, unsigned int n, char *fmt, ...);
+void snprintf(char *buf, unsigned int n, const char *fmt, ...);
 void die(const char* errstr, ...) __attribute__((noreturn));

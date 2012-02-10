@@ -13,7 +13,6 @@ struct vma {
 };
 
 // A memory object (physical pages or inode).
-enum vmntype { EAGER, ONDEMAND};  
 struct vmnode {
   u64 npages;
   char *page[128];

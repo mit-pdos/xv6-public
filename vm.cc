@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "mmu.h"
@@ -10,6 +11,7 @@
 #include "condvar.h"
 #include "proc.h"
 #include "vm.h"
+}
 
 static void vmap_free(void *p);
 
@@ -18,7 +20,7 @@ enum { vm_debug = 0 };
 static struct vma *
 vma_alloc(void)
 {
-  struct vma *e = kmalloc(sizeof(struct vma));
+  struct vma *e = (struct vma *) kmalloc(sizeof(struct vma));
   if (e == 0)
     return 0;
   memset(e, 0, sizeof(struct vma));
@@ -103,7 +105,7 @@ vmap_decref(struct vmap *m)
 struct vmap *
 vmap_alloc(void)
 {
-  struct vmap *m = kmalloc(sizeof(struct vmap));
+  struct vmap *m = (struct vmap *) kmalloc(sizeof(struct vmap));
   if (m == 0)
     return 0;
   memset(m, 0, sizeof(struct vmap));
@@ -130,7 +132,7 @@ vmn_doload(struct vmnode *vmn, struct inode *ip, u64 offset, u64 sz)
 {
   for(u64 i = 0; i < sz; i += PGSIZE){
     char *p = vmn->page[i / PGSIZE];
-    u64 n;
+    s64 n;
     if(sz - i < PGSIZE)
       n = sz - i;
     else
@@ -295,7 +297,7 @@ copyout(struct vmap *vmap, uptr va, void *p, u64 len)
 struct vmnode *
 vmn_alloc(u64 npg, enum vmntype type)
 {
-  struct vmnode *n = kmalloc(sizeof(struct vmnode));
+  struct vmnode *n = (struct vmnode *) kmalloc(sizeof(struct vmnode));
   if (n == 0) {
     cprintf("out of vmnodes");
     return 0;
@@ -541,7 +543,7 @@ vmap_copy(struct vmap *m, int share)
     return 0;
 
   acquire(&m->lock);
-  for(int i = 0; i < NELEM(m->e); i++) {
+  for(u32 i = 0; i < NELEM(m->e); i++) {
     if(m->e[i] == 0)
       continue;
     c->e[i] = vma_alloc();
@@ -583,7 +585,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
 {
   acquire(&m->lock);
   uptr va_end = va_start + len;
-  for(int i = 0; i < NELEM(m->e); i++) {
+  for(u32 i = 0; i < NELEM(m->e); i++) {
     if(m->e[i] && (m->e[i]->va_start < va_end && m->e[i]->va_end > va_start)) {
       if(m->e[i]->va_start != va_start || m->e[i]->va_end != va_end) {
 	release(&m->lock);

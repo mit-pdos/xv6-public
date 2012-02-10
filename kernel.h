@@ -8,7 +8,7 @@
 #define KDSEG (3<<3)  /* kernel data segment */
 
 static inline uptr v2p(void *a) { return (uptr) a  - KBASE; }
-static inline void *p2v(uptr a) { return (void *) a + KBASE; }
+static inline void *p2v(uptr a) { return (u8 *) a + KBASE; }
 
 struct trapframe;
 struct cilkframe;
@@ -48,7 +48,7 @@ void            cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
 void            panic(const char*, ...) 
                   __noret__ __attribute__((format(printf, 1, 2)));
 void            kerneltrap(struct trapframe *tf) __noret__;
-void            snprintf(char *buf, u32 n, char *fmt, ...);
+void            snprintf(char *buf, u32 n, const char *fmt, ...);
 void            consoleintr(int(*)(void));
 
 #define assert(c)   if (!(c)) { cprintf("%s:%d: ", __FILE__, __LINE__); panic("assertion failure"); }
@@ -307,8 +307,10 @@ void            uartputc(char c);
 void            uartintr(void);
 
 // vm.c
+enum vmntype { EAGER, ONDEMAND };
+
 struct vmap *   vmap_alloc(void);
-struct vmnode*  vmn_alloc(u64, u32);
+struct vmnode*  vmn_alloc(u64, enum vmntype);
 struct vmnode*  vmn_allocpg(u64);
 int             vmap_insert(struct vmap*, struct vmnode *, uptr);
 struct vma *    vmap_lookup(struct vmap*, uptr, uptr);

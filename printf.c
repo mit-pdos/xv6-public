@@ -127,7 +127,7 @@ writebuf(void *arg, char c)
 }
 
 void
-vsnprintf(char *buf, u32 n, char *fmt, va_list ap)
+vsnprintf(char *buf, u32 n, const char *fmt, va_list ap)
 {
   struct bufstate bs = { buf, buf+n-1 };
   vprintfmt(writebuf, (void*) &bs, fmt, ap);
@@ -135,7 +135,7 @@ vsnprintf(char *buf, u32 n, char *fmt, va_list ap)
 }
 
 void
-snprintf(char *buf, u32 n, char *fmt, ...)
+snprintf(char *buf, u32 n, const char *fmt, ...)
 {
   va_list ap;
 
