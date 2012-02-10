@@ -45,10 +45,6 @@ struct ns {
   struct bucket table[NHASH];
 };
 
-void
-nsinit(void)
-{
-}
 
 // XXX should be using our missing scalable allocator module
 struct ns*

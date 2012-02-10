@@ -216,7 +216,6 @@ struct nskey {
 						   .u.iis.b=y, \
 						   .u.iis.s=z}
 
-void            nsinit(void);
 struct ns*      nsalloc(int allowdup);
 void		nsfree(struct ns*);
 u64             ns_allockey(struct ns*);
