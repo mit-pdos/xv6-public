@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
@@ -5,10 +6,11 @@
 #include "fcntl.h"
 #include "syscall.h"
 #include "traps.h"
+}
 
 char buf[2048];
 char name[3];
-char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
+const char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
 int stdout = 1;
 
 // simple file system tests
@@ -85,7 +87,7 @@ writetest(void)
 void
 writetest1(void)
 {
-  int i, fd, n;
+  int fd, n;
 
   printf(stdout, "big files test\n");
 
@@ -95,7 +97,7 @@ writetest1(void)
     exit();
   }
 
-  for(i = 0; i < MAXFILE; i++){
+  for(u32 i = 0; i < MAXFILE; i++){
     ((int*)buf)[0] = i;
     if(write(fd, buf, 512) != 512){
       printf(stdout, "error: write big file failed\n", i);
@@ -113,7 +115,7 @@ writetest1(void)
 
   n = 0;
   for(;;){
-    i = read(fd, buf, 512);
+    u32 i = read(fd, buf, 512);
     if(i == 0){
       if(n == MAXFILE - 1){
         printf(stdout, "read only %d blocks from big", n);
@@ -331,7 +333,7 @@ mem(void)
   if((pid = fork(0)) == 0){
     m1 = 0;
     while((m2 = malloc(10001)) != 0){
-      *(char**)m2 = m1;
+      *(char**)m2 = (char*) m1;
       m1 = m2;
     }
     while(m1){
@@ -410,7 +412,7 @@ void
 twofiles(void)
 {
   int fd, pid, i, j, n, total;
-  char *fname;
+  const char *fname;
 
   printf(1, "twofiles test\n");
 
@@ -1450,7 +1452,7 @@ bigargtest(void)
 
   pid = fork(0);
   if(pid == 0){
-    char *args[32+1];
+    const char *args[32+1];
     int i;
     for(i = 0; i < 32; i++)
       args[i] = "bigargs test: failed\n                                                                                                                     ";
@@ -1467,7 +1469,7 @@ bigargtest(void)
 }
 
 void
-uox(char *name, char *data)
+uox(char *name, const char *data)
 {
   int fd = open(name, O_CREATE|O_RDWR);
   if(fd < 0){

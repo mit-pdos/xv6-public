@@ -1,13 +1,15 @@
 // init: The initial user-level program
 
+extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "fcntl.h"
 #include "lib.h"
+}
 
-static char *sh_argv[] = { "sh", 0 };
-static char *app_argv[][MAXARG] = {
+static const char *sh_argv[] = { "sh", 0 };
+static const char *app_argv[][MAXARG] = {
 #ifdef LWIP
   { "telnetd", 0 },
   { "httpd", 0 },
@@ -15,7 +17,7 @@ static char *app_argv[][MAXARG] = {
 };
 
 static int
-startone(char **argv)
+startone(const char **argv)
 {
   int pid;
 
@@ -52,7 +54,7 @@ main(void)
   if (mknod("/dev/lockstat", 4, 1) < 0)
       printf(2, "init: mknod lockstat failed\n");
 
-  for (int i = 0; i < NELEM(app_argv); i++)
+  for (u32 i = 0; i < NELEM(app_argv); i++)
     startone(app_argv[i]);
 
   for(;;){

@@ -1,7 +1,9 @@
+extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "mtrace.h"
+}
 
 #define NCHILD 2
 #define NDEPTH 5

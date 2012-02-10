@@ -1,9 +1,11 @@
+extern "C" {
 #include "types.h"
 #include "user.h"
 #include "lib.h"
 #include "unet.h"
 #include "fcntl.h"
 #include "stat.h"
+}
 
 #define VERSION "0.1"
 #define HTTP_VERSION "1.0"
@@ -19,7 +21,7 @@ static int xwrite(int fd, const void *buf, u64 n)
       printf(1, "xwrite: failed %d\n", r);
       return -1;
     }
-    buf += r;
+    buf = (char *) buf + r;
     n -= r;
   }
 
@@ -208,7 +210,7 @@ parse(const char *b, char **rurl)
     b++;
   len = b - url;
 
-  r = malloc(len+1);
+  r = (char *) malloc(len+1);
   if (r == NULL)
     return -1;
   memmove(r, url, len);

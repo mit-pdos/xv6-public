@@ -1,6 +1,8 @@
+extern "C" {
 #include "types.h"
 #include "user.h"
 #include "unet.h"
+}
 
 int
 main(void)
@@ -46,7 +48,7 @@ main(void)
       continue;
     }
     if (pid == 0) {
-      static char *argv[] = { "sh", 0 };
+      static const char *argv[] = { "sh", 0 };
       close(0);
       close(1);
       close(2);

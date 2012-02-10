@@ -1,8 +1,10 @@
+extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "mtrace.h"
 #include "amd64.h"
+}
 
 #define NITERS 16
 
@@ -18,7 +20,7 @@ execbench(void)
       exit();
     }
     if (pid == 0) {
-      char *av[] = { "forkexecbench", "x", 0 };
+      const char *av[] = { "forkexecbench", "x", 0 };
       exec("forkexecbench", av);
       printf(1, "exec failed\n");
       exit();

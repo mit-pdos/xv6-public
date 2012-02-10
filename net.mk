@@ -13,7 +13,8 @@ UPROGS += \
        $(O)/_telnetd \
        $(O)/_httpd
 
-CFLAGS += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -I. -DLWIP
+CFLAGS   += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -I. -DLWIP
+CXXFLAGS += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -I. -DLWIP
 
 LWIP_CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb \
 	 -m64 -Werror -std=c99 -fms-extensions -mno-sse -mcmodel=large -I$(QEMUSRC) \

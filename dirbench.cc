@@ -1,9 +1,11 @@
+extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "mtrace.h"
 #include "amd64.h"
 #include "fcntl.h"
+}
 
 enum { nthread = 2 };
 enum { nloop = 100 };

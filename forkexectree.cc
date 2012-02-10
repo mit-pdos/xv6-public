@@ -1,7 +1,9 @@
+extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "mtrace.h"
+}
 
 #define NCHILD 2
 #define NDEPTH 7
@@ -28,7 +30,7 @@ forktree(int depth)
       depth++;
       char depthbuf[16];
       snprintf(depthbuf, sizeof(depthbuf), "%d", depth);
-      char *av[] = { "forkexectree", depthbuf };
+      const char *av[] = { "forkexectree", depthbuf };
       exec("forkexectree", av);
     }
   }
