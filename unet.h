@@ -1,4 +1,5 @@
 #ifdef LWIP
+extern "C" {
 #include "lwip/sockets.h"
 
 // system calls
@@ -7,6 +8,7 @@ extern int bind(int sockfd, const struct sockaddr *addr,
                 socklen_t addrlen);
 extern int listen(int sockfd, int backlog);
 extern int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+}
 
 static inline const char *
 ipaddr(struct sockaddr_in *sin)

@@ -9,7 +9,7 @@
 #define KDSEG (3<<3)  /* kernel data segment */
 
 static inline uptr v2p(void *a) { return (uptr) a  - KBASE; }
-static inline void *p2v(uptr a) { return (void *) a + KBASE; }
+static inline void *p2v(uptr a) { return (u8 *) a + KBASE; }
 
 struct trapframe;
 struct cilkframe;
@@ -50,7 +50,7 @@ void            cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
 void            panic(const char*, ...) 
                   __noret__ __attribute__((format(printf, 1, 2)));
 void            kerneltrap(struct trapframe *tf) __noret__;
-void            snprintf(char *buf, u32 n, char *fmt, ...);
+void            snprintf(char *buf, u32 n, const char *fmt, ...);
 void            consoleintr(int(*)(void));
 
 #define assert(c)   if (!(c)) { cprintf("%s:%d: ", __FILE__, __LINE__); panic("assertion failure"); }
@@ -101,7 +101,7 @@ int             filewrite(struct file*, char*, int n);
 int             namecmp(const char*, const char*);
 struct inode*   dirlookup(struct inode*, char*);
 struct inode*   ialloc(u32, short);
-struct inode*   namei(char*);
+struct inode*   namei(const char*);
 void            iput(struct inode*);
 struct inode*   iget(u32 dev, u32 inum);
 void            ilock(struct inode*, int writer);
@@ -113,7 +113,7 @@ void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, u32, u32);
 struct inode*   idup(struct inode*);
 struct inode*   nameiparent(char*, char*);
-int             dirlink(struct inode*, char*, u32);
+int             dirlink(struct inode*, const char*, u32);
 void            dir_init(struct inode *dp);
 void	        dir_flush(struct inode *dp);
 
@@ -135,6 +135,7 @@ pme_t *         walkpgdir(pml4e_t*, const void*, int);
 // hz.c
 void            microdelay(u64);
 u64             nsectime(void);
+void            inithz(void);
 
 // ide.c
 void            ideinit(void);
@@ -159,6 +160,7 @@ void            kmfree(void*);
 int             kmalign(void **p, int align, u64 size);
 void            kmalignfree(void *);
 void            verifyfree(char *ptr, u64 nbytes);
+void            kminit(void);
 
 // kbd.c
 void            kbdintr(void);
@@ -200,7 +202,7 @@ struct nskey {
       u64 b;
     } ii;
     char *s;
-    char *dirname;
+    const char *dirname;
     struct {
       u64 a;
       u64 b;
@@ -209,10 +211,10 @@ struct nskey {
   } u;
 };
 
-#define KI(v)	    (struct nskey){.type=nskey_int,.u.i=v}
-#define KII(x,y)    (struct nskey){.type=nskey_ii,.u.ii.a=x,.u.ii.b=y}
+#define KI(v)	    (struct nskey){type: nskey_int, u: { i: v }}
+#define KII(x,y)    (struct nskey){type: nskey_ii, u: {ii: {a:x, b:y}}}
 #define KS(v)	    (struct nskey){.type=nskey_str,.u.s=v}
-#define KD(v)	    (struct nskey){.type=nskey_dirname,.u.dirname=v}
+#define KD(v)	    (struct nskey){type: nskey_dirname, u: { dirname: v }}
 #define KIIS(x,y,z) (struct nskey){.type=nskey_iis,.u.iis.a=x, \
 						   .u.iis.b=y, \
 						   .u.iis.s=z}
@@ -291,10 +293,11 @@ void            syscall(void);
 int             memcmp(const void*, const void*, u32);
 void*           memmove(void*, const void*, u32);
 void*           memset(void*, int, u32);
-char*           safestrcpy(char*, const char*, int);
+void*           memcpy(void*, const void *, u32);
+char*           safestrcpy(char*, const char*, u32);
 int             strlen(const char*);
 int             strncmp(const char*, const char*, u32);
-char*           strncpy(char*, const char*, int);
+char*           strncpy(char*, const char*, u32);
 int             strcmp(const char *p, const char *q);
 
 // swtch.S
@@ -311,8 +314,10 @@ void            uartputc(char c);
 void            uartintr(void);
 
 // vm.c
+enum vmntype { EAGER, ONDEMAND };
+
 struct vmap *   vmap_alloc(void);
-struct vmnode*  vmn_alloc(u64, u32);
+struct vmnode*  vmn_alloc(u64, enum vmntype);
 struct vmnode*  vmn_allocpg(u64);
 int             vmap_insert(struct vmap*, struct vmnode *, uptr);
 struct vma *    vmap_lookup(struct vmap*, uptr, uptr);
@@ -352,3 +357,70 @@ void            initcilkframe(struct cilkframe *wq);
 #define cilk_trywork() 0
 #define initcilkframe(x) do { } while (0)
 #endif
+
+// various init functions
+void initpic(void);
+void initioapic(void);
+void inituart(void);
+void initcga(void);
+void initconsole(void);
+void initpg(void);
+void initmp(void);
+void initlapic(void);
+void inittls(void);
+void inittrap(void);
+void initseg(void);
+void initkalloc(u64 mbaddr);
+void initrcu(void);
+void initproc(void);
+void initbio(void);
+void initinode(void);
+void initdisk(void);
+void inituser(void);
+void initcilk(void);
+void initsamp(void);
+void initpci(void);
+void initnet(void);
+void initsched(void);
+void initlockstat(void);
+void initwq(void);
+
+// syscalls
+long sys_chdir(void);
+long sys_close(void);
+long sys_dup(void);
+long sys_exec(void);
+long sys_exit(void);
+long sys_fork(void);
+long sys_fstat(void);
+long sys_getpid(void);
+long sys_kill(void);
+long sys_link(void);
+long sys_mkdir(void);
+long sys_mknod(void);
+long sys_open(void);
+long sys_pipe(void);
+long sys_read(void);
+long sys_sbrk(void);
+long sys_sleep(void);
+long sys_unlink(void);
+long sys_wait(void);
+long sys_write(void);
+long sys_uptime(void);
+long sys_map(void);
+long sys_unmap(void);
+long sys_halt(void);
+long sys_socket(int, int, int);
+long sys_bind(int, void*, int);
+long sys_listen(int, int);
+long sys_accept(int, void*, void*);
+long sys_pread(int fd, void *ubuf, size_t count, off_t offset);
+long sys_kernlet(int, size_t, off_t);
+
+// other exported/imported functions
+void cmain(u64 mbmagic, u64 mbaddr);
+void mpboot(void);
+void trapret(void);
+void threadstub(void);
+void threadhelper(void (*fn)(void *), void *arg);
+

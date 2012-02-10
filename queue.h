@@ -209,7 +209,7 @@ struct {								\
 	    (varp) = &SLIST_NEXT((var), field))
 
 #define	SLIST_INIT(head) do {						\
-	SLIST_FIRST((head)) = NULL;					\
+	SLIST_FIRST((head)) = 0;					\
 } while (0)
 
 #define	SLIST_INSERT_AFTER(slistelm, elm, field) do {			\
@@ -403,7 +403,7 @@ struct {								\
 	    (var) = (tvar))
 
 #define	LIST_INIT(head) do {						\
-	LIST_FIRST((head)) = NULL;					\
+	LIST_FIRST((head)) = 0;					        \
 } while (0)
 
 #define	LIST_INSERT_AFTER(listelm, elm, field) do {			\

@@ -39,7 +39,6 @@ extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
 
 static int kinited __mpalign__;
-extern void kminit();
 
 static struct Mbmem *
 memsearch(paddr pa)

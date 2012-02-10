@@ -10,6 +10,7 @@ typedef struct profctr {
   __padout__;
 } profctr_t;
 
+#if 0   /* not for c++ */
 #define DEFINE_PROFCTR(xname) \
   profctr_t xname __attribute__((section(".prof"))) = { .name = #xname };
 
@@ -24,3 +25,8 @@ typedef struct profctr {
     name.rec[__profid].cnt++; \
   } \
 } while (0)
+#else
+#define DEFINE_PROFCTR(x)
+#define prof_start(x)
+#define prof_end(x)
+#endif

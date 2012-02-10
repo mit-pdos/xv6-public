@@ -1,6 +1,7 @@
 struct stat;
 
 // system calls
+extern "C" {
 int fork(int);
 int exit(void) __attribute__((noreturn));
 int wait(void);
@@ -9,14 +10,14 @@ int write(int, const void*, int);
 int read(int, void*, int);
 int close(int);
 int kill(int);
-int exec(char*, char**);
+int exec(const char*, const char**);
 int open(const char*, int);
-int mknod(char*, short, short);
-int unlink(char*);
+int mknod(const char*, short, short);
+int unlink(const char*);
 int fstat(int fd, struct stat*);
-int link(char*, char*);
-int mkdir(char*);
-int chdir(char*);
+int link(const char*, const char*);
+int mkdir(const char*);
+int chdir(const char*);
 int dup(int);
 int getpid(void);
 char* sbrk(int);
@@ -27,10 +28,11 @@ int unmap(void *addr, int len);
 void halt(void);
 ssize_t pread(int, void*, size_t, off_t);
 int kernlet(int, size_t, off_t);
+}
 
 // ulib.c
 int stat(char*, struct stat*);
-char* strcpy(char*, char*);
+char* strcpy(char*, const char*);
 void *memmove(void*, const void*, int);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
@@ -44,9 +46,11 @@ void free(void*);
 int atoi(const char*);
 
 // uthread.S
+extern "C" {
 int forkt(void *sp, void *pc, void *arg);
+}
 
 // printf.c
-void printf(int, char*, ...);
-void snprintf(char *buf, unsigned int n, char *fmt, ...);
+void printf(int, const char*, ...);
+void snprintf(char *buf, unsigned int n, const char *fmt, ...);
 void die(const char* errstr, ...) __attribute__((noreturn));

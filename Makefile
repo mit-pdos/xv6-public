@@ -14,16 +14,19 @@ HW	   ?= qemu
 
 O  = o.$(HW)
 CC = $(TOOLPREFIX)gcc
+CXX = $(TOOLPREFIX)g++
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
 
-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb \
-	 -m64 -Werror -std=c99 -fms-extensions -mno-sse -mcmodel=large -mno-red-zone \
-	 -I$(QEMUSRC) \
-	 -fno-omit-frame-pointer -DHW_$(HW) -include param.h -include compiler.h
-CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+COMFLAGS := -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
+	    -MD -ggdb -m64 -Werror -fms-extensions -mno-sse \
+	    -mcmodel=large -mno-red-zone -I$(QEMUSRC) -fno-omit-frame-pointer \
+	    -DHW_$(HW) -include param.h -include compiler.h -DXV6
+COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+CFLAGS   := $(COMFLAGS) -std=c99
+CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare
 ASFLAGS = -m64 -gdwarf-2 -MD
 LDFLAGS += -m elf_x86_64
 
@@ -114,6 +117,10 @@ $(O):
 $(O)/%.o: %.c
 	@echo "  CC     $@"
 	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
+
+$(O)/%.o: %.cc
+	@echo "  CXX    $@"
+	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(O)/incbin.o: ASFLAGS+=-DMAKE_OUT=$(O)
 $(O)/incbin.o: $(O)/initcode $(O)/bootother $(O)/fs.img
