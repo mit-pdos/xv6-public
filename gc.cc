@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "mmu.h"
@@ -7,6 +8,7 @@
 #include "queue.h"
 #include "proc.h"
 #include "cpu.h"
+}
 
 // GC scheme based on Fraser's:
 // a machine has a global_epoch
@@ -61,7 +63,7 @@ u64 global_epoch __mpalign__;
 struct gc *
 gc_alloc()
 {
-  struct gc *r = kmalloc(sizeof(struct gc));
+  struct gc *r = (gc*) kmalloc(sizeof(struct gc));
   assert(r);
   __sync_fetch_and_add(&gc_state[mycpu()->id].ndelayed, 1);
   return r;
@@ -69,7 +71,7 @@ gc_alloc()
 
 static void *
 gc_min(void *vkey, void *v, void *arg){
-  u64 *min_epoch_p = arg;
+  u64 *min_epoch_p = (u64*) arg;
   struct proc *p = (struct proc *) v;
   // Some threads may never call begin/end_epoch(), and never update
   // p->epoch, so gc_thread does it for them.  XXX get rid off lock?
@@ -175,7 +177,7 @@ gc_delayfreelist(void)
   u64 min = global;
   // make that global_epoch doesn't run into a core's min_epoch
   for (int c = 0; c < ncpu; c++) { 
-    int w = gc_state[c].min_epoch + NEPOCH-1;
+    u64 w = gc_state[c].min_epoch + NEPOCH-1;
     if (w < min) {
       min = w;
     }
@@ -322,7 +324,7 @@ initgc(void)
     initcondvar(&gc_state[i].cv, "gc_cv");
   }
 
-  for (u32 c = 0; c < ncpu; c++) {
+  for (int c = 0; c < ncpu; c++) {
     struct proc *gcp; 
 
     gcp = threadalloc(gc_worker, NULL);
