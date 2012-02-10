@@ -15,7 +15,7 @@ strncpy(char *s, const char *t, int n)
 }
 
 char*
-strcpy(char *s, char *t)
+strcpy(char *s, const char *t)
 {
   char *os;
 

@@ -28,7 +28,7 @@ void halt(void);
 
 // ulib.c
 int stat(char*, struct stat*);
-char* strcpy(char*, char*);
+char* strcpy(char*, const char*);
 void *memmove(void*, const void*, int);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
@@ -45,6 +45,6 @@ int atoi(const char*);
 int forkt(void *sp, void *pc, void *arg);
 
 // printf.c
-void printf(int, char*, ...);
+void printf(int, const char*, ...);
 void snprintf(char *buf, unsigned int n, const char *fmt, ...);
 void die(const char* errstr, ...) __attribute__((noreturn));

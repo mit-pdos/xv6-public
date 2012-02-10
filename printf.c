@@ -101,7 +101,7 @@ writec(void *arg, char c)
 }
 
 void
-printf(int fd, char *fmt, ...)
+printf(int fd, const char *fmt, ...)
 {
   va_list ap;
 
