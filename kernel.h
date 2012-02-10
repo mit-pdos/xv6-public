@@ -380,6 +380,7 @@ void initpci(void);
 void initnet(void);
 void initsched(void);
 void initlockstat(void);
+void initwq(void);
 
 // syscalls
 long sys_chdir(void);

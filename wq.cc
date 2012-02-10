@@ -1,9 +1,11 @@
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "spinlock.h"
 #include "amd64.h"
 #include "cpu.h"
 #include "wq.h"
+}
 
 #define NSLOTS (1 << WQSHIFT)
 
@@ -84,7 +86,7 @@ wq_push1(void (*fn)(struct work *w, void *a0), void *a0)
   struct work *w = allocwork();
   if (w == NULL)
     return -1;
-  w->rip = fn;
+  w->rip = (void*) fn;
   w->arg0 = a0;
   if (wq_push(w) < 0) {
     freework(w);
@@ -99,7 +101,7 @@ wq_push2(void (*fn)(struct work*, void*, void*), void *a0, void *a1)
   struct work *w = allocwork();
   if (w == NULL)
     return -1;
-  w->rip = fn;
+  w->rip = (void*) fn;
   w->arg0 = a0;
   w->arg1 = a1;
   if (wq_push(w) < 0) {
@@ -121,7 +123,7 @@ __wq_pop(int c)
   i = wq->head;
   if ((i - wq->tail) == 0) {
     release(&wq->lock);
-    return NULL;
+    return 0;
   }
   i = (i-1) & (NSLOTS-1);
   w = wq->w[i];
@@ -144,7 +146,7 @@ __wq_steal(int c)
   i = wq->tail;
   if ((i - wq->head) == 0) {
     release(&wq->lock);
-    return NULL;
+    return 0;
   }
   i = i & (NSLOTS-1);
   w = wq->w[i];
@@ -158,7 +160,7 @@ __wq_steal(int c)
 static void
 __wq_run(struct work *w)
 {
-  void (*fn)(struct work*, void*, void*, void*, void*) = w->rip;
+  void (*fn)(struct work*, void*, void*, void*, void*) = (void(*)(work*,void*,void*,void*,void*))w->rip;
   fn(w, w->arg0, w->arg1, w->arg2, w->arg3);
   freework(w);
 }
@@ -207,7 +209,7 @@ __test_stub(struct work *w, void *a0, void *a1)
 {
   //long i = (long)a0;
   //cprintf("%u: %lu\n", cpunum(), i);
-  volatile int *running = a1;
+  volatile int *running = (volatile int*) a1;
   subfetch(running, 1);
 }
 
