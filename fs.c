@@ -684,10 +684,10 @@ dirlink(struct inode *dp, char *name, u32 inum)
 //   skipelem("", name) = skipelem("////", name) = 0
 //
 static int
-skipelem(char **rpath, char *name)
+skipelem(const char **rpath, char *name)
 {
-  char *path = *rpath;
-  char *s;
+  const char *path = *rpath;
+  const char *s;
   int len;
 
   while(*path == '/')
@@ -714,7 +714,7 @@ skipelem(char **rpath, char *name)
 // If parent != 0, return the inode for the parent and copy the final
 // path element into name, which must have room for DIRSIZ bytes.
 static struct inode*
-namex(char *path, int nameiparent, char *name)
+namex(const char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
   int r;
@@ -759,7 +759,7 @@ namex(char *path, int nameiparent, char *name)
 }
 
 struct inode*
-namei(char *path)
+namei(const char *path)
 {
   char name[DIRSIZ];
   struct inode *r = namex(path, 0, name);

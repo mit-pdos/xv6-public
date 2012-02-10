@@ -100,7 +100,7 @@ int             filewrite(struct file*, char*, int n);
 int             namecmp(const char*, const char*);
 struct inode*   dirlookup(struct inode*, char*);
 struct inode*   ialloc(u32, short);
-struct inode*   namei(char*);
+struct inode*   namei(const char*);
 void            iput(struct inode*);
 struct inode*   iget(u32 dev, u32 inum);
 void            ilock(struct inode*, int writer);
@@ -208,7 +208,7 @@ struct nskey {
   } u;
 };
 
-#define KI(v)	    (struct nskey){.type=nskey_int,.u.i=v}
+#define KI(v)	    (struct nskey){type: nskey_int, u: { i: v }}
 #define KII(x,y)    (struct nskey){.type=nskey_ii,.u.ii.a=x,.u.ii.b=y}
 #define KS(v)	    (struct nskey){.type=nskey_str,.u.s=v}
 #define KD(v)	    (struct nskey){.type=nskey_dirname,.u.dirname=v}
@@ -412,8 +412,10 @@ long sys_bind(int, void*, int);
 long sys_listen(int, int);
 long sys_accept(int, void*, void*);
 
-// other exported functions
+// other exported/imported functions
 void cmain(u64 mbmagic, u64 mbaddr);
 void mpboot(void);
-
+void trapret(void);
+void threadstub(void);
+void threadhelper(void (*fn)(void *), void *arg);
 

@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "mmu.h"
@@ -11,8 +12,7 @@
 #include "kmtrace.h"
 #include "vm.h"
 #include "sched.h"
-
-extern void threadstub(void);
+}
 
 int __mpalign__ idle[NCPU];
 struct ns *nspid __mpalign__;
@@ -139,7 +139,7 @@ exit(void)
   // Kernel threads might not have a cwd
   if (myproc()->cwd != NULL) {
       iput(myproc()->cwd);
-      myproc()->cwd = NULL;
+      myproc()->cwd = 0;
   }
 
   // Pass abandoned children to init.
@@ -185,11 +185,10 @@ freeproc(struct proc *p)
 static struct proc*
 allocproc(void)
 {
-  extern void trapret(void);
   struct proc *p;
   char *sp;
 
-  p = kmalloc(sizeof(struct proc));
+  p = (proc*) kmalloc(sizeof(struct proc));
   if (p == 0) return 0;
   memset(p, 0, sizeof(*p));
 
@@ -212,7 +211,7 @@ allocproc(void)
     panic("allocproc: ns_insert");
 
   // Allocate kernel stack if possible.
-  if((p->kstack = ksalloc(slab_stack)) == 0){
+  if((p->kstack = (char*) ksalloc(slab_stack)) == 0){
     if (ns_remove(nspid, KI(p->pid), p) == 0)
       panic("allocproc: ns_remove");
     freeproc(p);
@@ -271,7 +270,7 @@ inituser(void)
   p->tf->rip = 0x0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
-  p->cwd = NULL; // forkret will fix in the process's context
+  p->cwd = 0; // forkret will fix in the process's context
   acquire(&p->lock);
   addrun(p);
   release(&p->lock);
@@ -495,13 +494,13 @@ kill(int pid)
 
 void *procdump(void *vk, void *v, void *arg)
 {
-  static char *states[] = {
-    [UNUSED] =   "unused",
-    [EMBRYO] =   "embryo",
-    [SLEEPING] = "sleep ",
-    [RUNNABLE] = "runble",
-    [RUNNING] =  "run   ",
-    [ZOMBIE] =   "zombie"
+  static const char *states[] = {
+    /* [UNUSED]   = */ "unused",
+    /* [EMBRYO]   = */ "embryo",
+    /* [SLEEPING] = */ "sleep ",
+    /* [RUNNABLE] = */ "runble",
+    /* [RUNNING]  = */ "run   ",
+    /* [ZOMBIE]   = */ "zombie"
   };
   struct proc *p = (struct proc *) v;
   const char *name = "(no name)";
@@ -555,7 +554,7 @@ fork(int flags)
     // Copy process state from p.
     if((np->vmap = vmap_copy(myproc()->vmap, cow)) == 0){
       ksfree(slab_stack, np->kstack);
-      np->kstack = NULL;
+      np->kstack = 0;
       np->state = UNUSED;
       if (ns_remove(nspid, KI(np->pid), np) == 0)
 	panic("fork: ns_remove");
@@ -616,7 +615,7 @@ wait(void)
 	  SLIST_REMOVE(&myproc()->childq, p, proc, child_next);
 	  release(&myproc()->lock);
 	  ksfree(slab_stack, p->kstack);
-	  p->kstack = NULL;
+	  p->kstack = 0;
 	  vmap_decref(p->vmap);
 	  p->state = UNUSED;
 	  if (ns_remove(nspid, KI(p->pid), p) == 0)
@@ -660,18 +659,18 @@ threadalloc(void (*fn)(void *), void *arg)
 
   p = allocproc();
   if (p == NULL)
-    return NULL;
+    return 0;
   
   p->vmap = vmap_alloc();
   if (p->vmap == NULL) {
     freeproc(p);
-    return NULL;
+    return 0;
   }
 
   p->context->rip = (u64)threadstub;
   p->context->r12 = (u64)fn;
   p->context->r13 = (u64)arg;
   p->parent = myproc();
-  p->cwd = NULL;
+  p->cwd = 0;
   return p;
 }

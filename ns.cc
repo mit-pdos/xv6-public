@@ -1,8 +1,10 @@
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "spinlock.h"
 #include "fs.h"
 #include <stddef.h>
+}
 
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
@@ -54,7 +56,7 @@ nsalloc(int allowdup)
 {
   struct ns *ns = 0;
 
-  ns = kmalloc(sizeof(struct ns));
+  ns = (struct ns*) kmalloc(sizeof(struct ns));
   if (ns == 0)
     panic("nsalloc");
   memset(ns, 0, sizeof(struct ns));
@@ -102,7 +104,7 @@ elemalloc(struct nskey *k)
     panic("key type");
   }
 
-  e = kmalloc(sz);
+  e = (elem*) kmalloc(sz);
   if (e == 0)
     return 0;
   memset(e, 0, sz);
