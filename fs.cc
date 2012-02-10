@@ -10,6 +10,7 @@
 // routines.  The (higher-level) system call implementations
 // are in sysfile.c.
 
+extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "mmu.h"
@@ -22,6 +23,7 @@
 #include "fs.h"
 #include "file.h"
 #include "cpu.h"
+}
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
@@ -204,7 +206,7 @@ iupdate(struct inode *ip)
 static void *
 evict(void *vkey, void *p, void *arg)
 {
-  struct inode *ip = p;
+  struct inode *ip = (inode*) p;
   if (ip->ref || ip->type == T_DIR)
     return 0;
 
@@ -225,7 +227,7 @@ evict(void *vkey, void *p, void *arg)
 static void
 ifree(void *arg)
 {
-  struct inode *ip = arg;
+  struct inode *ip = (inode*) arg;
 
   if (ip->dir) {
     ns_remove(ip->dir, KD("."), 0);
@@ -246,7 +248,7 @@ iget(u32 dev, u32 inum)
  retry:
   // Try for cached inode.
   gc_begin_epoch();
-  ip = ns_lookup(ins, KII(dev, inum));
+  ip = (inode*) ns_lookup(ins, KII(dev, inum));
   if (ip) {
     // tricky: first bump ref, then check free flag
     __sync_fetch_and_add(&ip->ref, 1);
@@ -271,7 +273,7 @@ iget(u32 dev, u32 inum)
   (void) 0;
   u32 cur_free = icache_free[mycpu()->id].x;
   if (cur_free == 0) {
-    struct inode *victim = ns_enumerate(ins, evict, 0);
+    struct inode *victim = (inode*) ns_enumerate(ins, evict, 0);
     if (!victim)
       panic("iget out of space");
     // tricky: first flag as free, then check refcnt, then remove from ns
@@ -289,7 +291,7 @@ iget(u32 dev, u32 inum)
       goto retry_evict;
   }
 
-  ip = kmalloc(sizeof(*ip));
+  ip = (inode*) kmalloc(sizeof(*ip));
   ip->dev = dev;
   ip->inum = inum;
   ip->ref = 1;
@@ -613,8 +615,8 @@ struct flush_state {
 static void *
 dir_flush_cb(void *key, void *val, void *arg)
 {
-  struct flush_state *fs = arg;
-  char *name = key;
+  struct flush_state *fs = (flush_state*) arg;
+  char *name = (char*) key;
   u32 inum = (u64) val;
 
   struct dirent de;
