@@ -1,8 +1,10 @@
+extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "kernel.h"
 #include "pci.h"
 #include "pcireg.h"
+}
 
 extern int e1000attach(struct pci_func *pcif);
 extern int e1000eattach(struct pci_func *pcif);
@@ -45,26 +47,26 @@ struct pci_driver pci_attach_vendor[] = {
 
 static const char *pci_class[] =
 {
-  [0x0] = "Unknown",
-  [0x1] = "Storage controller",
-  [0x2] = "Network controller",
-  [0x3] = "Display controller",
-  [0x4] = "Multimedia device",
-  [0x5] = "Memory controller",
-  [0x6] = "Bridge device",
+  "Unknown",
+  "Storage controller",
+  "Network controller",
+  "Display controller",
+  "Multimedia device",
+  "Memory controller",
+  "Bridge device",
 };
 
 static void
 pci_print_func(struct pci_func *f)
 {
-  const char *class = pci_class[0];
+  const char *classname = pci_class[0];
   if (PCI_CLASS(f->dev_class) < sizeof(pci_class) / sizeof(pci_class[0]))
-    class = pci_class[PCI_CLASS(f->dev_class)];
+    classname = pci_class[PCI_CLASS(f->dev_class)];
 
   cprintf("PCI: %x:%x.%d: %x:%x: class: %x.%x (%s) irq: %d\n",
           f->bus->busno, f->dev, f->func,
           PCI_VENDOR(f->dev_id), PCI_PRODUCT(f->dev_id),
-          PCI_CLASS(f->dev_class), PCI_SUBCLASS(f->dev_class), class,
+          PCI_CLASS(f->dev_class), PCI_SUBCLASS(f->dev_class), classname,
           f->irq_line);
 }
 

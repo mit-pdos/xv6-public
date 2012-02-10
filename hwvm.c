@@ -85,7 +85,7 @@ updatepages(pme_t *pml4, void *begin, void *end, int perm)
 
 // Map from 0 to 128Gbytes starting at KBASE.
 void
-initpg(char* (*alloc)(void))
+initpg(void)
 {
   extern char end[]; 
   void *va = (void*)KBASE;

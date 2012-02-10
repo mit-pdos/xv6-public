@@ -132,6 +132,7 @@ pme_t *         walkpgdir(pml4e_t*, const void*, int);
 // hz.c
 void            microdelay(u64);
 u64             nsectime(void);
+void            inithz(void);
 
 // ide.c
 void            ideinit(void);
@@ -351,3 +352,30 @@ void            initcilkframe(struct cilkframe *wq);
 #define cilk_trywork() 0
 #define initcilkframe(x) do { } while (0)
 #endif
+
+// various init functions
+void initpic(void);
+void initioapic(void);
+void inituart(void);
+void initcga(void);
+void initconsole(void);
+void initpg(void);
+void initmp(void);
+void initlapic(void);
+void inittls(void);
+void inittrap(void);
+void initseg(void);
+void initkalloc(u64 mbaddr);
+void initrcu(void);
+void initproc(void);
+void initbio(void);
+void initinode(void);
+void initdisk(void);
+void inituser(void);
+void initcilk(void);
+void initsamp(void);
+void initpci(void);
+void initnet(void);
+void initsched(void);
+void initlockstat(void);
+

@@ -1,6 +1,7 @@
 // Fake IDE disk; stores blocks in memory.
 // Useful for running kernel without scratch disk.
 
+extern "C" {
 #include "types.h"
 #include "mmu.h"
 #include "kernel.h"
@@ -11,6 +12,7 @@
 #include "amd64.h"
 #include "traps.h"
 #include "buf.h"
+}
 
 extern u8 _fs_img_start[];
 extern u64 _fs_img_size;

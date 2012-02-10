@@ -1,9 +1,11 @@
+extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "kernel.h"
 #include "pci.h"
 #include "spinlock.h"
 #include "e1000reg.h"
+}
 
 #define TX_RING_SIZE 64
 #define RX_RING_SIZE 64
@@ -34,7 +36,7 @@ static inline u32
 erd(u32 reg)
 {
   paddr pa = e1000.membase + reg;
-  volatile u32 *ptr = p2v(pa);
+  volatile u32 *ptr = (u32*) p2v(pa);
   return *ptr;
 }
 
@@ -42,7 +44,7 @@ static inline void
 ewr(u32 reg, u32 val)
 {
   paddr pa = e1000.membase + reg;
-  volatile u32 *ptr = p2v(pa);
+  volatile u32 *ptr = (u32*) p2v(pa);
   *ptr = val;
 }
 

@@ -4,32 +4,6 @@
 #include "cpu.h"
 #include "amd64.h"
 
-extern void initpic(void);
-extern void initioapic(void);
-extern void inituart(void);
-extern void initcga(void);
-extern void initconsole(void);
-extern void initpg(void);
-extern void initmp(void);
-extern void initlapic(void);
-extern void inittls(void);
-extern void inittrap(void);
-extern void initseg(void);
-extern void initkalloc(u64 mbaddr);
-extern void initrcu(void);
-extern void initproc(void);
-extern void initbio(void);
-extern void initinode(void);
-extern void initdisk(void);
-extern void inituser(void);
-extern void inithz(void);
-extern void initcilk(void);
-extern void initsamp(void);
-extern void initpci(void);
-extern void initnet(void);
-extern void initsched(void);
-extern void initlockstat(void);
-
 static volatile int bstate;
 
 void
