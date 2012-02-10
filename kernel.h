@@ -23,6 +23,7 @@ struct stat;
 struct proc;
 struct vmap;
 struct pipe;
+struct work;
 
 // bio.c
 void            binit(void);
@@ -329,11 +330,10 @@ void            updatepages(pml4e_t*, void*, void*, int);
 struct vmap *   vmap_copy(struct vmap *, int);
 
 // wq.c
-#if WQENABLE
 int             wq_trywork(void);
-#else
-#define wq_trywork() 0
-#endif
+int             wq_push(struct work *w);
+struct work *   allocwork(void);
+void            freework(struct work *w);
 
 // cilk.c
 #if CILKENABLE

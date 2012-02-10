@@ -79,6 +79,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initbio();       // buffer cache
   initinode();     // inode cache
   initdisk();      // disk
+  initwq();
 #if CILKENABLE
   initcilk();
 #endif

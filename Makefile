@@ -73,6 +73,7 @@ OBJS = \
 	vm.o \
 	trap.o \
 	trapasm.o \
+	wq.o \
 	incbin.o
 OBJS := $(addprefix $(O)/, $(OBJS))
 
