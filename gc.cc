@@ -336,3 +336,10 @@ initgc(void)
     release(&gcp->lock);
   }
 }
+
+void
+del_rcu_freed(void *arg)
+{
+  rcu_freed *rf = (rcu_freed*) arg;
+  delete rf;
+}

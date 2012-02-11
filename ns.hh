@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gc.hh"
+
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
 
@@ -16,7 +18,7 @@ class scoped_gc_epoch {
 };
 
 template<class K, class V>
-class xelem {
+class xelem : public rcu_freed {
  public:
   V val;
   int next_lock;
@@ -24,6 +26,7 @@ class xelem {
   K key;
 
   xelem(const K &k, const V &v) : val(v), next_lock(0), next(0), key(k) {}
+  virtual ~xelem() {}
 };
 
 template<class K, class V>
@@ -73,7 +76,7 @@ class xns {
       if (!allowdup) {
         for (auto x = root; x; x = x->next) {
           if (x->key == key) {
-            // XXX delete e;
+            gc_delayed(e, del_rcu_freed);
             return -1;
           }
         }
@@ -128,7 +131,7 @@ class xns {
           }
 
           *pelock = 0;
-          // XXX delete e;
+          gc_delayed(e, del_rcu_freed);
           return true;
         }
 
