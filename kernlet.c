@@ -59,6 +59,7 @@ sys_kernlet(int fd, size_t count, off_t off)
 {
   struct file *f;
   struct work *w;
+  struct ipcctl *ipc = (struct ipcctl *)myproc()->vmap->kshared;
 
   if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
     return -1;
@@ -76,5 +77,7 @@ sys_kernlet(int fd, size_t count, off_t off)
     freework(w);
     return -1;
   }
+  ipc->off = off;
+  ipc->submitted = 1;
   return 0;
 }

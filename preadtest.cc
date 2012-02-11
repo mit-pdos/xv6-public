@@ -2,6 +2,7 @@
 #include "stat.h"
 #include "fcntl.h"
 #include "user.h"
+#include "lib.h"
 #include "amd64.h"
 #include "ipc.h"
 
@@ -24,6 +25,31 @@ kernlet_pread(int fd, size_t count, off_t off)
     die("kernlet");
 }
 
+static ssize_t
+xpread(int fd, void *buf, size_t count, off_t off)
+{
+  if (ipcctl->submitted) {
+    while (ipcctl->done == 0)
+      nop_pause();
+    if (ipcctl->result == -1)
+      goto slow;
+    if (off < ipcctl->off)
+      goto slow;
+    if (off > ipcctl->off + ipcctl->result)
+      goto slow;
+
+    char *kbuf = (char*) (KSHARED+4096);
+    off_t kbufoff = off - ipcctl->off;
+    size_t kbufcount = MIN(count, ipcctl->result - kbufoff);
+
+    memmove(buf, kbuf+kbufoff, kbufcount);
+    return kbufcount;
+  }
+
+slow:
+  return pread(fd, buf, count, off);
+}
+
 int
 main(int ac, char **av)
 {
@@ -44,7 +70,7 @@ main(int ac, char **av)
     kernlet_pread(fd, PSIZE, k);
 
     for (i = k; i < k+PSIZE; i+=BSIZE)
-      if (pread(fd, buf, BSIZE, i) != BSIZE)
+      if (xpread(fd, buf, BSIZE, i) != BSIZE)
         die("pread failed");
   }
   t1 = rdtsc();
