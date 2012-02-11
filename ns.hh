@@ -23,7 +23,7 @@ class xelem {
   xelem<K, V> * volatile next;
   K key;
 
-  xelem(const K &k, const V &v) : val(v), key(k) {}
+  xelem(const K &k, const V &v) : val(v), next_lock(0), next(0), key(k) {}
 };
 
 template<class K, class V>

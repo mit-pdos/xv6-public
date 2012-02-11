@@ -10,6 +10,9 @@ extern "C" {
 #include "cpu.h"
 }
 
+#include "ns.hh"
+extern xns<u32, proc*> *xnspid;
+
 // GC scheme based on Fraser's:
 // a machine has a global_epoch
 // a process maintain an epoch (>= global_epoch)
@@ -67,24 +70,6 @@ gc_alloc()
   assert(r);
   __sync_fetch_and_add(&gc_state[mycpu()->id].ndelayed, 1);
   return r;
-}
-
-static void *
-gc_min(void *vkey, void *v, void *arg){
-  u64 *min_epoch_p = (u64*) arg;
-  struct proc *p = (struct proc *) v;
-  // Some threads may never call begin/end_epoch(), and never update
-  // p->epoch, so gc_thread does it for them.  XXX get rid off lock?
-  acquire(&p->gc_epoch_lock);
-  if (p->epoch_depth == 0) {
-    p->epoch = global_epoch;  
-  }
-  release(&p->gc_epoch_lock);
-  // cprintf("gc_min %d(%s): %lu %ld\n", p->pid, p->name, p->epoch, p->epoch_depth);
-  if (*min_epoch_p > p->epoch) {
-      *min_epoch_p = p->epoch;
-  }
-  return NULL;
 }
 
 static void
@@ -185,8 +170,19 @@ gc_delayfreelist(void)
   if (gc_debug) {
     cprintf("(%d,%d) (%s): min %lu global %lu\n", myproc()->cpuid, myproc()->pid, myproc()->name, min, global);
   }
-  myproc()->epoch_depth++;// ensure ns_enumate's call to gc_begin_epoch doesn't have sideeffects
-  ns_enumerate(nspid, gc_min, &min);
+  myproc()->epoch_depth++; // ensure enumerate's call to gc_begin_epoch doesn't have sideeffects
+  xnspid->enumerate([&min](u32, proc *p) {
+      // Some threads may never call begin/end_epoch(), and never update
+      // p->epoch, so gc_thread does it for them.  XXX get rid off lock?
+      acquire(&p->gc_epoch_lock);
+      if (p->epoch_depth == 0)
+        p->epoch = global_epoch;
+      release(&p->gc_epoch_lock);
+      // cprintf("gc_min %d(%s): %lu %ld\n", p->pid, p->name, p->epoch, p->epoch_depth);
+      if (min > p->epoch)
+        min = p->epoch;
+      return false;
+    });
   myproc()->epoch_depth--;
   if (min >= global) {
     gc_move_to_tofree(min);

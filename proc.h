@@ -71,5 +71,3 @@ struct proc {
   LIST_ENTRY(proc) cv_waiters; // Linked list of processes waiting for oncv
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
 };
-
-extern struct ns *nspid;

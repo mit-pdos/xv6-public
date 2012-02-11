@@ -14,8 +14,10 @@ extern "C" {
 #include "sched.h"
 }
 
+#include "ns.hh"
+
 int __mpalign__ idle[NCPU];
-struct ns *nspid __mpalign__;
+xns<u32, proc*> *xnspid __mpalign__;
 static struct proc *bootproc __mpalign__;
 
 #if MTRACE
@@ -193,7 +195,7 @@ allocproc(void)
   memset(p, 0, sizeof(*p));
 
   p->state = EMBRYO;
-  p->pid = ns_allockey(nspid);
+  p->pid = xnspid->allockey();
   p->cpuid = mycpu()->id;
   p->on_runq = -1;
   p->cpu_pin = 0;
@@ -207,12 +209,12 @@ allocproc(void)
   initcondvar(&p->cv, p->lockname);
   initcilkframe(&p->cilkframe);
 
-  if (ns_insert(nspid, KI(p->pid), (void *) p) < 0)
+  if (xnspid->insert(p->pid, p) < 0)
     panic("allocproc: ns_insert");
 
   // Allocate kernel stack if possible.
   if((p->kstack = (char*) ksalloc(slab_stack)) == 0){
-    if (ns_remove(nspid, KI(p->pid), p) == 0)
+    if (!xnspid->remove(p->pid, &p))
       panic("allocproc: ns_remove");
     freeproc(p);
     return 0;
@@ -281,8 +283,8 @@ initproc(void)
 {
   int c;
 
-  nspid = nsalloc(0);
-  if (nspid == 0)
+  xnspid = new xns<u32, proc*>(false);
+  if (xnspid == 0)
     panic("pinit");
 
   for (c = 0; c < NCPU; c++)
@@ -469,7 +471,7 @@ kill(int pid)
 {
   struct proc *p;
 
-  p = (struct proc *) ns_lookup(nspid, KI(pid));
+  p = xnspid->lookup(pid);
   if (p == 0) {
     panic("kill");
     return -1;
@@ -492,7 +494,8 @@ kill(int pid)
   return 0;
 }
 
-void *procdump(void *vk, void *v, void *arg)
+bool
+procdump(u32 pid, proc *p)
 {
   static const char *states[] = {
     /* [UNUSED]   = */ "unused",
@@ -502,7 +505,6 @@ void *procdump(void *vk, void *v, void *arg)
     /* [RUNNING]  = */ "run   ",
     /* [ZOMBIE]   = */ "zombie"
   };
-  struct proc *p = (struct proc *) v;
   const char *name = "(no name)";
   const char *state;
   uptr pc[10];
@@ -522,7 +524,8 @@ void *procdump(void *vk, void *v, void *arg)
     for(int i=0; i<10 && pc[i] != 0; i++)
       cprintf(" %lx\n", pc[i]);
   }
-  return 0;
+
+  return false;
 }
 
 // Print a process listing to console.  For debugging.
@@ -531,7 +534,7 @@ void *procdump(void *vk, void *v, void *arg)
 void
 procdumpall(void)
 {
-  ns_enumerate(nspid, procdump, 0);
+  xnspid->enumerate(procdump);
 }
 
 // Create a new process copying p as the parent.
@@ -556,7 +559,7 @@ fork(int flags)
       ksfree(slab_stack, np->kstack);
       np->kstack = 0;
       np->state = UNUSED;
-      if (ns_remove(nspid, KI(np->pid), np) == 0)
+      if (!xnspid->remove(np->pid, &np))
 	panic("fork: ns_remove");
       freeproc(np);
       return -1;
@@ -618,7 +621,7 @@ wait(void)
 	  p->kstack = 0;
 	  vmap_decref(p->vmap);
 	  p->state = UNUSED;
-	  if (ns_remove(nspid, KI(p->pid), p) == 0)
+	  if (!xnspid->remove(p->pid, &p))
 	    panic("wait: ns_remove");
 	  p->pid = 0;
 	  p->parent = 0;
