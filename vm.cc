@@ -119,6 +119,14 @@ vmap_alloc(void)
     kmfree(m);
     return 0;
   }
+  m->kshared = (char*)ksalloc(slab_kshared);
+  if (m->kshared == NULL || setupkshared(m->pml4, m->kshared)) {
+      cprintf("vmap_alloc: kshared out of memory\n");
+      freevm(m->pml4);
+      destroylock(&m->lock);
+      kmfree(m);
+      return 0;
+  }
 #ifdef TREE
   m->cr = crange_alloc(10);
   if (m->cr == 0)
@@ -332,6 +340,7 @@ vmap_free(void *p)
   struct vmap *m = (struct vmap *) p;
   crange_foreach(m->cr, vmap_free_vma, NULL);
   crange_free(m->cr);
+  ksfree(slab_kshared, m->kshared);
   freevm(m->pml4);
   m->pml4 = 0;
   m->alloc = 0;

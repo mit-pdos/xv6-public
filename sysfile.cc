@@ -75,6 +75,27 @@ sys_read(void)
   return fileread(f, p, n);
 }
 
+ssize_t
+sys_pread(int fd, void *ubuf, size_t count, off_t offset)
+{
+  struct file *f;
+  int r;
+
+  if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
+    return -1;
+  
+  // XXX(sbw) assuming ubuf is ok
+  if(f->type == file::FD_INODE){
+    ilock(f->ip, 0);
+    if(f->ip->type == 0)
+      panic("fileread");
+    r = readi(f->ip, (char*)ubuf, offset, count);
+    iunlock(f->ip);
+    return r;
+  }
+  return -1;
+}
+
 long
 sys_write(void)
 {

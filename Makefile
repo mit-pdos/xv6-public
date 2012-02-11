@@ -23,7 +23,7 @@ OBJCOPY = $(TOOLPREFIX)objcopy
 COMFLAGS := -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
 	    -MD -ggdb -m64 -Werror -fms-extensions -mno-sse \
 	    -mcmodel=large -mno-red-zone -I$(QEMUSRC) -fno-omit-frame-pointer \
-	    -DHW_$(HW) -include param.h -include compiler.h
+	    -DHW_$(HW) -include param.h -include compiler.h -DXV6
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS   := $(COMFLAGS) -std=c99
 CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-exceptions -fno-rtti
@@ -48,6 +48,7 @@ OBJS = \
 	hwvm.o \
 	hz.o \
 	kalloc.o \
+	kernlet.o \
 	kmalloc.o \
 	kbd.o \
 	main.o \
@@ -98,7 +99,8 @@ UPROGS= \
 	_sleep \
 	_dirbench \
 	_usertests \
-	_lockstat
+	_lockstat \
+	_preadtest
 UPROGS := $(addprefix $(O)/, $(UPROGS))
 
 all: $(O)/kernel

@@ -219,6 +219,7 @@ allocproc(void)
     freeproc(p);
     return 0;
   }
+
   sp = p->kstack + KSTACKSIZE;
   
   // Leave room for trap frame.

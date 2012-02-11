@@ -36,5 +36,6 @@ struct vmap {
   u64 ref;
   u64 alloc;
   pml4e_t *pml4;               // Page table
+  char *kshared;
   char lockname[16];
 };

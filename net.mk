@@ -19,7 +19,7 @@ CXXFLAGS += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -I. -DLWIP
 LWIP_CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb \
 	 -m64 -Werror -std=c99 -fms-extensions -mno-sse -mcmodel=large -I$(QEMUSRC) \
 	 -fno-omit-frame-pointer -DHW_$(HW) -include param.h -include compiler.h \
-	 -Wno-attributes -Wno-address -Wno-char-subscripts \
+	 -DXV6 -Wno-attributes -Wno-address -Wno-char-subscripts \
 	 -Wno-unused-but-set-variable -Wno-format
 LWIP_CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 

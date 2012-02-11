@@ -27,3 +27,5 @@
 #define SYS_bind   26
 #define SYS_listen 27
 #define SYS_accept 28
+#define SYS_pread  29
+#define SYS_kernlet 30
