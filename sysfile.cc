@@ -79,12 +79,16 @@ ssize_t
 sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 {
   struct file *f;
+  uptr i = (uptr)ubuf;
   int r;
 
   if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
     return -1;
+
+  for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
+    if(pagefault(myproc()->vmap, va, 0) < 0)
+      return -1;
   
-  // XXX(sbw) assuming ubuf is ok
   if(f->type == file::FD_INODE){
     ilock(f->ip, 0);
     if(f->ip->type == 0)

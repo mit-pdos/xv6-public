@@ -1544,6 +1544,50 @@ unopentest(void)
   printf(stdout, "concurrent unlink/open ok\n");
 }
 
+void
+preads(void)
+{
+  static const int fsize = (64 << 10);
+  static const int bsize = 4096;
+  static const int nprocs = 4;
+  static const int iters = 100;
+  static char buf[bsize];
+  int fd;
+  int pid;
+
+  printf(1, "concurrent preads\n");
+
+  fd = open("preads.x", O_CREATE|O_RDWR);
+  if (fd < 0)
+    die("preads: open failed");
+
+  for (int i = 0; i < fsize/bsize; i++)
+    if (write(fd, buf, bsize) != bsize)
+      die("preads: write failed");
+  close(fd);
+
+  for (int i = 0; i < nprocs; i++) {
+    pid = fork(0);
+    if (pid < 0)
+      die("preads: fork failed");
+    if (pid == 0)
+      break;
+  }
+
+  for (int k = 0; k < iters; k++) {
+    fd = open("preads.x", O_RDONLY);
+    for (int i = 0; i < fsize; i+=bsize)
+      if (pread(fd, buf, bsize, i) != bsize)
+        die("preads: pread failed");
+    close(fd);
+  }
+
+  if (pid == 0)
+    exit();
+
+  printf(1, "concurrent preads OK\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1567,6 +1611,7 @@ main(int argc, char *argv[])
   writetest();
   writetest1();
   createtest();
+  preads();
 
   // mem();
   pipe1();
