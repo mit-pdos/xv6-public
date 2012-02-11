@@ -80,7 +80,7 @@ OBJS = \
 	incbin.o
 OBJS := $(addprefix $(O)/, $(OBJS))
 
-ULIB = ulib.o usys.o printf.o umalloc.o uthread.o
+ULIB = ulib.o usys.o printf.o umalloc.o uthread.o fmt.o
 ULIB := $(addprefix $(O)/, $(ULIB))
 
 UPROGS= \

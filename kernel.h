@@ -294,7 +294,7 @@ void*           memmove(void*, const void*, u32);
 void*           memset(void*, int, u32);
 void*           memcpy(void*, const void *, u32);
 char*           safestrcpy(char*, const char*, u32);
-int             strlen(const char*);
+unsigned int    strlen(const char*);
 int             strncmp(const char*, const char*, u32);
 char*           strncpy(char*, const char*, u32);
 int             strcmp(const char *p, const char *q);

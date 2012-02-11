@@ -1,9 +1,10 @@
 extern "C" {
 #include "types.h"
-#include "kernel.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include "fmt.h"
+#include "lib.h"
+unsigned int strlen(const char*);
 }
 
 //

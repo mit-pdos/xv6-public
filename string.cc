@@ -92,7 +92,7 @@ safestrcpy(char *s, const char *t, u32 n)
   return os;
 }
 
-int
+unsigned int
 strlen(const char *s)
 {
   int n;
