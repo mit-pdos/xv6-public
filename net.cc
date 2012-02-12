@@ -30,8 +30,10 @@ extern "C" {
 extern "C" {
 #include "net.h"
 
+#ifdef LWIP
 err_t if_init(struct netif *netif);
 void if_input(struct netif *netif, void *buf, u16 len);
+#endif
 }
 
 void
@@ -453,7 +455,7 @@ netwrite(int sock, char *buf, int len)
 }
 
 int
-netread(int sock, const char *buf, int len)
+netread(int sock, char *buf, int len)
 {
   return -1;
 }
