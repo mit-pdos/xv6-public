@@ -70,7 +70,8 @@ steal(void)
     // q->lock, scan for a process, drop q->lock, acquire p->lock,
     // and then check that it's still ok to steal p.
     steal = NULL;
-    acquire(&q->lock);
+    if (tryacquire(&q->lock) == 0)
+      continue;
     STAILQ_FOREACH(p, &q->q, runqlink) {
       if (p->state == RUNNABLE && !p->cpu_pin && 
           p->curcycles != 0 && p->curcycles > VICTIMAGE)
