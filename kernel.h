@@ -57,25 +57,23 @@ void            consoleintr(int(*)(void));
 
 // crange.c
 
-struct clist_range {
+struct range {
   u64 key;
   u64 size;
   void *value;
-  int curlevel;
-  int nlevel;
-  struct crange *cr;
-  struct clist_range** next;  // one next pointer per level
+  int curlevel;          // the current levels it appears on
+  int nlevel;            // the number of levels this range should appear
+  struct crange *cr;     // the crange this range is part of
+  struct range** next;   // one next pointer per level
   struct spinlock *lock; // on separate cache line?
 } __mpalign__;
-
-struct crange;
 
 struct crange* crange_alloc(int nlevel);
 void crange_free(struct crange *cr);
 void crange_del(struct crange *cr, u64 k, u64 sz);
 void crange_add(struct crange *cr, u64 k, u64 sz, void *v);
-struct clist_range* crange_search(struct crange *cr, u64 k, u64 sz);
-int crange_foreach(struct crange *crk, int (*f)(struct clist_range *r, void *st), void *st);
+struct range* crange_search(struct crange *cr, u64 k, u64 sz, int mod);
+int crange_foreach(struct crange *crk, int (*f)(struct range *r, void *st), void *st);
 void crange_print(struct crange *cr, int);
 
 // e1000.c
