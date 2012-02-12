@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "kernel.h"
 #include "mmu.h"
@@ -6,6 +7,7 @@
 #include "queue.h"
 #include "proc.h"
 #include "cpu.h"
+}
 
 //
 // Concurrent atomic range operations using skip lists.  An insert may split an
@@ -157,7 +159,7 @@ static struct range *
 range_insert(struct range *head, struct range *r)
 {
   struct range *n, *p;
-  p = NULL;
+  p = nullptr;
   for (n = head; n != 0; p = n, n = n->next[0]) {
     assert(!MARKED(n));
     if (r->key < n->key) {
@@ -266,13 +268,13 @@ crange_replace(u64 k, u64 sz, void *v, struct range *f, struct range *l,
     struct range *right;
     // cprintf("f 0x%lx [%d, %d) l 0x%lx [%d, %d)\n", (long) f, f->key, f->key+f->size, (long) l, l->key, l->key+l->size);
     if (k <= f->key && k + sz >= f->key + f->size) {  // delete first range?
-      left = NULL;
+      left = nullptr;
     } else {
       assert(k > f->key);
       left = range_alloc(f->cr, f->key, k - f->key, v, 0);
     }
     if (k + sz >= l->key + l->size)  { // delete last range?
-      right = NULL;
+      right = nullptr;
     } else {
       assert(k+sz > l->key);
       assert(l->key + l->size >= k + sz);
@@ -413,7 +415,7 @@ crange_del_index(struct crange *cr, struct range *p0, struct range **e, int l)
     }
   }
  done:
-  crange_check(cr, NULL);
+  crange_check(cr, nullptr);
   return r;
 }
 
@@ -448,7 +450,7 @@ crange_add_index(struct crange *cr, int l, struct range *e, struct range *p1, st
     }
   }
  done:
-  crange_check(cr, NULL);
+  crange_check(cr, nullptr);
 }
 
 // Given the range that starts the sequence, find all other ranges part of sequence and lock them,
@@ -492,11 +494,11 @@ crange_find_and_lock(struct crange *cr, u64 k, u64 sz, struct range **p0,
   struct range *e;
   //read_counters(myproc()->cpuid, 0);
  retry:
-  *p0 = NULL;
-  *s0 = NULL;
+  *p0 = nullptr;
+  *s0 = nullptr;
   for (int l = cr->nlevel-1; l >= 0; l--) {  
-    *f0 = NULL;
-    *l0 = NULL;
+    *f0 = nullptr;
+    *l0 = nullptr;
     p1 = *p0;   // remember last previous (p0) as the previous one level up (p1)
     *p0 = (l == cr->nlevel-1) ? &cr->crange_head : p1;   // set current previous
     s1 = *s0;
@@ -522,7 +524,7 @@ crange_find_and_lock(struct crange *cr, u64 k, u64 sz, struct range **p0,
       break;
     }
   }
-  if (*f0 == NULL) {   // range isn't present, lock predecessor of key
+  if (*f0 == nullptr) {   // range isn't present, lock predecessor of key
     if (!range_lock_pred(*p0, *s0)) {
       //INCRETRY;
       goto retry;
@@ -547,7 +549,7 @@ crange_search(struct crange *cr, u64 k, u64 sz, int mod)
   gc_begin_epoch();
   //read_counters(myproc()->cpuid, 0);
   if (crange_debug) cprintf("crange_search: 0x%lx 0x%lx\n", (u64) cr, k);
-  r = NULL;
+  r = nullptr;
   p = &cr->crange_head;
   for (int l = cr->nlevel-1; l >= 0; l--) {
     for (e = WOMARK(p->next[l]); e; p = e, e = WOMARK(e->next[l])) {
@@ -587,7 +589,7 @@ crange_del(struct crange *cr, u64 k, u64 sz)
   struct range *succ;
   struct range *first;
   struct range *last;
-  struct range *repl = NULL;
+  struct range *repl = nullptr;
 
   assert(cr);
   gc_begin_epoch();
@@ -598,7 +600,7 @@ crange_del(struct crange *cr, u64 k, u64 sz)
     release(prev->lock);
     goto done;
   }
-  repl = crange_replace(k, sz, NULL, first, last, succ);
+  repl = crange_replace(k, sz, nullptr, first, last, succ);
   range_mark(first, succ); 
   while (1) {
     // hook new list into bottom list; if del resulted in a new list, use that (repl), otherwise
@@ -613,7 +615,7 @@ crange_del(struct crange *cr, u64 k, u64 sz)
     assert(0);
   }
  done:
-  crange_check(cr, NULL);
+  crange_check(cr, nullptr);
   // cprintf("%d: crange_del(0x%lx, 0x%lx):\n", mycpu()->id, k, sz);  crange_print(cr, 1);
   gc_end_epoch();
 }
@@ -629,7 +631,7 @@ crange_add(struct crange *cr, u64 k, u64 sz, void *v)
   struct range *prev;
   struct range *last;
   struct range *succ;
-  struct range *repl = NULL;
+  struct range *repl = nullptr;
 
   if (crange_debug) cprintf("crange_add: 0x%lx 0x%lx-0x%lx(%lu)\n", (u64) cr, k, k+sz, sz);
   assert(cr);
@@ -653,7 +655,7 @@ crange_add(struct crange *cr, u64 k, u64 sz, void *v)
     assert(0);
   }
   // cprintf("crange_add(0x%lx,0x%lx):\n", k, sz);  crange_print(cr, 1);
-  crange_check(cr, NULL);
+  crange_check(cr, nullptr);
   gc_end_epoch();
 }
 
