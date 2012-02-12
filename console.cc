@@ -260,8 +260,8 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
-    case C('C'):  // cilk stats
-      cilk_dump();
+    case C('W'):
+      wq_dump();
       break;
     case C('L'):  // Prof stats
       profdump();

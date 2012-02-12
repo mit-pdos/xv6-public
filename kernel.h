@@ -288,6 +288,7 @@ struct vmap *   vmap_copy(struct vmap *, int);
 // wq.c
 int             wq_trywork(void);
 int             wq_push(struct work *w);
+void            wq_dump(void);
 struct work *   allocwork(void);
 void            freework(struct work *w);
 
