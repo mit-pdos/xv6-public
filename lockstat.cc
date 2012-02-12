@@ -17,14 +17,21 @@ stats(void)
 {
   static const u64 sz = sizeof(struct lockstat);
   struct lockstat ls;
-  int fd;
+  int sfd, fd;
   int r;
 
   fd = open("/dev/lockstat", O_RDONLY);
   if (fd < 0)
     die("lockstat: open failed");
 
+  unlink("/lockstat.last");
+  sfd = open("/lockstat.last", O_RDWR|O_CREATE);
+  if (sfd < 0)
+    die("lockstat: open failed");
+
   printf(1, "## name acquires contends locking locked\n");
+  printf(sfd, "## name acquires contends locking locked\n");
+  
   while (1) {
     r = read(fd, &ls, sz);
     if (r < 0)
@@ -43,10 +50,15 @@ stats(void)
       locking += ls.cpu[i].locking;
       locked += ls.cpu[i].locked;
     }
-    if (contends > 0)
+    if (contends > 0) {
       printf(1, "%s %lu %lu %lu %lu\n", 
              ls.name, acquires, contends, locking, locked);
+      printf(sfd, "%s %lu %lu %lu %lu\n", 
+             ls.name, acquires, contends, locking, locked);
+    }
   }
+
+  close(sfd);
 }
 
 int
