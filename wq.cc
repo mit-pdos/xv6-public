@@ -118,6 +118,10 @@ __wq_pop(int c)
   struct wqueue *wq = &queue[c];
   struct work *w;
   int i;
+
+  i = wq->head;
+  if ((i - wq->tail) == 0)
+    return 0;
   
   acquire(&wq->lock);
   i = wq->head;
@@ -142,7 +146,8 @@ __wq_steal(int c)
   struct work *w;
   int i;
 
-  acquire(&wq->lock);
+  if (tryacquire(&wq->lock) == 0)
+    return 0;
   i = wq->tail;
   if ((i - wq->head) == 0) {
     release(&wq->lock);
