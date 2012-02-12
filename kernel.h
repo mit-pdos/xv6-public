@@ -184,50 +184,6 @@ void            netrx(void *va, u16 len);
 int             nettx(void *va, u16 len);
 void            nethwaddr(u8 *hwaddr);
 
-// ns.c
-enum {
-  nskey_int = 1,
-  nskey_ii,
-  nskey_str,
-  nskey_dirname,
-  nskey_iis
-};
-
-struct nskey {
-  int type;
-  union {
-    u64 i;
-    struct {
-      u64 a;
-      u64 b;
-    } ii;
-    char *s;
-    const char *dirname;
-    struct {
-      u64 a;
-      u64 b;
-      char *s;
-    } iis;
-  } u;
-};
-
-#define KI(v)	    (struct nskey){type: nskey_int, u: { i: v }}
-#define KII(x,y)    (struct nskey){type: nskey_ii, u: {ii: {a:x, b:y}}}
-#define KS(v)	    (struct nskey){.type=nskey_str,.u.s=v}
-#define KD(v)	    (struct nskey){type: nskey_dirname, u: { dirname: v }}
-#define KIIS(x,y,z) (struct nskey){.type=nskey_iis,.u.iis.a=x, \
-						   .u.iis.b=y, \
-						   .u.iis.s=z}
-
-struct ns*      nsalloc(int allowdup);
-void		nsfree(struct ns*);
-u64             ns_allockey(struct ns*);
-int             ns_insert(struct ns*, struct nskey key, void*);
-void*           ns_lookup(struct ns*, struct nskey key);
-void*           ns_remove(struct ns *ns, struct nskey key, void *val); // removed val
-void*           ns_enumerate(struct ns *ns, void *(*f)(void *, void *, void *), void *arg);
-void*           ns_enumerate_key(struct ns *ns, struct nskey key, void *(*f)(void *, void *), void *arg);
-
 // picirq.c
 void            picenable(int);
 void            piceoi(void);

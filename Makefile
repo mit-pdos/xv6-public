@@ -56,7 +56,6 @@ OBJS = \
 	memide.o \
 	mp.o \
 	net.o \
-	ns.o \
 	pci.o \
 	picirq.o \
 	pipe.o \

@@ -7,7 +7,11 @@ extern "C" {
 #include "queue.h"
 #include "proc.h"
 #include "fs.h"
+}
+
 #include "file.h"
+
+extern "C" {
 #include "cpu.h"
 }
 

@@ -35,7 +35,7 @@ struct xbucket {
 } __attribute__((aligned (CACHELINE)));
 
 template<class K, class V, u64 (*HF)(const K&)>
-class xns {
+class xns : public rcu_freed {
  private:
   bool allowdup;
   u64 nextkey;

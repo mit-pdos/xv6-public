@@ -1,3 +1,10 @@
+#ifdef __cplusplus
+#include "cpputil.hh"
+#include "ns.hh"
+
+u64 namehash(const strbuf<DIRSIZ>&);
+#endif
+
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;
   int ref; // reference count
@@ -23,7 +30,11 @@ struct inode {
   struct condvar cv;
   struct spinlock lock;
   char lockname[16];
-  struct ns *dir;
+#ifdef __cplusplus
+  xns<strbuf<DIRSIZ>, u32, namehash> *dir;
+#else
+  void *dir;
+#endif
 
   short type;         // copy of disk inode
   short major;

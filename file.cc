@@ -4,7 +4,11 @@ extern "C" {
 #include "condvar.h"
 #include "kernel.h"
 #include "fs.h"
+}
+
 #include "file.h"
+
+extern "C" {
 #include "stat.h"
 #include "net.h"
 }

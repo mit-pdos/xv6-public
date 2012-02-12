@@ -23,7 +23,11 @@ extern "C" {
 #endif
 #include "proc.h"
 #include "fs.h"
+}
+
 #include "file.h"
+
+extern "C" {
 #include "net.h"
 
 err_t if_init(struct netif *netif);

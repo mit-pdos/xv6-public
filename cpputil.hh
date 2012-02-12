@@ -13,6 +13,20 @@ class pair {
   }
 };
 
+template<int N>
+class strbuf {
+ public:
+  char _buf[N];
+
+  strbuf(const char *s) {
+    strncpy(_buf, s, N);
+  }
+
+  bool operator==(const strbuf<N> &other) {
+    return !strncmp(_buf, other._buf, N);
+  }
+};
+
 template<class A, class B>
 pair<A, B>
 mkpair(const A &a, const B &b)

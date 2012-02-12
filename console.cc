@@ -9,7 +9,11 @@ extern "C" {
 #include "spinlock.h"
 #include "fs.h"
 #include "condvar.h"
+}
+
 #include "file.h"
+
+extern "C" {
 #include "amd64.h"
 #include "queue.h"
 #include "proc.h"

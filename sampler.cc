@@ -3,8 +3,12 @@ extern "C" {
 #include "spinlock.h"
 #include "condvar.h"
 #include "fs.h"
-#include "file.h"
 #include "kernel.h"
+}
+
+#include "file.h"
+
+extern "C" {
 #include "bits.h"
 #include "amd64.h"
 #include "cpu.h"

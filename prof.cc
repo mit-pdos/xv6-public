@@ -4,7 +4,11 @@ extern "C" {
 #include "spinlock.h"
 #include "condvar.h"
 #include "fs.h"
+}
+
 #include "file.h"
+
+extern "C" {
 #include "prof.h"
 #include "bits.h"
 #include "amd64.h"

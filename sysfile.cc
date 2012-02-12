@@ -8,7 +8,11 @@ extern "C" {
 #include "queue.h"
 #include "proc.h"
 #include "fs.h"
+}
+
 #include "file.h"
+
+extern "C" {
 #include "fcntl.h"
 #include "cpu.h"
 #include "net.h"
@@ -174,22 +178,20 @@ bad:
 }
 
 // Is the directory dp empty except for "." and ".." ?
-static void*
-check_empty(void *k, void *v, void *arg)
-{
-  char *name = (char*) k;
-  if (strcmp(name, ".") && strcmp(name, ".."))
-    return (void*)1;
-  return 0;
-}
-
 static int
 isdirempty(struct inode *dp)
 {
   dir_init(dp);
-  if (ns_enumerate(dp->dir, check_empty, 0))
-    return 0;
-  return 1;
+  int empty = 1;
+  dp->dir->enumerate([&empty](const strbuf<DIRSIZ> &name, u64 ino) {
+      if (!strcmp(name._buf, "."))
+        return false;
+      if (!strcmp(name._buf, ".."))
+        return false;
+      empty = 0;
+      return true;
+    });
+  return empty;
 }
 
 long
@@ -227,7 +229,7 @@ sys_unlink(void)
   }
 
   dir_init(dp);
-  if (ns_remove(dp->dir, KD(name), (void*)(u64)ip->inum) == 0) {
+  if (dp->dir->remove(strbuf<DIRSIZ>(name), &ip->inum) == 0) {
     iunlockput(ip);
     goto retry;
   }

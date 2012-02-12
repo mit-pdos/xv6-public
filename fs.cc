@@ -21,12 +21,13 @@ extern "C" {
 #include "proc.h"
 #include "buf.h"
 #include "fs.h"
-#include "file.h"
-#include "cpu.h"
 }
 
-#include "cpputil.hh"
-#include "ns.hh"
+#include "file.h"
+
+extern "C" {
+#include "cpu.h"
+}
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
@@ -225,9 +226,9 @@ ifree(void *arg)
   struct inode *ip = (inode*) arg;
 
   if (ip->dir) {
-    ns_remove(ip->dir, KD("."), 0);
-    ns_remove(ip->dir, KD(".."), 0);
-    nsfree(ip->dir);
+    ip->dir->remove(strbuf<DIRSIZ>("."));
+    ip->dir->remove(strbuf<DIRSIZ>(".."));
+    gc_delayed(ip->dir, del_rcu_freed);
     ip->dir = 0;
   }
 
@@ -589,6 +590,12 @@ namecmp(const char *s, const char *t)
   return strncmp(s, t, DIRSIZ);
 }
 
+u64
+namehash(const strbuf<DIRSIZ> &n)
+{
+  return n._buf[0];   /* XXX */
+}
+
 void
 dir_init(struct inode *dp)
 {
@@ -597,7 +604,7 @@ dir_init(struct inode *dp)
   if (dp->type != T_DIR)
     panic("dir_init not DIR");
 
-  struct ns *dir = nsalloc(0);
+  auto dir = new xns<strbuf<DIRSIZ>, u32, namehash>(false);
   for (u32 off = 0; off < dp->size; off += BSIZE) {
     struct buf *bp = bread(dp->dev, bmap(dp, off / BSIZE), 0);
     for (struct dirent *de = (struct dirent *) bp->data;
@@ -606,35 +613,14 @@ dir_init(struct inode *dp)
       if (de->inum == 0)
 	continue;
 
-      ns_insert(dir, KD(de->name), (void*) (u64) de->inum);
+      dir->insert(strbuf<DIRSIZ>(de->name), de->inum);
     }
     brelse(bp, 0);
   }
   if (!__sync_bool_compare_and_swap(&dp->dir, 0, dir)) {
-    // free all the dirents
-    nsfree(dir);
+    // XXX free all the dirents
+    delete dir;
   }
-}
-
-struct flush_state {
-  struct inode *dp;
-  u32 off;
-};
-
-static void *
-dir_flush_cb(void *key, void *val, void *arg)
-{
-  struct flush_state *fs = (flush_state*) arg;
-  char *name = (char*) key;
-  u32 inum = (u64) val;
-
-  struct dirent de;
-  strncpy(de.name, name, DIRSIZ);
-  de.inum = inum;
-  if(writei(fs->dp, (char*)&de, fs->off, sizeof(de)) != sizeof(de))
-    panic("dir_flush_cb");
-  fs->off += sizeof(de);
-  return 0;
 }
 
 void
@@ -645,10 +631,16 @@ dir_flush(struct inode *dp)
   if (!dp->dir)
     return;
 
-  struct flush_state fs;
-  fs.dp = dp;
-  fs.off = 0;
-  ns_enumerate(dp->dir, dir_flush_cb, &fs);
+  u32 off = 0;
+  dp->dir->enumerate([dp, &off](const strbuf<DIRSIZ> &name, const u32 &inum) {
+      struct dirent de;
+      strncpy(de.name, name._buf, DIRSIZ);
+      de.inum = inum;
+      if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+        panic("dir_flush_cb");
+      off += sizeof(de);
+      return false;
+    });
 }
 
 // Look for a directory entry in a directory.
@@ -657,8 +649,7 @@ dirlookup(struct inode *dp, char *name)
 {
   dir_init(dp);
 
-  void *vinum = ns_lookup(dp->dir, KD(name));
-  u32 inum = (u64) vinum;
+  u32 inum = dp->dir->lookup(strbuf<DIRSIZ>(name));
 
   //cprintf("dirlookup: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
   if (inum == 0)
@@ -674,7 +665,7 @@ dirlink(struct inode *dp, const char *name, u32 inum)
   dir_init(dp);
 
   //cprintf("dirlink: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
-  return ns_insert(dp->dir, KD(name), (void*)(u64)inum);
+  return dp->dir->insert(strbuf<DIRSIZ>(name), inum);
 }
 
 // Paths

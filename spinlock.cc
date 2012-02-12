@@ -10,8 +10,9 @@ extern "C" {
 #include "mtrace.h"
 #include "condvar.h"
 #include "fs.h"
-#include "file.h"
 }
+
+#include "file.h"
 
 #if LOCKSTAT
 static int lockstat_enable;

@@ -9,7 +9,11 @@ extern "C" {
 #include "amd64.h"
 #include "stat.h"
 #include "fs.h"
+}
+
 #include "file.h"
+
+extern "C" {
 #include "elf.h"
 #include "cpu.h"
 #include "vm.h"
