@@ -102,19 +102,19 @@ holding(struct spinlock *lock)
 
 #if LOCKSTAT
 LIST_HEAD(lockstat_list, klockstat);
-static struct lockstat_list lockstat_list = LIST_HEAD_INITIALIZER(lockstat_list);
+static struct lockstat_list lockstat_list = { (struct klockstat*) NULL };
 static struct spinlock lockstat_lock = { 
-  .locked = 0,
+ locked: 0,
 #if SPINLOCK_DEBUG
-  .name = "lockstat",
-  .cpu = NULL,
+ name: "lockstat",
+ cpu: (struct cpu*) NULL,
 #endif
 };
 
 void
 lockstat_init(struct spinlock *lk)
 {
-  lk->stat = kmalloc(sizeof(*lk->stat));
+    lk->stat = (struct klockstat*) kmalloc(sizeof(*lk->stat));
   if (lk->stat == NULL)
     return;
 
@@ -145,7 +145,7 @@ lockstat_clear(void)
     if (stat->magic == 0) {
       LIST_REMOVE(stat, link);
       // So verifyfree doesn't follow le_next
-      stat->link.le_next = NULL;
+      stat->link.le_next = (struct klockstat*) NULL;
       gc_delayed(stat, kmfree);
     } else {
       memset(&stat->s.cpu, 0, sizeof(stat->s.cpu));
@@ -192,7 +192,7 @@ lockstat_read(struct inode *ip, char *dst, u32 off, u32 n)
 
   if (cur < off) {
     cache.off = 0;
-    cache.stat = NULL;
+    cache.stat = (struct klockstat*) NULL;
     return 0;
   }
 
@@ -243,7 +243,7 @@ initlock(struct spinlock *lk, const char *name, int lockstat)
   lk->cpu = 0;
 #endif
 #if LOCKSTAT
-  lk->stat = NULL;
+  lk->stat = (struct klockstat*) NULL;
   if (lockstat)
     lockstat_init(lk);
 #endif
