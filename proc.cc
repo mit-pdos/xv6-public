@@ -501,8 +501,11 @@ kill(int pid)
   return 0;
 }
 
-bool
-procdump(u32 pid, proc *p)
+// Print a process listing to console.  For debugging.
+// Runs when user types ^P on console.
+// No lock to avoid wedging a stuck machine further.
+void
+procdumpall(void)
 {
   static const char *states[] = {
     /* [UNUSED]   = */ "unused",
@@ -516,32 +519,24 @@ procdump(u32 pid, proc *p)
   const char *state;
   uptr pc[10];
 
-  if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
-    state = states[p->state];
-  else
-    state = "???";
-
-  if (p->name && p->name[0] != 0)
-    name = p->name;
-
-  cprintf("\n%-3d %-10s %8s %2u  %lu\n", p->pid, name, state, p->cpuid, p->tsc);
-
-  if(p->state == SLEEPING){
-    getcallerpcs((void*)p->context->rbp, pc, NELEM(pc));
-    for(int i=0; i<10 && pc[i] != 0; i++)
-      cprintf(" %lx\n", pc[i]);
+  for (proc *p : xnspid) {
+    if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+      state = states[p->state];
+    else
+      state = "???";
+    
+    if (p->name && p->name[0] != 0)
+      name = p->name;
+    
+    cprintf("\n%-3d %-10s %8s %2u  %lu\n",
+            p->pid, name, state, p->cpuid, p->tsc);
+    
+    if(p->state == SLEEPING){
+      getcallerpcs((void*)p->context->rbp, pc, NELEM(pc));
+      for(int i=0; i<10 && pc[i] != 0; i++)
+        cprintf(" %lx\n", pc[i]);
+    }
   }
-
-  return false;
-}
-
-// Print a process listing to console.  For debugging.
-// Runs when user types ^P on console.
-// No lock to avoid wedging a stuck machine further.
-void
-procdumpall(void)
-{
-  xnspid->enumerate(procdump);
 }
 
 // Create a new process copying p as the parent.
