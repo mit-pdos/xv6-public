@@ -34,7 +34,7 @@ struct xbucket {
   xelem<K, V> * volatile chain;
 } __attribute__((aligned (CACHELINE)));
 
-template<class K, class V>
+template<class K, class V, u64 (*HF)(const K&)>
 class xns {
  private:
   bool allowdup;
@@ -60,7 +60,7 @@ class xns {
   }
 
   u64 h(const K &key) {
-    return key % NHASH;
+    return HF(key) % NHASH;
   }
 
   int insert(const K &key, const V &val) {

@@ -16,8 +16,14 @@ extern "C" {
 
 #include "ns.hh"
 
+u64
+proc_hash(const u32 &p)
+{
+  return p;
+}
+
 int __mpalign__ idle[NCPU];
-xns<u32, proc*> *xnspid __mpalign__;
+xns<u32, proc*, proc_hash> *xnspid __mpalign__;
 static struct proc *bootproc __mpalign__;
 
 #if MTRACE
@@ -284,7 +290,7 @@ initproc(void)
 {
   int c;
 
-  xnspid = new xns<u32, proc*>(false);
+  xnspid = new xns<u32, proc*, proc_hash>(false);
   if (xnspid == 0)
     panic("pinit");
 

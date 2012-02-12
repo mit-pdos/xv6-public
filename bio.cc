@@ -29,31 +29,18 @@ extern "C" {
 #include "buf.h"
 }
 
-static struct ns *bufns;
+#include "cpputil.hh"
+#include "ns.hh"
+
+u64
+bio_hash(const pair<u32, u64> &p)
+{
+  return p._a ^ p._b;
+}
+
+static xns<pair<u32, u64>, buf*, bio_hash> *bufns;
 
 enum { writeback = 0 };
-
-static void *
-evict(void *vkey, void *bp, void *arg)
-{
-  struct buf *b = (buf*) bp;
-  acquire(&b->lock);
-  if ((b->flags & (B_BUSY | B_DIRTY | B_VALID)) == 0)
-    return b;
-  release(&b->lock);
-  return 0;
-}
-
-static void *
-evict_valid(void *vkey, void *bp, void *arg)
-{
-  struct buf *b = (buf*) bp;
-  acquire(&b->lock);
-  if ((b->flags & (B_BUSY | B_DIRTY)) == 0)
-    return b;
-  release(&b->lock);
-  return 0;
-}
 
 // Look through buffer cache for sector on device dev.
 // If not found, allocate fresh block.
@@ -67,7 +54,7 @@ bget(u32 dev, u64 sector, int *writer)
   // Try for cached block.
   // XXX ignore dev
   gc_begin_epoch();
-  b = (buf*) ns_lookup(bufns, KII(dev, sector));
+  b = bufns->lookup(mkpair(dev, sector));
   if (b) {
     if (b->dev != dev || b->sector != sector)
       panic("block mismatch");
@@ -91,13 +78,30 @@ bget(u32 dev, u64 sector, int *writer)
   gc_end_epoch();
 
   // Allocate fresh block.
-  struct buf *victim = (buf*) ns_enumerate(bufns, evict, 0);
+  struct buf *victim = 0;
+  bufns->enumerate([&victim](const pair<u32, u64>&, buf *b) {
+      acquire(&b->lock);
+      if ((b->flags & (B_BUSY | B_DIRTY | B_VALID)) == 0) {
+        victim = b;
+        return true;
+      }
+      release(&b->lock);
+      return false;
+    });
   if (victim == 0)
-    victim = (buf*) ns_enumerate(bufns, evict_valid, 0);
+    bufns->enumerate([&victim](const pair<u32, u64>&, buf *b) {
+        acquire(&b->lock);
+        if ((b->flags & (B_BUSY | B_DIRTY)) == 0) {
+          victim = b;
+          return true;
+        }
+        release(&b->lock);
+        return false;
+      });
   if (victim == 0)
     panic("bget all busy");
   victim->flags |= B_BUSY;
-  ns_remove(bufns, KII(victim->dev, victim->sector), victim);
+  bufns->remove(mkpair(victim->dev, victim->sector), &victim);
   release(&victim->lock);
   destroylock(&victim->lock);
   gc_delayed(victim, kmfree);
@@ -111,7 +115,7 @@ bget(u32 dev, u64 sector, int *writer)
   initlock(&b->lock, b->lockname+3, LOCKSTAT_BIO);
   initcondvar(&b->cv, b->lockname);
   gc_begin_epoch();
-  if (ns_insert(bufns, KII(b->dev, b->sector), b) < 0) {
+  if (bufns->insert(mkpair(b->dev, b->sector), b) < 0) {
     destroylock(&b->lock);
     gc_delayed(b, kmfree);
     goto loop;
@@ -165,7 +169,7 @@ brelse(struct buf *b, int writer)
 void
 initbio(void)
 {
-  bufns = nsalloc(0);
+  bufns = new xns<pair<u32, u64>, buf*, bio_hash>(false);
 
   for (u64 i = 0; i < NBUF; i++) {
     struct buf *b = (buf*) kmalloc(sizeof(*b));
@@ -174,7 +178,7 @@ initbio(void)
     b->flags = 0;
     initlock(&b->lock, "bcache-lock", LOCKSTAT_BIO);
     initcondvar(&b->cv, "bcache-cv");
-    if (ns_insert(bufns, KII(b->dev, b->sector), b) < 0)
+    if (bufns->insert(mkpair(b->dev, b->sector), b) < 0)
       panic("binit ns_insert");
   }
 }

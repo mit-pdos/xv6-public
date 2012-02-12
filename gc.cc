@@ -11,7 +11,8 @@ extern "C" {
 }
 
 #include "ns.hh"
-extern xns<u32, proc*> *xnspid;
+extern u64 proc_hash(const u32&);
+extern xns<u32, proc*, proc_hash> *xnspid;
 
 // GC scheme based on Fraser's:
 // a machine has a global_epoch
