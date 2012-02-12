@@ -32,6 +32,8 @@ pread_work(struct work *w, void *a0, void *a1, void *a2, void *a3)
   ipc->result = r;
   barrier();
   ipc->done = 1;
+
+  iput(ip);
 }
 
 static struct work *
@@ -57,18 +59,25 @@ sys_kernlet(int fd, size_t count, off_t off)
 {
   struct file *f;
   struct work *w;
+  struct ipcctl *ipc = (struct ipcctl *)myproc()->vmap->kshared;
 
   if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
     return -1;
   if(f->type != FD_INODE)
     return -1;
 
+  fetchadd(&f->ip->ref, 1);
   w = pread_allocwork(f->ip, myproc()->vmap->kshared, count, off);
-  if (w == NULL)
+  if (w == NULL) {
+    iput(f->ip);
     return -1;
+  }
   if (wq_push(w) < 0) {
+    iput(f->ip);
     freework(w);
     return -1;
   }
+  ipc->off = off;
+  ipc->submitted = 1;
   return 0;
 }

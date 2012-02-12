@@ -19,6 +19,7 @@ AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
+STRIP = $(TOOLPREFIX)strip
 
 COMFLAGS := -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
 	    -MD -ggdb -m64 -Werror -fms-extensions -mno-sse \
@@ -79,7 +80,7 @@ OBJS = \
 	incbin.o
 OBJS := $(addprefix $(O)/, $(OBJS))
 
-ULIB = ulib.o usys.o printf.o umalloc.o uthread.o
+ULIB = ulib.o usys.o printf.o umalloc.o uthread.o fmt.o
 ULIB := $(addprefix $(O)/, $(ULIB))
 
 UPROGS= \
@@ -142,9 +143,13 @@ xv6memfs.img: bootblock kernelmemfs
 	dd if=bootblock of=xv6memfs.img conv=notrunc
 	dd if=kernelmemfs of=xv6memfs.img seek=1 conv=notrunc
 
-$(O)/_%: $(O)/%.o $(ULIB)
+$(O)/_%.unstripped: $(O)/%.o $(ULIB)
 	@echo "  LD     $@"
 	$(Q)$(LD) $(LDFLAGS) -N -e main -Ttext 0x100000 -o $@ $^
+
+$(O)/_%: $(O)/_%.unstripped
+	@echo "  STRIP  $@"
+	$(Q)$(STRIP) -o $@ $<
 
 $(O)/mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o $@ mkfs.c
@@ -162,7 +167,7 @@ mscan.kern: $(O)/kernel
 -include *.d
 -include $(O)/*.d
 
-.PRECIOUS: $(O)/%.o
+.PRECIOUS: $(O)/%.o $(O)/_%.unstripped
 .PHONY: clean qemu gdb rsync
 
 ##

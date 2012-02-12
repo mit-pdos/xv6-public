@@ -1,7 +1,7 @@
+BEGIN_DECLS
 struct stat;
 
 // system calls
-extern "C" {
 int fork(int);
 int exit(void) __attribute__((noreturn));
 int wait(void);
@@ -28,7 +28,6 @@ int unmap(void *addr, int len);
 void halt(void);
 ssize_t pread(int, void*, size_t, off_t);
 int kernlet(int, size_t, off_t);
-}
 
 // ulib.c
 int stat(char*, struct stat*);
@@ -46,11 +45,10 @@ void free(void*);
 int atoi(const char*);
 
 // uthread.S
-extern "C" {
 int forkt(void *sp, void *pc, void *arg);
-}
 
 // printf.c
 void printf(int, const char*, ...);
 void snprintf(char *buf, unsigned int n, const char *fmt, ...);
 void die(const char* errstr, ...) __attribute__((noreturn));
+END_DECLS
