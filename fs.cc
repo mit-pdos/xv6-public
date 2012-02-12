@@ -25,6 +25,9 @@ extern "C" {
 #include "cpu.h"
 }
 
+#include "cpputil.hh"
+#include "ns.hh"
+
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
 
@@ -134,14 +137,20 @@ bfree(int dev, u64 x)
 // responsibility to lock them before using them.  A non-zero
 // ip->ref keeps these unlocked inodes in the cache.
 
-static struct ns *ins;
+u64
+ino_hash(const pair<u32, u32> &p)
+{
+  return p._a ^ p._b;
+}
+
+static xns<pair<u32, u32>, inode*, ino_hash> *ins;
 
 static struct { u32 x __mpalign__; } icache_free[NCPU];
 
 void
 initinode(void)
 {
-  ins = nsalloc(0);
+  ins = new xns<pair<u32, u32>, inode*, ino_hash>(false);
   for (int i = 0; i < NCPU; i++)
     icache_free[i].x = NINODE;
 }
@@ -203,20 +212,6 @@ iupdate(struct inode *ip)
   brelse(bp, 1);
 }
 
-static void *
-evict(void *vkey, void *p, void *arg)
-{
-  struct inode *ip = (inode*) p;
-  if (ip->ref || ip->type == T_DIR)
-    return 0;
-
-  acquire(&ip->lock);
-  if (ip->ref == 0 && ip->type != T_DIR && !(ip->flags & (I_FREE | I_BUSYR | I_BUSYW)))
-    return ip;
-  release(&ip->lock);
-  return 0;
-}
-
 // Find the inode with number inum on device dev
 // and return the in-memory copy.
 // The inode is not locked, so someone else might
@@ -248,7 +243,7 @@ iget(u32 dev, u32 inum)
  retry:
   // Try for cached inode.
   gc_begin_epoch();
-  ip = (inode*) ns_lookup(ins, KII(dev, inum));
+  ip = ins->lookup(mkpair(dev, inum));
   if (ip) {
     // tricky: first bump ref, then check free flag
     __sync_fetch_and_add(&ip->ref, 1);
@@ -273,7 +268,21 @@ iget(u32 dev, u32 inum)
   (void) 0;
   u32 cur_free = icache_free[mycpu()->id].x;
   if (cur_free == 0) {
-    struct inode *victim = (inode*) ns_enumerate(ins, evict, 0);
+    struct inode *victim = 0;
+    ins->enumerate([&victim](const pair<u32, u32>&, inode* ip) {
+        if (ip->ref || ip->type == T_DIR)
+          return false;
+
+        acquire(&ip->lock);
+        if (ip->ref == 0 && ip->type != T_DIR &&
+            !(ip->flags & (I_FREE | I_BUSYR | I_BUSYW))) {
+          victim = ip;
+          return true;
+        }
+
+        release(&ip->lock);
+        return false;
+      });
     if (!victim)
       panic("iget out of space");
     // tricky: first flag as free, then check refcnt, then remove from ns
@@ -284,7 +293,7 @@ iget(u32 dev, u32 inum)
       goto retry_evict;
     }
     release(&victim->lock);
-    ns_remove(ins, KII(victim->dev, victim->inum), victim);
+    ins->remove(mkpair(victim->dev, victim->inum), &victim);
     gc_delayed(victim, ifree);
   } else {
     if (!__sync_bool_compare_and_swap(&icache_free[mycpu()->id].x, cur_free, cur_free-1))
@@ -301,7 +310,7 @@ iget(u32 dev, u32 inum)
   initlock(&ip->lock, ip->lockname+3, LOCKSTAT_FS);
   initcondvar(&ip->cv, ip->lockname);
   ip->dir = 0;
-  if (ns_insert(ins, KII(ip->dev, ip->inum), ip) < 0) {
+  if (ins->insert(mkpair(ip->dev, ip->inum), ip) < 0) {
     destroylock(&ip->lock);
     gc_delayed(ip, kmfree);
     goto retry;
@@ -408,7 +417,7 @@ iput(struct inode *ip)
       ip->gen += 1;
       iupdate(ip);
 
-      ns_remove(ins, KII(ip->dev, ip->inum), ip);
+      ins->remove(mkpair(ip->dev, ip->inum), &ip);
       gc_delayed(ip, ifree);
       __sync_fetch_and_add(&icache_free[mycpu()->id].x, 1);
       return;
