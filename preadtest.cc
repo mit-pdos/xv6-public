@@ -13,6 +13,8 @@
 #define BSIZE 4096
 #define PSIZE (4*BSIZE)
 
+static int usekernlet;
+
 static char buf[BSIZE];
 
 struct ipcctl *ipcctl = (struct ipcctl*)KSHARED;
@@ -56,6 +58,9 @@ main(int ac, char **av)
   u64 t0, t1;
   int i, k;
   int fd;
+
+  if (ac > 1)
+    usekernlet = av[1][0] == 'k';
   
   fd = open("preadtest.x", O_CREATE|O_RDWR);
   if (fd < 0)
@@ -74,7 +79,8 @@ main(int ac, char **av)
         die("pread failed");
   }
   t1 = rdtsc();
-  
+
+  printf(1, "usekernlet %u\n", usekernlet);  
   printf(1, "cycles %lu\n", t1 - t0);
   
   exit();
