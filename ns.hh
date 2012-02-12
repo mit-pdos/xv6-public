@@ -165,4 +165,71 @@ class xns : public rcu_freed {
       e = e->next;
     }
   }
+
+  class iterator {
+  private:
+    xns<K, V, HF> *ns_;
+    xelem<K, V> *chain_;
+    int ndx_;
+
+  public:
+    iterator(xns<K, V, HF> *ns) {
+      if (ns_)
+        gc_begin_epoch();
+      ns_ = ns;
+      ndx_ = 0;
+      chain_ = ns->table[ndx_++].chain;
+      for (; chain_ == 0 && ndx_ < NHASH; ndx_++)
+        chain_ = ns_->table[ndx_].chain;
+    }
+
+    iterator() {
+      ns_ = 0;
+      ndx_ = NHASH;
+      chain_ = 0;
+    }
+
+    ~iterator() {
+      if (ns_)
+        gc_end_epoch();
+    }
+
+    bool operator!=(const iterator &other) const {
+      return other.chain_ != this->chain_;
+    }
+
+    iterator& operator ++() {
+      for (chain_ = chain_->next; chain_ == 0 && ndx_ < NHASH; ndx_++)
+        chain_ = ns_->table[ndx_].chain;
+      return *this;
+    }
+
+    V& operator *() {
+      return chain_->val;
+    }
+  };
+
+  iterator begin() {
+    return iterator(this);
+  }
+
+  iterator end() {
+    return iterator();
+  }
 };
+
+template<class K, class V, u64 (*HF)(const K&)>
+static inline
+typename xns<K, V, HF>::iterator
+begin(xns<K, V, HF> *&ns)
+{
+  return ns->begin();
+}
+
+template<class K, class V, u64 (*HF)(const K&)>
+static inline
+typename xns<K, V, HF>::iterator
+end(xns<K, V, HF> *&ns)
+{
+  return ns->end();
+}
