@@ -11,10 +11,12 @@ QEMUSMP	   ?= 4
 QEMUSRC    ?= ../mtrace
 MTRACE	   ?= $(QEMU)
 HW	   ?= qemu
+O  	   = o.$(HW)
 
-O  = o.$(HW)
-CC ?= $(TOOLPREFIX)gcc
-CXX ?= $(TOOLPREFIX)g++
+ifndef CONFIG_MK
+CC = $(TOOLPREFIX)gcc
+CXX = $(TOOLPREFIX)g++
+endif
 LD = $(TOOLPREFIX)ld
 NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
