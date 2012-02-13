@@ -13,9 +13,8 @@ MTRACE	   ?= $(QEMU)
 HW	   ?= qemu
 
 O  = o.$(HW)
-CC = $(TOOLPREFIX)gcc
-CXX = $(TOOLPREFIX)g++
-AS = $(TOOLPREFIX)gas
+CC ?= $(TOOLPREFIX)gcc
+CXX ?= $(TOOLPREFIX)g++
 LD = $(TOOLPREFIX)ld
 NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
