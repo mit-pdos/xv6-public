@@ -11,8 +11,9 @@ extern "C" {
 #include "proc.h"
 #include "amd64.h"
 #include "traps.h"
-#include "buf.h"
 }
+
+#include "buf.hh"
 
 extern u8 _fs_img_start[];
 extern u64 _fs_img_size;

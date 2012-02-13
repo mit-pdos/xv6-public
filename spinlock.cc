@@ -12,7 +12,7 @@ extern "C" {
 #include "fs.h"
 }
 
-#include "file.h"
+#include "file.hh"
 
 #if LOCKSTAT
 static int lockstat_enable;

@@ -6,7 +6,7 @@ extern "C" {
 #include "kernel.h"
 }
 
-#include "file.h"
+#include "file.hh"
 
 extern "C" {
 #include "bits.h"

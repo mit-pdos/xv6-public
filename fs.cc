@@ -19,11 +19,11 @@ extern "C" {
 #include "condvar.h"
 #include "queue.h"
 #include "proc.h"
-#include "buf.h"
 #include "fs.h"
 }
 
-#include "file.h"
+#include "buf.hh"
+#include "file.hh"
 
 extern "C" {
 #include "cpu.h"

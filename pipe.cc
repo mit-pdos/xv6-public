@@ -9,7 +9,7 @@ extern "C" {
 #include "fs.h"
 }
 
-#include "file.h"
+#include "file.hh"
 
 extern "C" {
 #include "cpu.h"

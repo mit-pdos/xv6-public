@@ -11,7 +11,7 @@ extern "C" {
 #include "condvar.h"
 }
 
-#include "file.h"
+#include "file.hh"
 
 extern "C" {
 #include "amd64.h"

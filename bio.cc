@@ -26,9 +26,9 @@ extern "C" {
 #include "kernel.h"
 #include "spinlock.h"
 #include "condvar.h"
-#include "buf.h"
 }
 
+#include "buf.hh"
 #include "cpputil.hh"
 #include "ns.hh"
 
