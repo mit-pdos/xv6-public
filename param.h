@@ -17,7 +17,7 @@
 #define VICTIMAGE 1000000 // cycles a proc executes before an eligible victim
 #define VERBOSE       0  // print kernel diagnostics
 #define	SPINLOCK_DEBUG 1 // Debug spin locks
-#define LOCKSTAT      0
+#define LOCKSTAT      1
 #define VERIFYFREE    LOCKSTAT
 #define ALLOC_MEMSET  1
 #define KSHAREDSIZE   (32 << 10)
@@ -25,7 +25,7 @@
 #if defined(HW_josmp)
 #define NCPU         16  // maximum number of CPUs
 #define MTRACE       0
-#define PERFSIZE     (1<<30ull)
+#define PERFSIZE     (1<<20ull)
 #elif defined(HW_qemu)
 #define NCPU         4   // maximum number of CPUs
 #define MTRACE       0
