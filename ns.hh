@@ -25,7 +25,7 @@ class xelem : public rcu_freed {
   xelem<K, V> * volatile next;
   K key;
 
-  xelem(const K &k, const V &v) : val(v), next_lock(0), next(0), key(k) {}
+  xelem(const K &k, const V &v) : rcu_freed("xelem"), val(v), next_lock(0), next(0), key(k) {}
   virtual ~xelem() {}
 };
 
@@ -42,7 +42,7 @@ class xns : public rcu_freed {
   xbucket<K, V> table[NHASH];
 
  public:
-  xns(bool dup) {
+  xns(bool dup) : rcu_freed("xns") {
     allowdup = dup;
     nextkey = 1;
     for (int i = 0; i < NHASH; i++)

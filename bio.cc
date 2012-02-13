@@ -106,7 +106,7 @@ bget(u32 dev, u64 sector, int *writer)
   destroylock(&victim->lock);
   gc_delayed(victim);
 
-  b = (buf*) kmalloc(sizeof(*b));
+  b = new buf();
   b->dev = dev;
   b->sector = sector;
   b->flags = B_BUSY;
@@ -172,7 +172,7 @@ initbio(void)
   bufns = new xns<pair<u32, u64>, buf*, bio_hash>(false);
 
   for (u64 i = 0; i < NBUF; i++) {
-    struct buf *b = (buf*) kmalloc(sizeof(*b));
+    struct buf *b = new buf();
     b->dev = 0xdeadbeef;
     b->sector = -i;	/* dummy to pre-allocate NBUF spaces for evict */
     b->flags = 0;

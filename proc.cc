@@ -184,7 +184,7 @@ class delayedfree : public rcu_freed {
   proc *_p;
 
  public:
-  delayedfree(proc *p) : _p(p) {}
+  delayedfree(proc *p) : rcu_freed("delayed proc free"), _p(p) {}
   virtual ~delayedfree() {
     kmfree(_p);
   }

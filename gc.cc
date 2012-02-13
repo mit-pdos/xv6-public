@@ -63,9 +63,7 @@ gc_free_tofreelist(rcu_freed **head, u64 epoch)
       assert(0);
     }
     nr = r->_rcu_next;
-    cprintf("about to delete %p\n", r);
     delete r;
-    cprintf("delete done\n");
     nfree++;
   }
   *head = r;

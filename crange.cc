@@ -126,7 +126,7 @@ class range_delayed : public rcu_freed {
   struct range *_e;
 
  public:
-  range_delayed(range *e) : _e(e) {}
+  range_delayed(range *e) : rcu_freed("range_delayed"), _e(e) {}
   virtual ~range_delayed() {
     range_free(_e);
   }

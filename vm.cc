@@ -54,7 +54,7 @@ class vma_delayed : public rcu_freed {
   vma *_e;
 
  public:
-  vma_delayed(vma *e) : _e(e) {}
+  vma_delayed(vma *e) : rcu_freed("vma_delayed"), _e(e) {}
   virtual ~vma_delayed() {
     vma_free(_e);
   }

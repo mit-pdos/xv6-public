@@ -11,6 +11,9 @@ struct buf : public rcu_freed {
   struct condvar cv;
   struct spinlock lock;
   u8 data[512];
+
+  buf() : rcu_freed("buf") {}
+  virtual ~buf() {}
 };
 #define B_BUSY  0x1  // buffer is locked by some process
 #define B_VALID 0x2  // buffer has been read from disk
