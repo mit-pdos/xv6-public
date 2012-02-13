@@ -172,7 +172,7 @@ gc_delayfreelist(void)
     cprintf("(%d,%d) (%s): min %lu global %lu\n", myproc()->cpuid, myproc()->pid, myproc()->name, min, global);
   }
   myproc()->epoch_depth++; // ensure enumerate's call to gc_begin_epoch doesn't have sideeffects
-  xnspid->enumerate([&min](u32, proc *p) {
+  xnspid->enumerate([&min](u32, proc *p)->bool{
       // Some threads may never call begin/end_epoch(), and never update
       // p->epoch, so gc_thread does it for them.  XXX get rid off lock?
       acquire(&p->gc_epoch_lock);
