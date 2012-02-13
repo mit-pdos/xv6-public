@@ -203,7 +203,7 @@ range_mark(struct range *f, struct range *s)
   for (e = f; e && e != s; e = WOMARK(e->next[0])) {
     assert(e);
     for (int l = e->nlevel-1; l >= 0; l--) {
-      (void) __sync_fetch_and_or(&(e->next[l]), 0x1);
+        (void) __sync_fetch_and_or(&(e->next[l]), (struct range *)0x1);
     }
   }
 }
@@ -443,7 +443,7 @@ crange_add_index(struct crange *cr, int l, struct range *e, struct range *p1, st
       assert (n == 0);
     } while (!__sync_bool_compare_and_swap(&(e->next[l+1]), 0, s));
     if (!__sync_bool_compare_and_swap(&(p1->next[l+1]), s, e)) {  // insert in list l+1
-      (void) __sync_fetch_and_and(&(e->next[l+1]), 0x1);    // failed, keep mark bit
+        (void) __sync_fetch_and_and(&(e->next[l+1]), (struct range *)0x1);    // failed, keep mark bit
       __sync_fetch_and_sub(&(e->curlevel), 1);
       // cprintf("%d: crange_add_index: retry add level %d %u(%u)\n", mycpu()->id, l+1, e->key, e->key+e->size);
       //INCRETRY;
