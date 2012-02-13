@@ -181,11 +181,13 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
     if (hdr == NULL)
       return -1;
     hdr->ncpus = NCPU;
+    i = 0;
     for (p = &pmulog[0]; p != q; p++) {
       u64 sz = p->count * sizeof(struct pmuevent);
       hdr->cpu[i].offset = len;
       hdr->cpu[i].size = sz;
       len += sz;
+      i++;
     }
 
     cc = MIN(hdrlen-off, n);
