@@ -192,7 +192,7 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
     dst += cc;
   }
 
-  if (off > hdrlen)
+  if (off >= hdrlen)
     ret += readlog(dst, off-hdrlen, n);
   return ret;
 }
