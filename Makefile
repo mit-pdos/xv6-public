@@ -102,7 +102,8 @@ UPROGS= \
 	_dirbench \
 	_usertests \
 	_lockstat \
-	_preadtest
+	_preadtest \
+	_perf
 UPROGS := $(addprefix $(O)/, $(UPROGS))
 
 all: $(O)/kernel
@@ -154,6 +155,9 @@ $(O)/_%: $(O)/_%.unstripped
 
 $(O)/mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o $@ mkfs.c
+
+$(O)/print-perf: print-perf.c sampler.h
+	gcc -m32 -Werror -Wall -o $@ print-perf.c
 
 $(O)/fs.img: $(O)/mkfs README $(UPROGS)
 	@echo "  MKFS   $@"

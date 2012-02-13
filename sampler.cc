@@ -15,17 +15,8 @@ extern "C" {
 #include "sampler.h"
 }
 
-static const u64 debug_sel = 
-  0UL << 32 |
-  1 << 24 | 
-  1 << 22 | 
-  1 << 20 |
-  1 << 17 | 
-  1 << 16 | 
-  0x00 << 8 | 
-  0x76;
-
-static const u64 debug_cnt = 100000;
+static volatile u64 selector;
+static volatile u64 period;
 
 struct pmu {
   void (*config)(u64 ctr, u64 sel, u64 val);  
@@ -84,20 +75,21 @@ void
 sampconf(void)
 {
   pushcli();
-  pmu.config(0, debug_sel, -debug_cnt);
+  pmu.config(0, selector, -period);
   popcli();
 }
 
 void
 sampstart(void)
 {
+  pushcli();
   for(struct cpu *c = cpus; c < cpus+ncpu; c++) {
     if(c == cpus+cpunum())
       continue;
     lapic_sampconf(c->id);
   }
-
   sampconf();
+  popcli();
 }
 
 static int
@@ -129,7 +121,7 @@ sampintr(struct trapframe *tf)
     return 0;
 
   if (samplog(tf))
-    pmu.config(0, debug_sel, -debug_cnt);
+    pmu.config(0, selector, -period);
 
   return 1;
 }
@@ -205,6 +197,35 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
   return ret;
 }
 
+static int
+sampwrite(struct inode *ip, char *buf, u32 off, u32 n)
+{
+  struct sampconf *conf;
+
+  if (n != sizeof(*conf))
+    return -1;
+  conf = (struct sampconf*)buf;
+
+  switch(conf->op) {
+  case SAMP_ENABLE:
+    selector = conf->selector;
+    period = conf->period;
+    cprintf("sampwrite: selector %lu period %lu\n",
+            selector, period);
+    sampstart();
+    break;
+  case SAMP_DISABLE:
+    selector = 0;
+    period = 0;
+    for (int i = 0; i < NCPU; i++)
+      cprintf("sampwrite: count %lu\n", pmulog[i].count);
+    sampstart();
+    break;
+  }
+
+  return n;
+}
+
 void
 initsamp(void)
 {
@@ -234,6 +255,6 @@ initsamp(void)
   pmulog[cpunum()].event = (pmuevent*) p;
   pmulog[cpunum()].capacity = PERFSIZE / sizeof(struct pmuevent);
 
-  devsw[SAMPLER].write = 0;
+  devsw[SAMPLER].write = sampwrite;
   devsw[SAMPLER].read = sampread;
 }

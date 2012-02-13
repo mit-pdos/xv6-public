@@ -114,7 +114,7 @@ static struct spinlock lockstat_lock = {
 void
 lockstat_init(struct spinlock *lk)
 {
-    lk->stat = (struct klockstat*) kmalloc(sizeof(*lk->stat));
+  lk->stat = (struct klockstat*) kmalloc(sizeof(*lk->stat));
   if (lk->stat == NULL)
     return;
 
