@@ -1,4 +1,6 @@
-struct buf {
+#include "gc.hh"
+
+struct buf : public rcu_freed {
   int flags;
   u32 dev;
   u64 sector;

@@ -13,6 +13,8 @@ extern "C" {
 #include "vm.h"
 }
 
+#include "gc.hh"
+
 static void vmap_free(void *p);
 
 enum { vm_debug = 0 };
@@ -46,6 +48,17 @@ vma_free(void *p)
   destroylock(&e->lock);
   kmfree(e);
 }
+
+class vma_delayed : public rcu_freed {
+ private:
+  vma *_e;
+
+ public:
+  vma_delayed(vma *e) : _e(e) {}
+  virtual ~vma_delayed() {
+    vma_free(_e);
+  }
+};
 
 static int
 vmn_doallocpg(struct vmnode *n)
@@ -469,7 +482,9 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
     return -1;
   }
   crange_del(m->cr, va_start, len);
-  gc_delayed(e, vma_free);
+
+  vma_delayed *vd = new vma_delayed(e);
+  gc_delayed(vd);
   release(&m->lock);
   return 0;
 }
@@ -601,7 +616,8 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
 	cprintf("vmap_remove: partial unmap unsupported\n");
 	return -1;
       }
-      gc_delayed(m->e[i], vma_free);
+      vma_delayed *vd = new vma_delayed(m->e[i]);
+      gc_delayed(vd);
       m->e[i] = 0;
     }
   }

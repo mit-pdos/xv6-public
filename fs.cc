@@ -220,20 +220,21 @@ iupdate(struct inode *ip)
 // But it has a ref count, so it won't be freed or reused.
 // Though unlocked, all fields will be present,
 // so looking a ip->inum and ip->gen are OK even w/o lock.
-static void
-ifree(void *arg)
+inode::inode()
 {
-  struct inode *ip = (inode*) arg;
+  dir = 0;
+}
 
-  if (ip->dir) {
-    ip->dir->remove(strbuf<DIRSIZ>("."));
-    ip->dir->remove(strbuf<DIRSIZ>(".."));
-    gc_delayed(ip->dir, del_rcu_freed);
-    ip->dir = 0;
+inode::~inode()
+{
+  if (dir) {
+    dir->remove(strbuf<DIRSIZ>("."));
+    dir->remove(strbuf<DIRSIZ>(".."));
+    gc_delayed(dir);
+    dir = 0;
   }
 
-  destroylock(&ip->lock);
-  kmfree(ip);
+  destroylock(&lock);
 }
 
 struct inode*
@@ -295,13 +296,13 @@ iget(u32 dev, u32 inum)
     }
     release(&victim->lock);
     ins->remove(mkpair(victim->dev, victim->inum), &victim);
-    gc_delayed(victim, ifree);
+    gc_delayed(victim);
   } else {
     if (!__sync_bool_compare_and_swap(&icache_free[mycpu()->id].x, cur_free, cur_free-1))
       goto retry_evict;
   }
 
-  ip = (inode*) kmalloc(sizeof(*ip));
+  ip = new inode();
   ip->dev = dev;
   ip->inum = inum;
   ip->ref = 1;
@@ -310,10 +311,8 @@ iget(u32 dev, u32 inum)
   snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
   initlock(&ip->lock, ip->lockname+3, LOCKSTAT_FS);
   initcondvar(&ip->cv, ip->lockname);
-  ip->dir = 0;
   if (ins->insert(mkpair(ip->dev, ip->inum), ip) < 0) {
-    destroylock(&ip->lock);
-    gc_delayed(ip, kmfree);
+    gc_delayed(ip);
     goto retry;
   }
   
@@ -419,7 +418,7 @@ iput(struct inode *ip)
       iupdate(ip);
 
       ins->remove(mkpair(ip->dev, ip->inum), &ip);
-      gc_delayed(ip, ifree);
+      gc_delayed(ip);
       __sync_fetch_and_add(&icache_free[mycpu()->id].x, 1);
       return;
     }
@@ -478,6 +477,18 @@ bmap(struct inode *ip, u32 bn)
 // Truncate inode (discard contents).
 // Only called after the last dirent referring
 // to this inode has been erased on disk.
+class diskblock : public rcu_freed {
+ private:
+  int _dev;
+  u64 _block;
+
+ public:
+  diskblock(int dev, u64 block) : _dev(dev), _block(block) {}
+  virtual ~diskblock() {
+    bfree(_dev, _block);
+  }
+};
+
 static void
 itrunc(struct inode *ip)
 {
@@ -487,7 +498,8 @@ itrunc(struct inode *ip)
 
   for(i = 0; i < NDIRECT; i++){
     if(ip->addrs[i]){
-      gc_delayed2(ip->dev, ip->addrs[i], bfree);
+      diskblock *db = new diskblock(ip->dev, ip->addrs[i]);
+      gc_delayed(db);
       ip->addrs[i] = 0;
     }
   }
@@ -496,11 +508,15 @@ itrunc(struct inode *ip)
     bp = bread(ip->dev, ip->addrs[NDIRECT], 0);
     a = (u32*)bp->data;
     for(j = 0; j < NINDIRECT; j++){
-      if(a[j])
-        gc_delayed2(ip->dev, a[j], bfree);
+      if(a[j]) {
+        diskblock *db = new diskblock(ip->dev, a[j]);
+        gc_delayed(db);
+      }
     }
     brelse(bp, 0);
-    gc_delayed2(ip->dev, ip->addrs[NDIRECT], bfree);
+
+    diskblock *db = new diskblock(ip->dev, ip->addrs[NDIRECT]);
+    gc_delayed(db);
     ip->addrs[NDIRECT] = 0;
   }
 

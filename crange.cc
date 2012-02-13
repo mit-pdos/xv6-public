@@ -9,6 +9,8 @@ extern "C" {
 #include "cpu.h"
 }
 
+#include "gc.hh"
+
 //
 // Concurrent atomic range operations using skip lists.  An insert may split an
 // existing range in several ranges.  A delete may remove a sequence of ranges
@@ -53,6 +55,17 @@ extern "C" {
 
 enum { crange_debug = 0 };
 enum { crange_checking = 0 };
+
+struct range {
+  u64 key;
+  u64 size;
+  void *value;
+  int curlevel;          // the current levels it appears on
+  int nlevel;            // the number of levels this range should appear
+  struct crange *cr;     // the crange this range is part of
+  struct range** next;   // one next pointer per level
+  struct spinlock *lock; // on separate cache line?
+} __mpalign__;
 
 struct crange {
   int nlevel;                  // number of levels in the crange skip list
@@ -108,6 +121,17 @@ range_free(void *p)
   kmalignfree(e);
 }
 
+class range_delayed : public rcu_freed {
+ private:
+  struct range *_e;
+
+ public:
+  range_delayed(range *e) : _e(e) {}
+  virtual ~range_delayed() {
+    range_free(_e);
+  }
+};
+
 static void
 range_free_delayed(struct range *e)
 {
@@ -115,7 +139,9 @@ range_free_delayed(struct range *e)
     cprintf("%d: range_free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) e, e->key, e->key + (e)->size, e->size, myproc()->epoch);
   crange_check(e->cr, e);
   assert(e->curlevel == -1);
-  gc_delayed(e, range_free);
+
+  range_delayed *rd = new range_delayed(e);
+  gc_delayed(rd);
 }
 
 static void

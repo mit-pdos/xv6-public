@@ -104,7 +104,7 @@ bget(u32 dev, u64 sector, int *writer)
   bufns->remove(mkpair(victim->dev, victim->sector), &victim);
   release(&victim->lock);
   destroylock(&victim->lock);
-  gc_delayed(victim, kmfree);
+  gc_delayed(victim);
 
   b = (buf*) kmalloc(sizeof(*b));
   b->dev = dev;
@@ -117,7 +117,7 @@ bget(u32 dev, u64 sector, int *writer)
   gc_begin_epoch();
   if (bufns->insert(mkpair(b->dev, b->sector), b) < 0) {
     destroylock(&b->lock);
-    gc_delayed(b, kmfree);
+    gc_delayed(b);
     goto loop;
   }
   // rcu_end_read() happens in brelse

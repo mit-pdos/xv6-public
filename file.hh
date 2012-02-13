@@ -1,5 +1,6 @@
 #include "cpputil.hh"
 #include "ns.hh"
+#include "gc.hh"
 
 u64 namehash(const strbuf<DIRSIZ>&);
 
@@ -18,7 +19,7 @@ struct file {
 
 // in-core file system types
 
-struct inode {
+struct inode : public rcu_freed {
   u32 dev;           // Device number
   u32 inum;          // Inode number
   u32 gen;           // Generation number
@@ -36,6 +37,9 @@ struct inode {
   short nlink;
   u32 size;
   u32 addrs[NDIRECT+1];
+
+  inode();
+  virtual ~inode();
 };
 
 #define I_BUSYR 0x1

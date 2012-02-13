@@ -179,11 +179,24 @@ exit(void)
   panic("zombie exit");
 }
 
+class delayedfree : public rcu_freed {
+ private:
+  proc *_p;
+
+ public:
+  delayedfree(proc *p) : _p(p) {}
+  virtual ~delayedfree() {
+    kmfree(_p);
+  }
+};
+
 static void
 freeproc(struct proc *p)
 {
   destroylock(&p->lock);
-  gc_delayed(p, kmfree);
+
+  delayedfree *df = new delayedfree(p);
+  gc_delayed(df);
 }
 
 // Look in the process table for an UNUSED proc.

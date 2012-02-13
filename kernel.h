@@ -56,17 +56,7 @@ void            consoleintr(int(*)(void));
 #define assert(c)   if (!(c)) { cprintf("%s:%d: ", __FILE__, __LINE__); panic("assertion failure"); }
 
 // crange.c
-
-struct range {
-  u64 key;
-  u64 size;
-  void *value;
-  int curlevel;          // the current levels it appears on
-  int nlevel;            // the number of levels this range should appear
-  struct crange *cr;     // the crange this range is part of
-  struct range** next;   // one next pointer per level
-  struct spinlock *lock; // on separate cache line?
-} __mpalign__;
+struct range;
 
 struct crange* crange_alloc(int nlevel);
 void crange_free(struct crange *cr);
@@ -120,9 +110,12 @@ void            initgc(void);
 void            initprocgc(struct proc *);
 void            gc_begin_epoch();
 void            gc_end_epoch();
-void            gc_delayed(void*, void (*dofree)(void*));
-void            gc_delayed2(int, u64, void (*dofree)(int, u64));
 void            gc_start(void);
+
+#ifdef __cplusplus
+class rcu_freed;
+void            gc_delayed(rcu_freed *);
+#endif
 
 // hwvm.c
 void            freevm(pml4e_t*);

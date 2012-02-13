@@ -32,28 +32,15 @@ enum { gc_debug = 0 };
 
 #define NGC 10000
 
-struct gc {
+struct headinfo {
+  rcu_freed *head;
   u64 epoch;
-  struct gc *next;  
-  union {
-    struct {
-      void (*dofree)(void *);
-      void *item;
-    } f1;
-
-    struct {
-      void (*dofree)(int, u64);
-      int arg1;
-      u64 arg2;
-    } f2;
-  };
-  int type;
-} __mpalign__;
+};
 
 static struct gc_state { 
   struct condvar cv;
-  struct gc delayed[NEPOCH];
-  struct gc tofree[NEPOCH];
+  headinfo delayed[NEPOCH];
+  headinfo tofree[NEPOCH];
   int ndelayed;
   int min_epoch;
   int nrun;
@@ -64,44 +51,21 @@ static struct gc_state {
 static struct { struct spinlock l __mpalign__; } gc_lock;
 u64 global_epoch __mpalign__;
 
-struct gc *
-gc_alloc()
-{
-  struct gc *r = (gc*) kmalloc(sizeof(struct gc));
-  assert(r);
-  __sync_fetch_and_add(&gc_state[mycpu()->id].ndelayed, 1);
-  return r;
-}
-
-static void
-gc_free_elem(struct gc *r)
-{
-  switch (r->type) {
-  case 1:
-    r->f1.dofree(r->f1.item);
-    break;
-  case 2:
-    r->f2.dofree(r->f2.arg1, r->f2.arg2);
-    break;
-  default:
-    panic("rcu type");
-  }
-  kmfree(r);
-}
-
 static int
-gc_free_tofreelist(struct gc **head, u64 epoch)
+gc_free_tofreelist(rcu_freed **head, u64 epoch)
 {
   int nfree = 0;
-  struct gc *r, *nr;
+  rcu_freed *r, *nr;
 
   for (r = *head; r != NULL; r = nr) {
-    if (r->epoch > epoch) {
-      cprintf("gc_free_tofreelist: r->epoch %ld > epoch %ld\n", r->epoch, epoch);
+    if (r->_rcu_epoch > epoch) {
+      cprintf("gc_free_tofreelist: r->epoch %ld > epoch %ld\n", r->_rcu_epoch, epoch);
       assert(0);
     }
-    nr = r->next;
-    gc_free_elem(r);
+    nr = r->_rcu_next;
+    cprintf("about to delete %p\n", r);
+    delete r;
+    cprintf("delete done\n");
     nfree++;
   }
   *head = r;
@@ -113,13 +77,13 @@ gc_free_tofreelist(struct gc **head, u64 epoch)
 void *
 gc_move_to_tofree_cpu(int c, u64 epoch)
 {
-  struct gc *head;
+  rcu_freed *head;
   u32 fe = (epoch - (NEPOCH-2)) % NEPOCH;
   int cas;
   assert(gc_state[c].delayed[fe].epoch == epoch-(NEPOCH-2));   // XXX race with setting epoch = 0
   // unhook list for fe epoch atomically; this shouldn't fail
-  head = gc_state[c].delayed[fe].next;
-  cas = __sync_bool_compare_and_swap(&(gc_state[c].delayed[fe].next), head, 0);
+  head = gc_state[c].delayed[fe].head;
+  cas = __sync_bool_compare_and_swap(&(gc_state[c].delayed[fe].head), head, 0);
   assert(cas);
 
   // insert list into tofree list so that each core can free in parallel and free its elements
@@ -128,12 +92,12 @@ gc_move_to_tofree_cpu(int c, u64 epoch)
 	    gc_state[c].delayed[fe].epoch);
     assert(0);
   }
-  cas = __sync_bool_compare_and_swap(&(gc_state[c].tofree[fe].next), 0, head);
+  cas = __sync_bool_compare_and_swap(&(gc_state[c].tofree[fe].head), 0, head);
   assert(cas);
 
   // move delayed NEPOCH's adhead
   gc_state[c].delayed[fe].epoch += NEPOCH;
-  assert(gc_state[c].delayed[fe].next == 0);
+  assert(gc_state[c].delayed[fe].head == 0);
 
   return 0;
 }
@@ -191,9 +155,10 @@ gc_delayfreelist(void)
   release(&gc_lock.l);
 }
 
-static void
-gc_delayed_int(struct gc *r)
+void
+gc_delayed(rcu_freed *e)
 {
+  __sync_fetch_and_add(&gc_state[mycpu()->id].ndelayed, 1);
   pushcli();
   int c = mycpu()->id;
   u64 myepoch = myproc()->epoch;
@@ -204,36 +169,11 @@ gc_delayed_int(struct gc *r)
     cprintf("%d: myepoch %lu minepoch %lu\n", myproc()->pid, myepoch, minepoch);
     panic("gc_delayed_int");
   }
-  r->epoch = myepoch;
+  e->_rcu_epoch = myepoch;
   do {
-    r->next = gc_state[c].delayed[myepoch % NEPOCH].next;
-  } while (!__sync_bool_compare_and_swap(&(gc_state[c].delayed[myepoch % NEPOCH].next), r->next, r));
+    e->_rcu_next = gc_state[c].delayed[myepoch % NEPOCH].head;
+  } while (!__sync_bool_compare_and_swap(&(gc_state[c].delayed[myepoch % NEPOCH].head), e->_rcu_next, e));
   popcli();
-}
-
-void
-gc_delayed(void *e, void (*dofree)(void *))
-{
-  struct gc *r = gc_alloc();
-  if (r == 0)
-    panic("gc_delayed");
-  r->f1.dofree = dofree;
-  r->f1.item = e;
-  r->type = 1;
-  gc_delayed_int(r);
-}
-
-void
-gc_delayed2(int a1, u64 a2, void (*dofree)(int,u64))
-{
-  struct gc *r = gc_alloc();
-  if (r == 0)
-    panic("gc_delayed2");
-  r->f2.dofree = dofree;
-  r->f2.arg1 = a1;
-  r->f2.arg2 = a2;
-  r->type = 2;
-  gc_delayed_int(r);
 }
 
 void
@@ -286,7 +226,7 @@ gc_worker(void *x)
     u64 global = global_epoch;
     myproc()->epoch = global_epoch;      // move the gc thread to next epoch
     for (i = gc_state[mycpu()->id].min_epoch; i < global-2; i++) {
-      int nfree = gc_free_tofreelist(&(gc_state[mycpu()->id].tofree[i%NEPOCH].next), i);
+      int nfree = gc_free_tofreelist(&(gc_state[mycpu()->id].tofree[i%NEPOCH].head), i);
       gc_state[mycpu()->id].tofree[i%NEPOCH].epoch += NEPOCH;
       __sync_fetch_and_sub(&gc_state[mycpu()->id].ndelayed, nfree);
       if (0 && nfree > 0) {
@@ -336,11 +276,4 @@ initgc(void)
     addrun(gcp);
     release(&gcp->lock);
   }
-}
-
-void
-del_rcu_freed(void *arg)
-{
-  rcu_freed *rf = (rcu_freed*) arg;
-  delete rf;
 }

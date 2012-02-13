@@ -76,7 +76,7 @@ class xns : public rcu_freed {
       if (!allowdup) {
         for (auto x = root; x; x = x->next) {
           if (x->key == key) {
-            gc_delayed(e, del_rcu_freed);
+            gc_delayed(e);
             return -1;
           }
         }
@@ -131,7 +131,7 @@ class xns : public rcu_freed {
           }
 
           *pelock = 0;
-          gc_delayed(e, del_rcu_freed);
+          gc_delayed(e);
           return true;
         }
 
