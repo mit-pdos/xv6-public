@@ -37,7 +37,7 @@ main(int ac, char **av)
     perror("mmap");
     exit(EXIT_FAILURE);
   }
-  header = x;
+  header = (struct logheader*)x;
 
   printf("ncpus %u\n", header->ncpus);
   for (i = 0; i < header->ncpus; i++) {

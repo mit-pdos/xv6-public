@@ -157,7 +157,7 @@ $(O)/mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o $@ mkfs.c
 
 $(O)/print-perf: print-perf.c sampler.h
-	gcc -m32 -Werror -Wall -o $@ print-perf.c
+	$(CC) -m64 -Werror -Wall -o $@ print-perf.c
 
 $(O)/fs.img: $(O)/mkfs README $(UPROGS)
 	@echo "  MKFS   $@"
