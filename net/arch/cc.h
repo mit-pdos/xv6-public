@@ -21,8 +21,8 @@ typedef s8 s8_t;
 
 typedef uptr mem_ptr_t;
 
-#define PACK_STRUCT_FIELD(x)	x __attribute__((packed))
-#define PACK_STRUCT_STRUCT  __attribute__((packed))
+#define PACK_STRUCT_FIELD(x) x
+#define PACK_STRUCT_STRUCT   __attribute__((packed))
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END
 

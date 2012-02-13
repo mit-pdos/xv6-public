@@ -1,7 +1,5 @@
 #ifdef LWIP
 extern "C" {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
 #include "lwip/tcp_impl.h"
 #include "lwip/tcpip.h"
 #include "lwip/ip.h"
@@ -9,7 +7,6 @@ extern "C" {
 #include "lwip/dhcp.h"
 #include "lwip/sockets.h"
 #include "netif/etharp.h"
-#pragma GCC diagnostic pop
 }
 #endif
 
