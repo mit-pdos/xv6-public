@@ -16,4 +16,4 @@ struct logheader {
     u64 offset;
     u64 size;
   } cpu[];
-};
+} __attribute__((packed));
