@@ -24,7 +24,8 @@ STRIP = $(TOOLPREFIX)strip
 COMFLAGS := -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
 	    -MD -ggdb -m64 -Werror -fms-extensions -mno-sse \
 	    -mcmodel=large -mno-red-zone -I$(QEMUSRC) -fno-omit-frame-pointer \
-	    -DHW_$(HW) -include param.h -include compiler.h -DXV6
+	    -DHW_$(HW) -include param.h -include compiler.h -DXV6 \
+	    -Wno-gnu-designator
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS   := $(COMFLAGS) -std=c99
 CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-exceptions -fno-rtti
