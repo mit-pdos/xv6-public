@@ -183,7 +183,7 @@ isdirempty(struct inode *dp)
 {
   dir_init(dp);
   int empty = 1;
-  dp->dir->enumerate([&empty](const strbuf<DIRSIZ> &name, u64 ino) {
+  dp->dir->enumerate([&empty](const strbuf<DIRSIZ> &name, u64 ino)->bool{
       if (!strcmp(name._buf, "."))
         return false;
       if (!strcmp(name._buf, ".."))
