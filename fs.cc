@@ -270,7 +270,7 @@ iget(u32 dev, u32 inum)
   u32 cur_free = icache_free[mycpu()->id].x;
   if (cur_free == 0) {
     struct inode *victim = 0;
-    ins->enumerate([&victim](const pair<u32, u32>&, inode* ip) {
+    ins->enumerate([&victim](const pair<u32, u32>&, inode* ip)->bool{
         if (ip->ref || ip->type == T_DIR)
           return false;
 
@@ -632,7 +632,7 @@ dir_flush(struct inode *dp)
     return;
 
   u32 off = 0;
-  dp->dir->enumerate([dp, &off](const strbuf<DIRSIZ> &name, const u32 &inum) {
+  dp->dir->enumerate([dp, &off](const strbuf<DIRSIZ> &name, const u32 &inum)->bool{
       struct dirent de;
       strncpy(de.name, name._buf, DIRSIZ);
       de.inum = inum;
