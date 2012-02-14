@@ -23,7 +23,7 @@ OBJCOPY = $(TOOLPREFIX)objcopy
 STRIP = $(TOOLPREFIX)strip
 
 COMFLAGS := -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
-	    -MD -m64 -Werror -fms-extensions -mno-sse \
+	    -g -MD -m64 -Werror -fms-extensions -mno-sse \
 	    -mcmodel=large -mno-red-zone -I$(QEMUSRC) -fno-omit-frame-pointer \
 	    -DHW_$(HW) -include param.h -include compiler.h -DXV6 \
 	    -Wno-gnu-designator
