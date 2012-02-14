@@ -305,10 +305,12 @@ verifyfree(char *ptr, u64 nbytes)
     // Search for pointers in the ptr region
     u64 x = *(uptr *)p;
     if (KBASE < x && x < KBASE+(128ull<<30)) {
+#if 0   /* maybe once this code is C++ */
       struct klockstat *kls = (struct klockstat *) x;
       if (kls->magic == LOCKSTAT_MAGIC)
         panic("LOCKSTAT_MAGIC %p(%lu):%p->%p", 
               ptr, nbytes, p, kls);
+#endif
     }
   }
 #endif
