@@ -56,22 +56,6 @@ extern "C" {
 enum { crange_debug = 0 };
 enum { crange_checking = 0 };
 
-struct range {
-  u64 key;
-  u64 size;
-  void *value;
-  int curlevel;          // the current levels it appears on
-  int nlevel;            // the number of levels this range should appear
-  struct crange *cr;     // the crange this range is part of
-  struct range** next;   // one next pointer per level
-  struct spinlock *lock; // on separate cache line?
-} __mpalign__;
-
-struct crange {
-  int nlevel;                  // number of levels in the crange skip list
-  struct range crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
-};
-
 void crange_check(struct crange *cr, struct range *absent);
 
 //

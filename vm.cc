@@ -308,14 +308,14 @@ vmn_alloc(u64 npg, enum vmntype type)
 #ifdef TREE
 struct state {
   int share;
-  void *pml4;
+  pml4e_t *pml4;
   struct crange *cr;
 };
 
 static int
-vmap_free_vma(struct clist_range *r, void *st)
+vmap_free_vma(struct range *r, void *st)
 {  
-  delete r->value;
+  delete (vma *) r->value;
   crange_del(r->cr, r->key, r->size);
   return 1;
 }
@@ -346,7 +346,7 @@ vmap_lookup(struct vmap *m, uptr start, uptr len)
   if(start + len < start)
     panic("vmap_lookup bad len");
 
-  struct clist_range *r = crange_search(m->cr, start, len);
+  struct range *r = crange_search(m->cr, start, len, 0);
   if (r != 0) {
     struct vma *e = (struct vma *) (r->value);
     if (e->va_end <= e->va_start) 
@@ -386,7 +386,7 @@ vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
 }
 
 static int
-vmap_copy_vma(struct clist_range *r, void *_st)
+vmap_copy_vma(struct range *r, void *_st)
 {
   struct state *st = (struct state *) _st;
   struct vma *e = (struct vma *) r->value;
@@ -445,7 +445,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
 {
   acquire(&m->lock);
   uptr va_end = va_start + len;
-  struct clist_range *r = crange_search(m->cr, va_start, len);
+  struct range *r = crange_search(m->cr, va_start, len, 0);
   if (r == 0)
     panic("no vma?");
   struct vma *e = (struct vma *) r->value;
