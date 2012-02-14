@@ -13,25 +13,32 @@ MTRACE	   ?= $(QEMU)
 HW	   ?= qemu
 O  	   = o.$(HW)
 
-ifndef CONFIG_MK
-CC = $(TOOLPREFIX)gcc
+ifdef USE_CLANG
+CC  = $(TOOLPREFIX)clang
+CXX = $(TOOLPREFIX)clang++ 
+CXXFLAGS = -Wno-delete-non-virtual-dtor -Wno-gnu-designator
+CFLAGS   = -no-integrated-as
+else
+CC  = $(TOOLPREFIX)gcc
 CXX = $(TOOLPREFIX)g++
+CXXFLAGS =
+CFLAGS   =
 endif
+
 LD = $(TOOLPREFIX)ld
 NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
 STRIP = $(TOOLPREFIX)strip
 
-COMFLAGS := -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
+COMFLAGS  = -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
 	    -g -MD -m64 -Werror -fms-extensions -mno-sse \
 	    -mcmodel=large -mno-red-zone -I$(QEMUSRC) -fno-omit-frame-pointer \
-	    -DHW_$(HW) -include param.h -include compiler.h -DXV6 \
-	    -Wno-delete-non-virtual-dtor -Wno-gnu-designator
+	    -DHW_$(HW) -include param.h -include compiler.h -DXV6
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
-CFLAGS   := $(COMFLAGS) -std=c99
-CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-exceptions -fno-rtti
-ASFLAGS = -m64 -gdwarf-2 -MD
-LDFLAGS += -m elf_x86_64
+CFLAGS   := $(COMFLAGS) -std=c99 $(CFLAGS)
+CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-exceptions -fno-rtti $(CXXFLAGS)
+ASFLAGS   = -m64 -gdwarf-2 -MD
+LDFLAGS   = -m elf_x86_64
 
 OBJS = \
 	bio.o \
