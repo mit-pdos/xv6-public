@@ -11,7 +11,7 @@
 int
 main(int ac, char **av)
 {
-  static const char *pathname = "perf.data";
+  static const char *pathname = "sampler";
   struct logheader *header;
   struct stat buf;
   void *x;

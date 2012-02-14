@@ -4,6 +4,7 @@ extern "C" {
 #include "condvar.h"
 #include "fs.h"
 #include "kernel.h"
+#include "stat.h"
 }
 
 #include "file.hh"
@@ -14,6 +15,9 @@ extern "C" {
 #include "cpu.h"
 #include "sampler.h"
 }
+
+#define LOGHEADER_SZ (sizeof(struct logheader) + \
+                      sizeof(((struct logheader*)0)->cpu[0])*NCPU)
 
 static volatile u64 selector;
 static volatile u64 period;
@@ -153,20 +157,36 @@ readlog(char *dst, u32 off, u32 n)
   return ret;
 }
 
+static void
+sampstat(struct inode *ip, struct stat *st)
+{
+  struct pmulog *q = &pmulog[NCPU];
+  struct pmulog *p;
+  u64 sz = 0;
+  
+  sz += LOGHEADER_SZ;
+  for (p = &pmulog[0]; p != q; p++)
+    sz += p->count * sizeof(struct pmuevent);
+
+  st->dev = ip->dev;
+  st->ino = ip->inum;
+  st->type = ip->type;
+  st->nlink = ip->nlink;
+  st->size = sz;
+}
+
 static int
 sampread(struct inode *ip, char *dst, u32 off, u32 n)
 {
   struct pmulog *q = &pmulog[NCPU];
   struct pmulog *p;
   struct logheader *hdr;
-  u64 hdrlen;
   int ret;
   int i;
   
   ret = 0;
-  hdrlen = sizeof(*hdr) + sizeof(hdr->cpu[0])*NCPU;
-  if (off < hdrlen) {
-    u64 len = hdrlen;
+  if (off < LOGHEADER_SZ) {
+    u64 len = LOGHEADER_SZ;
     u64 cc;
     
     hdr = (logheader*) kmalloc(len);
@@ -182,7 +202,7 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
       i++;
     }
 
-    cc = MIN(hdrlen-off, n);
+    cc = MIN(LOGHEADER_SZ-off, n);
     memmove(dst, (char*)hdr + off, cc);
     kmfree(hdr);
 
@@ -192,8 +212,8 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
     dst += cc;
   }
 
-  if (off >= hdrlen)
-    ret += readlog(dst, off-hdrlen, n);
+  if (off >= LOGHEADER_SZ)
+    ret += readlog(dst, off-LOGHEADER_SZ, n);
   return ret;
 }
 
@@ -257,4 +277,5 @@ initsamp(void)
 
   devsw[SAMPLER].write = sampwrite;
   devsw[SAMPLER].read = sampread;
+  devsw[SAMPLER].stat = sampstat;
 }

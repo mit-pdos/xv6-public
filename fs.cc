@@ -529,6 +529,14 @@ itrunc(struct inode *ip)
 void
 stati(struct inode *ip, struct stat *st)
 {
+  if(ip->type == T_DEV){
+    if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].stat)
+      memset(st, 0, sizeof(*st));
+    else
+      devsw[ip->major].stat(ip, st);
+    return;
+  }
+
   st->dev = ip->dev;
   st->ino = ip->inum;
   st->type = ip->type;

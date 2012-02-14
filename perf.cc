@@ -29,36 +29,6 @@ conf(int fd, sampop_t op)
   close(fd);
 }
 
-static void
-save(void)
-{
-  static char buf[4096];
-  int fd, sfd;
-  int r;
-
-  fd = open("/dev/sampler", O_RDONLY);
-  if (fd < 0)
-    die("perf: open failed");
-
-  unlink("perf.data");
-  sfd = open("perf.data", O_RDWR|O_CREATE);
-  if (sfd < 0)
-    die("perf: open failed");
-
-  while (1) {
-    r = read(fd, buf, sizeof(buf));
-    if (r < 0)
-      die("perf: read failed");
-    if (r == 0)
-      break;
-    if (write(sfd, buf, r) != r)
-      die("perf: truncated write");
-  }
-
-  close(sfd);
-  close(fd);
-}
-
 int
 main(int ac, const char *av[])
 {
@@ -78,6 +48,5 @@ main(int ac, const char *av[])
   
   wait();
   conf(fd, SAMP_DISABLE);
-  save();
   exit();
 }

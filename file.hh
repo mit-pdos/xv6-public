@@ -53,6 +53,7 @@ struct inode : public rcu_freed {
 struct devsw {
   int (*read)(struct inode*, char*, u32, u32);
   int (*write)(struct inode*, char*, u32, u32);
+  void (*stat)(struct inode*, struct stat*);
 };
 
 extern struct devsw devsw[];
