@@ -485,8 +485,9 @@ class diskblock : public rcu_freed {
 
  public:
   diskblock(int dev, u64 block) : rcu_freed("diskblock"), _dev(dev), _block(block) {}
-  virtual ~diskblock() {
+  virtual void do_gc() {
     bfree(_dev, _block);
+    delete this;
   }
 };
 

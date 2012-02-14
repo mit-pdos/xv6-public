@@ -14,3 +14,9 @@ operator delete(void *p)
 {
   kmfree(p);
 }
+
+extern "C" void
+__cxa_pure_virtual(void)
+{
+  panic("__cxa_pure_virtual");
+}
