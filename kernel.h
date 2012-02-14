@@ -56,7 +56,10 @@ void            consoleintr(int(*)(void));
 #define assert(c)   if (!(c)) { cprintf("%s:%d: ", __FILE__, __LINE__); panic("assertion failure"); }
 
 // crange.c
-struct range {
+#if __cplusplus
+#include "gc.hh"
+
+struct range : public rcu_freed {
   u64 key;
   u64 size;
   void *value;
@@ -65,6 +68,9 @@ struct range {
   struct crange *cr;     // the crange this range is part of
   struct range** next;   // one next pointer per level
   struct spinlock *lock; // on separate cache line?
+
+  range() : rcu_freed("range") {}
+  void do_gc();
 } __mpalign__;
 
 struct crange {
@@ -79,6 +85,7 @@ void crange_add(struct crange *cr, u64 k, u64 sz, void *v);
 struct range* crange_search(struct crange *cr, u64 k, u64 sz, int mod);
 int crange_foreach(struct crange *crk, int (*f)(struct range *r, void *st), void *st);
 void crange_print(struct crange *cr, int);
+#endif
 
 // e1000.c
 extern int e1000irq;

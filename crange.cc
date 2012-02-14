@@ -10,6 +10,7 @@ extern "C" {
 }
 
 #include "gc.hh"
+#include "cpputil.hh"
 
 //
 // Concurrent atomic range operations using skip lists.  An insert may split an
@@ -105,17 +106,11 @@ range_free(void *p)
   kmalignfree(e);
 }
 
-class range_delayed : public rcu_freed {
- private:
-  struct range *_e;
-
- public:
-  range_delayed(range *e) : rcu_freed("range_delayed"), _e(e) {}
-  virtual void do_gc() {
-    range_free(_e);
-    delete this;
-  }
-};
+void
+range::do_gc()
+{
+  range_free(this);
+}
 
 static void
 range_free_delayed(struct range *e)
@@ -124,9 +119,7 @@ range_free_delayed(struct range *e)
     cprintf("%d: range_free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) e, e->key, e->key + (e)->size, e->size, myproc()->epoch);
   crange_check(e->cr, e);
   assert(e->curlevel == -1);
-
-  range_delayed *rd = new range_delayed(e);
-  gc_delayed(rd);
+  gc_delayed(e);
 }
 
 static void
@@ -141,9 +134,11 @@ range_dec_ref(struct range *e)
 static struct range *
 range_alloc(struct crange *cr, u64 k, u64 sz, void *v, struct range *n)
 {
-  struct range *r;
-  kmalign((void **) &r, CACHELINE, sizeof(struct range));
-  assert(r);
+  void *rangemem;
+  kmalign(&rangemem, CACHELINE, sizeof(struct range));
+  assert(rangemem);
+
+  struct range *r = new(rangemem) range();
   r->key = k;
   r->size = sz;
   r->value = v;

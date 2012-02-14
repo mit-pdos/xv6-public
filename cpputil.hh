@@ -33,3 +33,10 @@ mkpair(const A &a, const B &b)
 {
   return pair<A, B>(a, b);
 }
+
+/* C++ runtime */
+void *operator new(unsigned long nbytes);
+void *operator new(unsigned long nbytes, void *buf);
+void operator delete(void *p);
+extern "C" void __cxa_pure_virtual(void);
+
