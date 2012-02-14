@@ -230,15 +230,11 @@ sampwrite(struct inode *ip, char *buf, u32 off, u32 n)
   case SAMP_ENABLE:
     selector = conf->selector;
     period = conf->period;
-    cprintf("sampwrite: selector %lu period %lu\n",
-            selector, period);
     sampstart();
     break;
   case SAMP_DISABLE:
     selector = 0;
     period = 0;
-    for (int i = 0; i < NCPU; i++)
-      cprintf("sampwrite: count %lu\n", pmulog[i].count);
     sampstart();
     break;
   }
