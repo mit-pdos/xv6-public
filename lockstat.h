@@ -2,6 +2,9 @@
 
 #define LOCKSTAT_MAGIC 0xb4cd79c1b2e46f40ull
 
+#if __cplusplus
+#include "gc.hh"
+
 struct cpulockstat {
   u64 acquires;
   u64 contends;
@@ -18,11 +21,17 @@ struct lockstat {
   struct cpulockstat cpu[NCPU] __mpalign__;
 };
 
-struct klockstat {
+struct klockstat : public rcu_freed {
   u64 magic;
   LIST_ENTRY(klockstat) link;
   struct lockstat s;
+
+  klockstat() : rcu_freed("klockstat") {}
+  virtual ~klockstat() {}
 };
+#else
+struct klockstat;
+#endif
 
 #define LOCKSTAT_START     1
 #define LOCKSTAT_STOP      2

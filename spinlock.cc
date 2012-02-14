@@ -114,7 +114,7 @@ static struct spinlock lockstat_lock = {
 void
 lockstat_init(struct spinlock *lk)
 {
-  lk->stat = (struct klockstat*) kmalloc(sizeof(*lk->stat));
+  lk->stat = new klockstat();
   if (lk->stat == NULL)
     return;
 
@@ -145,8 +145,8 @@ lockstat_clear(void)
     if (stat->magic == 0) {
       LIST_REMOVE(stat, link);
       // So verifyfree doesn't follow le_next
-      stat->link.le_next = (struct klockstat*) NULL;
-      gc_delayed(stat, kmfree);
+      stat->link.le_next = 0;
+      gc_delayed(stat);
     } else {
       memset(&stat->s.cpu, 0, sizeof(stat->s.cpu));
     }
