@@ -36,3 +36,13 @@
   download, make, make install gmp-5.0.4, mpfr-3.1.0, and mpc-0.9
   for mpfr and mpc: ./configure --with-gmp=/usr/local
   for gcc: ../configure --target=x86_64-jos-elf  --with-gmp=/usr/local/ --with-mpfr=/usr/local --enable-languages=c,c++ --without-headers --disable-nls
+
+* clang 
+  - Version 3.0 or greater is required to build xv6
+  - http://llvm.org/docs/GettingStarted.html
+
+  $ git clone http://llvm.org/git/llvm.git
+  $ (cd llvm/tools && git clone http://llvm.org/git/clang.git)
+  $ CC=gcc CXX=g++ ./configure --prefix=[PREFIX] \
+    --enable-targets=x86_64 --enable-optimized
+  $ CC=gcc CXX=g++ make && make install
