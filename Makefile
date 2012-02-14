@@ -156,8 +156,8 @@ $(O)/_%: $(O)/_%.unstripped
 $(O)/mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o $@ mkfs.c
 
-$(O)/print-perf: print-perf.cc sampler.h
-	$(CXX) -std=c++0x -m64 -Werror -Wall -o $@ print-perf.cc
+$(O)/perf-report: perf-report.cc sampler.h
+	$(CXX) -std=c++0x -m64 -Werror -Wall -o $@ perf-report.cc
 
 $(O)/fs.img: $(O)/mkfs README $(UPROGS)
 	@echo "  MKFS   $@"
