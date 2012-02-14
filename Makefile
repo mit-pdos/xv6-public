@@ -23,7 +23,7 @@ OBJCOPY = $(TOOLPREFIX)objcopy
 STRIP = $(TOOLPREFIX)strip
 
 COMFLAGS := -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
-	    -MD -m64 -Werror -fms-extensions -mno-sse \
+	    -g -MD -m64 -Werror -fms-extensions -mno-sse \
 	    -mcmodel=large -mno-red-zone -I$(QEMUSRC) -fno-omit-frame-pointer \
 	    -DHW_$(HW) -include param.h -include compiler.h -DXV6 \
 	    -Wno-gnu-designator
@@ -156,8 +156,8 @@ $(O)/_%: $(O)/_%.unstripped
 $(O)/mkfs: mkfs.c fs.h
 	gcc -m32 -Werror -Wall -o $@ mkfs.c
 
-$(O)/print-perf: print-perf.c sampler.h
-	$(CC) -m64 -Werror -Wall -o $@ print-perf.c
+$(O)/perf-report: perf-report.cc sampler.h
+	$(CXX) -std=c++0x -m64 -Werror -Wall -o $@ perf-report.cc
 
 $(O)/fs.img: $(O)/mkfs README $(UPROGS)
 	@echo "  MKFS   $@"

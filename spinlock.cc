@@ -111,17 +111,20 @@ static struct spinlock lockstat_lock = {
 #endif
 };
 
+klockstat::klockstat(const char *name) : 
+  rcu_freed("klockstat")
+{
+  magic = LOCKSTAT_MAGIC;
+  memset(&s, 0, sizeof(s));
+  safestrcpy(s.name, name, sizeof(s.name));
+};
+
 void
 lockstat_init(struct spinlock *lk)
 {
-  lk->stat = new klockstat();
-  if (lk->stat == NULL)
+  lk->stat = new klockstat(lk->name);
+  if (lk->stat == 0)
     return;
-
-  memset(lk->stat, 0, sizeof(*lk->stat));
-
-  lk->stat->magic = LOCKSTAT_MAGIC;
-  safestrcpy(lk->stat->s.name, lk->name, sizeof(lk->stat->s.name));
 
   acquire(&lockstat_lock);
   LIST_INSERT_HEAD(&lockstat_list, lk->stat, link);
