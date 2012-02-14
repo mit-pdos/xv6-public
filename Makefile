@@ -98,6 +98,7 @@ UPROGS= \
 	_forkexectree \
 	_forkexecbench \
 	_forktree \
+	_login \
 	_ls \
 	_mapbench \
 	_maptest \
