@@ -8,7 +8,7 @@
 #if SPINLOCK_DEBUG
 #define NHASH 10
 #else
-#define NHASH 100
+#define NHASH 30
 #endif
 
 class scoped_gc_epoch {
