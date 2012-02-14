@@ -13,7 +13,7 @@ struct buf : public rcu_freed {
   u8 data[512];
 
   buf() : rcu_freed("buf") {}
-  virtual ~buf() {}
+  virtual void do_gc() { delete this; }
 };
 #define B_BUSY  0x1  // buffer is locked by some process
 #define B_VALID 0x2  // buffer has been read from disk

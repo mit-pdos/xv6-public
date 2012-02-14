@@ -16,5 +16,5 @@ class rcu_freed {
 #endif
   {}
 
-  virtual ~rcu_freed() {}
+  virtual void do_gc(void) = 0;
 } __mpalign__;

@@ -39,7 +39,8 @@ struct inode : public rcu_freed {
   u32 addrs[NDIRECT+1];
 
   inode();
-  virtual ~inode();
+  ~inode();
+  virtual void do_gc() { delete this; }
 };
 
 #define I_BUSYR 0x1

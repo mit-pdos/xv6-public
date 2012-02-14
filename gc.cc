@@ -63,7 +63,7 @@ gc_free_tofreelist(rcu_freed **head, u64 epoch)
       assert(0);
     }
     nr = r->_rcu_next;
-    delete r;
+    r->do_gc();
     nfree++;
   }
   *head = r;

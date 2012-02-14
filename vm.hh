@@ -1,4 +1,4 @@
-//#define TREE
+#define TREE
 
 #include "gc.hh"
 
@@ -18,7 +18,9 @@ struct vma : public rcu_freed {
     initlock(&lock, lockname, LOCKSTAT_VM);
   }
 
-  virtual ~vma();
+  ~vma();
+
+  virtual void do_gc() { delete this; }
 };
 
 // A memory object (physical pages or inode).

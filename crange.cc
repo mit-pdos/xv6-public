@@ -111,8 +111,9 @@ class range_delayed : public rcu_freed {
 
  public:
   range_delayed(range *e) : rcu_freed("range_delayed"), _e(e) {}
-  virtual ~range_delayed() {
+  virtual void do_gc() {
     range_free(_e);
+    delete this;
   }
 };
 

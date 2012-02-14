@@ -26,7 +26,7 @@ class xelem : public rcu_freed {
   K key;
 
   xelem(const K &k, const V &v) : rcu_freed("xelem"), val(v), next_lock(0), next(0), key(k) {}
-  virtual ~xelem() {}
+  virtual void do_gc() { delete this; }
 };
 
 template<class K, class V>
@@ -53,6 +53,10 @@ class xns : public rcu_freed {
     for (int i = 0; i < NHASH; i++)
       if (table[i].chain)
         panic("~xns: not empty");
+  }
+
+  virtual void do_gc() {
+    delete this;
   }
 
   u64 allockey() {

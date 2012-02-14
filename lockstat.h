@@ -27,7 +27,7 @@ struct klockstat : public rcu_freed {
   struct lockstat s;
 
   klockstat() : rcu_freed("klockstat") {}
-  virtual ~klockstat() {}
+  virtual void do_gc() { delete this; }
 };
 #else
 struct klockstat;
