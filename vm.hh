@@ -1,15 +1,24 @@
 //#define TREE
 
+#include "gc.hh"
+
 // A mapping of a chunk of an address space to
 // a specific memory object.
 enum vmatype { PRIVATE, COW};
-struct vma {
+struct vma : public rcu_freed {
   uptr va_start;               // start of mapping
   uptr va_end;                 // one past the last byte
   enum vmatype va_type;
   struct vmnode *n;
   struct spinlock lock;        // serialize fault/unmap
   char lockname[16];
+
+  vma() : rcu_freed("vma"), va_start(0), va_end(0), va_type(PRIVATE), n(0) {
+    snprintf(lockname, sizeof(lockname), "vma:%p", this);
+    initlock(&lock, lockname, LOCKSTAT_VM);
+  }
+
+  virtual ~vma();
 };
 
 // A memory object (physical pages or inode).

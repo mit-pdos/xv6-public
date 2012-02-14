@@ -12,11 +12,11 @@ extern "C" {
 }
 
 #include "file.hh"
+#include "vm.hh"
 
 extern "C" {
 #include "elf.h"
 #include "cpu.h"
-#include "vm.h"
 #include "prof.h"
 #include <stddef.h>
 }

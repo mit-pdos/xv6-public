@@ -10,9 +10,10 @@ extern "C" {
 #include "queue.h"
 #include "condvar.h"
 #include "proc.h"
-#include "vm.h"
 #include <stddef.h>
 }
+
+#include "vm.hh"
 
 extern pml4e_t kpml4[];
 

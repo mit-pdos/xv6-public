@@ -10,10 +10,10 @@ extern "C" {
 #include "cpu.h"
 #include "bits.h"
 #include "kmtrace.h"
-#include "vm.h"
 #include "sched.h"
 }
 
+#include "vm.hh"
 #include "ns.hh"
 
 u64

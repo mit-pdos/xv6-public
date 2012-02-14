@@ -10,27 +10,14 @@ extern "C" {
 #include "queue.h"
 #include "condvar.h"
 #include "proc.h"
-#include "vm.h"
 }
 
+#include "vm.hh"
 #include "gc.hh"
 
 static void vmap_free(void *p);
 
 enum { vm_debug = 0 };
-
-static struct vma *
-vma_alloc(void)
-{
-  struct vma *e = (struct vma *) kmalloc(sizeof(struct vma));
-  if (e == 0)
-    return 0;
-  memset(e, 0, sizeof(struct vma));
-  e->va_type = PRIVATE;
-  snprintf(e->lockname, sizeof(e->lockname), "vma:%p", e);
-  initlock(&e->lock, e->lockname, LOCKSTAT_VM);
-  return e;
-}
 
 static void
 vmn_decref(struct vmnode *n)
@@ -39,26 +26,12 @@ vmn_decref(struct vmnode *n)
     vmn_free(n);
 }
 
-static void
-vma_free(void *p)
+vma::~vma()
 {
-  struct vma *e = (struct vma *) p;
-  if(e->n)
-    vmn_decref(e->n);
-  destroylock(&e->lock);
-  kmfree(e);
+  if(n)
+    vmn_decref(n);
+  destroylock(&lock);
 }
-
-class vma_delayed : public rcu_freed {
- private:
-  vma *_e;
-
- public:
-  vma_delayed(vma *e) : rcu_freed("vma_delayed"), _e(e) {}
-  virtual ~vma_delayed() {
-    vma_free(_e);
-  }
-};
 
 static int
 vmn_doallocpg(struct vmnode *n)
@@ -342,7 +315,7 @@ struct state {
 static int
 vmap_free_vma(struct clist_range *r, void *st)
 {  
-  vma_free(r->value);
+  delete r->value;
   crange_del(r->cr, r->key, r->size);
   return 1;
 }
@@ -398,7 +371,7 @@ vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
     return -1;
   }
 
-  struct vma *e = vma_alloc();
+  struct vma *e = new vma();
   if (e == 0) {
     release(&m->lock);
     return -1;
@@ -417,7 +390,7 @@ vmap_copy_vma(struct clist_range *r, void *_st)
 {
   struct state *st = (struct state *) _st;
   struct vma *e = (struct vma *) r->value;
-  struct vma *c = vma_alloc();
+  struct vma *c = new vma();
   if (c == 0) {
     return 0;
   }
@@ -482,9 +455,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
     return -1;
   }
   crange_del(m->cr, va_start, len);
-
-  vma_delayed *vd = new vma_delayed(e);
-  gc_delayed(vd);
+  gc_delayed(e);
   release(&m->lock);
   return 0;
 }
@@ -497,7 +468,7 @@ vmap_free(void *p)
   struct vmap *m = (struct vmap *) p;
   for(u64 i = 0; i < NELEM(m->e); i++) {
     if (m->e[i])
-      vma_free(m->e[i]);
+      delete m->e[i];
   }
   freevm(m->pml4);
   m->pml4 = 0;
@@ -543,7 +514,7 @@ vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
   for(u64 i = 0; i < NELEM(m->e); i++) {
     if(m->e[i])
       continue;
-    m->e[i] = vma_alloc();
+    m->e[i] = new vma();
     if (m->e[i] == 0)
       return -1;
     m->e[i]->va_start = va_start;
@@ -570,7 +541,7 @@ vmap_copy(struct vmap *m, int share)
   for(u32 i = 0; i < NELEM(m->e); i++) {
     if(m->e[i] == 0)
       continue;
-    c->e[i] = vma_alloc();
+    c->e[i] = new vma();
     if (c->e[i] == 0) {
       release(&m->lock);
       vmap_free(c);
@@ -616,8 +587,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
 	cprintf("vmap_remove: partial unmap unsupported\n");
 	return -1;
       }
-      vma_delayed *vd = new vma_delayed(m->e[i]);
-      gc_delayed(vd);
+      gc_delayed(m->e[i]);
       m->e[i] = 0;
     }
   }

@@ -5,12 +5,12 @@ extern "C" {
 #include "condvar.h"
 #include "cpu.h"
 #include "proc.h"
-#include "vm.h"
 #include "fs.h"
 #include "wq.h"
 #include "ipc.h"
 }
 
+#include "vm.hh"
 #include "file.hh"
 
 static void

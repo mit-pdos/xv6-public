@@ -8,8 +8,9 @@ extern "C" {
 #include "queue.h"
 #include "proc.h"
 #include "cpu.h"
-#include "vm.h"
 }
+
+#include "vm.hh"
 
 long
 sys_fork(void)

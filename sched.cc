@@ -10,10 +10,11 @@ extern "C" {
 #include "cpu.h"
 #include "bits.h"
 #include "kmtrace.h"
-#include "vm.h"
 #include "sched.h"
 #include <stddef.h>
 }
+
+#include "vm.hh"
 
 enum { sched_debug = 0 };
 
