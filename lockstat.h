@@ -26,7 +26,7 @@ struct klockstat : public rcu_freed {
   LIST_ENTRY(klockstat) link;
   struct lockstat s;
 
-  klockstat() : rcu_freed("klockstat") {}
+  klockstat(const char *name);
   virtual ~klockstat() {}
 };
 #else
