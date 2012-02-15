@@ -26,8 +26,6 @@ public:
 struct crange {
 private:
   range *crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
-  //crange_check(struct range *absent);
-  //crange_replace(u64, u64, void*, range*, range*, range*);
 public:
   int nlevel;                  // number of levels in the crange skip list
   crange(int nlevel);

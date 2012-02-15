@@ -91,38 +91,21 @@ range::~range()
 {
   if (crange_debug)
     cprintf("%d: range_free: 0x%lx 0x%lx-0x%lx(%ld)\n", myproc()->cpuid, (u64) this, this->key, this->key+this->size, this->size);
-  //crange_check(e->cr, e);
+  this->cr->check(this);
   //    assert(this->curlevel == -1);
   for (int l = 0; l < this->nlevel; l++) {
     this->next[l] = (struct range *) 0xDEADBEEF;
   }
   kmalignfree(this->lock);
   kmfree(this->next);
-  // delete this;
 }
-
-#if 0
-class range_delayed : public rcu_freed {
- private:
-  crange::range *_e;
-
- public:
-  range_delayed(crange::range *e) : rcu_freed("range_delayed"), _e(e) {}
-  virtual void do_gc() {
-    range_free(_e);
-    delete this;
-  }
-};
-#endif
 
 void range::free_delayed(void)
 {
   if (crange_debug)
     cprintf("%d: free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) this, this->key, this->key + this->size, this->size, myproc()->epoch);
-  //  crange_check(this->cr, e);
+  this->cr->check(this);
   assert(this->curlevel == -1);
-
-  //range_delayed *rd = new range_delayed(e);
   gc_delayed(this);
 }
 
