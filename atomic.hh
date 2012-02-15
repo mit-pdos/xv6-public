@@ -7,8 +7,12 @@
 #define _GLIBCXX_END_EXTERN_C }
 #define __glibcxx_assert(x)
 
-#include "atomic_base.h"
-#include "atomic_2.h"
+#define _GLIBCXX_ATOMIC_BUILTINS_1 1
+#define _GLIBCXX_ATOMIC_BUILTINS_2 1
+#define _GLIBCXX_ATOMIC_BUILTINS_4 1
+#define _GLIBCXX_ATOMIC_BUILTINS_8 1
+
+#include "atomic_std.h"
 
 template<class T>
 struct atomic : public std::__atomic2::__atomic_base<T> {

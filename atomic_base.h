@@ -113,21 +113,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   // 1 == __atomic1 == Best available, sometimes lock-free
   // 2 == __atomic2 == Always lock-free
 
-  /// Lock-free Property
-#if defined(_GLIBCXX_ATOMIC_BUILTINS_1) && defined(_GLIBCXX_ATOMIC_BUILTINS_2) \
-  && defined(_GLIBCXX_ATOMIC_BUILTINS_4) && defined(_GLIBCXX_ATOMIC_BUILTINS_8)
-# define _GLIBCXX_ATOMIC_PROPERTY 2
-# define _GLIBCXX_ATOMIC_NAMESPACE __atomic2
-#elif defined(_GLIBCXX_ATOMIC_BUILTINS_1)
-# define _GLIBCXX_ATOMIC_PROPERTY 1
-# define _GLIBCXX_ATOMIC_NAMESPACE __atomic1
-#else
-# define _GLIBCXX_ATOMIC_PROPERTY 0
-# define _GLIBCXX_ATOMIC_NAMESPACE __atomic0
-#endif
-
-  inline namespace _GLIBCXX_ATOMIC_NAMESPACE { }
-  
   namespace __atomic0
   {
     struct atomic_flag;
@@ -150,6 +135,19 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     using __atomic0::__atomic_base;
   }
 
+  /// Lock-free Property
+#if defined(_GLIBCXX_ATOMIC_BUILTINS_1) && defined(_GLIBCXX_ATOMIC_BUILTINS_2) \
+  && defined(_GLIBCXX_ATOMIC_BUILTINS_4) && defined(_GLIBCXX_ATOMIC_BUILTINS_8)
+# define _GLIBCXX_ATOMIC_PROPERTY 2
+# define _GLIBCXX_ATOMIC_NAMESPACE __atomic2
+#elif defined(_GLIBCXX_ATOMIC_BUILTINS_1)
+# define _GLIBCXX_ATOMIC_PROPERTY 1
+# define _GLIBCXX_ATOMIC_NAMESPACE __atomic1
+#else
+# define _GLIBCXX_ATOMIC_PROPERTY 0
+# define _GLIBCXX_ATOMIC_NAMESPACE __atomic0
+#endif
+
 #define ATOMIC_CHAR_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
 #define ATOMIC_CHAR16_T_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
 #define ATOMIC_CHAR32_T_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
@@ -158,6 +156,62 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #define ATOMIC_INT_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
 #define ATOMIC_LONG_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
 #define ATOMIC_LLONG_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
+
+  inline namespace _GLIBCXX_ATOMIC_NAMESPACE { }
+
+
+  /// atomic_char
+  typedef __atomic_base<char>  	       		atomic_char;
+
+  /// atomic_schar
+  typedef __atomic_base<signed char>	     	atomic_schar;
+
+  /// atomic_uchar
+  typedef __atomic_base<unsigned char>		atomic_uchar;
+
+  /// atomic_short
+  typedef __atomic_base<short>			atomic_short;
+
+  /// atomic_ushort
+  typedef __atomic_base<unsigned short>	 	atomic_ushort;
+
+  /// atomic_int
+  typedef __atomic_base<int>  	       		atomic_int;
+
+  /// atomic_uint
+  typedef __atomic_base<unsigned int>	     	atomic_uint;
+
+  /// atomic_long
+  typedef __atomic_base<long>  	       		atomic_long;
+
+  /// atomic_ulong
+  typedef __atomic_base<unsigned long>		atomic_ulong;
+
+  /// atomic_llong
+  typedef __atomic_base<long long>  		atomic_llong;
+
+  /// atomic_ullong
+  typedef __atomic_base<unsigned long long> 	atomic_ullong;
+
+  /// atomic_wchar_t
+  typedef __atomic_base<wchar_t>  		atomic_wchar_t;
+
+  /// atomic_char16_t
+  typedef __atomic_base<char16_t>  		atomic_char16_t;
+
+  /// atomic_char32_t
+  typedef __atomic_base<char32_t>  		atomic_char32_t;
+
+  /// atomic_char32_t
+  typedef __atomic_base<char32_t>  		atomic_char32_t;
+
+
+  /// atomic_size_t
+  typedef __atomic_base<size_t>	 	       	atomic_size_t;
+
+  /// atomic_ptrdiff_t
+  typedef __atomic_base<ptrdiff_t>  	       	atomic_ptrdiff_t;
+
 
 #define ATOMIC_VAR_INIT(_VI) { _VI }
 
