@@ -113,28 +113,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   // 1 == __atomic1 == Best available, sometimes lock-free
   // 2 == __atomic2 == Always lock-free
 
-  namespace __atomic0
-  {
-    struct atomic_flag;
-
-    template<typename _IntTp>
-      struct __atomic_base;
-  }
-
-  namespace __atomic2
-  {
-    struct atomic_flag;
-
-    template<typename _IntTp>
-      struct __atomic_base;
-  }
-
-  namespace __atomic1
-  {
-    using __atomic2::atomic_flag;
-    using __atomic0::__atomic_base;
-  }
-
   /// Lock-free Property
 #if defined(_GLIBCXX_ATOMIC_BUILTINS_1) && defined(_GLIBCXX_ATOMIC_BUILTINS_2) \
   && defined(_GLIBCXX_ATOMIC_BUILTINS_4) && defined(_GLIBCXX_ATOMIC_BUILTINS_8)
@@ -159,6 +137,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   inline namespace _GLIBCXX_ATOMIC_NAMESPACE { }
 
+  namespace __atomic0
+  {
+    struct atomic_flag;
+
+    template<typename _IntTp>
+      struct __atomic_base;
+  }
+
+  namespace __atomic2
+  {
+    struct atomic_flag;
+
+    template<typename _IntTp>
+      struct __atomic_base;
+  }
+
+  namespace __atomic1
+  {
+    using __atomic2::atomic_flag;
+    using __atomic0::__atomic_base;
+  }
 
   /// atomic_char
   typedef __atomic_base<char>  	       		atomic_char;
