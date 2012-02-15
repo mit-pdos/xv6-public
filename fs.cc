@@ -249,10 +249,10 @@ iget(u32 dev, u32 inum)
   ip = ins->lookup(mkpair(dev, inum));
   if (ip) {
     // tricky: first bump ref, then check free flag
-    __sync_fetch_and_add(&ip->ref, 1);
+    ip->ref++;
     if (ip->flags & I_FREE) {
       gc_end_epoch();
-      __sync_sub_and_fetch(&ip->ref, 1);
+      ip->ref--;
       goto retry;
     }
     gc_end_epoch();
@@ -339,7 +339,7 @@ iget(u32 dev, u32 inum)
 struct inode*
 idup(struct inode *ip)
 {
-  __sync_fetch_and_add(&ip->ref, 1);
+  ip->ref++;
   return ip;
 }
 
@@ -357,7 +357,7 @@ ilock(struct inode *ip, int writer)
   while(ip->flags & (I_BUSYW | (writer ? I_BUSYR : 0)))
     cv_sleep(&ip->cv, &ip->lock);
   ip->flags |= I_BUSYR | (writer ? I_BUSYW : 0);
-  __sync_fetch_and_add(&ip->readbusy, 1);
+  ip->readbusy++;
   release(&ip->lock);
 
   if((ip->flags & I_VALID) == 0)
@@ -372,7 +372,7 @@ iunlock(struct inode *ip)
     panic("iunlock");
 
   acquire(&ip->lock);
-  int lastreader = __sync_sub_and_fetch(&ip->readbusy, 1);
+  int lastreader = (--ip->readbusy);
   ip->flags &= ~(I_BUSYW | ((lastreader==0) ? I_BUSYR : 0));
   cv_wakeup(&ip->cv);
   release(&ip->lock);
@@ -382,7 +382,7 @@ iunlock(struct inode *ip)
 void
 iput(struct inode *ip)
 {
-  if(__sync_sub_and_fetch(&ip->ref, 1) == 0) {
+  if(--ip->ref == 0) {
     if (ip->nlink)
       return;
     acquire(&ip->lock);
@@ -407,7 +407,7 @@ iput(struct inode *ip)
       }
 
       ip->flags |= (I_BUSYR | I_BUSYW);
-      __sync_fetch_and_add(&ip->readbusy, 1);
+      ip->readbusy++;
 
       release(&ip->lock);
 

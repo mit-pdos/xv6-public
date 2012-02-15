@@ -11,6 +11,8 @@ extern "C" {
 }
 
 #include "ns.hh"
+#include "atomic.hh"
+
 extern u64 proc_hash(const u32&);
 extern xns<u32, proc*, proc_hash> *xnspid;
 
@@ -41,7 +43,7 @@ static struct gc_state {
   struct condvar cv;
   headinfo delayed[NEPOCH];
   headinfo tofree[NEPOCH];
-  int ndelayed;
+  atomic<int> ndelayed;
   int min_epoch;
   int nrun;
   int nfree;
@@ -156,13 +158,13 @@ gc_delayfreelist(void)
 void
 gc_delayed(rcu_freed *e)
 {
-  __sync_fetch_and_add(&gc_state[mycpu()->id].ndelayed, 1);
+  gc_state[mycpu()->id].ndelayed++;
   pushcli();
   int c = mycpu()->id;
   u64 myepoch = myproc()->epoch;
   u64 minepoch = gc_state[c].delayed[myepoch % NEPOCH].epoch;
   if (gc_debug) 
-    cprintf("(%d, %d): gc_delayed: %lu ndelayed %d\n", c, myproc()->pid, global_epoch, gc_state[c].ndelayed);
+    cprintf("(%d, %d): gc_delayed: %lu ndelayed %d\n", c, myproc()->pid, global_epoch, gc_state[c].ndelayed.load());
   if (myepoch != minepoch) {
     cprintf("%d: myepoch %lu minepoch %lu\n", myproc()->pid, myepoch, minepoch);
     panic("gc_delayed_int");
@@ -226,7 +228,7 @@ gc_worker(void *x)
     for (i = gc_state[mycpu()->id].min_epoch; i < global-2; i++) {
       int nfree = gc_free_tofreelist(&(gc_state[mycpu()->id].tofree[i%NEPOCH].head), i);
       gc_state[mycpu()->id].tofree[i%NEPOCH].epoch += NEPOCH;
-      __sync_fetch_and_sub(&gc_state[mycpu()->id].ndelayed, nfree);
+      gc_state[mycpu()->id].ndelayed -= nfree;
       if (0 && nfree > 0) {
 	cprintf("%d: epoch %lu freed %d\n", mycpu()->id, i, nfree);
       }

@@ -582,7 +582,7 @@ fork(int flags)
     }
   } else {
     np->vmap = myproc()->vmap;
-    __sync_fetch_and_add(&np->vmap->ref, 1);
+    np->vmap->ref++;
   }
 
   np->brk = myproc()->brk;

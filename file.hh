@@ -1,12 +1,13 @@
 #include "cpputil.hh"
 #include "ns.hh"
 #include "gc.hh"
+#include "atomic.hh"
 
 u64 namehash(const strbuf<DIRSIZ>&);
 
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;
-  int ref; // reference count
+  atomic<int> ref; // reference count
   char readable;
   char writable;
 
@@ -23,9 +24,9 @@ struct inode : public rcu_freed {
   u32 dev;           // Device number
   u32 inum;          // Inode number
   u32 gen;           // Generation number
-  int ref;           // Reference count
+  atomic<int> ref;   // Reference count
   int flags;         // I_BUSY, I_VALID
-  int readbusy;
+  atomic<int> readbusy;
   struct condvar cv;
   struct spinlock lock;
   char lockname[16];

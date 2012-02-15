@@ -14,6 +14,7 @@ extern "C" {
 
 #include "vm.hh"
 #include "gc.hh"
+#include "crange.hh"
 
 static void vmap_free(void *p);
 
@@ -22,7 +23,7 @@ enum { vm_debug = 0 };
 static void
 vmn_decref(struct vmnode *n)
 {
-  if(subfetch(&n->ref, 1) == 0)
+  if(--n->ref == 0)
     vmn_free(n);
 }
 
@@ -84,7 +85,7 @@ vmn_allocpg(u64 npg)
 void
 vmap_decref(struct vmap *m)
 {
-  if(subfetch(&m->ref, 1) == 0)
+  if(--m->ref == 0)
     vmap_free(m);
 }
 
@@ -114,7 +115,7 @@ vmap_alloc(void)
       return 0;
   }
 #ifdef TREE
-  m->cr = crange_alloc(10);
+  m->cr = new crange(10);
   if (m->cr == 0)
     return 0;
 #endif
@@ -216,7 +217,7 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
 
   if (vm_debug)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
-            err, va, m->va_type, m->n->ref, myproc()->pid);
+            err, va, m->va_type, m->n->ref.load(), myproc()->pid);
 
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(vmap, va, pte, m, npg) < 0) {
@@ -313,10 +314,10 @@ struct state {
 };
 
 static int
-vmap_free_vma(struct range *r, void *st)
+vmap_free_vma(range *r, void *st)
 {  
   delete (vma *) r->value;
-  crange_del(r->cr, r->key, r->size);
+  r->cr->del(r->key, r->size);
   return 1;
 }
 
@@ -324,8 +325,8 @@ static void
 vmap_free(void *p)
 {
   struct vmap *m = (struct vmap *) p;
-  crange_foreach(m->cr, vmap_free_vma, NULL);
-  crange_free(m->cr);
+  m->cr->foreach(vmap_free_vma, NULL);
+  delete m->cr;
   ksfree(slab_kshared, m->kshared);
   freevm(m->pml4);
   m->pml4 = 0;
@@ -346,7 +347,7 @@ vmap_lookup(struct vmap *m, uptr start, uptr len)
   if(start + len < start)
     panic("vmap_lookup bad len");
 
-  struct range *r = crange_search(m->cr, start, len, 0);
+  range *r = m->cr->search(start, len, 0);
   if (r != 0) {
     struct vma *e = (struct vma *) (r->value);
     if (e->va_end <= e->va_start) 
@@ -379,8 +380,8 @@ vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
   e->va_start = va_start;
   e->va_end = va_start + len;
   e->n = n;
-  __sync_fetch_and_add(&n->ref, 1);
-  crange_add(m->cr, e->va_start, len, (void *) e);
+  n->ref++;
+  m->cr->add(e->va_start, len, (void *) e);
   release(&m->lock);
   return 0;
 }
@@ -410,8 +411,8 @@ vmap_copy_vma(struct range *r, void *_st)
   if(c->n == 0) {
     return 0;
   }
-  __sync_fetch_and_add(&c->n->ref, 1);
-  crange_add(st->cr, c->va_start, c->va_end - c->va_start, (void *) c);
+  c->n->ref++;
+  st->cr->add(c->va_start, c->va_end - c->va_start, (void *) c);
   return 1;
 }
 
@@ -427,7 +428,7 @@ vmap_copy(struct vmap *m, int share)
   st.share = share;
   st.pml4 = m->pml4;
   st.cr = c->cr;
-  if (!crange_foreach(m->cr, vmap_copy_vma, &st)) {
+  if (!m->cr->foreach(vmap_copy_vma, &st)) {
     vmap_free(c);
     release(&m->lock);
     return 0;
@@ -445,7 +446,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
 {
   acquire(&m->lock);
   uptr va_end = va_start + len;
-  struct range *r = crange_search(m->cr, va_start, len, 0);
+  struct range *r = m->cr->search(va_start, len, 0);
   if (r == 0)
     panic("no vma?");
   struct vma *e = (struct vma *) r->value;
@@ -454,7 +455,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
     release(&m->lock);
     return -1;
   }
-  crange_del(m->cr, va_start, len);
+  m->cr->del(va_start, len);
   gc_delayed(e);
   release(&m->lock);
   return 0;
