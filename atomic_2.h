@@ -642,6 +642,22 @@ namespace __atomic2
 	return __p1o == __p1n;
       }
 
+      bool
+      compare_exchange_strong(__pointer_type& __p1, __pointer_type __p2,
+                              memory_order __m = memory_order_seq_cst)
+      {
+        return compare_exchange_strong(__p1, __p2, __m,
+                                       __calculate_memory_order(__m));
+      }
+
+      bool
+      compare_exchange_strong(__pointer_type& __p1, __pointer_type __p2,
+                              memory_order __m = memory_order_seq_cst) volatile
+      {
+        return compare_exchange_strong(__p1, __p2, __m,
+                                       __calculate_memory_order(__m));
+      }
+
       __pointer_type
       fetch_add(ptrdiff_t __d, memory_order __m = memory_order_seq_cst)
       { return __sync_fetch_and_add(&_M_p, __d); }

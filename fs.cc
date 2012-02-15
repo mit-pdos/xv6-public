@@ -146,7 +146,7 @@ ino_hash(const pair<u32, u32> &p)
 
 static xns<pair<u32, u32>, inode*, ino_hash> *ins;
 
-static struct { u32 x __mpalign__; } icache_free[NCPU];
+static struct { atomic<u32> x __mpalign__; } icache_free[NCPU];
 
 void
 initinode(void)
@@ -299,7 +299,7 @@ iget(u32 dev, u32 inum)
     ins->remove(mkpair(victim->dev, victim->inum), &victim);
     gc_delayed(victim);
   } else {
-    if (!__sync_bool_compare_and_swap(&icache_free[mycpu()->id].x, cur_free, cur_free-1))
+    if (!icache_free[mycpu()->id].x.compare_exchange_strong(cur_free, cur_free-1))
       goto retry_evict;
   }
 
@@ -420,7 +420,7 @@ iput(struct inode *ip)
 
       ins->remove(mkpair(ip->dev, ip->inum), &ip);
       gc_delayed(ip);
-      __sync_fetch_and_add(&icache_free[mycpu()->id].x, 1);
+      icache_free[mycpu()->id].x++;
       return;
     }
     release(&ip->lock);
