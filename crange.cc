@@ -84,7 +84,9 @@ range_draw_nlevel(int nlevel)
 
 void range::print(int l)
 {
-  cprintf ("0x%lx-0x%lx(%lu) 0x%lx, c %d, t %d, n 0x%lx m 0x%lx\n", this->key, this->key+this->size, this->size, (long) this->value, this->curlevel, this->nlevel, (long) this->next, MARKED(this->next[l]));
+  cprintf ("0x%lx-0x%lx(%lu) 0x%lx, c %d, t %d, n 0x%lx m 0x%lx\n",
+           key, key+size, size, (long) value, curlevel.load(), nlevel,
+           (long) next, MARKED(next[l]));
 }
 
 range::~range()
@@ -111,7 +113,7 @@ void range::free_delayed(void)
 
 void range::dec_ref(void)
 {
-  int n = __sync_fetch_and_sub(&(this->curlevel), 1);
+  int n = this->curlevel--;
   if (n == 0) {    // now removed from all levels.
     this->free_delayed();
   }
@@ -328,7 +330,7 @@ void crange::check(struct range *absent)
 	// if e is marked now, skip the check (the memory barrier ensures that we reread it
 	// from memory (and not from a register)
 	if (!MARKED(e->next[l]) && n != e) {
-	  cprintf("%d: check level %d failed 0x%lx-0x%lx(%lu) m %lu c %d t %d; in high level but not low\n", t, l, e->key, e->key+e->size, e->size, MARKED(e->next[l]), e->curlevel, e->nlevel);
+	  cprintf("%d: check level %d failed 0x%lx-0x%lx(%lu) m %lu c %d t %d; in high level but not low\n", t, l, e->key, e->key+e->size, e->size, MARKED(e->next[l]), e->curlevel.load(), e->nlevel);
 	  this->print(1);
 	  assert(0);
 	}
@@ -390,7 +392,7 @@ void crange::add_index(int l, range *e, range *p1, range *s1)
   if (l >= e->nlevel-1) return;
   if (MARKED(e->next[l+1])) return;
   // crange_check(cr, NULL);
-  if (__sync_bool_compare_and_swap(&e->curlevel, l, l+1)) {
+  if (e->curlevel.compare_exchange_strong(l, l+1)) {
     assert(e->curlevel < e->nlevel);
     // this is the core inserting at level l+1, but some core may be deleting
     struct range *s = WOMARK(s1);
@@ -399,7 +401,7 @@ void crange::add_index(int l, range *e, range *p1, range *s1)
       if (MARKED(n)) {
 	// this range has been deleted, don't insert into index.
 	// undo increment of cur->level.
-	__sync_fetch_and_sub(&(e->curlevel), 1);
+	e->curlevel--;
 	//INCRETRY;
 	goto done;
       }
@@ -407,7 +409,7 @@ void crange::add_index(int l, range *e, range *p1, range *s1)
     } while (!__sync_bool_compare_and_swap(&(e->next[l+1]), 0, s));
     if (!__sync_bool_compare_and_swap(&(p1->next[l+1]), s, e)) {  // insert in list l+1
         (void) __sync_fetch_and_and(&(e->next[l+1]), (struct range *)0x1);    // failed, keep mark bit
-      __sync_fetch_and_sub(&(e->curlevel), 1);
+      e->curlevel--;
       // cprintf("%d: crange_add_index: retry add level %d %u(%u)\n", mycpu()->id, l+1, e->key, e->key+e->size);
       //INCRETRY;
     }

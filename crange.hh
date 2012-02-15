@@ -1,5 +1,7 @@
 #pragma once
 
+#include "atomic.hh"
+
 struct crange;
 
 struct range : public rcu_freed {
@@ -7,7 +9,7 @@ public:
   u64 key;
   u64 size;
   void *value;
-  int curlevel;          // the current levels it appears on
+  atomic<int> curlevel;  // the current levels it appears on
   int nlevel;            // the number of levels this range should appear
   crange *cr;            // the crange this range is part of
   struct range** next;   // one next pointer per level
