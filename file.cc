@@ -28,7 +28,7 @@ filealloc(void)
 struct file*
 filedup(struct file *f)
 {
-  if (__sync_fetch_and_add(&f->ref, 1) < 1)
+  if (f->ref++ < 1)
     panic("filedup");
   return f;
 }
@@ -37,7 +37,7 @@ filedup(struct file *f)
 void
 fileclose(struct file *f)
 {
-  if (subfetch(&f->ref, 1) > 0)
+  if (--f->ref > 0)
     return;
 
   if(f->type == file::FD_PIPE)

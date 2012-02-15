@@ -1,12 +1,13 @@
 #include "cpputil.hh"
 #include "ns.hh"
 #include "gc.hh"
+#include "atomic.hh"
 
 u64 namehash(const strbuf<DIRSIZ>&);
 
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;
-  int ref; // reference count
+  atomic<int> ref; // reference count
   char readable;
   char writable;
 

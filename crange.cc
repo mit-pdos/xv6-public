@@ -10,6 +10,7 @@ extern "C" {
 }
 #include "gc.hh"
 #include "crange.hh"
+#include "cpputil.hh"
 
 //
 // Concurrent atomic range operations using skip lists.  An insert may split an

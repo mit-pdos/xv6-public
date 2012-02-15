@@ -18,4 +18,5 @@ typedef pme_t           pml4e_t;
 typedef s64             ssize_t;
 typedef u64             size_t;
 typedef u64             off_t;
+typedef s64             ptrdiff_t;
 #endif

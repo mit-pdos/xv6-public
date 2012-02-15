@@ -46,16 +46,18 @@ main(void)
       continue;
     }
     if (pid == 0) {
-      static const char *argv[] = { "sh", 0 };
+      static const char *argv[] = { "/login", 0 };
       close(0);
       close(1);
       close(2);
       dup(ss);
       dup(ss);
       dup(ss);
-      exec("sh", argv);
+      exec(argv[0], argv);
       exit();
     }
     close(ss);
+    wait();
+    printf(1, "telnetd: connection closed\n");
   }
 }

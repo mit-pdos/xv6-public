@@ -55,8 +55,6 @@ void            consoleintr(int(*)(void));
 
 #define assert(c)   if (!(c)) { cprintf("%s:%d: ", __FILE__, __LINE__); panic("assertion failure"); }
 
-// crange.c
-
 // e1000.c
 extern int e1000irq;
 extern int e1000init;
