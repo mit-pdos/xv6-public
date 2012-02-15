@@ -1,8 +1,8 @@
 #pragma once
 
-class crange;
+struct crange;
 
-class range : public rcu_freed {
+struct range : public rcu_freed {
 public:
   u64 key;
   u64 size;
@@ -23,11 +23,12 @@ public:
   int lockif(range *e);
 } __mpalign__;
 
-class crange {
+struct crange {
+private:
   range *crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
-  crange_check(struct range *absent);
-  crange_replace(u64, u64, void*, range*, range*, range*);
- public:
+  //crange_check(struct range *absent);
+  //crange_replace(u64, u64, void*, range*, range*, range*);
+public:
   int nlevel;                  // number of levels in the crange skip list
   crange(int nlevel);
   ~crange(void);
