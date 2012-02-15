@@ -69,7 +69,7 @@ sys_kernlet(int fd, size_t count, off_t off)
   if(f->type != file::FD_INODE)
     return -1;
 
-  fetchadd(&f->ip->ref, 1);
+  f->ip->ref++;
   w = pread_allocwork(f->ip, myproc()->vmap->kshared, count, off);
   if (w == NULL) {
     iput(f->ip);

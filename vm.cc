@@ -216,7 +216,7 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
 
   if (vm_debug)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
-            err, va, m->va_type, (u64) m->n->ref, myproc()->pid);
+            err, va, m->va_type, m->n->ref.load(), myproc()->pid);
 
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(vmap, va, pte, m, npg) < 0) {

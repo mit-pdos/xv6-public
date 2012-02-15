@@ -24,9 +24,9 @@ struct inode : public rcu_freed {
   u32 dev;           // Device number
   u32 inum;          // Inode number
   u32 gen;           // Generation number
-  int ref;           // Reference count
+  atomic<int> ref;   // Reference count
   int flags;         // I_BUSY, I_VALID
-  int readbusy;
+  atomic<int> readbusy;
   struct condvar cv;
   struct spinlock lock;
   char lockname[16];
