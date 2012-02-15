@@ -1,6 +1,7 @@
 #define TREE
 
 #include "gc.hh"
+#include "atomic.hh"
 
 // A mapping of a chunk of an address space to
 // a specific memory object.
@@ -27,7 +28,7 @@ struct vma : public rcu_freed {
 struct vmnode {
   u64 npages;
   char *page[128];
-  u64 ref;
+  atomic<u64> ref;
   enum vmntype type;
   struct inode *ip;
   u64 offset;
@@ -44,7 +45,7 @@ struct vmap {
   struct vma* e[16];
 #endif
   struct spinlock lock;        // serialize map/lookup/unmap
-  u64 ref;
+  atomic<u64> ref;
   u64 alloc;
   pml4e_t *pml4;               // Page table
   char *kshared;
