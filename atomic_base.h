@@ -113,6 +113,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   // 1 == __atomic1 == Best available, sometimes lock-free
   // 2 == __atomic2 == Always lock-free
 
+  /// Lock-free Property
+#if defined(_GLIBCXX_ATOMIC_BUILTINS_1) && defined(_GLIBCXX_ATOMIC_BUILTINS_2) \
+  && defined(_GLIBCXX_ATOMIC_BUILTINS_4) && defined(_GLIBCXX_ATOMIC_BUILTINS_8)
+# define _GLIBCXX_ATOMIC_PROPERTY 2
+# define _GLIBCXX_ATOMIC_NAMESPACE __atomic2
+#elif defined(_GLIBCXX_ATOMIC_BUILTINS_1)
+# define _GLIBCXX_ATOMIC_PROPERTY 1
+# define _GLIBCXX_ATOMIC_NAMESPACE __atomic1
+#else
+# define _GLIBCXX_ATOMIC_PROPERTY 0
+# define _GLIBCXX_ATOMIC_NAMESPACE __atomic0
+#endif
+
+  inline namespace _GLIBCXX_ATOMIC_NAMESPACE { }
+  
   namespace __atomic0
   {
     struct atomic_flag;
@@ -135,19 +150,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     using __atomic0::__atomic_base;
   }
 
-  /// Lock-free Property
-#if defined(_GLIBCXX_ATOMIC_BUILTINS_1) && defined(_GLIBCXX_ATOMIC_BUILTINS_2) \
-  && defined(_GLIBCXX_ATOMIC_BUILTINS_4) && defined(_GLIBCXX_ATOMIC_BUILTINS_8)
-# define _GLIBCXX_ATOMIC_PROPERTY 2
-# define _GLIBCXX_ATOMIC_NAMESPACE __atomic2
-#elif defined(_GLIBCXX_ATOMIC_BUILTINS_1)
-# define _GLIBCXX_ATOMIC_PROPERTY 1
-# define _GLIBCXX_ATOMIC_NAMESPACE __atomic1
-#else
-# define _GLIBCXX_ATOMIC_PROPERTY 0
-# define _GLIBCXX_ATOMIC_NAMESPACE __atomic0
-#endif
-
 #define ATOMIC_CHAR_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
 #define ATOMIC_CHAR16_T_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
 #define ATOMIC_CHAR32_T_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
@@ -156,8 +158,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #define ATOMIC_INT_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
 #define ATOMIC_LONG_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
 #define ATOMIC_LLONG_LOCK_FREE _GLIBCXX_ATOMIC_PROPERTY
-
-  inline namespace _GLIBCXX_ATOMIC_NAMESPACE { }
 
 #define ATOMIC_VAR_INIT(_VI) { _VI }
 
