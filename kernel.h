@@ -56,29 +56,6 @@ void            consoleintr(int(*)(void));
 #define assert(c)   if (!(c)) { cprintf("%s:%d: ", __FILE__, __LINE__); panic("assertion failure"); }
 
 // crange.c
-struct range {
-  u64 key;
-  u64 size;
-  void *value;
-  int curlevel;          // the current levels it appears on
-  int nlevel;            // the number of levels this range should appear
-  struct crange *cr;     // the crange this range is part of
-  struct range** next;   // one next pointer per level
-  struct spinlock *lock; // on separate cache line?
-} __mpalign__;
-
-struct crange {
-  int nlevel;                  // number of levels in the crange skip list
-  struct range crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
-};
-
-struct crange* crange_alloc(int nlevel);
-void crange_free(struct crange *cr);
-void crange_del(struct crange *cr, u64 k, u64 sz);
-void crange_add(struct crange *cr, u64 k, u64 sz, void *v);
-struct range* crange_search(struct crange *cr, u64 k, u64 sz, int mod);
-int crange_foreach(struct crange *crk, int (*f)(struct range *r, void *st), void *st);
-void crange_print(struct crange *cr, int);
 
 // e1000.c
 extern int e1000irq;
