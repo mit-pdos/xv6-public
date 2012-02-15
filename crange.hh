@@ -2,6 +2,8 @@
 
 #include "atomic.hh"
 
+using std::atomic;
+
 struct crange;
 
 struct range : public rcu_freed {

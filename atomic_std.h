@@ -246,6 +246,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       { return __pointer_type(_M_b); }
 
       __pointer_type
+      operator->() const
+      { return __pointer_type(_M_b); }
+
+      __pointer_type
+      operator->() const volatile
+      { return __pointer_type(_M_b); }
+
+      __pointer_type
       operator=(__pointer_type __p)
       { return _M_b.operator=(__p); }
 

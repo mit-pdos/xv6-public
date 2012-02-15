@@ -3,6 +3,8 @@
 #include "gc.hh"
 #include "atomic.hh"
 
+using std::atomic;
+
 // A mapping of a chunk of an address space to
 // a specific memory object.
 enum vmatype { PRIVATE, COW};

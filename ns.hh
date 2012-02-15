@@ -3,6 +3,8 @@
 #include "gc.hh"
 #include "atomic.hh"
 
+using std::atomic;
+
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
 

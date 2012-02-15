@@ -1,6 +1,8 @@
 #include "gc.hh"
 #include "atomic.hh"
 
+using std::atomic;
+
 struct buf : public rcu_freed {
   atomic<int> flags;
   u32 dev;

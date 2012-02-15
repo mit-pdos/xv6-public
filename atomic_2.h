@@ -464,14 +464,6 @@ namespace __atomic2
       { return load(); }
 
       __pointer_type
-      operator->() const
-      { return load(); }
-
-      __pointer_type
-      operator->() const volatile
-      { return load(); }
-
-      __pointer_type
       operator=(__pointer_type __p)
       {
 	store(__p);
@@ -648,22 +640,6 @@ namespace __atomic2
 	// Assume extra stores (of same value) allowed in true case.
 	__p1 = __p1n;
 	return __p1o == __p1n;
-      }
-
-      bool
-      compare_exchange_strong(__pointer_type& __p1, __pointer_type __p2,
-                              memory_order __m = memory_order_seq_cst)
-      {
-        return compare_exchange_strong(__p1, __p2, __m,
-                                       __calculate_memory_order(__m));
-      }
-
-      bool
-      compare_exchange_strong(__pointer_type& __p1, __pointer_type __p2,
-                              memory_order __m = memory_order_seq_cst) volatile
-      {
-        return compare_exchange_strong(__p1, __p2, __m,
-                                       __calculate_memory_order(__m));
       }
 
       __pointer_type
