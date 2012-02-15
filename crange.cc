@@ -120,9 +120,6 @@ void range::dec_ref(void)
 range::range(crange *cr, u64 k, u64 sz, void *v, struct range *n, int nlevel = 0)
   : rcu_freed("range_delayed")
 {
-  //struct range *r;
-  //kmalign((void **) &r, CACHELINE, sizeof(struct range));
-  //assert(r);
   if (crange_debug)
     cprintf("range:range:: %lu %lu %d\n", k, sz, nlevel);
   this->key = k;
@@ -140,8 +137,6 @@ range::range(crange *cr, u64 k, u64 sz, void *v, struct range *n, int nlevel = 0
   assert(kmalign((void **) &this->lock, CACHELINE, 
 			   sizeof(struct spinlock)) == 0);
   initlock(this->lock, "crange", LOCKSTAT_CRANGE);
-  //r->cr = cr;
-  //return r;
 }
 
 // 
@@ -293,19 +288,10 @@ crange::print(int full)
 
 crange::crange(int nlevel)
 {
-  // assert(kmalign((void **) &cr, CACHELINE, sizeof(struct crange)) == 0);
   assert(nlevel >= 0);
   this->nlevel = nlevel;
   this->crange_head = new range(this, 0, 0, nullptr, nullptr, nlevel);
-#if 0
-  assert(kmalign((void **) &cr->crange_head->lock, 
-			   CACHELINE, sizeof(struct spinlock)) == 0);
-  initlock(cr->crange_head->lock, "head lock", LOCKSTAT_CRANGE);
-  cr->crange_head.next = (struct range **) kmalloc(sizeof(cr->crange_head.next[0]) * nlevel);
-  for (int l = 0; l < nlevel; l++) cr->crange_head.next[l] = 0;
-#endif
   if (crange_debug) cprintf("crange::crange return 0x%lx\n", (u64) this);
-  // this->print(1);
 }
 
 crange::~crange()
@@ -317,9 +303,6 @@ crange::~crange()
     delete e;
   }
   delete this->crange_head;
-  // kmfree(this->crange_head->next);
-  // kmalignfree(this->crange_head.lock);
-  // kmalignfree(cr);
 }
 
 // Check some invariants, ignoring marked nodes.
