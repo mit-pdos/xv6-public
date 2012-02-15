@@ -30,7 +30,7 @@ struct inode : public rcu_freed {
   struct condvar cv;
   struct spinlock lock;
   char lockname[16];
-  xns<strbuf<DIRSIZ>, u32, namehash> *dir;
+  atomic<xns<strbuf<DIRSIZ>, u32, namehash>*> dir;
 
   short type;         // copy of disk inode
   short major;

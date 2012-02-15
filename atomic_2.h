@@ -464,6 +464,14 @@ namespace __atomic2
       { return load(); }
 
       __pointer_type
+      operator->() const
+      { return load(); }
+
+      __pointer_type
+      operator->() const volatile
+      { return load(); }
+
+      __pointer_type
       operator=(__pointer_type __p)
       {
 	store(__p);

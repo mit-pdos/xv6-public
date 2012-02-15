@@ -643,7 +643,9 @@ dir_init(struct inode *dp)
     }
     brelse(bp, 0);
   }
-  if (!__sync_bool_compare_and_swap(&dp->dir, 0, dir)) {
+
+  decltype(dir) expect_null = 0;
+  if (!dp->dir.compare_exchange_strong(expect_null, dir)) {
     // XXX free all the dirents
     delete dir;
   }
