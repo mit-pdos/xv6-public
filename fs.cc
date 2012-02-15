@@ -299,7 +299,7 @@ iget(u32 dev, u32 inum)
     ins->remove(mkpair(victim->dev, victim->inum), &victim);
     gc_delayed(victim);
   } else {
-    if (!icache_free[mycpu()->id].x.compare_exchange_strong(cur_free, cur_free-1))
+    if (!cmpxch(&icache_free[mycpu()->id].x, cur_free, cur_free-1))
       goto retry_evict;
   }
 
@@ -644,8 +644,7 @@ dir_init(struct inode *dp)
     brelse(bp, 0);
   }
 
-  decltype(dir) expect_null = 0;
-  if (!dp->dir.compare_exchange_strong(expect_null, dir)) {
+  if (!cmpxch(&dp->dir, (decltype(dir)) 0, dir)) {
     // XXX free all the dirents
     delete dir;
   }

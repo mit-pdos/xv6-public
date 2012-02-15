@@ -392,7 +392,7 @@ void crange::add_index(int l, range *e, range *p1, range *s1)
   if (l >= e->nlevel-1) return;
   if (MARKED(e->next[l+1])) return;
   // crange_check(cr, NULL);
-  if (e->curlevel.compare_exchange_strong(l, l+1)) {
+  if (cmpxch(&e->curlevel, l, l+1)) {
     assert(e->curlevel < e->nlevel);
     // this is the core inserting at level l+1, but some core may be deleting
     struct range *s = WOMARK(s1);

@@ -90,8 +90,7 @@ class xns : public rcu_freed {
       }
 
       e->next = root.load();
-      auto expect = e->next.load();
-      if (table[i].chain.compare_exchange_strong(expect, e))
+      if (cmpxch(&table[i].chain, e->next.load(), e))
         return 0;
     }
   }
@@ -121,21 +120,19 @@ class xns : public rcu_freed {
       auto pe = &table[i].chain;
 
       for (;;) {
-        auto e = *pe;
+        auto e = pe->load();
         if (!e)
           return false;
 
         if (e->key == key && (!vp || e->val == *vp)) {
-          int zero = 0;
-          if (!e->next_lock.compare_exchange_strong(zero, 1))
+          if (!cmpxch(&e->next_lock, 0, 1))
             break;
-          if (!pelock->compare_exchange_strong(zero, 1)) {
+          if (!cmpxch(pelock, 0, 1)) {
             e->next_lock = 0;
             break;
           }
 
-          auto expect = e.load(); /* XXX c_e_s replaces first arg! */
-          if (!pe->compare_exchange_strong(expect, e->next)) {
+          if (!cmpxch(pe, e, e->next.load())) {
             *pelock = 0;
             e->next_lock = 0;
             break;

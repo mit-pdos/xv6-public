@@ -82,7 +82,7 @@ gc_move_to_tofree_cpu(int c, u64 epoch)
   assert(gc_state[c].delayed[fe].epoch == epoch-(NEPOCH-2));   // XXX race with setting epoch = 0
   // unhook list for fe epoch atomically; this shouldn't fail
   head = gc_state[c].delayed[fe].head;
-  while (!gc_state[c].delayed[fe].head.compare_exchange_strong(head, (rcu_freed*)0)) {}
+  while (!cmpxch_update(&gc_state[c].delayed[fe].head, &head, (rcu_freed*) 0)) {}
 
   // insert list into tofree list so that each core can free in parallel and free its elements
   if(gc_state[c].tofree[fe].epoch != gc_state[c].delayed[fe].epoch) {
@@ -91,7 +91,7 @@ gc_move_to_tofree_cpu(int c, u64 epoch)
 	    gc_state[c].delayed[fe].epoch.load());
     assert(0);
   }
-  assert(gc_state[c].tofree[fe].head.exchange(head) == 0);
+  assert(cmpxch(&gc_state[c].tofree[fe].head, (rcu_freed*) 0, head));
 
   // move delayed NEPOCH's adhead
   gc_state[c].delayed[fe].epoch += NEPOCH;
@@ -109,7 +109,7 @@ gc_move_to_tofree(u64 epoch)
   for (int c = 0; c < ncpu; c++) {
     gc_move_to_tofree_cpu(c, epoch);
   }
-  assert(global_epoch.compare_exchange_strong(epoch, epoch+1));
+  assert(cmpxch(&global_epoch, epoch, epoch+1));
 }
 
 // If all threads have seen global_epoch, we can move elements in global_epoch-2 to tofreelist
@@ -169,7 +169,7 @@ gc_delayed(rcu_freed *e)
   }
   e->_rcu_epoch = myepoch;
   e->_rcu_next = gc_state[c].delayed[myepoch % NEPOCH].head;
-  while (!gc_state[c].delayed[myepoch % NEPOCH].head.compare_exchange_strong(e->_rcu_next, e)) {}
+  while (!cmpxch_update(&gc_state[c].delayed[myepoch % NEPOCH].head, &e->_rcu_next, e)) {}
   popcli();
 }
 
