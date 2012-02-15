@@ -99,7 +99,7 @@ class xns : public rcu_freed {
     u64 i = h(key);
 
     scoped_gc_epoch gc;
-    auto e = table[i].chain;
+    auto e = table[i].chain.load();
 
     while (e) {
       if (e->key == key)
@@ -153,7 +153,7 @@ class xns : public rcu_freed {
   void enumerate(CB cb) {
     scoped_gc_epoch gc;
     for (int i = 0; i < NHASH; i++) {
-      auto e = table[i].chain;
+      auto e = table[i].chain.load();
       while (e) {
         if (cb(e->key, e->val))
           return;

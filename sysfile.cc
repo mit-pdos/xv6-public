@@ -183,7 +183,7 @@ isdirempty(struct inode *dp)
 {
   dir_init(dp);
   int empty = 1;
-  dp->dir->enumerate([&empty](const strbuf<DIRSIZ> &name, u64 ino)->bool{
+  dp->dir.load()->enumerate([&empty](const strbuf<DIRSIZ> &name, u64 ino)->bool{
       if (!strcmp(name._buf, "."))
         return false;
       if (!strcmp(name._buf, ".."))
@@ -229,7 +229,7 @@ sys_unlink(void)
   }
 
   dir_init(dp);
-  if (dp->dir->remove(strbuf<DIRSIZ>(name), &ip->inum) == 0) {
+  if (dp->dir.load()->remove(strbuf<DIRSIZ>(name), &ip->inum) == 0) {
     iunlockput(ip);
     goto retry;
   }

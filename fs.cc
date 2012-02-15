@@ -228,11 +228,12 @@ inode::inode()
 
 inode::~inode()
 {
-  if (dir) {
-    dir->remove(strbuf<DIRSIZ>("."));
-    dir->remove(strbuf<DIRSIZ>(".."));
-    gc_delayed(dir);
-    dir = 0;
+  auto d = dir.load();
+  if (d) {
+    d->remove(strbuf<DIRSIZ>("."));
+    d->remove(strbuf<DIRSIZ>(".."));
+    gc_delayed(d);
+    assert(cmpxch(&dir, d, (decltype(d)) 0));
   }
 
   destroylock(&lock);
@@ -659,7 +660,7 @@ dir_flush(struct inode *dp)
     return;
 
   u32 off = 0;
-  dp->dir->enumerate([dp, &off](const strbuf<DIRSIZ> &name, const u32 &inum)->bool{
+  dp->dir.load()->enumerate([dp, &off](const strbuf<DIRSIZ> &name, const u32 &inum)->bool{
       struct dirent de;
       strncpy(de.name, name._buf, DIRSIZ);
       de.inum = inum;
@@ -676,7 +677,7 @@ dirlookup(struct inode *dp, char *name)
 {
   dir_init(dp);
 
-  u32 inum = dp->dir->lookup(strbuf<DIRSIZ>(name));
+  u32 inum = dp->dir.load()->lookup(strbuf<DIRSIZ>(name));
 
   //cprintf("dirlookup: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
   if (inum == 0)
@@ -692,7 +693,7 @@ dirlink(struct inode *dp, const char *name, u32 inum)
   dir_init(dp);
 
   //cprintf("dirlink: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
-  return dp->dir->insert(strbuf<DIRSIZ>(name), inum);
+  return dp->dir.load()->insert(strbuf<DIRSIZ>(name), inum);
 }
 
 // Paths
