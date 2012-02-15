@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gc.hh"
+#include "atomic.hh"
 
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
@@ -21,8 +22,8 @@ template<class K, class V>
 class xelem : public rcu_freed {
  public:
   V val;
-  int next_lock;
-  xelem<K, V> * volatile next;
+  atomic<int> next_lock;
+  atomic<xelem<K, V>*> volatile next;
   K key;
 
   xelem(const K &k, const V &v) : rcu_freed("xelem"), val(v), next_lock(0), next(0), key(k) {}
@@ -31,14 +32,14 @@ class xelem : public rcu_freed {
 
 template<class K, class V>
 struct xbucket {
-  xelem<K, V> * volatile chain;
+  atomic<xelem<K, V>*> volatile chain;
 } __attribute__((aligned (CACHELINE)));
 
 template<class K, class V, u64 (*HF)(const K&)>
 class xns : public rcu_freed {
  private:
   bool allowdup;
-  u64 nextkey;
+  atomic<u64> nextkey;
   xbucket<K, V> table[NHASH];
 
  public:
@@ -60,7 +61,7 @@ class xns : public rcu_freed {
   }
 
   u64 allockey() {
-    return __sync_fetch_and_add(&nextkey, 1);
+    return nextkey++;
   }
 
   u64 h(const K &key) {
@@ -78,7 +79,7 @@ class xns : public rcu_freed {
     for (;;) {
       auto root = table[i].chain;
       if (!allowdup) {
-        for (auto x = root; x; x = x->next) {
+        for (auto x = root.load(); x; x = x->next) {
           if (x->key == key) {
             gc_delayed(e);
             return -1;
@@ -86,8 +87,9 @@ class xns : public rcu_freed {
         }
       }
 
-      e->next = root;
-      if (__sync_bool_compare_and_swap(&table[i].chain, root, e))
+      e->next = root.load();
+      auto expect = e->next.load();
+      if (table[i].chain.compare_exchange_strong(expect, e))
         return 0;
     }
   }
@@ -112,8 +114,8 @@ class xns : public rcu_freed {
     scoped_gc_epoch gc;
 
     for (;;) {
-      int fakelock = 0;
-      int *pelock = &fakelock;
+      atomic<int> fakelock(0);
+      atomic<int> *pelock = &fakelock;
       auto pe = &table[i].chain;
 
       for (;;) {
@@ -122,13 +124,16 @@ class xns : public rcu_freed {
           return false;
 
         if (e->key == key && (!vp || e->val == *vp)) {
-          if (!__sync_bool_compare_and_swap(&e->next_lock, 0, 1))
+          int zero = 0;
+          if (!e->next_lock.compare_exchange_strong(zero, 1))
             break;
-          if (!__sync_bool_compare_and_swap(pelock, 0, 1)) {
+          if (!pelock->compare_exchange_strong(zero, 1)) {
             e->next_lock = 0;
             break;
           }
-          if (!__sync_bool_compare_and_swap(pe, e, e->next)) {
+
+          auto expect = e.load(); /* XXX c_e_s replaces first arg! */
+          if (!pe->compare_exchange_strong(expect, e->next)) {
             *pelock = 0;
             e->next_lock = 0;
             break;
