@@ -571,7 +571,7 @@ fork(int flags)
 
   if(flags == 0) {
     // Copy process state from p.
-    if((np->vmap = vmap_copy(myproc()->vmap, cow)) == 0){
+    if((np->vmap = myproc()->vmap->copy(cow)) == 0){
       ksfree(slab_stack, np->kstack);
       np->kstack = 0;
       np->state = UNUSED;
@@ -635,7 +635,7 @@ wait(void)
 	  release(&myproc()->lock);
 	  ksfree(slab_stack, p->kstack);
 	  p->kstack = 0;
-	  vmap_decref(p->vmap);
+	  p->vmap->decref();
 	  p->state = UNUSED;
 	  if (!xnspid->remove(p->pid, &p))
 	    panic("wait: ns_remove");

@@ -259,11 +259,8 @@ void            vmn_free(struct vmnode *);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             pagefault(struct vmap *, uptr, u32);
-void            vmap_decref(struct vmap *);
 int             vmn_load(struct vmnode *, struct inode*, u64, u64);
-int             vmap_remove(struct vmap *, uptr, u64);
 void            updatepages(pml4e_t*, void*, void*, int);
-struct vmap *   vmap_copy(struct vmap *, int);
 
 // wq.c
 int             wq_trywork(void);

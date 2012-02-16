@@ -230,7 +230,7 @@ exec(char *path, char **argv)
   myproc()->tf->rip = elf.entry;  // main
   
   switchuvm(myproc());
-  vmap_decref(oldvmap);
+  oldvmap->decref();
 
   gc_end_epoch();
   prof_end(exec_prof);
@@ -239,7 +239,7 @@ exec(char *path, char **argv)
  bad:
   cprintf("exec failed\n");
   if(vmap)
-    vmap_decref(vmap);
+    vmap->decref();
   if(vmn)
     vmn_free(vmn);
   gc_end_epoch();

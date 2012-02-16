@@ -132,7 +132,7 @@ sys_unmap(void)
     return -1;
   if (argint64(1, &len) < 0)
     return -1;
-  if (vmap_remove(myproc()->vmap, PGROUNDDOWN(addr), PGROUNDUP(len)) < 0)
+  if (myproc()->vmap->remove(PGROUNDDOWN(addr), PGROUNDUP(len)) < 0)
     return -1;
 
   updatepages(myproc()->vmap->pml4,

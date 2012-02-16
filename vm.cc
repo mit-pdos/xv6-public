@@ -82,10 +82,10 @@ vmn_allocpg(u64 npg)
 }
 
 void
-vmap_decref(struct vmap *m)
+vmap::decref()
 {
-  if(--m->ref == 0)
-    delete m;
+  if (--ref == 0)
+    delete this;
 }
 
 vmap::vmap()
@@ -377,15 +377,15 @@ vmap::insert(vmnode *n, uptr va_start)
   return 0;
 }
 
-struct vmap *
-vmap_copy(struct vmap *m, int share)
+vmap*
+vmap::copy(int share)
 {
   struct vmap *nm = vmap_alloc();
   if(nm == 0)
     return 0;
 
-  scoped_acquire sa(&m->lock);
-  for (range *r: m->cr) {
+  scoped_acquire sa(&lock);
+  for (range *r: cr) {
     struct vma *e = (struct vma *) r->value;
     struct vma *ne = new vma();
     if (ne == 0)
@@ -396,16 +396,16 @@ vmap_copy(struct vmap *m, int share)
     if (share) {
       ne->n = e->n;
       ne->va_type = COW;
-      acquire(&e->lock);
+
+      scoped_acquire sae(&e->lock);
       e->va_type = COW;
-      updatepages(m->pml4, (void *) (e->va_start), (void *) (e->va_end), PTE_COW);
-      release(&e->lock);
+      updatepages(pml4, (void *) (e->va_start), (void *) (e->va_end), PTE_COW);
     } else {
       ne->n = vmn_copy(e->n);
       ne->va_type = e->va_type;
     }
 
-    if(ne->n == 0)
+    if (ne->n == 0)
       goto err;
 
     ne->n->ref++;
@@ -413,7 +413,7 @@ vmap_copy(struct vmap *m, int share)
   }
 
   if (share)
-    lcr3(v2p(m->pml4));  // Reload hardware page table
+    lcr3(v2p(pml4));  // Reload hardware page table
 
   return nm;
 
@@ -423,21 +423,19 @@ vmap_copy(struct vmap *m, int share)
 }
 
 int
-vmap_remove(struct vmap *m, uptr va_start, u64 len)
+vmap::remove(uptr va_start, uptr len)
 {
-  acquire(&m->lock);
+  scoped_acquire sa(&lock);
   uptr va_end = va_start + len;
-  struct range *r = m->cr.search(va_start, len);
+  struct range *r = cr.search(va_start, len);
   if (r == 0)
     panic("no vma?");
   struct vma *e = (struct vma *) r->value;
   if(e->va_start != va_start || e->va_end != va_end) {
     cprintf("vmap_remove: partial unmap unsupported\n");
-    release(&m->lock);
     return -1;
   }
-  m->cr.del(va_start, len);
+  cr.del(va_start, len);
   gc_delayed(e);
-  release(&m->lock);
   return 0;
 }
