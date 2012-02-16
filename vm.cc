@@ -311,11 +311,12 @@ static void
 vmap_free(void *p)
 {
   struct vmap *m = (struct vmap *) p;
-  m->cr->foreach([](range *r) {
-      delete (vma*) r->value;
-      r->cr->del(r->key, r->size);
-      return true;
-    });
+
+  for (range *r: m->cr) {
+    delete (vma*) r->value;
+    r->cr->del(r->key, r->size);
+  }
+
   delete m->cr;
   ksfree(slab_kshared, m->kshared);
   freevm(m->pml4);
@@ -384,37 +385,31 @@ vmap_copy(struct vmap *m, int share)
     return 0;
 
   acquire(&m->lock);
-  if (!m->cr->foreach([share, m, nm](range *r) -> bool {
-      struct vma *e = (struct vma *) r->value;
-      struct vma *ne = new vma();
-      if (ne == 0)
-        return false;
+  for (range *r: m->cr) {
+    struct vma *e = (struct vma *) r->value;
+    struct vma *ne = new vma();
+    if (ne == 0)
+      goto err;
 
-      ne->va_start = e->va_start;
-      ne->va_end = e->va_end;
-      if (share) {
-        ne->n = e->n;
-        ne->va_type = COW;
-        acquire(&e->lock);
-        e->va_type = COW;
-        updatepages(m->pml4, (void *) (e->va_start), (void *) (e->va_end), PTE_COW);
-        release(&e->lock);
-      } else {
-        ne->n = vmn_copy(e->n);
-        ne->va_type = e->va_type;
-      }
+    ne->va_start = e->va_start;
+    ne->va_end = e->va_end;
+    if (share) {
+      ne->n = e->n;
+      ne->va_type = COW;
+      acquire(&e->lock);
+      e->va_type = COW;
+      updatepages(m->pml4, (void *) (e->va_start), (void *) (e->va_end), PTE_COW);
+      release(&e->lock);
+    } else {
+      ne->n = vmn_copy(e->n);
+      ne->va_type = e->va_type;
+    }
 
-      if(ne->n == 0)
-        return false;
+    if(ne->n == 0)
+      goto err;
 
-      ne->n->ref++;
-      nm->cr->add(ne->va_start, ne->va_end - ne->va_start, (void *) ne);
-      return true;
-    }))
-  {
-    vmap_free(nm);
-    release(&m->lock);
-    return 0;
+    ne->n->ref++;
+    nm->cr->add(ne->va_start, ne->va_end - ne->va_start, (void *) ne);
   }
 
   if (share)
@@ -422,6 +417,11 @@ vmap_copy(struct vmap *m, int share)
 
   release(&m->lock);
   return nm;
+
+ err:
+  vmap_free(nm);
+  release(&m->lock);
+  return 0;
 }
 
 int

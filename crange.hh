@@ -83,7 +83,7 @@ class markptr_mark : public markptr<T> {
 };
 
 struct range : public rcu_freed {
-public:
+ public:
   u64 key;
   u64 size;
   void *value;
@@ -103,10 +103,22 @@ public:
   int lockif(markptr<range> e);
 } __mpalign__;
 
+class range_iterator {
+ private:
+  range *_e;
+
+ public:
+  range_iterator(range *e) : _e(e) {}
+  range_iterator& operator++() { _e = _e->next[0].ptr(); return *this; }
+  range*& operator*() { return _e; }
+  bool operator==(const range_iterator &other) { return _e == other._e; }
+  bool operator!=(const range_iterator &other) { return _e != other._e; }
+};
+
 struct crange {
-private:
+ private:
   range *crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
-public:
+ public:
   int nlevel;                  // number of levels in the crange skip list
   crange(int nlevel);
   ~crange(void);
@@ -120,12 +132,18 @@ public:
   int lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr);
   int find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, range **s0);
 
-  template<class CB>
-  bool foreach(CB cb) {
-    for (range *e = crange_head->next[0].ptr(); e; e = e->next[0].ptr())
-      if (!cb(e))
-        return false;
-    return true;
-  }
+  range_iterator begin() { return range_iterator(crange_head->next[0].ptr()); };
+  range_iterator end() { return range_iterator(0); };
 };
 
+static inline range_iterator
+begin(crange *cr)
+{
+  return cr->begin();
+}
+
+static inline range_iterator
+end(crange *cr)
+{
+  return cr->end();
+}
