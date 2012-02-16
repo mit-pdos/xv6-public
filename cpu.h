@@ -1,6 +1,7 @@
 #include "mmu.h"
 
 struct cilkframe;
+// extern atomic<u64> tlbflush_req;
 
 // Per-CPU state
 struct cpu {
@@ -12,6 +13,7 @@ struct cpu {
   struct context *scheduler;   // swtch() here to enter scheduler
   struct cilkframe *cilkframe;
   int timer_printpc;
+  // atomic<u64> tlbflush_done;   // last tlb flush req done on this cpu
 
   // Cpu-local storage variables; see below
   struct cpu *cpu;

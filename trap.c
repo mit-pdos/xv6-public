@@ -113,8 +113,10 @@ trap(struct trapframe *tf)
             mycpu()->id, tf->cs, tf->rip);
     lapiceoi();
   case T_TLBFLUSH:
+    // nreq = tlbflush_req.load();
     lapiceoi();
     lcr3(rcr3());
+    // mycpu()->tlbflush_done = nreq;
     break;
   case T_SAMPCONF:
     lapiceoi();

@@ -181,7 +181,9 @@ lapic_ipi(int cpu, int ino)
 void
 lapic_tlbflush(u32 cpu)
 {
+  cprintf("lapic_tlbflush: to cpu %d\n", cpu);
   lapic_ipi(cpu, T_TLBFLUSH);
+  cprintf("lapic_tlbflush: to cpu %d done\n", cpu);
 }
 
 void

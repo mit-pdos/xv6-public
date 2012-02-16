@@ -213,3 +213,23 @@ inittls(void)
   c->proc = NULL;
   c->kmem = &kmems[cpunum()];
 }
+
+atomic<u64> tlbflush_req;
+
+void
+tlbflush()
+{
+  // u64 myreq = tlbflush_req++;
+  cli();
+  lcr3(rcr3());
+  for (int i = 0; i < ncpu; i++)
+    if (i != mycpu()->id)
+      lapic_tlbflush(i);
+  sti();
+
+  for (int i = 0; i < ncpu; i++) {
+    if (i != mycpu()->id) {
+      // while (cpus[i].tlbflush_done < myreq) /* spin */ ;
+    }
+  }
+}

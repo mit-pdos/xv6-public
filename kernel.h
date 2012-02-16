@@ -109,6 +109,7 @@ void            freevm(pml4e_t*);
 pml4e_t*        setupkvm(void);
 int             setupkshared(pml4e_t *pml4, char *kshared);
 pme_t *         walkpgdir(pml4e_t*, const void*, int);
+void            tlbflush(void);
 
 // hz.c
 void            microdelay(u64);

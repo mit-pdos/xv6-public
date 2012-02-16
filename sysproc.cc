@@ -140,12 +140,7 @@ sys_unmap(void)
 
   updatepages(myproc()->vmap->pml4,
               (void*) align_addr, (void*) (align_addr+align_len-1), 0);
-  cli();
-  lcr3(v2p(myproc()->vmap->pml4));
-  for (int i = 0; i < ncpu; i++)
-    if (i != mycpu()->id)
-      lapic_tlbflush(i);
-  sti();
+  tlbflush();
   return 0;
 }
 
