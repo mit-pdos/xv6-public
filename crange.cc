@@ -99,19 +99,14 @@ range::~range()
   kmfree(next);
 }
 
-void range::free_delayed(void)
-{
-  dprintf("%d: free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) this, key, key + size, size, myproc()->epoch);
-  cr->check(this);
-  assert(curlevel == -1);
-  gc_delayed(this);
-}
-
 void range::dec_ref(void)
 {
   int n = curlevel--;
   if (n == 0) {    // now removed from all levels.
-    free_delayed();
+    dprintf("%d: free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) this, key, key + size, size, myproc()->epoch);
+    cr->check(this);
+    assert(curlevel == -1);
+    gc_delayed(this);
   }
 }
 
@@ -283,7 +278,7 @@ crange::print(int full)
 
 crange::crange(int nl)
 {
-  assert(nl >= 0);
+  assert(nl > 0);
   nlevel = nl;
   crange_head = new range(this, 0, 0, nullptr, nullptr, nlevel);
   dprintf("crange::crange return 0x%lx\n", (u64) this);

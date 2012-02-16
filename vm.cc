@@ -16,8 +16,6 @@ extern "C" {
 #include "gc.hh"
 #include "crange.hh"
 
-static void vmap_free(void *p);
-
 enum { vm_debug = 0 };
 
 static void
@@ -86,38 +84,50 @@ void
 vmap_decref(struct vmap *m)
 {
   if(--m->ref == 0)
-    vmap_free(m);
+    delete m;
 }
 
-struct vmap *
-vmap_alloc(void)
+vmap::vmap()
+  : cr(10)
 {
-  struct vmap *m = (struct vmap *) kmalloc(sizeof(struct vmap));
-  if (m == 0)
-    return 0;
-  memset(m, 0, sizeof(struct vmap));
-  snprintf(m->lockname, sizeof(m->lockname), "vmap:%p", m);
-  initlock(&m->lock, m->lockname, LOCKSTAT_VM);
-  m->ref = 1;
-  m->pml4 = setupkvm();
-  if (m->pml4 == 0) {
+  snprintf(lockname, sizeof(lockname), "vmap:%p", this);
+  initlock(&lock, lockname, LOCKSTAT_VM);
+
+  ref = 1;
+  alloc = 0;
+  kshared = 0;
+
+  pml4 = setupkvm();
+  if (pml4 == 0) {
     cprintf("vmap_alloc: setupkvm out of memory\n");
-    destroylock(&m->lock);
-    kmfree(m);
-    return 0;
+    goto err0;
   }
-  m->kshared = (char*)ksalloc(slab_kshared);
-  if (m->kshared == NULL || setupkshared(m->pml4, m->kshared)) {
-      cprintf("vmap_alloc: kshared out of memory\n");
-      freevm(m->pml4);
-      destroylock(&m->lock);
-      kmfree(m);
-      return 0;
+
+  kshared = (char*) ksalloc(slab_kshared);
+  if (kshared == NULL) {
+    cprintf("vmap::vmap: kshared out of memory\n");
+    goto err1;
   }
-  m->cr = new crange(10);
-  if (m->cr == 0)
-    return 0;
-  return m;
+
+  if (setupkshared(pml4, kshared)) {
+    cprintf("vmap::vmap: setupkshared out of memory\n");
+    goto err2;
+  }
+
+  return;
+
+ err2:
+  ksfree(slab_kshared, kshared);
+ err1:
+  freevm(pml4);
+ err0:
+  destroylock(&lock);
+}
+
+vmap*
+vmap_alloc()
+{
+  return new vmap();
 }
 
 static int
@@ -304,23 +314,19 @@ vmn_alloc(u64 npg, enum vmntype type)
   return n;
 }
 
-static void
-vmap_free(void *p)
+vmap::~vmap()
 {
-  struct vmap *m = (struct vmap *) p;
-
-  for (range *r: m->cr) {
+  for (range *r: cr) {
     delete (vma*) r->value;
-    r->cr->del(r->key, r->size);
+    cr.del(r->key, r->size);
   }
 
-  delete m->cr;
-  ksfree(slab_kshared, m->kshared);
-  freevm(m->pml4);
-  m->pml4 = 0;
-  m->alloc = 0;
-  destroylock(&m->lock);
-  kmfree(m);
+  if (kshared)
+    ksfree(slab_kshared, kshared);
+  if (pml4)
+    freevm(pml4);
+  alloc = 0;
+  destroylock(&lock);
 }
 
 // Does any vma overlap start..start+len?
@@ -335,7 +341,7 @@ vmap_lookup(struct vmap *m, uptr start, uptr len)
   if(start + len < start)
     panic("vmap_lookup bad len");
 
-  range *r = m->cr->search(start, len);
+  range *r = m->cr.search(start, len);
   if (r != 0) {
     struct vma *e = (struct vma *) (r->value);
     if (e->va_end <= e->va_start) 
@@ -369,7 +375,7 @@ vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
   e->va_end = va_start + len;
   e->n = n;
   n->ref++;
-  m->cr->add(e->va_start, len, (void *) e);
+  m->cr.add(e->va_start, len, (void *) e);
   release(&m->lock);
   return 0;
 }
@@ -406,7 +412,7 @@ vmap_copy(struct vmap *m, int share)
       goto err;
 
     ne->n->ref++;
-    nm->cr->add(ne->va_start, ne->va_end - ne->va_start, (void *) ne);
+    nm->cr.add(ne->va_start, ne->va_end - ne->va_start, (void *) ne);
   }
 
   if (share)
@@ -416,7 +422,7 @@ vmap_copy(struct vmap *m, int share)
   return nm;
 
  err:
-  vmap_free(nm);
+  delete nm;
   release(&m->lock);
   return 0;
 }
@@ -426,7 +432,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
 {
   acquire(&m->lock);
   uptr va_end = va_start + len;
-  struct range *r = m->cr->search(va_start, len);
+  struct range *r = m->cr.search(va_start, len);
   if (r == 0)
     panic("no vma?");
   struct vma *e = (struct vma *) r->value;
@@ -435,7 +441,7 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
     release(&m->lock);
     return -1;
   }
-  m->cr->del(va_start, len);
+  m->cr.del(va_start, len);
   gc_delayed(e);
   release(&m->lock);
   return 0;

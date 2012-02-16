@@ -1,5 +1,6 @@
 #include "gc.hh"
 #include "atomic.hh"
+#include "crange.hh"
 
 using std::atomic;
 
@@ -38,11 +39,14 @@ struct vmnode {
 // An address space: a set of vmas plus h/w page table.
 // The elements of e[] are not ordered by address.
 struct vmap {
-  struct crange* cr;
+  struct crange cr;
   struct spinlock lock;        // serialize map/lookup/unmap
   atomic<u64> ref;
   u64 alloc;
   pml4e_t *pml4;               // Page table
   char *kshared;
   char lockname[16];
+
+  vmap();
+  ~vmap();
 };

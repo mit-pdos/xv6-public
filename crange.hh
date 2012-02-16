@@ -92,13 +92,14 @@ struct range : public rcu_freed {
   crange *cr;            // the crange this range is part of
   markptr<range>* next;  // one next pointer per level
   spinlock *lock;        // on separate cache line?
+
   range(crange *cr, u64 k, u64 sz, void *v, markptr<range> n, int nlevel = 0);
   ~range();
   virtual void do_gc() {
     delete this;
   }
+
   void print(int l);
-  void free_delayed();
   void dec_ref(void);
   int lockif(markptr<range> e);
 } __mpalign__;
@@ -133,18 +134,18 @@ struct crange {
   int lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr);
   int find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, range **s0);
 
-  range_iterator begin() { return range_iterator(crange_head->next[0].ptr()); };
-  range_iterator end() { return range_iterator(0); };
+  range_iterator begin() const { return range_iterator(crange_head->next[0].ptr()); };
+  range_iterator end() const { return range_iterator(0); };
 };
 
 static inline range_iterator
-begin(crange *cr)
+begin(const crange &cr)
 {
-  return cr->begin();
+  return cr.begin();
 }
 
 static inline range_iterator
-end(crange *cr)
+end(const crange &cr)
 {
-  return cr->end();
+  return cr.end();
 }
