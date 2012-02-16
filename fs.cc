@@ -273,18 +273,18 @@ iget(u32 dev, u32 inum)
   u32 cur_free = icache_free[mycpu()->id].x;
   if (cur_free == 0) {
     struct inode *victim = 0;
-    ins->enumerate([&victim](const pair<u32, u32>&, inode* ip)->bool{
-        if (ip->ref || ip->type == T_DIR)
+    ins->enumerate([&victim](const pair<u32, u32>&, inode* eip)->bool{
+        if (eip->ref || eip->type == T_DIR)
           return false;
 
-        acquire(&ip->lock);
-        if (ip->ref == 0 && ip->type != T_DIR &&
-            !(ip->flags & (I_FREE | I_BUSYR | I_BUSYW))) {
-          victim = ip;
+        acquire(&eip->lock);
+        if (eip->ref == 0 && eip->type != T_DIR &&
+            !(eip->flags & (I_FREE | I_BUSYR | I_BUSYW))) {
+          victim = eip;
           return true;
         }
 
-        release(&ip->lock);
+        release(&eip->lock);
         return false;
       });
     if (!victim)

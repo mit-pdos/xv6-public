@@ -39,10 +39,10 @@ void
 inithz(void)
 {
   // Setup PIT for terminal count starting from 2^16 - 1
-  u64 ticks = 0x000000000000FFFFull;
+  u64 xticks = 0x000000000000FFFFull;
   outb(TIMER_MODE, TIMER_SEL0 | TIMER_TCOUNT | TIMER_16BIT);  
-  outb(IO_TIMER1, ticks % 256);
-  outb(IO_TIMER1, ticks / 256);
+  outb(IO_TIMER1, xticks % 256);
+  outb(IO_TIMER1, xticks / 256);
 
   // Wait until OUT bit of status byte is set
   u64 s = rdtsc();
@@ -51,5 +51,5 @@ inithz(void)
   } while (!(inb(TIMER_CNTR) & 0x80));
   u64 e = rdtsc();
 
-  cpuhz = ((e-s)*10000000) / ((ticks*10000000)/TIMER_FREQ);
+  cpuhz = ((e-s)*10000000) / ((xticks*10000000)/TIMER_FREQ);
 }

@@ -79,23 +79,23 @@ bget(u32 dev, u64 sector, int *writer)
 
   // Allocate fresh block.
   struct buf *victim = 0;
-  bufns->enumerate([&victim](const pair<u32, u64>&, buf *b)->bool {
-      acquire(&b->lock);
-      if ((b->flags & (B_BUSY | B_DIRTY | B_VALID)) == 0) {
-        victim = b;
+  bufns->enumerate([&victim](const pair<u32, u64>&, buf *eb)->bool {
+      acquire(&eb->lock);
+      if ((eb->flags & (B_BUSY | B_DIRTY | B_VALID)) == 0) {
+        victim = eb;
         return true;
       }
-      release(&b->lock);
+      release(&eb->lock);
       return false;
     });
   if (victim == 0)
-    bufns->enumerate([&victim](const pair<u32, u64>&, buf *b)->bool {
-        acquire(&b->lock);
-        if ((b->flags & (B_BUSY | B_DIRTY)) == 0) {
-          victim = b;
+    bufns->enumerate([&victim](const pair<u32, u64>&, buf *eb)->bool {
+        acquire(&eb->lock);
+        if ((eb->flags & (B_BUSY | B_DIRTY)) == 0) {
+          victim = eb;
           return true;
         }
-        release(&b->lock);
+        release(&eb->lock);
         return false;
       });
   if (victim == 0)

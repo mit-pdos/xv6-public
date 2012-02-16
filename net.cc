@@ -120,7 +120,7 @@ start_timer(struct timer_thread *t, void (*func)(void),
 }
 
 static void
-lwip_init(struct netif *nif, void *if_state,
+lwip_init(struct netif *xnif, void *if_state,
 	  u32 init_addr, u32 init_mask, u32 init_gw)
 {
   struct ip_addr ipaddr, netmask, gateway;
@@ -128,14 +128,14 @@ lwip_init(struct netif *nif, void *if_state,
   netmask.addr = init_mask;
   gateway.addr = init_gw;
   
-  if (0 == netif_add(nif, &ipaddr, &netmask, &gateway,
+  if (0 == netif_add(xnif, &ipaddr, &netmask, &gateway,
                      if_state,
                      if_init,
                      ip_input))
     panic("lwip_init: error in netif_add\n");
   
-  netif_set_default(nif);
-  netif_set_up(nif);
+  netif_set_default(xnif);
+  netif_set_up(xnif);
 }
 
 static void

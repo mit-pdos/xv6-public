@@ -49,11 +49,11 @@ class markptr {
 template<class T>
 class markptr_ptr : private markptr<T> {
  public:
-  void operator=(T *ptr) {
+  void operator=(T *p) {
     uptr p0, p1;
     do {
       p0 = markptr<T>::_p.load();
-      p1 = (p0 & 1) | (uptr) ptr;
+      p1 = (p0 & 1) | (uptr) p;
     } while (!markptr<T>::_p.compare_exchange_weak(p0, p1));
   }
 
@@ -67,11 +67,11 @@ class markptr_ptr : private markptr<T> {
 template<class T>
 class markptr_mark : public markptr<T> {
  public:
-  void operator=(bool mark) {
+  void operator=(bool m) {
     uptr p0, p1;
     do {
       p0 = markptr<T>::_p.load();
-      p1 = (p0 & ~1) | !!mark;
+      p1 = (p0 & ~1) | !!m;
     } while (!markptr<T>::_p.compare_exchange_weak(p0, p1));
   }
 
@@ -118,13 +118,14 @@ class range_iterator {
 struct crange {
  private:
   range *crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
+
  public:
   int nlevel;                  // number of levels in the crange skip list
   crange(int nlevel);
   ~crange(void);
   void del(u64 k, u64 sz);
   void add(u64 k, u64 sz, void *v);
-  range* search(u64 k, u64 sz, int mod);
+  range* search(u64 k, u64 sz, int mod = 0);
   void print(int);
   void check(struct range *absent);
   int del_index(range *p0, range **e, int l);

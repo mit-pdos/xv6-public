@@ -89,51 +89,51 @@ void range::print(int l)
 
 range::~range()
 {
-  dprintf("%d: range_free: 0x%lx 0x%lx-0x%lx(%ld)\n", myproc()->cpuid, (u64) this, this->key, this->key+this->size, this->size);
-  this->cr->check(this);
-  //    assert(this->curlevel == -1);
-  for (int l = 0; l < this->nlevel; l++) {
+  dprintf("%d: range_free: 0x%lx 0x%lx-0x%lx(%ld)\n", myproc()->cpuid, (u64) this, key, key+size, size);
+  cr->check(this);
+  //    assert(curlevel == -1);
+  for (int l = 0; l < nlevel; l++) {
     next[l] = (struct range *) 0xDEADBEEF;
   }
-  kmalignfree(this->lock);
-  kmfree(this->next);
+  kmalignfree(lock);
+  kmfree(next);
 }
 
 void range::free_delayed(void)
 {
-  dprintf("%d: free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) this, this->key, this->key + this->size, this->size, myproc()->epoch);
-  this->cr->check(this);
-  assert(this->curlevel == -1);
+  dprintf("%d: free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) this, key, key + size, size, myproc()->epoch);
+  cr->check(this);
+  assert(curlevel == -1);
   gc_delayed(this);
 }
 
 void range::dec_ref(void)
 {
-  int n = this->curlevel--;
+  int n = curlevel--;
   if (n == 0) {    // now removed from all levels.
-    this->free_delayed();
+    free_delayed();
   }
 }
 
-range::range(crange *cr, u64 k, u64 sz, void *v, markptr<range> n, int nlevel)
+range::range(crange *crarg, u64 k, u64 sz, void *v, markptr<range> n, int nl)
   : rcu_freed("range_delayed")
 {
-  dprintf("range:range:: %lu %lu %d\n", k, sz, nlevel);
-  this->key = k;
-  this->size = sz;
-  this->value = v;
-  this->cr = cr;
+  dprintf("range:range:: %lu %lu %d\n", k, sz, nl);
+  key = k;
+  size = sz;
+  value = v;
+  cr = crarg;
   assert(cr->nlevel > 0);
-  this->curlevel = 0;
-  if (nlevel == 0) this->nlevel = range_draw_nlevel(cr->nlevel);
-  else this->nlevel = nlevel;
-  this->next = new markptr<range>[this->nlevel]; // cache align?
-  assert(this->next);
-  this->next[0] = n;
-  for (int l = 1; l < this->nlevel; l++) this->next[l] = 0;
-  assert(kmalign((void **) &this->lock, CACHELINE, 
+  curlevel = 0;
+  if (nl == 0) nlevel = range_draw_nlevel(cr->nlevel);
+  else nlevel = nl;
+  next = new markptr<range>[nlevel]; // cache align?
+  assert(next);
+  next[0] = n;
+  for (int l = 1; l < nlevel; l++) next[l] = 0;
+  assert(kmalign((void **) &lock, CACHELINE, 
 			   sizeof(struct spinlock)) == 0);
-  initlock(this->lock, "crange", LOCKSTAT_CRANGE);
+  initlock(lock, "crange", LOCKSTAT_CRANGE);
 }
 
 // 
@@ -160,16 +160,16 @@ static range *insert(struct range *head, struct range *r)
   return head;
 }
 
-// lock p if this->next == e and p isn't marked for deletion.  if not, return failure.
+// lock p if next == e and p isn't marked for deletion.  if not, return failure.
 int range::lockif(markptr<range> e)
 {
   assert(!e.mark());
-  acquire(this->lock);
-  if (this->next[0] == e) {
+  acquire(lock);
+  if (next[0] == e) {
       return 1;
   } 
-  release(this->lock);
-  // cprintf("%d: range_lock_pred: retry %u\n", mycpu()->id, this->key);
+  release(lock);
+  // cprintf("%d: range_lock_pred: retry %u\n", mycpu()->id, key);
   return 0;
 }
 
@@ -270,7 +270,7 @@ static range *replace(u64 k, u64 sz, void *v, range *f, range *l, range *s)
 void
 crange::print(int full)
 {
-  for (int l = 0; l < this->nlevel; l++) {
+  for (int l = 0; l < nlevel; l++) {
     int c = 0;
     cprintf("crange %d: ", l);
     for (range *e = crange_head->next[l].ptr(); e != 0; e = e->next[l].ptr()) {
@@ -281,11 +281,11 @@ crange::print(int full)
   }
 }
 
-crange::crange(int nlevel)
+crange::crange(int nl)
 {
-  assert(nlevel >= 0);
-  this->nlevel = nlevel;
-  this->crange_head = new range(this, 0, 0, nullptr, nullptr, nlevel);
+  assert(nl >= 0);
+  nlevel = nl;
+  crange_head = new range(this, 0, 0, nullptr, nullptr, nlevel);
   dprintf("crange::crange return 0x%lx\n", (u64) this);
 }
 
@@ -293,11 +293,11 @@ crange::~crange()
 {
   dprintf("crange_free: 0x%lx\n", (u64) this);
   range *e, *n;
-  for (e = this->crange_head->next[0].ptr(); e; e = n) {
+  for (e = crange_head->next[0].ptr(); e; e = n) {
     n = e->next[0].ptr();
     delete e;
   }
-  delete this->crange_head;
+  delete crange_head;
 }
 
 // Check some invariants, ignoring marked nodes.
@@ -307,9 +307,9 @@ void crange::check(struct range *absent)
     return;
   int t = mycpu()->id;
   struct range *e, *s;
-  for (int l = 0; l < this->nlevel; l++) {
-    for (e = this->crange_head->next[l].ptr(); e; e = s) {
-      assert(e->curlevel < this->nlevel);
+  for (int l = 0; l < nlevel; l++) {
+    for (e = crange_head->next[l].ptr(); e; e = s) {
+      assert(e->curlevel < nlevel);
       if (absent == e)  {
 	cprintf("%d: check level failed; 0x%lx is present\n", l, (u64) absent);
 	assert(0);
@@ -324,7 +324,7 @@ void crange::check(struct range *absent)
 	// from memory (and not from a register)
 	if (!e->next[l].mark() && n != e) {
 	  cprintf("%d: check level %d failed 0x%lx-0x%lx(%lu) m %d c %d t %d; in high level but not low\n", t, l, e->key, e->key+e->size, e->size, (bool)e->next[l].mark(), e->curlevel.load(), e->nlevel);
-	  this->print(1);
+	  print(1);
 	  assert(0);
 	}
       }
@@ -333,7 +333,7 @@ void crange::check(struct range *absent)
       assert(s != e);
       if (!e->next[l].mark() && s && (e->key + e->size > s->key)) {
 	dprintf("%d: e(%lu,%lu) overlaps with s(%lu,%lu)\n", t, e->key, e->size, s->key, e->size);
-	this->print(1);
+	print(1);
 	assert(0);
       }
     }
@@ -374,7 +374,7 @@ int crange::del_index(range *p0, range **e, int l)
     }
   }
  done:
-  this->check(nullptr);
+  check(nullptr);
   return r;
 }
 
@@ -407,8 +407,9 @@ void crange::add_index(int l, range *e, range *p1, markptr<range> s1)
       //INCRETRY;
     }
   }
+
  done:
-  this->check(nullptr);
+  check(nullptr);
 }
 
 // Given the range that starts the sequence, find all other ranges part of sequence and lock them,
@@ -450,24 +451,24 @@ int crange::find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, ran
  retry:
   *p0 = nullptr;
   *s0 = nullptr;
-  for (int l = this->nlevel-1; l >= 0; l--) {  
+  for (int l = nlevel-1; l >= 0; l--) {  
     *f0 = nullptr;
     *l0 = nullptr;
     p1 = *p0;   // remember last previous (p0) as the previous one level up (p1)
-    *p0 = (l == this->nlevel-1) ? this->crange_head : p1;   // set current previous
+    *p0 = (l == nlevel-1) ? crange_head : p1;   // set current previous
     s1 = *s0;
     for (e = (*p0)->next[l].ptr(); e; *p0 = e, e = e->next[l].ptr()) {
       assert(l < e->nlevel);
-      int r = this->del_index(*p0, &e, l);
+      int r = del_index(*p0, &e, l);
       if (r == -1) goto retry;   // deletion failed because some other core did it; try again
       if (r == 0) continue;  // range was marked but we are level 0, skip it; lock holder will remove
       if (e == 0) break;   // all ranges on this level were removed
       if (k >= e->key+e->size)  { // is e before k? 
-	this->add_index(l, e, p1, s1);    // maybe add to index
+	add_index(l, e, p1, s1);    // maybe add to index
 	continue;
       }
       if (range_intersect(k, sz, e->key, e->size)) {   // first range of sequence?
-	if (!this->lock_range(k, sz, l, &e, p0, f0, l0, s0)) {
+	if (!lock_range(k, sz, l, &e, p0, f0, l0, s0)) {
 	  //  INCRETRY;
 	  goto retry;
 	}
@@ -498,13 +499,13 @@ int crange::find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, ran
 range* crange::search(u64 k, u64 sz, int mod)
 {
   struct range *p, *e, *r;
-  int n = (mod) ?  range_draw_nlevel(this->nlevel) : 0;
+  int n = (mod) ?  range_draw_nlevel(nlevel) : 0;
   gc_begin_epoch();
   //read_counters(myproc()->cpuid, 0);
   dprintf("crange_search: 0x%lx 0x%lx\n", (u64) this, k);
   r = nullptr;
-  p = this->crange_head;
-  for (int l = this->nlevel-1; l >= 0; l--) {
+  p = crange_head;
+  for (int l = nlevel-1; l >= 0; l--) {
     for (e = p->next[l].ptr(); e; p = e, e = e->next[l].ptr()) {
       dprintf("level %d: 0x%lx 0x%lx-%lx(%lu) 0x%lx-0x%lx(%lu)\n", l, (u64) p, p->key, p->key+p->size, p->size, e->key, e->key+e->size, e->size);
       // skip all marked ranges, but don't update p because
@@ -545,7 +546,7 @@ void crange::del(u64 k, u64 sz)
   assert(this);
   gc_begin_epoch();
   dprintf("crange_del: 0x%lx 0x%lx-0x%lx(%ld)\n", (u64) this, k, k+sz, sz);
-  if (!this->find_and_lock(k, sz, &prev, &first, &last, &succ)) { // done?
+  if (!find_and_lock(k, sz, &prev, &first, &last, &succ)) { // done?
     dprintf("crange_del: [0x%lx,0x%lx) not present\n", k, sz);
     release(prev->lock);
     goto done;
@@ -564,8 +565,9 @@ void crange::del(u64 k, u64 sz)
     cprintf("crange_del(%lu, %lu): prev was updated; try again\n", k, sz);
     assert(0);
   }
+
  done:
-  this->check(nullptr);
+  check(nullptr);
   // cprintf("%d: crange_del(0x%lx, 0x%lx):\n", mycpu()->id, k, sz);  crange_print(cr, 1);
   gc_end_epoch();
 }
@@ -585,7 +587,7 @@ void crange::add(u64 k, u64 sz, void *v)
   dprintf("crange_add: 0x%lx 0x%lx-0x%lx(%lu)\n", (u64) this, k, k+sz, sz);
   assert(this);
   gc_begin_epoch();
-  if (this->find_and_lock(k, sz, &prev, &first, &last, &succ)) {
+  if (find_and_lock(k, sz, &prev, &first, &last, &succ)) {
     dprintf("crange_add(0x%lx,0x%lx) overlaps with [0x%lx,0x%lx)\n", k, sz, first->key, first->size);
     repl = replace(k, sz, v, first, last, succ);
   } else {
@@ -604,6 +606,6 @@ void crange::add(u64 k, u64 sz, void *v)
     assert(0);
   }
   // cprintf("crange_add(0x%lx,0x%lx):\n", k, sz);  crange_print(cr, 1);
-  this->check(nullptr);
+  check(nullptr);
   gc_end_epoch();
 }
