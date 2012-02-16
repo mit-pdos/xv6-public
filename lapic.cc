@@ -6,6 +6,7 @@
 #include "kernel.hh"
 #include "traps.h"
 #include "bits.h"
+#include "cpu.hh"
 
 // Local APIC registers, divided by 4 for use as uint[] indices.
 #define ID      (0x0020/4)   // ID
@@ -179,9 +180,7 @@ lapic_ipi(int cpu, int ino)
 void
 lapic_tlbflush(u32 cpu)
 {
-  cprintf("lapic_tlbflush: to cpu %d\n", cpu);
   lapic_ipi(cpu, T_TLBFLUSH);
-  cprintf("lapic_tlbflush: to cpu %d done\n", cpu);
 }
 
 void

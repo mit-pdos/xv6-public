@@ -216,17 +216,18 @@ atomic<u64> tlbflush_req;
 void
 tlbflush()
 {
-  // u64 myreq = tlbflush_req++;
+  u64 myreq = tlbflush_req++;
+
   cli();
+  int myid = mycpu()->id;
   lcr3(rcr3());
   for (int i = 0; i < ncpu; i++)
-    if (i != mycpu()->id)
+    if (i != myid)
       lapic_tlbflush(i);
   sti();
 
-  for (int i = 0; i < ncpu; i++) {
-    if (i != mycpu()->id) {
-      // while (cpus[i].tlbflush_done < myreq) /* spin */ ;
-    }
-  }
+  for (int i = 0; i < ncpu; i++)
+    if (i != myid)
+      while (cpus[i].tlbflush_done < myreq)
+        /* spin */ ;
 }
