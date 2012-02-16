@@ -126,18 +126,20 @@ long
 sys_unmap(void)
 {
   uptr addr;
-  u64 len;
+  uptr len;
 
   if (argint64(0, &addr) < 0)
     return -1;
   if (argint64(1, &len) < 0)
     return -1;
-  if (myproc()->vmap->remove(PGROUNDDOWN(addr), PGROUNDUP(len)) < 0)
+
+  uptr align_addr = PGROUNDDOWN(addr);
+  uptr align_len = PGROUNDUP(addr + len) - align_addr;
+  if (myproc()->vmap->remove(align_addr, align_len) < 0)
     return -1;
 
   updatepages(myproc()->vmap->pml4,
-	     (void*) (PGROUNDDOWN(addr)),
-	     (void*) (PGROUNDDOWN(addr)+PGROUNDUP(len)), 0);
+              (void*) align_addr, (void*) (align_addr+align_len-1), 0);
   cli();
   lcr3(v2p(myproc()->vmap->pml4));
   for (int i = 0; i < ncpu; i++)
