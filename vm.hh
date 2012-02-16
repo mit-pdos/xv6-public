@@ -1,5 +1,3 @@
-#define TREE
-
 #include "gc.hh"
 #include "atomic.hh"
 
@@ -40,12 +38,7 @@ struct vmnode {
 // An address space: a set of vmas plus h/w page table.
 // The elements of e[] are not ordered by address.
 struct vmap {
-#ifdef TREE
-  // struct node* root;
   struct crange* cr;
-#else
-  struct vma* e[16];
-#endif
   struct spinlock lock;        // serialize map/lookup/unmap
   atomic<u64> ref;
   u64 alloc;

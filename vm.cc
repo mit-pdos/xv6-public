@@ -114,11 +114,9 @@ vmap_alloc(void)
       kmfree(m);
       return 0;
   }
-#ifdef TREE
   m->cr = new crange(10);
   if (m->cr == 0)
     return 0;
-#endif
   return m;
 }
 
@@ -306,7 +304,6 @@ vmn_alloc(u64 npg, enum vmntype type)
   return n;
 }
 
-#ifdef TREE
 static void
 vmap_free(void *p)
 {
@@ -443,139 +440,3 @@ vmap_remove(struct vmap *m, uptr va_start, u64 len)
   release(&m->lock);
   return 0;
 }
-
-#else // !TREE
-
-static void
-vmap_free(void *p)
-{
-  struct vmap *m = (struct vmap *) p;
-  for(u64 i = 0; i < NELEM(m->e); i++) {
-    if (m->e[i])
-      delete m->e[i];
-  }
-  freevm(m->pml4);
-  m->pml4 = 0;
-  m->alloc = 0;
-}
-
-// Does any vma overlap start..start+len?
-// If yes, return the vma pointer.
-// If no, return 0.
-// This code can't handle regions at the very end
-// of the address space, e.g. 0xffffffff..0x0
-// We key vma's by their end address.
-struct vma *
-vmap_lookup(struct vmap *m, uptr start, uptr len)
-{
-  if(start + len < start)
-    panic("vmap_lookup bad len");
-
-  for(u64 i = 0; i < NELEM(m->e); i++){
-    struct vma *e = m->e[i];
-    if(e) {
-      if(e->va_end <= e->va_start)  // XXX shouldn't this involve start and len?
-        panic("vmap_lookup bad vma");
-      if(e->va_start < start+len && e->va_end > start)
-        return e;
-    }
-  }
-  return 0;
-}
-
-int
-vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
-{
-  acquire(&m->lock);
-  u64 len = n->npages * PGSIZE;
-
-  if(vmap_lookup(m, va_start, len)){
-    cprintf("vmap_insert: overlap\n");
-    release(&m->lock);
-    return -1;
-  }
-
-  for(u64 i = 0; i < NELEM(m->e); i++) {
-    if(m->e[i])
-      continue;
-    m->e[i] = new vma();
-    if (m->e[i] == 0)
-      return -1;
-    m->e[i]->va_start = va_start;
-    m->e[i]->va_end = va_start + len;
-    m->e[i]->n = n;
-    __sync_fetch_and_add(&n->ref, 1);
-    release(&m->lock);
-    return 0;
-  }
-  release(&m->lock);
-
-  cprintf("vmap_insert: out of vma slots\n");
-  return -1;
-}
-
-struct vmap *
-vmap_copy(struct vmap *m, int share)
-{
-  struct vmap *c = vmap_alloc();
-  if(c == 0)
-    return 0;
-
-  acquire(&m->lock);
-  for(u32 i = 0; i < NELEM(m->e); i++) {
-    if(m->e[i] == 0)
-      continue;
-    c->e[i] = new vma();
-    if (c->e[i] == 0) {
-      release(&m->lock);
-      vmap_free(c);
-      return 0;
-    }
-    c->e[i]->va_start = m->e[i]->va_start;
-    c->e[i]->va_end = m->e[i]->va_end;
-    if (share) {
-      c->e[i]->n = m->e[i]->n;
-      c->e[i]->va_type = COW;
-
-      acquire(&m->e[i]->lock);
-      m->e[i]->va_type = COW;
-      updatepages(m->pml4, (void *) (m->e[i]->va_start), (void *) (m->e[i]->va_end), PTE_COW);
-      release(&m->e[i]->lock);
-    } else {
-      c->e[i]->n = vmn_copy(m->e[i]->n);
-      c->e[i]->va_type = m->e[i]->va_type;
-    }
-    if(c->e[i]->n == 0) {
-      release(&m->lock);
-      vmap_free(c);
-      return 0;
-    }
-    __sync_fetch_and_add(&c->e[i]->n->ref, 1);
-  }
-  if (share)
-    lcr3(v2p(m->pml4));  // Reload hardware page table
-
-  release(&m->lock);
-  return c;
-}
-
-int
-vmap_remove(struct vmap *m, uptr va_start, u64 len)
-{
-  acquire(&m->lock);
-  uptr va_end = va_start + len;
-  for(u32 i = 0; i < NELEM(m->e); i++) {
-    if(m->e[i] && (m->e[i]->va_start < va_end && m->e[i]->va_end > va_start)) {
-      if(m->e[i]->va_start != va_start || m->e[i]->va_end != va_end) {
-	release(&m->lock);
-	cprintf("vmap_remove: partial unmap unsupported\n");
-	return -1;
-      }
-      gc_delayed(m->e[i]);
-      m->e[i] = 0;
-    }
-  }
-  release(&m->lock);
-  return 0;
-}
-#endif
