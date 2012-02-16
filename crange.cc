@@ -607,13 +607,3 @@ void crange::add(u64 k, u64 sz, void *v)
   this->check(nullptr);
   gc_end_epoch();
 }
-
-int crange::foreach(int (*cb)(range *r, void *), void *st)
-{
-  struct range *e;
-  for (e = crange_head->next[0].ptr(); e; e = e->next[0].ptr()) {
-    if (!cb(e, st))
-      return 0;
-  }
-  return 1;
-}

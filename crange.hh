@@ -113,12 +113,19 @@ public:
   void del(u64 k, u64 sz);
   void add(u64 k, u64 sz, void *v);
   range* search(u64 k, u64 sz, int mod);
-  int foreach(int (*cb)(range *r, void *), void *st);
   void print(int);
   void check(struct range *absent);
   int del_index(range *p0, range **e, int l);
   void add_index(int l, range *e, range *p1, markptr<range> s1);
   int lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr);
   int find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, range **s0);
+
+  template<class CB>
+  bool foreach(CB cb) {
+    for (range *e = crange_head->next[0].ptr(); e; e = e->next[0].ptr())
+      if (!cb(e))
+        return false;
+    return true;
+  }
 };
 

@@ -307,25 +307,15 @@ vmn_alloc(u64 npg, enum vmntype type)
 }
 
 #ifdef TREE
-struct state {
-  int share;
-  pml4e_t *pml4;
-  struct crange *cr;
-};
-
-static int
-vmap_free_vma(range *r, void *st)
-{  
-  delete (vma *) r->value;
-  r->cr->del(r->key, r->size);
-  return 1;
-}
-
 static void
 vmap_free(void *p)
 {
   struct vmap *m = (struct vmap *) p;
-  m->cr->foreach(vmap_free_vma, NULL);
+  m->cr->foreach([](range *r) {
+      delete (vma*) r->value;
+      r->cr->del(r->key, r->size);
+      return true;
+    });
   delete m->cr;
   ksfree(slab_kshared, m->kshared);
   freevm(m->pml4);
@@ -386,50 +376,43 @@ vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
   return 0;
 }
 
-static int
-vmap_copy_vma(struct range *r, void *_st)
-{
-  struct state *st = (struct state *) _st;
-  struct vma *e = (struct vma *) r->value;
-  struct vma *c = new vma();
-  if (c == 0) {
-    return 0;
-  }
-  c->va_start = e->va_start;
-  c->va_end = e->va_end;
-  if (st->share) {
-    c->n = e->n;
-    c->va_type = COW;
-    acquire(&e->lock);
-    e->va_type = COW;
-    updatepages(st->pml4, (void *) (e->va_start), (void *) (e->va_end), PTE_COW);
-    release(&e->lock);
-  } else {
-    c->n = vmn_copy(e->n);
-    c->va_type = e->va_type;
-  }
-  if(c->n == 0) {
-    return 0;
-  }
-  c->n->ref++;
-  st->cr->add(c->va_start, c->va_end - c->va_start, (void *) c);
-  return 1;
-}
-
 struct vmap *
 vmap_copy(struct vmap *m, int share)
 {
-  struct vmap *c = vmap_alloc();
-  if(c == 0)
+  struct vmap *nm = vmap_alloc();
+  if(nm == 0)
     return 0;
 
   acquire(&m->lock);
-  struct state st;
-  st.share = share;
-  st.pml4 = m->pml4;
-  st.cr = c->cr;
-  if (!m->cr->foreach(vmap_copy_vma, &st)) {
-    vmap_free(c);
+  if (!m->cr->foreach([share, m, nm](range *r) -> bool {
+      struct vma *e = (struct vma *) r->value;
+      struct vma *ne = new vma();
+      if (ne == 0)
+        return false;
+
+      ne->va_start = e->va_start;
+      ne->va_end = e->va_end;
+      if (share) {
+        ne->n = e->n;
+        ne->va_type = COW;
+        acquire(&e->lock);
+        e->va_type = COW;
+        updatepages(m->pml4, (void *) (e->va_start), (void *) (e->va_end), PTE_COW);
+        release(&e->lock);
+      } else {
+        ne->n = vmn_copy(e->n);
+        ne->va_type = e->va_type;
+      }
+
+      if(ne->n == 0)
+        return false;
+
+      ne->n->ref++;
+      nm->cr->add(ne->va_start, ne->va_end - ne->va_start, (void *) ne);
+      return true;
+    }))
+  {
+    vmap_free(nm);
     release(&m->lock);
     return 0;
   }
@@ -438,7 +421,7 @@ vmap_copy(struct vmap *m, int share)
     lcr3(v2p(m->pml4));  // Reload hardware page table
 
   release(&m->lock);
-  return c;
+  return nm;
 }
 
 int
