@@ -17,6 +17,12 @@ operator new(unsigned long nbytes, void *buf)
   return buf;
 }
 
+void *
+operator new[](unsigned long nbytes)
+{
+  return kmalloc(nbytes);
+}
+
 void
 operator delete(void *p)
 {

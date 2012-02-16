@@ -50,10 +50,6 @@ extern "C" {
 // maybe many epochs later.
 //
 
-#define MARKED(x) (((uptr) (x)) & 0x1)
-#define MARK(x) ((struct range *) (((uptr) (x)) | 0x1))
-#define WOMARK(x) ((struct range *) (((uptr) (x)) & ~0x1))
-
 enum { crange_debug = 0 };
 enum { crange_checking = 0 };
 
@@ -84,9 +80,9 @@ range_draw_nlevel(int nlevel)
 
 void range::print(int l)
 {
-  cprintf ("0x%lx-0x%lx(%lu) 0x%lx, c %d, t %d, n 0x%lx m 0x%lx\n",
+  cprintf ("0x%lx-0x%lx(%lu) 0x%lx, c %d, t %d, n 0x%lx m %d\n",
            key, key+size, size, (long) value, curlevel.load(), nlevel,
-           (long) next, MARKED(next[l]));
+           (long) next, (bool) next[l].mark());
 }
 
 range::~range()
@@ -96,7 +92,7 @@ range::~range()
   this->cr->check(this);
   //    assert(this->curlevel == -1);
   for (int l = 0; l < this->nlevel; l++) {
-    this->next[l] = (struct range *) 0xDEADBEEF;
+    next[l] = (struct range *) 0xDEADBEEF;
   }
   kmalignfree(this->lock);
   kmfree(this->next);
@@ -119,7 +115,7 @@ void range::dec_ref(void)
   }
 }
 
-range::range(crange *cr, u64 k, u64 sz, void *v, struct range *n, int nlevel = 0)
+range::range(crange *cr, u64 k, u64 sz, void *v, markptr<range> n, int nlevel)
   : rcu_freed("range_delayed")
 {
   if (crange_debug)
@@ -132,7 +128,7 @@ range::range(crange *cr, u64 k, u64 sz, void *v, struct range *n, int nlevel = 0
   this->curlevel = 0;
   if (nlevel == 0) this->nlevel = range_draw_nlevel(cr->nlevel);
   else this->nlevel = nlevel;
-  this->next = (struct range**) kmalloc(sizeof(sizeof(this->next[0])) * this->nlevel); // cache align?
+  this->next = new markptr<range>[this->nlevel]; // cache align?
   assert(this->next);
   this->next[0] = n;
   for (int l = 1; l < this->nlevel; l++) this->next[l] = 0;
@@ -147,10 +143,10 @@ range::range(crange *cr, u64 k, u64 sz, void *v, struct range *n, int nlevel = 0
 
 static range *insert(struct range *head, struct range *r)
 {
-  struct range *n, *p;
+  markptr<range> n, p;
   p = nullptr;
   for (n = head; n != 0; p = n, n = n->next[0]) {
-    assert(!MARKED(n));
+    assert(!n.mark());
     if (r->key < n->key) {
       break;
     }
@@ -166,9 +162,9 @@ static range *insert(struct range *head, struct range *r)
 }
 
 // lock p if this->next == e and p isn't marked for deletion.  if not, return failure.
-int range::lockif(range *e)
+int range::lockif(markptr<range> e)
 {
-  assert(!MARKED(e));
+  assert(!e.mark());
   acquire(this->lock);
   if (this->next[0] == e) {
       return 1;
@@ -187,11 +183,10 @@ int range::lockif(range *e)
 static void mark(range *f, range *s)
 {
   struct range *e;
-  for (e = f; e && e != s; e = WOMARK(e->next[0])) {
+  for (e = f; e && e != s; e = e->next[0].ptr()) {
     assert(e);
-    for (int l = e->nlevel-1; l >= 0; l--) {
-        (void) __sync_fetch_and_or(&(e->next[l]), (struct range *)0x1);
-    }
+    for (int l = e->nlevel-1; l >= 0; l--)
+      e->next[l].mark() = 1;
   }
 }
 
@@ -199,7 +194,7 @@ static void mark(range *f, range *s)
 static void unlockn(range *f, range *l)
 {
   struct range *e;
-  for (e = f; e != l; e = WOMARK(e->next[0])) {
+  for (e = f; e != l; e = e->next[0].ptr()) {
     assert(e);
     release(e->lock);
   }
@@ -210,7 +205,7 @@ static void unlockn(range *f, range *l)
 static void freen(struct range *f, struct range *l)
 {
   struct range *e;
-  for (e = f; e != l; e = WOMARK(e->next[0])) {
+  for (e = f; e != l; e = e->next[0].ptr()) {
     assert(e);
     assert(e->curlevel >= 0);
     e->dec_ref();
@@ -276,11 +271,10 @@ static range *replace(u64 k, u64 sz, void *v, range *f, range *l, range *s)
 void
 crange::print(int full)
 {
-  struct range *e;
   for (int l = 0; l < this->nlevel; l++) {
     int c = 0;
     cprintf("crange %d: ", l);
-    for (e = this->crange_head->next[l]; e; e = WOMARK(e->next[l])) {
+    for (range *e = crange_head->next[l].ptr(); e != 0; e = e->next[l].ptr()) {
       c++;
       if (full) e->print(l);
     }
@@ -300,8 +294,8 @@ crange::~crange()
 {
   if (crange_debug) cprintf("crange_free: 0x%lx\n", (u64) this);
   range *e, *n;
-  for (e = WOMARK(this->crange_head->next[0]); e; e = n) {
-    n = WOMARK(e->next[0]);
+  for (e = this->crange_head->next[0].ptr(); e; e = n) {
+    n = e->next[0].ptr();
     delete e;
   }
   delete this->crange_head;
@@ -315,30 +309,30 @@ void crange::check(struct range *absent)
   int t = mycpu()->id;
   struct range *e, *s;
   for (int l = 0; l < this->nlevel; l++) {
-    for (e = this->crange_head->next[l]; e; e = s) {
+    for (e = this->crange_head->next[l].ptr(); e; e = s) {
       assert(e->curlevel < this->nlevel);
       if (absent == e)  {
 	cprintf("%d: check level failed; 0x%lx is present\n", l, (u64) absent);
 	assert(0);
       }
       // look for e level down, but only for non-marked nodes.
-      if (l > 0 && e->next[l] != 0 && !MARKED(e->next[l])) {
+      if (l > 0 && e->next[l] != 0 && !e->next[l].mark()) {
 	struct range *n;
-	for (n = WOMARK(this->crange_head->next[l-1]); n && n != e; n = WOMARK(n->next[l-1]))
+	for (n = crange_head->next[l-1].ptr(); n && n != e; n = n->next[l-1].ptr())
 	  ;
 	__sync_synchronize();
 	// if e is marked now, skip the check (the memory barrier ensures that we reread it
 	// from memory (and not from a register)
-	if (!MARKED(e->next[l]) && n != e) {
-	  cprintf("%d: check level %d failed 0x%lx-0x%lx(%lu) m %lu c %d t %d; in high level but not low\n", t, l, e->key, e->key+e->size, e->size, MARKED(e->next[l]), e->curlevel.load(), e->nlevel);
+	if (!e->next[l].mark() && n != e) {
+	  cprintf("%d: check level %d failed 0x%lx-0x%lx(%lu) m %d c %d t %d; in high level but not low\n", t, l, e->key, e->key+e->size, e->size, (bool)e->next[l].mark(), e->curlevel.load(), e->nlevel);
 	  this->print(1);
 	  assert(0);
 	}
       }
       // check if succ range is after n
-      s = WOMARK(e->next[l]);
+      s = e->next[l].ptr();
       assert(s != e);
-      if (!MARKED(e->next[l]) && s && (e->key + e->size > s->key)) {
+      if (!e->next[l].mark() && s && (e->key + e->size > s->key)) {
 	if (crange_debug) cprintf("%d: e(%lu,%lu) overlaps with s(%lu,%lu)\n", t, e->key, e->size, s->key, e->size);
 	this->print(1);
 	assert(0);
@@ -354,11 +348,11 @@ int crange::del_index(range *p0, range **e, int l)
 {
   int r = 1;
   assert(l < (*e)->nlevel);
-  if (!MARKED((*e)->next[l]))  // don't remove unmarked ranges from index
+  if (!(*e)->next[l].mark())  // don't remove unmarked ranges from index
     return r;
   if (l == 0) return 0;    // but not on level 0; they are locked when removed
   // crange_check(cr, NULL);
-  while (*e && MARKED((*e)->next[l])) {
+  while (*e && (*e)->next[l].mark()) {
 #if 0
     if (l != (*e)->curlevel) {
       // range is still in the index one level up, back out.  we want to remove it first 
@@ -368,11 +362,11 @@ int crange::del_index(range *p0, range **e, int l)
       goto done;
     }
 #endif
-    int cas = __sync_bool_compare_and_swap(&(p0->next[l]), *e, WOMARK((*e)->next[l]));
+    bool cas = p0->next[l].cmpxch(*e, (*e)->next[l].ptr().load());
     if (cas) {
       assert((*e)->curlevel >= 0);
       (*e)->dec_ref();
-      *e = WOMARK((*e)->next[l]);
+      *e = (*e)->next[l].ptr();
     } else {  
       // cprintf("%d: crange_del_index: retry del %u(%u)\n", mycpu()->id, (*e)->key, (*e)->key + (*e)->size);
       r = -1;
@@ -387,18 +381,18 @@ int crange::del_index(range *p0, range **e, int l)
 
 // Insert e into index one level up, between p and s, if e hasn't been inserted
 // yet on that level.
-void crange::add_index(int l, range *e, range *p1, range *s1)
+void crange::add_index(int l, range *e, range *p1, markptr<range> s1)
 {
   if (l >= e->nlevel-1) return;
-  if (MARKED(e->next[l+1])) return;
+  if (e->next[l+1].mark()) return;
   // crange_check(cr, NULL);
   if (cmpxch(&e->curlevel, l, l+1)) {
     assert(e->curlevel < e->nlevel);
     // this is the core inserting at level l+1, but some core may be deleting
-    struct range *s = WOMARK(s1);
+    struct range *s = s1.ptr();
     do {
-      struct range *n = e->next[l+1];   // Null and perhaps marked
-      if (MARKED(n)) {
+      markptr<range> n = e->next[l+1];   // Null and perhaps marked
+      if (n.mark()) {
 	// this range has been deleted, don't insert into index.
 	// undo increment of cur->level.
 	e->curlevel--;
@@ -406,9 +400,9 @@ void crange::add_index(int l, range *e, range *p1, range *s1)
 	goto done;
       }
       assert (n == 0);
-    } while (!__sync_bool_compare_and_swap(&(e->next[l+1]), 0, s));
-    if (!__sync_bool_compare_and_swap(&(p1->next[l+1]), s, e)) {  // insert in list l+1
-        (void) __sync_fetch_and_and(&(e->next[l+1]), (struct range *)0x1);    // failed, keep mark bit
+    } while (!e->next[l+1].cmpxch(0, s));
+    if (!p1->next[l+1].cmpxch(s, e)) {  // insert in list l+1
+      e->next[l+1].ptr() = 0;    // failed, keep mark bit
       e->curlevel--;
       // cprintf("%d: crange_add_index: retry add level %d %u(%u)\n", mycpu()->id, l+1, e->key, e->key+e->size);
       //INCRETRY;
@@ -439,7 +433,7 @@ int crange::lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr,
     if (l == 0) {
       acquire(e->lock);    // lock all ranges in the sequence
     }
-    e = WOMARK(e->next[l]);
+    e = e->next[l].ptr();
   }
   *sr = e;
   *er = e;
@@ -463,7 +457,7 @@ int crange::find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, ran
     p1 = *p0;   // remember last previous (p0) as the previous one level up (p1)
     *p0 = (l == this->nlevel-1) ? this->crange_head : p1;   // set current previous
     s1 = *s0;
-    for (e = WOMARK((*p0)->next[l]); e; *p0 = e, e = WOMARK(e->next[l])) {
+    for (e = (*p0)->next[l].ptr(); e; *p0 = e, e = e->next[l].ptr()) {
       assert(l < e->nlevel);
       int r = this->del_index(*p0, &e, l);
       if (r == -1) goto retry;   // deletion failed because some other core did it; try again
@@ -512,13 +506,13 @@ range* crange::search(u64 k, u64 sz, int mod)
   r = nullptr;
   p = this->crange_head;
   for (int l = this->nlevel-1; l >= 0; l--) {
-    for (e = WOMARK(p->next[l]); e; p = e, e = WOMARK(e->next[l])) {
+    for (e = p->next[l].ptr(); e; p = e, e = e->next[l].ptr()) {
       if (crange_debug)
 	cprintf("level %d: 0x%lx 0x%lx-%lx(%lu) 0x%lx-0x%lx(%lu)\n", l, (u64) p, p->key, p->key+p->size, p->size, e->key, e->key+e->size, e->size);
       // skip all marked ranges, but don't update p because
       // we don't want to descend on a marked range down.
-      while (e && MARKED(e->next[l])) {
-	e = WOMARK(e->next[l]);
+      while (e && e->next[l].mark()) {
+	e = e->next[l].ptr();
       }
       if (!e) break;
       if (mod && l < n && l > 0) {
@@ -565,7 +559,7 @@ void crange::del(u64 k, u64 sz)
   while (1) {
     // hook new list into bottom list; if del resulted in a new list, use that (repl), otherwise
     // set predecessor to successor.
-    if (__sync_bool_compare_and_swap(&(prev->next[0]), first, repl ? repl : succ)) {
+    if (prev->next[0].cmpxch(first, repl ? repl : succ)) {
       release(prev->lock);
       freen(first, last);   // put on delayed list before unlocking
       unlockn(first, last);
@@ -605,8 +599,8 @@ void crange::add(u64 k, u64 sz, void *v)
   repl = insert(repl, r);
   mark(first, succ);
   if (prev)
-    assert(!MARKED(prev->next[0]));
-  if (__sync_bool_compare_and_swap(&(prev->next[0]), first ? first : succ, repl)) {
+    assert(!prev->next[0].mark());
+  if (prev->next[0].cmpxch(first ? first : succ, repl)) {
     release(prev->lock);
     freen(first, last);   // put on delayed list before unlocking
     unlockn(first, last);
@@ -621,7 +615,7 @@ void crange::add(u64 k, u64 sz, void *v)
 int crange::foreach(int (*cb)(range *r, void *), void *st)
 {
   struct range *e;
-  for (e = WOMARK(this->crange_head->next[0]); e; e = WOMARK(e->next[0])) {
+  for (e = crange_head->next[0].ptr(); e; e = e->next[0].ptr()) {
     if (!cb(e, st))
       return 0;
   }
