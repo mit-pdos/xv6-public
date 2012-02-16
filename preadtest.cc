@@ -73,7 +73,7 @@ kernlet_pread(int fd, size_t count, off_t off)
 
   msgid = ipc_msg_alloc();
   if (msgid == NULL_MSGID) {
-    printf(2, "kernlet_pread: ipc_alloc_msg failed");
+    fprintf(2, "kernlet_pread: ipc_alloc_msg failed");
     return;
   }    
 
@@ -81,7 +81,7 @@ kernlet_pread(int fd, size_t count, off_t off)
     die("kernlet_pread: count oops");
   pageid = ipc_page_alloc();
   if (pageid == NULL_PAGEID) {
-    printf(2, "kernlet_pread: ipc_alloc_page failed");
+    fprintf(2, "kernlet_pread: ipc_alloc_page failed");
     return;
   }
 
@@ -152,8 +152,8 @@ main(int ac, char **av)
   }
   t1 = rdtsc();
 
-  printf(1, "usekernlet %u\n", usekernlet);  
-  printf(1, "cycles %lu\n", t1 - t0);
+  fprintf(1, "usekernlet %u\n", usekernlet);  
+  fprintf(1, "cycles %lu\n", t1 - t0);
   
   exit();
 }

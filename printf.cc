@@ -13,7 +13,7 @@ writec(int c, void *arg)
 }
 
 void
-printf(int fd, const char *fmt, ...)
+fprintf(int fd, const char *fmt, ...)
 {
   va_list ap;
 
@@ -64,6 +64,6 @@ die(const char* errstr, ...)
   va_start(ap, errstr);
   vprintfmt(writec, (void*) (u64)1, errstr, ap);
   va_end(ap);
-  printf(1, "\n");
+  fprintf(2, "\n");
   exit();
 }

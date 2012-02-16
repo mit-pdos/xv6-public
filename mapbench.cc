@@ -17,7 +17,7 @@ thr(void *arg)
   for (int i = 0; i < 1000; i++) {
     volatile char *p = (char*) (0x40000UL + tid * 8 * 4096);
     if (map((void *) p, 8 * 4096) < 0) {
-      printf(1, "%d: map failed\n", tid);
+      fprintf(1, "%d: map failed\n", tid);
       exit();
     }
 
@@ -27,13 +27,13 @@ thr(void *arg)
     }
 
     if (unmap((void *) p, 8 * 4096) < 0) {
-      printf(1, "%d: unmap failed\n", tid);
+      fprintf(1, "%d: unmap failed\n", tid);
       exit();
     }
   }
 
   acquire(&l);
-  // printf(1, "mapbench[%d]: done\n", getpid());
+  // fprintf(1, "mapbench[%d]: done\n", getpid());
   tcount++;
   release(&l);
 }
@@ -44,26 +44,26 @@ main(int ac, char **av)
   mtenable("xv6-mapbench");
 
   if (ac != 2) {
-    printf(1, "usage: %s nthreads\n", av[0]);
+    fprintf(1, "usage: %s nthreads\n", av[0]);
     exit();
   }
 
   int nthread = atoi(av[1]);
 
   acquire(&l);
-  // printf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
+  // fprintf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
 
   for(int i = 0; i < nthread; i++) {
     sbrk(8192);
     void *tstack = sbrk(0);
-    // printf(1, "tstack %lx\n", tstack);
+    // fprintf(1, "tstack %lx\n", tstack);
     int tid = forkt(tstack, (void*) thr, (void *)(u64)i);
-    if (0) printf(1, "mapbench[%d]: child %d\n", getpid(), tid);
+    if (0) fprintf(1, "mapbench[%d]: child %d\n", getpid(), tid);
   }
 
   for(;;){
     int lastc = tcount;
-    // printf(1, "mapbench[%d]: tcount=%d\n", getpid(), lastc);
+    // fprintf(1, "mapbench[%d]: tcount=%d\n", getpid(), lastc);
     release(&l);
     if(lastc==nthread)
       break;
@@ -72,7 +72,7 @@ main(int ac, char **av)
     acquire(&l);
   }
   release(&l);
-  // printf(1, "mapbench[%d]: done\n", getpid());
+  // fprintf(1, "mapbench[%d]: done\n", getpid());
 
   for(int i = 0; i < nthread; i++)
     wait();

@@ -14,13 +14,13 @@ execbench(void)
   for (int i = 0; i < NITERS; i++) {
     int pid = fork(0);
     if (pid < 0) {
-      printf(1, "fork error\n");
+      fprintf(1, "fork error\n");
       exit();
     }
     if (pid == 0) {
       const char *av[] = { "forkexecbench", "x", 0 };
       exec("forkexecbench", av);
-      printf(1, "exec failed\n");
+      fprintf(1, "exec failed\n");
       exit();
     } else {
       wait();
@@ -30,7 +30,7 @@ execbench(void)
   mtdisable("xv6-forkexecbench");
 
   u64 e = rdtsc();
-  printf(1, "%lu\n", (e-s) / NITERS);
+  fprintf(1, "%lu\n", (e-s) / NITERS);
 }
 
 int

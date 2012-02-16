@@ -29,8 +29,8 @@ stats(void)
   if (sfd < 0)
     die("lockstat: open failed");
 
-  printf(1, "## name acquires contends locking locked\n");
-  printf(sfd, "## name acquires contends locking locked\n");
+  fprintf(1, "## name acquires contends locking locked\n");
+  fprintf(sfd, "## name acquires contends locking locked\n");
   
   while (1) {
     r = read(fd, &ls, sz);
@@ -51,9 +51,9 @@ stats(void)
       locked += ls.cpu[i].locked;
     }
     if (contends > 0) {
-      printf(1, "%s %lu %lu %lu %lu\n", 
+      fprintf(1, "%s %lu %lu %lu %lu\n", 
              ls.name, acquires, contends, locking, locked);
-      printf(sfd, "%s %lu %lu %lu %lu\n", 
+      fprintf(sfd, "%s %lu %lu %lu %lu\n", 
              ls.name, acquires, contends, locking, locked);
     }
   }

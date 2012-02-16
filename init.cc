@@ -21,12 +21,12 @@ startone(const char **argv)
 
   pid = fork(0);
   if(pid < 0){
-    printf(1, "init: fork failed\n");
+    fprintf(1, "init: fork failed\n");
     exit();
   }
   if(pid == 0){
     exec(argv[0], argv);
-    printf(1, "init: exec %s failed\n", argv[0]);
+    fprintf(1, "init: exec %s failed\n", argv[0]);
     exit();
   }
   return pid;
@@ -46,11 +46,11 @@ main(void)
 
   mkdir("dev");
   if (mknod("/dev/netif", 2, 1) < 0)
-      printf(2, "init: mknod netif failed\n");
+      fprintf(2, "init: mknod netif failed\n");
   if (mknod("/dev/sampler", 3, 1) < 0)
-      printf(2, "init: mknod sampler failed\n");
+      fprintf(2, "init: mknod sampler failed\n");
   if (mknod("/dev/lockstat", 4, 1) < 0)
-      printf(2, "init: mknod lockstat failed\n");
+      fprintf(2, "init: mknod lockstat failed\n");
 
   for (u32 i = 0; i < NELEM(app_argv); i++)
     startone(app_argv[i]);
@@ -58,6 +58,6 @@ main(void)
   for(;;){
     pid = startone(sh_argv);
     while((wpid=wait()) >= 0 && wpid != pid)
-      printf(1, "zombie!\n");
+      fprintf(1, "zombie!\n");
   }
 }
