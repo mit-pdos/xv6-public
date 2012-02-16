@@ -345,4 +345,5 @@ void mpboot(void);
 void trapret(void);
 void threadstub(void);
 void threadhelper(void (*fn)(void *), void *arg);
+void trap(struct trapframe *tf);
 

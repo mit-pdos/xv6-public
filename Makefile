@@ -42,6 +42,7 @@ LDFLAGS   = -m elf_x86_64
 
 OBJS = \
 	bio.o \
+	bootdata.o \
 	cga.o \
 	cilk.o \
 	condvar.o \

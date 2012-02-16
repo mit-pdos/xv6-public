@@ -123,6 +123,6 @@ struct taskstate
 // that records the given code segment, instruction pointer,
 // and type bits.
 #define INTDESC(cs, rip, bits) (struct intdesc){ \
-	(rip)&0xffff, (cs), 0, bits, ((rip)>>16)&0xffff, \
-	(u64)(rip)>>32, 0, \
+	(u16) ((rip)&0xffff), (cs), 0, bits, (u16) (((rip)>>16)&0xffff), \
+	(u32) ((u64)(rip)>>32), 0, \
 }
