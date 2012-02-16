@@ -3,7 +3,7 @@
 #include "mmu.h"
 #include "amd64.h"
 #include "spinlock.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "queue.h"
 #include "proc.hh"
 #include "cpu.hh"

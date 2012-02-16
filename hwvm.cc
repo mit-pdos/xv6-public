@@ -7,7 +7,7 @@
 #include "spinlock.h"
 #include "kalloc.h"
 #include "queue.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "proc.hh"
 #include "vm.hh"
 #include <stddef.h>

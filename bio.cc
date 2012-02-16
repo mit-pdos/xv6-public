@@ -24,8 +24,7 @@
 #include "types.h"
 #include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.hh"
-
+#include "condvar.h"
 #include "buf.hh"
 #include "cpputil.hh"
 #include "ns.hh"

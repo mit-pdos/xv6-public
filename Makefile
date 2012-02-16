@@ -126,6 +126,7 @@ $(O)/kernel: $(O) $(O)/boot.o $(OBJS)
 
 $(O):
 	$(Q)mkdir $(O)
+	$(Q)mkdir $(O)/net
 
 $(O)/%.o: %.c
 	@echo "  CC     $@"

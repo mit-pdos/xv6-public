@@ -1,10 +1,12 @@
+extern "C" {
 #include "lwip/sys.h"
 #include "arch/sys_arch.h"
+}
 
 #include "queue.h"
-#include "kernel.h"
-#include "proc.h"
-#include "cpu.h"
+#include "kernel.hh"
+#include "proc.hh"
+#include "cpu.hh"
 
 #define DIE panic(__func__)
 
@@ -192,7 +194,7 @@ struct lwip_thread {
 static void
 lwip_thread(void *x)
 {
-  struct lwip_thread *lt = x;
+  struct lwip_thread *lt = (struct lwip_thread*) x;
   lwip_core_lock();
   lt->thread(lt->arg);
   lwip_core_unlock();
@@ -206,9 +208,9 @@ sys_thread_new(const char *name, lwip_thread_fn thread, void *arg,
   struct lwip_thread *lt;
   struct proc *p;
 
-  lt = kmalloc(sizeof(*lt));
+  lt = (struct lwip_thread*) kmalloc(sizeof(*lt));
   if (lt == NULL)
-    return NULL;
+    return 0;
   lt->thread = thread;
   lt->arg = arg;
 
@@ -258,4 +260,26 @@ void
 lwip_core_init(void)
 {
   initlock(&lwprot.lk, "lwIP lwprot", 1);
+}
+
+void
+lwip_panic(const char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vcprintf(fmt, ap);
+  va_end(ap);
+
+  panic("LWIP panic");
+}
+
+void
+lwip_cprintf(const char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vcprintf(fmt, ap);
+  va_end(ap);
 }

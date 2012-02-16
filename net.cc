@@ -13,20 +13,16 @@ extern "C" {
 #include "types.h"
 #include "kernel.hh"
 #include "queue.h"
-#ifndef LWIP
 #include "spinlock.h"
-#include "condvar.hh"
-#endif
+#include "condvar.h"
 #include "proc.hh"
 #include "fs.h"
 #include "file.hh"
 #include "net.hh"
 
 #ifdef LWIP
-extern "C" {
 err_t if_init(struct netif *netif);
 void if_input(struct netif *netif, void *buf, u16 len);
-}
 #endif
 
 void

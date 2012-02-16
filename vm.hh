@@ -31,8 +31,8 @@ struct vmnode {
 enum vmatype { PRIVATE, COW };
 
 struct vma : public rcu_freed {
-  uptr va_start;               // start of mapping
-  uptr va_end;                 // one past the last byte
+  uptr vma_start;              // start of mapping
+  uptr vma_end;                // one past the last byte
   enum vmatype va_type;
   struct vmnode *n;
   struct spinlock lock;        // serialize fault/unmap

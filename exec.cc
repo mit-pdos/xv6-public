@@ -1,7 +1,7 @@
 #include "types.h"
 #include "mmu.h"
 #include "spinlock.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "queue.h"
 #include "proc.hh"
 #include "kernel.hh"

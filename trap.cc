@@ -6,7 +6,7 @@
 #include "traps.h"
 #include "queue.h"
 #include "spinlock.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "proc.hh"
 #include "kmtrace.hh"
 #include "bits.hh"

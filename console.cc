@@ -7,7 +7,7 @@
 #include "kernel.hh"
 #include "spinlock.h"
 #include "fs.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "file.hh"
 #include "amd64.h"
 #include "queue.h"
@@ -116,6 +116,19 @@ cprintf(const char *fmt, ...)
   va_start(ap, fmt);
   vprintfmt(writecons, 0, fmt, ap);
   va_end(ap);
+
+  if(locking)
+    release(&cons.lock);
+}
+
+void
+vcprintf(const char *fmt, va_list ap)
+{
+  int locking = cons.locking;
+  if(locking)
+    acquire(&cons.lock);
+
+  vprintfmt(writecons, 0, fmt, ap);
 
   if(locking)
     release(&cons.lock);

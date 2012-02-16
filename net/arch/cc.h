@@ -3,9 +3,8 @@
 
 #include <types.h>
 
-void            cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
-void            panic(const char*, ...) 
-                  __noret__ __attribute__((format(printf, 1, 2)));
+void lwip_cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
+void lwip_panic(const char*, ...) __noret__ __attribute__((format(printf, 1, 2)));
 
 typedef u32 u32_t;
 typedef s32 s32_t;
@@ -34,8 +33,8 @@ typedef uptr mem_ptr_t;
 #define U32_F	"u"
 #define X32_F	"x"
 
-#define LWIP_PLATFORM_DIAG(x)	cprintf x
-#define LWIP_PLATFORM_ASSERT(x)	panic(x)
+#define LWIP_PLATFORM_DIAG(x)	lwip_cprintf x
+#define LWIP_PLATFORM_ASSERT(x)	lwip_panic(x)
 
 #ifndef BYTE_ORDER
 #define BYTE_ORDER LITTLE_ENDIAN

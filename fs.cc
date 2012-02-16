@@ -15,7 +15,7 @@
 #include "mmu.h"
 #include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "queue.h"
 #include "proc.hh"
 #include "fs.h"

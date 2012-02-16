@@ -1,7 +1,7 @@
 #include "types.h"
 #include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "cpu.hh"
 #include "proc.hh"
 #include "fs.h"

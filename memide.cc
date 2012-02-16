@@ -6,7 +6,7 @@
 #include "kernel.hh"
 #include "spinlock.h"
 #include "queue.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "proc.hh"
 #include "amd64.h"
 #include "traps.h"

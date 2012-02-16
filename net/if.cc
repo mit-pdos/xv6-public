@@ -1,6 +1,9 @@
+extern "C" {
 #include "lwip/stats.h"
 #include "netif/etharp.h"
-#include "kernel.h"
+}
+
+#include "kernel.hh"
 
 /**
  * In this function, the hardware should be initialized.
@@ -52,7 +55,7 @@ low_level_output(struct netif *netif, struct pbuf *p)
   u8 *buf;
 
   size = 0;
-  buf = netalloc();
+  buf = (u8*) netalloc();
   if (buf == NULL) {
     cprintf("low_level_output: netalloc failed\n");
     return ERR_MEM;
@@ -122,7 +125,7 @@ low_level_input(struct netif *netif, void *buf, u16_t len)
 	int bytes = q->len;
 	if (bytes > (len - copied))
 	    bytes = len - copied;
-	memmove(q->payload, buf + copied, bytes);
+	memmove(q->payload, (char*) buf + copied, bytes);
 	copied += bytes;
     }
 
@@ -160,7 +163,7 @@ if_input(struct netif *netif, void *buf, u16 len)
   /* no packet could be read, silently ignore this */
   if (p == NULL) return;
   /* points to packet payload, which starts with an Ethernet header */
-  ethhdr = p->payload;
+  ethhdr = (eth_hdr*) p->payload;
 
   switch (htons(ethhdr->type)) {
   /* IP or ARP packet? */
@@ -175,7 +178,7 @@ if_input(struct netif *netif, void *buf, u16 len)
     if (VERBOSE)
       cprintf("if_input: unknown type %04x\n", htons(ethhdr->type));
     pbuf_free(p);
-    p = NULL;
+    p = 0;
     break;
   }
 }

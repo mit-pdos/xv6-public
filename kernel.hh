@@ -2,6 +2,8 @@ extern "C" {
 #include "kern_c.h"
 }
 
+#include <stdarg.h>
+
 #define KBASE   0xFFFFFF0000000000ull
 #define KSHARED 0xFFFFF00000000000ull
 #define USERTOP 0x0000800000000000ull
@@ -48,6 +50,7 @@ void            cv_tick(void);
 
 // console.c
 void            cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
+void            vcprintf(const char *fmt, va_list ap);
 void            panic(const char*, ...) 
                   __noret__ __attribute__((format(printf, 1, 2)));
 void            kerneltrap(struct trapframe *tf) __noret__;
@@ -221,10 +224,10 @@ void            syscall(void);
 // string.c
 int             memcmp(const void*, const void*, u32);
 void*           memmove(void*, const void*, u32);
-void*           memset(void*, int, u32);
-void*           memcpy(void*, const void *, u32);
+extern "C" void* memset(void*, int, u32);
+extern "C" void* memcpy(void*, const void *, u32);
 char*           safestrcpy(char*, const char*, u32);
-extern "C" unsigned int    strlen(const char*);
+extern "C" unsigned int strlen(const char*);
 int             strncmp(const char*, const char*, u32);
 char*           strncpy(char*, const char*, u32);
 int             strcmp(const char *p, const char *q);

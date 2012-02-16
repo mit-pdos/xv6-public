@@ -7,7 +7,7 @@
 #include "bits.hh"
 #include "spinlock.h"
 #include "mtrace.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "fs.h"
 #include "file.hh"
 

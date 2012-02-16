@@ -7,7 +7,7 @@
 #include "spinlock.h"
 #include "kalloc.h"
 #include "queue.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "proc.hh"
 #include "vm.hh"
 #include "gc.hh"
@@ -120,7 +120,7 @@ vmnode::load(inode *iparg, u64 offarg, u64 szarg)
  */
 
 vma::vma()
-  : rcu_freed("vma"), va_start(0), va_end(0), va_type(PRIVATE), n(0)
+  : rcu_freed("vma"), vma_start(0), vma_end(0), va_type(PRIVATE), n(0)
 {
   snprintf(lockname, sizeof(lockname), "vma:%p", this);
   initlock(&lock, lockname, LOCKSTAT_VM);
@@ -210,15 +210,15 @@ vmap::copy(int share)
     if (ne == 0)
       goto err;
 
-    ne->va_start = e->va_start;
-    ne->va_end = e->va_end;
+    ne->vma_start = e->vma_start;
+    ne->vma_end = e->vma_end;
     if (share) {
       ne->n = e->n;
       ne->va_type = COW;
 
       scoped_acquire sae(&e->lock);
       e->va_type = COW;
-      updatepages(pml4, (void *) (e->va_start), (void *) (e->va_end), PTE_COW);
+      updatepages(pml4, (void *) (e->vma_start), (void *) (e->vma_end), PTE_COW);
     } else {
       ne->n = e->n->copy();
       ne->va_type = e->va_type;
@@ -228,7 +228,7 @@ vmap::copy(int share)
       goto err;
 
     ne->n->ref++;
-    nm->cr.add(ne->va_start, ne->va_end - ne->va_start, (void *) ne);
+    nm->cr.add(ne->vma_start, ne->vma_end - ne->vma_start, (void *) ne);
   }
 
   if (share)
@@ -256,9 +256,9 @@ vmap::lookup(uptr start, uptr len)
   range *r = cr.search(start, len);
   if (r != 0) {
     vma *e = (struct vma *) (r->value);
-    if (e->va_end <= e->va_start)
+    if (e->vma_end <= e->vma_start)
       panic("malformed va");
-    if (e->va_start < start+len && e->va_end > start)
+    if (e->vma_start < start+len && e->vma_end > start)
       return e;
   }
 
@@ -266,12 +266,12 @@ vmap::lookup(uptr start, uptr len)
 }
 
 int
-vmap::insert(vmnode *n, uptr va_start)
+vmap::insert(vmnode *n, uptr vma_start)
 {
   scoped_acquire sa(&lock);
   u64 len = n->npages * PGSIZE;
 
-  if (lookup(va_start, len)) {
+  if (lookup(vma_start, len)) {
     cprintf("vmap_insert: overlap\n");
     return -1;
   }
@@ -280,28 +280,28 @@ vmap::insert(vmnode *n, uptr va_start)
   if (e == 0)
     return -1;
 
-  e->va_start = va_start;
-  e->va_end = va_start + len;
+  e->vma_start = vma_start;
+  e->vma_end = vma_start + len;
   e->n = n;
   n->ref++;
-  cr.add(e->va_start, len, (void *) e);
+  cr.add(e->vma_start, len, (void *) e);
   return 0;
 }
 
 int
-vmap::remove(uptr va_start, uptr len)
+vmap::remove(uptr vma_start, uptr len)
 {
   scoped_acquire sa(&lock);
-  uptr va_end = va_start + len;
-  struct range *r = cr.search(va_start, len);
+  uptr vma_end = vma_start + len;
+  struct range *r = cr.search(vma_start, len);
   if (r == 0)
     panic("no vma?");
   struct vma *e = (struct vma *) r->value;
-  if (e->va_start != va_start || e->va_end != va_end) {
+  if (e->vma_start != vma_start || e->vma_end != vma_end) {
     cprintf("vmap_remove: partial unmap unsupported\n");
     return -1;
   }
-  cr.del(va_start, len);
+  cr.del(vma_start, len);
   gc_delayed(e);
   return 0;
 }
@@ -341,7 +341,7 @@ vmap::pagefault_wcow(uptr va, pme_t *pte, vma *m, u64 npg)
   m->va_type = PRIVATE;
   m->n = c;
   // Update the hardware page tables to reflect the change to the vma
-  updatepages(pml4, (void *) m->va_start, (void *) m->va_end, 0);
+  updatepages(pml4, (void *) m->vma_start, (void *) m->vma_end, 0);
   pte = walkpgdir(pml4, (const void *)va, 0);
   *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   // drop my ref to vmnode
@@ -364,7 +364,7 @@ vmap::pagefault(uptr va, u32 err)
     return -1;
 
   acquire(&m->lock);
-  u64 npg = (PGROUNDDOWN(va) - m->va_start) / PGSIZE;
+  u64 npg = (PGROUNDDOWN(va) - m->vma_start) / PGSIZE;
 
   if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0)
     m = pagefault_ondemand(va, err, m);
@@ -412,7 +412,7 @@ vmap::copyout(uptr va, void *p, u64 len)
       return -1;
 
     acquire(&vma->lock);
-    uptr pn = (va0 - vma->va_start) / PGSIZE;
+    uptr pn = (va0 - vma->vma_start) / PGSIZE;
     char *p0 = vma->n->page[pn];
     if(p0 == 0)
       panic("copyout: missing page");

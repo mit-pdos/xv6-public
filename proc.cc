@@ -3,7 +3,7 @@
 #include "mmu.h"
 #include "amd64.h"
 #include "spinlock.h"
-#include "condvar.hh"
+#include "condvar.h"
 #include "queue.h"
 #include "proc.hh"
 #include "cpu.hh"
@@ -427,13 +427,13 @@ growproc(int n)
     vma *e = m->lookup(newstart, 1);
     if(e == 0)
       break;
-    if(e->va_end >= newstart + newn){
+    if(e->vma_end >= newstart + newn){
       newstart += newn;
       newn = 0;
       break;
     }
-    newn -= e->va_end - newstart;
-    newstart = e->va_end;
+    newn -= e->vma_end - newstart;
+    newstart = e->vma_end;
   }
   gc_end_epoch();
 
