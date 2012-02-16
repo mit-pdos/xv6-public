@@ -122,6 +122,13 @@ vmnode::load(inode *iparg, u64 offarg, u64 szarg)
  * vma
  */
 
+vma::vma()
+  : rcu_freed("vma"), va_start(0), va_end(0), va_type(PRIVATE), n(0)
+{
+  snprintf(lockname, sizeof(lockname), "vma:%p", this);
+  initlock(&lock, lockname, LOCKSTAT_VM);
+}
+
 vma::~vma()
 {
   if(n)
