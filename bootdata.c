@@ -2,6 +2,8 @@
 #include "mmu.h"
 #include "spinlock.h"
 #include "kalloc.h"
+#include "syscall.h"
+#include "kernel.h"
 
 /*
  * Data structures that use C99 designated initializers,
@@ -41,5 +43,40 @@ struct kmem slabmem[slab_type_max][NCPU] = {
     .size  = KSHAREDSIZE,
     .ninit = CPUKSTACKS,
   },
+};
+
+#define SYSCALL(name) [SYS_##name] = (void*)sys_##name
+
+long (*syscalls[])(u64, u64, u64, u64, u64, u64) = {
+  SYSCALL(chdir),
+  SYSCALL(close),
+  SYSCALL(dup),
+  SYSCALL(exec),
+  SYSCALL(exit),
+  SYSCALL(fork),
+  SYSCALL(fstat),
+  SYSCALL(getpid),
+  SYSCALL(kill),
+  SYSCALL(link),
+  SYSCALL(mkdir),
+  SYSCALL(mknod),
+  SYSCALL(open),
+  SYSCALL(pipe),
+  SYSCALL(read),
+  SYSCALL(sbrk),
+  SYSCALL(sleep),
+  SYSCALL(unlink),
+  SYSCALL(wait),
+  SYSCALL(write),
+  SYSCALL(uptime),
+  SYSCALL(map),
+  SYSCALL(unmap),
+  SYSCALL(halt),
+  SYSCALL(socket),
+  SYSCALL(bind),
+  SYSCALL(listen),
+  SYSCALL(accept),
+  SYSCALL(pread),
+  SYSCALL(kernlet),
 };
 

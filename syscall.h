@@ -29,3 +29,4 @@
 #define SYS_accept 28
 #define SYS_pread  29
 #define SYS_kernlet 30
+#define SYS_ncount 31   /* total number of system calls */

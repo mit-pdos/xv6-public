@@ -1,3 +1,4 @@
+extern "C" {
 #include "types.h"
 #include "mmu.h"
 #include "kernel.h"
@@ -9,6 +10,7 @@
 #include "syscall.h"
 #include "cpu.h"
 #include "kmtrace.h"
+}
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
@@ -146,41 +148,6 @@ kmemcpy(void *umem, void *src, u64 size)
   return 0;
 }
 
-#define SYSCALL(name) [SYS_##name] = (void*)sys_##name
-
-static long (*syscalls[])(u64, u64, u64, u64, u64, u64) = {
-  SYSCALL(chdir),
-  SYSCALL(close),
-  SYSCALL(dup),
-  SYSCALL(exec),
-  SYSCALL(exit),
-  SYSCALL(fork),
-  SYSCALL(fstat),
-  SYSCALL(getpid),
-  SYSCALL(kill),
-  SYSCALL(link),
-  SYSCALL(mkdir),
-  SYSCALL(mknod),
-  SYSCALL(open),
-  SYSCALL(pipe),
-  SYSCALL(read),
-  SYSCALL(sbrk),
-  SYSCALL(sleep),
-  SYSCALL(unlink),
-  SYSCALL(wait),
-  SYSCALL(write),
-  SYSCALL(uptime),
-  SYSCALL(map),
-  SYSCALL(unmap),
-  SYSCALL(halt),
-  SYSCALL(socket),
-  SYSCALL(bind),
-  SYSCALL(listen),
-  SYSCALL(accept),
-  SYSCALL(pread),
-  SYSCALL(kernlet),
-};
-
 void
 syscall(void)
 {
@@ -189,7 +156,7 @@ syscall(void)
 
   tf = myproc()->tf;
   num = tf->rax;
-  if(num >= 0 && num < NELEM(syscalls) && syscalls[num]) {
+  if(num >= 0 && num < SYS_ncount && syscalls[num]) {
     mtstart(syscalls[num], myproc());
     mtrec();
     tf->rax = syscalls[num](tf->rdi, tf->rsi, tf->rdx, 

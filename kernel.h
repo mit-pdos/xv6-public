@@ -333,6 +333,7 @@ long sys_listen(int, int);
 long sys_accept(int, void*, void*);
 long sys_pread(int fd, void *ubuf, size_t count, off_t offset);
 long sys_kernlet(int, size_t, off_t);
+extern long (*syscalls[])(u64, u64, u64, u64, u64, u64);
 
 // other exported/imported functions
 void cmain(u64 mbmagic, u64 mbaddr);
