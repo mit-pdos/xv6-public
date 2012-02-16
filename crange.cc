@@ -53,6 +53,8 @@ extern "C" {
 enum { crange_debug = 0 };
 enum { crange_checking = 0 };
 
+#define dprintf(...) do { if (crange_debug) cprintf(__VA_ARGS__); } while(0)
+
 //
 // Methods for ranges
 //
@@ -87,8 +89,7 @@ void range::print(int l)
 
 range::~range()
 {
-  if (crange_debug)
-    cprintf("%d: range_free: 0x%lx 0x%lx-0x%lx(%ld)\n", myproc()->cpuid, (u64) this, this->key, this->key+this->size, this->size);
+  dprintf("%d: range_free: 0x%lx 0x%lx-0x%lx(%ld)\n", myproc()->cpuid, (u64) this, this->key, this->key+this->size, this->size);
   this->cr->check(this);
   //    assert(this->curlevel == -1);
   for (int l = 0; l < this->nlevel; l++) {
@@ -100,8 +101,7 @@ range::~range()
 
 void range::free_delayed(void)
 {
-  if (crange_debug)
-    cprintf("%d: free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) this, this->key, this->key + this->size, this->size, myproc()->epoch);
+  dprintf("%d: free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) this, this->key, this->key + this->size, this->size, myproc()->epoch);
   this->cr->check(this);
   assert(this->curlevel == -1);
   gc_delayed(this);
@@ -118,8 +118,7 @@ void range::dec_ref(void)
 range::range(crange *cr, u64 k, u64 sz, void *v, markptr<range> n, int nlevel)
   : rcu_freed("range_delayed")
 {
-  if (crange_debug)
-    cprintf("range:range:: %lu %lu %d\n", k, sz, nlevel);
+  dprintf("range:range:: %lu %lu %d\n", k, sz, nlevel);
   this->key = k;
   this->size = sz;
   this->value = v;
@@ -287,12 +286,12 @@ crange::crange(int nlevel)
   assert(nlevel >= 0);
   this->nlevel = nlevel;
   this->crange_head = new range(this, 0, 0, nullptr, nullptr, nlevel);
-  if (crange_debug) cprintf("crange::crange return 0x%lx\n", (u64) this);
+  dprintf("crange::crange return 0x%lx\n", (u64) this);
 }
 
 crange::~crange()
 {
-  if (crange_debug) cprintf("crange_free: 0x%lx\n", (u64) this);
+  dprintf("crange_free: 0x%lx\n", (u64) this);
   range *e, *n;
   for (e = this->crange_head->next[0].ptr(); e; e = n) {
     n = e->next[0].ptr();
@@ -333,7 +332,7 @@ void crange::check(struct range *absent)
       s = e->next[l].ptr();
       assert(s != e);
       if (!e->next[l].mark() && s && (e->key + e->size > s->key)) {
-	if (crange_debug) cprintf("%d: e(%lu,%lu) overlaps with s(%lu,%lu)\n", t, e->key, e->size, s->key, e->size);
+	dprintf("%d: e(%lu,%lu) overlaps with s(%lu,%lu)\n", t, e->key, e->size, s->key, e->size);
 	this->print(1);
 	assert(0);
       }
@@ -502,13 +501,12 @@ range* crange::search(u64 k, u64 sz, int mod)
   int n = (mod) ?  range_draw_nlevel(this->nlevel) : 0;
   gc_begin_epoch();
   //read_counters(myproc()->cpuid, 0);
-  if (crange_debug) cprintf("crange_search: 0x%lx 0x%lx\n", (u64) this, k);
+  dprintf("crange_search: 0x%lx 0x%lx\n", (u64) this, k);
   r = nullptr;
   p = this->crange_head;
   for (int l = this->nlevel-1; l >= 0; l--) {
     for (e = p->next[l].ptr(); e; p = e, e = e->next[l].ptr()) {
-      if (crange_debug)
-	cprintf("level %d: 0x%lx 0x%lx-%lx(%lu) 0x%lx-0x%lx(%lu)\n", l, (u64) p, p->key, p->key+p->size, p->size, e->key, e->key+e->size, e->size);
+      dprintf("level %d: 0x%lx 0x%lx-%lx(%lu) 0x%lx-0x%lx(%lu)\n", l, (u64) p, p->key, p->key+p->size, p->size, e->key, e->key+e->size, e->size);
       // skip all marked ranges, but don't update p because
       // we don't want to descend on a marked range down.
       while (e && e->next[l].mark()) {
@@ -531,8 +529,7 @@ range* crange::search(u64 k, u64 sz, int mod)
  end:
   //read_counters(myproc()->cpuid, 1);
   gc_end_epoch();
-  if (crange_debug)
-    cprintf("crange_search: 0x%lx return (0x%lx,0x%lx)\n", (u64) this, r? r->key : 0, r? r->size : 0);
+  dprintf("crange_search: 0x%lx return (0x%lx,0x%lx)\n", (u64) this, r? r->key : 0, r? r->size : 0);
   return r;
 }
 
@@ -547,10 +544,9 @@ void crange::del(u64 k, u64 sz)
 
   assert(this);
   gc_begin_epoch();
-  if (crange_debug) 
-    cprintf("crange_del: 0x%lx 0x%lx-0x%lx(%ld)\n", (u64) this, k, k+sz, sz);
+  dprintf("crange_del: 0x%lx 0x%lx-0x%lx(%ld)\n", (u64) this, k, k+sz, sz);
   if (!this->find_and_lock(k, sz, &prev, &first, &last, &succ)) { // done?
-    if (crange_debug) cprintf("crange_del: [0x%lx,0x%lx) not present\n", k, sz);
+    dprintf("crange_del: [0x%lx,0x%lx) not present\n", k, sz);
     release(prev->lock);
     goto done;
   }
@@ -586,11 +582,11 @@ void crange::add(u64 k, u64 sz, void *v)
   struct range *succ;
   struct range *repl = nullptr;
 
-  if (crange_debug) cprintf("crange_add: 0x%lx 0x%lx-0x%lx(%lu)\n", (u64) this, k, k+sz, sz);
+  dprintf("crange_add: 0x%lx 0x%lx-0x%lx(%lu)\n", (u64) this, k, k+sz, sz);
   assert(this);
   gc_begin_epoch();
   if (this->find_and_lock(k, sz, &prev, &first, &last, &succ)) {
-    if (crange_debug) cprintf("crange_add(0x%lx,0x%lx) overlaps with [0x%lx,0x%lx)\n", k, sz, first->key, first->size);
+    dprintf("crange_add(0x%lx,0x%lx) overlaps with [0x%lx,0x%lx)\n", k, sz, first->key, first->size);
     repl = replace(k, sz, v, first, last, succ);
   } else {
     repl = succ;
