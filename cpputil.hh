@@ -34,6 +34,15 @@ mkpair(const A &a, const B &b)
   return pair<A, B>(a, b);
 }
 
+class scoped_acquire {
+ private:
+  spinlock *_l;
+
+ public:
+  scoped_acquire(spinlock *l) : _l(l) { acquire(_l); }
+  ~scoped_acquire() { release(_l); }
+};
+
 /* C++ runtime */
 void *operator new(unsigned long nbytes);
 void *operator new(unsigned long nbytes, void *buf);

@@ -15,6 +15,7 @@ extern "C" {
 #include "vm.hh"
 #include "gc.hh"
 #include "crange.hh"
+#include "cpputil.hh"
 
 enum { vm_debug = 0 };
 
@@ -356,27 +357,23 @@ vmap::lookup(uptr start, uptr len)
 int
 vmap::insert(vmnode *n, uptr va_start)
 {
-  acquire(&lock);
+  scoped_acquire sa(&lock);
   u64 len = n->npages * PGSIZE;
 
   if (lookup(va_start, len)) {
     cprintf("vmap_insert: overlap\n");
-    release(&lock);
     return -1;
   }
 
   vma *e = new vma();
-  if (e == 0) {
-    release(&lock);
+  if (e == 0)
     return -1;
-  }
 
   e->va_start = va_start;
   e->va_end = va_start + len;
   e->n = n;
   n->ref++;
   cr.add(e->va_start, len, (void *) e);
-  release(&lock);
   return 0;
 }
 
@@ -387,7 +384,7 @@ vmap_copy(struct vmap *m, int share)
   if(nm == 0)
     return 0;
 
-  acquire(&m->lock);
+  scoped_acquire sa(&m->lock);
   for (range *r: m->cr) {
     struct vma *e = (struct vma *) r->value;
     struct vma *ne = new vma();
@@ -418,12 +415,10 @@ vmap_copy(struct vmap *m, int share)
   if (share)
     lcr3(v2p(m->pml4));  // Reload hardware page table
 
-  release(&m->lock);
   return nm;
 
  err:
   delete nm;
-  release(&m->lock);
   return 0;
 }
 
