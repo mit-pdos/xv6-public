@@ -3,7 +3,7 @@
 #include "mmu.h"
 #include "cpu.hh"
 #include "kernel.hh"
-#include "bits.h"
+#include "bits.hh"
 #include "spinlock.h"
 #include "kalloc.h"
 #include "queue.h"

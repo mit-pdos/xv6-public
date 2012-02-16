@@ -8,7 +8,7 @@
 #include "amd64.h"
 #include "syscall.h"
 #include "cpu.hh"
-#include "kmtrace.h"
+#include "kmtrace.hh"
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.

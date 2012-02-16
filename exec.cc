@@ -10,7 +10,7 @@
 #include "fs.h"
 #include "file.hh"
 #include "vm.hh"
-#include "elf.h"
+#include "elf.hh"
 #include "cpu.hh"
 #include "prof.hh"
 #include <stddef.h>

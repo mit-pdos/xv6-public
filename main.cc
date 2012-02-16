@@ -1,5 +1,5 @@
 #include "types.h"
-#include "multiboot.h"
+#include "multiboot.hh"
 #include "kernel.hh"
 #include "spinlock.h"
 #include "kalloc.h"

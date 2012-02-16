@@ -5,7 +5,7 @@
 #include "fs.h"
 #include "file.hh"
 #include "prof.hh"
-#include "bits.h"
+#include "bits.hh"
 #include "amd64.h"
 
 extern profctr_t sprof[];

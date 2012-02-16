@@ -4,7 +4,7 @@
 
 #include "types.h"
 #include "amd64.h"
-#include "mp.h"
+#include "mp.hh"
 #include "kernel.hh"
 #include "cpu.hh"
 

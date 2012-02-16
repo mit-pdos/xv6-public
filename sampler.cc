@@ -6,7 +6,7 @@
 #include "stat.h"
 #include "kalloc.h"
 #include "file.hh"
-#include "bits.h"
+#include "bits.hh"
 #include "amd64.h"
 #include "cpu.hh"
 #include "sampler.h"

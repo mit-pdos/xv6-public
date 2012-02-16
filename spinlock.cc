@@ -4,7 +4,7 @@
 #include "kernel.hh"
 #include "amd64.h"
 #include "cpu.hh"
-#include "bits.h"
+#include "bits.hh"
 #include "spinlock.h"
 #include "mtrace.h"
 #include "condvar.hh"

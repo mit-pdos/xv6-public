@@ -8,8 +8,8 @@
 #include "spinlock.h"
 #include "condvar.hh"
 #include "proc.hh"
-#include "kmtrace.h"
-#include "bits.h"
+#include "kmtrace.hh"
+#include "bits.hh"
 
 struct intdesc idt[256] __attribute__((aligned(16)));
 

@@ -5,7 +5,7 @@
 #include "amd64.h"
 #include "kernel.hh"
 #include "traps.h"
-#include "bits.h"
+#include "bits.hh"
 #include "cpu.hh"
 
 // Local APIC registers, divided by 4 for use as uint[] indices.

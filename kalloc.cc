@@ -10,7 +10,7 @@
 #include "kalloc.h"
 #include "mtrace.h"
 #include "cpu.hh"
-#include "multiboot.h"
+#include "multiboot.hh"
 
 static struct Mbmem mem[128];
 static u64 nmem;
