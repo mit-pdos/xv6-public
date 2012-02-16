@@ -115,7 +115,7 @@ sys_map(void)
     return -1;
 
   if (myproc()->vmap->insert(vmn, PGROUNDDOWN(addr)) < 0) {
-    vmn_free(vmn);
+    delete vmn;
     return -1;
   }
 

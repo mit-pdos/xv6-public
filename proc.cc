@@ -474,7 +474,7 @@ growproc(int n)
   release(&m->lock); // XXX
 
   if(m->insert(vmn, newstart) < 0){
-    vmn_free(vmn);
+    delete vmn;
     cprintf("growproc: vmap_insert failed\n");
     return -1;
   }

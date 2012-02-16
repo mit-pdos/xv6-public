@@ -68,7 +68,7 @@ dosegment(uptr a0, u64 a1)
         goto bad;
     }
 
-    if(vmn_load(vmn, args->ip, ph.offset, ph.filesz) < 0)
+    if(vmn->load(args->ip, ph.offset, ph.filesz) < 0)
       goto bad;
 
     if(args->vmap->insert(vmn, ph.vaddr) < 0)
@@ -241,7 +241,7 @@ exec(char *path, char **argv)
   if(vmap)
     vmap->decref();
   if(vmn)
-    vmn_free(vmn);
+    delete vmn;
   gc_end_epoch();
 
   return 0;

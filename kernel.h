@@ -255,11 +255,9 @@ struct vmap *   vmap_alloc(void);
 struct vmnode*  vmn_alloc(u64, enum vmntype);
 struct vmnode*  vmn_allocpg(u64);
 int             copyout(struct vmap *, uptr, void*, u64);
-void            vmn_free(struct vmnode *);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             pagefault(struct vmap *, uptr, u32);
-int             vmn_load(struct vmnode *, struct inode*, u64, u64);
 void            updatepages(pml4e_t*, void*, void*, int);
 
 // wq.c

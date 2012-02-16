@@ -34,6 +34,14 @@ struct vmnode {
   struct inode *ip;
   u64 offset;
   u64 sz;
+
+  vmnode(u64 npg, vmntype type);
+  ~vmnode();
+  void decref();
+  int allocpg();
+
+  int load(inode *ip, u64 offset, u64 sz);
+  int demand_load();
 };
 
 // An address space: a set of vmas plus h/w page table.

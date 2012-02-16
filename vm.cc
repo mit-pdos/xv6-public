@@ -19,27 +19,27 @@ extern "C" {
 
 enum { vm_debug = 0 };
 
-static void
-vmn_decref(struct vmnode *n)
+void
+vmnode::decref()
 {
-  if(--n->ref == 0)
-    vmn_free(n);
+  if(--ref == 0)
+    delete this;
 }
 
 vma::~vma()
 {
   if(n)
-    vmn_decref(n);
+    n->decref();
   destroylock(&lock);
 }
 
-static int
-vmn_doallocpg(struct vmnode *n)
+int
+vmnode::allocpg()
 {
-  for(u64 i = 0; i < n->npages; i++) {
-    if((n->page[i] = kalloc()) == 0)
+  for(u64 i = 0; i < npages; i++) {
+    if((page[i] = kalloc()) == 0)
       return -1;
-    memset((char *) n->page[i], 0, PGSIZE);
+    memset((char *) page[i], 0, PGSIZE);
   }
   return 0;
 }
@@ -56,9 +56,9 @@ vmn_copy(struct vmnode *n)
       c->sz = c->sz;
     } 
     if (n->page[0]) {   // If the first page is present, all of them are present
-      if (vmn_doallocpg(c) < 0) {
+      if (c->allocpg() < 0) {
 	cprintf("vmn_copy: out of memory\n");
-	vmn_free(c);
+	delete c;
 	return 0;
       }
       for(u64 i = 0; i < n->npages; i++) {
@@ -74,8 +74,8 @@ vmn_allocpg(u64 npg)
 {
   struct vmnode *n = vmn_alloc(npg, EAGER);
   if (n == 0) return 0;
-  if (vmn_doallocpg(n) < 0) {
-    vmn_free(n);
+  if (n->allocpg() < 0) {
+    delete n;
     return 0;
   }
   return n;
@@ -131,46 +131,42 @@ vmap_alloc()
   return new vmap();
 }
 
-static int
-vmn_doload(struct vmnode *vmn, struct inode *ip, u64 offset, u64 sz)
+int
+vmnode::demand_load()
 {
-  for(u64 i = 0; i < sz; i += PGSIZE){
-    char *p = vmn->page[i / PGSIZE];
+  for (u64 i = 0; i < sz; i += PGSIZE) {
+    char *p = page[i / PGSIZE];
     s64 n;
-    if(sz - i < PGSIZE)
+    if (sz - i < PGSIZE)
       n = sz - i;
     else
       n = PGSIZE;
-    if(readi(ip, p, offset+i, n) != n)
+    if (readi(ip, p, offset+i, n) != n)
       return -1;
   }
   return 0;
 }
 
-// Load a program segment into a vmnode.
 int
-vmn_load(struct vmnode *vmn, struct inode *ip, u64 offset, u64 sz)
+vmnode::load(inode *iparg, u64 offarg, u64 szarg)
 {
-  if (vmn->type == ONDEMAND) {
-    vmn->ip = ip;
-    vmn->offset = offset;
-    vmn->sz = sz;
+  ip = iparg;
+  offset = offarg;
+  sz = szarg;
+
+  if (type == ONDEMAND)
     return 0;
-  } else {
-    return vmn_doload(vmn, ip, offset, sz);
-  }
+  return demand_load();
 }
 
 static struct vma *
 pagefault_ondemand(struct vmap *vmap, uptr va, u32 err, struct vma *m)
 {
-  if (vmn_doallocpg(m->n) < 0) {
+  if (m->n->allocpg() < 0)
     panic("pagefault: couldn't allocate pages");
-  }
   release(&m->lock);
-  if (vmn_doload(m->n, m->n->ip, m->n->offset, m->n->sz) < 0) {
+  if (m->n->demand_load() < 0)
     panic("pagefault: couldn't load");
-  }
   m = vmap->lookup(va, 1);
   if (!m)
     panic("pagefault_ondemand");
@@ -198,7 +194,7 @@ pagefault_wcow(struct vmap *vmap, uptr va, pme_t *pte, struct vma *m, u64 npg)
   pte = walkpgdir(vmap->pml4, (const void *)va, 0);
   *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   // drop my ref to vmnode
-  vmn_decref(n);
+  n->decref();
   return 0;
 }
 
@@ -250,19 +246,18 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
   return 1;
 }
 
-void
-vmn_free(struct vmnode *n)
+vmnode::~vmnode()
 {
-  for(u64 i = 0; i < n->npages; i++) {
-    if (n->page[i]) {
-      kfree(n->page[i]);
-      n->page[i] = 0;
+  for(u64 i = 0; i < npages; i++) {
+    if (page[i]) {
+      kfree(page[i]);
+      page[i] = 0;
     }
   }
-  if (n->ip)
-    iput(n->ip);
-  n->ip = 0;
-  kmfree(n);
+  if (ip) {
+    iput(ip);
+    ip = 0;
+  }
 }
 
 // Copy len bytes from p to user address va in vmap.
@@ -301,18 +296,15 @@ copyout(struct vmap *vmap, uptr va, void *p, u64 len)
 struct vmnode *
 vmn_alloc(u64 npg, enum vmntype type)
 {
-  struct vmnode *n = (struct vmnode *) kmalloc(sizeof(struct vmnode));
-  if (n == 0) {
-    cprintf("out of vmnodes");
-    return 0;
-  }
-  if(npg > NELEM(n->page)) {
+  return new vmnode(npg, type);
+}
+
+vmnode::vmnode(u64 npg, vmntype ntype)
+  : npages(npg), ref(0), type(ntype), ip(0), offset(0), sz(0)
+{
+  if (npg > NELEM(page))
     panic("vmnode too big\n");
-  }
-  memset(n, 0, sizeof(struct vmnode));
-  n->npages = npg;
-  n->type = type;
-  return n;
+  memset(page, 0, sizeof(page));
 }
 
 vmap::~vmap()
