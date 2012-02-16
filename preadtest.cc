@@ -89,7 +89,7 @@ kernlet_pread(int fd, size_t count, off_t off)
   msg->done = 0;
   msg->pageid = pageid;
 
-  if (kernlet(fd, count, off, msgid, pageid) != 0)
+  if (async(fd, count, off, msgid, pageid) != 0)
     die("kernlet");
 }
 

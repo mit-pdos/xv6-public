@@ -53,8 +53,8 @@ pread_allocwork(struct inode *ip, size_t count, off_t off,
 }
 
 long
-sys_kernlet(int fd, size_t count, off_t off,
-            msgid_t msgid, pageid_t pageid)
+sys_async(int fd, size_t count, off_t off,
+          msgid_t msgid, pageid_t pageid)
 {
   struct file *f;
   struct work *w;
