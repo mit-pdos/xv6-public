@@ -3,16 +3,14 @@
 // Slab allocator, for chunks larger than one page.
 //
 
-extern "C" {
 #include "types.h"
 #include "mmu.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
 #include "kalloc.h"
 #include "mtrace.h"
-#include "cpu.h"
+#include "cpu.hh"
 #include "multiboot.h"
-}
 
 static struct Mbmem mem[128];
 static u64 nmem;

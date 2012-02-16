@@ -1,13 +1,11 @@
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "mmu.h"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "queue.h"
-#include "proc.h"
-#include "cpu.h"
-}
+#include "proc.hh"
+#include "cpu.hh"
 #include "gc.hh"
 #include "crange.hh"
 #include "cpputil.hh"
@@ -110,7 +108,7 @@ void range::dec_ref(void)
   }
 }
 
-range::range(crange *crarg, u64 k, u64 sz, void *v, markptr<range> n, int nl)
+range::range(crange *crarg, u64 k, u64 sz, void *v, range *n, int nl)
   : rcu_freed("range_delayed")
 {
   dprintf("range:range:: %lu %lu %d\n", k, sz, nl);
@@ -227,10 +225,12 @@ static range *replace(u64 k, u64 sz, void *v, range *f, range *l, range *s)
 	r = left;
       } else if (k <= f->key) { // cut front?
 	assert(k+sz <= f->key + f->size);
-	r = new range(f->cr, k+sz, f->key + f->size - k - sz, v, f->next[0]);
+        assert(!f->next[0].mark());
+	r = new range(f->cr, k+sz, f->key + f->size - k - sz, v, f->next[0].ptr());
       } else {  // cut end
 	assert(k > f->key);
-	r = new range(f->cr, f->key, k - f->key, v, f->next[0]);
+        assert(!f->next[0].mark());
+	r = new range(f->cr, f->key, k - f->key, v, f->next[0].ptr());
       }
     }
   } else if (k <= f->key && k + sz >= l->key + l->size) {  // delete complete range?
@@ -383,7 +383,7 @@ void crange::add_index(int l, range *e, range *p1, markptr<range> s1)
   if (cmpxch(&e->curlevel, l, l+1)) {
     assert(e->curlevel < e->nlevel);
     // this is the core inserting at level l+1, but some core may be deleting
-    struct range *s = s1.ptr();
+    struct range *s = s1.ptr(); // XXX losing the mark bit ???
     do {
       markptr<range> n = e->next[l+1];   // Null and perhaps marked
       if (n.mark()) {

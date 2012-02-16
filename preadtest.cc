@@ -4,7 +4,7 @@
 #include "user.h"
 #include "lib.h"
 #include "amd64.h"
-#include "ipc.h"
+#include "ipc.hh"
 
 // XXX(sbw) add a memlayout.h?
 #define KSHARED 0xFFFFF00000000000ull

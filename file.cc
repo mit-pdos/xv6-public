@@ -1,17 +1,11 @@
-extern "C" {
 #include "types.h"
 #include "spinlock.h"
-#include "condvar.h"
-#include "kernel.h"
+#include "condvar.hh"
+#include "kernel.hh"
 #include "fs.h"
-}
-
 #include "file.hh"
-
-extern "C" {
 #include "stat.h"
-#include "net.h"
-}
+#include "net.hh"
 
 struct devsw __mpalign__ devsw[NDEV];
 

@@ -1,13 +1,11 @@
 // The local APIC manages internal (non-I/O) interrupts.
 // See Chapter 8 & Appendix C of Intel processor manual volume 3.
 
-extern "C" {
 #include "types.h"
 #include "amd64.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "traps.h"
 #include "bits.h"
-}
 
 // Local APIC registers, divided by 4 for use as uint[] indices.
 #define ID      (0x0020/4)   // ID

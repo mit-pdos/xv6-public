@@ -1,12 +1,10 @@
-extern "C" {
 #include "types.h"
 #include "multiboot.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
 #include "kalloc.h"
-#include "cpu.h"
+#include "cpu.hh"
 #include "amd64.h"
-}
 
 static volatile int bstate;
 

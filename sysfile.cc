@@ -1,22 +1,16 @@
-extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "mmu.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "queue.h"
-#include "proc.h"
+#include "proc.hh"
 #include "fs.h"
-}
-
 #include "file.hh"
-
-extern "C" {
 #include "fcntl.h"
-#include "cpu.h"
-#include "net.h"
-}
+#include "cpu.hh"
+#include "net.hh"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.

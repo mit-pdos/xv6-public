@@ -1,12 +1,10 @@
 // Intel 8250 serial port (UART).
 // http://en.wikibooks.org/wiki/Serial_Programming/8250_UART_Programming
 
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "amd64.h"
 #include "traps.h"
-}
 
 #define COM2    0x2f8
 #define COM1    0x3f8

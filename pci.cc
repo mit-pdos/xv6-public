@@ -1,10 +1,8 @@
-extern "C" {
 #include "types.h"
 #include "amd64.h"
-#include "kernel.h"
-#include "pci.h"
-#include "pcireg.h"
-}
+#include "kernel.hh"
+#include "pci.hh"
+#include "pcireg.hh"
 
 extern int e1000attach(struct pci_func *pcif);
 extern int e1000eattach(struct pci_func *pcif);

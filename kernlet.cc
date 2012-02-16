@@ -1,15 +1,12 @@
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.h"
-#include "cpu.h"
-#include "proc.h"
+#include "condvar.hh"
+#include "cpu.hh"
+#include "proc.hh"
 #include "fs.h"
-#include "wq.h"
-#include "ipc.h"
-}
-
+#include "wq.hh"
+#include "ipc.hh"
 #include "vm.hh"
 #include "file.hh"
 

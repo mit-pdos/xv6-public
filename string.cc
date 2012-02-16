@@ -1,8 +1,6 @@
-extern "C" {
 #include "types.h"
 #include "amd64.h"
-#include "kernel.h"
-}
+#include "kernel.hh"
 
 void*
 memset(void *dst, int c, u32 n)

@@ -1,11 +1,9 @@
-extern "C" {
 #include "types.h"
 #include "amd64.h"
-#include "kernel.h"
-#include "pci.h"
+#include "kernel.hh"
+#include "pci.hh"
 #include "spinlock.h"
-#include "e1000reg.h"
-}
+#include "e1000reg.hh"
 
 #define TX_RING_SIZE 64
 #define RX_RING_SIZE 64

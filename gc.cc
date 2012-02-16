@@ -1,15 +1,12 @@
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "mmu.h"
 #include "amd64.h"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "queue.h"
-#include "proc.h"
-#include "cpu.h"
-}
-
+#include "proc.hh"
+#include "cpu.hh"
 #include "ns.hh"
 #include "atomic.hh"
 

@@ -1,17 +1,15 @@
 // Fake IDE disk; stores blocks in memory.
 // Useful for running kernel without scratch disk.
 
-extern "C" {
 #include "types.h"
 #include "mmu.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
 #include "queue.h"
-#include "condvar.h"
-#include "proc.h"
+#include "condvar.hh"
+#include "proc.hh"
 #include "amd64.h"
 #include "traps.h"
-}
 
 #include "buf.hh"
 

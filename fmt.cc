@@ -1,11 +1,10 @@
-extern "C" {
 #include "types.h"
 #include <stddef.h>
 #include <stdarg.h>
-#include "fmt.h"
+#include "fmt.hh"
 #include "lib.h"
-unsigned int strlen(const char*);
-}
+
+extern "C" unsigned int strlen(const char*);
 
 //
 // Print a number (base <= 16) in reverse order,

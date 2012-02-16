@@ -21,12 +21,10 @@
 // * B_DIRTY: the buffer data has been modified
 //     and needs to be written to disk.
 
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.h"
-}
+#include "condvar.hh"
 
 #include "buf.hh"
 #include "cpputil.hh"

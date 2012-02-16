@@ -1,25 +1,19 @@
-extern "C" {
 #include "types.h"
 #include "mmu.h"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "queue.h"
-#include "proc.h"
-#include "kernel.h"
+#include "proc.hh"
+#include "kernel.hh"
 #include "amd64.h"
 #include "stat.h"
 #include "fs.h"
-}
-
 #include "file.hh"
 #include "vm.hh"
-
-extern "C" {
 #include "elf.h"
-#include "cpu.h"
-#include "prof.h"
+#include "cpu.hh"
+#include "prof.hh"
 #include <stddef.h>
-}
 
 #define USTACKPAGES 2
 #define BRK (USERTOP >> 1)

@@ -1,11 +1,9 @@
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
 #include "amd64.h"
-#include "cpu.h"
-#include "wq.h"
-}
+#include "cpu.hh"
+#include "wq.hh"
 
 #define NSLOTS (1 << WQSHIFT)
 

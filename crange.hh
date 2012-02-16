@@ -93,7 +93,7 @@ struct range : public rcu_freed {
   markptr<range>* next;  // one next pointer per level
   spinlock *lock;        // on separate cache line?
 
-  range(crange *cr, u64 k, u64 sz, void *v, markptr<range> n, int nlevel = 0);
+  range(crange *cr, u64 k, u64 sz, void *v, range *n, int nlevel = 0);
   ~range();
   virtual void do_gc() {
     delete this;

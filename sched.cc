@@ -1,20 +1,17 @@
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "mmu.h"
 #include "amd64.h"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "queue.h"
-#include "proc.h"
-#include "cpu.h"
+#include "proc.hh"
+#include "cpu.hh"
 #include "bits.h"
 #include "kmtrace.h"
 #include "sched.h"
-#include <stddef.h>
-}
-
 #include "vm.hh"
+#include <stddef.h>
 
 enum { sched_debug = 0 };
 

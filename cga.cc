@@ -1,8 +1,6 @@
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "amd64.h"
-}
 
 #define BACKSPACE 0x100
 #define CRTPORT 0x3d4

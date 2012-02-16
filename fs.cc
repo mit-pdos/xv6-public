@@ -10,24 +10,18 @@
 // routines.  The (higher-level) system call implementations
 // are in sysfile.c.
 
-extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "mmu.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "queue.h"
-#include "proc.h"
+#include "proc.hh"
 #include "fs.h"
-}
-
 #include "buf.hh"
 #include "file.hh"
-
-extern "C" {
-#include "cpu.h"
-}
+#include "cpu.hh"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);

@@ -1,11 +1,9 @@
 // Intel 8253/8254/82C54 Programmable Interval Timer (PIT).
 // http://en.wikipedia.org/wiki/Intel_8253
 
-extern "C" {
 #include "types.h"
 #include "amd64.h"
-#include "kernel.h"
-}
+#include "kernel.hh"
 
 #define IO_TIMER1       0x040           // 8253 Timer #1
 #define TIMER_FREQ      1193182

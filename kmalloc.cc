@@ -2,15 +2,13 @@
 // Allocate objects smaller than a page.
 //
 
-extern "C" {
 #include "types.h"
 #include "mmu.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
 #include "kalloc.h"
 #include "mtrace.h"
-#include "cpu.h"
-}
+#include "cpu.hh"
 
 // allocate in power-of-two sizes up to 2^KMMAX
 // must be < 12

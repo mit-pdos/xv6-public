@@ -2,27 +2,21 @@
 // Input is from the keyboard or serial port.
 // Output is written to the screen and serial port.
 
-extern "C" {
 #include "types.h"
-#include "cpu.h"
-#include "kernel.h"
+#include "cpu.hh"
+#include "kernel.hh"
 #include "spinlock.h"
 #include "fs.h"
-#include "condvar.h"
-}
-
+#include "condvar.hh"
 #include "file.hh"
-
-extern "C" {
 #include "amd64.h"
 #include "queue.h"
-#include "proc.h"
+#include "proc.hh"
 #include "traps.h"
 #include "lib.h"
 #include <stdarg.h>
-#include "fmt.h"
+#include "fmt.hh"
 #include <stddef.h>
-}
 
 #define BACKSPACE 0x100
 

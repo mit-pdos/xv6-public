@@ -1,5 +1,6 @@
-#include "mmu.h"
-#include "lib.h"
+extern "C" {
+#include "kern_c.h"
+}
 
 #define KBASE   0xFFFFFF0000000000ull
 #define KSHARED 0xFFFFF00000000000ull
@@ -51,7 +52,6 @@ void            panic(const char*, ...)
                   __noret__ __attribute__((format(printf, 1, 2)));
 void            kerneltrap(struct trapframe *tf) __noret__;
 void            snprintf(char *buf, u32 n, const char *fmt, ...);
-void            consoleintr(int(*)(void));
 
 #define assert(c)   if (!(c)) { cprintf("%s:%d: ", __FILE__, __LINE__); panic("assertion failure"); }
 
@@ -224,7 +224,7 @@ void*           memmove(void*, const void*, u32);
 void*           memset(void*, int, u32);
 void*           memcpy(void*, const void *, u32);
 char*           safestrcpy(char*, const char*, u32);
-unsigned int    strlen(const char*);
+extern "C" unsigned int    strlen(const char*);
 int             strncmp(const char*, const char*, u32);
 char*           strncpy(char*, const char*, u32);
 int             strcmp(const char *p, const char *q);

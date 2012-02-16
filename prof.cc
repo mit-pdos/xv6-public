@@ -1,18 +1,12 @@
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "fs.h"
-}
-
 #include "file.hh"
-
-extern "C" {
-#include "prof.h"
+#include "prof.hh"
 #include "bits.h"
 #include "amd64.h"
-}
 
 extern profctr_t sprof[];
 extern profctr_t eprof[];

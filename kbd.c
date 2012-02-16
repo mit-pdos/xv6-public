@@ -1,6 +1,6 @@
 #include "types.h"
 #include "amd64.h"
-#include "kernel.h"
+#include "kern_c.h"
 #include "kbd.h"
 
 int

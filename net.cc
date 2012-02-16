@@ -10,28 +10,24 @@ extern "C" {
 }
 #endif
 
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "queue.h"
 #ifndef LWIP
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #endif
-#include "proc.h"
+#include "proc.hh"
 #include "fs.h"
-}
-
 #include "file.hh"
-
-extern "C" {
-#include "net.h"
+#include "net.hh"
 
 #ifdef LWIP
+extern "C" {
 err_t if_init(struct netif *netif);
 void if_input(struct netif *netif, void *buf, u16 len);
-#endif
 }
+#endif
 
 void
 netfree(void *va)

@@ -1,21 +1,15 @@
-extern "C" {
 #include "types.h"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "fs.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "stat.h"
 #include "kalloc.h"
-}
-
 #include "file.hh"
-
-extern "C" {
 #include "bits.h"
 #include "amd64.h"
-#include "cpu.h"
+#include "cpu.hh"
 #include "sampler.h"
-}
 
 #define LOGHEADER_SZ (sizeof(struct logheader) + \
                       sizeof(((struct logheader*)0)->cpu[0])*NCPU)

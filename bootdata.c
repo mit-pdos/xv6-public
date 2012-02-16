@@ -3,7 +3,7 @@
 #include "spinlock.h"
 #include "kalloc.h"
 #include "syscall.h"
-#include "kernel.h"
+#include "kern_c.h"
 
 /*
  * Data structures that use C99 designated initializers,

@@ -1,14 +1,12 @@
-extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "mmu.h"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "queue.h"
-#include "proc.h"
-#include "kernel.h"
-#include "cpu.h"
-}
+#include "proc.hh"
+#include "kernel.hh"
+#include "cpu.hh"
 
 struct spinlock tickslock __mpalign__;
 struct condvar cv_ticks __mpalign__;

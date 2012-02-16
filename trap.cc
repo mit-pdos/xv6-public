@@ -1,17 +1,15 @@
-extern "C" {
 #include "types.h"
 #include "mmu.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "amd64.h"
-#include "cpu.h"
+#include "cpu.hh"
 #include "traps.h"
 #include "queue.h"
 #include "spinlock.h"
-#include "condvar.h"
-#include "proc.h"
+#include "condvar.hh"
+#include "proc.hh"
 #include "kmtrace.h"
 #include "bits.h"
-}
 
 struct intdesc idt[256] __attribute__((aligned(16)));
 

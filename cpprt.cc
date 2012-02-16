@@ -1,8 +1,5 @@
-extern "C" {
 #include "types.h"
-#include "kernel.h"
-}
-
+#include "kernel.hh"
 #include "cpputil.hh"
 
 void *

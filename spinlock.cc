@@ -1,17 +1,14 @@
 // Mutual exclusion spin locks.
 
-extern "C" {
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "amd64.h"
-#include "cpu.h"
+#include "cpu.hh"
 #include "bits.h"
 #include "spinlock.h"
 #include "mtrace.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "fs.h"
-}
-
 #include "file.hh"
 
 #if LOCKSTAT

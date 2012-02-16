@@ -1,19 +1,13 @@
-extern "C" {
 #include "types.h"
 #include "mmu.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "queue.h"
-#include "proc.h"
+#include "proc.hh"
 #include "fs.h"
-}
-
 #include "file.hh"
-
-extern "C" {
-#include "cpu.h"
-}
+#include "cpu.hh"
 
 #define PIPESIZE 512
 

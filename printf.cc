@@ -1,10 +1,8 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-extern "C" {
 #include <stdarg.h>
-#include "fmt.h"
-}
+#include "fmt.hh"
 
 // Print to the given fd.
 static void

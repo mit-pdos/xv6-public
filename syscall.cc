@@ -1,16 +1,14 @@
-extern "C" {
 #include "types.h"
 #include "mmu.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "spinlock.h"
-#include "condvar.h"
+#include "condvar.hh"
 #include "queue.h"
-#include "proc.h"
+#include "proc.hh"
 #include "amd64.h"
 #include "syscall.h"
-#include "cpu.h"
+#include "cpu.hh"
 #include "kmtrace.h"
-}
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.

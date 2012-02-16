@@ -2,13 +2,11 @@
 // Search memory for MP description structures.
 // http://developer.intel.com/design/pentium/datashts/24201606.pdf
 
-extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "mp.h"
-#include "kernel.h"
-#include "cpu.h"
-}
+#include "kernel.hh"
+#include "cpu.hh"
 
 struct cpu cpus[NCPU];
 static struct cpu *bcpu __mpalign__;

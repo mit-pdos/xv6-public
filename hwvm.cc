@@ -1,19 +1,16 @@
-extern "C" {
 #include "types.h"
 #include "amd64.h"
 #include "mmu.h"
-#include "cpu.h"
-#include "kernel.h"
+#include "cpu.hh"
+#include "kernel.hh"
 #include "bits.h"
 #include "spinlock.h"
 #include "kalloc.h"
 #include "queue.h"
-#include "condvar.h"
-#include "proc.h"
-#include <stddef.h>
-}
-
+#include "condvar.hh"
+#include "proc.hh"
 #include "vm.hh"
+#include <stddef.h>
 
 extern pml4e_t kpml4[];
 
