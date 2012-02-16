@@ -254,8 +254,6 @@ enum vmntype { EAGER, ONDEMAND };
 struct vmap *   vmap_alloc(void);
 struct vmnode*  vmn_alloc(u64, enum vmntype);
 struct vmnode*  vmn_allocpg(u64);
-int             vmap_insert(struct vmap*, struct vmnode *, uptr);
-struct vma *    vmap_lookup(struct vmap*, uptr, uptr);
 int             copyout(struct vmap *, uptr, void*, u64);
 void            vmn_free(struct vmnode *);
 void            switchuvm(struct proc*);

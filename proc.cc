@@ -280,7 +280,7 @@ inituser(void)
     vmn_allocpg(PGROUNDUP(_initcode_size) / PGSIZE);
   if(vmn == 0)
     panic("userinit: vmn_allocpg");
-  if(vmap_insert(p->vmap, vmn, 0) < 0)
+  if(p->vmap->insert(vmn, 0) < 0)
     panic("userinit: vmap_insert");
   if(copyout(p->vmap, 0, _initcode_start, _initcode_size) < 0)
     panic("userinit: copyout");
@@ -427,7 +427,7 @@ growproc(int n)
   u64 newn = n;
   gc_begin_epoch();
   while(newn > 0){
-    struct vma *e = vmap_lookup(m, newstart, 1);
+    vma *e = m->lookup(newstart, 1);
     if(e == 0)
       break;
     if(e->va_end >= newstart + newn){
@@ -449,7 +449,7 @@ growproc(int n)
   }
 
   // is there space for newstart..newstart+newn?
-  if(vmap_lookup(m, newstart, newn) != 0){
+  if(m->lookup(newstart, newn) != 0){
     cprintf("growproc: not enough room in address space; brk %lx n %d\n",
             myproc()->brk, n);
     return -1;
@@ -458,7 +458,7 @@ growproc(int n)
   // would the newly allocated region abut the next-higher
   // vma? we can't allow that, since then a future sbrk()
   // would start to use the next region (e.g. the stack).
-  if(vmap_lookup(m, PGROUNDUP(newstart+newn), 1) != 0){
+  if(m->lookup(PGROUNDUP(newstart+newn), 1) != 0){
     cprintf("growproc: would abut next vma; brk %lx n %d\n",
             myproc()->brk, n);
     return -1;
@@ -473,7 +473,7 @@ growproc(int n)
 
   release(&m->lock); // XXX
 
-  if(vmap_insert(m, vmn, newstart) < 0){
+  if(m->insert(vmn, newstart) < 0){
     vmn_free(vmn);
     cprintf("growproc: vmap_insert failed\n");
     return -1;

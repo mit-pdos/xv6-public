@@ -170,7 +170,7 @@ pagefault_ondemand(struct vmap *vmap, uptr va, u32 err, struct vma *m)
   if (vmn_doload(m->n, m->n->ip, m->n->offset, m->n->sz) < 0) {
     panic("pagefault: couldn't load");
   }
-  m = vmap_lookup(vmap, va, 1);
+  m = vmap->lookup(va, 1);
   if (!m)
     panic("pagefault_ondemand");
   acquire(&m->lock); // re-acquire lock on m
@@ -211,7 +211,7 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
     return 0;
 
   gc_begin_epoch();
-  struct vma *m = vmap_lookup(vmap, va, 1);
+  vma *m = vmap->lookup(va, 1);
   if (m == 0) {
     gc_end_epoch();
     return -1;
@@ -273,7 +273,7 @@ copyout(struct vmap *vmap, uptr va, void *p, u64 len)
   while(len > 0){
     uptr va0 = (uptr)PGROUNDDOWN(va);
     gc_begin_epoch();
-    struct vma *vma = vmap_lookup(vmap, va, 1);
+    vma *vma = vmap->lookup(va, 1);
     if(vma == 0) {
       gc_end_epoch();
       return -1;
@@ -335,48 +335,48 @@ vmap::~vmap()
 // This code can't handle regions at the very end
 // of the address space, e.g. 0xffffffff..0x0
 // We key vma's by their end address.
-struct vma *
-vmap_lookup(struct vmap *m, uptr start, uptr len)
+vma *
+vmap::lookup(uptr start, uptr len)
 {
   if(start + len < start)
-    panic("vmap_lookup bad len");
+    panic("vmap::lookup bad len");
 
-  range *r = m->cr.search(start, len);
+  range *r = cr.search(start, len);
   if (r != 0) {
-    struct vma *e = (struct vma *) (r->value);
-    if (e->va_end <= e->va_start) 
+    vma *e = (struct vma *) (r->value);
+    if (e->va_end <= e->va_start)
       panic("malformed va");
-    if (e->va_start < start+len && e->va_end > start) {
-        return e;
-    }
+    if (e->va_start < start+len && e->va_end > start)
+      return e;
   }
 
   return 0;
 }
 
 int
-vmap_insert(struct vmap *m, struct vmnode *n, uptr va_start)
+vmap::insert(vmnode *n, uptr va_start)
 {
-  acquire(&m->lock);
+  acquire(&lock);
   u64 len = n->npages * PGSIZE;
 
-  if(vmap_lookup(m, va_start, len)){
+  if (lookup(va_start, len)) {
     cprintf("vmap_insert: overlap\n");
-    release(&m->lock);
+    release(&lock);
     return -1;
   }
 
-  struct vma *e = new vma();
+  vma *e = new vma();
   if (e == 0) {
-    release(&m->lock);
+    release(&lock);
     return -1;
   }
+
   e->va_start = va_start;
   e->va_end = va_start + len;
   e->n = n;
   n->ref++;
-  m->cr.add(e->va_start, len, (void *) e);
-  release(&m->lock);
+  cr.add(e->va_start, len, (void *) e);
+  release(&lock);
   return 0;
 }
 

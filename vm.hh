@@ -49,4 +49,7 @@ struct vmap {
 
   vmap();
   ~vmap();
+
+  vma* lookup(uptr start, uptr len);
+  int insert(vmnode *n, uptr va_start);
 };
