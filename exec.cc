@@ -61,10 +61,10 @@ dosegment(uptr a0, u64 a1)
   
     int npg = (va_end - va_start) / PGSIZE;
     if (odp) {
-      if ((vmn = vmn_alloc(npg, ONDEMAND)) == 0)
+      if ((vmn = new vmnode(npg, ONDEMAND)) == 0)
         goto bad;
     } else {
-      if ((vmn = vmn_allocpg(npg)) == 0)
+      if ((vmn = new vmnode(npg)) == 0)
         goto bad;
     }
 
@@ -93,7 +93,7 @@ static void dostack(uptr a0, u64 a1)
 
   prof_start(dostack_prof);
     // Allocate a one-page stack at the top of the (user) address space
-  if((vmn = vmn_allocpg(USTACKPAGES)) == 0)
+  if((vmn = new vmnode(USTACKPAGES)) == 0)
     goto bad;
   if(args->vmap->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE)) < 0)
     goto bad;
@@ -106,7 +106,7 @@ static void dostack(uptr a0, u64 a1)
       goto bad;
     sp -= strlen(args->argv[argc]) + 1;
     sp &= ~7;
-    if(copyout(args->vmap, sp, args->argv[argc], strlen(args->argv[argc]) + 1) < 0)
+    if(args->vmap->copyout(sp, args->argv[argc], strlen(args->argv[argc]) + 1) < 0)
       goto bad;
     ustack[1+argc] = sp;
   }
@@ -118,7 +118,7 @@ static void dostack(uptr a0, u64 a1)
   args->proc->tf->rsi = sp - (argc+1)*8;
 
   sp -= (1+argc+1) * 8;
-  if(copyout(args->vmap, sp, ustack, (1+argc+1)*8) < 0)
+  if(args->vmap->copyout(sp, ustack, (1+argc+1)*8) < 0)
     goto bad;
 
   // Save program name for debugging.
@@ -144,7 +144,7 @@ static void doheap(uptr a0, u64 a1)
   prof_start(doheap_prof);
   // Allocate a vmnode for the heap.
   // XXX pre-allocate 32 pages..
-  if((vmn = vmn_allocpg(32)) == 0)
+  if((vmn = new vmnode(32)) == 0)
     goto bad;
   if(args->vmap->insert(vmn, BRK) < 0)
     goto bad;
@@ -161,7 +161,7 @@ int
 exec(char *path, char **argv)
 {
   struct inode *ip = NULL;
-  struct vmap *vmap = NULL;
+  struct vmap *vmp = NULL;
   struct vmnode *vmn = NULL;
   struct elfhdr elf;
   struct proghdr ph;
@@ -183,14 +183,14 @@ exec(char *path, char **argv)
   if(elf.magic != ELF_MAGIC)
     goto bad;
 
-  if((vmap = vmap_alloc()) == 0)
+  if((vmp = new vmap()) == 0)
     goto bad;
 
   // Arguments for work queue
   struct eargs args;
   args.proc = myproc();
   args.ip = ip;
-  args.vmap = vmap;
+  args.vmap = vmp;
   args.path = path;
   args.argv = argv;
 
@@ -225,7 +225,7 @@ exec(char *path, char **argv)
 
   // Commit to the user image.
   oldvmap = myproc()->vmap;
-  myproc()->vmap = vmap;
+  myproc()->vmap = vmp;
   myproc()->brk = BRK + 8;  // XXX so that brk-1 points within heap vma..
   myproc()->tf->rip = elf.entry;  // main
   
@@ -238,8 +238,8 @@ exec(char *path, char **argv)
 
  bad:
   cprintf("exec failed\n");
-  if(vmap)
-    vmap->decref();
+  if(vmp)
+    vmp->decref();
   if(vmn)
     delete vmn;
   gc_end_epoch();

@@ -274,15 +274,14 @@ inituser(void)
 
   p = allocproc();
   bootproc = p;
-  if((p->vmap = vmap_alloc()) == 0)
+  if((p->vmap = new vmap()) == 0)
     panic("userinit: out of vmaps?");
-  struct vmnode *vmn = 
-    vmn_allocpg(PGROUNDUP(_initcode_size) / PGSIZE);
+  vmnode *vmn =  new vmnode(PGROUNDUP(_initcode_size) / PGSIZE);
   if(vmn == 0)
     panic("userinit: vmn_allocpg");
   if(p->vmap->insert(vmn, 0) < 0)
     panic("userinit: vmap_insert");
-  if(copyout(p->vmap, 0, _initcode_start, _initcode_size) < 0)
+  if(p->vmap->copyout(0, _initcode_start, _initcode_size) < 0)
     panic("userinit: copyout");
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = UCSEG | 0x3;
@@ -464,7 +463,7 @@ growproc(int n)
     return -1;
   }
 
-  struct vmnode *vmn = vmn_allocpg(PGROUNDUP(newn) / PGSIZE);
+  vmnode *vmn = new vmnode(PGROUNDUP(newn) / PGSIZE);
   if(vmn == 0){
     release(&m->lock);
     cprintf("growproc: vmn_allocpg failed\n");
@@ -680,7 +679,7 @@ threadalloc(void (*fn)(void *), void *arg)
   if (p == NULL)
     return 0;
   
-  p->vmap = vmap_alloc();
+  p->vmap = new vmap();
   if (p->vmap == NULL) {
     freeproc(p);
     return 0;

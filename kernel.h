@@ -97,8 +97,6 @@ void	        dir_flush(struct inode *dp);
 // gc.c
 void            initgc(void);
 void            initprocgc(struct proc *);
-void            gc_begin_epoch();
-void            gc_end_epoch();
 void            gc_start(void);
 
 #ifdef __cplusplus
@@ -249,12 +247,6 @@ void            uartputc(char c);
 void            uartintr(void);
 
 // vm.c
-enum vmntype { EAGER, ONDEMAND };
-
-struct vmap *   vmap_alloc(void);
-struct vmnode*  vmn_alloc(u64, enum vmntype);
-struct vmnode*  vmn_allocpg(u64);
-int             copyout(struct vmap *, uptr, void*, u64);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             pagefault(struct vmap *, uptr, u32);

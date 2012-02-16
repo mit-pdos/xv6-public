@@ -14,12 +14,6 @@ using std::atomic;
 #define NHASH 30
 #endif
 
-class scoped_gc_epoch {
- public:
-  scoped_gc_epoch() { gc_begin_epoch(); }
-  ~scoped_gc_epoch() { gc_end_epoch(); }
-};
-
 template<class K, class V>
 class xelem : public rcu_freed {
  public:

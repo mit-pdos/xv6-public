@@ -110,7 +110,7 @@ sys_map(void)
   if (argint64(1, &len) < 0)
     return -1;
 
-  struct vmnode *vmn = vmn_allocpg(PGROUNDUP(len) / PGSIZE);
+  vmnode *vmn = new vmnode(PGROUNDUP(len) / PGSIZE);
   if (vmn == 0)
     return -1;
 

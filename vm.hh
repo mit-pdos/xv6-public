@@ -4,9 +4,32 @@
 
 using std::atomic;
 
+// A memory object (physical pages or inode).
+enum vmntype { EAGER, ONDEMAND };
+
+struct vmnode {
+  u64 npages;
+  char *page[128];
+  atomic<u64> ref;
+  enum vmntype type;
+  struct inode *ip;
+  u64 offset;
+  u64 sz;
+
+  vmnode(u64 npg, vmntype type = EAGER);
+  ~vmnode();
+  void decref();
+  int allocpg();
+  vmnode* copy();
+
+  int load(inode *ip, u64 offset, u64 sz);
+  int demand_load();
+};
+
 // A mapping of a chunk of an address space to
 // a specific memory object.
-enum vmatype { PRIVATE, COW};
+enum vmatype { PRIVATE, COW };
+
 struct vma : public rcu_freed {
   uptr va_start;               // start of mapping
   uptr va_end;                 // one past the last byte
@@ -23,25 +46,6 @@ struct vma : public rcu_freed {
   ~vma();
 
   virtual void do_gc() { delete this; }
-};
-
-// A memory object (physical pages or inode).
-struct vmnode {
-  u64 npages;
-  char *page[128];
-  atomic<u64> ref;
-  enum vmntype type;
-  struct inode *ip;
-  u64 offset;
-  u64 sz;
-
-  vmnode(u64 npg, vmntype type);
-  ~vmnode();
-  void decref();
-  int allocpg();
-
-  int load(inode *ip, u64 offset, u64 sz);
-  int demand_load();
 };
 
 // An address space: a set of vmas plus h/w page table.
@@ -63,4 +67,11 @@ struct vmap {
   vma* lookup(uptr start, uptr len);
   int insert(vmnode *n, uptr va_start);
   int remove(uptr start, uptr len);
+
+  int pagefault(uptr va, u32 err);
+  int copyout(uptr va, void *p, u64 len);
+
+ private:
+  vma* pagefault_ondemand(uptr va, u32 err, vma *m);
+  int pagefault_wcow(uptr va, pme_t *pte, vma *m, u64 npg);
 };

@@ -18,3 +18,13 @@ class rcu_freed {
 
   virtual void do_gc(void) = 0;
 } __mpalign__;
+
+void gc_begin_epoch();
+void gc_end_epoch();
+
+class scoped_gc_epoch {
+ public:
+  scoped_gc_epoch() { gc_begin_epoch(); }
+  ~scoped_gc_epoch() { gc_end_epoch(); }
+};
+
