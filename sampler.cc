@@ -5,6 +5,7 @@ extern "C" {
 #include "fs.h"
 #include "kernel.h"
 #include "stat.h"
+#include "kalloc.h"
 }
 
 #include "file.hh"

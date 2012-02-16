@@ -11,6 +11,7 @@ extern "C" {
 #include "bits.h"
 #include "kmtrace.h"
 #include "sched.h"
+#include "kalloc.h"
 }
 
 #include "vm.hh"

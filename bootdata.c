@@ -1,5 +1,12 @@
 #include "types.h"
 #include "mmu.h"
+#include "spinlock.h"
+#include "kalloc.h"
+
+/*
+ * Data structures that use C99 designated initializers,
+ * which aren't avialable in C++11.
+ */
 
 struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
   // null
@@ -16,5 +23,23 @@ struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
   [6]=SEGDESC(0, 0xfffff, SEG_W|SEG_S|SEG_DPL(3)|SEG_P|SEG_D|SEG_G),
   // 64-bit user code
   [7]=SEGDESC(0, 0, SEG_R|SEG_CODE|SEG_S|SEG_DPL(3)|SEG_P|SEG_L|SEG_G),
+};
+
+struct kmem slabmem[slab_type_max][NCPU] = {
+  [slab_stack][0 ... NCPU-1] = {
+    .name  = "   kstack",
+    .size  = KSTACKSIZE,
+    .ninit = CPUKSTACKS,
+  },
+  [slab_perf][0 ... NCPU-1] = {
+    .name  = "   kperf",
+    .size  = PERFSIZE,
+    .ninit = 1,
+  },
+  [slab_kshared][0 ... NCPU-1] = {
+    .name  = "   kshared",
+    .size  = KSHAREDSIZE,
+    .ninit = CPUKSTACKS,
+  },
 };
 

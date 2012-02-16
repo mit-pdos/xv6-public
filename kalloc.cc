@@ -3,6 +3,7 @@
 // Slab allocator, for chunks larger than one page.
 //
 
+extern "C" {
 #include "types.h"
 #include "mmu.h"
 #include "kernel.h"
@@ -11,29 +12,12 @@
 #include "mtrace.h"
 #include "cpu.h"
 #include "multiboot.h"
+}
 
 static struct Mbmem mem[128];
 static u64 nmem;
 static u64 membytes;
-
 struct kmem kmems[NCPU];
-static struct kmem slabmem[][NCPU] = {
-  [slab_stack][0 ... NCPU-1] = { 
-    .name  = "   kstack",
-    .size  = KSTACKSIZE,
-    .ninit = CPUKSTACKS,
-  },
-  [slab_perf][0 ... NCPU-1] = { 
-    .name  = "   kperf",
-    .size  = PERFSIZE,
-    .ninit = 1,
-  },
-  [slab_kshared][0 ... NCPU-1] = { 
-    .name  = "   kshared",
-    .size  = KSHAREDSIZE,
-    .ninit = CPUKSTACKS,
-  },
-};
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
@@ -50,7 +34,7 @@ memsearch(paddr pa)
   for (e = &mem[0]; e < q; e++)
     if ((e->base <= pa) && ((e->base+e->length) > pa))
       return e;
-  return NULL;
+  return 0;
 }
 
 static u64
@@ -93,11 +77,11 @@ initmem(u64 mbaddr)
   struct Mbmem *mbmem;
   u8 *p, *ep;
 
-  mb = p2v(mbaddr);
+  mb = (Mbdata*) p2v(mbaddr);
   if(!(mb->flags & (1<<6)))
     panic("multiboot header has no memory map");
 
-  p = p2v(mb->mmap_addr);
+  p = (u8*) p2v(mb->mmap_addr);
   ep = p + mb->mmap_length;
 
   while (p < ep) {
@@ -121,7 +105,7 @@ pgalloc(void)
   void *p = (void*)PGROUNDUP((uptr)newend);
   memset(p, 0, PGSIZE);
   newend = newend + PGSIZE;
-  return p;
+  return (char*) p;
 }
 
 // Free the page of physical memory pointed at by v,
@@ -210,7 +194,7 @@ kalloc(void)
 }
 
 void *
-ksalloc(slab_t slab)
+ksalloc(int slab)
 {
   return kalloc_pool(slabmem[slab]);
 }
@@ -225,7 +209,7 @@ slabinit(struct kmem *k, char **p, u64 *off)
     if (memsize(p) < k->size)
       panic("slabinit: memsize");
     kfree_pool(k, *p);
-    *p = memnext(*p, k->size);
+    *p = (char*) memnext(*p, k->size);
     *off = *off+k->size;
   }
 }  
@@ -247,7 +231,7 @@ initkalloc(u64 mbaddr)
     kmems[c].size = PGSIZE;
   }
 
-  for (int i = 0; i < NELEM(slabmem); i++) {
+  for (int i = 0; i < slab_type_max; i++) {
     for (int c = 0; c < NCPU; c++) {
       slabmem[i][c].name[0] = (char) c + '0';
       initlock(&slabmem[i][c].lock,
@@ -269,7 +253,7 @@ initkalloc(u64 mbaddr)
       slabinit(&slabmem[i][c], &p, &k);
    
     // The rest goes to the page allocator
-    for (; k != n; k += PGSIZE, p = memnext(p, PGSIZE)) {
+    for (; k != n; k += PGSIZE, p = (char*) memnext(p, PGSIZE)) {
       if (p == (void *)-1)
         panic("initkalloc: e820next");
       kfree_pool(&kmems[c], p);
@@ -285,14 +269,14 @@ initkalloc(u64 mbaddr)
 void
 kfree(void *v)
 {
-  verifyfree(v, mykmem()->size);
-  kfree_pool(mykmem(), v);
+  verifyfree((char*) v, mykmem()->size);
+  kfree_pool(mykmem(), (char*) v);
 }
 
 void
-ksfree(slab_t slab, void *v)
+ksfree(int slab, void *v)
 {
-  kfree_pool(slabmem[slab], v);
+  kfree_pool(slabmem[slab], (char*) v);
 }
 
 void

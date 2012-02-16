@@ -2,6 +2,8 @@ extern "C" {
 #include "types.h"
 #include "multiboot.h"
 #include "kernel.h"
+#include "spinlock.h"
+#include "kalloc.h"
 #include "cpu.h"
 #include "amd64.h"
 }
