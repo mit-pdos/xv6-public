@@ -388,13 +388,13 @@ sys_exec(void)
   for(i=0;; i++){
     if(i >= NELEM(argv))
       return -1;
-    if(fetchint(proc, uargv+4*i, (int*)&uarg) < 0)
+    if(fetchint(uargv+4*i, (int*)&uarg) < 0)
       return -1;
     if(uarg == 0){
       argv[i] = 0;
       break;
     }
-    if(fetchstr(proc, uarg, &argv[i]) < 0)
+    if(fetchstr(uarg, &argv[i]) < 0)
       return -1;
   }
   return exec(path, argv);
