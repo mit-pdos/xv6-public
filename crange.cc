@@ -119,7 +119,7 @@ range::dec_ref(void)
 range::range(crange *crarg, u64 k, u64 sz, rcu_freed *v, range *n, int nl)
   : rcu_freed("range_delayed")
 {
-  dprintf("range:range:: %lu %lu %d\n", k, sz, nl);
+  dprintf("range::range: %lu %lu %d\n", k, sz, nl);
   key = k;
   size = sz;
   value = v;
@@ -500,8 +500,12 @@ crange_locked::crange_locked(crange_locked &&x)
 crange_locked::~crange_locked()
 {
   if (prev_) {
-    for (range *e = prev_; e && e != succ_; e = e->next[0].ptr())
+    range *n;
+    for (range *e = prev_; e && e != succ_; e = n) {
+      // as soon a we release, the next pointer can change, so read it first
+      n = e->next[0].ptr();
       release(e->lock);
+    }
   }
 }
 
