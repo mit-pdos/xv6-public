@@ -49,7 +49,7 @@ int atoi(const char*);
 int forkt(void *sp, void *pc, void *arg);
 
 // printf.c
-void printf(int, const char*, ...);
+void fprintf(int, const char*, ...);
 void snprintf(char *buf, unsigned int n, const char *fmt, ...);
 void die(const char* errstr, ...) __attribute__((noreturn));
 END_DECLS

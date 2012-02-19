@@ -30,14 +30,14 @@ thr(void)
 
     if (state == 3) {
       state = 4;
-      printf(1, "about to access after unmap\n");
+      fprintf(1, "about to access after unmap\n");
       release(&l);
 
       p[0] = 'X';
       p[4096] = 'Y';
 
       acquire(&l);
-      printf(1, "still alive after unmap write\n");
+      fprintf(1, "still alive after unmap write\n");
       exit();
     }
     release(&l);
@@ -50,7 +50,7 @@ main(void)
 {
   p = (char *) 0x80000;
   if (map((void *) p, 8192) < 0) {
-    printf(1, "map failed\n");
+    fprintf(1, "map failed\n");
     exit();
   }
 
@@ -66,25 +66,25 @@ main(void)
   }
 
   if (p[0] != 'x' || p[4096] != 'y') {
-    printf(1, "mismatch\n");
+    fprintf(1, "mismatch\n");
     exit();
   }
 
-  printf(1, "shm ok\n");
+  fprintf(1, "shm ok\n");
 
   if (unmap((void *) p, 8192) < 0) {
-    printf(1, "unmap failed\n");
+    fprintf(1, "unmap failed\n");
     exit();
   }
 
   state = 3;
-  printf(1, "waiting for unmap access\n");
+  fprintf(1, "waiting for unmap access\n");
   while (state != 4) {
     release(&l);
     spin();
     acquire(&l);
   }
 
-  printf(1, "maptest done\n");
+  fprintf(1, "maptest done\n");
   exit();
 }

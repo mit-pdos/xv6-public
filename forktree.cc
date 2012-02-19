@@ -11,7 +11,7 @@ forktree(void)
 {
   int depth = 0;
 
-  printf(1, "%d: fork tree\n", getpid());
+  fprintf(1, "%d: fork tree\n", getpid());
   mtenable("xv6-forktree");
 
  next_level:
@@ -22,7 +22,7 @@ forktree(void)
   for (int i = 0; i < NCHILD; i++) {
     int pid = fork(0);
     if (pid < 0) {
-      printf(1, "fork error\n");
+      fprintf(1, "fork error\n");
       exit();
     }
 
@@ -34,13 +34,13 @@ forktree(void)
 
   for (int i = 0; i < NCHILD; i++) {
     if (wait() < 0) {
-      printf(1, "wait stopped early\n");
+      fprintf(1, "wait stopped early\n");
       exit();
     }
   }
   
   if (wait() != -1) {
-    printf(1, "wait got too many\n");
+    fprintf(1, "wait got too many\n");
     exit();
   }
 
@@ -50,7 +50,7 @@ forktree(void)
   mtops(0);
   mtdisable("xv6-forktree");
   
-  printf(1, "%d: fork tree OK\n", getpid());
+  fprintf(1, "%d: fork tree OK\n", getpid());
   // halt();
 }
 

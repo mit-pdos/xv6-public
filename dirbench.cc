@@ -22,7 +22,7 @@ bench(u32 tid)
 
       int fd = open(pn, O_CREATE | O_RDWR);
       if (fd < 0)
-	printf(1, "create failed\n");
+	fprintf(1, "create failed\n");
 
       close(fd);
     }
@@ -31,7 +31,7 @@ bench(u32 tid)
       snprintf(pn, sizeof(pn), "%s/f:%d:%d", dirs[tid], tid, (i % nfile));
       int fd = open(pn, O_RDWR);
       if (fd < 0)
-	printf(1, "open failed\n");
+        fprintf(1, "open failed\n");
 
       close(fd);
     }
@@ -39,7 +39,7 @@ bench(u32 tid)
     for (u32 i = 0; i < nfile; i++) {
       snprintf(pn, sizeof(pn), "%s/f:%d:%d", dirs[tid], tid, i);
       if (unlink(pn) < 0)
-	printf(1, "unlink failed\n");
+	fprintf(1, "unlink failed\n");
     }
   }
 
@@ -53,12 +53,12 @@ main(void)
     //snprintf(dirs[i], sizeof(dirs[i]), "/db%d", i);
     snprintf(dirs[i], sizeof(dirs[i]), "/dbx");
     if (mkdir(dirs[i]) < 0)
-      printf(1, "mkdir failed\n");
+      fprintf(1, "mkdir failed\n");
   }
 
   // mtrace_enable_set(1, "xv6-dirbench");
 
-  printf(1, "dirbench[%d]: start\n", getpid());
+  fprintf(1, "dirbench[%d]: start\n", getpid());
   for(u32 i = 0; i < nthread; i++) {
     int pid = fork(0);
     if (pid == 0)
@@ -69,7 +69,7 @@ main(void)
     wait();
 
   // mtrace_enable_set(0, "xv6-dirbench");
-  printf(1, "dirbench[%d]: done\n", getpid());
+  fprintf(1, "dirbench[%d]: done\n", getpid());
   // halt();
   exit();
 }

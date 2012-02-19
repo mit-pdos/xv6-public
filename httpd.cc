@@ -16,7 +16,7 @@ static int xwrite(int fd, const void *buf, u64 n)
   while (n) {
     r = write(fd, buf, n);
     if (r < 0 || r == 0) {
-      printf(1, "xwrite: failed %d\n", r);
+      fprintf(1, "xwrite: failed %d\n", r);
       return -1;
     }
     buf = (char *) buf + r;
@@ -59,7 +59,7 @@ error(int s, int code)
   r = strlen(buf);
 
   if (xwrite(s, buf, r))
-    printf(2, "httpd error: incomplete write\n");
+    fprintf(2, "httpd error: incomplete write\n");
 }
 
 static int
@@ -128,7 +128,7 @@ content(int s, int fd)
   for (;;) {
     n = read(fd, buf, sizeof(buf));
     if (n < 0) {
-      printf(2, "send_data: read failed %d\n", n);
+      fprintf(2, "send_data: read failed %d\n", n);
       return n;
     } else if (n == 0) {
       return 0;
@@ -154,7 +154,7 @@ resp(int s, const char *url)
 
   r = fstat(fd, &stat);
   if (r < 0) {
-    printf(2, "httpd resp: fstat %d\n", r);
+    fprintf(2, "httpd resp: fstat %d\n", r);
     close(fd);
     return error(s, 404);
   }
@@ -227,7 +227,7 @@ client(int s)
 
   r = read(s, b, NELEM(b)-1);
   if (r < 0)
-    printf(1, "httpd client: read %d\n", r);
+    fprintf(1, "httpd client: read %d\n", r);
   b[r] = 0;
   
   r = parse(b, &url);
@@ -236,7 +236,7 @@ client(int s)
     return;
   }    
 
-  printf(1, "httpd client: url %s\n", url);
+  fprintf(1, "httpd client: url %s\n", url);
   resp(s, url);
   free(url);
 }
@@ -263,7 +263,7 @@ main(void)
   if (r < 0)
     die("httpd listen: %d\n", r);
 
-  printf(1, "httpd: port 80\n");
+  fprintf(1, "httpd: port 80\n");
 
   for (;;) {
     socklen_t socklen;
@@ -272,10 +272,10 @@ main(void)
     socklen = sizeof(sin);
     ss = accept(s, (struct sockaddr *)&sin, &socklen);
     if (ss < 0) {
-      printf(2, "telnetd accept: %d\n", ss);
+      fprintf(2, "telnetd accept: %d\n", ss);
       continue;
     }
-    printf(1, "httpd: connection %s\n", ipaddr(&sin));
+    fprintf(1, "httpd: connection %s\n", ipaddr(&sin));
 
     client(ss);
     close(ss);

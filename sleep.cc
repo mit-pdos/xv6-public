@@ -8,7 +8,7 @@ int
 main(int ac, char *av[])
 {
   if (ac != 2) {
-    printf(1, "Usage: %s ticks\n", av[0]);
+    fprintf(1, "Usage: %s ticks\n", av[0]);
     exit();
   }
 

@@ -24,7 +24,7 @@ main(void)
   if (r < 0)
     die("telnetd listen: %d\n", r);
 
-  printf(1, "telnetd: port 23\n");
+  fprintf(1, "telnetd: port 23\n");
 
   for (;;) {
     socklen_t socklen;
@@ -34,14 +34,14 @@ main(void)
     socklen = sizeof(sin);
     ss = accept(s, (struct sockaddr *)&sin, &socklen);
     if (ss < 0) {
-      printf(2, "telnetd accept: %d\n", ss);
+      fprintf(2, "telnetd accept: %d\n", ss);
       continue;
     }
-    printf(1, "telnetd: connection %s\n", ipaddr(&sin));
+    fprintf(1, "telnetd: connection %s\n", ipaddr(&sin));
 
     pid = fork(0);
     if (pid < 0) {
-      printf(2, "telnetd fork: %d\n", pid);
+      fprintf(2, "telnetd fork: %d\n", pid);
       close(ss);
       continue;
     }
@@ -58,6 +58,6 @@ main(void)
     }
     close(ss);
     wait();
-    printf(1, "telnetd: connection closed\n");
+    fprintf(1, "telnetd: connection closed\n");
   }
 }
