@@ -42,7 +42,7 @@ class scoped_acquire {
   scoped_acquire(spinlock *l) : _l(0) { acquire(l); }
   ~scoped_acquire() { release(); }
   void release() { if (_l) { ::release(_l); _l = 0; } }
-  void acquire(spinlock *l) { assert(!_l); acquire(_l); _l = l; }
+  void acquire(spinlock *l) { assert(!_l); ::acquire(l); _l = l; }
 };
 
 namespace std {
