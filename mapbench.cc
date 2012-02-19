@@ -17,7 +17,7 @@ thr(void *arg)
 
   for (int i = 0; i < 10000; i++) {
     if (verbose && ((i % 100) == 0))
-      printf(1, "%d: %d ops\n", tid, i);
+      fprintf(1, "%d: %d ops\n", tid, i);
 
     volatile char *p = (char*) (0x40000UL + tid * 8 * 4096);
     if (map((void *) p, 8 * 4096) < 0) {
