@@ -5,7 +5,9 @@
 using std::atomic;
 
 struct crange;
+struct crange_locked;
 struct range;
+class range_iterator;
 
 template<class T>
 class markptr_ptr;
@@ -83,25 +85,35 @@ class markptr_mark : public markptr<T> {
 };
 
 struct range : public rcu_freed {
- public:
+ private:
   u64 key;
   u64 size;
+
+ public:
   rcu_freed *value;
+
+ private:
   atomic<int> curlevel;  // the current levels it appears on
   int nlevel;            // the number of levels this range should appear
   crange *cr;            // the crange this range is part of
   markptr<range>* next;  // one next pointer per level
   spinlock *lock;        // on separate cache line?
 
-  range(crange *cr, u64 k, u64 sz, rcu_freed *v, range *n, int nlevel = 0);
-  ~range();
-  virtual void do_gc() {
-    delete this;
-  }
-
   void print(int l);
   void dec_ref(void);
   int lockif(markptr<range> e);
+  ~range();
+
+  friend class crange;
+  friend class crange_locked;
+  friend class range_iterator;
+
+ public:
+  range(crange *cr, u64 k, u64 sz, rcu_freed *v, range *n, int nlevel = 0);
+
+  virtual void do_gc() {
+    delete this;
+  }
 } __mpalign__;
 
 class range_iterator {
@@ -123,11 +135,17 @@ struct crange {
  private:
   range *crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
 
+  static void mark(range *f, range *s);
+  static void freen(struct range *f, struct range *l);
+  static int lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr);
+
   void print(int);
   void check(struct range *absent);
   int del_index(range *p0, range **e, int l);
   void add_index(int l, range *e, range *p1, markptr<range> s1);
   int find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, range **s0);
+
+  friend class crange_locked;
   friend class range;
 
  public:

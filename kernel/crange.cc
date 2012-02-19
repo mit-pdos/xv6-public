@@ -161,8 +161,8 @@ range::lockif(markptr<range> e)
 // causing curlevel to drop below nlevel, and causing add_index to add the
 // node back on level on which it already has been inserted (because it hasn't
 // been marked deleted yet at that level).
-static void
-mark(range *f, range *s)
+void
+crange::mark(range *f, range *s)
 {
   struct range *e;
   for (e = f; e && e != s; e = e->next[0].ptr()) {
@@ -173,8 +173,8 @@ mark(range *f, range *s)
 }
 
 // Delay free ranges f through l
-static void
-freen(struct range *f, struct range *l)
+void
+crange::freen(struct range *f, struct range *l)
 {
   struct range *e;
   for (e = f; e && e != l; e = e->next[0].ptr()) {
@@ -220,7 +220,7 @@ crange::~crange()
   range *e, *n;
   for (e = crange_head->next[0].ptr(); e; e = n) {
     n = e->next[0].ptr();
-    delete e;
+    e->do_gc();
   }
   delete crange_head;
 }
@@ -342,8 +342,8 @@ crange::add_index(int l, range *e, range *p1, markptr<range> s1)
 
 // Given the range that starts the sequence, find all other ranges part of sequence and lock them,
 // if l == 0
-static int
-lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr)
+int
+crange::lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr)
 {
   struct range *e = *er;
   assert(*pr != e);
@@ -525,11 +525,11 @@ crange_locked::replace(range *repl)
   // do compare-exchange first, and only then mark the old ranges as deleted;
   // otherwise, concurrent readers may not find either old or new ranges.
   assert(prev_->next[0].cmpxch(first_?:succ_, repl?:succ_));
-  mark(first_, succ_);
+  crange::mark(first_, succ_);
 
   for (range *e = first_; e && e != succ_; e = e->next[0].ptr())
     release(e->lock);
-  freen(first_, last_);
+  crange::freen(first_, last_);
 
   first_ = repl;
   last_ = newlast;

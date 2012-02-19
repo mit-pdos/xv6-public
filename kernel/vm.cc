@@ -282,7 +282,8 @@ vmap::insert(vmnode *n, uptr vma_start)
     u64 len = n->npages * PGSIZE;
     auto span = cr.search_lock(vma_start, len);
     for (auto r: span) {
-      cprintf("vmap::insert: overlap 0x%lx @ 0x%lx\n", r->size, r->key);
+      vma *rvma = (vma*) r->value;
+      cprintf("vmap::insert: overlap with 0x%lx--0x%lx\n", rvma->vma_start, rvma->vma_end);
       return -1;
     }
 
@@ -323,7 +324,8 @@ vmap::remove(uptr vma_start, uptr len)
 
     auto span = cr.search_lock(vma_start, len);
     for (auto r: span) {
-      if (r->key < vma_start || r->key + r->size > vma_end) {
+      vma *rvma = (vma*) r->value;
+      if (rvma->vma_start < vma_start || rvma->vma_end > vma_end) {
         cprintf("vmap::remove: partial unmap not supported\n");
         return -1;
       }
