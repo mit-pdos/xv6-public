@@ -119,6 +119,7 @@ trap(struct trapframe *tf)
 
     if(tf->trapno == T_PGFLT){
       uptr addr = rcr2();
+      sti();
       if(addr < USERTOP && pagefault(myproc()->vmap, addr, tf->err) >= 0){
 #if MTRACE
         mtstop(myproc());
@@ -127,6 +128,7 @@ trap(struct trapframe *tf)
 #endif
         return;
       }
+      cli();
     }
 
     // In user space, assume process misbehaved.
