@@ -12,7 +12,7 @@ typedef struct {
 static inline void
 ql_init(qlock_t *l, const char *name)
 {
-  l->v = NULL;
+  l->v = 0;
   l->name = name;
 }
 

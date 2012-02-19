@@ -1,4 +1,5 @@
 #include "spinlock.h"
+#include "atomic.hh"
 
 // Saved registers for kernel context switches.
 // (also implicitly defined in swtch.S)
@@ -14,7 +15,7 @@ struct context {
 
 // Work queue frame
 struct cilkframe {
-  volatile u64 ref;
+  volatile std::atomic<u64> ref;
 };
 
 // Per-process, per-stack meta data for mtrace

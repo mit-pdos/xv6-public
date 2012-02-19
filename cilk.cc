@@ -27,14 +27,14 @@
 
 #if CILKENABLE
 #include "types.h"
-#include "kernel.h"
+#include "kernel.hh"
 #include "amd64.h"
-#include "cpu.h"
-#include "bits.h"
+#include "cpu.hh"
+#include "bits.hh"
 #include "spinlock.h"
 #include "condvar.h"
 #include "queue.h"
-#include "proc.h"
+#include "proc.hh"
 #include "mtrace.h"
 #include "qlock.h"
 
@@ -114,7 +114,7 @@ __cilk_pop(struct cilkqueue *q)
   i = q->head;
   if ((i - q->tail) == 0) {
     ql_unlock(&q->lock, &qn);
-    return NULL;
+    return 0;
   }
   i = (i-1) & (NSLOTS-1);
   q->head--;
@@ -134,7 +134,7 @@ __cilk_steal(struct cilkqueue *q)
   i = q->tail;
   if ((i - q->head) == 0) {
     ql_unlock(&q->lock, &qn);
-    return NULL;
+    return 0;
   }
   i = i & (NSLOTS-1);
   q->tail++;
@@ -147,13 +147,13 @@ __cilk_steal(struct cilkqueue *q)
 static void
 __cilk_run(struct cilkthread *th)
 {
-  void (*fn)(uptr arg0, uptr arg1) = (void*)th->rip;
+  void (*fn)(uptr arg0, uptr arg1) = (void(*)(uptr,uptr))th->rip;
   struct cilkframe *old = mycpu()->cilkframe;
 
   mycpu()->cilkframe = th->frame;
   fn(th->arg0, th->arg1);
   mycpu()->cilkframe = old;
-  subfetch(&th->frame->ref, 1);
+  th->frame->ref--;
   kfree(th);
 }
 
@@ -163,7 +163,7 @@ __cilk_run(struct cilkthread *th)
 void
 cilk_push(void *rip, u64 arg0, u64 arg1)
 {
-  void (*fn)(uptr, uptr) = rip;
+  void (*fn)(uptr, uptr) = (void(*)(uptr,uptr))rip;
   struct cilkthread *th;
 
   th = (struct cilkthread *) kalloc();
@@ -179,8 +179,8 @@ cilk_push(void *rip, u64 arg0, u64 arg1)
   if (__cilk_push(cilk_cur(), th)) {
     kfree(th);
     fn(arg0, arg1);
-  } else 
-    fetchadd(&cilk_frame()->ref, 1);
+  } else
+    cilk_frame()->ref++;
 }
 
 // Try to execute one cilkthread.
@@ -248,7 +248,7 @@ cilk_end(void)
       }
     }
   }
-  mycpu()->cilkframe = NULL;
+  mycpu()->cilkframe = 0;
   popcli();
 }
 
@@ -281,7 +281,7 @@ testcilk(void)
     s = rdtsc();
     cilk_start();
     for (i = 0; i < iters; i++)
-      cilk_push(__test_stub, i, i);
+      cilk_push((void*) __test_stub, i, i);
     cilk_end();
     e = rdtsc();
     cprintf("testcilk: %lu\n", (e-s)/iters);
