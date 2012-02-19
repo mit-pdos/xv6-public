@@ -41,6 +41,7 @@ ASFLAGS   = -m64 -gdwarf-2 -MD
 LDFLAGS   = -m elf_x86_64
 
 OBJS = \
+	async.o \
 	bio.o \
 	bootdata.o \
 	cga.o \
@@ -59,7 +60,6 @@ OBJS = \
 	hwvm.o \
 	hz.o \
 	kalloc.o \
-	kernlet.o \
 	kmalloc.o \
 	kbd.o \
 	main.o \
