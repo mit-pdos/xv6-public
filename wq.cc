@@ -212,15 +212,15 @@ __test_stub(struct work *w, void *a0, void *a1)
 {
   //long i = (long)a0;
   //cprintf("%u: %lu\n", cpunum(), i);
-  volatile int *running = (volatile int*) a1;
-  subfetch(running, 1);
+  volatile atomic<int> *running = (volatile atomic<int>*) a1;
+  (*running)--;
 }
 
 void
 testwq(void)
 {
   enum { iters = 10 };
-  static volatile int running = iters;
+  static volatile atomic<int> running(iters);
   u64 e, s;
   long i;
   
