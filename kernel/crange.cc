@@ -115,17 +115,13 @@ range::dec_ref(void)
 }
 
 range::range(crange *crarg, u64 k, u64 sz, int nl)
-  : rcu_freed("range_delayed")
+  : rcu_freed("range_delayed"),
+    key(k), size(sz), curlevel(0),
+    nlevel(nl ?: range_draw_nlevel(cr->nlevel)),
+    cr(crarg), next(new markptr<range>[nlevel])
 {
   dprintf("range::range: %lu %lu %d\n", k, sz, nl);
-  key = k;
-  size = sz;
-  cr = crarg;
   assert(cr->nlevel > 0);
-  curlevel = 0;
-  if (nl == 0) nlevel = range_draw_nlevel(cr->nlevel);
-  else nlevel = nl;
-  next = new markptr<range>[nlevel]; // cache align?
   assert(next);
   for (int l = 0; l < nlevel; l++) next[l] = 0;
   assert(kmalign((void **) &lock, CACHELINE, 
@@ -203,10 +199,9 @@ crange::print(int full)
 }
 
 crange::crange(int nl)
+  : nlevel(nl), crange_head(new range(this, 0, 0, nlevel))
 {
   assert(nl > 0);
-  nlevel = nl;
-  crange_head = new range(this, 0, 0, nlevel);
   dprintf("crange::crange return 0x%lx\n", (u64) this);
 }
 
@@ -471,31 +466,27 @@ crange::search_lock(u64 k, u64 sz)
 }
 
 crange_locked::crange_locked(crange *cr, u64 base, u64 sz, range *p, range *f, range *l, range *s)
-  : cr_(cr), base_(base), size_(sz), prev_(p), first_(f), last_(l), succ_(s)
+  : cr_(cr), base_(base), size_(sz), prev_(p), first_(f), last_(l), succ_(s), moved_(false)
 {
 }
 
 crange_locked::crange_locked(crange_locked &&x)
-  : gc(std::move(x.gc))
+  : cr_(x.cr_),
+    base_(x.base_),
+    size_(x.size_),
+    prev_(x.prev_),
+    first_(x.first_),
+    last_(x.last_),
+    succ_(x.succ_),
+    moved_(false),
+    gc(std::move(x.gc))
 {
-  cr_ = x.cr_;
-  base_ = x.base_;
-  size_ = x.size_;
-  prev_ = x.prev_;
-  first_ = x.first_;
-  last_ = x.last_;
-  succ_ = x.succ_;
-
-  x.cr_ = 0;
-  x.prev_ = 0;
-  x.first_ = 0;
-  x.last_ = 0;
-  x.succ_ = 0;
+  x.moved_ = true;
 }
 
 crange_locked::~crange_locked()
 {
-  if (prev_) {
+  if (!moved_) {
     range *n;
     for (range *e = prev_; e && e != succ_; e = n) {
       // as soon a we release, the next pointer can change, so read it first

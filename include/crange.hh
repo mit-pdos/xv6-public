@@ -86,12 +86,12 @@ class markptr_mark : public markptr<T> {
 
 struct range : public rcu_freed {
  private:
-  u64 key;
-  u64 size;
+  const u64 key;
+  const u64 size;
   atomic<int> curlevel;  // the current levels it appears on
-  int nlevel;            // the number of levels this range should appear
-  crange *cr;            // the crange this range is part of
-  markptr<range>* next;  // one next pointer per level
+  const int nlevel;      // the number of levels this range should appear
+  crange *const cr;      // the crange this range is part of
+  markptr<range>* const next; // one next pointer per level
   spinlock *lock;        // on separate cache line?
 
   void print(int l);
@@ -131,7 +131,8 @@ class crange_locked;
 
 struct crange {
  private:
-  range *crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
+  const int nlevel;            // number of levels in the crange skip list
+  range *const crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
 
   static void mark(range *f, range *s);
   static void freen(struct range *f, struct range *l);
@@ -147,7 +148,6 @@ struct crange {
   friend class range;
 
  public:
-  int nlevel;                  // number of levels in the crange skip list
   crange(int nlevel);
   ~crange(void);
 
@@ -172,10 +172,15 @@ end(const crange &cr)
 
 struct crange_locked {
  private:
-  crange *cr_;
-  u64 base_, size_;
+  crange *const cr_;
+  const u64 base_, size_;
 
-  range *prev_, *first_, *last_, *succ_;
+  range *const prev_;
+  range *first_;
+  range *last_;
+  range *const succ_;
+
+  bool moved_;
   scoped_gc_epoch gc;
 
   crange_locked(crange *cr, u64 base, u64 size, range *p, range *f, range *l, range *s);
