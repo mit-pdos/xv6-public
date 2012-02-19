@@ -172,7 +172,7 @@ struct crange_locked {
   crange_locked(crange_locked &&x);
   ~crange_locked();
 
-  range_iterator begin() const { return range_iterator(first_); };
+  range_iterator begin() const { return range_iterator(first_ ?: succ_); };
   range_iterator end() const { return range_iterator(succ_); };
   void replace(range *r);
 };

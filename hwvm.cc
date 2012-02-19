@@ -218,13 +218,13 @@ tlbflush()
 {
   u64 myreq = tlbflush_req++;
 
-  cli();
+  pushcli();
   int myid = mycpu()->id;
   lcr3(rcr3());
   for (int i = 0; i < ncpu; i++)
     if (i != myid)
       lapic_tlbflush(i);
-  sti();
+  popcli();
 
   for (int i = 0; i < ncpu; i++)
     if (i != myid)
