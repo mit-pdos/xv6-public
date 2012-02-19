@@ -76,7 +76,7 @@ migrate(struct proc *p)
   if (p == myproc())
     panic("migrate: myproc");
 
-  for (c = 0; c < NCPU; c++) {
+  for (c = 0; c < ncpu; c++) {
     if (c == mycpu()->id)
       continue;
     if (idle[c]) {    // OK if there is a race

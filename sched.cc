@@ -59,8 +59,8 @@ steal(void)
 
   pushcli();
   
-  for (i = 1; i < NCPU; i++) {
-    struct runq *q = &runq[(i+cpunum()) % NCPU];
+  for (i = 1; i < ncpu; i++) {
+    struct runq *q = &runq[(i+cpunum()) % ncpu];
     struct proc *p;
 
     // XXX(sbw) Look for a process to steal.  Acquiring q->lock
