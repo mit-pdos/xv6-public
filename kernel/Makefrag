@@ -1,0 +1,85 @@
+OBJS = \
+	async.o \
+	bio.o \
+	bootdata.o \
+	cga.o \
+	cilk.o \
+	condvar.o \
+	console.o \
+	cpprt.o \
+	crange.o \
+	e1000.o \
+	exec.o \
+	file.o \
+	fmt.o \
+	fs.o \
+	ioapic.o \
+	lapic.o \
+	hwvm.o \
+	hz.o \
+	kalloc.o \
+	kmalloc.o \
+	kbd.o \
+	main.o \
+	memide.o \
+	mp.o \
+	net.o \
+	pci.o \
+	picirq.o \
+	pipe.o \
+	proc.o \
+	prof.o \
+	gc.o \
+	rnd.o \
+	sampler.o \
+	sched.o \
+	spinlock.o \
+	swtch.o \
+	string.o \
+	syscall.o \
+	sysfile.o \
+	sysproc.o \
+	uart.o \
+	vm.o \
+	trap.o \
+	trapasm.o \
+	wq.o \
+	incbin.o
+OBJS := $(addprefix $(O)/kernel/, $(OBJS))
+
+KERN = $(O)/kernel.elf
+
+all: $(KERN)
+
+$(KERN): $(O)/kernel/boot.o $(OBJS) $(LDEPS) kernel/kernel.ld
+	@echo "  LD     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(LD) $(LDFLAGS) -T kernel/kernel.ld -z max-page-size=4096 -e start \
+		-o $@ $(O)/kernel/boot.o $(OBJS) -L$(O) $(LFLAGS)
+
+$(O)/kernel/%.o: lib/%.cc
+	@echo "  CXX    $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(O)/kernel/%.o: CFLAGS+=-mcmodel=large
+$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=large
+
+$(O)/kernel/incbin.o: ASFLAGS+=-DMAKE_OUT=$(O)
+$(O)/kernel/incbin.o: $(O)/kernel/initcode $(O)/kernel/bootother $(O)/fs.img
+$(O)/kernel/%.o: kernel/%.S
+	@echo "  CC     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
+
+$(O)/kernel/initcode: TTEXT = 0x0
+$(O)/kernel/bootother: TTEXT = 0x7000
+$(O)/kernel/%: kernel/%.S
+	@echo "  CC     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CC) $(CFLAGS) -nostdinc -I. -c $< -o $@.o
+	$(Q)$(LD) $(LDFLAGS) -N -e start -Ttext $(TTEXT) -o $@.out $@.o
+	$(Q)$(OBJCOPY) -S -O binary $@.out $@
+
+.PRECIOUS: $(O)/kernel/%.o
+-include $(O)/kernel/*.d

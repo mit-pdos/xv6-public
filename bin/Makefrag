@@ -1,0 +1,42 @@
+UPROGS= \
+	cat \
+	echo \
+	init \
+	forkexectree \
+	forkexecbench \
+	forktree \
+	login \
+	ls \
+	mapbench \
+	maptest \
+	sh \
+	thrtest \
+	halt \
+	time \
+	sleep \
+	dirbench \
+	usertests \
+	lockstat \
+	preadtest \
+	perf
+
+ifeq ($(HAVE_LWIP),y)
+UPROGS += \
+       telnetd \
+       httpd
+endif
+
+UPROGS := $(addprefix $(O)/bin/, $(UPROGS))
+
+$(O)/bin/%.unstripped: $(O)/bin/%.o $(ULIB)
+	@echo "  LD     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(LD) $(LDFLAGS) -N -e main -Ttext 0x100000 -o $@ $^
+
+$(O)/bin/%: $(O)/bin/%.unstripped
+	@echo "  STRIP  $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(STRIP) -o $@ $<
+
+.PRECIOUS: $(O)/bin/%.o $(O)/bin/%.unstripped
+-include $(O)/bin/*.d

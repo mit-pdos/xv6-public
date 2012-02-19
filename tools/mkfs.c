@@ -6,9 +6,9 @@
 #include <assert.h>
 
 #define stat xv6_stat  // avoid clash with host struct stat
-#include "types.h"
-#include "fs.h"
-#include "stat.h"
+#include "include/types.h"
+#include "include/fs.h"
+#include "include/stat.h"
 
 int nblocks = 4067;
 int ninodes = 200;

@@ -10,12 +10,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include <unordered_map>
 #include <map>
 
-#include "types.h"
-#include "sampler.h"
+#include "include/types.h"
+#include "include/sampler.h"
 
 static void __attribute__((noreturn)) 
 edie(const char* errstr, ...) 
@@ -176,7 +177,6 @@ main(int ac, char **av)
   struct stat buf;
   char *x;
   int fd;
-  int i;
 
   if (ac < 3)
     edie("usage: %s sample-file elf-file", av[0]);
@@ -205,7 +205,7 @@ main(int ac, char **av)
   header = (struct logheader*)x;
 
   std::unordered_map<u64, int> map;
-  for (i = 0; i < header->ncpus; i++) {
+  for (u32 i = 0; i < header->ncpus; i++) {
     struct pmuevent *p;
     struct pmuevent *q;
 
