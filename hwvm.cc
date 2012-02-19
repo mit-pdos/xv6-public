@@ -221,10 +221,11 @@ tlbflush()
   pushcli();
   int myid = mycpu()->id;
   lcr3(rcr3());
+  popcli();
+
   for (int i = 0; i < ncpu; i++)
     if (i != myid)
       lapic_tlbflush(i);
-  popcli();
 
   for (int i = 0; i < ncpu; i++)
     if (i != myid)
