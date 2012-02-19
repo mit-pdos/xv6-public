@@ -135,9 +135,6 @@ sys_unmap(void)
   if (myproc()->vmap->remove(align_addr, align_len) < 0)
     return -1;
 
-  updatepages(myproc()->vmap->pml4,
-              (void*) align_addr, (void*) (align_addr+align_len-1), 0);
-  tlbflush();
   return 0;
 }
 

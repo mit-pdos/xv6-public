@@ -266,7 +266,6 @@ vmap::lookup(uptr start, uptr len)
 int
 vmap::insert(vmnode *n, uptr vma_start)
 {
-  scoped_acquire sa(&lock);
   u64 len = n->npages * PGSIZE;
 
   auto span = cr.search_lock(vma_start, len);
@@ -287,7 +286,7 @@ vmap::insert(vmnode *n, uptr vma_start)
   n->ref++;
   span.replace(new range(&cr, vma_start, len, e, 0));
 
-  // XXX shootdown
+  updatepages(pml4, (void*) e->vma_start, (void*) (e->vma_end-1), 0);
 
   return 0;
 }
@@ -295,7 +294,6 @@ vmap::insert(vmnode *n, uptr vma_start)
 int
 vmap::remove(uptr vma_start, uptr len)
 {
-  scoped_acquire sa(&lock);
   uptr vma_end = vma_start + len;
 
   auto span = cr.search_lock(vma_start, len);
@@ -310,7 +308,8 @@ vmap::remove(uptr vma_start, uptr len)
 
   span.replace(0);
 
-  // XXX shootdown
+  updatepages(pml4, (void*) vma_start, (void*) (vma_start + len - 1), 0);
+  tlbflush();
 
   return 0;
 }
