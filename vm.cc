@@ -401,13 +401,17 @@ vmap::pagefault(uptr va, u32 err)
   atomic<pme_t> *pte = walkpgdir(pml4, va, 1);
 
  retry:
-  (void) 0;
   pme_t ptev = pte->load();
 
   // optimize checks of args to syscals
   if ((ptev & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W)) {
     // XXX using pagefault() as a security check in syscalls is prone to races
     return 0;
+  }
+
+  if (ptev & PTE_LOCK) {
+    // locked, might as well wait for the other pagefaulting core..
+    goto retry;
   }
 
   scoped_gc_epoch gc;
@@ -431,7 +435,7 @@ vmap::pagefault(uptr va, u32 err)
     needflush = true;
   }
 
-  if ((ptev & PTE_LOCK) || !cmpxch(pte, ptev, ptev | PTE_LOCK))
+  if (!cmpxch(pte, ptev, ptev | PTE_LOCK))
     goto retry;
 
   // XXX check if vma has been deleted, and if so, unlock & goto retry

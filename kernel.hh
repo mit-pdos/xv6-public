@@ -5,7 +5,6 @@ extern "C" {
 }
 
 #include "atomic.hh"
-#include "hwvm.hh"
 #include <stdarg.h>
 
 #define KBASE   0xFFFFFF0000000000ull
