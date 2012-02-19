@@ -266,47 +266,57 @@ vmap::lookup(uptr start, uptr len)
 int
 vmap::insert(vmnode *n, uptr vma_start)
 {
-  u64 len = n->npages * PGSIZE;
+  vma *e;
 
-  auto span = cr.search_lock(vma_start, len);
-  for (auto e: span) {
-    cprintf("vmap::insert: overlap 0x%lx @ 0x%lx\n", e->size, e->key);
-    return -1;
+  {
+    // new scope to release the search lock before tlbflush
+    u64 len = n->npages * PGSIZE;
+    auto span = cr.search_lock(vma_start, len);
+    for (auto r: span) {
+      cprintf("vmap::insert: overlap 0x%lx @ 0x%lx\n", r->size, r->key);
+      return -1;
+    }
+
+    // XXX handle overlaps
+
+    e = new vma();
+    if (e == 0) {
+      cprintf("vmap::insert: out of vmas\n");
+      return -1;
+    }
+
+    e->vma_start = vma_start;
+    e->vma_end = vma_start + len;
+    e->n = n;
+    n->ref++;
+    span.replace(new range(&cr, vma_start, len, e, 0));
   }
 
-  // XXX handle overlaps
-
-  vma *e = new vma();
-  if (e == 0) {
-    cprintf("vmap::insert: out of vmas\n");
-    return -1;
-  }
-
-  e->vma_start = vma_start;
-  e->vma_end = vma_start + len;
-  e->n = n;
-  n->ref++;
-  span.replace(new range(&cr, vma_start, len, e, 0));
   updatepages(pml4, (void*) e->vma_start, (void*) (e->vma_end-1), 0);
+  tlbflush();
   return 0;
 }
 
 int
 vmap::remove(uptr vma_start, uptr len)
 {
-  uptr vma_end = vma_start + len;
+  {
+    // new scope to release the search lock before tlbflush
+    uptr vma_end = vma_start + len;
 
-  auto span = cr.search_lock(vma_start, len);
-  for (auto e: span) {
-    if (e->key < vma_start || e->key + e->size > vma_end) {
-      cprintf("vmap::remove: partial unmap not supported\n");
-      return -1;
+    auto span = cr.search_lock(vma_start, len);
+    for (auto r: span) {
+      if (r->key < vma_start || r->key + r->size > vma_end) {
+        cprintf("vmap::remove: partial unmap not supported\n");
+        return -1;
+      }
     }
+
+    // XXX handle partial unmap
+
+    span.replace(0);
   }
 
-  // XXX handle partial unmap
-
-  span.replace(0);
   updatepages(pml4, (void*) vma_start, (void*) (vma_start + len - 1), 0);
   tlbflush();
   return 0;
