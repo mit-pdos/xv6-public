@@ -176,11 +176,6 @@ vmap::vmap()
 
 vmap::~vmap()
 {
-  for (range *r: cr) {
-    delete (vma*) r->value;
-    cr.del(r->key, r->size);
-  }
-
   if (kshared)
     ksfree(slab_kshared, kshared);
   if (pml4)
@@ -228,7 +223,10 @@ vmap::copy(int share)
       goto err;
 
     ne->n->ref++;
-    nm->cr.add(ne->vma_start, ne->vma_end - ne->vma_start, (void *) ne);
+    auto span = nm->cr.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
+    for (auto x __attribute__((unused)): span)
+      assert(0);  /* span must be empty */
+    span.replace(new range(&nm->cr, ne->vma_start, ne->vma_end - ne->vma_start, ne, 0));
   }
 
   if (share)
@@ -271,10 +269,13 @@ vmap::insert(vmnode *n, uptr vma_start)
   scoped_acquire sa(&lock);
   u64 len = n->npages * PGSIZE;
 
-  if (lookup(vma_start, len)) {
-    cprintf("vmap_insert: overlap\n");
+  auto span = cr.search_lock(vma_start, len);
+  for (auto x __attribute__((unused)): span) {
+    cprintf("vmap::insert: overlap\n");
     return -1;
   }
+
+  // XXX handle overlaps
 
   vma *e = new vma();
   if (e == 0)
@@ -284,7 +285,10 @@ vmap::insert(vmnode *n, uptr vma_start)
   e->vma_end = vma_start + len;
   e->n = n;
   n->ref++;
-  cr.add(e->vma_start, len, (void *) e);
+  span.replace(new range(&cr, vma_start, len, e, 0));
+
+  // XXX shootdown
+
   return 0;
 }
 
@@ -293,16 +297,21 @@ vmap::remove(uptr vma_start, uptr len)
 {
   scoped_acquire sa(&lock);
   uptr vma_end = vma_start + len;
-  struct range *r = cr.search(vma_start, len);
-  if (r == 0)
-    panic("no vma?");
-  struct vma *e = (struct vma *) r->value;
-  if (e->vma_start != vma_start || e->vma_end != vma_end) {
-    cprintf("vmap_remove: partial unmap unsupported\n");
-    return -1;
+
+  auto span = cr.search_lock(vma_start, len);
+  for (auto x: span) {
+    if (x->key < vma_start || x->key + x->size > vma_end) {
+      cprintf("vmap::remove: partial unmap not supported\n");
+      return -1;
+    }
   }
-  cr.del(vma_start, len);
-  gc_delayed(e);
+
+  // XXX handle partial unmap
+
+  span.replace(0);
+
+  // XXX shootdown
+
   return 0;
 }
 
@@ -311,17 +320,17 @@ vmap::remove(uptr vma_start, uptr len)
  */
 
 vma *
-vmap::pagefault_ondemand(uptr va, u32 err, vma *m)
+vmap::pagefault_ondemand(uptr va, u32 err, vma *m, scoped_acquire *mlock)
 {
   if (m->n->allocpg() < 0)
     panic("pagefault: couldn't allocate pages");
-  release(&m->lock);
+  mlock->release();
   if (m->n->demand_load() < 0)
     panic("pagefault: couldn't load");
   m = lookup(va, 1);
   if (!m)
     panic("pagefault_ondemand");
-  acquire(&m->lock); // re-acquire lock on m
+  mlock->acquire(&m->lock); // re-acquire lock on m
   return m;
 }
 
@@ -363,21 +372,19 @@ vmap::pagefault(uptr va, u32 err)
   if (m == 0)
     return -1;
 
-  acquire(&m->lock);
+  scoped_acquire mlock(&m->lock);
   u64 npg = (PGROUNDDOWN(va) - m->vma_start) / PGSIZE;
 
   if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0)
-    m = pagefault_ondemand(va, err, m);
+    m = pagefault_ondemand(va, err, m, &mlock);
 
   if (vm_debug)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
             err, va, m->va_type, m->n->ref.load(), myproc()->pid);
 
   if (m->va_type == COW && (err & FEC_WR)) {
-    if (pagefault_wcow(va, pte, m, npg) < 0) {
-      release(&m->lock);
+    if (pagefault_wcow(va, pte, m, npg) < 0)
       return -1;
-    }
   } else if (m->va_type == COW) {
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
@@ -388,7 +395,6 @@ vmap::pagefault(uptr va, u32 err)
 
   // XXX(sbw) Why reload hardware page tables?
   lcr3(v2p(pml4));  // Reload hardware page tables
-  release(&m->lock);
   return 1;
 }
 

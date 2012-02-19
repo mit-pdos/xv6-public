@@ -47,6 +47,10 @@
 // until it has been removed from the index (i.e., curlevel reaches 0), which
 // maybe many epochs later.
 //
+// A marked pointer indicates that the range containing the marked pointer
+// has been deleted.  This makes it possible to update next pointers in
+// higher layers without locking the range.
+//
 
 enum { crange_debug = 0 };
 enum { crange_checking = 0 };
@@ -78,7 +82,8 @@ range_draw_nlevel(int nlevel)
   return l+1;
 }
 
-void range::print(int l)
+void
+range::print(int l)
 {
   cprintf ("0x%lx-0x%lx(%lu) 0x%lx, c %d, t %d, n 0x%lx m %d\n",
            key, key+size, size, (long) value, curlevel.load(), nlevel,
@@ -95,9 +100,12 @@ range::~range()
   }
   kmalignfree(lock);
   kmfree(next);
+  if (value)
+    value->do_gc();
 }
 
-void range::dec_ref(void)
+void
+range::dec_ref(void)
 {
   int n = curlevel--;
   if (n == 0) {    // now removed from all levels.
@@ -108,7 +116,7 @@ void range::dec_ref(void)
   }
 }
 
-range::range(crange *crarg, u64 k, u64 sz, void *v, range *n, int nl)
+range::range(crange *crarg, u64 k, u64 sz, rcu_freed *v, range *n, int nl)
   : rcu_freed("range_delayed")
 {
   dprintf("range:range:: %lu %lu %d\n", k, sz, nl);
@@ -133,28 +141,9 @@ range::range(crange *crarg, u64 k, u64 sz, void *v, range *n, int nl)
 // Methods on a sequence (i.e., ordered list) of ranges
 //
 
-static range *insert(struct range *head, struct range *r)
-{
-  markptr<range> n, p;
-  p = nullptr;
-  for (n = head; n != 0; p = n, n = n->next[0]) {
-    assert(!n.mark());
-    if (r->key < n->key) {
-      break;
-    }
-  }
-  if (n == head) {
-    r->next[0] = head;
-    head = r;
-  } else {
-    p->next[0] = r;
-    r->next[0] = n;
-  }
-  return head;
-}
-
 // lock p if next == e and p isn't marked for deletion.  if not, return failure.
-int range::lockif(markptr<range> e)
+int
+range::lockif(markptr<range> e)
 {
   assert(!e.mark());
   acquire(lock);
@@ -172,7 +161,8 @@ int range::lockif(markptr<range> e)
 // causing curlevel to drop below nlevel, and causing add_index to add the
 // node back on level on which it already has been inserted (because it hasn't
 // been marked deleted yet at that level).
-static void mark(range *f, range *s)
+static void
+mark(range *f, range *s)
 {
   struct range *e;
   for (e = f; e && e != s; e = e->next[0].ptr()) {
@@ -182,22 +172,12 @@ static void mark(range *f, range *s)
   }
 }
 
-// Unlock ranges f through l
-static void unlockn(range *f, range *l)
-{
-  struct range *e;
-  for (e = f; e != l; e = e->next[0].ptr()) {
-    assert(e);
-    release(e->lock);
-  }
-  if (l) release(e->lock);
-}
-
 // Delay free ranges f through l
-static void freen(struct range *f, struct range *l)
+static void
+freen(struct range *f, struct range *l)
 {
   struct range *e;
-  for (e = f; e != l; e = e->next[0].ptr()) {
+  for (e = f; e && e != l; e = e->next[0].ptr()) {
     assert(e);
     assert(e->curlevel >= 0);
     e->dec_ref();
@@ -206,56 +186,6 @@ static void freen(struct range *f, struct range *l)
     assert(e->curlevel >= 0);
     e->dec_ref();
   }
-}
-
-// Compute the sequence that will replace the to-be deleted sequence. Make copies to create
-// the new ranges, because readers may running through the list and looking at the old ranges.
-// If the whole sequence is replaced, it will return s.
-static range *replace(u64 k, u64 sz, void *v, range *f, range *l, range *s)
-{
-  range *r;
-  
-  if (f == l) {  // the first range covers the range to be deleted
-    if (k <= f->key && f->key + f->size <= k + sz) {  // range sequence covers the first range
-      r = s;
-    } else {
-      if (f->key < k && k+sz < f->key + f->size) { 	  // split range?
-	range *right = new range(f->cr, k+sz, f->key+f->size-k-sz, v, s);
-	range *left = new range(f->cr, f->key, k-f->key, v, right);
-	r = left;
-      } else if (k <= f->key) { // cut front?
-	assert(k+sz <= f->key + f->size);
-        assert(!f->next[0].mark());
-	r = new range(f->cr, k+sz, f->key + f->size - k - sz, v, f->next[0].ptr());
-      } else {  // cut end
-	assert(k > f->key);
-        assert(!f->next[0].mark());
-	r = new range(f->cr, f->key, k - f->key, v, f->next[0].ptr());
-      }
-    }
-  } else if (k <= f->key && k + sz >= l->key + l->size) {  // delete complete range?
-    r = s;
-  } else {  // first range covers part and last range other part?
-    range *left;
-    range *right;
-    // cprintf("f 0x%lx [%d, %d) l 0x%lx [%d, %d)\n", (long) f, f->key, f->key+f->size, (long) l, l->key, l->key+l->size);
-    if (k <= f->key && k + sz >= f->key + f->size) {  // delete first range?
-      left = nullptr;
-    } else {
-      assert(k > f->key);
-      left = new range(f->cr, f->key, k - f->key, v, 0);
-    }
-    if (k + sz >= l->key + l->size)  { // delete last range?
-      right = nullptr;
-    } else {
-      assert(k+sz > l->key);
-      assert(l->key + l->size >= k + sz);
-      right = new range(f->cr, k+sz, l->key+l->size - k - sz, v, s);
-    }
-    r = left ? left : right;
-    if (left) left->next[0] = right ? right : s;
-  }
-  return r;
 }
 
 //
@@ -296,7 +226,8 @@ crange::~crange()
 }
 
 // Check some invariants, ignoring marked nodes.
-void crange::check(struct range *absent)
+void
+crange::check(struct range *absent)
 {
   if (!crange_checking)
     return;
@@ -338,7 +269,8 @@ void crange::check(struct range *absent)
 // Remove e from index, if marked for deletion.  Returns 1 if e isn't marked.
 // Returns 0, if marked but on level 0. Returns -1 if remove fails.
 // Returns 1 on success.  Tricky because of races between add and del.
-int crange::del_index(range *p0, range **e, int l)
+int
+crange::del_index(range *p0, range **e, int l)
 {
   int r = 1;
   assert(l < (*e)->nlevel);
@@ -375,7 +307,8 @@ int crange::del_index(range *p0, range **e, int l)
 
 // Insert e into index one level up, between p and s, if e hasn't been inserted
 // yet on that level.
-void crange::add_index(int l, range *e, range *p1, markptr<range> s1)
+void
+crange::add_index(int l, range *e, range *p1, markptr<range> s1)
 {
   if (l >= e->nlevel-1) return;
   if (e->next[l+1].mark()) return;
@@ -409,7 +342,8 @@ void crange::add_index(int l, range *e, range *p1, markptr<range> s1)
 
 // Given the range that starts the sequence, find all other ranges part of sequence and lock them,
 // if l == 0
-int crange::lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr)
+static int
+lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr)
 {
   struct range *e = *er;
   assert(*pr != e);
@@ -438,7 +372,8 @@ int crange::lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr,
 // finds and locks all ranges in sequence [k, sz).  Also, returns predecessors
 // and successors.  Locks pred and ranges in bottom list. If range_lock_pred()
 // fails, search again.
-int crange::find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, range **s0)
+int
+crange::find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, range **s0)
 {
   struct range *p1, *s1;
   struct range *e;
@@ -491,11 +426,12 @@ int crange::find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, ran
 
 // Search through the crange skip list for a range that intersects with [k, sz)
 // return that range. Pretend that marked ranges don't exist.
-range* crange::search(u64 k, u64 sz, int mod)
+range* crange::search(u64 k, u64 sz)
 {
   struct range *p, *e, *r;
-  int n = (mod) ?  range_draw_nlevel(nlevel) : 0;
-  gc_begin_epoch();
+  scoped_gc_epoch gc;
+
+ restart:
   //read_counters(myproc()->cpuid, 0);
   dprintf("crange_search: 0x%lx 0x%lx\n", (u64) this, k);
   r = nullptr;
@@ -506,12 +442,14 @@ range* crange::search(u64 k, u64 sz, int mod)
       // skip all marked ranges, but don't update p because
       // we don't want to descend on a marked range down.
       while (e && e->next[l].mark()) {
+        // if we are at the bottom level, and find an intersecting deleted
+        // range, we must restart, because our search may have gone into a
+        // sequence of 2+ ranges that have been replaced.
+        if (l == 0 && range_intersect(k, sz, e->key, e->size))
+          goto restart;
 	e = e->next[l].ptr();
       }
       if (!e) break;
-      if (mod && l < n && l > 0) {
-	e->value = (void *) k;
-      }
       if (k >= e->key+e->size)
 	continue;
       if (range_intersect(k, sz, e->key, e->size)) {
@@ -524,83 +462,68 @@ range* crange::search(u64 k, u64 sz, int mod)
   }
  end:
   //read_counters(myproc()->cpuid, 1);
-  gc_end_epoch();
   dprintf("crange_search: 0x%lx return (0x%lx,0x%lx)\n", (u64) this, r? r->key : 0, r? r->size : 0);
   return r;
 }
 
-// delete the range [k, k+sz). compute the replacement list and then hook it in atomically.
-void crange::del(u64 k, u64 sz)
+crange_locked
+crange::search_lock(u64 k, u64 sz)
 {
-  struct range *prev;
-  struct range *succ;
-  struct range *first;
-  struct range *last;
-  struct range *repl = nullptr;
-
-  assert(this);
-  gc_begin_epoch();
-  dprintf("crange_del: 0x%lx 0x%lx-0x%lx(%ld)\n", (u64) this, k, k+sz, sz);
-  if (!find_and_lock(k, sz, &prev, &first, &last, &succ)) { // done?
-    dprintf("crange_del: [0x%lx,0x%lx) not present\n", k, sz);
-    release(prev->lock);
-    goto done;
-  }
-  repl = replace(k, sz, nullptr, first, last, succ);
-  mark(first, succ); 
-  while (1) {
-    // hook new list into bottom list; if del resulted in a new list, use that (repl), otherwise
-    // set predecessor to successor.
-    if (prev->next[0].cmpxch(first, repl ? repl : succ)) {
-      release(prev->lock);
-      freen(first, last);   // put on delayed list before unlocking
-      unlockn(first, last);
-      break;
-    }
-    cprintf("crange_del(%lu, %lu): prev was updated; try again\n", k, sz);
-    assert(0);
-  }
-
- done:
-  check(nullptr);
-  // cprintf("%d: crange_del(0x%lx, 0x%lx):\n", mycpu()->id, k, sz);  crange_print(cr, 1);
-  gc_end_epoch();
+  range *prev, *first, *last, *succ;
+  find_and_lock(k, sz, &prev, &first, &last, &succ);
+  return crange_locked(this, k, sz, prev, first, last, succ);
 }
 
-
-// add the range [k, sz), which causes ranges to be deleted, if the range overlaps an 
-// existing range.  we compute the replacement list and then hook it atomically.
-void crange::add(u64 k, u64 sz, void *v)
+crange_locked::crange_locked(crange *cr, u64 base, u64 sz, range *p, range *f, range *l, range *s)
+  : cr_(cr), base_(base), size_(sz), prev_(p), first_(f), last_(l), succ_(s)
 {
-  struct range *r;
-  struct range *first;
-  struct range *prev;
-  struct range *last;
-  struct range *succ;
-  struct range *repl = nullptr;
+}
 
-  dprintf("crange_add: 0x%lx 0x%lx-0x%lx(%lu)\n", (u64) this, k, k+sz, sz);
-  assert(this);
-  gc_begin_epoch();
-  if (find_and_lock(k, sz, &prev, &first, &last, &succ)) {
-    dprintf("crange_add(0x%lx,0x%lx) overlaps with [0x%lx,0x%lx)\n", k, sz, first->key, first->size);
-    repl = replace(k, sz, v, first, last, succ);
-  } else {
-    repl = succ;
+crange_locked::crange_locked(crange_locked &&x)
+  : gc(std::move(x.gc))
+{
+  cr_ = x.cr_;
+  base_ = x.base_;
+  size_ = x.size_;
+  prev_ = x.prev_;
+  first_ = x.first_;
+  last_ = x.last_;
+  succ_ = x.succ_;
+
+  x.cr_ = 0;
+  x.prev_ = 0;
+  x.first_ = 0;
+  x.last_ = 0;
+  x.succ_ = 0;
+}
+
+crange_locked::~crange_locked()
+{
+  if (prev_) {
+    for (range *e = prev_; e && e != succ_; e = e->next[0].ptr())
+      release(e->lock);
   }
-  r = new range(this, k, sz, v, succ);
-  repl = insert(repl, r);
-  mark(first, succ);
-  if (prev)
-    assert(!prev->next[0].mark());
-  if (prev->next[0].cmpxch(first ? first : succ, repl)) {
-    release(prev->lock);
-    freen(first, last);   // put on delayed list before unlocking
-    unlockn(first, last);
-  } else {
-    assert(0);
+}
+
+void
+crange_locked::replace(range *repl)
+{
+  range *newlast = 0;
+  for (range *e = repl; e; e = e->next[0].ptr()) {
+    assert(e->key >= base_ && e->key + e->size <= base_ + size_);
+    acquire(e->lock);
+    newlast = e;
   }
-  // cprintf("crange_add(0x%lx,0x%lx):\n", k, sz);  crange_print(cr, 1);
-  check(nullptr);
-  gc_end_epoch();
+
+  // do compare-exchange first, and only then mark the old ranges as deleted;
+  // otherwise, concurrent readers may not find either old or new ranges.
+  assert(prev_->next[0].cmpxch(first_?:succ_, repl?:succ_));
+  mark(first_, succ_);
+
+  for (range *e = first_; e && e != succ_; e = e->next[0].ptr())
+    release(e->lock);
+  freen(first_, last_);
+
+  first_ = repl;
+  last_ = newlast;
 }

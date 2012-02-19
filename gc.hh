@@ -23,8 +23,17 @@ void gc_begin_epoch();
 void gc_end_epoch();
 
 class scoped_gc_epoch {
+ private:
+  bool valid;
+
  public:
-  scoped_gc_epoch() { gc_begin_epoch(); }
-  ~scoped_gc_epoch() { gc_end_epoch(); }
+  scoped_gc_epoch() { valid = true; gc_begin_epoch(); }
+  ~scoped_gc_epoch() { if (valid) gc_end_epoch(); }
+
+  scoped_gc_epoch(const scoped_gc_epoch&) = delete;
+  scoped_gc_epoch(scoped_gc_epoch &&other) {
+    valid = other.valid;
+    other.valid = false;
+  }
 };
 

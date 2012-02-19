@@ -86,14 +86,14 @@ struct range : public rcu_freed {
  public:
   u64 key;
   u64 size;
-  void *value;
+  rcu_freed *value;
   atomic<int> curlevel;  // the current levels it appears on
   int nlevel;            // the number of levels this range should appear
   crange *cr;            // the crange this range is part of
   markptr<range>* next;  // one next pointer per level
   spinlock *lock;        // on separate cache line?
 
-  range(crange *cr, u64 k, u64 sz, void *v, range *n, int nlevel = 0);
+  range(crange *cr, u64 k, u64 sz, rcu_freed *v, range *n, int nlevel = 0);
   ~range();
   virtual void do_gc() {
     delete this;
@@ -111,28 +111,32 @@ class range_iterator {
  public:
   range_iterator(range *e) : _e(e) {}
   range_iterator& operator++() { _e = _e->next[0].ptr(); return *this; }
+
   range*& operator*() { return _e; }
   bool operator==(const range_iterator &other) { return _e == other._e; }
   bool operator!=(const range_iterator &other) { return _e != other._e; }
 };
 
+class crange_locked;
+
 struct crange {
  private:
   range *crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
+
+  void print(int);
+  void check(struct range *absent);
+  int del_index(range *p0, range **e, int l);
+  void add_index(int l, range *e, range *p1, markptr<range> s1);
+  int find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, range **s0);
+  friend class range;
 
  public:
   int nlevel;                  // number of levels in the crange skip list
   crange(int nlevel);
   ~crange(void);
-  void del(u64 k, u64 sz);
-  void add(u64 k, u64 sz, void *v);
-  range* search(u64 k, u64 sz, int mod = 0);
-  void print(int);
-  void check(struct range *absent);
-  int del_index(range *p0, range **e, int l);
-  void add_index(int l, range *e, range *p1, markptr<range> s1);
-  int lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr);
-  int find_and_lock(u64 k, u64 sz, range **p0, range **f0, range **l0, range **s0);
+
+  range* search(u64 k, u64 sz);
+  crange_locked search_lock(u64 k, u64 sz);
 
   range_iterator begin() const { return range_iterator(crange_head->next[0].ptr()); };
   range_iterator end() const { return range_iterator(0); };
@@ -148,4 +152,39 @@ static inline range_iterator
 end(const crange &cr)
 {
   return cr.end();
+}
+
+struct crange_locked {
+ private:
+  crange *cr_;
+  u64 base_, size_;
+
+  range *prev_, *first_, *last_, *succ_;
+  scoped_gc_epoch gc;
+
+  crange_locked(crange *cr, u64 base, u64 size, range *p, range *f, range *l, range *s);
+  friend class crange;
+
+  crange_locked(const crange_locked&) = delete;
+  crange_locked& operator=(const crange_locked&) = delete;
+
+ public:
+  crange_locked(crange_locked &&x);
+  ~crange_locked();
+
+  range_iterator begin() const { return range_iterator(first_); };
+  range_iterator end() const { return range_iterator(succ_); };
+  void replace(range *r);
+};
+
+static inline range_iterator
+begin(const crange_locked &crl)
+{
+  return crl.begin();
+}
+
+static inline range_iterator
+end(const crange_locked &crl)
+{
+  return crl.end();
 }

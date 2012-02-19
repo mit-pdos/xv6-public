@@ -39,9 +39,32 @@ class scoped_acquire {
   spinlock *_l;
 
  public:
-  scoped_acquire(spinlock *l) : _l(l) { acquire(_l); }
-  ~scoped_acquire() { release(_l); }
+  scoped_acquire(spinlock *l) : _l(0) { acquire(l); }
+  ~scoped_acquire() { release(); }
+  void release() { if (_l) { ::release(_l); _l = 0; } }
+  void acquire(spinlock *l) { assert(!_l); acquire(_l); _l = l; }
 };
+
+namespace std {
+  template<class T>
+  struct remove_reference
+  { typedef T type; };
+
+  template<class T>
+  struct remove_reference<T&>
+  { typedef T type; };
+
+  template<class T>
+  struct remove_reference<T&&>
+  { typedef T type; };
+
+  template<class T>
+  typename remove_reference<T>::type&&
+  move(T&& a)
+  {
+    return static_cast<typename remove_reference<T>::type&&>(a);
+  }
+}
 
 /* C++ runtime */
 void *operator new(unsigned long nbytes);

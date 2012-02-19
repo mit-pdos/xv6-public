@@ -1,15 +1,3 @@
-#ifdef LWIP
-extern "C" {
-#include "lwip/tcp_impl.h"
-#include "lwip/tcpip.h"
-#include "lwip/ip.h"
-#include "lwip/netif.h"
-#include "lwip/dhcp.h"
-#include "lwip/sockets.h"
-#include "netif/etharp.h"
-}
-#endif
-
 #include "types.h"
 #include "kernel.hh"
 #include "queue.h"
@@ -21,6 +9,16 @@ extern "C" {
 #include "net.hh"
 
 #ifdef LWIP
+extern "C" {
+#include "lwip/tcp_impl.h"
+#include "lwip/tcpip.h"
+#include "lwip/ip.h"
+#include "lwip/netif.h"
+#include "lwip/dhcp.h"
+#include "lwip/sockets.h"
+#include "netif/etharp.h"
+}
+
 err_t if_init(struct netif *netif);
 void if_input(struct netif *netif, void *buf, u16 len);
 #endif

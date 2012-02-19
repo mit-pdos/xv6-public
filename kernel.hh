@@ -1,3 +1,5 @@
+#pragma once
+
 extern "C" {
 #include "kern_c.h"
 }

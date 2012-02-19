@@ -1,6 +1,7 @@
 #include "gc.hh"
 #include "atomic.hh"
 #include "crange.hh"
+#include "cpputil.hh"
 
 using std::atomic;
 
@@ -68,6 +69,6 @@ struct vmap {
   int copyout(uptr va, void *p, u64 len);
 
  private:
-  vma* pagefault_ondemand(uptr va, u32 err, vma *m);
+  vma* pagefault_ondemand(uptr va, u32 err, vma *m, scoped_acquire *mlock);
   int pagefault_wcow(uptr va, pme_t *pte, vma *m, u64 npg);
 };

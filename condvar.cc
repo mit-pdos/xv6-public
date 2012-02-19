@@ -1,11 +1,11 @@
 #include "types.h"
 #include "amd64.h"
 #include "mmu.h"
+#include "kernel.hh"
 #include "spinlock.h"
 #include "condvar.h"
 #include "queue.h"
 #include "proc.hh"
-#include "kernel.hh"
 #include "cpu.hh"
 
 struct spinlock tickslock __mpalign__;
