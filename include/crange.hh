@@ -88,11 +88,6 @@ struct range : public rcu_freed {
  private:
   u64 key;
   u64 size;
-
- public:
-  rcu_freed *value;
-
- private:
   atomic<int> curlevel;  // the current levels it appears on
   int nlevel;            // the number of levels this range should appear
   crange *cr;            // the crange this range is part of
@@ -102,14 +97,16 @@ struct range : public rcu_freed {
   void print(int l);
   void dec_ref(void);
   int lockif(markptr<range> e);
-  ~range();
 
   friend class crange;
   friend class crange_locked;
   friend class range_iterator;
 
+ protected:
+  ~range();
+
  public:
-  range(crange *cr, u64 k, u64 sz, rcu_freed *v, range *n, int nlevel = 0);
+  range(crange *cr, u64 k, u64 sz, int nlevel = 0);
 
   virtual void do_gc() {
     delete this;
@@ -181,10 +178,9 @@ struct crange_locked {
   scoped_gc_epoch gc;
 
   crange_locked(crange *cr, u64 base, u64 size, range *p, range *f, range *l, range *s);
-  friend class crange;
-
   crange_locked(const crange_locked&) = delete;
   crange_locked& operator=(const crange_locked&) = delete;
+  friend class crange;
 
  public:
   crange_locked(crange_locked &&x);

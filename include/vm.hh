@@ -32,7 +32,7 @@ struct vmnode {
 // a specific memory object.
 enum vmatype { PRIVATE, COW };
 
-struct vma : public rcu_freed {
+struct vma : public range {
   uptr vma_start;              // start of mapping
   uptr vma_end;                // one past the last byte
   enum vmatype va_type;
@@ -40,7 +40,7 @@ struct vma : public rcu_freed {
   struct spinlock lock;        // serialize fault/unmap
   char lockname[16];
 
-  vma();
+  vma(vmap *vmap, uptr start, uptr end);
   ~vma();
 
   virtual void do_gc() { delete this; }

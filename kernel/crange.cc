@@ -86,7 +86,7 @@ void
 range::print(int l)
 {
   cprintf ("0x%lx-0x%lx(%lu) 0x%lx, c %d, t %d, n 0x%lx m %d\n",
-           key, key+size, size, (long) value, curlevel.load(), nlevel,
+           key, key+size, size, (long) this, curlevel.load(), nlevel,
            (long) next, (bool) next[l].mark());
 }
 
@@ -100,8 +100,6 @@ range::~range()
   }
   kmalignfree(lock);
   kmfree(next);
-  if (value)
-    value->do_gc();
 }
 
 void
@@ -116,13 +114,12 @@ range::dec_ref(void)
   }
 }
 
-range::range(crange *crarg, u64 k, u64 sz, rcu_freed *v, range *n, int nl)
+range::range(crange *crarg, u64 k, u64 sz, int nl)
   : rcu_freed("range_delayed")
 {
   dprintf("range::range: %lu %lu %d\n", k, sz, nl);
   key = k;
   size = sz;
-  value = v;
   cr = crarg;
   assert(cr->nlevel > 0);
   curlevel = 0;
@@ -130,8 +127,7 @@ range::range(crange *crarg, u64 k, u64 sz, rcu_freed *v, range *n, int nl)
   else nlevel = nl;
   next = new markptr<range>[nlevel]; // cache align?
   assert(next);
-  next[0] = n;
-  for (int l = 1; l < nlevel; l++) next[l] = 0;
+  for (int l = 0; l < nlevel; l++) next[l] = 0;
   assert(kmalign((void **) &lock, CACHELINE, 
 			   sizeof(struct spinlock)) == 0);
   initlock(lock, "crange", LOCKSTAT_CRANGE);
@@ -210,7 +206,7 @@ crange::crange(int nl)
 {
   assert(nl > 0);
   nlevel = nl;
-  crange_head = new range(this, 0, 0, nullptr, nullptr, nlevel);
+  crange_head = new range(this, 0, 0, nlevel);
   dprintf("crange::crange return 0x%lx\n", (u64) this);
 }
 

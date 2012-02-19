@@ -119,8 +119,9 @@ vmnode::load(inode *iparg, u64 offarg, u64 szarg)
  * vma
  */
 
-vma::vma()
-  : rcu_freed("vma"), vma_start(0), vma_end(0), va_type(PRIVATE), n(0)
+vma::vma(vmap *vmap, uptr start, uptr end)
+  : range(&vmap->cr, start, end-start),
+    vma_start(start), vma_end(end), va_type(PRIVATE), n(0)
 {
   snprintf(lockname, sizeof(lockname), "vma:%p", this);
   initlock(&lock, lockname, LOCKSTAT_VM);
@@ -199,16 +200,16 @@ vmap::copy(int share)
     return 0;
 
   scoped_acquire sa(&lock);
+  // XXX how to construct a consistent copy?
+
   for (range *r: cr) {
-    struct vma *ne = new vma();
+    vma *e = (vma *) r;
+    scoped_acquire sae(&e->lock);
+
+    struct vma *ne = new vma(nm, e->vma_start, e->vma_end);
     if (ne == 0)
       goto err;
 
-    struct vma *e = (struct vma *) r->value;
-    scoped_acquire sae(&e->lock);
-
-    ne->vma_start = e->vma_start;
-    ne->vma_end = e->vma_end;
     if (share) {
       ne->n = e->n;
       ne->va_type = COW;
@@ -233,7 +234,7 @@ vmap::copy(int share)
     auto span = nm->cr.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
     for (auto x __attribute__((unused)): span)
       assert(0);  /* span must be empty */
-    span.replace(new range(&nm->cr, ne->vma_start, ne->vma_end - ne->vma_start, ne, 0));
+    span.replace(ne);
   }
 
   if (share) {
@@ -262,7 +263,7 @@ vmap::lookup(uptr start, uptr len)
 
   range *r = cr.search(start, len);
   if (r != 0) {
-    vma *e = (struct vma *) (r->value);
+    vma *e = (vma *) r;
     if (e->vma_end <= e->vma_start)
       panic("malformed va");
     if (e->vma_start < start+len && e->vma_end > start)
@@ -282,24 +283,22 @@ vmap::insert(vmnode *n, uptr vma_start)
     u64 len = n->npages * PGSIZE;
     auto span = cr.search_lock(vma_start, len);
     for (auto r: span) {
-      vma *rvma = (vma*) r->value;
+      vma *rvma = (vma*) r;
       cprintf("vmap::insert: overlap with 0x%lx--0x%lx\n", rvma->vma_start, rvma->vma_end);
       return -1;
     }
 
     // XXX handle overlaps
 
-    e = new vma();
+    e = new vma(this, vma_start, vma_start+len);
     if (e == 0) {
       cprintf("vmap::insert: out of vmas\n");
       return -1;
     }
 
-    e->vma_start = vma_start;
-    e->vma_end = vma_start + len;
     e->n = n;
     n->ref++;
-    span.replace(new range(&cr, vma_start, len, e, 0));
+    span.replace(e);
   }
 
   updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t> *p) {
@@ -324,7 +323,7 @@ vmap::remove(uptr vma_start, uptr len)
 
     auto span = cr.search_lock(vma_start, len);
     for (auto r: span) {
-      vma *rvma = (vma*) r->value;
+      vma *rvma = (vma*) r;
       if (rvma->vma_start < vma_start || rvma->vma_end > vma_end) {
         cprintf("vmap::remove: partial unmap not supported\n");
         return -1;
