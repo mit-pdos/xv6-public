@@ -8,20 +8,19 @@ ifeq ($(HAVE_LWIP),y)
 -include $(O)/lwip/src/core/ipv4/*.d
 -include $(O)/net/*.d
 
-OBJS += $(O)/liblwip.a
-UPROGS += \
-       $(O)/_telnetd \
-       $(O)/_httpd
+LDEPS += $(O)/liblwip.a
+LFLAGS += -llwip
 
-CFLAGS   += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -I. -DLWIP
-CXXFLAGS += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -I. -DLWIP
+CFLAGS   += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -DLWIP
+CXXFLAGS += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -DLWIP
 
 LWIP_CFLAGS = $(COMFLAGS) -std=c99 \
 	    -Wno-attributes \
 	    -Wno-address \
 	    -Wno-char-subscripts \
 	    -Wno-unused-but-set-variable \
-	    -Wno-format
+	    -Wno-format \
+	    -mcmodel=large
 
 LWIP_INCLUDES := \
 	-Ilwip/src/include \
@@ -64,6 +63,9 @@ LWIP_SRCFILES += \
 
 LWIP_OBJFILES := $(patsubst %.c, $(O)/%.o, $(LWIP_SRCFILES))
 LWIP_OBJFILES := $(patsubst %.S, $(O)/%.o, $(LWIP_OBJFILES))
+
+$(O)/net/%.o: CFLAGS+=-mcmodel=large
+$(O)/net/%.o: CXXFLAGS+=-mcmodel=large
 
 $(O)/net/%.o: net/%.c
 	@echo "  CC     $@"

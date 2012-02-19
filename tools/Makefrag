@@ -1,0 +1,9 @@
+$(O)/tools/mkfs: tools/mkfs.c include/fs.h
+	$(Q)mkdir -p $(@D)
+	gcc -m32 -Werror -Wall -I. -o $@ $<
+
+$(O)/tools/perf-report: tools/perf-report.cc include/sampler.h
+	$(Q)mkdir -p $(@D)
+	g++ -std=c++0x -m64 -Werror -Wall -I. -o $@ $<
+
+all: $(O)/tools/perf-report

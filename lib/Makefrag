@@ -1,0 +1,9 @@
+ULIB = ulib.o usys.o printf.o umalloc.o uthread.o fmt.o
+ULIB := $(addprefix $(O)/lib/, $(ULIB))
+
+$(O)/lib/%.o: lib/%.S
+	@echo "  CC     $@"
+	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
+
+.PRECIOUS: $(O)/lib/%.o
+-include $(O)/lib/*.d
