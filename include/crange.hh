@@ -107,6 +107,7 @@ struct range : public rcu_freed {
 
  public:
   range(crange *cr, u64 k, u64 sz, int nlevel = 0);
+  bool deleted() { return next[0].mark(); }
 
   virtual void do_gc() {
     delete this;
