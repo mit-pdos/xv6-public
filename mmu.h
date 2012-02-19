@@ -15,8 +15,11 @@
 #define PTE_A		0x020	// Accessed
 #define PTE_D		0x040	// Dirty
 #define PTE_PS		0x080	// Page Size
+#define PTE_G           0x100   // Global
 #define PTE_MBZ		0x180	// Bits must be zero
-#define PTE_COW         0x800   // copy-on-write
+#define PTE_LOCK        0x200   // xv6: lock
+#define PTE_UNUSED      0x400   // xv6: unused
+#define PTE_COW         0x800   // xv6: copy-on-write
 #define PTE_NX		0x8000000000000000ull // No-execute enable
 
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))

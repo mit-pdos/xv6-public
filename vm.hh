@@ -2,6 +2,7 @@
 #include "atomic.hh"
 #include "crange.hh"
 #include "cpputil.hh"
+#include "hwvm.hh"
 
 using std::atomic;
 
@@ -52,7 +53,7 @@ struct vmap {
   struct spinlock lock;        // serialize map/lookup/unmap
   atomic<u64> ref;
   u64 alloc;
-  pml4e_t *pml4;               // Page table
+  pgmap *pml4;                 // Page table
   char *kshared;
   char lockname[16];
 
@@ -69,6 +70,6 @@ struct vmap {
   int copyout(uptr va, void *p, u64 len);
 
  private:
-  vma* pagefault_ondemand(uptr va, u32 err, vma *m, scoped_acquire *mlock);
-  int pagefault_wcow(uptr va, pme_t *pte, vma *m, u64 npg);
+  vma* pagefault_ondemand(uptr va, vma *m, scoped_acquire *mlock);
+  int pagefault_wcow(vma *m);
 };

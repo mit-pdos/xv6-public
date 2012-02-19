@@ -213,7 +213,14 @@ vmap::copy(int share)
 
       scoped_acquire sae(&e->lock);
       e->va_type = COW;
-      updatepages(pml4, (void *) (e->vma_start), (void *) (e->vma_end), PTE_COW);
+      updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t>* p) {
+          for (;;) {
+            pme_t v = p->load();
+            if (!(v & PTE_P) || !(v & PTE_U) || !(v & PTE_W) ||
+                cmpxch(p, v, PTE_ADDR(v) | PTE_P | PTE_U | PTE_COW))
+              break;
+          }
+        });
     } else {
       ne->n = e->n->copy();
       ne->va_type = e->va_type;
@@ -292,7 +299,15 @@ vmap::insert(vmnode *n, uptr vma_start)
     span.replace(new range(&cr, vma_start, len, e, 0));
   }
 
-  updatepages(pml4, (void*) e->vma_start, (void*) (e->vma_end-1), 0);
+  updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t> *p) {
+      for (;;) {
+        pme_t v = p->load();
+        if (v & PTE_LOCK)
+          continue;
+        if (cmpxch(p, v, (pme_t) 0))
+          break;
+      }
+    });
   tlbflush();
   return 0;
 }
@@ -317,7 +332,15 @@ vmap::remove(uptr vma_start, uptr len)
     span.replace(0);
   }
 
-  updatepages(pml4, (void*) vma_start, (void*) (vma_start + len - 1), 0);
+  updatepages(pml4, vma_start, vma_start + len, [](atomic<pme_t> *p) {
+      for (;;) {
+        pme_t v = p->load();
+        if (v & PTE_LOCK)
+          continue;
+        if (cmpxch(p, v, (pme_t) 0))
+          break;
+      }
+    });
   tlbflush();
   return 0;
 }
@@ -327,7 +350,7 @@ vmap::remove(uptr vma_start, uptr len)
  */
 
 vma *
-vmap::pagefault_ondemand(uptr va, u32 err, vma *m, scoped_acquire *mlock)
+vmap::pagefault_ondemand(uptr va, vma *m, scoped_acquire *mlock)
 {
   if (m->n->allocpg() < 0)
     panic("pagefault: couldn't allocate pages");
@@ -342,7 +365,7 @@ vmap::pagefault_ondemand(uptr va, u32 err, vma *m, scoped_acquire *mlock)
 }
 
 int
-vmap::pagefault_wcow(uptr va, pme_t *pte, vma *m, u64 npg)
+vmap::pagefault_wcow(vma *m)
 {
   // Always make a copy of n, even if this process has the only ref, 
   // because other processes may change ref count while this process 
@@ -356,10 +379,16 @@ vmap::pagefault_wcow(uptr va, pme_t *pte, vma *m, u64 npg)
   c->ref = 1;
   m->va_type = PRIVATE;
   m->n = c;
+
   // Update the hardware page tables to reflect the change to the vma
-  updatepages(pml4, (void *) m->vma_start, (void *) m->vma_end, 0);
-  pte = walkpgdir(pml4, (const void *)va, 0);
-  *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
+  updatepages(pml4, m->vma_start, m->vma_end, [](atomic<pme_t> *p) {
+      for (;;) {
+        pme_t v = p->load();
+        if (!(v & PTE_P) || cmpxch(p, v, v & ~PTE_P))
+          break;
+      }
+    });
+
   // drop my ref to vmnode
   n->decref();
   return 0;
@@ -368,11 +397,18 @@ vmap::pagefault_wcow(uptr va, pme_t *pte, vma *m, u64 npg)
 int
 vmap::pagefault(uptr va, u32 err)
 {
-  pme_t *pte = walkpgdir(pml4, (const void *)va, 1);
+  bool needflush = false;
+  atomic<pme_t> *pte = walkpgdir(pml4, va, 1);
+
+ retry:
+  (void) 0;
+  pme_t ptev = pte->load();
 
   // optimize checks of args to syscals
-  if((*pte & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W))
+  if ((ptev & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W)) {
+    // XXX using pagefault() as a security check in syscalls is prone to races
     return 0;
+  }
 
   scoped_gc_epoch gc;
   vma *m = lookup(va, 1);
@@ -383,25 +419,33 @@ vmap::pagefault(uptr va, u32 err)
   u64 npg = (PGROUNDDOWN(va) - m->vma_start) / PGSIZE;
 
   if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0)
-    m = pagefault_ondemand(va, err, m, &mlock);
+    m = pagefault_ondemand(va, m, &mlock);
 
   if (vm_debug)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
             err, va, m->va_type, m->n->ref.load(), myproc()->pid);
 
   if (m->va_type == COW && (err & FEC_WR)) {
-    if (pagefault_wcow(va, pte, m, npg) < 0)
+    if (pagefault_wcow(m) < 0)
       return -1;
-  } else if (m->va_type == COW) {
+    needflush = true;
+  }
+
+  if ((ptev & PTE_LOCK) || !cmpxch(pte, ptev, ptev | PTE_LOCK))
+    goto retry;
+
+  // XXX check if vma has been deleted, and if so, unlock & goto retry
+
+  if (m->va_type == COW) {
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
-    if (m->n->ref != 1)
-      panic("pagefault");
+    assert(m->n->ref == 1);
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
 
-  // XXX(sbw) Why reload hardware page tables?
-  lcr3(v2p(pml4));  // Reload hardware page tables
+  mlock.release();
+  if (needflush)
+    tlbflush();
   return 1;
 }
 

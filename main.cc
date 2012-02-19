@@ -5,6 +5,7 @@
 #include "kalloc.h"
 #include "cpu.hh"
 #include "amd64.h"
+#include "hwvm.hh"
 
 static volatile int bstate;
 
@@ -57,7 +58,6 @@ bootothers(void)
 void
 cmain(u64 mbmagic, u64 mbaddr)
 {
-  extern pml4e_t kpml4[];
   extern u64 cpuhz;
 
   initpg();
@@ -93,7 +93,7 @@ cmain(u64 mbmagic, u64 mbaddr)
 
   inituser();      // first user process
   bootothers();    // start other processors
-  kpml4[0] = 0;    // don't need 1 GB identity mapping anymore
+  kpml4.e[0] = 0;  // don't need 1 GB identity mapping anymore
   lcr3(rcr3());
 
   scheduler();

@@ -4,6 +4,8 @@ extern "C" {
 #include "kern_c.h"
 }
 
+#include "atomic.hh"
+#include "hwvm.hh"
 #include <stdarg.h>
 
 #define KBASE   0xFFFFFF0000000000ull
@@ -108,13 +110,6 @@ void            gc_start(void);
 class rcu_freed;
 void            gc_delayed(rcu_freed *);
 #endif
-
-// hwvm.c
-void            freevm(pml4e_t*);
-pml4e_t*        setupkvm(void);
-int             setupkshared(pml4e_t *pml4, char *kshared);
-pme_t *         walkpgdir(pml4e_t*, const void*, int);
-void            tlbflush(void);
 
 // hz.c
 void            microdelay(u64);
@@ -251,7 +246,6 @@ void            uartintr(void);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             pagefault(struct vmap *, uptr, u32);
-void            updatepages(pml4e_t*, void*, void*, int);
 
 // wq.c
 int             wq_trywork(void);
