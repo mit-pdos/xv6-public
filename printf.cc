@@ -22,6 +22,16 @@ fprintf(int fd, const char *fmt, ...)
   va_end(ap);
 }
 
+void
+printf(const char *fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  vprintfmt(writec, (void*) 1, fmt, ap);
+  va_end(ap);
+}
+
 // Print to a buffer.
 struct bufstate {
   char *p;
