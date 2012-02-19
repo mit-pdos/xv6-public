@@ -277,17 +277,17 @@ vmap::insert(vmnode *n, uptr vma_start)
   // XXX handle overlaps
 
   vma *e = new vma();
-  if (e == 0)
+  if (e == 0) {
+    cprintf("vmap::insert: out of vmas\n");
     return -1;
+  }
 
   e->vma_start = vma_start;
   e->vma_end = vma_start + len;
   e->n = n;
   n->ref++;
   span.replace(new range(&cr, vma_start, len, e, 0));
-
   updatepages(pml4, (void*) e->vma_start, (void*) (e->vma_end-1), 0);
-
   return 0;
 }
 
@@ -307,10 +307,8 @@ vmap::remove(uptr vma_start, uptr len)
   // XXX handle partial unmap
 
   span.replace(0);
-
   updatepages(pml4, (void*) vma_start, (void*) (vma_start + len - 1), 0);
   tlbflush();
-
   return 0;
 }
 

@@ -515,6 +515,9 @@ crange_locked::replace(range *repl)
     newlast = e;
   }
 
+  if (newlast)
+    newlast->next[0] = succ_;
+
   // do compare-exchange first, and only then mark the old ranges as deleted;
   // otherwise, concurrent readers may not find either old or new ranges.
   assert(prev_->next[0].cmpxch(first_?:succ_, repl?:succ_));
