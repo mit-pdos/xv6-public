@@ -119,9 +119,9 @@ vmnode::load(inode *iparg, u64 offarg, u64 szarg)
  * vma
  */
 
-vma::vma(vmap *vmap, uptr start, uptr end)
+vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype)
   : range(&vmap->cr, start, end-start),
-    vma_start(start), vma_end(end), va_type(PRIVATE), n(0)
+    vma_start(start), vma_end(end), va_type(vtype), n(0)
 {
   snprintf(lockname, sizeof(lockname), "vma:%p", this);
   initlock(&lock, lockname, LOCKSTAT_VM);
@@ -139,39 +139,36 @@ vma::~vma()
  */
 
 vmap::vmap()
-  : cr(10)
+  : cr(10), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared))
 {
   snprintf(lockname, sizeof(lockname), "vmap:%p", this);
   initlock(&lock, lockname, LOCKSTAT_VM);
 
   ref = 1;
   alloc = 0;
-  kshared = 0;
 
-  pml4 = setupkvm();
   if (pml4 == 0) {
     cprintf("vmap_alloc: setupkvm out of memory\n");
-    goto err0;
+    goto err;
   }
 
-  kshared = (char*) ksalloc(slab_kshared);
   if (kshared == NULL) {
     cprintf("vmap::vmap: kshared out of memory\n");
-    goto err1;
+    goto err;
   }
 
   if (setupkshared(pml4, kshared)) {
     cprintf("vmap::vmap: setupkshared out of memory\n");
-    goto err2;
+    goto err;
   }
 
   return;
 
- err2:
-  ksfree(slab_kshared, kshared);
- err1:
-  freevm(pml4);
- err0:
+ err:
+  if (kshared)
+    ksfree(slab_kshared, kshared);
+  if (pml4)
+    freevm(pml4);
   destroylock(&lock);
 }
 
@@ -192,6 +189,18 @@ vmap::decref()
     delete this;
 }
 
+bool
+vmap::replace_vma(vma *a, vma *b)
+{
+  auto span = cr.search_lock(a->vma_start, a->vma_end - a->vma_start);
+  if (a->deleted())
+    return false;
+  for (auto e: span)
+    assert(a == e);
+  span.replace(b);
+  return true;
+}
+
 vmap*
 vmap::copy(int share)
 {
@@ -206,25 +215,33 @@ vmap::copy(int share)
     vma *e = (vma *) r;
     scoped_acquire sae(&e->lock);
 
-    struct vma *ne = new vma(nm, e->vma_start, e->vma_end);
+    struct vma *ne = new vma(nm, e->vma_start, e->vma_end, share ? COW : PRIVATE);
     if (ne == 0)
       goto err;
 
     if (share) {
       ne->n = e->n;
-      ne->va_type = COW;
-      e->va_type = COW;
-      updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t>* p) {
-          for (;;) {
-            pme_t v = p->load();
-            if (!(v & PTE_P) || !(v & PTE_U) || !(v & PTE_W) ||
-                cmpxch(p, v, PTE_ADDR(v) | PTE_P | PTE_U | PTE_COW))
-              break;
-          }
-        });
+
+      // if the original vma wasn't COW, replace it with a COW vma
+      if (e->va_type != COW) {
+        vma *repl = new vma(this, e->vma_start, e->vma_end, COW);
+        repl->n = e->n;
+        repl->n->ref++;
+
+        replace_vma(e, repl);
+        updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t>* p) {
+            for (;;) {
+              pme_t v = p->load();
+              if (v & PTE_LOCK)
+                continue;
+              if (!(v & PTE_P) || !(v & PTE_U) || !(v & PTE_W) ||
+                  cmpxch(p, v, PTE_ADDR(v) | PTE_P | PTE_U | PTE_COW))
+                break;
+            }
+          });
+      }
     } else {
       ne->n = e->n->copy();
-      ne->va_type = e->va_type;
     }
 
     if (ne->n == 0)
@@ -290,7 +307,7 @@ vmap::insert(vmnode *n, uptr vma_start)
 
     // XXX handle overlaps
 
-    e = new vma(this, vma_start, vma_start+len);
+    e = new vma(this, vma_start, vma_start+len, PRIVATE);
     if (e == 0) {
       cprintf("vmap::insert: out of vmas\n");
       return -1;
@@ -373,34 +390,33 @@ vmap::pagefault_wcow(vma *m)
   // Always make a copy of n, even if this process has the only ref, 
   // because other processes may change ref count while this process 
   // is handling wcow.
-  struct vmnode *n = m->n;
-  struct vmnode *c = m->n->copy();
-  if (c == 0) {
+  struct vmnode *nodecopy = m->n->copy();
+  if (nodecopy == 0) {
     cprintf("pagefault_wcow: out of mem\n");
     return -1;
   }
-  c->ref = 1;
-  m->va_type = PRIVATE;
-  m->n = c;
 
-  // Update the hardware page tables to reflect the change to the vma
+  vma *repl = new vma(this, m->vma_start, m->vma_end, PRIVATE);
+  repl->n = nodecopy;
+  nodecopy->ref = 1;
+
+  replace_vma(m, repl);
   updatepages(pml4, m->vma_start, m->vma_end, [](atomic<pme_t> *p) {
       for (;;) {
         pme_t v = p->load();
-        if (!(v & PTE_P) || cmpxch(p, v, v & ~PTE_P))
+        if (v & PTE_LOCK)
+          continue;
+        if (cmpxch(p, v, (pme_t) 0))
           break;
       }
     });
 
-  // drop my ref to vmnode
-  n->decref();
   return 0;
 }
 
 int
 vmap::pagefault(uptr va, u32 err)
 {
-  bool needflush = false;
   atomic<pme_t> *pte = walkpgdir(pml4, va, 1);
 
  retry:
@@ -435,7 +451,10 @@ vmap::pagefault(uptr va, u32 err)
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(m) < 0)
       return -1;
-    needflush = true;
+
+    mlock.release();
+    tlbflush();
+    goto retry;
   }
 
   if (!cmpxch(pte, ptev, ptev | PTE_LOCK))
@@ -453,9 +472,6 @@ vmap::pagefault(uptr va, u32 err)
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
 
-  mlock.release();
-  if (needflush)
-    tlbflush();
   return 1;
 }
 

@@ -33,14 +33,14 @@ struct vmnode {
 enum vmatype { PRIVATE, COW };
 
 struct vma : public range {
-  uptr vma_start;              // start of mapping
-  uptr vma_end;                // one past the last byte
-  enum vmatype va_type;
+  const uptr vma_start;        // start of mapping
+  const uptr vma_end;          // one past the last byte
+  const enum vmatype va_type;
   struct vmnode *n;
   struct spinlock lock;        // serialize fault/unmap
   char lockname[16];
 
-  vma(vmap *vmap, uptr start, uptr end);
+  vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype);
   ~vma();
 
   virtual void do_gc() { delete this; }
@@ -53,12 +53,14 @@ struct vmap {
   struct spinlock lock;        // serialize map/lookup/unmap
   atomic<u64> ref;
   u64 alloc;
-  pgmap *pml4;                 // Page table
-  char *kshared;
+  pgmap *const pml4;           // Page table
+  char *const kshared;
   char lockname[16];
 
   vmap();
   ~vmap();
+
+  bool replace_vma(vma *a, vma *b);
 
   void decref();
   vmap* copy(int share);
