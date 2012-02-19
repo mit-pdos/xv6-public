@@ -8,6 +8,7 @@
 static struct uspinlock l;
 static volatile int tcount;
 enum { readaccess = 0 };
+enum { verbose = 1 };
 
 void
 thr(void *arg)
@@ -15,6 +16,9 @@ thr(void *arg)
   u64 tid = (u64)arg;
 
   for (int i = 0; i < 10000; i++) {
+    if (verbose && ((i % 100) == 0))
+      printf(1, "%d: %d ops\n", tid, i);
+
     volatile char *p = (char*) (0x40000UL + tid * 8 * 4096);
     if (map((void *) p, 8 * 4096) < 0) {
       printf(1, "%d: map failed\n", tid);
