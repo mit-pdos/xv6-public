@@ -10,56 +10,67 @@
 #include "vm.hh"
 #include "file.hh"
 
+static_assert(sizeof(struct ipcctl) < PGSIZE, "struct ipcctl too large");
+
 static void
-pread_work(struct work *w, void *a0, void *a1, void *a2, void *a3)
+pread_work(struct work *w, void *a0, void *a1, void *a2,
+           void *a3, void *a4)
 {
   struct inode *ip = (inode*) a0;
-  void *kshared = (void*) a1;
-  struct ipcctl *ipc = (ipcctl*) kshared;
-  size_t count = (uptr)a2;
-  off_t off = (uptr)a3;
+  size_t count = (uptr)a1;
+  off_t off = (uptr)a2;
+  struct ipcmsg *msg = (struct ipcmsg*) a3;
+  void *ubuf = (void*) a4;
   int r;
 
-  if (count > KSHAREDSIZE-PGSIZE)
-    panic("pread_work");
-
-  //cprintf("1: %p %p %lu %lu\n", ip, buf, count, off);
-
   ilock(ip, 0);
-  r = readi(ip, ((char*)kshared)+PGSIZE, off, count);
+  r = readi(ip, (char*)ubuf, off, count);
   iunlock(ip);
   
-  ipc->result = r;
+  msg->result = r;
   barrier();
-  ipc->done = 1;
+  msg->done = 1;
 
   iput(ip);
 }
 
 static struct work *
-pread_allocwork(struct inode *ip, void *buf, size_t count, off_t off)
+pread_allocwork(struct inode *ip, size_t count, off_t off,
+                struct ipcmsg *msg, void *ubuf)
 {
   struct work *w = allocwork();
   if (w == NULL)
     return 0;
 
-  //cprintf("0: %p %p %lu %lu\n", ip, buf, count, off);
-
   w->rip = (void*) pread_work;
   w->arg0 = ip;
-  w->arg1 = buf;
-  w->arg2 = (void*)count;
-  w->arg3 = (void*)off;
-  
+  w->arg1 = (void*)count;
+  w->arg2 = (void*)off;
+  w->arg3 = msg;
+  w->arg4 = ubuf;
+
   return w;
 }
 
 long
-sys_kernlet(int fd, size_t count, off_t off)
+sys_kernlet(int fd, size_t count, off_t off,
+            msgid_t msgid, pageid_t pageid)
 {
   struct file *f;
   struct work *w;
-  struct ipcctl *ipc = (struct ipcctl *)myproc()->vmap->kshared;
+
+  char *kshared = myproc()->vmap->kshared;
+  struct ipcctl *ipcctl = (struct ipcctl*)kshared;
+  struct ipcmsg *msg;
+  void *ubuf;
+
+  if (msgid > IPC_NMSG)
+    return -1;
+  if (pageid > IPC_NPAGE)
+    return -1;
+  
+  msg = &ipcctl->msg[msgid];
+  ubuf = (kshared+PGSIZE+(pageid*PGSIZE));
 
   if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
     return -1;
@@ -67,7 +78,7 @@ sys_kernlet(int fd, size_t count, off_t off)
     return -1;
 
   f->ip->ref++;
-  w = pread_allocwork(f->ip, myproc()->vmap->kshared, count, off);
+  w = pread_allocwork(f->ip, count, off, msg, ubuf);
   if (w == NULL) {
     iput(f->ip);
     return -1;
@@ -77,7 +88,7 @@ sys_kernlet(int fd, size_t count, off_t off)
     freework(w);
     return -1;
   }
-  ipc->off = off;
-  ipc->submitted = 1;
+  msg->off = off;
+  msg->submitted = 1;
   return 0;
 }

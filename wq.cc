@@ -163,8 +163,9 @@ __wq_steal(int c)
 static void
 __wq_run(struct work *w)
 {
-  void (*fn)(struct work*, void*, void*, void*, void*) = (void(*)(work*,void*,void*,void*,void*))w->rip;
-  fn(w, w->arg0, w->arg1, w->arg2, w->arg3);
+  void (*fn)(struct work*, void*, void*, void*, void*, void*) = 
+    (void(*)(work*,void*,void*,void*,void*,void*))w->rip;
+  fn(w, w->arg0, w->arg1, w->arg2, w->arg3, w->arg4);
   freework(w);
 }
 
