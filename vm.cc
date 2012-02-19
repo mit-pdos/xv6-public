@@ -200,18 +200,18 @@ vmap::copy(int share)
 
   scoped_acquire sa(&lock);
   for (range *r: cr) {
-    struct vma *e = (struct vma *) r->value;
     struct vma *ne = new vma();
     if (ne == 0)
       goto err;
+
+    struct vma *e = (struct vma *) r->value;
+    scoped_acquire sae(&e->lock);
 
     ne->vma_start = e->vma_start;
     ne->vma_end = e->vma_end;
     if (share) {
       ne->n = e->n;
       ne->va_type = COW;
-
-      scoped_acquire sae(&e->lock);
       e->va_type = COW;
       updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t>* p) {
           for (;;) {
@@ -236,8 +236,10 @@ vmap::copy(int share)
     span.replace(new range(&nm->cr, ne->vma_start, ne->vma_end - ne->vma_start, ne, 0));
   }
 
-  if (share)
-    lcr3(v2p(pml4));  // Reload hardware page table
+  if (share) {
+    // XXX should really be tlbflush(), but callers hold some locks..
+    lcr3(rcr3());  // Reload hardware page table
+  }
 
   return nm;
 
