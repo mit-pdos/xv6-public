@@ -117,7 +117,7 @@ range::dec_ref(void)
 range::range(crange *crarg, u64 k, u64 sz, int nl)
   : rcu_freed("range_delayed"),
     key(k), size(sz), curlevel(0),
-    nlevel(nl ?: range_draw_nlevel(cr->nlevel)),
+    nlevel(nl ?: range_draw_nlevel(crarg->nlevel)),
     cr(crarg), next(new markptr<range>[nlevel])
 {
   dprintf("range::range: %lu %lu %d\n", k, sz, nl);
