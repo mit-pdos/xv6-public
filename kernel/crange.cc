@@ -1,14 +1,6 @@
-#include "types.h"
-#include "kernel.hh"
-#include "mmu.h"
-#include "spinlock.h"
-#include "condvar.h"
-#include "queue.h"
-#include "proc.hh"
-#include "cpu.hh"
+#include "crange_arch.hh"
 #include "gc.hh"
 #include "crange.hh"
-#include "cpputil.hh"
 
 //
 // Concurrent atomic range operations using skip lists.  An insert may split an
@@ -92,7 +84,7 @@ range::print(int l)
 
 range::~range()
 {
-  dprintf("%d: range_free: 0x%lx 0x%lx-0x%lx(%ld)\n", myproc()->cpuid, (u64) this, key, key+size, size);
+  //dprintf("%d: range_free: 0x%lx 0x%lx-0x%lx(%ld)\n", myproc()->cpuid, (u64) this, key, key+size, size);
   cr->check(this);
   //    assert(curlevel == -1);
   for (int l = 0; l < nlevel; l++) {
@@ -107,7 +99,7 @@ range::dec_ref(void)
 {
   int n = curlevel--;
   if (n == 0) {    // now removed from all levels.
-    dprintf("%d: free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) this, key, key + size, size, myproc()->epoch);
+    //dprintf("%d: free_delayed: 0x%lx 0x%lx-0x%lx(%lu) %lu\n", myproc()->pid, (long) this, key, key + size, size, myproc()->epoch);
     cr->check(this);
     assert(curlevel == -1);
     gc_delayed(this);
@@ -206,7 +198,7 @@ crange::check(struct range *absent)
 {
   if (!crange_checking)
     return;
-  int t = mycpu()->id;
+  int t = -1;  //mycpu()->id;
   struct range *e, *s;
   for (int l = 0; l < nlevel; l++) {
     for (e = crange_head->next[l].ptr(); e; e = s) {

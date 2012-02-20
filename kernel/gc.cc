@@ -1,14 +1,5 @@
-#include "types.h"
-#include "kernel.hh"
-#include "mmu.h"
-#include "amd64.h"
-#include "spinlock.h"
-#include "condvar.h"
-#include "queue.h"
-#include "proc.hh"
-#include "cpu.hh"
-#include "ns.hh"
-#include "atomic.hh"
+#include "crange_arch.hh"
+#include "gc.hh"
 
 extern u64 proc_hash(const u32&);
 extern xns<u32, proc*, proc_hash> *xnspid;

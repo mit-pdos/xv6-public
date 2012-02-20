@@ -2,8 +2,6 @@
 
 #include "atomic.hh"
 
-using std::atomic;
-
 struct crange;
 struct crange_locked;
 struct range;
@@ -18,7 +16,7 @@ class markptr_mark;
 template<class T>
 class markptr {
  protected:
-  atomic<uptr> _p;
+  std::atomic<uptr> _p;
 
  public:
   markptr() : _p(0) {}
@@ -88,7 +86,7 @@ struct range : public rcu_freed {
  private:
   const u64 key;
   const u64 size;
-  atomic<int> curlevel;  // the current levels it appears on
+  std::atomic<int> curlevel; // the current levels it appears on
   const int nlevel;      // the number of levels this range should appear
   crange *const cr;      // the crange this range is part of
   markptr<range>* const next; // one next pointer per level
