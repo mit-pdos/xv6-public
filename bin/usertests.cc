@@ -1403,10 +1403,10 @@ validatetest(void)
   uptr lo, hi, p;
 
   fprintf(stdout, "validate test\n");
-  // Do 16 pages below the bottom of userspace and 16 pages above,
+  // Do 16 pages below KBASE and 16 pages above,
   // which should be code pages and read-only
-  lo = (1024*1024) - 16*4096;
-  hi = (1024*1024) + 16*4096;
+  lo = 0xFFFFFF0000000000ull - 16*4096;
+  hi = 0xFFFFFF0000000000ull + 16*4096;
 
   for(p = lo; p <= hi; p += 4096){
     if((pid = fork(0)) == 0){

@@ -384,6 +384,9 @@ vmap::pagefault_wcow(vma *m)
 int
 vmap::pagefault(uptr va, u32 err)
 {
+  if (va >= USERTOP)
+    return -1;
+
   atomic<pme_t> *pte = walkpgdir(pml4, va, 1);
 
  retry:
