@@ -95,6 +95,11 @@ trap(struct trapframe *tf)
     cprintf("cpu%d: spurious interrupt at %x:%lx\n",
             mycpu()->id, tf->cs, tf->rip);
     lapiceoi();
+    break;
+  case T_IRQ0 + IRQ_ERROR:
+    cprintf("cpu%d: lapic error?\n", mycpu()->id);
+    lapiceoi();
+    break;
   case T_TLBFLUSH: {
     u64 nreq = tlbflush_req.load();
     lapiceoi();
