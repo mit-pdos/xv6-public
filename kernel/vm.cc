@@ -125,15 +125,12 @@ vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn)
 {
   if (n)
     n->ref++;
-  snprintf(lockname, sizeof(lockname), "vma:%p", this);
-  initlock(&lock, lockname, LOCKSTAT_VM);
 }
 
 vma::~vma()
 {
   if (n)
     n->decref();
-  destroylock(&lock);
 }
 
 /*
@@ -215,10 +212,8 @@ vmap::copy(int share)
 
   for (range *r: cr) {
     vma *e = (vma *) r;
-    scoped_acquire sae(&e->lock);
 
     struct vma *ne;
-
     if (share) {
       ne = new vma(nm, e->vma_start, e->vma_end, COW, e->n);
 
@@ -368,21 +363,6 @@ vmap::remove(uptr vma_start, uptr len)
  * pagefault handling code on vmap
  */
 
-vma *
-vmap::pagefault_ondemand(uptr va, vma *m, scoped_acquire *mlock)
-{
-  if (m->n->allocpg() < 0)
-    panic("pagefault: couldn't allocate pages");
-  mlock->release();
-  if (m->n->demand_load() < 0)
-    panic("pagefault: couldn't load");
-  m = lookup(va, 1);
-  if (!m)
-    panic("pagefault_ondemand");
-  mlock->acquire(&m->lock); // re-acquire lock on m
-  return m;
-}
-
 int
 vmap::pagefault_wcow(vma *m)
 {
@@ -435,21 +415,22 @@ vmap::pagefault(uptr va, u32 err)
   if (m == 0)
     return -1;
 
-  scoped_acquire mlock(&m->lock);
   u64 npg = (PGROUNDDOWN(va) - m->vma_start) / PGSIZE;
-
-  if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0)
-    m = pagefault_ondemand(va, m, &mlock);
-
   if (vm_debug)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
             err, va, m->va_type, m->n->ref.load(), myproc()->pid);
+
+  if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0) {
+    if (m->n->allocpg() < 0)
+      panic("pagefault: couldn't allocate pages");
+    if (m->n->demand_load() < 0)
+      panic("pagefault: couldn't load");
+  }
 
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(m) < 0)
       return -1;
 
-    mlock.release();
     tlbflush();
     goto retry;
   }
@@ -491,7 +472,6 @@ vmap::copyout(uptr va, void *p, u64 len)
     if(vma == 0)
       return -1;
 
-    acquire(&vma->lock);
     uptr pn = (va0 - vma->vma_start) / PGSIZE;
     char *p0 = vma->n->page[pn];
     if(p0 == 0)
@@ -503,7 +483,6 @@ vmap::copyout(uptr va, void *p, u64 len)
     len -= n;
     buf += n;
     va = va0 + PGSIZE;
-    release(&vma->lock);
   }
   return 0;
 }

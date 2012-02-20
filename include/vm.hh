@@ -37,8 +37,6 @@ struct vma : public range {
   const uptr vma_end;          // one past the last byte
   const enum vmatype va_type;
   struct vmnode * const n;
-  struct spinlock lock;        // serialize fault/unmap
-  char lockname[16];
 
   vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn);
   ~vma();
@@ -72,6 +70,5 @@ struct vmap {
   int copyout(uptr va, void *p, u64 len);
 
  private:
-  vma* pagefault_ondemand(uptr va, vma *m, scoped_acquire *mlock);
   int pagefault_wcow(vma *m);
 };
