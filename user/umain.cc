@@ -7,9 +7,11 @@
 #include "crange.hh"
 #include "atomic_util.hh"
 #include "ns.hh"
-#include "rnd.hh"
 #include "scopedperf.hh"
 #include "intelctr.hh"
+#include "arc4.hh"
+#include "amd64.h"
+#include "rnd.hh"
 
 u64
 proc_hash(const u32 &pid)
@@ -17,11 +19,24 @@ proc_hash(const u32 &pid)
   return pid;
 }
 
-pthread_key_t myproc_key;
+pthread_key_t myproc_key, arc4_key;
 cpu cpus[NCPU];
 u32 ncpu;
 u64 ticks;
 xns<u32, proc*, proc_hash> *xnspid;
+
+template<class T>
+T rnd()
+{
+  arc4 *a = (arc4*) pthread_getspecific(arc4_key);
+  if (!a) {
+    struct seed { u64 a, b; } s = { rdtsc(), pthread_self() };
+    a = new arc4((u8*) &s, sizeof(s));
+    pthread_setspecific(arc4_key, a);
+  }
+
+  return a->rand<T>();
+}
 
 static void*
 proc_start(void *arg)
@@ -74,9 +89,9 @@ worker(void *arg)
 
   for (u32 i = 0; i < iter_total / ncpu; i++) {
     ANON_REGION("worker op", &perfgroup);
-    u64 k = 1 + rnd() % (crange_items * 2);
+    u64 k = 1 + rnd<u32>() % (crange_items * 2);
     auto span = cr->search_lock(k, 1);
-    if (rnd() & 1) {
+    if (rnd<u8>() & 1) {
       ANON_REGION("worker del", &perfgroup);
       span.replace(0);
     } else {
@@ -145,6 +160,7 @@ main(int ac, char **av)
   }
 
   assert(0 == pthread_key_create(&myproc_key, 0));
+  assert(0 == pthread_key_create(&arc4_key, 0));
   for (u32 i = 0; i < NCPU; i++)
     cpus[i].id = i;
 
