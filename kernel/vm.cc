@@ -242,10 +242,8 @@ vmap::copy(int share)
     span.replace(ne);
   }
 
-  if (share) {
-    // XXX should really be tlbflush(), but callers hold some locks..
-    lcr3(rcr3());  // Reload hardware page table
-  }
+  if (share)
+    tlbflush();  // Reload hardware page table
 
   return nm;
 
