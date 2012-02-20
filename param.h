@@ -34,6 +34,10 @@
 #define NCPU         4   // maximum number of CPUs
 #define MTRACE       0
 #define PERFSIZE     (512<<20ull)
+#elif defined(HW_user)
+#define NCPU        256
+#define MTRACE      0
+#define PERFSIZE    (16<<20ull)
 #else
 #error "Unknown HW"
 #endif

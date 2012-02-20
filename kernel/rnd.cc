@@ -1,6 +1,5 @@
-#include "types.h"
-#include "kernel.hh"
-#include "cpu.hh"
+#include "crange_arch.hh"
+#include "rnd.hh"
 
 struct seed {
   u64 v;

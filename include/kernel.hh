@@ -100,16 +100,6 @@ int             dirlink(struct inode*, const char*, u32);
 void            dir_init(struct inode *dp);
 void	        dir_flush(struct inode *dp);
 
-// gc.c
-void            initgc(void);
-void            initprocgc(struct proc *);
-void            gc_start(void);
-
-#ifdef __cplusplus
-class rcu_freed;
-void            gc_delayed(rcu_freed *);
-#endif
-
 // hz.c
 void            microdelay(u64);
 u64             nsectime(void);
@@ -182,15 +172,12 @@ void            userinit(void);
 int             wait(void);
 void            yield(void);
 struct proc*    threadalloc(void (*fn)(void*), void *arg);
+void            threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
 
 // prof.c
 extern int profenable;
 void            profreset(void);
 void            profdump(void);
-
-
-// rnd.c
-u64             rnd();
 
 // sampler.c
 void            sampstart(void);

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "atomic.hh"
-
 struct crange;
 struct crange_locked;
 struct range;

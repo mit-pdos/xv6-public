@@ -46,3 +46,8 @@
   $ CC=gcc CXX=g++ ./configure --prefix=[PREFIX] \
     --enable-targets=x86_64 --enable-optimized
   $ CC=gcc CXX=g++ make && make install
+
+* user-space version
+
+  $ make HW=user o.user/utest
+

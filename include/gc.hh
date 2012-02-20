@@ -37,3 +37,8 @@ class scoped_gc_epoch {
   }
 };
 
+void            initgc(void);
+void            initprocgc(struct proc *);
+void            gc_start(void);
+void            gc_delayed(rcu_freed *);
+

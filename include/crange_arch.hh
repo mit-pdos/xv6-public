@@ -6,4 +6,3 @@
 #include "atomic.hh"
 #include "proc.hh"
 #include "cpu.hh"
-#include "ns.hh"

@@ -1,6 +1,7 @@
 #include "crange_arch.hh"
 #include "gc.hh"
 #include "crange.hh"
+#include "rnd.hh"
 
 //
 // Concurrent atomic range operations using skip lists.  An insert may split an
@@ -91,7 +92,7 @@ range::~range()
     next[l] = (struct range *) 0xDEADBEEF;
   }
   kmalignfree(lock);
-  kmfree(next);
+  delete[] next;
 }
 
 void
@@ -280,7 +281,7 @@ crange::add_index(int l, range *e, range *p1, markptr<range> s1)
   if (l >= e->nlevel-1) return;
   if (e->next[l+1].mark()) return;
   // crange_check(cr, NULL);
-  if (cmpxch(&e->curlevel, l, l+1)) {
+  if (std::atomic_compare_exchange_strong(&e->curlevel, &l, l+1)) {
     assert(e->curlevel < e->nlevel);
     // this is the core inserting at level l+1, but some core may be deleting
     struct range *s = s1.ptr(); // XXX losing the mark bit ???

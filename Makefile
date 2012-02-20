@@ -46,6 +46,7 @@ include lib/Makefrag
 include bin/Makefrag
 include kernel/Makefrag
 include tools/Makefrag
+-include user/Makefrag.$(HW)
 
 $(O)/%.o: %.c
 	@echo "  CC     $@"
