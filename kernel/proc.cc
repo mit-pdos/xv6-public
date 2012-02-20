@@ -424,7 +424,7 @@ growproc(int n)
   uptr newstart = PGROUNDUP(curbrk);
   s64 newn = PGROUNDUP(n + curbrk - newstart);
   range *prev = 0;
-  auto span = m->cr.search_lock(newstart, newstart + newn + PGSIZE);
+  auto span = m->cr.search_lock(newstart, newn + PGSIZE);
   for (range *r: span) {
     vma *e = (vma*) r;
 
