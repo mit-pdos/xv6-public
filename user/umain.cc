@@ -11,7 +11,11 @@
 #include "intelctr.hh"
 #include "arc4.hh"
 #include "amd64.h"
-#include "rnd.hh"
+
+static auto perfgroup = ctrgroup(&intelctr::tsc
+                                // ,&intelctr::l2_refs
+                                // ,&intelctr::l2_miss
+                                );
 
 u64
 proc_hash(const u32 &pid)
@@ -25,9 +29,13 @@ u32 ncpu;
 u64 ticks;
 xns<u32, proc*, proc_hash> *xnspid;
 
+static auto rnd_perfsum = scopedperf::perfsum("arc4 rnd", &perfgroup);
+
 template<class T>
 T rnd()
 {
+  auto __PERF_ANON = scopedperf::perf_region(&rnd_perfsum);
+
   arc4 *a = (arc4*) pthread_getspecific(arc4_key);
   if (!a) {
     struct seed { u64 a, b; } s = { rdtsc(), pthread_self() };
@@ -76,11 +84,6 @@ static pthread_barrier_t worker_b, populate_b;
 
 enum { iter_total = 1000000 };
 enum { crange_items = 1024 };
-
-static auto perfgroup = ctrgroup(&intelctr::tsc
-                                // ,&intelctr::l2_refs
-                                // ,&intelctr::l2_miss
-                                );
 
 static void
 worker(void *arg)
