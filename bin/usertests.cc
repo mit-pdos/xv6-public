@@ -1591,6 +1591,9 @@ preads(void)
   if (pid == 0)
     exit();
 
+  for (int i = 0; i < nprocs; i++)
+    wait();
+
   fprintf(1, "concurrent preads OK\n");
 }
 
