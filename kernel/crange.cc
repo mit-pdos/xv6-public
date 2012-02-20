@@ -164,22 +164,6 @@ crange::mark(range *f, range *s)
   }
 }
 
-// Delay free ranges f through l
-void
-crange::freen(struct range *f, struct range *l)
-{
-  struct range *e;
-  for (e = f; e && e != l; e = e->next[0].ptr()) {
-    assert(e);
-    assert(e->curlevel >= 0);
-    e->dec_ref();
-  }
-  if (l) {
-    assert(e->curlevel >= 0);
-    e->dec_ref();
-  }
-}
-
 //
 // Methods on a crange
 //
@@ -462,11 +446,11 @@ crange::search_lock(u64 k, u64 sz)
 {
   range *prev, *first, *last, *succ;
   find_and_lock(k, sz, &prev, &first, &last, &succ);
-  return crange_locked(this, k, sz, prev, first, last, succ);
+  return crange_locked(this, k, sz, prev, succ);
 }
 
-crange_locked::crange_locked(crange *cr, u64 base, u64 sz, range *p, range *f, range *l, range *s)
-  : cr_(cr), base_(base), size_(sz), prev_(p), first_(f), last_(l), succ_(s), moved_(false)
+crange_locked::crange_locked(crange *cr, u64 base, u64 sz, range *p, range *s)
+  : cr_(cr), base_(base), size_(sz), prev_(p), succ_(s), moved_(false)
 {
 }
 
@@ -475,8 +459,6 @@ crange_locked::crange_locked(crange_locked &&x)
     base_(x.base_),
     size_(x.size_),
     prev_(x.prev_),
-    first_(x.first_),
-    last_(x.last_),
     succ_(x.succ_),
     moved_(false),
     gc(std::move(x.gc))
@@ -511,13 +493,12 @@ crange_locked::replace(range *repl)
 
   // do compare-exchange first, and only then mark the old ranges as deleted;
   // otherwise, concurrent readers may not find either old or new ranges.
-  assert(prev_->next[0].cmpxch(first_?:succ_, repl?:succ_));
-  crange::mark(first_, succ_);
+  range *replaced = prev_->next[0].ptr();
+  prev_->next[0] = repl ?: succ_;
+  crange::mark(replaced, succ_);
 
-  for (range *e = first_; e && e != succ_; e = e->next[0].ptr())
+  for (range *e = replaced; e && e != succ_; e = e->next[0].ptr()) {
     release(e->lock);
-  crange::freen(first_, last_);
-
-  first_ = repl;
-  last_ = newlast;
+    e->dec_ref();
+  }
 }

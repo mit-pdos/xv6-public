@@ -176,14 +176,12 @@ struct crange_locked {
   const u64 base_, size_;
 
   range *const prev_;
-  range *first_;
-  range *last_;
   range *const succ_;
 
   bool moved_;
   scoped_gc_epoch gc;
 
-  crange_locked(crange *cr, u64 base, u64 size, range *p, range *f, range *l, range *s);
+  crange_locked(crange *cr, u64 base, u64 size, range *p, range *s);
   crange_locked(const crange_locked&) = delete;
   crange_locked& operator=(const crange_locked&) = delete;
   friend class crange;
@@ -192,7 +190,7 @@ struct crange_locked {
   crange_locked(crange_locked &&x);
   ~crange_locked();
 
-  range_iterator begin() const { return range_iterator(first_ ?: succ_); };
+  range_iterator begin() const { return range_iterator(prev_->next[0].ptr()); };
   range_iterator end() const { return range_iterator(succ_); };
   void replace(range *r);
 };
