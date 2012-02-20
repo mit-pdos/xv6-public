@@ -36,11 +36,11 @@ struct vma : public range {
   const uptr vma_start;        // start of mapping
   const uptr vma_end;          // one past the last byte
   const enum vmatype va_type;
-  struct vmnode *n;
+  struct vmnode * const n;
   struct spinlock lock;        // serialize fault/unmap
   char lockname[16];
 
-  vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype);
+  vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn);
   ~vma();
 
   virtual void do_gc() { delete this; }

@@ -119,17 +119,19 @@ vmnode::load(inode *iparg, u64 offarg, u64 szarg)
  * vma
  */
 
-vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype)
+vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn)
   : range(&vmap->cr, start, end-start),
-    vma_start(start), vma_end(end), va_type(vtype), n(0)
+    vma_start(start), vma_end(end), va_type(vtype), n(vmn)
 {
+  if (n)
+    n->ref++;
   snprintf(lockname, sizeof(lockname), "vma:%p", this);
   initlock(&lock, lockname, LOCKSTAT_VM);
 }
 
 vma::~vma()
 {
-  if(n)
+  if (n)
     n->decref();
   destroylock(&lock);
 }
@@ -215,19 +217,14 @@ vmap::copy(int share)
     vma *e = (vma *) r;
     scoped_acquire sae(&e->lock);
 
-    struct vma *ne = new vma(nm, e->vma_start, e->vma_end, share ? COW : PRIVATE);
-    if (ne == 0)
-      goto err;
+    struct vma *ne;
 
     if (share) {
-      ne->n = e->n;
+      ne = new vma(nm, e->vma_start, e->vma_end, COW, e->n);
 
       // if the original vma wasn't COW, replace it with a COW vma
       if (e->va_type != COW) {
-        vma *repl = new vma(this, e->vma_start, e->vma_end, COW);
-        repl->n = e->n;
-        repl->n->ref++;
-
+        vma *repl = new vma(this, e->vma_start, e->vma_end, COW, e->n);
         replace_vma(e, repl);
         updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t>* p) {
             for (;;) {
@@ -241,13 +238,17 @@ vmap::copy(int share)
           });
       }
     } else {
-      ne->n = e->n->copy();
+      ne = new vma(nm, e->vma_start, e->vma_end, PRIVATE, e->n->copy());
     }
 
-    if (ne->n == 0)
+    if (ne == 0)
       goto err;
 
-    ne->n->ref++;
+    if (ne->n == 0) {
+      delete ne;
+      goto err;
+    }
+
     auto span = nm->cr.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
     for (auto x __attribute__((unused)): span)
       assert(0);  /* span must be empty */
@@ -307,14 +308,12 @@ vmap::insert(vmnode *n, uptr vma_start)
 
     // XXX handle overlaps
 
-    e = new vma(this, vma_start, vma_start+len, PRIVATE);
+    e = new vma(this, vma_start, vma_start+len, PRIVATE, n);
     if (e == 0) {
       cprintf("vmap::insert: out of vmas\n");
       return -1;
     }
 
-    e->n = n;
-    n->ref++;
     span.replace(e);
   }
 
@@ -396,9 +395,7 @@ vmap::pagefault_wcow(vma *m)
     return -1;
   }
 
-  vma *repl = new vma(this, m->vma_start, m->vma_end, PRIVATE);
-  repl->n = nodecopy;
-  nodecopy->ref = 1;
+  vma *repl = new vma(this, m->vma_start, m->vma_end, PRIVATE, nodecopy);
 
   replace_vma(m, repl);
   updatepages(pml4, m->vma_start, m->vma_end, [](atomic<pme_t> *p) {
