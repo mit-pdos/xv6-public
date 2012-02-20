@@ -58,6 +58,11 @@ $(O)/%.o: %.cc
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) $(CXXFLAGS) $(XXFLAGS) -c -o $@ $<
 
+$(O)/%.o: %.S
+	@echo "  CC     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
+
 xv6memfs.img: bootblock kernelmemfs
 	dd if=/dev/zero of=xv6memfs.img count=10000
 	dd if=bootblock of=xv6memfs.img conv=notrunc

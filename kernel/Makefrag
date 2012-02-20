@@ -67,10 +67,6 @@ $(O)/kernel/%.o: CXXFLAGS+=-mcmodel=large
 
 $(O)/kernel/incbin.o: ASFLAGS+=-DMAKE_OUT=$(O)
 $(O)/kernel/incbin.o: $(O)/kernel/initcode $(O)/kernel/bootother $(O)/fs.img
-$(O)/kernel/%.o: kernel/%.S
-	@echo "  CC     $@"
-	$(Q)mkdir -p $(@D)
-	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
 
 $(O)/kernel/initcode: TTEXT = 0x0
 $(O)/kernel/bootother: TTEXT = 0x7000
