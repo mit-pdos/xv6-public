@@ -7,8 +7,8 @@
 
 static struct uspinlock l;
 static volatile int tcount;
-enum { readaccess = 0 };
-enum { verbose = 1 };
+enum { readaccess = 1 };
+enum { verbose = 0 };
 
 void
 thr(void *arg)
