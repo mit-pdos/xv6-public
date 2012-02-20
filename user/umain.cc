@@ -8,6 +8,8 @@
 #include "atomic_util.hh"
 #include "ns.hh"
 #include "rnd.hh"
+#include "scopedperf.hh"
+#include "intelctr.hh"
 
 u64
 proc_hash(const u32 &pid)
@@ -57,8 +59,13 @@ threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
 
 static pthread_barrier_t worker_b, populate_b;
 
-enum { iter_total = 10000000 };
+enum { iter_total = 1000000 };
 enum { crange_items = 1024 };
+
+static auto perfgroup = ctrgroup(&intelctr::tsc
+                                // ,&intelctr::l2_refs
+                                // ,&intelctr::l2_miss
+                                );
 
 static void
 worker(void *arg)
@@ -66,12 +73,16 @@ worker(void *arg)
   crange *cr = (crange*) arg;
 
   for (u32 i = 0; i < iter_total / ncpu; i++) {
+    ANON_REGION("worker op", &perfgroup);
     u64 k = 1 + rnd() % (crange_items * 2);
     auto span = cr->search_lock(k, 1);
-    if (rnd() & 1)
+    if (rnd() & 1) {
+      ANON_REGION("worker del", &perfgroup);
       span.replace(0);
-    else
+    } else {
+      ANON_REGION("worker add", &perfgroup);
       span.replace(new range(cr, k, 1));
+    }
   }
 
   pthread_barrier_wait(&worker_b);
@@ -153,5 +164,5 @@ main(int ac, char **av)
   }
   pthread_barrier_wait(&worker_b);
 
-  printf("exiting\n");
+  scopedperf::perfsum_base::printall();
 }
