@@ -99,11 +99,13 @@ struct proc {
   u32 cpuid;
   u32 pid;
   char name[32];
+
+  void (*f) (void*);
+  void *farg;
 };
 
 struct cpu {
   u32 id;
-  u32 ncli;
 };
 
 extern pthread_key_t myproc_key;
@@ -124,22 +126,8 @@ mycpu()
   return (cpu*) &cpus[myproc()->cpuid];
 }
 
-void cli();
-void sti();
-
-static inline void
-pushcli()
-{
-  cli();
-  mycpu()->ncli++;
-}
-
-static inline void
-popcli()
-{
-  if (--mycpu()->ncli == 0)
-    sti();
-}
+static inline void pushcli() {}
+static inline void popcli()  {}
 
 void threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
 
