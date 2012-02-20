@@ -135,7 +135,6 @@ struct crange {
   range *const crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
 
   static void mark(range *f, range *s);
-  static void freen(struct range *f, struct range *l);
   static int lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr);
 
   void print(int);
@@ -193,6 +192,7 @@ struct crange_locked {
   range_iterator begin() const { return range_iterator(prev_->next[0].ptr()); };
   range_iterator end() const { return range_iterator(succ_); };
   void replace(range *r);
+  void replace(range *prev, range *repl);
 };
 
 static inline range_iterator

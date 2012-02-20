@@ -479,8 +479,11 @@ crange_locked::~crange_locked()
 }
 
 void
-crange_locked::replace(range *repl)
+crange_locked::replace(range *prev, range *repl)
 {
+  if (!prev)
+    prev = prev_;
+
   range *newlast = 0;
   for (range *e = repl; e; e = e->next[0].ptr()) {
     assert(e->key >= base_ && e->key + e->size <= base_ + size_);
@@ -493,12 +496,18 @@ crange_locked::replace(range *repl)
 
   // do compare-exchange first, and only then mark the old ranges as deleted;
   // otherwise, concurrent readers may not find either old or new ranges.
-  range *replaced = prev_->next[0].ptr();
-  prev_->next[0] = repl ?: succ_;
+  range *replaced = prev->next[0].ptr();
+  prev->next[0] = repl ?: succ_;
   crange::mark(replaced, succ_);
 
   for (range *e = replaced; e && e != succ_; e = e->next[0].ptr()) {
     release(e->lock);
     e->dec_ref();
   }
+}
+
+void
+crange_locked::replace(range *repl)
+{
+  replace(0, repl);
 }

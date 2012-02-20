@@ -408,73 +408,57 @@ int
 growproc(int n)
 {
   struct vmap *m = myproc()->vmap;
+  auto curbrk = myproc()->brk;
 
-  if(n < 0 && 0 - n <= myproc()->brk){
+  if(n < 0 && 0 - n <= curbrk){
     myproc()->brk += n;
     return 0;
   }
 
-  if(n < 0 || n > USERTOP || myproc()->brk + n > USERTOP)
+  if(n < 0 || n > USERTOP || curbrk + n > USERTOP)
     return -1;
 
-  acquire(&m->lock);
+  // look one page ahead, to check if the newly allocated region would
+  // abut the next-higher vma? we can't allow that, since then a future
+  // sbrk() would start to use the next region (e.g. the stack).
+  uptr newstart = PGROUNDUP(curbrk);
+  s64 newn = PGROUNDUP(n + curbrk - newstart);
+  range *prev = 0;
+  auto span = m->cr.search_lock(newstart, newstart + newn + PGSIZE);
+  for (range *r: span) {
+    vma *e = (vma*) r;
 
-  // find first unallocated address in brk..brk+n
-  uptr newstart = myproc()->brk;
-  u64 newn = n;
-  gc_begin_epoch();
-  while(newn > 0){
-    vma *e = m->lookup(newstart, 1);
-    if(e == 0)
-      break;
-    if(e->vma_end >= newstart + newn){
-      newstart += newn;
-      newn = 0;
-      break;
+    if (e->vma_start <= newstart) {
+      if (e->vma_end >= newstart + newn) {
+        myproc()->brk += n;
+        switchuvm(myproc());
+        return 0;
+      }
+
+      newn -= e->vma_end - newstart;
+      newstart = e->vma_end;
+      prev = e;
+    } else {
+      cprintf("growproc: overlap with existing mapping; brk %lx n %d\n",
+              curbrk, n);
+      return -1;
     }
-    newn -= e->vma_end - newstart;
-    newstart = e->vma_end;
-  }
-  gc_end_epoch();
-
-  if(newn <= 0){
-    // no need to allocate
-    myproc()->brk += n;
-    release(&m->lock);
-    switchuvm(myproc());
-    return 0;
   }
 
-  // is there space for newstart..newstart+newn?
-  if(m->lookup(newstart, newn) != 0){
-    cprintf("growproc: not enough room in address space; brk %lx n %d\n",
-            myproc()->brk, n);
-    return -1;
-  }
-
-  // would the newly allocated region abut the next-higher
-  // vma? we can't allow that, since then a future sbrk()
-  // would start to use the next region (e.g. the stack).
-  if(m->lookup(PGROUNDUP(newstart+newn), 1) != 0){
-    cprintf("growproc: would abut next vma; brk %lx n %d\n",
-            myproc()->brk, n);
-    return -1;
-  }
-
-  vmnode *vmn = new vmnode(PGROUNDUP(newn) / PGSIZE);
+  vmnode *vmn = new vmnode(newn / PGSIZE);
   if(vmn == 0){
-    release(&m->lock);
     cprintf("growproc: vmn_allocpg failed\n");
     return -1;
   }
 
-  release(&m->lock); // XXX
-
-  if(m->insert(vmn, newstart) < 0){
+  vma *repl = new vma(m, newstart, newstart+newn, PRIVATE, vmn);
+  if (!repl) {
+    cprintf("growproc: out of vma\n");
     delete vmn;
-    cprintf("growproc: vmap_insert failed\n");
     return -1;
   }
+
+  span.replace(prev, repl);
 
   myproc()->brk += n;
   switchuvm(myproc());

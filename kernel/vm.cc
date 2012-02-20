@@ -140,9 +140,6 @@ vma::~vma()
 vmap::vmap()
   : cr(10), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared))
 {
-  snprintf(lockname, sizeof(lockname), "vmap:%p", this);
-  initlock(&lock, lockname, LOCKSTAT_VM);
-
   ref = 1;
   alloc = 0;
 
@@ -168,7 +165,6 @@ vmap::vmap()
     ksfree(slab_kshared, kshared);
   if (pml4)
     freevm(pml4);
-  destroylock(&lock);
 }
 
 vmap::~vmap()
@@ -178,7 +174,6 @@ vmap::~vmap()
   if (pml4)
     freevm(pml4);
   alloc = 0;
-  destroylock(&lock);
 }
 
 void
@@ -206,9 +201,6 @@ vmap::copy(int share)
   vmap *nm = new vmap();
   if(nm == 0)
     return 0;
-
-  scoped_acquire sa(&lock);
-  // XXX how to construct a consistent copy?
 
   for (range *r: cr) {
     vma *e = (vma *) r;

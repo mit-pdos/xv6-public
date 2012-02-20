@@ -48,12 +48,10 @@ struct vma : public range {
 // The elements of e[] are not ordered by address.
 struct vmap {
   struct crange cr;
-  struct spinlock lock;        // serialize map/lookup/unmap
   atomic<u64> ref;
   u64 alloc;
   pgmap *const pml4;           // Page table
   char *const kshared;
-  char lockname[16];
 
   vmap();
   ~vmap();
