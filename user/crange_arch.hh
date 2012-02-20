@@ -10,6 +10,8 @@ extern "C" {
 #include <string.h>
 }
 
+typedef uint8_t   u8;
+typedef uint16_t  u16;
 typedef uint32_t  u32;
 typedef uint64_t  u64;
 typedef uintptr_t uptr;
@@ -99,11 +101,13 @@ struct proc {
   u32 cpuid;
   u32 pid;
   char name[32];
+
+  void (*f) (void*);
+  void *farg;
 };
 
 struct cpu {
   u32 id;
-  u32 ncli;
 };
 
 extern pthread_key_t myproc_key;
@@ -124,22 +128,8 @@ mycpu()
   return (cpu*) &cpus[myproc()->cpuid];
 }
 
-void cli();
-void sti();
-
-static inline void
-pushcli()
-{
-  cli();
-  mycpu()->ncli++;
-}
-
-static inline void
-popcli()
-{
-  if (--mycpu()->ncli == 0)
-    sti();
-}
+static inline void pushcli() {}
+static inline void popcli()  {}
 
 void threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
 
