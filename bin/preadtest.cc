@@ -7,9 +7,6 @@
 #include "amd64.h"
 #include "ipc.hh"
 
-// XXX(sbw) add a memlayout.h?
-#define KSHARED 0xFFFFF00000000000ull
-
 #define FSIZE (64 << 10)
 #define BSIZE 4096
 #define PSIZE (4*BSIZE)
@@ -18,8 +15,6 @@ static int use_async;
 
 static char buf[BSIZE];
 
-struct ipcctl *ipcctl = (struct ipcctl*)KSHARED;
-
 struct {
   u64 acount;
   u64 atot;
@@ -27,50 +22,6 @@ struct {
   u64 pcount;
   u64 ptot;
 } stats;
-
-static msgid_t
-ipc_msg_alloc(void)
-{
-  if (ipcctl->msghead - ipcctl->msgtail == IPC_NMSG)
-    return NULL_MSGID;
-
-  msgid_t i = ipcctl->msghead % IPC_NMSG;
-  ipcctl->msghead++;
-  return i;
-}
-
-static void
-ipc_msg_free(int msgid)
-{
-  msgid_t i;
-
-  i = ipcctl->msgtail % IPC_NMSG;
-  if (i != msgid)
-    die("ipc_free_msg: oops");
-  ipcctl->msgtail++;
-}
-
-static pageid_t
-ipc_page_alloc(void)
-{
-  if (ipcctl->pagehead - ipcctl->pagetail == IPC_NPAGE)
-    return NULL_PAGEID;
-
-  pageid_t i = ipcctl->pagehead % IPC_NPAGE;
-  ipcctl->pagehead++;
-  return i;
-}
-
-static void
-ipc_page_free(pageid_t pageid)
-{
-  pageid_t i;
-
-  i = ipcctl->pagetail % IPC_NPAGE;
-  if (i != pageid)
-    die("ipc_free_page: oops");
-  ipcctl->pagetail++;
-}
 
 static void
 kernlet_pread(int fd, size_t count, off_t off)

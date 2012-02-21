@@ -1,9 +1,6 @@
 #pragma once
 
 #include "gc.hh"
-#include "atomic.hh"
-
-using std::atomic;
 
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
@@ -18,8 +15,8 @@ template<class K, class V>
 class xelem : public rcu_freed {
  public:
   V val;
-  atomic<int> next_lock;
-  atomic<xelem<K, V>*> volatile next;
+  std::atomic<int> next_lock;
+  std::atomic<xelem<K, V>*> volatile next;
   K key;
 
   xelem(const K &k, const V &v) : rcu_freed("xelem"), val(v), next_lock(0), next(0), key(k) {}
@@ -28,14 +25,14 @@ class xelem : public rcu_freed {
 
 template<class K, class V>
 struct xbucket {
-  atomic<xelem<K, V>*> volatile chain;
+  std::atomic<xelem<K, V>*> volatile chain;
 } __attribute__((aligned (CACHELINE)));
 
 template<class K, class V, u64 (*HF)(const K&)>
 class xns : public rcu_freed {
  private:
   bool allowdup;
-  atomic<u64> nextkey;
+  std::atomic<u64> nextkey;
   xbucket<K, V> table[NHASH];
 
  public:
@@ -109,8 +106,8 @@ class xns : public rcu_freed {
     scoped_gc_epoch gc;
 
     for (;;) {
-      atomic<int> fakelock(0);
-      atomic<int> *pelock = &fakelock;
+      std::atomic<int> fakelock(0);
+      std::atomic<int> *pelock = &fakelock;
       auto pe = &table[i].chain;
 
       for (;;) {

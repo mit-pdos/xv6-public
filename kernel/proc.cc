@@ -674,3 +674,21 @@ threadalloc(void (*fn)(void *), void *arg)
   p->cwd = 0;
   return p;
 }
+
+void
+threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
+{
+  struct proc *p;
+
+  p = threadalloc(fn, arg);
+  if (p == NULL)
+    panic("threadpin: alloc");
+
+  snprintf(p->name, sizeof(p->name), "%s", name);
+  p->cpuid = cpu;
+  p->cpu_pin = 1;
+  acquire(&p->lock);
+  p->state = RUNNABLE;
+  addrun(p);
+  release(&p->lock);
+}

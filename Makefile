@@ -46,6 +46,7 @@ include lib/Makefrag
 include bin/Makefrag
 include kernel/Makefrag
 include tools/Makefrag
+-include user/Makefrag.$(HW)
 
 $(O)/%.o: %.c
 	@echo "  CC     $@"
@@ -56,6 +57,11 @@ $(O)/%.o: %.cc
 	@echo "  CXX    $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) $(CXXFLAGS) $(XXFLAGS) -c -o $@ $<
+
+$(O)/%.o: %.S
+	@echo "  CC     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
 
 xv6memfs.img: bootblock kernelmemfs
 	dd if=/dev/zero of=xv6memfs.img count=10000

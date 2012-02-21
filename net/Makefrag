@@ -14,8 +14,7 @@ LFLAGS += -llwip
 CFLAGS   += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -DLWIP
 CXXFLAGS += -Ilwip/src/include -Inet -Ilwip/src/include/ipv4 -DLWIP
 
-LWIP_CFLAGS = $(COMFLAGS) -std=c99 \
-	    -Wno-attributes \
+LWIP_CFLAGS = -Wno-attributes \
 	    -Wno-address \
 	    -Wno-char-subscripts \
 	    -Wno-unused-but-set-variable \
@@ -26,8 +25,7 @@ LWIP_INCLUDES := \
 	-Ilwip/src/include \
 	-Ilwip/src/include/ipv4 \
 	-Inet \
-	-Inet/arch \
-	-I.
+	-Inet/arch
 
 LWIP_SRCFILES += \
 	lwip/src/api/api_lib.c \
@@ -59,23 +57,11 @@ LWIP_SRCFILES += \
 	lwip/src/core/udp.c \
 	lwip/src/netif/etharp.c \
 	net/sys_arch.c \
-	net/if.c \
-
+	net/if.c
 LWIP_OBJFILES := $(patsubst %.c, $(O)/%.o, $(LWIP_SRCFILES))
-LWIP_OBJFILES := $(patsubst %.S, $(O)/%.o, $(LWIP_OBJFILES))
 
-$(O)/net/%.o: CFLAGS+=-mcmodel=large
 $(O)/net/%.o: CXXFLAGS+=-mcmodel=large
-
-$(O)/net/%.o: net/%.c
-	@echo "  CC     $@"
-	$(Q)mkdir -p $(@D)
-	$(Q)$(CC) $(LWIP_CFLAGS) $(LWIP_INCLUDES) -c -o $@ $<
-
-$(O)/lwip/src/%.o: lwip/src/%.c
-	@echo "  CC     $@"
-	$(Q)mkdir -p $(@D)
-	$(Q)$(CC) $(LWIP_CFLAGS) $(LWIP_INCLUDES) -c -o $@ $<
+$(O)/lwip/src/%.o: CFLAGS+=-mcmodel=large $(LWIP_CFLAGS) $(LWIP_INCLUDES)
 
 $(O)/liblwip.a: $(LWIP_OBJFILES)
 	@echo "  AR     $@"

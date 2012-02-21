@@ -7,7 +7,7 @@ u64 namehash(const strbuf<DIRSIZ>&);
 
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;
-  atomic<int> ref; // reference count
+  std::atomic<int> ref; // reference count
   char readable;
   char writable;
 
@@ -24,13 +24,13 @@ struct inode : public rcu_freed {
   u32 dev;           // Device number
   u32 inum;          // Inode number
   u32 gen;           // Generation number
-  atomic<int> ref;   // Reference count
+  std::atomic<int> ref; // Reference count
   int flags;         // I_BUSY, I_VALID
-  atomic<int> readbusy;
+  std::atomic<int> readbusy;
   struct condvar cv;
   struct spinlock lock;
   char lockname[16];
-  atomic<xns<strbuf<DIRSIZ>, u32, namehash>*> dir;
+  std::atomic<xns<strbuf<DIRSIZ>, u32, namehash>*> dir;
 
   short type;         // copy of disk inode
   short major;

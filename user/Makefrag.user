@@ -1,0 +1,10 @@
+CXXFLAGS := -Iuser $(CXXFLAGS) -msse
+
+$(O)/utest: $(O)/kernel/crange.o \
+            $(O)/kernel/gc.o \
+            $(O)/kernel/rnd.o \
+            $(O)/user/umain.o
+	@echo "  LD     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CXX) -o $@ $^ -lpthread -lrt
+

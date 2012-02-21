@@ -1,14 +1,9 @@
-#include "types.h"
-#include "kernel.hh"
-#include "mmu.h"
-#include "amd64.h"
-#include "spinlock.h"
-#include "condvar.h"
-#include "queue.h"
-#include "proc.hh"
-#include "cpu.hh"
+#include "crange_arch.hh"
+#include "gc.hh"
+#include "atomic_util.hh"
 #include "ns.hh"
-#include "atomic.hh"
+
+using std::atomic;
 
 extern u64 proc_hash(const u32&);
 extern xns<u32, proc*, proc_hash> *xnspid;
@@ -79,7 +74,8 @@ gc_move_to_tofree_cpu(int c, u64 epoch)
   assert(gc_state[c].delayed[fe].epoch == epoch-(NEPOCH-2));   // XXX race with setting epoch = 0
   // unhook list for fe epoch atomically; this shouldn't fail
   head = gc_state[c].delayed[fe].head;
-  while (!cmpxch_update(&gc_state[c].delayed[fe].head, &head, (rcu_freed*) 0)) {}
+  while (!std::atomic_compare_exchange_strong(&gc_state[c].delayed[fe].head,
+                                              &head, (rcu_freed*) 0)) {}
 
   // insert list into tofree list so that each core can free in parallel and free its elements
   if(gc_state[c].tofree[fe].epoch != gc_state[c].delayed[fe].epoch) {
@@ -256,18 +252,8 @@ initgc(void)
   }
 
   for (int c = 0; c < ncpu; c++) {
-    struct proc *gcp; 
-
-    gcp = threadalloc(gc_worker, NULL);
-    if (gcp == NULL)
-      panic("threadalloc: gc_worker");
-
-    snprintf(gcp->name, sizeof(gcp->name), "gc_%u", c);
-    gcp->cpuid = c;
-    gcp->cpu_pin = 1;
-    acquire(&gcp->lock);
-    gcp->state = RUNNABLE;
-    addrun(gcp);
-    release(&gcp->lock);
+    char namebuf[32];
+    snprintf(namebuf, sizeof(namebuf), "gc_%u", c);
+    threadpin(gc_worker, 0, namebuf, c);
   }
 }
