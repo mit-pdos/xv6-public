@@ -33,9 +33,13 @@
   (gdb) c
 
 * Mac cross compiler gcc-4.6.2
+  compiler without libstdc++
   download, make, make install gmp-5.0.4, mpfr-3.1.0, and mpc-0.9
   for mpfr and mpc: ./configure --with-gmp=/usr/local
-  for gcc: ../configure --target=x86_64-jos-elf  --with-gmp=/usr/local/ --with-mpfr=/usr/local --enable-languages=c,c++ --without-headers --disable-nls
+  for gcc: 
+  mkdir build
+  cd build
+  ../configure --target=x86_64-jos-elf  --with-gmp=/usr/local/ --with-mpfr=/usr/local --enable-languages=c,c++ --without-headers --disable-nls
 
 * clang 
   - Version 3.0 or greater is required to build xv6
