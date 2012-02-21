@@ -10,10 +10,10 @@ using std::atomic;
 enum vmntype { EAGER, ONDEMAND };
 
 struct vmnode {
-  u64 npages;
-  char *page[128];
+  const u64 npages;
+  atomic<char*> page[128];
   atomic<u64> ref;
-  enum vmntype type;
+  const enum vmntype type;
   struct inode *ip;
   u64 offset;
   u64 sz;

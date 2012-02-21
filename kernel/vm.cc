@@ -55,9 +55,18 @@ int
 vmnode::allocpg()
 {
   for(u64 i = 0; i < npages; i++) {
-    if((page[i] = kalloc()) == 0)
+    if (page[i])
+      continue;
+
+    char *p = kalloc();
+    if (!p) {
+      cprintf("allocpg: out of memory, leaving half-filled vmnode\n");
       return -1;
-    memset((char *) page[i], 0, PGSIZE);
+    }
+
+    memset(p, 0, PGSIZE);
+    if(!cmpxch(&page[i], (char*) 0, p))
+      kfree(p);
   }
   return 0;
 }
@@ -66,24 +75,27 @@ vmnode *
 vmnode::copy()
 {
   vmnode *c = new vmnode(npages, type);
-  if(c != 0) {
-    c->type = type;
-    if (type == ONDEMAND) {
-      c->ip = idup(ip);
-      c->offset = offset;
-      c->sz = c->sz;
-    } 
-    if (page[0]) {   // If the first page is present, all of them are present
-      if (c->allocpg() < 0) {
-	cprintf("vmn_copy: out of memory\n");
-	delete c;
-	return 0;
-      }
-      for(u64 i = 0; i < npages; i++) {
-	memmove(c->page[i], page[i], PGSIZE);
-      }
-    }
+  if(c == 0)
+    return 0;
+
+  if (type == ONDEMAND) {
+    c->ip = idup(ip);
+    c->offset = offset;
+    c->sz = c->sz;
+  } 
+
+  if (!page[0])   // If first page is absent, all pages are absent
+    return c;
+
+  if (c->allocpg() < 0) {
+    cprintf("vmn_copy: out of memory\n");
+    delete c;
+    return 0;
   }
+  for(u64 i = 0; i < npages; i++)
+    if (page[i])
+      memmove(c->page[i], page[i], PGSIZE);
+
   return c;
 }
 
@@ -97,6 +109,11 @@ vmnode::demand_load()
       n = sz - i;
     else
       n = PGSIZE;
+
+    /*
+     * Possible race condition with concurrent demand_load() calls,
+     * if the underlying inode's contents change..
+     */
     if (readi(ip, p, offset+i, n) != n)
       return -1;
   }
