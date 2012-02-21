@@ -2,7 +2,7 @@ extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-#include "fstream.h"
+#include "stream.h"
 #include "lib.h"
 #include "amd64.h"
 }

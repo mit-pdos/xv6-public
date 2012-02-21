@@ -6,7 +6,7 @@
 #include "amd64.h"
 #include "ipc.hh"
 extern "C" {
-#include "fstream.h"
+#include "stream.h"
 }
 
 #define FSIZE (64 << 10)
