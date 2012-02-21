@@ -1,11 +1,9 @@
-extern "C" {
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "stream.h"
 #include "lib.h"
 #include "amd64.h"
-}
 #include "ipc.hh"
 
 static const size_t pstride = 4096*4;
