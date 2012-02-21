@@ -36,7 +36,6 @@
 #include "queue.h"
 #include "proc.hh"
 #include "mtrace.h"
-#include "qlock.h"
 
 #define NSLOTS (1 << CILKSHIFT)
 
@@ -44,7 +43,7 @@ struct cilkqueue {
   struct cilkthread *thread[NSLOTS];
   volatile int head __mpalign__;
 
-  qlock_t lock;
+  struct spinlock lock;
   volatile int tail;
   __padout__;
 } __mpalign__;
@@ -65,8 +64,8 @@ struct cilkstat {
   __padout__;
 } __mpalign__;
 
-struct cilkqueue queue[NCPU] __mpalign__;
-struct cilkstat stat[NCPU] __mpalign__;
+static struct cilkqueue queue[NCPU] __mpalign__;
+static struct cilkstat stat[NCPU] __mpalign__;
 
 static struct cilkqueue *
 cilk_cur(void)
@@ -107,18 +106,17 @@ __cilk_push(struct cilkqueue *q, struct cilkthread *t)
 static struct cilkthread *
 __cilk_pop(struct cilkqueue *q)
 {
-  struct qnode qn;
   int i;
 
-  ql_lock(&q->lock, &qn);
+  acquire(&q->lock);
   i = q->head;
   if ((i - q->tail) == 0) {
-    ql_unlock(&q->lock, &qn);
+    release(&q->lock);
     return 0;
   }
   i = (i-1) & (NSLOTS-1);
   q->head--;
-  ql_unlock(&q->lock, &qn);
+  release(&q->lock);
 
   cilk_stat()->pop++;
   return q->thread[i];
@@ -127,18 +125,17 @@ __cilk_pop(struct cilkqueue *q)
 static struct cilkthread *
 __cilk_steal(struct cilkqueue *q)
 {
-  struct qnode qn;
   int i;
 
-  ql_lock(&q->lock, &qn);
+  acquire(&q->lock);
   i = q->tail;
   if ((i - q->head) == 0) {
-    ql_unlock(&q->lock, &qn);
+    release(&q->lock);
     return 0;
   }
   i = i & (NSLOTS-1);
   q->tail++;
-  ql_unlock(&q->lock, &qn);
+  release(&q->lock);
 
   cilk_stat()->steal++;
   return q->thread[i];
@@ -161,9 +158,8 @@ __cilk_run(struct cilkthread *th)
 // Guarantees some core will at some point execute the work.
 // The current core might execute the work immediately.
 void
-cilk_push(void *rip, u64 arg0, u64 arg1)
+cilk_push(void (*fn)(uptr, uptr), u64 arg0, u64 arg1)
 {
-  void (*fn)(uptr, uptr) = (void(*)(uptr,uptr))rip;
   struct cilkthread *th;
 
   th = (struct cilkthread *) kalloc();
@@ -171,7 +167,7 @@ cilk_push(void *rip, u64 arg0, u64 arg1)
     fn(arg0, arg1);
     return;
   }
-  th->rip = (uptr) rip;
+  th->rip = (uptr) fn;
   th->arg0 = arg0;
   th->arg1 = arg1;
   th->frame = cilk_frame();
@@ -281,7 +277,7 @@ testcilk(void)
     s = rdtsc();
     cilk_start();
     for (i = 0; i < iters; i++)
-      cilk_push((void*) __test_stub, i, i);
+      cilk_push(__test_stub, i, i);
     cilk_end();
     e = rdtsc();
     cprintf("testcilk: %lu\n", (e-s)/iters);
@@ -306,6 +302,6 @@ initcilk(void)
   int i;
 
   for (i = 0; i < NCPU; i++)
-    ql_init(&queue[i].lock, "queue lock");
+    initlock(&queue[i].lock, "queue lock", LOCKSTAT_CILK);
 }
 #endif // CILKENABLE
