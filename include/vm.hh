@@ -49,7 +49,6 @@ struct vma : public range {
 struct vmap {
   struct crange cr;
   atomic<u64> ref;
-  u64 alloc;
   pgmap *const pml4;           // Page table
   char *const kshared;
 

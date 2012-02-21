@@ -140,11 +140,8 @@ vma::~vma()
  */
 
 vmap::vmap()
-  : cr(10), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared))
+  : cr(10), ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared))
 {
-  ref = 1;
-  alloc = 0;
-
   if (pml4 == 0) {
     cprintf("vmap_alloc: setupkvm out of memory\n");
     goto err;
@@ -175,7 +172,6 @@ vmap::~vmap()
     ksfree(slab_kshared, kshared);
   if (pml4)
     freevm(pml4);
-  alloc = 0;
 }
 
 void
