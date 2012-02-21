@@ -20,14 +20,17 @@ enum { vm_debug = 0 };
  * vmnode
  */
 
-vmnode::vmnode(u64 npg, vmntype ntype)
-  : npages(npg), ref(0), type(ntype), ip(0), offset(0), sz(0)
+vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
+  : npages(npg), ref(0), type(ntype), ip(i), offset(off), sz(s)
 {
   if (npg > NELEM(page))
     panic("vmnode too big\n");
   memset(page, 0, sizeof(page));
-  if (type == EAGER)
+  if (type == EAGER) {
     assert(allocpg() == 0);
+    if (ip)
+      assert(demand_load() == 0);
+  }
 }
 
 vmnode::~vmnode()
@@ -38,10 +41,8 @@ vmnode::~vmnode()
       page[i] = 0;
     }
   }
-  if (ip) {
+  if (ip)
     iput(ip);
-    ip = 0;
-  }
 }
 
 void
@@ -74,15 +75,11 @@ vmnode::allocpg()
 vmnode *
 vmnode::copy()
 {
-  vmnode *c = new vmnode(npages, type);
+  vmnode *c = new vmnode(npages, type,
+                         (type==ONDEMAND) ? idup(ip) : 0,
+                         offset, sz);
   if(c == 0)
     return 0;
-
-  if (type == ONDEMAND) {
-    c->ip = idup(ip);
-    c->offset = offset;
-    c->sz = c->sz;
-  } 
 
   if (!page[0])   // If first page is absent, all pages are absent
     return c;
@@ -118,18 +115,6 @@ vmnode::demand_load()
       return -1;
   }
   return 0;
-}
-
-int
-vmnode::load(inode *iparg, u64 offarg, u64 szarg)
-{
-  ip = iparg;
-  offset = offarg;
-  sz = szarg;
-
-  if (type == ONDEMAND)
-    return 0;
-  return demand_load();
 }
 
 /*

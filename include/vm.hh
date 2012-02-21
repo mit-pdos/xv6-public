@@ -14,17 +14,17 @@ struct vmnode {
   atomic<char*> page[128];
   atomic<u64> ref;
   const enum vmntype type;
-  struct inode *ip;
-  u64 offset;
-  u64 sz;
+  struct inode *const ip;
+  const u64 offset;
+  const u64 sz;
 
-  vmnode(u64 npg, vmntype type = EAGER);
+  vmnode(u64 npg, vmntype type = EAGER,
+         inode *i = 0, u64 off = 0, u64 s = 0);
   ~vmnode();
   void decref();
   int allocpg();
   vmnode* copy();
 
-  int load(inode *ip, u64 offset, u64 sz);
   int demand_load();
 };
 

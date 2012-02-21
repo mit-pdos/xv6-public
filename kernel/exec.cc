@@ -54,15 +54,8 @@ dosegment(uptr a0, u64 a1)
     uptr va_end = PGROUNDUP(ph.vaddr + ph.memsz);
   
     int npg = (va_end - va_start) / PGSIZE;
-    if (odp) {
-      if ((vmn = new vmnode(npg, ONDEMAND)) == 0)
-        goto bad;
-    } else {
-      if ((vmn = new vmnode(npg)) == 0)
-        goto bad;
-    }
-
-    if(vmn->load(args->ip, ph.offset, ph.filesz) < 0)
+    if ((vmn = new vmnode(npg, odp ? ONDEMAND : EAGER,
+                          args->ip, ph.offset, ph.filesz)) == 0)
       goto bad;
 
     if(args->vmap->insert(vmn, ph.vaddr) < 0)
