@@ -20,7 +20,7 @@ proc_hash(const u32 &p)
   return p;
 }
 
-int __mpalign__ idle[NCPU];
+//int __mpalign__ idle[NCPU];
 xns<u32, proc*, proc_hash> *xnspid __mpalign__;
 static struct proc *bootproc __mpalign__;
 
@@ -67,43 +67,10 @@ yield(void)
   release(&myproc()->lock);
 }
 
-static int
-migrate(struct proc *p)
-{
-  // p should not be running, or be on a runqueue, or be myproc()
-  int c;
-
-  if (p == myproc())
-    panic("migrate: myproc");
-
-  for (c = 0; c < ncpu; c++) {
-    if (c == mycpu()->id)
-      continue;
-    if (idle[c]) {    // OK if there is a race
-      acquire(&p->lock);
-      if (p->state == RUNNING)
-        panic("migrate: pid %u name %s is running",
-              p->pid, p->name);
-      if (p->cpu_pin)
-        panic("migrate: pid %u name %s is pinned",
-              p->pid, p->name);
-
-      p->curcycles = 0;
-      p->cpuid = c;
-      addrun(p);
-      idle[c] = 0;
-
-      release(&p->lock);
-      return 0;
-    }
-  }
-
-  return -1;
-}
 
 // A fork child's very first scheduling by scheduler()
 // will swtch here.  "Return" to user space.
-static void
+void
 forkret(void)
 {
   // Still holding proc->lock from scheduler.
@@ -202,7 +169,7 @@ freeproc(struct proc *p)
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
-static struct proc*
+struct proc*
 allocproc(void)
 {
   struct proc *p;
@@ -299,104 +266,9 @@ inituser(void)
 void
 initproc(void)
 {
-  int c;
-
   xnspid = new xns<u32, proc*, proc_hash>(false);
   if (xnspid == 0)
     panic("pinit");
-
-  for (c = 0; c < NCPU; c++)
-    idle[c] = 1;
-}
-
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run
-//  - swtch to start running that process
-//  - eventually that process transfers control
-//      via swtch back to the scheduler.
-
-void
-scheduler(void)
-{
-  // allocate a fake PID for each scheduler thread
-  struct proc *schedp = allocproc();
-  if (!schedp)
-    panic("scheduler allocproc");
-
-  snprintf(schedp->name, sizeof(schedp->name), "scheduler_%u", cpunum());
-  mycpu()->proc = schedp;
-  myproc()->cpu_pin = 1;
-
-  // Test the work queue
-  //extern void testwq(void);
-  //testwq();
-
-  // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
-  // mtrace_call_set(1, cpu->id);
-  mtstart(scheduler, schedp);
-
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
-
-    struct proc *p = schednext();
-    if (p) {
-      acquire(&p->lock);
-      if (p->state != RUNNABLE) {
-        release(&p->lock);
-      } else {
-        if (idle[mycpu()->id])
-	  idle[mycpu()->id] = 0;
-
-	// Switch to chosen process.  It is the process's job
-	// to release proc->lock and then reacquire it
-	// before jumping back to us.
-	mycpu()->proc = p;
-	switchuvm(p);
-	p->state = RUNNING;
-	p->tsc = rdtsc();
-
-        mtpause(schedp);
-        if (p->context->rip != (uptr)forkret && 
-            p->context->rip != (uptr)threadstub)
-        {
-          mtresume(p);
-        }
-	mtrec();
-
-	swtch(&mycpu()->scheduler, myproc()->context);
-        mtresume(schedp);
-	mtign();
-	switchkvm();
-
-	// Process is done running for now.
-	// It should have changed its p->state before coming back.
-	mycpu()->proc = schedp;
-	if (p->state != RUNNABLE)
-	  delrun(p);
-	release(&p->lock);
-      }
-    } else {
-      if (steal()) {
-	if (idle[mycpu()->id])
-	  idle[mycpu()->id] = 0;
-      } else {
-	if (!idle[mycpu()->id])
-	  idle[mycpu()->id] = 1;
-      }
-    }
-
-    if (idle[mycpu()->id]) {
-      int worked;
-      do {
-        assert(mycpu()->ncli == 0);
-        worked = wq_trywork();
-      } while(worked);
-      sti();
-    }
-  }
 }
 
 // Grow/shrink current process's memory by n bytes.
@@ -584,12 +456,19 @@ fork(int flags)
   SLIST_INSERT_HEAD(&myproc()->childq, np, child_next);
   release(&myproc()->lock);
 
+#if 0
   if (migrate(np)) {
     acquire(&np->lock);
     np->cpuid = mycpu()->id;
     addrun(np);
     release(&np->lock);
   }
+#else
+  acquire(&np->lock);
+  np->cpuid = mycpu()->id;
+  addrun(np);
+  release(&np->lock);
+#endif
 
   //  cprintf("%d: fork done (pid %d)\n", myproc()->pid, pid);
   return pid;

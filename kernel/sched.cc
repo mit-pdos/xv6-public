@@ -131,3 +131,39 @@ initsched(void)
     STAILQ_INIT(&runq[i].q);
   }
 }
+
+#if 0
+static int
+migrate(struct proc *p)
+{
+  // p should not be running, or be on a runqueue, or be myproc()
+  int c;
+
+  if (p == myproc())
+    panic("migrate: myproc");
+
+  for (c = 0; c < ncpu; c++) {
+    if (c == mycpu()->id)
+      continue;
+    if (idle[c]) {    // OK if there is a race
+      acquire(&p->lock);
+      if (p->state == RUNNING)
+        panic("migrate: pid %u name %s is running",
+              p->pid, p->name);
+      if (p->cpu_pin)
+        panic("migrate: pid %u name %s is pinned",
+              p->pid, p->name);
+
+      p->curcycles = 0;
+      p->cpuid = c;
+      addrun(p);
+      idle[c] = 0;
+
+      release(&p->lock);
+      return 0;
+    }
+  }
+
+  return -1;
+}
+#endif

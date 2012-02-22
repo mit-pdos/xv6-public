@@ -7,6 +7,9 @@
 #include "amd64.h"
 #include "hwvm.hh"
 
+extern void initidle(void);
+extern void idleloop(void);
+
 static volatile int bstate;
 
 void
@@ -16,8 +19,9 @@ mpboot(void)
   inittls();
   initlapic();
   initsamp();
+  initidle();
   bstate = 1;
-  scheduler();     // start running processes
+  idleloop();
 }
 
 static void
@@ -87,6 +91,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initlockstat();
   initpci();
   initnet();
+  initidle();
 
   if (VERBOSE)
     cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
@@ -96,6 +101,6 @@ cmain(u64 mbmagic, u64 mbaddr)
   kpml4.e[0] = 0;  // don't need 1 GB identity mapping anymore
   lcr3(rcr3());
 
-  scheduler();
+  idleloop();
   panic("Unreachable");
 }

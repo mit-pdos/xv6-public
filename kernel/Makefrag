@@ -13,6 +13,7 @@ OBJS = \
 	file.o \
 	fmt.o \
 	fs.o \
+        idle.o \
 	ioapic.o \
 	lapic.o \
 	hwvm.o \
