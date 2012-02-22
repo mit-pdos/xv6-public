@@ -10,21 +10,21 @@ using std::atomic;
 enum vmntype { EAGER, ONDEMAND };
 
 struct vmnode {
-  u64 npages;
-  char *page[128];
+  const u64 npages;
+  atomic<char*> page[128];
   atomic<u64> ref;
-  enum vmntype type;
-  struct inode *ip;
-  u64 offset;
-  u64 sz;
+  const enum vmntype type;
+  struct inode *const ip;
+  const u64 offset;
+  const u64 sz;
 
-  vmnode(u64 npg, vmntype type = EAGER);
+  vmnode(u64 npg, vmntype type = EAGER,
+         inode *i = 0, u64 off = 0, u64 s = 0);
   ~vmnode();
   void decref();
   int allocpg();
   vmnode* copy();
 
-  int load(inode *ip, u64 offset, u64 sz);
   int demand_load();
 };
 
@@ -49,7 +49,6 @@ struct vma : public range {
 struct vmap {
   struct crange cr;
   atomic<u64> ref;
-  u64 alloc;
   pgmap *const pml4;           // Page table
   char *const kshared;
 
@@ -61,7 +60,7 @@ struct vmap {
   void decref();
   vmap* copy(int share);
   vma* lookup(uptr start, uptr len);
-  int insert(vmnode *n, uptr va_start);
+  int insert(vmnode *n, uptr va_start, int dotlb);
   int remove(uptr start, uptr len);
 
   int pagefault(uptr va, u32 err);

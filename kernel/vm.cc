@@ -20,14 +20,17 @@ enum { vm_debug = 0 };
  * vmnode
  */
 
-vmnode::vmnode(u64 npg, vmntype ntype)
-  : npages(npg), ref(0), type(ntype), ip(0), offset(0), sz(0)
+vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
+  : npages(npg), ref(0), type(ntype), ip(i), offset(off), sz(s)
 {
   if (npg > NELEM(page))
     panic("vmnode too big\n");
   memset(page, 0, sizeof(page));
-  if (type == EAGER)
+  if (type == EAGER) {
     assert(allocpg() == 0);
+    if (ip)
+      assert(demand_load() == 0);
+  }
 }
 
 vmnode::~vmnode()
@@ -38,10 +41,8 @@ vmnode::~vmnode()
       page[i] = 0;
     }
   }
-  if (ip) {
+  if (ip)
     iput(ip);
-    ip = 0;
-  }
 }
 
 void
@@ -55,9 +56,18 @@ int
 vmnode::allocpg()
 {
   for(u64 i = 0; i < npages; i++) {
-    if((page[i] = kalloc()) == 0)
+    if (page[i])
+      continue;
+
+    char *p = kalloc();
+    if (!p) {
+      cprintf("allocpg: out of memory, leaving half-filled vmnode\n");
       return -1;
-    memset((char *) page[i], 0, PGSIZE);
+    }
+
+    memset(p, 0, PGSIZE);
+    if(!cmpxch(&page[i], (char*) 0, p))
+      kfree(p);
   }
   return 0;
 }
@@ -65,25 +75,24 @@ vmnode::allocpg()
 vmnode *
 vmnode::copy()
 {
-  vmnode *c = new vmnode(npages, type);
-  if(c != 0) {
-    c->type = type;
-    if (type == ONDEMAND) {
-      c->ip = idup(ip);
-      c->offset = offset;
-      c->sz = c->sz;
-    } 
-    if (page[0]) {   // If the first page is present, all of them are present
-      if (c->allocpg() < 0) {
-	cprintf("vmn_copy: out of memory\n");
-	delete c;
-	return 0;
-      }
-      for(u64 i = 0; i < npages; i++) {
-	memmove(c->page[i], page[i], PGSIZE);
-      }
-    }
+  vmnode *c = new vmnode(npages, type,
+                         (type==ONDEMAND) ? idup(ip) : 0,
+                         offset, sz);
+  if(c == 0)
+    return 0;
+
+  if (!page[0])   // If first page is absent, all pages are absent
+    return c;
+
+  if (c->allocpg() < 0) {
+    cprintf("vmn_copy: out of memory\n");
+    delete c;
+    return 0;
   }
+  for(u64 i = 0; i < npages; i++)
+    if (page[i])
+      memmove(c->page[i], page[i], PGSIZE);
+
   return c;
 }
 
@@ -97,22 +106,15 @@ vmnode::demand_load()
       n = sz - i;
     else
       n = PGSIZE;
+
+    /*
+     * Possible race condition with concurrent demand_load() calls,
+     * if the underlying inode's contents change..
+     */
     if (readi(ip, p, offset+i, n) != n)
       return -1;
   }
   return 0;
-}
-
-int
-vmnode::load(inode *iparg, u64 offarg, u64 szarg)
-{
-  ip = iparg;
-  offset = offarg;
-  sz = szarg;
-
-  if (type == ONDEMAND)
-    return 0;
-  return demand_load();
 }
 
 /*
@@ -138,11 +140,8 @@ vma::~vma()
  */
 
 vmap::vmap()
-  : cr(10), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared))
+  : cr(10), ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared))
 {
-  ref = 1;
-  alloc = 0;
-
   if (pml4 == 0) {
     cprintf("vmap_alloc: setupkvm out of memory\n");
     goto err;
@@ -173,7 +172,6 @@ vmap::~vmap()
     ksfree(slab_kshared, kshared);
   if (pml4)
     freevm(pml4);
-  alloc = 0;
 }
 
 void
@@ -277,7 +275,7 @@ vmap::lookup(uptr start, uptr len)
 }
 
 int
-vmap::insert(vmnode *n, uptr vma_start)
+vmap::insert(vmnode *n, uptr vma_start, int dotlb)
 {
   vma *e;
 
@@ -311,7 +309,8 @@ vmap::insert(vmnode *n, uptr vma_start)
           break;
       }
     });
-  tlbflush();
+  if(dotlb)
+    tlbflush();
   return 0;
 }
 

@@ -277,7 +277,7 @@ inituser(void)
   vmnode *vmn =  new vmnode(PGROUNDUP(_initcode_size) / PGSIZE);
   if(vmn == 0)
     panic("userinit: vmn_allocpg");
-  if(p->vmap->insert(vmn, 0) < 0)
+  if(p->vmap->insert(vmn, 0, 1) < 0)
     panic("userinit: vmap_insert");
   if(p->vmap->copyout(0, _initcode_start, _initcode_size) < 0)
     panic("userinit: copyout");
@@ -391,6 +391,7 @@ scheduler(void)
     if (idle[mycpu()->id]) {
       int worked;
       do {
+        assert(mycpu()->ncli == 0);
         worked = wq_trywork();
       } while(worked);
       sti();

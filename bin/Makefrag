@@ -18,6 +18,7 @@ UPROGS= \
 	usertests \
 	lockstat \
 	preadtest \
+	scripttest \
 	ftest \
 	perf
 
