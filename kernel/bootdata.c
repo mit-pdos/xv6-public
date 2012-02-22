@@ -78,5 +78,6 @@ long (*syscalls[])(u64, u64, u64, u64, u64, u64) = {
   SYSCALL(accept),
   SYSCALL(pread),
   SYSCALL(async),
+  SYSCALL(script),
 };
 

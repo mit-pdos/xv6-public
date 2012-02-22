@@ -58,7 +58,7 @@ dosegment(uptr a0, u64 a1)
                           args->ip, ph.offset, ph.filesz)) == 0)
       goto bad;
 
-    if(args->vmap->insert(vmn, ph.vaddr) < 0)
+    if(args->vmap->insert(vmn, ph.vaddr, 1) < 0)
       goto bad;
 
     prof_end(dosegment_prof);
@@ -82,7 +82,7 @@ static void dostack(uptr a0, u64 a1)
     // Allocate a one-page stack at the top of the (user) address space
   if((vmn = new vmnode(USTACKPAGES)) == 0)
     goto bad;
-  if(args->vmap->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE)) < 0)
+  if(args->vmap->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE), 1) < 0)
     goto bad;
   vmn = 0;
 
@@ -133,7 +133,7 @@ static void doheap(uptr a0, u64 a1)
   // XXX pre-allocate 32 pages..
   if((vmn = new vmnode(32)) == 0)
     goto bad;
-  if(args->vmap->insert(vmn, BRK) < 0)
+  if(args->vmap->insert(vmn, BRK, 1) < 0)
     goto bad;
   vmn = 0;
   prof_end(doheap_prof);

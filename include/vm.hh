@@ -60,7 +60,7 @@ struct vmap {
   void decref();
   vmap* copy(int share);
   vma* lookup(uptr start, uptr len);
-  int insert(vmnode *n, uptr va_start);
+  int insert(vmnode *n, uptr va_start, int dotlb);
   int remove(uptr start, uptr len);
 
   int pagefault(uptr va, u32 err);

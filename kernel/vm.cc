@@ -275,7 +275,7 @@ vmap::lookup(uptr start, uptr len)
 }
 
 int
-vmap::insert(vmnode *n, uptr vma_start)
+vmap::insert(vmnode *n, uptr vma_start, int dotlb)
 {
   vma *e;
 
@@ -309,7 +309,8 @@ vmap::insert(vmnode *n, uptr vma_start)
           break;
       }
     });
-  tlbflush();
+  if(dotlb)
+    tlbflush();
   return 0;
 }
 

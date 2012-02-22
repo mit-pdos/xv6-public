@@ -9,7 +9,7 @@
 #include "cpu.hh"
 #include "bits.hh"
 #include "kmtrace.hh"
-#include "sched.h"
+#include "sched.hh"
 #include "vm.hh"
 #include <stddef.h>
 
