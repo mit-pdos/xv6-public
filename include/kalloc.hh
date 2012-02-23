@@ -1,3 +1,5 @@
+#include "atomic.hh"
+
 struct run {
   struct run *next;
 };
@@ -6,9 +8,8 @@ struct kmem {
   char name[MAXNAME];
   u64 size;
   u64 ninit;
-  struct spinlock lock;
-  struct run *freelist;
-  u64 nfree;
+  std::atomic<run*> freelist;
+  std::atomic<u64> nfree;
 } __mpalign__;
 
 enum {

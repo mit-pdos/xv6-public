@@ -127,14 +127,13 @@ kfree_pool(struct kmem *m, char *v)
   if (ALLOC_MEMSET && kinited && m->size <= 16384)
     memset(v, 1, m->size);
 
-  acquire(&m->lock);
   r = (struct run*)v;
   r->next = m->freelist;
-  m->freelist = r;
+  while (!cmpxch_update(&m->freelist, &r->next, r))
+    ; /* spin */
   m->nfree++;
   if (kinited)
     mtunlabel(mtrace_label_block, r);
-  release(&m->lock);
 }
 
 static void __attribute__((unused))
@@ -143,9 +142,9 @@ kmemprint(void)
   cprintf("free pages: [ ");
   for (u32 i = 0; i < NCPU; i++)
     if (i == mycpu()->id)
-      cprintf("<%lu> ", kmems[i].nfree);
+      cprintf("<%lu> ", kmems[i].nfree.load());
     else
-      cprintf("%lu ", kmems[i].nfree);
+      cprintf("%lu ", kmems[i].nfree.load());
   cprintf("]\n");
 }
 
@@ -155,17 +154,21 @@ kalloc_pool(struct kmem *km)
   struct run *r = 0;
   struct kmem *m;
 
+  scoped_gc_epoch gc;
+
   u32 startcpu = mycpu()->id;
   for (u32 i = 0; r == 0 && i < NCPU; i++) {
     int cn = (i + startcpu) % NCPU;
     m = &km[cn];
-    acquire(&m->lock);
+
     r = m->freelist;
+    while (r && !cmpxch(&m->freelist, r, r->next))
+      ; /* spin */
+
     if (r) {
       m->freelist = r->next;
       m->nfree--;
     }
-    release(&m->lock);
   }
 
   if (r == 0) {
@@ -226,15 +229,12 @@ initkalloc(u64 mbaddr)
   for (int c = 0; c < NCPU; c++) {
     kmems[c].name[0] = (char) c + '0';
     safestrcpy(kmems[c].name+1, "kmem", MAXNAME-1);
-    initlock(&kmems[c].lock, kmems[c].name, LOCKSTAT_KALLOC);
     kmems[c].size = PGSIZE;
   }
 
   for (int i = 0; i < slab_type_max; i++) {
     for (int c = 0; c < NCPU; c++) {
       slabmem[i][c].name[0] = (char) c + '0';
-      initlock(&slabmem[i][c].lock,
-               slabmem[i][c].name, LOCKSTAT_KALLOC);
     }
   }
 
