@@ -19,9 +19,8 @@ struct header {
 };
 
 struct freelist {
-  struct header *buckets[KMMAX+1];
+  std::atomic<header*> buckets[KMMAX+1];
   char name[MAXNAME];
-  struct spinlock lock;
 };
 
 struct freelist freelists[NCPU];
@@ -32,17 +31,16 @@ kminit(void)
   for (int c = 0; c < NCPU; c++) {
     freelists[c].name[0] = (char) c + '0';
     safestrcpy(freelists[c].name+1, "freelist", MAXNAME-1);
-    initlock(&freelists[c].lock, freelists[c].name, LOCKSTAT_KMALLOC);
   }
 }
 
 // get more space for freelists[c].buckets[b]
-void
+int
 morecore(int c, int b)
 {
   char *p = kalloc();
   if(p == 0)
-    return;
+    return -1;
 
   int sz = 1 << b;
   for(char *q = p;
@@ -52,15 +50,14 @@ morecore(int c, int b)
     h->next = freelists[c].buckets[b];
     freelists[c].buckets[b] = h;
   }
+
+  return 0;
 }
 
 void *
 kmalloc(u64 nbytes)
 {
   int nn = 1, b = 0;
-  void *r = 0;
-  struct header *h;
-  int c = mycpu()->id;
 
   while(nn < nbytes && b <= KMMAX){
     nn *= 2;
@@ -71,21 +68,27 @@ kmalloc(u64 nbytes)
   if(b > KMMAX)
     panic("kmalloc too big");
 
-  acquire(&freelists[c].lock);
-  if(freelists[c].buckets[b] == 0)
-    morecore(c, b);
-  h = freelists[c].buckets[b];
-  if(h){
-    freelists[c].buckets[b] = h->next;
-    r = h + 1;
-    h->next = (header*) (long) b;
-  }
-  release(&freelists[c].lock);
+  scoped_gc_epoch gc;
+  struct header *h;
+  int c = mycpu()->id;
 
-  if (r)
-    mtlabel(mtrace_label_heap, r, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
-  if(r == 0)
-    cprintf("kmalloc(%d) failed\n", (int) nbytes);
+  for (;;) {
+    h = freelists[c].buckets[b];
+    if (!h) {
+      if (morecore(c, b) < 0) {
+        cprintf("kmalloc(%d) failed\n", (int) nbytes);
+        return 0;
+      }
+    } else {
+      if (cmpxch(&freelists[c].buckets[b], h, h->next))
+        break;
+    }
+  }
+
+  void *r = h + 1;
+  h->next = (header*) (long) b;
+
+  mtlabel(mtrace_label_heap, r, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
   return r;
 }
 
@@ -95,8 +98,6 @@ kmfree(void *ap)
   int c = mycpu()->id;
   struct header *h;
   int b;
-
-  acquire(&freelists[c].lock);
 
   h = (struct header *) ((char *)ap - sizeof(struct header));
   b = (long) h->next;
@@ -108,9 +109,10 @@ kmfree(void *ap)
     memset(ap, 3, (1<<b) - sizeof(struct header));
 
   h->next = freelists[c].buckets[b];
-  freelists[c].buckets[b] = h;
+  while (!cmpxch_update(&freelists[c].buckets[b], &h->next, h))
+    ; /* spin */
+
   mtunlabel(mtrace_label_heap, ap);
-  release(&freelists[c].lock);
 }
 
 int
