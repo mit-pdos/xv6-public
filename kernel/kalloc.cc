@@ -172,7 +172,7 @@ kalloc_pool(struct kmem *km)
   }
 
   if (r == 0) {
-    cprintf("kalloc: out of memory\n");
+    cprintf("kalloc: out of memory in pool %s\n", km->name);
     kmemprint();
     return 0;
   }
