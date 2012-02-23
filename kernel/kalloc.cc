@@ -232,12 +232,6 @@ initkalloc(u64 mbaddr)
     kmems[c].size = PGSIZE;
   }
 
-  for (int i = 0; i < slab_type_max; i++) {
-    for (int c = 0; c < NCPU; c++) {
-      slabmem[i][c].name[0] = (char) c + '0';
-    }
-  }
-
   if (VERBOSE)
     cprintf("%lu mbytes\n", membytes / (1<<20));
   n = membytes / NCPU;
@@ -260,8 +254,10 @@ initkalloc(u64 mbaddr)
     slabmem[slab_kshared][c].size = KSHAREDSIZE;
     slabmem[slab_kshared][c].ninit = CPUKSTACKS;
 
-    for (int i = 0; i < slab_type_max; i++)
+    for (int i = 0; i < slab_type_max; i++) {
+      slabmem[i][c].name[0] = (char) c + '0';
       slabinit(&slabmem[i][c], &p, &k);
+    }
    
     // The rest goes to the page allocator
     for (; k != n; k += PGSIZE, p = (char*) memnext(p, PGSIZE)) {
