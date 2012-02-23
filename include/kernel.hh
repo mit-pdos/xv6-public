@@ -205,7 +205,7 @@ int             kmemcpy(void*, void*, u64);
 void            syscall(void);
 
 // string.c
-int             memcmp(const void*, const void*, u32);
+extern  "C" int  memcmp(const void*, const void*, u32);
 void*           memmove(void*, const void*, u32);
 extern "C" void* memset(void*, int, u32);
 extern "C" void* memcpy(void*, const void *, u32);
