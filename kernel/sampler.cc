@@ -4,7 +4,7 @@
 #include "condvar.h"
 #include "fs.h"
 #include "stat.h"
-#include "kalloc.h"
+#include "kalloc.hh"
 #include "file.hh"
 #include "bits.hh"
 #include "amd64.h"

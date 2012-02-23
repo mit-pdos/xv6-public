@@ -7,7 +7,7 @@
 #include "mmu.h"
 #include "kernel.hh"
 #include "spinlock.h"
-#include "kalloc.h"
+#include "kalloc.hh"
 #include "mtrace.h"
 #include "cpu.hh"
 #include "multiboot.hh"
@@ -16,6 +16,7 @@ static struct Mbmem mem[128];
 static u64 nmem;
 static u64 membytes;
 struct kmem kmems[NCPU];
+struct kmem slabmem[slab_type_max][NCPU];
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
@@ -247,7 +248,19 @@ initkalloc(u64 mbaddr)
   k = (((uptr)p) - KBASE);
   for (int c = 0; c < NCPU; c++) {
     // Fill slab allocators
-    for (int i = 0; i < NELEM(slabmem); i++)
+    strncpy(slabmem[slab_stack][c].name, "   kstack", MAXNAME);
+    slabmem[slab_stack][c].size = KSTACKSIZE;
+    slabmem[slab_stack][c].ninit = CPUKSTACKS;
+
+    strncpy(slabmem[slab_perf][c].name, "   kperf", MAXNAME);
+    slabmem[slab_perf][c].size = PERFSIZE;
+    slabmem[slab_perf][c].ninit = 1;
+
+    strncpy(slabmem[slab_kshared][c].name, "   kshared", MAXNAME);
+    slabmem[slab_kshared][c].size = KSHAREDSIZE;
+    slabmem[slab_kshared][c].ninit = CPUKSTACKS;
+
+    for (int i = 0; i < slab_type_max; i++)
       slabinit(&slabmem[i][c], &p, &k);
    
     // The rest goes to the page allocator
