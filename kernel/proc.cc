@@ -429,7 +429,6 @@ fork(int flags)
     if((np->vmap = myproc()->vmap->copy(cow)) == 0){
       ksfree(slab_stack, np->kstack);
       np->kstack = 0;
-      set_proc_state(np, UNUSED);
       if (!xnspid->remove(np->pid, &np))
 	panic("fork: ns_remove");
       freeproc(np);
@@ -498,7 +497,6 @@ wait(void)
 	  ksfree(slab_stack, p->kstack);
 	  p->kstack = 0;
 	  p->vmap->decref();
-	  set_proc_state(p, UNUSED);
 	  if (!xnspid->remove(p->pid, &p))
 	    panic("wait: ns_remove");
 	  p->pid = 0;
