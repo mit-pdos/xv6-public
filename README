@@ -40,6 +40,7 @@
   mkdir build
   cd build
   ../configure --target=x86_64-jos-elf  --with-gmp=/usr/local/ --with-mpfr=/usr/local --enable-languages=c,c++ --without-headers --disable-nls
+  make all-gcc ; sudo make install-gcc
 
 * clang 
   - Version 3.0 or greater is required to build xv6
