@@ -74,6 +74,7 @@ steal(void)
       if (p->state == RUNNABLE && !p->cpu_pin && 
           p->curcycles != 0 && p->curcycles > VICTIMAGE)
       {
+        STAILQ_REMOVE(&q->q, p, proc, runqlink);
         steal = p;
         break;
       }
@@ -85,7 +86,7 @@ steal(void)
       if (steal->state == RUNNABLE && !steal->cpu_pin &&
           steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
       {
-        delrun(steal);
+        //delrun(steal);
         steal->curcycles = 0;
         steal->cpuid = mycpu()->id;
         addrun(steal);
@@ -93,6 +94,8 @@ steal(void)
         r = 1;
         break;
       }
+      if (steal->state == RUNNABLE)
+        addrun(steal);
       release(&steal->lock);
     }
   }
@@ -112,10 +115,8 @@ schednext(void)
   q = &runq[cpunum()];
   acquire(&q->lock);
   p = STAILQ_LAST(&q->q, proc, runqlink);
-  if (p) {
+  if (p)
     STAILQ_REMOVE(&q->q, p, proc, runqlink);
-    STAILQ_INSERT_HEAD(&q->q, p, runqlink);    
-  }
   release(&q->lock);
   popcli();
   return p;

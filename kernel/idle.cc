@@ -39,6 +39,7 @@ idleloop(void)
     if (p) {
       acquire(&p->lock);
       if (p->state != RUNNABLE) {
+        panic("Huh?");
         release(&p->lock);
       } else {
         if (idle[mycpu()->id])
@@ -68,8 +69,8 @@ idleloop(void)
 	// Process is done running for now.
 	// It should have changed its p->state before coming back.
 	mycpu()->proc = idlep;
-	if (p->state != RUNNABLE)
-	  delrun(p);
+	if (p->state == RUNNABLE)
+	  addrun(p);
 	release(&p->lock);
       }
     } else {
