@@ -37,10 +37,8 @@ idleloop(void)
 
     struct proc *p = schednext();
     if (p) {
-      acquire(&p->lock);
       if (get_proc_state(p) != RUNNABLE) {
         panic("Huh?");
-        release(&p->lock);
       } else {
         if (idle[mycpu()->id])
 	  idle[mycpu()->id] = 0;
