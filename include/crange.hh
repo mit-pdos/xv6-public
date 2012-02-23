@@ -100,9 +100,9 @@ struct range : public rcu_freed {
 
  protected:
   ~range();
+  range(crange *cr, u64 k, u64 sz, int nlevel = 0);
 
  public:
-  range(crange *cr, u64 k, u64 sz, int nlevel = 0);
   bool deleted() { return next[0].mark(); }
 } __mpalign__;
 
