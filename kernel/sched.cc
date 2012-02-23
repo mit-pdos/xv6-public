@@ -29,7 +29,7 @@ addrun(struct proc *p)
   // Always called with p->lock held
   struct runq *q;
 
-  p->state = RUNNABLE;
+  set_proc_state(p, RUNNABLE);
 
   q = &runq[p->cpuid];
   acquire(&q->lock);
@@ -71,7 +71,7 @@ steal(void)
     if (tryacquire(&q->lock) == 0)
       continue;
     STAILQ_FOREACH(p, &q->q, runqlink) {
-      if (p->state == RUNNABLE && !p->cpu_pin && 
+      if (get_proc_state(p) == RUNNABLE && !p->cpu_pin && 
           p->curcycles != 0 && p->curcycles > VICTIMAGE)
       {
         STAILQ_REMOVE(&q->q, p, proc, runqlink);
@@ -83,7 +83,7 @@ steal(void)
 
     if (steal) {
       acquire(&steal->lock);
-      if (steal->state == RUNNABLE && !steal->cpu_pin &&
+      if (get_proc_state(steal) == RUNNABLE && !steal->cpu_pin &&
           steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
       {
         //delrun(steal);
@@ -94,7 +94,7 @@ steal(void)
         r = 1;
         break;
       }
-      if (steal->state == RUNNABLE)
+      if (get_proc_state(steal) == RUNNABLE)
         addrun(steal);
       release(&steal->lock);
     }

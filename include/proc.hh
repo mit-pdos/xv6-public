@@ -38,7 +38,7 @@ struct proc {
   struct vmap *vmap;           // va -> vma
   uptr brk;                    // Top of heap
   char *kstack;                // Bottom of kernel stack for this process
-  enum procstate state;        // Process state
+  enum procstate _state;       // Process state
   volatile int pid;            // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
@@ -72,3 +72,16 @@ struct proc {
   LIST_ENTRY(proc) cv_waiters; // Linked list of processes waiting for oncv
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
 };
+
+static inline void
+set_proc_state(struct proc *p, enum procstate s)
+{
+  p->_state = s;
+}
+
+static inline enum procstate
+get_proc_state(struct proc *p)
+{
+  return p->_state;
+}
+

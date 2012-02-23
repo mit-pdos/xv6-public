@@ -220,7 +220,7 @@ sys_thread_new(const char *name, lwip_thread_fn thread, void *arg,
   safestrcpy(p->name, name, sizeof(p->name));
 
   acquire(&p->lock);
-  p->state = RUNNABLE;
+  set_proc_state(p, RUNNABLE);
   addrun(p);
   release(&p->lock);
 

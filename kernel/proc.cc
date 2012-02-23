@@ -41,13 +41,13 @@ sched(void)
 #endif
   if(mycpu()->ncli != 1)
     panic("sched locks");
-  if(myproc()->state == RUNNING)
+  if(get_proc_state(myproc()) == RUNNING)
     panic("sched running");
   if(readrflags()&FL_IF)
     panic("sched interruptible");
   intena = mycpu()->intena;
   myproc()->curcycles += rdtsc() - myproc()->tsc;
-  if (myproc()->state == ZOMBIE)
+  if (get_proc_state(myproc()) == ZOMBIE)
     mtstop(myproc());
   else
     mtpause(myproc());
@@ -62,7 +62,7 @@ void
 yield(void)
 {
   acquire(&myproc()->lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
+  set_proc_state(myproc(), RUNNABLE);
   sched();
   release(&myproc()->lock);
 }
@@ -120,7 +120,7 @@ exit(void)
   SLIST_FOREACH_SAFE(p, &(myproc()->childq), child_next, np) {
     acquire(&p->lock);
     p->parent = bootproc;
-    if(p->state == ZOMBIE)
+    if(get_proc_state(p) == ZOMBIE)
       wakeupinit = 1;
     SLIST_REMOVE(&(myproc()->childq), p, proc, child_next);
     release(&p->lock);
@@ -139,7 +139,7 @@ exit(void)
     cv_wakeup(&bootproc->cv); 
 
   // Jump into the scheduler, never to return.
-  myproc()->state = ZOMBIE;
+  set_proc_state(myproc(), ZOMBIE);
   sched();
   panic("zombie exit");
 }
@@ -179,7 +179,7 @@ allocproc(void)
   if (p == 0) return 0;
   memset(p, 0, sizeof(*p));
 
-  p->state = EMBRYO;
+  set_proc_state(p, EMBRYO);
   p->pid = xnspid->allockey();
   p->cpuid = mycpu()->id;
   p->on_runq = -1;
@@ -353,7 +353,7 @@ kill(int pid)
   }
   acquire(&p->lock);
   p->killed = 1;
-  if(p->state == SLEEPING){
+  if(get_proc_state(p) == SLEEPING){
     // XXX
     // we need to wake p up if it is cv_sleep()ing.
     // can't change p from SLEEPING to RUNNABLE since that
@@ -388,8 +388,9 @@ procdumpall(void)
   uptr pc[10];
 
   for (proc *p : xnspid) {
-    if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
-      state = states[p->state];
+    if(get_proc_state(p) >= 0 && get_proc_state(p) < NELEM(states) && 
+       states[get_proc_state(p)])
+      state = states[get_proc_state(p)];
     else
       state = "???";
     
@@ -399,7 +400,7 @@ procdumpall(void)
     cprintf("\n%-3d %-10s %8s %2u  %lu\n",
             p->pid, name, state, p->cpuid, p->tsc);
     
-    if(p->state == SLEEPING){
+    if(get_proc_state(p) == SLEEPING){
       getcallerpcs((void*)p->context->rbp, pc, NELEM(pc));
       for(int i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %lx\n", pc[i]);
@@ -428,7 +429,7 @@ fork(int flags)
     if((np->vmap = myproc()->vmap->copy(cow)) == 0){
       ksfree(slab_stack, np->kstack);
       np->kstack = 0;
-      np->state = UNUSED;
+      set_proc_state(np, UNUSED);
       if (!xnspid->remove(np->pid, &np))
 	panic("fork: ns_remove");
       freeproc(np);
@@ -489,7 +490,7 @@ wait(void)
     SLIST_FOREACH_SAFE(p, &myproc()->childq, child_next, np) {
 	havekids = 1;
 	acquire(&p->lock);
-	if(p->state == ZOMBIE){
+	if(get_proc_state(p) == ZOMBIE){
 	  release(&p->lock);	// noone else better be trying to lock p
 	  pid = p->pid;
 	  SLIST_REMOVE(&myproc()->childq, p, proc, child_next);
@@ -497,7 +498,7 @@ wait(void)
 	  ksfree(slab_stack, p->kstack);
 	  p->kstack = 0;
 	  p->vmap->decref();
-	  p->state = UNUSED;
+	  set_proc_state(p, UNUSED);
 	  if (!xnspid->remove(p->pid, &p))
 	    panic("wait: ns_remove");
 	  p->pid = 0;
@@ -568,7 +569,7 @@ threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
   p->cpuid = cpu;
   p->cpu_pin = 1;
   acquire(&p->lock);
-  p->state = RUNNABLE;
+  set_proc_state(p, RUNNABLE);
   addrun(p);
   release(&p->lock);
 }

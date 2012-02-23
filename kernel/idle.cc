@@ -38,7 +38,7 @@ idleloop(void)
     struct proc *p = schednext();
     if (p) {
       acquire(&p->lock);
-      if (p->state != RUNNABLE) {
+      if (get_proc_state(p) != RUNNABLE) {
         panic("Huh?");
         release(&p->lock);
       } else {
@@ -50,7 +50,7 @@ idleloop(void)
 	// before jumping back to us.
 	mycpu()->proc = p;
 	switchuvm(p);
-	p->state = RUNNING;
+	set_proc_state(p, RUNNING);
 	p->tsc = rdtsc();
 
         mtpause(idlep);
@@ -69,7 +69,7 @@ idleloop(void)
 	// Process is done running for now.
 	// It should have changed its p->state before coming back.
 	mycpu()->proc = idlep;
-	if (p->state == RUNNABLE)
+	if (get_proc_state(p) == RUNNABLE)
 	  addrun(p);
 	release(&p->lock);
       }
