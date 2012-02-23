@@ -300,16 +300,19 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb)
     span.replace(e);
   }
 
-  updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t> *p) {
+  bool needtlb = false;
+  updatepages(pml4, e->vma_start, e->vma_end, [&needtlb](atomic<pme_t> *p) {
       for (;;) {
         pme_t v = p->load();
         if (v & PTE_LOCK)
           continue;
         if (cmpxch(p, v, (pme_t) 0))
           break;
+        if (v != 0)
+          needtlb = true;
       }
     });
-  if(dotlb)
+  if (needtlb && dotlb)
     tlbflush();
   return 0;
 }
@@ -335,16 +338,20 @@ vmap::remove(uptr vma_start, uptr len)
     span.replace(0);
   }
 
-  updatepages(pml4, vma_start, vma_start + len, [](atomic<pme_t> *p) {
+  bool needtlb = false;
+  updatepages(pml4, vma_start, vma_start + len, [&needtlb](atomic<pme_t> *p) {
       for (;;) {
         pme_t v = p->load();
         if (v & PTE_LOCK)
           continue;
         if (cmpxch(p, v, (pme_t) 0))
           break;
+        if (v != 0)
+          needtlb = true;
       }
     });
-  tlbflush();
+  if (needtlb)
+    tlbflush();
   return 0;
 }
 
