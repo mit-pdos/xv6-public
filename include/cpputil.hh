@@ -67,8 +67,20 @@ namespace std {
 }
 
 /* C++ runtime */
-void *operator new(unsigned long nbytes);
-void *operator new(unsigned long nbytes, void *buf);
-void operator delete(void *p);
+// void *operator new(unsigned long nbytes);
+// void *operator new(unsigned long nbytes, void *buf);
+void *operator new[](unsigned long nbytes);
+// void operator delete(void *p);
+void operator delete[](void *p);
 extern "C" void __cxa_pure_virtual(void);
+
+#define NEW_DELETE_OPS(classname)                           \
+  static void* operator new(unsigned long nbytes) {         \
+    assert(nbytes == sizeof(classname));                    \
+    return kmalloc(sizeof(classname));                      \
+  }                                                         \
+                                                            \
+  static void operator delete(void *p) {                    \
+    return kmfree(p, sizeof(classname));                    \
+  }
 

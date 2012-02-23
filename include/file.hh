@@ -42,15 +42,7 @@ struct inode : public rcu_freed {
   inode();
   ~inode();
   virtual void do_gc() { delete this; }
-
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(inode));
-    return kmalloc(sizeof(inode));
-  }
-
-  static void operator delete(void *p) {
-    return kmfree(p, sizeof(inode));
-  }
+  NEW_DELETE_OPS(inode)
 };
 
 #define I_BUSYR 0x1

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "spinlock.h"
 #include "atomic.hh"
 

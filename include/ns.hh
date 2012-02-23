@@ -24,14 +24,7 @@ class xelem : public rcu_freed {
     delete this;
   }
 
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(xelem));
-    return kmalloc(sizeof(xelem));
-  }
-
-  static void operator delete(void *p) {
-    kmfree(p, sizeof(xelem));
-  }
+  NEW_DELETE_OPS(xelem)
 };
 
 template<class K, class V>
@@ -227,14 +220,7 @@ class xns : public rcu_freed {
     return iterator();
   }
 
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(xns));
-    return kmalloc(sizeof(xns));
-  }
-
-  static void operator delete(void *p) {
-    return kmfree(p, sizeof(xns));
-  }
+  NEW_DELETE_OPS(xns)
 };
 
 template<class K, class V, u64 (*HF)(const K&)>

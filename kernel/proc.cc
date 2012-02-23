@@ -188,14 +188,7 @@ class delayed_proc_free : public rcu_freed {
     delete this;
   }
 
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(delayed_proc_free));
-    return kmalloc(sizeof(delayed_proc_free));
-  }
-
-  static void operator delete(void *p) {
-    return kmfree(p, sizeof(delayed_proc_free));
-  }
+  NEW_DELETE_OPS(delayed_proc_free)
 };
 
 static void

@@ -110,14 +110,7 @@ struct range_head : public range {
   range_head(crange *cr, u64 k, u64 sz, int nlevel)
     : range(cr, k, sz, nlevel) {}
 
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(range_head));
-    return kmalloc(sizeof(range_head));
-  }
-
-  static void operator delete(void *p) {
-    return kmfree(p, sizeof(range_head));
-  }
+  NEW_DELETE_OPS(range_head)
 
   virtual void do_gc() {
     delete this;
@@ -165,15 +158,7 @@ struct crange {
 
   range_iterator begin() const { return range_iterator(crange_head->next[0].ptr()); };
   range_iterator end() const { return range_iterator(0); };
-
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(crange));
-    return kmalloc(sizeof(crange));
-  }
-
-  static void operator delete(void *p) {
-    return kmfree(p, sizeof(crange));
-  }
+  NEW_DELETE_OPS(crange)
 };
 
 static inline range_iterator

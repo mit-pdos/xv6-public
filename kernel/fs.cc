@@ -485,14 +485,7 @@ class diskblock : public rcu_freed {
     delete this;
   }
 
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(diskblock));
-    return kmalloc(sizeof(diskblock));
-  }
-
-  static void operator delete(void *p) {
-    return kmfree(p, sizeof(diskblock));
-  }
+  NEW_DELETE_OPS(diskblock)
 };
 
 static void

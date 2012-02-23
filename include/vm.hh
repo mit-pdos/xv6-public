@@ -1,5 +1,6 @@
 #include "gc.hh"
 #include "atomic.hh"
+#include "crange_arch.hh"
 #include "crange.hh"
 #include "cpputil.hh"
 #include "hwvm.hh"
@@ -26,15 +27,7 @@ struct vmnode {
   vmnode* copy();
 
   int demand_load();
-
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(vmnode));
-    return kmalloc(sizeof(vmnode));
-  }
-
-  static void operator delete(void *p) {
-    return kmfree(p, sizeof(vmnode));
-  }
+  NEW_DELETE_OPS(vmnode)
 };
 
 // A mapping of a chunk of an address space to
@@ -51,15 +44,7 @@ struct vma : public range {
   ~vma();
 
   virtual void do_gc() { delete this; }
-
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(vma));
-    return kmalloc(sizeof(vma));
-  }
-
-  static void operator delete(void *p) {
-    return kmfree(p, sizeof(vma));
-  }
+  NEW_DELETE_OPS(vma)
 };
 
 // An address space: a set of vmas plus h/w page table.
@@ -83,15 +68,7 @@ struct vmap {
 
   int pagefault(uptr va, u32 err);
   int copyout(uptr va, void *p, u64 len);
-
-  static void* operator new(unsigned long nbytes) {
-    assert(nbytes == sizeof(vmap));
-    return kmalloc(sizeof(vmap));
-  }
-
-  static void operator delete(void *p) {
-    return kmfree(p, sizeof(vmap));
-  }
+  NEW_DELETE_OPS(vmap)
 
  private:
   int pagefault_wcow(vma *m);
