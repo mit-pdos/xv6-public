@@ -179,7 +179,9 @@ allocproc(void)
   if (p == 0) return 0;
   memset(p, 0, sizeof(*p));
 
-  set_proc_state(p, EMBRYO);
+  //set_proc_state(p, EMBRYO);
+  p->_state = EMBRYO;
+
   p->pid = xnspid->allockey();
   p->cpuid = mycpu()->id;
   p->on_runq = -1;
@@ -567,7 +569,6 @@ threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
   p->cpuid = cpu;
   p->cpu_pin = 1;
   acquire(&p->lock);
-  set_proc_state(p, RUNNABLE);
   addrun(p);
   release(&p->lock);
 }

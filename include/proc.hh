@@ -76,6 +76,26 @@ struct proc {
 static inline void
 set_proc_state(struct proc *p, enum procstate s)
 {
+  switch(p->_state) {
+  case EMBRYO:
+    if (s != RUNNABLE)
+      panic("EMBRYO -> %u", s);
+    break;
+  case SLEEPING:
+    if (s != RUNNABLE)
+      panic("SLEEPING -> %u", s);
+    break;
+  case RUNNABLE:
+    if (s != RUNNING && s != RUNNABLE)
+      panic("RUNNABLE -> %u", s);
+    break;
+  case RUNNING:
+    if (s != RUNNABLE && s != SLEEPING && s != ZOMBIE)
+      panic("RUNNING -> %u", s);
+    break;
+  case ZOMBIE:
+    panic("ZOMBIE -> %u", s);
+  }
   p->_state = s;
 }
 
