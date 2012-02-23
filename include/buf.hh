@@ -17,6 +17,15 @@ struct buf : public rcu_freed {
 
   buf() : rcu_freed("buf") {}
   virtual void do_gc() { delete this; }
+
+  static void* operator new(unsigned long nbytes) {
+    assert(nbytes == sizeof(buf));
+    return kmalloc(sizeof(buf));
+  }
+
+  static void operator delete(void *p) {
+    return kmfree(p, sizeof(buf));
+  }
 };
 #define B_BUSY  0x1  // buffer is locked by some process
 #define B_VALID 0x2  // buffer has been read from disk

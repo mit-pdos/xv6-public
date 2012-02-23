@@ -199,7 +199,7 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
 
     cc = MIN(LOGHEADER_SZ-off, n);
     memmove(dst, (char*)hdr + off, cc);
-    kmfree(hdr);
+    kmfree(hdr, len);
 
     n -= cc;
     ret += cc;

@@ -162,12 +162,12 @@ kalloc_pool(struct kmem *km)
     m = &km[cn];
 
     r = m->freelist;
-    while (r && !cmpxch(&m->freelist, r, r->next))
+    while (r && !cmpxch_update(&m->freelist, &r, r->next))
       ; /* spin */
 
     if (r) {
-      m->freelist = r->next;
       m->nfree--;
+      break;
     }
   }
 

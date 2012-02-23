@@ -177,15 +177,24 @@ exit(void)
   panic("zombie exit");
 }
 
-class delayedfree : public rcu_freed {
+class delayed_proc_free : public rcu_freed {
  private:
   proc *_p;
 
  public:
-  delayedfree(proc *p) : rcu_freed("delayed proc free"), _p(p) {}
+  delayed_proc_free(proc *p) : rcu_freed("delayed proc free"), _p(p) {}
   virtual void do_gc() {
-    kmfree(_p);
+    kmfree(_p, sizeof(struct proc));
     delete this;
+  }
+
+  static void* operator new(unsigned long nbytes) {
+    assert(nbytes == sizeof(delayed_proc_free));
+    return kmalloc(sizeof(delayed_proc_free));
+  }
+
+  static void operator delete(void *p) {
+    return kmfree(p, sizeof(delayed_proc_free));
   }
 };
 
@@ -193,9 +202,7 @@ static void
 freeproc(struct proc *p)
 {
   destroylock(&p->lock);
-
-  delayedfree *df = new delayedfree(p);
-  gc_delayed(df);
+  gc_delayed(new delayed_proc_free(p));
 }
 
 // Look in the process table for an UNUSED proc.

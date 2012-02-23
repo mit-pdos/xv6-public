@@ -43,23 +43,22 @@ morecore(int c, int b)
     return -1;
 
   int sz = 1 << b;
-  for(char *q = p;
-      q + sz + sizeof(struct header) <= p + PGSIZE;
-      q += sz + sizeof(struct header)){
+  for(char *q = p; q + sz <= p + PGSIZE; q += sz){
     struct header *h = (struct header *) q;
     h->next = freelists[c].buckets[b];
-    freelists[c].buckets[b] = h;
+    while (!cmpxch_update(&freelists[c].buckets[b], &h->next, h))
+      ; /* spin */
   }
 
   return 0;
 }
 
-void *
-kmalloc(u64 nbytes)
+static int
+bucket(u64 nbytes)
 {
-  int nn = 1, b = 0;
+  u64 nn = 8, b = 3;
 
-  while(nn < nbytes && b <= KMMAX){
+  while(nn < nbytes) {
     nn *= 2;
     b++;
   }
@@ -67,6 +66,14 @@ kmalloc(u64 nbytes)
     panic("kmalloc oops");
   if(b > KMMAX)
     panic("kmalloc too big");
+
+  return b;
+}
+
+void *
+kmalloc(u64 nbytes)
+{
+  int b = bucket(nbytes);
 
   scoped_gc_epoch gc;
   struct header *h;
@@ -85,29 +92,23 @@ kmalloc(u64 nbytes)
     }
   }
 
-  void *r = h + 1;
-  h->next = (header*) (long) b;
-
-  mtlabel(mtrace_label_heap, r, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
-  return r;
+  mtlabel(mtrace_label_heap, (void*) h, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
+  return h;
 }
 
 void
-kmfree(void *ap)
+kmfree(void *ap, u64 nbytes)
 {
-  int c = mycpu()->id;
-  struct header *h;
-  int b;
-
-  h = (struct header *) ((char *)ap - sizeof(struct header));
-  b = (long) h->next;
+  int b = bucket(nbytes);
   if(b < 0 || b > KMMAX)
     panic("kmfree bad bucket");
 
-  verifyfree((char*) ap, (1<<b) - sizeof(struct header));
+  struct header *h = (struct header *) ap;
+  verifyfree((char *) ap, (1<<b));
   if (ALLOC_MEMSET)
-    memset(ap, 3, (1<<b) - sizeof(struct header));
+    memset(ap, 3, (1<<b));
 
+  int c = mycpu()->id;
   h->next = freelists[c].buckets[b];
   while (!cmpxch_update(&freelists[c].buckets[b], &h->next, h))
     ; /* spin */
@@ -126,7 +127,8 @@ kmalign(void **p, int align, u64 size)
   return 0;   
 }
 
-void kmalignfree(void *mem)
+void kmalignfree(void *mem, int align, u64 size)
 {
-  kmfree(((void**)mem)[-1]);
+  u64 msz = size + (align-1) + sizeof(void*);
+  kmfree(((void**)mem)[-1], msz);
 }

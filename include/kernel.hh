@@ -118,10 +118,10 @@ char*           kalloc(void);
 void            kfree(void*);
 void*           ksalloc(int slabtype);
 void            ksfree(int slabtype, void*);
-void*           kmalloc(u64);
-void            kmfree(void*);
+void*           kmalloc(u64 nbytes);
+void            kmfree(void*, u64 nbytes);
 int             kmalign(void **p, int align, u64 size);
-void            kmalignfree(void *);
+void            kmalignfree(void *, int align, u64 size);
 void            verifyfree(char *ptr, u64 nbytes);
 void            kminit(void);
 

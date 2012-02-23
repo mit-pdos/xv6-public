@@ -20,7 +20,18 @@ class xelem : public rcu_freed {
   K key;
 
   xelem(const K &k, const V &v) : rcu_freed("xelem"), val(v), next_lock(0), next(0), key(k) {}
-  virtual void do_gc() { delete this; }
+  virtual void do_gc() {
+    delete this;
+  }
+
+  static void* operator new(unsigned long nbytes) {
+    assert(nbytes == sizeof(xelem));
+    return kmalloc(sizeof(xelem));
+  }
+
+  static void operator delete(void *p) {
+    kmfree(p, sizeof(xelem));
+  }
 };
 
 template<class K, class V>
@@ -214,6 +225,15 @@ class xns : public rcu_freed {
 
   iterator end() {
     return iterator();
+  }
+
+  static void* operator new(unsigned long nbytes) {
+    assert(nbytes == sizeof(xns));
+    return kmalloc(sizeof(xns));
+  }
+
+  static void operator delete(void *p) {
+    return kmfree(p, sizeof(xns));
   }
 };
 

@@ -3,33 +3,19 @@
 #include "cpputil.hh"
 
 void *
-operator new(unsigned long nbytes)
-{
-  return kmalloc(nbytes);
-}
-
-void *
-operator new(unsigned long nbytes, void *buf)
-{
-  return buf;
-}
-
-void *
 operator new[](unsigned long nbytes)
 {
-  return kmalloc(nbytes);
-}
-
-void
-operator delete(void *p)
-{
-  kmfree(p);
+  u64 *x = (u64*) kmalloc(nbytes + sizeof(u64));
+  *x = nbytes;
+  return x+1;
 }
 
 void
 operator delete[](void *p)
 {
-  kmfree(p);
+  u64 *x = (u64*) p;
+  x--;
+  kmfree(x, *x);
 }
 
 void

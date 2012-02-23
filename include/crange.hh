@@ -104,11 +104,25 @@ struct range : public rcu_freed {
  public:
   range(crange *cr, u64 k, u64 sz, int nlevel = 0);
   bool deleted() { return next[0].mark(); }
+} __mpalign__;
+
+struct range_head : public range {
+  range_head(crange *cr, u64 k, u64 sz, int nlevel)
+    : range(cr, k, sz, nlevel) {}
+
+  static void* operator new(unsigned long nbytes) {
+    assert(nbytes == sizeof(range_head));
+    return kmalloc(sizeof(range_head));
+  }
+
+  static void operator delete(void *p) {
+    return kmfree(p, sizeof(range_head));
+  }
 
   virtual void do_gc() {
     delete this;
   }
-} __mpalign__;
+};
 
 class range_iterator {
  private:
@@ -128,7 +142,7 @@ class crange_locked;
 struct crange {
  private:
   const int nlevel;            // number of levels in the crange skip list
-  range *const crange_head;    // a crange skip list starts with a sentinel range (key 0, sz 0)
+  range_head *const crange_head; // a crange skip list starts with a sentinel range (key 0, sz 0)
 
   static void mark(range *f, range *s);
   static int lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, range **lr, range **sr);
@@ -151,6 +165,15 @@ struct crange {
 
   range_iterator begin() const { return range_iterator(crange_head->next[0].ptr()); };
   range_iterator end() const { return range_iterator(0); };
+
+  static void* operator new(unsigned long nbytes) {
+    assert(nbytes == sizeof(crange));
+    return kmalloc(sizeof(crange));
+  }
+
+  static void operator delete(void *p) {
+    return kmfree(p, sizeof(crange));
+  }
 };
 
 static inline range_iterator
