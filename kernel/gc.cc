@@ -58,7 +58,9 @@ gc_free_tofreelist(atomic<rcu_freed*> *head, u64 epoch)
   for (; r; r = nr) {
     if (r->_rcu_epoch > epoch) {
       cprintf("gc_free_tofreelist: r->epoch %ld > epoch %ld\n", r->_rcu_epoch, epoch);
+#if RCU_TYPE_DEBUG
       cprintf("gc_free_tofreelist: name %s\n", r->_rcu_type);
+#endif
       assert(0);
     }
     nr = r->_rcu_next;
