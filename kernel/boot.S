@@ -6,17 +6,17 @@
 #include "mmu.h"
 
 # KADDR is the kernel virtual address of the first byte of physical memory.
-# The linker loads the executable as if starting at KBASE+2MB, but we
+# The linker loads the executable as if starting at KCODE+2MB, but we
 # ask the loader to load the kernel at physical 2MB and then set up the
 # necessary memory mapping to switch to the higher address.
-# The value of KBASE must match the definitions in kernel.h and kernel.ld.
-#define KBASE 0xFFFFFF0000000000
+# The value of KCODE must match the definitions in kernel.h and kernel.ld.
+#define KCODE 0xFFFFFFFFC0000000
 
 # PADDR(x) is the physical memory address corresponding to x.
 # Until we set up the memory map, fairly late in this file, we have to
 # refer to PADDR(symbol) instead of symbol, so that we use the
 # physical address.
-#define PADDR(x) ((x) - KBASE)
+#define PADDR(x) ((x) - KCODE)
 
 # STACK is the size of the bootstrap stack.
 #define STACK 8192
@@ -126,7 +126,7 @@ tramp64:
 	# running at PADDR(tramp64), so use an explicit calculation to
 	# load and jump to the correct address.  %rax should hold the
 	# physical address of the jmp target.
-	movq $KBASE, %r11
+	movq $KCODE, %r11
 	addq %r11, %rax
 	jmp *%rax
 
@@ -134,7 +134,7 @@ tramp64:
 .comm stack, STACK
 
 # Page tables.  See section 4.5 of 253668.pdf.
-# We map the first GB of physical memory at 0 and at KBASE.  At boot
+# We map the first GB of physical memory at 0 and at KCODE.  At boot
 # time we are using the mapping at 0 but during ordinary execution we
 # use the high mapping.
 # The intent is that after bootstrap the kernel can expand this mapping
@@ -145,10 +145,8 @@ tramp64:
 .global kpml4
 kpml4:
 	.quad PADDR(pdpt0) + (1<<0) + (1<<1)  // present, read/write
-	.quad 0
-	.space 4096 - 2*16
+	.space 4096 - 2*8
 	.quad PADDR(pdpt1) + (1<<0) + (1<<1)  // present, read/write
-        .quad 0
 .align 4096
 pdpt0:
 	.quad PADDR(pdt) + (1<<0) + (1<<1)  // present, read/write
@@ -156,8 +154,8 @@ pdpt0:
        
 .align 4096
 pdpt1:
-	.quad PADDR(pdt) + (1<<0) + (1<<1)  // present, read/write
 	.space 4096 - 8
+	.quad PADDR(pdt) + (1<<0) + (1<<1)  // present, read/write
        
 .align 4096
 pdt:

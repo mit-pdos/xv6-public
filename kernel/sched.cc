@@ -60,7 +60,7 @@ steal(void)
   pushcli();
   
   for (i = 1; i < ncpu; i++) {
-    struct runq *q = &runq[(i+cpunum()) % ncpu];
+    struct runq *q = &runq[(i+mycpu()->id) % ncpu];
     struct proc *p;
 
     // XXX(sbw) Look for a process to steal.  Acquiring q->lock
@@ -109,7 +109,7 @@ schednext(void)
   struct proc *p = NULL;
 
   pushcli();
-  q = &runq[cpunum()];
+  q = &runq[mycpu()->id];
   acquire(&q->lock);
   p = STAILQ_LAST(&q->q, proc, runqlink);
   if (p) {

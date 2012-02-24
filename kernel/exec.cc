@@ -84,7 +84,6 @@ static void dostack(uptr a0, u64 a1)
     goto bad;
   if(args->vmap->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE), 1) < 0)
     goto bad;
-  vmn = 0;
 
   // Push argument strings, prepare rest of stack in ustack.
   sp = USERTOP;
@@ -135,7 +134,6 @@ static void doheap(uptr a0, u64 a1)
     goto bad;
   if(args->vmap->insert(vmn, BRK, 1) < 0)
     goto bad;
-  vmn = 0;
   prof_end(doheap_prof);
 
   return;
@@ -149,7 +147,6 @@ exec(char *path, char **argv)
 {
   struct inode *ip = NULL;
   struct vmap *vmp = NULL;
-  struct vmnode *vmn = NULL;
   struct elfhdr elf;
   struct proghdr ph;
   u64 off;
@@ -227,8 +224,6 @@ exec(char *path, char **argv)
   cprintf("exec failed\n");
   if(vmp)
     vmp->decref();
-  if(vmn)
-    delete vmn;
   gc_end_epoch();
 
   return 0;

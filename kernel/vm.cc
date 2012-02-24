@@ -25,22 +25,18 @@ vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
 {
   if (npg > NELEM(page))
     panic("vmnode too big\n");
-  memset(page, 0, sizeof(page));
-  if (type == EAGER) {
+  memset(page, 0, npg * sizeof(page[0]));
+  if (type == EAGER && ip) {
     assert(allocpg() == 0);
-    if (ip)
-      assert(demand_load() == 0);
+    assert(demand_load() == 0);
   }
 }
 
 vmnode::~vmnode()
 {
-  for(u64 i = 0; i < npages; i++) {
-    if (page[i]) {
+  for(u64 i = 0; i < npages; i++)
+    if (page[i])
       kfree(page[i]);
-      page[i] = 0;
-    }
-  }
   if (ip)
     iput(ip);
 }
@@ -419,12 +415,13 @@ vmap::pagefault(uptr va, u32 err)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
             err, va, m->va_type, m->n->ref.load(), myproc()->pid);
 
-  if (m->n && m->n->type == ONDEMAND && m->n->page[npg] == 0) {
+  if (m->n && !m->n->page[npg])
     if (m->n->allocpg() < 0)
       panic("pagefault: couldn't allocate pages");
+
+  if (m->n && m->n->type == ONDEMAND)
     if (m->n->demand_load() < 0)
       panic("pagefault: couldn't load");
-  }
 
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(m) < 0)
@@ -471,6 +468,7 @@ vmap::copyout(uptr va, void *p, u64 len)
     if(vma == 0)
       return -1;
 
+    vma->n->allocpg();
     uptr pn = (va0 - vma->vma_start) / PGSIZE;
     char *p0 = vma->n->page[pn];
     if(p0 == 0)

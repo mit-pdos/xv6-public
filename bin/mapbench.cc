@@ -5,8 +5,6 @@
 #include "amd64.h"
 #include "uspinlock.h"
 
-static struct uspinlock l;
-static volatile int tcount;
 enum { readaccess = 0 };
 enum { verbose = 0 };
 enum { npg = 1 };
@@ -36,11 +34,6 @@ thr(void *arg)
       exit();
     }
   }
-
-  acquire(&l);
-  // fprintf(1, "mapbench[%d]: done\n", getpid());
-  tcount++;
-  release(&l);
 }
 
 int
@@ -55,7 +48,6 @@ main(int ac, char **av)
 
   int nthread = atoi(av[1]);
 
-  acquire(&l);
   // fprintf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
 
   for(int i = 0; i < nthread; i++) {
@@ -66,22 +58,10 @@ main(int ac, char **av)
     if (0) fprintf(1, "mapbench[%d]: child %d\n", getpid(), tid);
   }
 
-  for(;;){
-    int lastc = tcount;
-    // fprintf(1, "mapbench[%d]: tcount=%d\n", getpid(), lastc);
-    release(&l);
-    if(lastc==nthread)
-      break;
-    while(tcount==lastc)
-      __asm __volatile("":::"memory");
-    acquire(&l);
-  }
-  release(&l);
-  // fprintf(1, "mapbench[%d]: done\n", getpid());
-
   for(int i = 0; i < nthread; i++)
     wait();
 
+  // fprintf(1, "mapbench[%d]: done\n", getpid());
   mtdisable("xv6-mapbench");
   // halt();
   exit();

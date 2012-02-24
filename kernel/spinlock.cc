@@ -17,7 +17,7 @@ static int lockstat_enable;
 static inline struct cpulockstat *
 mylockstat(struct spinlock *lk)
 {
-  return &lk->stat->s.cpu[cpunum()];
+  return &lk->stat->s.cpu[mycpu()->id];
 }
 
 void*

@@ -57,9 +57,7 @@ struct proc : public rcu_freed {
   SLIST_HEAD(childlist, proc) childq;
   SLIST_ENTRY(proc) child_next;
   struct condvar cv;
-  u64 epoch;
-  struct spinlock gc_epoch_lock;
-  u64 epoch_depth;
+  std::atomic<u64> epoch;      // low 8 bits are depth count
   char lockname[16];
   int on_runq;
   int cpu_pin;
@@ -77,12 +75,11 @@ struct proc : public rcu_freed {
 
   proc(int npid) : rcu_freed("proc"), vmap(0), brk(0), kstack(0),
     state(EMBRYO), pid(npid), parent(0), tf(0), context(0), killed(0),
-    cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0), epoch_depth(0),
+    cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
     on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0)
   {
     snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
     initlock(&lock, lockname+3, LOCKSTAT_PROC);
-    initlock(&gc_epoch_lock, lockname+3, LOCKSTAT_PROC);
     initcondvar(&cv, lockname);
 
     memset(&childq, 0, sizeof(childq));
@@ -95,7 +92,6 @@ struct proc : public rcu_freed {
 
   ~proc() {
     destroylock(&lock);
-    destroylock(&gc_epoch_lock);
     destroycondvar(&cv);
   }
 
