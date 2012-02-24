@@ -94,6 +94,7 @@ void cv_sleepto(struct condvar *cv, struct spinlock *lk, u64 timeout)
   release(&cv->lock);
 
   sched();
+  release(&myproc()->lock);
 
   // Reacquire original lock.
   acquire(lk);
