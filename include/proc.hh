@@ -76,7 +76,7 @@ struct proc : public rcu_freed {
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
 
   proc(int npid) : rcu_freed("proc"), vmap(0), brk(0), kstack(0),
-    state(EMBRYO), pid(npid), parent(0), tf(0), context(0), killed(0),
+    _state(EMBRYO), pid(npid), parent(0), tf(0), context(0), killed(0),
     cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0), epoch_depth(0),
     on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0)
   {

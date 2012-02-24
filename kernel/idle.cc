@@ -10,7 +10,7 @@
 #include "bits.hh"
 #include "kmtrace.hh"
 #include "sched.hh"
-#include "kalloc.h"
+#include "kalloc.hh"
 #include "vm.hh"
 #include "ns.hh"
 
