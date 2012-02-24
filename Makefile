@@ -30,7 +30,7 @@ STRIP = $(TOOLPREFIX)strip
 # -nostdinc
 
 COMFLAGS  = -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
-	    -g -MD -m64 -Werror -fms-extensions -mno-sse \
+	    -g -MD -m64 -Werror -fms-extensions -mno-sse -mcx16 \
 	    -mno-red-zone -Iinclude -I$(QEMUSRC) -fno-omit-frame-pointer \
 	    -DHW_$(HW) -include param.h -include include/compiler.h -DXV6
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
