@@ -136,16 +136,24 @@ kfree_pool(struct kmem *m, char *v)
     mtunlabel(mtrace_label_block, r);
 }
 
-static void __attribute__((unused))
-kmemprint(void)
+static void
+kmemprint_pool(struct kmem *km)
 {
-  cprintf("free pages: [ ");
+  cprintf("pool %s: [ ", &km[0].name[1]);
   for (u32 i = 0; i < NCPU; i++)
     if (i == mycpu()->id)
-      cprintf("<%lu> ", kmems[i].nfree.load());
+      cprintf("<%lu> ", km[i].nfree.load());
     else
-      cprintf("%lu ", kmems[i].nfree.load());
+      cprintf("%lu ", km[i].nfree.load());
   cprintf("]\n");
+}
+
+void
+kmemprint()
+{
+  kmemprint_pool(kmems);
+  for (int i = 0; i < slab_type_max; i++)
+    kmemprint_pool(slabmem[i]);
 }
 
 static char*
@@ -242,15 +250,15 @@ initkalloc(u64 mbaddr)
   k = (((uptr)p) - KBASE);
   for (int c = 0; c < NCPU; c++) {
     // Fill slab allocators
-    strncpy(slabmem[slab_stack][c].name, "   kstack", MAXNAME);
+    strncpy(slabmem[slab_stack][c].name, " kstack", MAXNAME);
     slabmem[slab_stack][c].size = KSTACKSIZE;
     slabmem[slab_stack][c].ninit = CPUKSTACKS;
 
-    strncpy(slabmem[slab_perf][c].name, "   kperf", MAXNAME);
+    strncpy(slabmem[slab_perf][c].name, " kperf", MAXNAME);
     slabmem[slab_perf][c].size = PERFSIZE;
     slabmem[slab_perf][c].ninit = 1;
 
-    strncpy(slabmem[slab_kshared][c].name, "   kshared", MAXNAME);
+    strncpy(slabmem[slab_kshared][c].name, " kshared", MAXNAME);
     slabmem[slab_kshared][c].size = KSHAREDSIZE;
     slabmem[slab_kshared][c].ninit = CPUKSTACKS;
 

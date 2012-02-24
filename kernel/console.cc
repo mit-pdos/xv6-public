@@ -282,6 +282,9 @@ consoleintr(int (*getc)(void))
       profenable = 0;
       cprintf("prof disabled\n");
       break;
+    case C('F'):  // kmem stats
+      kmemprint();
+      break;
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;

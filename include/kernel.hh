@@ -124,6 +124,7 @@ int             kmalign(void **p, int align, u64 size);
 void            kmalignfree(void *, int align, u64 size);
 void            verifyfree(char *ptr, u64 nbytes);
 void            kminit(void);
+void            kmemprint(void);
 
 // kbd.c
 void            kbdintr(void);
