@@ -30,7 +30,7 @@ pipealloc(struct file **f0, struct file **f1)
   *f0 = *f1 = 0;
   if((*f0 = filealloc()) == 0 || (*f1 = filealloc()) == 0)
     goto bad;
-  if((p = (struct pipe*)kalloc()) == 0)
+  if((p = (pipe*)kmalloc(sizeof(*p))) == 0)
     goto bad;
   p->readopen = 1;
   p->writeopen = 1;
@@ -52,7 +52,7 @@ pipealloc(struct file **f0, struct file **f1)
  bad:
   if(p) {
     destroylock(&p->lock);
-    kfree((char*)p);
+    kmfree((char*)p, sizeof(*p));
   }
   if(*f0)
     fileclose(*f0);
@@ -74,7 +74,7 @@ pipeclose(struct pipe *p, int writable)
   if(p->readopen == 0 && p->writeopen == 0){
     release(&p->lock);
     destroylock(&p->lock);
-    kfree((char*)p);
+    kmfree((char*)p, sizeof(*p));
   } else
     release(&p->lock);
 }

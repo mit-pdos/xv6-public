@@ -2,6 +2,7 @@
 
 #include "spinlock.h"
 #include "atomic.hh"
+#include "cpputil.hh"
 
 // Saved registers for kernel context switches.
 // (also implicitly defined in swtch.S)
@@ -36,7 +37,7 @@ struct mtrace_stacks {
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
-struct proc {
+struct proc : public rcu_freed {
   struct vmap *vmap;           // va -> vma
   uptr brk;                    // Top of heap
   char *kstack;                // Bottom of kernel stack for this process
@@ -73,4 +74,31 @@ struct proc {
   u64 cv_wakeup;               // Wakeup time for this process
   LIST_ENTRY(proc) cv_waiters; // Linked list of processes waiting for oncv
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
+
+  proc(int npid) : rcu_freed("proc"), vmap(0), brk(0), kstack(0),
+    state(EMBRYO), pid(npid), parent(0), tf(0), context(0), killed(0),
+    cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0), epoch_depth(0),
+    on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0)
+  {
+    snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
+    initlock(&lock, lockname+3, LOCKSTAT_PROC);
+    initlock(&gc_epoch_lock, lockname+3, LOCKSTAT_PROC);
+    initcondvar(&cv, lockname);
+
+    memset(&childq, 0, sizeof(childq));
+    memset(&child_next, 0, sizeof(child_next));
+    memset(ofile, 0, sizeof(ofile));
+    memset(&runqlink, 0, sizeof(runqlink));
+    memset(&cv_waiters, 0, sizeof(cv_waiters));
+    memset(&cv_sleep, 0, sizeof(cv_sleep));
+  }
+
+  ~proc() {
+    destroylock(&lock);
+    destroylock(&gc_epoch_lock);
+    destroycondvar(&cv);
+  }
+
+  virtual void do_gc() { delete this; }
+  NEW_DELETE_OPS(proc)
 };

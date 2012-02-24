@@ -231,6 +231,7 @@ inode::~inode()
   }
 
   destroylock(&lock);
+  destroycondvar(&cv);
 }
 
 struct inode*

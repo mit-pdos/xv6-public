@@ -100,20 +100,13 @@ bget(u32 dev, u64 sector, int *writer)
   victim->flags |= B_BUSY;
   bufns->remove(mkpair(victim->dev, victim->sector), &victim);
   release(&victim->lock);
-  destroylock(&victim->lock);
   gc_delayed(victim);
 
-  b = new buf();
-  b->dev = dev;
-  b->sector = sector;
+  b = new buf(dev, sector);
   b->flags = B_BUSY;
   *writer = 1;
-  snprintf(b->lockname, sizeof(b->lockname), "cv:buf:%d", b->sector);
-  initlock(&b->lock, b->lockname+3, LOCKSTAT_BIO);
-  initcondvar(&b->cv, b->lockname);
   gc_begin_epoch();
   if (bufns->insert(mkpair(b->dev, b->sector), b) < 0) {
-    destroylock(&b->lock);
     gc_delayed(b);
     goto loop;
   }
@@ -169,12 +162,9 @@ initbio(void)
   bufns = new xns<pair<u32, u64>, buf*, bio_hash>(false);
 
   for (u64 i = 0; i < NBUF; i++) {
-    struct buf *b = new buf();
-    b->dev = 0xdeadbeef;
-    b->sector = -i;	/* dummy to pre-allocate NBUF spaces for evict */
+    struct buf *b = new buf(0xdeadbeef, -i);
+    /* dummy to pre-allocate NBUF spaces for evict */
     b->flags = 0;
-    initlock(&b->lock, "bcache-lock", LOCKSTAT_BIO);
-    initcondvar(&b->cv, "bcache-cv");
     if (bufns->insert(mkpair(b->dev, b->sector), b) < 0)
       panic("binit ns_insert");
   }

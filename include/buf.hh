@@ -6,8 +6,8 @@ using std::atomic;
 
 struct buf : public rcu_freed {
   atomic<int> flags;
-  u32 dev;
-  u64 sector;
+  const u32 dev;
+  const u64 sector;
   struct buf *prev; // LRU cache list
   struct buf *next;
   struct buf *qnext; // disk queue
@@ -16,7 +16,17 @@ struct buf : public rcu_freed {
   struct spinlock lock;
   u8 data[512];
 
-  buf() : rcu_freed("buf") {}
+  buf(u32 d, u64 s) : rcu_freed("buf"), dev(d), sector(s) {
+    snprintf(lockname, sizeof(lockname), "cv:buf:%d", sector);
+    initlock(&lock, lockname+3, LOCKSTAT_BIO);
+    initcondvar(&cv, lockname);
+  }
+
+  ~buf() {
+    destroycondvar(&cv);
+    destroylock(&lock);
+  }
+
   virtual void do_gc() { delete this; }
   NEW_DELETE_OPS(buf)
 };
