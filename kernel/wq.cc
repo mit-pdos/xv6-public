@@ -31,7 +31,7 @@ static inline struct wqueue *
 getwq(void)
 {
   pushcli();
-  return &queue[cpunum()];
+  return &queue[mycpu()->id];
 }
 
 static inline void
@@ -43,7 +43,7 @@ putwq(struct wqueue *wq)
 static inline struct wqstat *
 wq_stat(void)
 {
-  return &stat[cpunum()];
+  return &stat[mycpu()->id];
 }
 
 struct work *

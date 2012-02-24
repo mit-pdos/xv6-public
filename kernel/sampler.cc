@@ -83,7 +83,7 @@ sampstart(void)
 {
   pushcli();
   for(struct cpu *c = cpus; c < cpus+ncpu; c++) {
-    if(c == cpus+cpunum())
+    if(c == cpus+mycpu()->id)
       continue;
     lapic_sampconf(c->id);
   }
@@ -95,7 +95,7 @@ static int
 samplog(struct trapframe *tf)
 {
   struct pmulog *l;
-  l = &pmulog[cpunum()];
+  l = &pmulog[mycpu()->id];
 
   if (l->count == l->capacity)
     return 0;
