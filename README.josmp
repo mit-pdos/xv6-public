@@ -9,9 +9,7 @@ EOM
 
 ssh root@josmp reboot
 
-make HW=josmp
-make HW=josmp rsync
-make HW=josmp reboot
+make HW=josmp rsync reboot
 
 ---
 
