@@ -91,6 +91,7 @@ range::~range()
   for (int l = 0; l < nlevel; l++) {
     next[l] = (struct range *) 0xDEADBEEF;
   }
+  destroylock(lock);
   kmalignfree(lock, CACHELINE, sizeof(struct spinlock));
   delete[] next;
 }

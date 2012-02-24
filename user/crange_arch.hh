@@ -55,6 +55,11 @@ initlock(spinlock *s, const char *m, int lockstat)
 }
 
 static inline void
+destroylock(spinlock *s)
+{
+}
+
+static inline void
 cv_wakeup(condvar *c)
 {
   pthread_cond_signal(&c->cv);
