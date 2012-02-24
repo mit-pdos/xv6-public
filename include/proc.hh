@@ -57,9 +57,9 @@ struct proc : public rcu_freed {
   SLIST_HEAD(childlist, proc) childq;
   SLIST_ENTRY(proc) child_next;
   struct condvar cv;
-  u64 epoch;
+  std::atomic<u64> epoch;
   struct spinlock gc_epoch_lock;
-  u64 epoch_depth;
+  std::atomic<u64> epoch_depth;
   char lockname[16];
   int on_runq;
   int cpu_pin;

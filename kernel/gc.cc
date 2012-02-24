@@ -138,7 +138,7 @@ gc_delayfreelist(void)
       // p->epoch, so gc_thread does it for them.  XXX get rid off lock?
       acquire(&p->gc_epoch_lock);
       if (p->epoch_depth == 0)
-        p->epoch = global_epoch;
+        p->epoch = global_epoch.load();
       release(&p->gc_epoch_lock);
       // cprintf("gc_min %d(%s): %lu %ld\n", p->pid, p->name, p->epoch, p->epoch_depth);
       if (min > p->epoch)
@@ -155,9 +155,9 @@ gc_delayfreelist(void)
 void
 gc_delayed(rcu_freed *e)
 {
-  gc_state[mycpu()->id].ndelayed++;
-  pushcli();
   int c = mycpu()->id;
+  gc_state[c].ndelayed++;
+
   u64 myepoch = myproc()->epoch;
   u64 minepoch = gc_state[c].delayed[myepoch % NEPOCH].epoch;
   if (gc_debug) 
@@ -170,7 +170,6 @@ gc_delayed(rcu_freed *e)
   e->_rcu_epoch = myepoch;
   e->_rcu_next = gc_state[c].delayed[myepoch % NEPOCH].head;
   while (!cmpxch_update(&gc_state[c].delayed[myepoch % NEPOCH].head, &e->_rcu_next, e)) {}
-  popcli();
 }
 
 void
@@ -180,9 +179,10 @@ gc_begin_epoch(void)
   acquire(&myproc()->gc_epoch_lock);
   if (myproc()->epoch_depth++ > 0)
     goto done;
-  myproc()->epoch = global_epoch;  // not atomic, but it never goes backwards
+  myproc()->epoch = global_epoch.load();  // not atomic, but it never goes backwards
   // __sync_synchronize();
  done:
+  (void) 0;
   release(&myproc()->gc_epoch_lock);
 }
 
@@ -221,7 +221,7 @@ gc_worker(void *x)
     release(&wl);
     gc_state[mycpu()->id].nrun++;
     u64 global = global_epoch;
-    myproc()->epoch = global_epoch;      // move the gc thread to next epoch
+    myproc()->epoch = global_epoch.load();      // move the gc thread to next epoch
     for (i = gc_state[mycpu()->id].min_epoch; i < global-2; i++) {
       int nfree = gc_free_tofreelist(&gc_state[mycpu()->id].tofree[i%NEPOCH].head, i);
       gc_state[mycpu()->id].tofree[i%NEPOCH].epoch += NEPOCH;
@@ -239,7 +239,7 @@ gc_worker(void *x)
 void
 initprocgc(struct proc *p)
 {
-  p->epoch = global_epoch;
+  p->epoch = global_epoch.load();
   p->epoch_depth = 0;
   initlock(&p->gc_epoch_lock, "per process gc_lock", 0);
 }
