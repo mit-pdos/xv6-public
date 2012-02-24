@@ -69,7 +69,7 @@ bucket(u64 nbytes)
   if(nn != (1 << b))
     panic("kmalloc oops");
   if(b > KMMAX)
-    panic("kmalloc too big");
+    panic("kmalloc too big %ld", nbytes);
 
   return b;
 }
