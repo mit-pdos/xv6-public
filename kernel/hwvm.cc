@@ -196,22 +196,15 @@ tlbflush()
 {
   u64 myreq = tlbflush_req++;
 
-  pushcli();
   // the caller may not hold any spinlock, because other CPUs might
   // be spinning waiting for that spinlock, with interrupts disabled,
   // so we will deadlock waiting for their TLB flush..
-  assert(mycpu()->ncli == 1);
-
-  int myid = mycpu()->id;
-  lcr3(rcr3());
-  popcli();
+  assert(mycpu()->ncli == 0);
 
   for (int i = 0; i < ncpu; i++)
-    if (i != myid)
-      lapic_tlbflush(i);
+    lapic_tlbflush(i);
 
   for (int i = 0; i < ncpu; i++)
-    if (i != myid)
-      while (cpus[i].tlbflush_done < myreq)
-        /* spin */ ;
+    while (cpus[i].tlbflush_done < myreq)
+      /* spin */ ;
 }
