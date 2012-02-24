@@ -1,7 +1,5 @@
+## Save the IPMI password in ./.passwd.josmp
 ## To build and run xv6 on josmp:
-
-make HW=josmp
-make HW=josmp rsync
 
 ssh root@pdos ed /tftpboot/josmp/pxelinux.cfg <<EOM
 /^default /s/^/#/
@@ -10,7 +8,8 @@ wq
 EOM
 
 ssh root@josmp reboot
-ipmitool -I lanplus -A MD5 -H josmpadm.csail.mit.edu -U ADMIN power reset
+
+make HW=josmp rsync reboot
 
 ---
 
@@ -22,5 +21,5 @@ ssh root@pdos ed /tftpboot/josmp/pxelinux.cfg <<EOM
 wq
 EOM
 
-ipmitool -I lanplus -A MD5 -H josmpadm.csail.mit.edu -U ADMIN power reset
+make HW=josmp reboot
 

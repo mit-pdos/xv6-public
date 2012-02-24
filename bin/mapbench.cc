@@ -7,30 +7,31 @@
 
 static struct uspinlock l;
 static volatile int tcount;
-enum { readaccess = 1 };
+enum { readaccess = 0 };
 enum { verbose = 0 };
+enum { npg = 1 };
 
 void
 thr(void *arg)
 {
   u64 tid = (u64)arg;
 
-  for (int i = 0; i < 10000; i++) {
+  for (int i = 0; i < 1000000; i++) {
     if (verbose && ((i % 100) == 0))
       fprintf(1, "%d: %d ops\n", tid, i);
 
-    volatile char *p = (char*) (0x40000UL + tid * 8 * 4096);
-    if (map((void *) p, 8 * 4096) < 0) {
+    volatile char *p = (char*) (0x40000UL + tid * npg * 4096);
+    if (map((void *) p, npg * 4096) < 0) {
       fprintf(1, "%d: map failed\n", tid);
       exit();
     }
 
     if (readaccess) {
-      for (int j = 0; j < 8 * 4096; j++)
+      for (int j = 0; j < npg * 4096; j++)
 	p[j] = '\0';
     }
 
-    if (unmap((void *) p, 8 * 4096) < 0) {
+    if (unmap((void *) p, npg * 4096) < 0) {
       fprintf(1, "%d: unmap failed\n", tid);
       exit();
     }

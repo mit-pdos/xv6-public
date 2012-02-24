@@ -1,7 +1,5 @@
 #pragma once
 
-#define RCU_TYPE_DEBUG  1
-
 class rcu_freed {
  public:
   u64 _rcu_epoch;

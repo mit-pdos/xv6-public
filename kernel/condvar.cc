@@ -139,3 +139,9 @@ initcondvar(struct condvar *cv, const char *n)
   initlock(&cv->lock, n, LOCKSTAT_CONDVAR);
   LIST_INIT(&cv->waiters);
 }
+
+void
+destroycondvar(struct condvar *cv)
+{
+  destroylock(&cv->lock);
+}

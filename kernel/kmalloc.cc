@@ -6,7 +6,7 @@
 #include "mmu.h"
 #include "kernel.hh"
 #include "spinlock.h"
-#include "kalloc.h"
+#include "kalloc.hh"
 #include "mtrace.h"
 #include "cpu.hh"
 
@@ -19,9 +19,8 @@ struct header {
 };
 
 struct freelist {
-  struct header *buckets[KMMAX+1];
+  std::atomic<header*> buckets[KMMAX+1];
   char name[MAXNAME];
-  struct spinlock lock;
 };
 
 struct freelist freelists[NCPU];
@@ -32,37 +31,35 @@ kminit(void)
   for (int c = 0; c < NCPU; c++) {
     freelists[c].name[0] = (char) c + '0';
     safestrcpy(freelists[c].name+1, "freelist", MAXNAME-1);
-    initlock(&freelists[c].lock, freelists[c].name, LOCKSTAT_KMALLOC);
   }
 }
 
 // get more space for freelists[c].buckets[b]
-void
+int
 morecore(int c, int b)
 {
   char *p = kalloc();
   if(p == 0)
-    return;
+    return -1;
 
   int sz = 1 << b;
-  for(char *q = p;
-      q + sz + sizeof(struct header) <= p + PGSIZE;
-      q += sz + sizeof(struct header)){
+  assert(sz >= sizeof(header));
+  for(char *q = p; q + sz <= p + PGSIZE; q += sz){
     struct header *h = (struct header *) q;
     h->next = freelists[c].buckets[b];
-    freelists[c].buckets[b] = h;
+    while (!cmpxch_update(&freelists[c].buckets[b], &h->next, h))
+      ; /* spin */
   }
+
+  return 0;
 }
 
-void *
-kmalloc(u64 nbytes)
+static int
+bucket(u64 nbytes)
 {
-  int nn = 1, b = 0;
-  void *r = 0;
-  struct header *h;
-  int c = mycpu()->id;
+  u64 nn = 8, b = 3;
 
-  while(nn < nbytes && b <= KMMAX){
+  while(nn < nbytes) {
     nn *= 2;
     b++;
   }
@@ -71,46 +68,53 @@ kmalloc(u64 nbytes)
   if(b > KMMAX)
     panic("kmalloc too big");
 
-  acquire(&freelists[c].lock);
-  if(freelists[c].buckets[b] == 0)
-    morecore(c, b);
-  h = freelists[c].buckets[b];
-  if(h){
-    freelists[c].buckets[b] = h->next;
-    r = h + 1;
-    h->next = (header*) (long) b;
-  }
-  release(&freelists[c].lock);
+  return b;
+}
 
-  if (r)
-    mtlabel(mtrace_label_heap, r, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
-  if(r == 0)
-    cprintf("kmalloc(%d) failed\n", (int) nbytes);
-  return r;
+void *
+kmalloc(u64 nbytes)
+{
+  int b = bucket(nbytes);
+
+  scoped_gc_epoch gc;
+  struct header *h;
+  int c = mycpu()->id;
+
+  for (;;) {
+    h = freelists[c].buckets[b];
+    if (!h) {
+      if (morecore(c, b) < 0) {
+        cprintf("kmalloc(%d) failed\n", (int) nbytes);
+        return 0;
+      }
+    } else {
+      if (cmpxch(&freelists[c].buckets[b], h, h->next))
+        break;
+    }
+  }
+
+  mtlabel(mtrace_label_heap, (void*) h, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
+  return h;
 }
 
 void
-kmfree(void *ap)
+kmfree(void *ap, u64 nbytes)
 {
-  int c = mycpu()->id;
-  struct header *h;
-  int b;
-
-  acquire(&freelists[c].lock);
-
-  h = (struct header *) ((char *)ap - sizeof(struct header));
-  b = (long) h->next;
+  int b = bucket(nbytes);
   if(b < 0 || b > KMMAX)
     panic("kmfree bad bucket");
 
-  verifyfree((char*) ap, (1<<b) - sizeof(struct header));
+  struct header *h = (struct header *) ap;
+  verifyfree((char *) ap, (1<<b));
   if (ALLOC_MEMSET)
-    memset(ap, 3, (1<<b) - sizeof(struct header));
+    memset(ap, 3, (1<<b));
 
+  int c = mycpu()->id;
   h->next = freelists[c].buckets[b];
-  freelists[c].buckets[b] = h;
+  while (!cmpxch_update(&freelists[c].buckets[b], &h->next, h))
+    ; /* spin */
+
   mtunlabel(mtrace_label_heap, ap);
-  release(&freelists[c].lock);
 }
 
 int
@@ -124,7 +128,8 @@ kmalign(void **p, int align, u64 size)
   return 0;   
 }
 
-void kmalignfree(void *mem)
+void kmalignfree(void *mem, int align, u64 size)
 {
-  kmfree(((void**)mem)[-1]);
+  u64 msz = size + (align-1) + sizeof(void*);
+  kmfree(((void**)mem)[-1], msz);
 }

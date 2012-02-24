@@ -231,6 +231,7 @@ inode::~inode()
   }
 
   destroylock(&lock);
+  destroycondvar(&cv);
 }
 
 struct inode*
@@ -484,6 +485,8 @@ class diskblock : public rcu_freed {
     bfree(_dev, _block);
     delete this;
   }
+
+  NEW_DELETE_OPS(diskblock)
 };
 
 static void

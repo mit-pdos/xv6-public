@@ -20,7 +20,11 @@ class xelem : public rcu_freed {
   K key;
 
   xelem(const K &k, const V &v) : rcu_freed("xelem"), val(v), next_lock(0), next(0), key(k) {}
-  virtual void do_gc() { delete this; }
+  virtual void do_gc() {
+    delete this;
+  }
+
+  NEW_DELETE_OPS(xelem)
 };
 
 template<class K, class V>
@@ -215,6 +219,8 @@ class xns : public rcu_freed {
   iterator end() {
     return iterator();
   }
+
+  NEW_DELETE_OPS(xns)
 };
 
 template<class K, class V, u64 (*HF)(const K&)>

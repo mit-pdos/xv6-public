@@ -46,6 +46,7 @@ extern u64 ticks;
 extern struct spinlock tickslock;
 extern struct condvar cv_ticks;
 void            initcondvar(struct condvar *, const char *);
+void            destroycondvar(struct condvar *);
 void            cv_sleep(struct condvar *cv, struct spinlock*);
 void            cv_sleepto(struct condvar *cv, struct spinlock*, u64);
 void            cv_wakeup(struct condvar *cv);
@@ -118,12 +119,13 @@ char*           kalloc(void);
 void            kfree(void*);
 void*           ksalloc(int slabtype);
 void            ksfree(int slabtype, void*);
-void*           kmalloc(u64);
-void            kmfree(void*);
+void*           kmalloc(u64 nbytes);
+void            kmfree(void*, u64 nbytes);
 int             kmalign(void **p, int align, u64 size);
-void            kmalignfree(void *);
+void            kmalignfree(void *, int align, u64 size);
 void            verifyfree(char *ptr, u64 nbytes);
 void            kminit(void);
+void            kmemprint(void);
 
 // kbd.c
 void            kbdintr(void);
@@ -205,7 +207,7 @@ int             kmemcpy(void*, void*, u64);
 void            syscall(void);
 
 // string.c
-int             memcmp(const void*, const void*, u32);
+extern  "C" int  memcmp(const void*, const void*, u32);
 void*           memmove(void*, const void*, u32);
 extern "C" void* memset(void*, int, u32);
 extern "C" void* memcpy(void*, const void *, u32);

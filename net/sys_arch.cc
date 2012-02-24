@@ -198,7 +198,7 @@ lwip_thread(void *x)
   lwip_core_lock();
   lt->thread(lt->arg);
   lwip_core_unlock();
-  kmfree(lt);
+  kmfree(lt, sizeof(*lt));
 }
 
 sys_thread_t

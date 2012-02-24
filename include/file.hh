@@ -42,6 +42,7 @@ struct inode : public rcu_freed {
   inode();
   ~inode();
   virtual void do_gc() { delete this; }
+  NEW_DELETE_OPS(inode)
 };
 
 #define I_BUSYR 0x1

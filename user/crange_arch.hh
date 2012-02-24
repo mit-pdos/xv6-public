@@ -20,6 +20,7 @@ typedef uintptr_t uptr;
 #define panic(...) do { printf(__VA_ARGS__); assert(0); } while (0)
 #define LOCKSTAT_CRANGE 0
 #define LOCKSTAT_GC     0
+#define NEW_DELETE_OPS(type)
 
 struct spinlock {
   pthread_mutex_t mu;
@@ -51,6 +52,11 @@ static inline void
 initlock(spinlock *s, const char *m, int lockstat)
 {
   memset(s, 0, sizeof(*s));
+}
+
+static inline void
+destroylock(spinlock *s)
+{
 }
 
 static inline void
@@ -89,7 +95,7 @@ kmalign(void **ptr, size_t align, size_t size)
 }
 
 static inline void
-kmalignfree(void *ptr)
+kmalignfree(void *ptr, size_t align, size_t size)
 {
   free(ptr);
 }

@@ -10,7 +10,7 @@
 #include "bits.hh"
 #include "kmtrace.hh"
 #include "sched.hh"
-#include "kalloc.h"
+#include "kalloc.hh"
 #include "vm.hh"
 #include "ns.hh"
 
@@ -177,25 +177,10 @@ exit(void)
   panic("zombie exit");
 }
 
-class delayedfree : public rcu_freed {
- private:
-  proc *_p;
-
- public:
-  delayedfree(proc *p) : rcu_freed("delayed proc free"), _p(p) {}
-  virtual void do_gc() {
-    kmfree(_p);
-    delete this;
-  }
-};
-
 static void
 freeproc(struct proc *p)
 {
-  destroylock(&p->lock);
-
-  delayedfree *df = new delayedfree(p);
-  gc_delayed(df);
+  gc_delayed(p);
 }
 
 // Look in the process table for an UNUSED proc.
@@ -208,23 +193,15 @@ allocproc(void)
   struct proc *p;
   char *sp;
 
-  p = (proc*) kmalloc(sizeof(struct proc));
+  p = new proc(xnspid->allockey());
   if (p == 0) return 0;
-  memset(p, 0, sizeof(*p));
 
-  p->state = EMBRYO;
-  p->pid = xnspid->allockey();
   p->cpuid = mycpu()->id;
-  p->on_runq = -1;
-  p->cpu_pin = 0;
   initprocgc(p);
 #if MTRACE
   p->mtrace_stacks.curr = -1;
 #endif
 
-  snprintf(p->lockname, sizeof(p->lockname), "cv:proc:%d", p->pid);
-  initlock(&p->lock, p->lockname+3, LOCKSTAT_PROC);
-  initcondvar(&p->cv, p->lockname);
   initcilkframe(&p->cilkframe);
 
   if (xnspid->insert(p->pid, p) < 0)

@@ -288,7 +288,7 @@ netbind(int sock, void *xaddr, int xaddrlen)
   lwip_core_lock();
   r = lwip_bind(sock, (const sockaddr*) addr, xaddrlen);
   lwip_core_unlock();
-  kmfree(addr);
+  kmfree(addr, xaddrlen);
   return r;
 }
 
@@ -322,7 +322,7 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
   ss = lwip_accept(sock, (sockaddr*) addr, &len);
   lwip_core_unlock();
   if (ss < 0) {
-    kmfree(addr);
+    kmfree(addr, len);
     return ss;
   }
 
@@ -330,7 +330,7 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
     lwip_core_lock();
     lwip_close(ss);
     lwip_core_unlock();
-    kmfree(addr);
+    kmfree(addr, len);
     return -1;
   }
 
