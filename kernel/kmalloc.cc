@@ -88,10 +88,17 @@ kmalloc(u64 nbytes)
         return 0;
       }
     } else {
-      if (cmpxch(&freelists[c].buckets[b], h, h->next))
+      header *nxt = h->next;
+      if (cmpxch(&freelists[c].buckets[b], h, nxt)) {
+        if (h->next != nxt)
+          panic("kmalloc: aba race");
         break;
+      }
     }
   }
+
+  if (ALLOC_MEMSET)
+    memset(h, 4, (1<<b));
 
   mtlabel(mtrace_label_heap, (void*) h, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
   return h;

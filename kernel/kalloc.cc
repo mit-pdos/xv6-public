@@ -170,8 +170,12 @@ kalloc_pool(struct kmem *km)
     m = &km[cn];
 
     r = m->freelist;
-    while (r && !cmpxch_update(&m->freelist, &r, r->next))
+    run *nxt = r->next;
+    while (r && !cmpxch_update(&m->freelist, &r, nxt))
       ; /* spin */
+
+    if (r && r->next != nxt)
+      panic("kalloc_pool: aba race %p %p %p\n", r, r->next, nxt);
 
     if (r) {
       m->nfree--;
