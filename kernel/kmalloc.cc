@@ -43,6 +43,7 @@ morecore(int c, int b)
     return -1;
 
   int sz = 1 << b;
+  assert(sz >= sizeof(header));
   for(char *q = p; q + sz <= p + PGSIZE; q += sz){
     struct header *h = (struct header *) q;
     h->next = freelists[c].buckets[b];
