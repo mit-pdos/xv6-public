@@ -128,9 +128,13 @@ kfree_pool(struct kmem *m, char *v)
     memset(v, 1, m->size);
 
   r = (struct run*)v;
-  r->next = m->freelist;
-  while (!cmpxch_update(&m->freelist, &r->next, r))
-    ; /* spin */
+  for (;;) {
+    auto headval = m->freelist.load();
+    r->next = headval.ptr();
+    if (m->freelist.compare_exchange(headval, r))
+      break;
+  }
+
   m->nfree++;
   if (kinited)
     mtunlabel(mtrace_label_block, r);
@@ -169,13 +173,19 @@ kalloc_pool(struct kmem *km)
     int cn = (i + startcpu) % NCPU;
     m = &km[cn];
 
-    r = m->freelist;
-    run *nxt = r->next;
-    while (r && !cmpxch_update(&m->freelist, &r, nxt))
-      ; /* spin */
+    for (;;) {
+      auto headval = m->freelist.load();
+      r = headval.ptr();
+      if (!r)
+        break;
 
-    if (r && r->next != nxt)
-      panic("kalloc_pool: aba race %p %p %p\n", r, r->next, nxt);
+      run *nxt = r->next;
+      if (m->freelist.compare_exchange(headval, nxt)) {
+        if (r->next != nxt)
+          panic("kalloc_pool: aba race %p %p %p\n", r, r->next, nxt);
+        break;
+      }
+    }
 
     if (r) {
       m->nfree--;

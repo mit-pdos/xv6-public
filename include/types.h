@@ -6,8 +6,10 @@ typedef unsigned int    u32;
 typedef int             s32;
 typedef unsigned long   u64;
 typedef long            s64;
+#ifdef XV6
 typedef unsigned __int128 u128;
 typedef __int128        s128;
+#endif
 typedef u64             uptr;
 typedef uptr            paddr;
 
