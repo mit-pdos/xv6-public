@@ -25,7 +25,7 @@ vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
 {
   if (npg > NELEM(page))
     panic("vmnode too big\n");
-  memset(page, 0, sizeof(page));
+  memset(page, 0, npg * sizeof(page[0]));
   if (type == EAGER) {
     assert(allocpg() == 0);
     if (ip)
@@ -35,12 +35,9 @@ vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
 
 vmnode::~vmnode()
 {
-  for(u64 i = 0; i < npages; i++) {
-    if (page[i]) {
+  for(u64 i = 0; i < npages; i++)
+    if (page[i])
       kfree(page[i]);
-      page[i] = 0;
-    }
-  }
   if (ip)
     iput(ip);
 }
