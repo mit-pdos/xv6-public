@@ -64,7 +64,8 @@ yield(void)
   acquire(&myproc()->lock);  //DOC: yieldlock
   set_proc_state(myproc(), RUNNABLE);
   sched();
-  release(&myproc()->lock);
+  sti();
+  //release(&myproc()->lock);
 }
 
 
@@ -73,7 +74,8 @@ yield(void)
 void
 forkret(void)
 {
-  release(&myproc()->lock);
+  sti();
+  //release(&myproc()->lock);
   // Just for the first process. can't do it earlier
   // b/c file system code needs a process context
   // in which to call cv_sleep().
@@ -500,7 +502,8 @@ wait(void)
 void
 threadhelper(void (*fn)(void *), void *arg)
 {
-  release(&myproc()->lock);
+  sti();
+  //release(&myproc()->lock);
   mtstart(fn, myproc());
   fn(arg);
   exit();

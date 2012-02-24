@@ -37,7 +37,8 @@ idleloop(void)
 
     struct proc *p = schednext();
     if (p) {
-      acquire(&p->lock);
+      cli();
+      //acquire(&p->lock);
       if (get_proc_state(p) != RUNNABLE) {
         panic("Huh?");
       } else {
