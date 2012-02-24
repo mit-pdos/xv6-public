@@ -51,7 +51,11 @@ gc_free_tofreelist(atomic<rcu_freed*> *head, u64 epoch)
   int nfree = 0;
   rcu_freed *r, *nr;
 
-  for (r = *head; r != NULL; r = nr) {
+  r = *head;
+  while (!std::atomic_compare_exchange_strong(head, &r, (rcu_freed*) 0))
+    ; /* spin */
+
+  for (; r; r = nr) {
     if (r->_rcu_epoch > epoch) {
       cprintf("gc_free_tofreelist: r->epoch %ld > epoch %ld\n", r->_rcu_epoch, epoch);
       assert(0);
@@ -60,7 +64,6 @@ gc_free_tofreelist(atomic<rcu_freed*> *head, u64 epoch)
     r->do_gc();
     nfree++;
   }
-  *head = r;
   return nfree;
 }
 
@@ -89,6 +92,7 @@ gc_move_to_tofree_cpu(int c, u64 epoch)
   // move delayed NEPOCH's adhead
   gc_state[c].delayed[fe].epoch += NEPOCH;
   assert(gc_state[c].delayed[fe].head == 0);
+  // XXX race with gc_delayed()?
 
   return 0;
 }
