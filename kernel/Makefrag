@@ -63,8 +63,8 @@ $(O)/kernel/%.o: lib/%.cc
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(O)/kernel/%.o: CFLAGS+=-mcmodel=large
-$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=large
+$(O)/kernel/%.o: CFLAGS+=-mcmodel=kernel
+$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel
 
 $(O)/kernel/incbin.o: ASFLAGS+=-DMAKE_OUT=$(O)
 $(O)/kernel/incbin.o: $(O)/kernel/initcode $(O)/kernel/bootother $(O)/fs.img

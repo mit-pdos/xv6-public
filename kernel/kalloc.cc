@@ -118,8 +118,6 @@ kfree_pool(struct kmem *m, char *v)
 
   if ((uptr)v % PGSIZE) 
     panic("kfree_pool: misaligned %p", v);
-  if (v < end)
-    panic("kfree_pool: less than end %p", v);
   if (memsize(v) == -1ull)
     panic("kfree_pool: unknown region %p", v);
 
@@ -261,7 +259,8 @@ initkalloc(u64 mbaddr)
     n = PGROUNDDOWN(n);
 
   p = (char*)PGROUNDUP((uptr)newend);
-  k = (((uptr)p) - KBASE);
+  k = (((uptr)p) - KCODE);
+  p = (char*) KBASE + k;
   for (int c = 0; c < NCPU; c++) {
     // Fill slab allocators
     strncpy(slabmem[slab_stack][c].name, " kstack", MAXNAME);
@@ -317,7 +316,7 @@ verifyfree(char *ptr, u64 nbytes)
   for (; p < e; p++) {
     // Search for pointers in the ptr region
     u64 x = *(uptr *)p;
-    if (KBASE < x && x < KBASE+(128ull<<30)) {
+    if ((KBASE < x && x < KBASE+(128ull<<30)) || (KCODE < x)) {
       struct klockstat *kls = (struct klockstat *) x;
       if (kls->magic == LOCKSTAT_MAGIC)
         panic("LOCKSTAT_MAGIC %p(%lu):%p->%p", 

@@ -63,7 +63,6 @@ walkpgdir(pgmap *pml4, u64 va, int create)
 void
 initpg(void)
 {
-  extern char end[]; 
   u64 va = KBASE;
   paddr pa = 0;
 
@@ -71,12 +70,9 @@ initpg(void)
     auto pdp = descend(&kpml4, va, 0, 1, 3);
     auto pd = descend(pdp, va, 0, 1, 2);
     atomic<pme_t> *sp = &pd->e[PX(1,va)];
-    u64 flags = PTE_W | PTE_P | PTE_PS;
-    // Set NX for non-code pages
-    if (va >= (u64) end)
-      flags |= PTE_NX;
+    u64 flags = PTE_W | PTE_P | PTE_PS | PTE_NX;
     *sp = pa | flags;
-    va = va + PGSIZE*512;
+    va += PGSIZE*512;
     pa += PGSIZE*512;
   }
 }
