@@ -10,3 +10,4 @@ o.*
 /mscan.kern
 config.mk
 lwip
+/.passwd.*

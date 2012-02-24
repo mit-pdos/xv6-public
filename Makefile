@@ -111,5 +111,8 @@ mscan.sorted: mscan.out $(QEMUSRC)/mtrace-tools/sersec-sort
 rsync: $(KERN)
 	rsync -avP $(KERN) amsterdam.csail.mit.edu:/tftpboot/$(HW)/kernel.xv6
 
+reboot:
+	ipmitool -I lanplus -A MD5 -H $(HW)adm.csail.mit.edu -U ADMIN -f .passwd.$(HW) power reset
+
 clean: 
 	rm -fr $(O)
