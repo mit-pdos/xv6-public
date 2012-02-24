@@ -19,6 +19,19 @@ mylockstat(struct spinlock *lk)
 {
   return &lk->stat->s.cpu[cpunum()];
 }
+
+void*
+klockstat::operator new(unsigned long nbytes)
+{
+  assert(nbytes == sizeof(klockstat));
+  return kmalloc(sizeof(klockstat));
+}
+
+void
+klockstat::operator delete(void *p)
+{
+  return kmfree(p, sizeof(klockstat));
+}
 #endif
 
 static inline void

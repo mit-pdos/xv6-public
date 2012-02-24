@@ -80,6 +80,11 @@ threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
   makeproc(p);
 }
 
+struct my_range : public range {
+  my_range(crange *cr, u64 k, u64 sz) : range(cr, k, sz) {}
+  virtual void do_gc() { delete this; }
+};
+
 static pthread_barrier_t worker_b, populate_b;
 
 enum { iter_total = 1000000 };
@@ -99,7 +104,7 @@ worker(void *arg)
       span.replace(0);
     } else {
       ANON_REGION("worker add", &perfgroup);
-      span.replace(new range(cr, k, 1));
+      span.replace(new my_range(cr, k, 1));
     }
   }
 
@@ -111,7 +116,7 @@ populate(void *arg)
 {
   crange *cr = (crange*) arg;
   for (u32 i = 0; i < crange_items; i++)
-    cr->search_lock(1 + 2*i, 1).replace(new range(cr, 1+2*i, 1));
+    cr->search_lock(1 + 2*i, 1).replace(new my_range(cr, 1+2*i, 1));
   pthread_barrier_wait(&populate_b);
 }
 

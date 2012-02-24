@@ -1,3 +1,5 @@
+#pragma once
+
 #include "mmu.h"
 #include "atomic.hh"
 

@@ -17,6 +17,7 @@
 #define VICTIMAGE 1000000 // cycles a proc executes before an eligible victim
 #define VERBOSE       0  // print kernel diagnostics
 #define	SPINLOCK_DEBUG 1 // Debug spin locks
+#define RCU_TYPE_DEBUG 1
 #define LOCKSTAT      1
 #define VERIFYFREE    LOCKSTAT
 #define ALLOC_MEMSET  1

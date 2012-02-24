@@ -7,7 +7,7 @@
 #include "mmu.h"
 #include "kernel.hh"
 #include "spinlock.h"
-#include "kalloc.h"
+#include "kalloc.hh"
 #include "mtrace.h"
 #include "cpu.hh"
 #include "multiboot.hh"
@@ -16,6 +16,7 @@ static struct Mbmem mem[128];
 static u64 nmem;
 static u64 membytes;
 struct kmem kmems[NCPU];
+struct kmem slabmem[slab_type_max][NCPU];
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
@@ -126,26 +127,33 @@ kfree_pool(struct kmem *m, char *v)
   if (ALLOC_MEMSET && kinited && m->size <= 16384)
     memset(v, 1, m->size);
 
-  acquire(&m->lock);
   r = (struct run*)v;
   r->next = m->freelist;
-  m->freelist = r;
+  while (!cmpxch_update(&m->freelist, &r->next, r))
+    ; /* spin */
   m->nfree++;
   if (kinited)
     mtunlabel(mtrace_label_block, r);
-  release(&m->lock);
 }
 
-static void __attribute__((unused))
-kmemprint(void)
+static void
+kmemprint_pool(struct kmem *km)
 {
-  cprintf("free pages: [ ");
+  cprintf("pool %s: [ ", &km[0].name[1]);
   for (u32 i = 0; i < NCPU; i++)
     if (i == mycpu()->id)
-      cprintf("<%lu> ", kmems[i].nfree);
+      cprintf("<%lu> ", km[i].nfree.load());
     else
-      cprintf("%lu ", kmems[i].nfree);
+      cprintf("%lu ", km[i].nfree.load());
   cprintf("]\n");
+}
+
+void
+kmemprint()
+{
+  kmemprint_pool(kmems);
+  for (int i = 0; i < slab_type_max; i++)
+    kmemprint_pool(slabmem[i]);
 }
 
 static char*
@@ -154,21 +162,25 @@ kalloc_pool(struct kmem *km)
   struct run *r = 0;
   struct kmem *m;
 
+  scoped_gc_epoch gc;
+
   u32 startcpu = mycpu()->id;
   for (u32 i = 0; r == 0 && i < NCPU; i++) {
     int cn = (i + startcpu) % NCPU;
     m = &km[cn];
-    acquire(&m->lock);
+
     r = m->freelist;
+    while (r && !cmpxch_update(&m->freelist, &r, r->next))
+      ; /* spin */
+
     if (r) {
-      m->freelist = r->next;
       m->nfree--;
+      break;
     }
-    release(&m->lock);
   }
 
   if (r == 0) {
-    cprintf("kalloc: out of memory\n");
+    cprintf("kalloc: out of memory in pool %s\n", km->name);
     kmemprint();
     return 0;
   }
@@ -225,16 +237,7 @@ initkalloc(u64 mbaddr)
   for (int c = 0; c < NCPU; c++) {
     kmems[c].name[0] = (char) c + '0';
     safestrcpy(kmems[c].name+1, "kmem", MAXNAME-1);
-    initlock(&kmems[c].lock, kmems[c].name, LOCKSTAT_KALLOC);
     kmems[c].size = PGSIZE;
-  }
-
-  for (int i = 0; i < slab_type_max; i++) {
-    for (int c = 0; c < NCPU; c++) {
-      slabmem[i][c].name[0] = (char) c + '0';
-      initlock(&slabmem[i][c].lock,
-               slabmem[i][c].name, LOCKSTAT_KALLOC);
-    }
   }
 
   if (VERBOSE)
@@ -247,8 +250,22 @@ initkalloc(u64 mbaddr)
   k = (((uptr)p) - KBASE);
   for (int c = 0; c < NCPU; c++) {
     // Fill slab allocators
-    for (int i = 0; i < NELEM(slabmem); i++)
+    strncpy(slabmem[slab_stack][c].name, " kstack", MAXNAME);
+    slabmem[slab_stack][c].size = KSTACKSIZE;
+    slabmem[slab_stack][c].ninit = CPUKSTACKS;
+
+    strncpy(slabmem[slab_perf][c].name, " kperf", MAXNAME);
+    slabmem[slab_perf][c].size = PERFSIZE;
+    slabmem[slab_perf][c].ninit = 1;
+
+    strncpy(slabmem[slab_kshared][c].name, " kshared", MAXNAME);
+    slabmem[slab_kshared][c].size = KSHAREDSIZE;
+    slabmem[slab_kshared][c].ninit = CPUKSTACKS;
+
+    for (int i = 0; i < slab_type_max; i++) {
+      slabmem[i][c].name[0] = (char) c + '0';
       slabinit(&slabmem[i][c], &p, &k);
+    }
    
     // The rest goes to the page allocator
     for (; k != n; k += PGSIZE, p = (char*) memnext(p, PGSIZE)) {
@@ -287,12 +304,10 @@ verifyfree(char *ptr, u64 nbytes)
     // Search for pointers in the ptr region
     u64 x = *(uptr *)p;
     if (KBASE < x && x < KBASE+(128ull<<30)) {
-#if 0   /* maybe once this code is C++ */
       struct klockstat *kls = (struct klockstat *) x;
       if (kls->magic == LOCKSTAT_MAGIC)
         panic("LOCKSTAT_MAGIC %p(%lu):%p->%p", 
               ptr, nbytes, p, kls);
-#endif
     }
   }
 #endif

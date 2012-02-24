@@ -42,7 +42,7 @@ fileclose(struct file *f)
     netclose(f->socket);
   else
     panic("fileclose bad type");
-  kmfree(f);
+  kmfree(f, sizeof(struct file));
 }
 
 // Get metadata about file f.

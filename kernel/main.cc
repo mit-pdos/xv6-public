@@ -2,7 +2,7 @@
 #include "multiboot.hh"
 #include "kernel.hh"
 #include "spinlock.h"
-#include "kalloc.h"
+#include "kalloc.hh"
 #include "cpu.hh"
 #include "amd64.h"
 #include "hwvm.hh"

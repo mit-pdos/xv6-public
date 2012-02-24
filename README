@@ -9,7 +9,7 @@
 * Networking with lwIP
 
   $ git clone git://git.savannah.nongnu.org/lwip.git
-  $ (cd lwip && git checkout STABLE-1_4_0)
+  $ (cd lwip && git checkout DEVEL-1_4_1)
   $ make clean;make
 
 * Copies of e1000 and e1000e manuals are in manuals/.  They were
@@ -40,6 +40,7 @@
   mkdir build
   cd build
   ../configure --target=x86_64-jos-elf  --with-gmp=/usr/local/ --with-mpfr=/usr/local --enable-languages=c,c++ --without-headers --disable-nls
+  make all-gcc ; sudo make install-gcc
 
 * clang 
   - Version 3.0 or greater is required to build xv6

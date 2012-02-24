@@ -91,7 +91,8 @@ range::~range()
   for (int l = 0; l < nlevel; l++) {
     next[l] = (struct range *) 0xDEADBEEF;
   }
-  kmalignfree(lock);
+  destroylock(lock);
+  kmalignfree(lock, CACHELINE, sizeof(struct spinlock));
   delete[] next;
 }
 
@@ -176,7 +177,7 @@ crange::print(int full)
 }
 
 crange::crange(int nl)
-  : nlevel(nl), crange_head(new range(this, 0, 0, nlevel))
+  : nlevel(nl), crange_head(new range_head(this, 0, 0, nlevel))
 {
   assert(nl > 0);
   dprintf("crange::crange return 0x%lx\n", (u64) this);
