@@ -138,6 +138,14 @@ writegs(u16 v)
   __asm volatile("movw %0, %%gs" : : "r" (v));
 }
 
+static inline u16
+readgs(void)
+{
+  u16 v;
+  __asm volatile("movw %%gs, %0" : "=r" (v));
+  return v;
+}
+
 static inline u64
 readmsr(u32 msr)
 {
@@ -231,6 +239,7 @@ rcr2(void)
 
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
+// Also used by sysentry (but sparsely populated).
 struct trapframe {
   u16 padding3[7];
   u16 ds;

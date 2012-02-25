@@ -6,6 +6,8 @@
 #include "cpu.hh"
 #include "amd64.h"
 #include "hwvm.hh"
+#include "condvar.h"
+#include "proc.hh"
 
 static volatile int bstate;
 
@@ -95,6 +97,13 @@ cmain(u64 mbmagic, u64 mbaddr)
   bootothers();    // start other processors
   kpml4.e[0] = 0;  // don't need 1 GB identity mapping anymore
   lcr3(rcr3());
+
+  if (PROC_KSTACK_OFFSET != __offsetof(struct proc, kstack))
+    panic("PROC_KSTACK_OFFSET mismatch: %d %ld\n",
+          PROC_KSTACK_OFFSET, __offsetof(struct proc, kstack));
+  if (TRAPFRAME_SIZE != sizeof(trapframe))
+    panic("TRAPFRAME_SIZE mismatch: %d %ld\n",
+          TRAPFRAME_SIZE, sizeof(trapframe));
 
   scheduler();
   panic("Unreachable");
