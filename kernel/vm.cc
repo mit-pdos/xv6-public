@@ -13,6 +13,7 @@
 #include "gc.hh"
 #include "crange.hh"
 #include "cpputil.hh"
+#include "sperf.hh"
 
 enum { vm_debug = 0 };
 
@@ -273,6 +274,8 @@ vmap::lookup(uptr start, uptr len)
 int
 vmap::insert(vmnode *n, uptr vma_start, int dotlb)
 {
+  ANON_REGION("vmap::insert", perfgroup);
+
   vma *e;
 
   {
