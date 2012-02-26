@@ -30,7 +30,7 @@ klockstat::operator new(unsigned long nbytes)
 void
 klockstat::operator delete(void *p)
 {
-  return kmfree(p, sizeof(klockstat));
+  kmfree(p, sizeof(klockstat));
 }
 #endif
 

@@ -137,6 +137,6 @@ extern void *__dso_handle;
   }                                                         \
                                                             \
   static void operator delete(void *p) {                    \
-    return kmfree(p, sizeof(classname));                    \
+    kmfree(p, sizeof(classname));                           \
   }
 
