@@ -9,6 +9,9 @@
 #include "condvar.h"
 #include "proc.hh"
 
+extern void initidle(void);
+extern void idleloop(void);
+
 static volatile int bstate;
 
 void
@@ -18,9 +21,10 @@ mpboot(void)
   inittls();
   initlapic();
   initsamp();
+  initidle();
   initnmi();
   bstate = 1;
-  scheduler();     // start running processes
+  idleloop();
 }
 
 static void
@@ -90,6 +94,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initlockstat();
   initpci();
   initnet();
+  initidle();
 
   if (VERBOSE)
     cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
@@ -107,6 +112,7 @@ cmain(u64 mbmagic, u64 mbaddr)
     panic("TRAPFRAME_SIZE mismatch: %d %ld\n",
           TRAPFRAME_SIZE, sizeof(trapframe));
 
-  scheduler();
+  idleloop();
+
   panic("Unreachable");
 }

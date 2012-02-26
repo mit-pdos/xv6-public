@@ -82,7 +82,7 @@ void cv_sleepto(struct condvar *cv, struct spinlock *lk, u64 timeout)
 
   LIST_INSERT_HEAD(&cv->waiters, myproc(), cv_waiters);
   myproc()->oncv = cv;
-  myproc()->state = SLEEPING;
+  set_proc_state(myproc(), SLEEPING);
 
   if (timeout) {
     acquire(&sleepers_lock);
@@ -92,10 +92,7 @@ void cv_sleepto(struct condvar *cv, struct spinlock *lk, u64 timeout)
  }
 
   release(&cv->lock);
-
   sched();
-  release(&myproc()->lock);
-
   // Reacquire original lock.
   acquire(lk);
 }
@@ -115,9 +112,9 @@ cv_wakeup(struct condvar *cv)
   acquire(&cv->lock);
   LIST_FOREACH_SAFE(p, &cv->waiters, cv_waiters, tmp) {
     acquire(&p->lock);
-    if (p->state != SLEEPING)
+    if (get_proc_state(p) != SLEEPING)
       panic("cv_wakeup: pid %u name %s state %u",
-            p->pid, p->name, p->state);
+            p->pid, p->name, get_proc_state(p));
     if (p->oncv != cv)
       panic("cv_wakeup: pid %u name %s p->cv %p cv %p",
             p->pid, p->name, p->oncv, cv);

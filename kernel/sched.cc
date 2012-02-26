@@ -24,12 +24,82 @@ struct runq {
 static struct runq runq[NCPU] __mpalign__;
 
 void
+post_swtch(void)
+{
+  if (get_proc_state(mycpu()->prev) == RUNNABLE && 
+      mycpu()->prev != idlep[mycpu()->id])
+    addrun(mycpu()->prev);
+  release(&mycpu()->prev->lock);
+}
+
+void
+sched(void)
+{
+  extern void threadstub(void);
+  extern void forkret(void);
+  int intena;
+
+#if SPINLOCK_DEBUG
+  if(!holding(&myproc()->lock))
+    panic("sched proc->lock");
+#endif
+  if(mycpu()->ncli != 1)
+    panic("sched locks");
+  if(get_proc_state(myproc()) == RUNNING)
+    panic("sched running");
+  if(readrflags()&FL_IF)
+    panic("sched interruptible");
+  intena = mycpu()->intena;
+  myproc()->curcycles += rdtsc() - myproc()->tsc;
+  if (get_proc_state(myproc()) == ZOMBIE)
+    mtstop(myproc());
+  else
+    mtpause(myproc());
+  mtign();
+
+  struct proc *next = schednext();
+  if (next == nullptr) {
+    if (get_proc_state(myproc()) != RUNNABLE) {
+      next = idlep[mycpu()->id];
+    } else {
+      set_proc_state(myproc(), RUNNING);
+      mycpu()->intena = intena;
+      release(&myproc()->lock);
+      return;
+    }
+  }
+
+  if (get_proc_state(next) != RUNNABLE)
+    panic("non-RUNNABLE next %s %u", next->name, get_proc_state(next));
+
+  struct proc *prev = myproc();
+  mycpu()->proc = next;
+  mycpu()->prev = prev;
+
+  switchvm(next);
+  set_proc_state(next, RUNNING);
+  next->tsc = rdtsc();
+
+  mtpause(next);
+  if (next->context->rip != (uptr)forkret && 
+      next->context->rip != (uptr)threadstub)
+  {
+    mtresume(next);
+  }
+  mtrec();
+
+  swtch(&prev->context, next->context);
+  mycpu()->intena = intena;
+  post_swtch();
+}
+
+void
 addrun(struct proc *p)
 {
   // Always called with p->lock held
   struct runq *q;
 
-  p->state = RUNNABLE;
+  set_proc_state(p, RUNNABLE);
 
   q = &runq[p->cpuid];
   acquire(&q->lock);
@@ -71,9 +141,10 @@ steal(void)
     if (tryacquire(&q->lock) == 0)
       continue;
     STAILQ_FOREACH(p, &q->q, runqlink) {
-      if (p->state == RUNNABLE && !p->cpu_pin && 
+      if (get_proc_state(p) == RUNNABLE && !p->cpu_pin && 
           p->curcycles != 0 && p->curcycles > VICTIMAGE)
       {
+        STAILQ_REMOVE(&q->q, p, proc, runqlink);
         steal = p;
         break;
       }
@@ -82,10 +153,9 @@ steal(void)
 
     if (steal) {
       acquire(&steal->lock);
-      if (steal->state == RUNNABLE && !steal->cpu_pin &&
+      if (get_proc_state(steal) == RUNNABLE && !steal->cpu_pin &&
           steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
       {
-        delrun(steal);
         steal->curcycles = 0;
         steal->cpuid = mycpu()->id;
         addrun(steal);
@@ -93,6 +163,8 @@ steal(void)
         r = 1;
         break;
       }
+      if (get_proc_state(steal) == RUNNABLE)
+        addrun(steal);
       release(&steal->lock);
     }
   }
@@ -112,10 +184,8 @@ schednext(void)
   q = &runq[mycpu()->id];
   acquire(&q->lock);
   p = STAILQ_LAST(&q->q, proc, runqlink);
-  if (p) {
+  if (p)
     STAILQ_REMOVE(&q->q, p, proc, runqlink);
-    STAILQ_INSERT_HEAD(&q->q, p, runqlink);    
-  }
   release(&q->lock);
   popcli();
   return p;
@@ -127,7 +197,43 @@ initsched(void)
   int i;
 
   for (i = 0; i < NCPU; i++) {
-      initlock(&runq[i].lock, "runq", LOCKSTAT_SCHED);
+    initlock(&runq[i].lock, "runq", LOCKSTAT_SCHED);
     STAILQ_INIT(&runq[i].q);
   }
 }
+
+#if 0
+static int
+migrate(struct proc *p)
+{
+  // p should not be running, or be on a runqueue, or be myproc()
+  int c;
+
+  if (p == myproc())
+    panic("migrate: myproc");
+
+  for (c = 0; c < ncpu; c++) {
+    if (c == mycpu()->id)
+      continue;
+    if (idle[c]) {    // OK if there is a race
+      acquire(&p->lock);
+      if (p->state == RUNNING)
+        panic("migrate: pid %u name %s is running",
+              p->pid, p->name);
+      if (p->cpu_pin)
+        panic("migrate: pid %u name %s is pinned",
+              p->pid, p->name);
+
+      p->curcycles = 0;
+      p->cpuid = c;
+      addrun(p);
+      idle[c] = 0;
+
+      release(&p->lock);
+      return 0;
+    }
+  }
+
+  return -1;
+}
+#endif

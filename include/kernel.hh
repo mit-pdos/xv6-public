@@ -125,6 +125,9 @@ void            ideinit(void);
 void            ideintr(void);
 void            iderw(struct buf*);
 
+// idle.cc
+extern struct proc *idlep[NCPU];
+
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
 
@@ -174,7 +177,7 @@ int             piperead(struct pipe*, char*, int);
 int             pipewrite(struct pipe*, char*, int);
 
 // proc.c
-void            addrun(struct proc *);
+struct proc*    allocproc(void);
 struct proc*    copyproc(struct proc*);
 void            exit(void);
 int             fork(int);
@@ -183,7 +186,6 @@ int             kill(int);
 void            pinit(void);
 void            procdumpall(void);
 void            scheduler(void) __noret__;
-void            sched(void);
 void            userinit(void);
 int             wait(void);
 void            yield(void);
@@ -200,6 +202,12 @@ void            sampstart(void);
 int             sampintr(struct trapframe*);
 void            sampdump(void);
 void            sampconf(void);
+
+// sched.cc
+void            addrun(struct proc *);
+void            sched(void);
+void            post_swtch(void);
+void            scheddump(void);
 
 // spinlock.c
 void            acquire(struct spinlock*);
@@ -242,8 +250,7 @@ void            uartputc(char c);
 void            uartintr(void);
 
 // vm.c
-void            switchuvm(struct proc*);
-void            switchkvm(void);
+void            switchvm(struct proc*);
 int             pagefault(struct vmap *, uptr, u32);
 
 // wq.c

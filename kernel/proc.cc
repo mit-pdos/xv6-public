@@ -20,7 +20,7 @@ proc_hash(const u32 &p)
   return p;
 }
 
-int __mpalign__ idle[NCPU];
+//int __mpalign__ idle[NCPU];
 xns<u32, proc*, proc_hash> *xnspid __mpalign__;
 static struct proc *bootproc __mpalign__;
 
@@ -30,84 +30,22 @@ struct kstack_tag kstack_tag[NCPU];
 
 enum { sched_debug = 0 };
 
-void
-sched(void)
-{
-  int intena;
-
-#if SPINLOCK_DEBUG
-  if(!holding(&myproc()->lock))
-    panic("sched proc->lock");
-#endif
-  if(mycpu()->ncli != 1)
-    panic("sched locks");
-  if(myproc()->state == RUNNING)
-    panic("sched running");
-  if(readrflags()&FL_IF)
-    panic("sched interruptible");
-  intena = mycpu()->intena;
-  myproc()->curcycles += rdtsc() - myproc()->tsc;
-  if (myproc()->state == ZOMBIE)
-    mtstop(myproc());
-  else
-    mtpause(myproc());
-  mtign();
-
-  swtch(&myproc()->context, mycpu()->scheduler);
-  mycpu()->intena = intena;
-}
-
 // Give up the CPU for one scheduling round.
 void
 yield(void)
 {
   acquire(&myproc()->lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
+  set_proc_state(myproc(), RUNNABLE);
   sched();
-  release(&myproc()->lock);
 }
 
-static int
-migrate(struct proc *p)
-{
-  // p should not be running, or be on a runqueue, or be myproc()
-  int c;
-
-  if (p == myproc())
-    panic("migrate: myproc");
-
-  for (c = 0; c < ncpu; c++) {
-    if (c == mycpu()->id)
-      continue;
-    if (idle[c]) {    // OK if there is a race
-      acquire(&p->lock);
-      if (p->state == RUNNING)
-        panic("migrate: pid %u name %s is running",
-              p->pid, p->name);
-      if (p->cpu_pin)
-        panic("migrate: pid %u name %s is pinned",
-              p->pid, p->name);
-
-      p->curcycles = 0;
-      p->cpuid = c;
-      addrun(p);
-      idle[c] = 0;
-
-      release(&p->lock);
-      return 0;
-    }
-  }
-
-  return -1;
-}
 
 // A fork child's very first scheduling by scheduler()
 // will swtch here.  "Return" to user space.
-static void
+void
 forkret(void)
 {
-  // Still holding proc->lock from scheduler.
-  release(&myproc()->lock);
+  post_swtch();
 
   // Just for the first process. can't do it earlier
   // b/c file system code needs a process context
@@ -153,7 +91,7 @@ exit(void)
   SLIST_FOREACH_SAFE(p, &(myproc()->childq), child_next, np) {
     acquire(&p->lock);
     p->parent = bootproc;
-    if(p->state == ZOMBIE)
+    if(get_proc_state(p) == ZOMBIE)
       wakeupinit = 1;
     SLIST_REMOVE(&(myproc()->childq), p, proc, child_next);
     release(&p->lock);
@@ -172,7 +110,7 @@ exit(void)
     cv_wakeup(&bootproc->cv); 
 
   // Jump into the scheduler, never to return.
-  myproc()->state = ZOMBIE;
+  set_proc_state(myproc(), ZOMBIE);
   sched();
   panic("zombie exit");
 }
@@ -187,7 +125,7 @@ freeproc(struct proc *p)
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
-static struct proc*
+struct proc*
 allocproc(void)
 {
   struct proc *p;
@@ -276,104 +214,9 @@ inituser(void)
 void
 initproc(void)
 {
-  int c;
-
   xnspid = new xns<u32, proc*, proc_hash>(false);
   if (xnspid == 0)
     panic("pinit");
-
-  for (c = 0; c < NCPU; c++)
-    idle[c] = 1;
-}
-
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run
-//  - swtch to start running that process
-//  - eventually that process transfers control
-//      via swtch back to the scheduler.
-
-void
-scheduler(void)
-{
-  // allocate a fake PID for each scheduler thread
-  struct proc *schedp = allocproc();
-  if (!schedp)
-    panic("scheduler allocproc");
-
-  snprintf(schedp->name, sizeof(schedp->name), "scheduler_%u", cpunum());
-  mycpu()->proc = schedp;
-  myproc()->cpu_pin = 1;
-
-  // Test the work queue
-  //extern void testwq(void);
-  //testwq();
-
-  // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
-  // mtrace_call_set(1, cpu->id);
-  mtstart(scheduler, schedp);
-
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
-
-    struct proc *p = schednext();
-    if (p) {
-      acquire(&p->lock);
-      if (p->state != RUNNABLE) {
-        release(&p->lock);
-      } else {
-        if (idle[mycpu()->id])
-	  idle[mycpu()->id] = 0;
-
-	// Switch to chosen process.  It is the process's job
-	// to release proc->lock and then reacquire it
-	// before jumping back to us.
-	mycpu()->proc = p;
-	switchuvm(p);
-	p->state = RUNNING;
-	p->tsc = rdtsc();
-
-        mtpause(schedp);
-        if (p->context->rip != (uptr)forkret && 
-            p->context->rip != (uptr)threadstub)
-        {
-          mtresume(p);
-        }
-	mtrec();
-
-	swtch(&mycpu()->scheduler, myproc()->context);
-        mtresume(schedp);
-	mtign();
-	switchkvm();
-
-	// Process is done running for now.
-	// It should have changed its p->state before coming back.
-	mycpu()->proc = schedp;
-	if (p->state != RUNNABLE)
-	  delrun(p);
-	release(&p->lock);
-      }
-    } else {
-      if (steal()) {
-	if (idle[mycpu()->id])
-	  idle[mycpu()->id] = 0;
-      } else {
-	if (!idle[mycpu()->id])
-	  idle[mycpu()->id] = 1;
-      }
-    }
-
-    if (idle[mycpu()->id]) {
-      int worked;
-      do {
-        assert(mycpu()->ncli == 0);
-        worked = wq_trywork();
-      } while(worked);
-      sti();
-    }
-  }
 }
 
 // Grow/shrink current process's memory by n bytes.
@@ -456,7 +299,7 @@ kill(int pid)
   }
   acquire(&p->lock);
   p->killed = 1;
-  if(p->state == SLEEPING){
+  if(get_proc_state(p) == SLEEPING){
     // XXX
     // we need to wake p up if it is cv_sleep()ing.
     // can't change p from SLEEPING to RUNNABLE since that
@@ -479,7 +322,6 @@ void
 procdumpall(void)
 {
   static const char *states[] = {
-    /* [UNUSED]   = */ "unused",
     /* [EMBRYO]   = */ "embryo",
     /* [SLEEPING] = */ "sleep ",
     /* [RUNNABLE] = */ "runble",
@@ -491,8 +333,9 @@ procdumpall(void)
   uptr pc[10];
 
   for (proc *p : xnspid) {
-    if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
-      state = states[p->state];
+    if(get_proc_state(p) >= 0 && get_proc_state(p) < NELEM(states) && 
+       states[get_proc_state(p)])
+      state = states[get_proc_state(p)];
     else
       state = "???";
     
@@ -502,7 +345,7 @@ procdumpall(void)
     cprintf("\n%-3d %-10s %8s %2u  %lu\n",
             p->pid, name, state, p->cpuid, p->tsc);
     
-    if(p->state == SLEEPING){
+    if(get_proc_state(p) == SLEEPING){
       getcallerpcs((void*)p->context->rbp, pc, NELEM(pc));
       for(int i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %lx\n", pc[i]);
@@ -531,7 +374,6 @@ fork(int flags)
     if((np->vmap = myproc()->vmap->copy(cow)) == 0){
       ksfree(slab_stack, np->kstack);
       np->kstack = 0;
-      np->state = UNUSED;
       if (!xnspid->remove(np->pid, &np))
 	panic("fork: ns_remove");
       freeproc(np);
@@ -559,14 +401,11 @@ fork(int flags)
   SLIST_INSERT_HEAD(&myproc()->childq, np, child_next);
   release(&myproc()->lock);
 
-  if (migrate(np)) {
-    acquire(&np->lock);
-    np->cpuid = mycpu()->id;
-    addrun(np);
-    release(&np->lock);
-  }
+  acquire(&np->lock);
+  np->cpuid = mycpu()->id;
+  addrun(np);
+  release(&np->lock);
 
-  //  cprintf("%d: fork done (pid %d)\n", myproc()->pid, pid);
   return pid;
 }
 
@@ -585,7 +424,7 @@ wait(void)
     SLIST_FOREACH_SAFE(p, &myproc()->childq, child_next, np) {
 	havekids = 1;
 	acquire(&p->lock);
-	if(p->state == ZOMBIE){
+	if(get_proc_state(p) == ZOMBIE){
 	  release(&p->lock);	// noone else better be trying to lock p
 	  pid = p->pid;
 	  SLIST_REMOVE(&myproc()->childq, p, proc, child_next);
@@ -593,7 +432,6 @@ wait(void)
 	  ksfree(slab_stack, p->kstack);
 	  p->kstack = 0;
 	  p->vmap->decref();
-	  p->state = UNUSED;
 	  if (!xnspid->remove(p->pid, &p))
 	    panic("wait: ns_remove");
 	  p->pid = 0;
@@ -622,7 +460,7 @@ wait(void)
 void
 threadhelper(void (*fn)(void *), void *arg)
 {
-  release(&myproc()->lock); // initially held by scheduler
+  post_swtch();
   mtstart(fn, myproc());
   fn(arg);
   exit();
@@ -664,7 +502,6 @@ threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
   p->cpuid = cpu;
   p->cpu_pin = 1;
   acquire(&p->lock);
-  p->state = RUNNABLE;
   addrun(p);
   release(&p->lock);
 }

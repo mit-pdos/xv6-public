@@ -213,7 +213,7 @@ exec(const char *path, char **argv)
   myproc()->brk = BRK + 8;  // XXX so that brk-1 points within heap vma..
   myproc()->tf->rip = elf.entry;  // main
   
-  switchuvm(myproc());
+  switchvm(myproc());
   oldvmap->decref();
 
   gc_end_epoch();
