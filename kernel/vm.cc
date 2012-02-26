@@ -277,6 +277,7 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb)
   ANON_REGION("vmap::insert", &perfgroup);
 
   vma *e;
+  bool replaced = false;
 
   {
     // new scope to release the search lock before tlbflush
@@ -288,7 +289,7 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb)
       return -1;
     }
 
-    // XXX handle overlaps
+    // XXX handle overlaps, set replaced=true
 
     e = new vma(this, vma_start, vma_start+len, PRIVATE, n);
     if (e == 0) {
@@ -300,17 +301,20 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb)
   }
 
   bool needtlb = false;
-  updatepages(pml4, e->vma_start, e->vma_end, [&needtlb](atomic<pme_t> *p) {
-      for (;;) {
-        pme_t v = p->load();
-        if (v & PTE_LOCK)
-          continue;
-        if (cmpxch(p, v, (pme_t) 0))
-          break;
-        if (v != 0)
-          needtlb = true;
-      }
-    });
+  if (replaced)
+    updatepages(pml4, e->vma_start, e->vma_end, [&needtlb](atomic<pme_t> *p) {
+        for (;;) {
+          pme_t v = p->load();
+          if (v & PTE_LOCK)
+            continue;
+          if (!(v & PTE_P))
+            break;
+          if (cmpxch(p, v, (pme_t) 0)) {
+            needtlb = true;
+            break;
+          }
+        }
+      });
   if (needtlb && dotlb)
     tlbflush();
   return 0;
@@ -343,10 +347,12 @@ vmap::remove(uptr vma_start, uptr len)
         pme_t v = p->load();
         if (v & PTE_LOCK)
           continue;
-        if (cmpxch(p, v, (pme_t) 0))
+        if (!(v & PTE_P))
           break;
-        if (v != 0)
+        if (cmpxch(p, v, (pme_t) 0)) {
           needtlb = true;
+          break;
+        }
       }
     });
   if (needtlb)
