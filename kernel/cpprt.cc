@@ -1,6 +1,8 @@
 #include "types.h"
 #include "kernel.hh"
 #include "cpputil.hh"
+#include "spinlock.h"
+#include "amd64.h"
 
 void *
 operator new[](unsigned long nbytes)
@@ -23,6 +25,44 @@ __cxa_pure_virtual(void)
 {
   panic("__cxa_pure_virtual");
 }
+
+int
+__cxa_guard_acquire(s64 *guard)
+{
+  volatile u8 *x = (u8*) guard;
+  volatile u32 *l = (u32*) (x+4);
+
+  pushcli();
+  while (xchg32(l, 1) != 0)
+    ; /* spin */
+
+  if (*x) {
+    xchg32(l, 0);
+    popcli();
+    return 0;
+  }
+  return 1;
+}
+
+void
+__cxa_guard_release(s64 *guard)
+{
+  volatile u8 *x = (u8*) guard;
+  volatile u32 *l = (u32*) (x+4);
+
+  *x = 1;
+  __sync_synchronize();
+  xchg32(l, 0);
+  popcli();
+}
+
+int
+__cxa_atexit(void (*f)(void*), void *p, void *d)
+{
+  return 0;
+}
+
+void *__dso_handle;
 
 namespace std {
 

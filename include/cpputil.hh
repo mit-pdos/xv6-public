@@ -103,7 +103,14 @@ namespace std {
 void *operator new[](unsigned long nbytes);
 // void operator delete(void *p);
 void operator delete[](void *p);
+
+/* Ref: http://sourcery.mentor.com/public/cxx-abi/abi.html */
 extern "C" void __cxa_pure_virtual(void);
+extern "C" int  __cxa_guard_acquire(s64 *guard_object);
+extern "C" void __cxa_guard_release(s64 *guard_object);
+extern "C" void __cxa_guard_abort(s64 *guard_object);
+extern "C" int  __cxa_atexit(void (*f)(void *), void *p, void *d);
+extern void *__dso_handle;
 
 #define NEW_DELETE_OPS(classname)                           \
   static void* operator new(unsigned long nbytes) {         \
