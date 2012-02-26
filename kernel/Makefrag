@@ -34,6 +34,7 @@ OBJS = \
 	rnd.o \
 	sampler.o \
 	sched.o \
+        sperf.o \
 	spinlock.o \
 	swtch.o \
 	string.o \

@@ -17,6 +17,7 @@
 #include <stdarg.h>
 #include "fmt.hh"
 #include <stddef.h>
+#include "sperf.hh"
 
 #define BACKSPACE 0x100
 
@@ -284,6 +285,9 @@ consoleintr(int (*getc)(void))
       break;
     case C('F'):  // kmem stats
       kmemprint();
+      break;
+    case C('Y'):  // scopedperf stats
+      scopedperf::perfsum_base::printall();
       break;
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){

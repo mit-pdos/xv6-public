@@ -65,26 +65,36 @@ namespace std {
     return static_cast<typename remove_reference<T>::type&&>(a);
   }
 
-  class ios_base {};
-  class ostream : public ios_base {};
+  struct ostream { int next_width; };
   extern ostream cout;
 
   static inline
   ostream& operator<<(ostream &s, const char *str) {
+    if (!str)
+      str = "(null)";
+
+    int len = strlen(str);
     cprintf("%s", str);
+    while (len < s.next_width) {
+      cprintf(" ");
+      len++;
+    }
+    s.next_width = 0;
     return s;
   }
 
   static inline
   ostream& operator<<(ostream &s, u32 v) {
-    cprintf("%d", v);
-    return s;
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%d", v);
+    return s << buf;
   }
 
   static inline
   ostream& operator<<(ostream &s, u64 v) {
-    cprintf("%ld", v);
-    return s;
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%ld", v);
+    return s << buf;
   }
 
   static inline
@@ -94,7 +104,15 @@ namespace std {
 
   static inline ostream& endl(ostream &s) { s << "\n"; return s; }
   static inline ostream& left(ostream &s) { return s; }
-  static inline const char *setw(int n) { return ""; }
+
+  struct ssetw { int _n; };
+  static inline ssetw setw(int n) { return { n }; }
+
+  static inline
+  ostream& operator<<(ostream &s, const ssetw &sw) {
+    s.next_width = sw._n;
+    return s;
+  }
 }
 
 /* C++ runtime */

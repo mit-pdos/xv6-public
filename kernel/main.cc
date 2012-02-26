@@ -95,6 +95,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initpci();
   initnet();
   initidle();
+  initsperf();
 
   if (VERBOSE)
     cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
