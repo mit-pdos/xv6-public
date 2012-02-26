@@ -1,6 +1,13 @@
 #include "syscall.h"
 #include "traps.h"
 
+#define SYSCALL_INT(name) \
+  .globl name; \
+  name: \
+    movq $SYS_ ## name, %rax; \
+    int $T_SYSCALL; \
+    ret
+
 #define SYSCALL(name) \
   .globl name; \
   name: \
@@ -17,7 +24,7 @@ SYSCALL(read)
 SYSCALL(write)
 SYSCALL(close)
 SYSCALL(kill)
-SYSCALL(exec)
+SYSCALL_INT(exec)
 SYSCALL(open)
 SYSCALL(mknod)
 SYSCALL(unlink)
