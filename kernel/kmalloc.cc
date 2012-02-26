@@ -10,9 +10,8 @@
 #include "mtrace.h"
 #include "cpu.hh"
 
-// allocate in power-of-two sizes up to 2^KMMAX
-// must be < 12
-#define KMMAX 11
+// allocate in power-of-two sizes up to 2^KMMAX (PGSIZE)
+#define KMMAX 12
 
 struct header {
   struct header *next;
@@ -60,17 +59,20 @@ morecore(int c, int b)
 static int
 bucket(u64 nbytes)
 {
-  u64 nn = 8, b = 3;
+  static int bucketmap[] = {
+    6,
+    7,
+    8,  8,
+    9,  9,  9,  9,
+    10, 10, 10, 10, 10, 10, 10, 10,
+    11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+  };
 
-  while(nn < nbytes) {
-    nn *= 2;
-    b++;
-  }
-  if(nn != (1 << b))
-    panic("kmalloc oops");
-  if(b > KMMAX)
-    panic("kmalloc too big %ld", nbytes);
-
+  assert(nbytes <= PGSIZE);
+  int b = bucketmap[nbytes >> 6];
+  assert((1<<b) >= nbytes);
   return b;
 }
 
@@ -79,7 +81,6 @@ kmalloc(u64 nbytes)
 {
   int b = bucket(nbytes);
 
-  scoped_gc_epoch gc;
   struct header *h;
   int c = mycpu()->id;
 
@@ -112,8 +113,6 @@ void
 kmfree(void *ap, u64 nbytes)
 {
   int b = bucket(nbytes);
-  if(b < 0 || b > KMMAX)
-    panic("kmfree bad bucket");
 
   struct header *h = (struct header *) ap;
   verifyfree((char *) ap, (1<<b));
