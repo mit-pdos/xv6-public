@@ -20,11 +20,11 @@ SECTIONS
 	PROVIDE(eprof = .);
 	. = ALIGN(0x1000);
 	.data : {
-		*(.data)
+		*(.data .data.* .gnu.linkonce.d.*)
 	}
 	PROVIDE(edata = .);
 	.bss : {
-		*(.bss)
+		*(.bss .bss.* .gnu.linkonce.b.*)
 	}
         /* 2MByte align, because we set NX on 2MByte super pages. */
 	. = ALIGN(0x200000);
