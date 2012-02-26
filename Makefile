@@ -27,7 +27,7 @@ OBJCOPY = $(TOOLPREFIX)objcopy
 STRIP = $(TOOLPREFIX)strip
 
 # XXX(sbw)
-# -nostdinc -nostdinc++
+# -nostdinc
 
 COMFLAGS  = -static -g -MD -m64 -O2 -Wall -Werror -DHW_$(HW) -DXV6 \
 	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer -fms-extensions \
@@ -35,7 +35,7 @@ COMFLAGS  = -static -g -MD -m64 -O2 -Wall -Werror -DHW_$(HW) -DXV6 \
 	    -include param.h -include include/compiler.h
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS   := $(COMFLAGS) -std=c99 $(CFLAGS)
-CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-exceptions -fno-rtti -fcheck-new $(CXXFLAGS)
+CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-exceptions -fno-rtti -fcheck-new -nostdinc++ $(CXXFLAGS)
 ASFLAGS   = -Iinclude -I$(O)/include -m64 -gdwarf-2 -MD -DHW_$(HW) -include param.h
 LDFLAGS   = -m elf_x86_64
 
