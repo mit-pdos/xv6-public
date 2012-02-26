@@ -19,7 +19,7 @@ LWIP_CFLAGS = -Wno-attributes \
 	    -Wno-char-subscripts \
 	    -Wno-unused-but-set-variable \
 	    -Wno-format \
-	    -mcmodel=large
+	    -mcmodel=large -O2
 
 LWIP_INCLUDES := \
 	-Ilwip/src/include \
