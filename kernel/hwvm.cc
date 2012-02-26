@@ -106,7 +106,7 @@ setupkshared(pgmap *pml4, char *kshared)
 
 // Switch h/w page table register to the kernel-only page table,
 // for when no process is running.
-void
+static void
 switchkvm(void)
 {
   lcr3(v2p(&kpml4));   // switch to the kernel page table
@@ -114,7 +114,7 @@ switchkvm(void)
 
 // Switch TSS and h/w page table to correspond to process p.
 void
-switchuvm(struct proc *p)
+switchvm(struct proc *p)
 {
   u64 base = (u64) &mycpu()->ts;
   pushcli();

@@ -253,8 +253,7 @@ void            uartputc(char c);
 void            uartintr(void);
 
 // vm.c
-void            switchuvm(struct proc*);
-void            switchkvm(void);
+void            switchvm(struct proc*);
 int             pagefault(struct vmap *, uptr, u32);
 
 // wq.c

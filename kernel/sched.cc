@@ -76,7 +76,7 @@ sched(void)
   mycpu()->proc = next;
   mycpu()->prev = prev;
 
-  switchuvm(next);
+  switchvm(next);
   set_proc_state(next, RUNNING);
   next->tsc = rdtsc();
 
