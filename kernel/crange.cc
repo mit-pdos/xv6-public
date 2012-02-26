@@ -92,7 +92,6 @@ range::~range()
     next[l] = (struct range *) 0xDEADBEEF;
   }
   destroylock(&lock);
-  delete[] next;
 }
 
 void
@@ -111,12 +110,11 @@ range::range(crange *crarg, u64 k, u64 sz, int nl)
   : rcu_freed("range_delayed"),
     key(k), size(sz), curlevel(0),
     nlevel(nl ?: range_draw_nlevel(crarg->nlevel)),
-    cr(crarg), next(new markptr<range>[nlevel])
+    cr(crarg)
 {
   dprintf("range::range: %lu %lu %d\n", k, sz, nl);
   assert(cr->nlevel > 0);
-  assert(next);
-  for (int l = 0; l < nlevel; l++) next[l] = 0;
+  assert(sizeof(next) / sizeof(next[0]) >= nlevel);
   initlock(&lock, "crange", LOCKSTAT_CRANGE);
 }
 

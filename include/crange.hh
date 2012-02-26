@@ -87,7 +87,7 @@ struct range : public rcu_freed {
   std::atomic<int> curlevel; // the current levels it appears on
   const int nlevel;      // the number of levels this range should appear
   crange *const cr;      // the crange this range is part of
-  markptr<range>* const next; // one next pointer per level
+  markptr<range> next[11]; // one next pointer per level
   spinlock lock;         // on separate cache line?
 
   void print(int l);
