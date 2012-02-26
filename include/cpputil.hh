@@ -130,13 +130,18 @@ extern "C" void __cxa_guard_abort(s64 *guard_object);
 extern "C" int  __cxa_atexit(void (*f)(void *), void *p, void *d);
 extern void *__dso_handle;
 
-#define NEW_DELETE_OPS(classname)                           \
-  static void* operator new(unsigned long nbytes) {         \
-    assert(nbytes == sizeof(classname));                    \
-    return kmalloc(sizeof(classname));                      \
-  }                                                         \
-                                                            \
-  static void operator delete(void *p) {                    \
-    kmfree(p, sizeof(classname));                           \
+#define NEW_DELETE_OPS(classname)                                   \
+  static void* operator new(unsigned long nbytes) {                 \
+    assert(nbytes == sizeof(classname));                            \
+    return kmalloc(sizeof(classname));                              \
+  }                                                                 \
+                                                                    \
+  static void* operator new(unsigned long nbytes, classname *buf) { \
+    assert(nbytes == sizeof(classname));                            \
+    return buf;                                                     \
+  }                                                                 \
+                                                                    \
+  static void operator delete(void *p) {                            \
+    kmfree(p, sizeof(classname));                                   \
   }
 
