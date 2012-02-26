@@ -79,5 +79,12 @@ $(O)/kernel/%: kernel/%.S
 	$(Q)$(LD) $(LDFLAGS) -N -e start -Ttext $(TTEXT) -o $@.out $@.o
 	$(Q)$(OBJCOPY) -S -O binary $@.out $@
 
+$(O)/include/asmdefines.h: kernel/asmdefines.c
+	@echo "  GEN    $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CXX) -S $(CXXFLAGS) -o $(O)/kernel/asmdefines.S kernel/asmdefines.c
+	$(Q)sed -n 's/remove\$$//p' $(O)/kernel/asmdefines.S > $@
+$(O)/kernel/trapasm.o: $(O)/include/asmdefines.h
+
 .PRECIOUS: $(O)/kernel/%.o
 -include $(O)/kernel/*.d

@@ -105,13 +105,6 @@ cmain(u64 mbmagic, u64 mbaddr)
   kpml4.e[0] = 0;  // don't need 1 GB identity mapping anymore
   lcr3(rcr3());
 
-  if (PROC_KSTACK_OFFSET != __offsetof(struct proc, kstack))
-    panic("PROC_KSTACK_OFFSET mismatch: %d %ld\n",
-          PROC_KSTACK_OFFSET, __offsetof(struct proc, kstack));
-  if (TRAPFRAME_SIZE != sizeof(trapframe))
-    panic("TRAPFRAME_SIZE mismatch: %d %ld\n",
-          TRAPFRAME_SIZE, sizeof(trapframe));
-
   idleloop();
 
   panic("Unreachable");

@@ -29,14 +29,14 @@ STRIP = $(TOOLPREFIX)strip
 # XXX(sbw)
 # -nostdinc -nostdinc++
 
-COMFLAGS  = -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
-	    -g -MD -m64 -Werror -fms-extensions -mno-sse -mcx16 \
-	    -mno-red-zone -Iinclude -I$(QEMUSRC) -fno-omit-frame-pointer \
-	    -DHW_$(HW) -include param.h -include include/compiler.h -DXV6
+COMFLAGS  = -static -g -MD -m64 -O2 -Wall -Werror -DHW_$(HW) -DXV6 \
+	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer -fms-extensions \
+	    -mno-sse -mcx16 -mno-red-zone -Iinclude -I$(QEMUSRC) \
+	    -include param.h -include include/compiler.h
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS   := $(COMFLAGS) -std=c99 $(CFLAGS)
 CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-exceptions -fno-rtti -fcheck-new $(CXXFLAGS)
-ASFLAGS   = -Iinclude -m64 -gdwarf-2 -MD -DHW_$(HW) -include param.h
+ASFLAGS   = -Iinclude -I$(O)/include -m64 -gdwarf-2 -MD -DHW_$(HW) -include param.h
 LDFLAGS   = -m elf_x86_64
 
 all:
