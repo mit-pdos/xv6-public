@@ -331,6 +331,8 @@ class perfsum_ctr : public perfsum_base, public Enabler {
     memset(stat, 0, sizeof(stat));
   }
 
+  NEW_DELETE_OPS(perfsum_ctr)
+
  private:
   enum { maxcpu = 256 };
 
