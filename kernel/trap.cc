@@ -17,9 +17,11 @@ struct intdesc idt[256] __attribute__((aligned(16)));
 // boot.S
 extern u64 trapentry[];
 
-void
-sysentry_c()
+u64
+sysentry_c(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
 {
+  u64 r;
+
   writegs(KDSEG);
   writemsr(MSR_GS_BASE, (u64)&cpus[cpunum()].cpu);
 
@@ -32,12 +34,14 @@ sysentry_c()
 
   trapframe *tf = (trapframe*) (myproc()->kstack + KSTACKSIZE - sizeof(*tf));
   myproc()->tf = tf;
-  syscall();
+  r = syscall(a0, a1, a2, a3, a4, num);
 
   if(myproc()->killed) {
     mtstart(trap, myproc());
     exit();
   }
+
+  return r;
 }
 
 void
@@ -61,7 +65,7 @@ trap(struct trapframe *tf)
       exit();
     }
     myproc()->tf = tf;
-    syscall();
+    tf->rax = syscall(tf->rdi, tf->rsi, tf->rdx, tf->rcx, tf->r8, tf->rax);
     if(myproc()->killed) {
       mtstart(trap, myproc());
       exit();

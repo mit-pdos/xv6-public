@@ -45,12 +45,12 @@ sysentry:
         // skip r11 (0x40)
         // skip r10 (0x48)
         // skip r9 (0x50)
-        movq    %r8,  %ss:0x58(%r9)
-        movq    %rax, %ss:0x60(%r9)
-        movq    %r10, %ss:0x68(%r9)  // rcx saved by usys.S
-        movq    %rdx, %ss:0x70(%r9)
-        movq    %rsi, %ss:0x78(%r9)
-        movq    %rdi, %ss:0x80(%r9)
+        // skip r8 (0x58)
+        // skip rax (0x60)
+        // skip rcx (0x68)
+        // skip rdx (0x70)
+        // skip rsi (0x78)
+        // skip rdi (0x80)
         // skip trapno (0x88)
         // skip err, padding2 (0x90)
         movq    %rcx, %ss:0x98(%r9)  // rip saved by syscall
@@ -58,26 +58,28 @@ sysentry:
         movq    %r11, %ss:0xa8(%r9)  // eflags saved by syscall
         movq    %rsp, %ss:0xb0(%r9)
 
-        movw    $KDSEG, %ax
-        movw    %ax, %ds
-        movw    %ax, %es
+        movw    $KDSEG, %cx
+        movw    %cx, %ds
+        movw    %cx, %es
 
         movq    %r9, %rsp
+
+        movq    %r10, %rcx  // saved by usys.S
+        movq    %rax, %r9   // syscall# from usys.S
         call    sysentry_c
 
         // return using SYSRET
         cli
         movq    %rsp, %r11
-        movw    $UDSEG, %ax
-        movw    %ax, %ds
-        movw    %ax, %es
+        movw    $UDSEG, %cx
+        movw    %cx, %ds
+        movw    %cx, %es
         movq    %ss:0x10(%r11), %r15
         movq    %ss:0x18(%r11), %r14
         movq    %ss:0x20(%r11), %r13
         movq    %ss:0x28(%r11), %r12
         movq    %ss:0x30(%r11), %rbp
         movq    %ss:0x38(%r11), %rbx
-        movq    %ss:0x60(%r11), %rax
         movq    %ss:0x98(%r11), %rcx    // rip to be restored by sysret
         movq    %ss:0xb0(%r11), %rsp
         movq    %ss:0xa8(%r11), %r11    // eflags to be restored by sysret

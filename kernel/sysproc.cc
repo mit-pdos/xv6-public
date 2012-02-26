@@ -10,12 +10,8 @@
 #include "vm.hh"
 
 long
-sys_fork(void)
+sys_fork(int flags)
 {
-  int flags;
-
-  if(argint32(0, &flags) < 0)
-    return -1;
   return fork(flags);
 }
 
@@ -33,12 +29,8 @@ sys_wait(void)
 }
 
 long
-sys_kill(void)
+sys_kill(int pid)
 {
-  int pid;
-
-  if(argint32(0, &pid) < 0)
-    return -1;
   return kill(pid);
 }
 
@@ -49,13 +41,10 @@ sys_getpid(void)
 }
 
 long
-sys_sbrk(void)
+sys_sbrk(int n)
 {
   uptr addr;
-  int n;
 
-  if(argint32(0, &n) < 0)
-    return -1;
   addr = myproc()->brk;
   if(growproc(n) < 0)
     return -1;
@@ -63,13 +52,10 @@ sys_sbrk(void)
 }
 
 long
-sys_sleep(void)
+sys_sleep(int n)
 {
-  int n;
   u32 ticks0;
   
-  if(argint32(0, &n) < 0)
-    return -1;
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
@@ -97,16 +83,8 @@ sys_uptime(void)
 }
 
 long
-sys_map(void)
+sys_map(uptr addr, u64 len)
 {
-  uptr addr;
-  u64 len;
-
-  if (argint64(0, &addr) < 0)
-    return -1;
-  if (argint64(1, &len) < 0)
-    return -1;
-
   vmnode *vmn = new vmnode(PGROUNDUP(len) / PGSIZE);
   if (vmn == 0)
     return -1;
@@ -120,16 +98,8 @@ sys_map(void)
 }
 
 long
-sys_unmap(void)
+sys_unmap(uptr addr, u64 len)
 {
-  uptr addr;
-  uptr len;
-
-  if (argint64(0, &addr) < 0)
-    return -1;
-  if (argint64(1, &len) < 0)
-    return -1;
-
   uptr align_addr = PGROUNDDOWN(addr);
   uptr align_len = PGROUNDUP(addr + len) - align_addr;
   if (myproc()->vmap->remove(align_addr, align_len) < 0)

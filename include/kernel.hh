@@ -84,7 +84,7 @@ int             e1000tx(void *buf, u32 len);
 void            e1000hwaddr(u8 *hwaddr);
 
 // exec.c
-int             exec(char*, char**);
+int             exec(const char*, char**);
 
 // file.c
 struct file*    filealloc(void);
@@ -110,7 +110,7 @@ int             readi(struct inode*, char*, u32, u32);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, u32, u32);
 struct inode*   idup(struct inode*);
-struct inode*   nameiparent(char*, char*);
+struct inode*   nameiparent(const char*, char*);
 int             dirlink(struct inode*, const char*, u32);
 void            dir_init(struct inode *dp);
 void	        dir_flush(struct inode *dp);
@@ -210,15 +210,12 @@ void            destroylock(struct spinlock *lk);
 void            release(struct spinlock*);
 
 // syscall.c
-int             argint64(int, u64*);
-int             argint32(int n, int *ip);
-int             argptr(int, char**, int);
-int             argstr(int, char**);
+int             argcheckptr(void *argval, int);
+int             argcheckstr(const char*);
 int             fetchint64(uptr, u64*);
-int             fetchstr(uptr, char**);
 int             umemcpy(void*, void*, u64);
 int             kmemcpy(void*, void*, u64);
-void            syscall(void);
+u64             syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num);
 
 // string.c
 extern  "C" int  memcmp(const void*, const void*, u32);
@@ -303,39 +300,6 @@ void initnet(void);
 void initsched(void);
 void initlockstat(void);
 void initwq(void);
-
-// syscalls
-long sys_chdir(void);
-long sys_close(void);
-long sys_dup(void);
-long sys_exec(void);
-long sys_exit(void);
-long sys_fork(void);
-long sys_fstat(void);
-long sys_getpid(void);
-long sys_kill(void);
-long sys_link(void);
-long sys_mkdir(void);
-long sys_mknod(void);
-long sys_open(void);
-long sys_pipe(void);
-long sys_read(void);
-long sys_sbrk(void);
-long sys_sleep(void);
-long sys_unlink(void);
-long sys_wait(void);
-long sys_write(void);
-long sys_uptime(void);
-long sys_map(void);
-long sys_unmap(void);
-long sys_halt(void);
-long sys_socket(int, int, int);
-long sys_bind(int, void*, int);
-long sys_listen(int, int);
-long sys_accept(int, void*, void*);
-long sys_pread(int fd, void *ubuf, size_t count, off_t offset);
-long sys_async(int, size_t, off_t, u32, u32);
-extern long (*syscalls[])(u64, u64, u64, u64, u64, u64);
 
 // other exported/imported functions
 void cmain(u64 mbmagic, u64 mbaddr);

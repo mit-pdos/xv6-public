@@ -15,17 +15,12 @@
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
 static int
-argfd(int n, int *pfd, struct file **pf)
+argfd(int fd, struct file **pf)
 {
-  int fd;
   struct file *f;
 
-  if(argint32(n, &fd) < 0)
-    return -1;
   if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
     return -1;
-  if(pfd)
-    *pfd = fd;
   if(pf)
     *pf = f;
   return 0;
@@ -48,12 +43,12 @@ fdalloc(struct file *f)
 }
 
 long
-sys_dup(void)
+sys_dup(int ofd)
 {
   struct file *f;
   int fd;
   
-  if(argfd(0, 0, &f) < 0)
+  if(argfd(ofd, &f) < 0)
     return -1;
   if((fd=fdalloc(f)) < 0)
     return -1;
@@ -62,13 +57,11 @@ sys_dup(void)
 }
 
 s64
-sys_read(void)
+sys_read(int fd, char *p, int n)
 {
   struct file *f;
-  int n;
-  char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint32(2, &n) < 0 || argptr(1, &p, n) < 0)
+  if(argfd(fd, &f) < 0 || argcheckptr(p, n) < 0)
     return -1;
   return fileread(f, p, n);
 }
@@ -99,24 +92,21 @@ sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 }
 
 long
-sys_write(void)
+sys_write(int fd, char *p, int n)
 {
   struct file *f;
-  int n;
-  char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint32(2, &n) < 0 || argptr(1, &p, n) < 0)
+  if(argfd(fd, &f) < 0 || argcheckptr(p, n) < 0)
     return -1;
   return filewrite(f, p, n);
 }
 
 long
-sys_close(void)
+sys_close(int fd)
 {
-  int fd;
   struct file *f;
   
-  if(argfd(0, &fd, &f) < 0)
+  if(argfd(fd, &f) < 0)
     return -1;
   myproc()->ofile[fd] = 0;
   fileclose(f);
@@ -124,24 +114,23 @@ sys_close(void)
 }
 
 long
-sys_fstat(void)
+sys_fstat(int fd, struct stat *st)
 {
   struct file *f;
-  struct stat *st;
   
-  if(argfd(0, 0, &f) < 0 || argptr(1, (char**)&st, sizeof(*st)) < 0)
+  if(argfd(fd, &f) < 0 || argcheckptr(st, sizeof(*st)) < 0)
     return -1;
   return filestat(f, st);
 }
 
 // Create the path new as a link to the same inode as old.
 long
-sys_link(void)
+sys_link(const char *old, const char *newn)
 {
-  char name[DIRSIZ], *newn, *old;
+  char name[DIRSIZ];
   struct inode *dp, *ip;
 
-  if(argstr(0, &old) < 0 || argstr(1, &newn) < 0)
+  if(argcheckstr(old) < 0 || argcheckstr(newn) < 0)
     return -1;
   if((ip = namei(old)) == 0)
     return -1;
@@ -189,12 +178,12 @@ isdirempty(struct inode *dp)
 }
 
 long
-sys_unlink(void)
+sys_unlink(const char *path)
 {
   struct inode *ip, *dp;
-  char name[DIRSIZ], *path;
+  char name[DIRSIZ];
 
-  if(argstr(0, &path) < 0)
+  if(argcheckstr(path) < 0)
     return -1;
   if((dp = nameiparent(path, name)) == 0)
     return -1;
@@ -245,7 +234,7 @@ sys_unlink(void)
 }
 
 static struct inode*
-create(char *path, short type, short major, short minor)
+create(const char *path, short type, short major, short minor)
 {
   struct inode *ip, *dp;
   char name[DIRSIZ];
@@ -295,14 +284,13 @@ create(char *path, short type, short major, short minor)
 }
 
 long
-sys_open(void)
+sys_open(const char *path, int omode)
 {
-  char *path;
-  int fd, omode;
+  int fd;
   struct file *f;
   struct inode *ip;
 
-  if(argstr(0, &path) < 0 || argint32(1, &omode) < 0)
+  if(argcheckstr(path) < 0)
     return -1;
   if(omode & O_CREATE){
     if((ip = create(path, T_FILE, 0, 0)) == 0)
@@ -343,28 +331,23 @@ sys_open(void)
 }
 
 long
-sys_mkdir(void)
+sys_mkdir(const char *path)
 {
-  char *path;
   struct inode *ip;
 
-  if(argstr(0, &path) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0)
+  if(argcheckstr(path) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0)
     return -1;
   iunlockput(ip);
   return 0;
 }
 
 long
-sys_mknod(void)
+sys_mknod(const char *path, int major, int minor)
 {
   struct inode *ip;
-  char *path;
   int len;
-  int major, minor;
   
-  if((len=argstr(0, &path)) < 0 ||
-     argint32(1, &major) < 0 ||
-     argint32(2, &minor) < 0 ||
+  if((len=argcheckstr(path)) < 0 ||
      (ip = create(path, T_DEV, major, minor)) == 0)
     return -1;
   iunlockput(ip);
@@ -372,12 +355,11 @@ sys_mknod(void)
 }
 
 long
-sys_chdir(void)
+sys_chdir(const char *path)
 {
-  char *path;
   struct inode *ip;
 
-  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0)
+  if(argcheckstr(path) < 0 || (ip = namei(path)) == 0)
     return -1;
   ilock(ip, 0);
   if(ip->type != T_DIR){
@@ -391,14 +373,13 @@ sys_chdir(void)
 }
 
 long
-sys_exec(void)
+sys_exec(const char *path, u64 uargv)
 {
-  char *path, *argv[MAXARG];
+  char *argv[MAXARG];
   int i;
-  uptr uargv;
   u64 uarg;
 
-  if(argstr(0, &path) < 0 || argint64(1, &uargv) < 0){
+  if(argcheckstr(path) < 0) {
     return -1;
   }
   memset(argv, 0, sizeof(argv));
@@ -411,20 +392,20 @@ sys_exec(void)
       argv[i] = 0;
       break;
     }
-    if(fetchstr(uarg, &argv[i]) < 0)
+    argv[i] = (char*) uarg;
+    if(argcheckstr(argv[i]) < 0)
       return -1;
   }
   return exec(path, argv);
 }
 
 long
-sys_pipe(void)
+sys_pipe(int *fd)
 {
-  int *fd;
   struct file *rf, *wf;
   int fd0, fd1;
 
-  if(argptr(0, (char**)&fd, 2*sizeof(fd[0])) < 0)
+  if(argcheckptr(fd, 2*sizeof(fd[0])) < 0)
     return -1;
   if(pipealloc(&rf, &wf) < 0)
     return -1;

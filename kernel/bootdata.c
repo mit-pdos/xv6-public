@@ -28,7 +28,7 @@ struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
 
 #define SYSCALL(name) [SYS_##name] = (void*)sys_##name
 
-long (*syscalls[])(u64, u64, u64, u64, u64, u64) = {
+long (*syscalls[])(u64, u64, u64, u64, u64) = {
   SYSCALL(chdir),
   SYSCALL(close),
   SYSCALL(dup),

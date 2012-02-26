@@ -24,7 +24,7 @@ struct eargs {
   struct proc *proc;
   struct inode *ip;
   struct vmap *vmap;
-  char *path;
+  const char *path;
   char **argv;
 };
 
@@ -76,7 +76,7 @@ static void dostack(uptr a0, u64 a1)
   int argc;
   uptr sp;
   uptr ustack[1+MAXARG+1];
-  char *s, *last;
+  const char *s, *last;
 
   prof_start(dostack_prof);
     // Allocate a one-page stack at the top of the (user) address space
@@ -143,7 +143,7 @@ bad:
 }
 
 int
-exec(char *path, char **argv)
+exec(const char *path, char **argv)
 {
   struct inode *ip = NULL;
   struct vmap *vmp = NULL;

@@ -795,7 +795,7 @@ namei(const char *path)
 }
 
 struct inode*
-nameiparent(char *path, char *name)
+nameiparent(const char *path, char *name)
 {
   return namex(path, 1, name);
 }
