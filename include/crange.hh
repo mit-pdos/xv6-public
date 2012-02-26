@@ -130,7 +130,52 @@ class range_iterator {
   bool operator!=(const range_iterator &other) { return _e != other._e; }
 };
 
-class crange_locked;
+struct crange_locked {
+ private:
+  crange *const cr_;
+  const u64 base_, size_;
+
+  range *const prev_;
+  range *const succ_;
+
+  bool moved_;
+  scoped_gc_epoch gc;
+
+  crange_locked(crange *cr, u64 base, u64 sz, range *p, range *s)
+    : cr_(cr), base_(base), size_(sz), prev_(p), succ_(s), moved_(false) {}
+  crange_locked(const crange_locked&) = delete;
+  crange_locked& operator=(const crange_locked&) = delete;
+  friend class crange;
+
+ public:
+  crange_locked(crange_locked &&x)
+    : cr_(x.cr_),
+      base_(x.base_),
+      size_(x.size_),
+      prev_(x.prev_),
+      succ_(x.succ_),
+      moved_(false),
+      gc(std::move(x.gc))
+  {
+    x.moved_ = true;
+  }
+
+  ~crange_locked() {
+    if (!moved_) {
+      range *n;
+      for (range *e = prev_; e && e != succ_; e = n) {
+        // as soon a we release, the next pointer can change, so read it first
+        n = e->next[0].ptr();
+        release(e->lock);
+      }
+    }
+  }
+
+  range_iterator begin() const { return range_iterator(prev_->next[0].ptr()); };
+  range_iterator end() const { return range_iterator(succ_); };
+  void replace(range *r);
+  void replace(range *prev, range *repl);
+};
 
 struct crange {
  private:
@@ -154,7 +199,11 @@ struct crange {
   ~crange(void);
 
   range* search(u64 k, u64 sz);
-  crange_locked search_lock(u64 k, u64 sz);
+  crange_locked search_lock(u64 k, u64 sz) {
+    range *prev, *first, *last, *succ;
+    find_and_lock(k, sz, &prev, &first, &last, &succ);
+    return crange_locked(this, k, sz, prev, succ);
+  };
 
   range_iterator begin() const { return range_iterator(crange_head->next[0].ptr()); };
   range_iterator end() const { return range_iterator(0); };
@@ -172,32 +221,6 @@ end(const crange &cr)
 {
   return cr.end();
 }
-
-struct crange_locked {
- private:
-  crange *const cr_;
-  const u64 base_, size_;
-
-  range *const prev_;
-  range *const succ_;
-
-  bool moved_;
-  scoped_gc_epoch gc;
-
-  crange_locked(crange *cr, u64 base, u64 size, range *p, range *s);
-  crange_locked(const crange_locked&) = delete;
-  crange_locked& operator=(const crange_locked&) = delete;
-  friend class crange;
-
- public:
-  crange_locked(crange_locked &&x);
-  ~crange_locked();
-
-  range_iterator begin() const { return range_iterator(prev_->next[0].ptr()); };
-  range_iterator end() const { return range_iterator(succ_); };
-  void replace(range *r);
-  void replace(range *prev, range *repl);
-};
 
 static inline range_iterator
 begin(const crange_locked &crl)

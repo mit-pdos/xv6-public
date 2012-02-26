@@ -435,43 +435,6 @@ range* crange::search(u64 k, u64 sz)
   return r;
 }
 
-crange_locked
-crange::search_lock(u64 k, u64 sz)
-{
-  range *prev, *first, *last, *succ;
-  find_and_lock(k, sz, &prev, &first, &last, &succ);
-  return crange_locked(this, k, sz, prev, succ);
-}
-
-crange_locked::crange_locked(crange *cr, u64 base, u64 sz, range *p, range *s)
-  : cr_(cr), base_(base), size_(sz), prev_(p), succ_(s), moved_(false)
-{
-}
-
-crange_locked::crange_locked(crange_locked &&x)
-  : cr_(x.cr_),
-    base_(x.base_),
-    size_(x.size_),
-    prev_(x.prev_),
-    succ_(x.succ_),
-    moved_(false),
-    gc(std::move(x.gc))
-{
-  x.moved_ = true;
-}
-
-crange_locked::~crange_locked()
-{
-  if (!moved_) {
-    range *n;
-    for (range *e = prev_; e && e != succ_; e = n) {
-      // as soon a we release, the next pointer can change, so read it first
-      n = e->next[0].ptr();
-      release(e->lock);
-    }
-  }
-}
-
 void
 crange_locked::replace(range *prev, range *repl)
 {
