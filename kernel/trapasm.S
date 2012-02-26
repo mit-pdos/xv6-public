@@ -21,6 +21,9 @@
 .globl sysentry
 .align 8
 sysentry:
+        // can syscall/sysret be used safely in the presence of NMIs?
+        // we are executing with cpl=0 but without a valid stack.
+
         // blow away %r9: syscalls can take at most 5 args
         swapgs
         movq    %gs:8, %r9  // myproc()
