@@ -129,6 +129,3 @@ struct taskstate
 	(u16) ((rip)&0xffff), (cs), 0, bits, (u16) (((rip)>>16)&0xffff), \
 	(u32) ((u64)(rip)>>32), 0, \
 }
-
-#define PROC_KSTACK_OFFSET 40
-#define TRAPFRAME_SIZE     192

@@ -23,7 +23,7 @@ idleloop(void)
   sti();
   for (;;) {
     acquire(&myproc()->lock);
-    set_proc_state(myproc(), RUNNABLE);
+    myproc()->set_state(RUNNABLE);
     sched();
 
     if (steal() == 0) {

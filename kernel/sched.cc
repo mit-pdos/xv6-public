@@ -26,7 +26,7 @@ static struct runq runq[NCPU] __mpalign__;
 void
 post_swtch(void)
 {
-  if (get_proc_state(mycpu()->prev) == RUNNABLE && 
+  if (mycpu()->prev->get_state() == RUNNABLE && 
       mycpu()->prev != idlep[mycpu()->id])
     addrun(mycpu()->prev);
   release(&mycpu()->prev->lock);
@@ -45,13 +45,13 @@ sched(void)
 #endif
   if(mycpu()->ncli != 1)
     panic("sched locks");
-  if(get_proc_state(myproc()) == RUNNING)
+  if(myproc()->get_state() == RUNNING)
     panic("sched running");
   if(readrflags()&FL_IF)
     panic("sched interruptible");
   intena = mycpu()->intena;
   myproc()->curcycles += rdtsc() - myproc()->tsc;
-  if (get_proc_state(myproc()) == ZOMBIE)
+  if (myproc()->get_state() == ZOMBIE)
     mtstop(myproc());
   else
     mtpause(myproc());
@@ -59,25 +59,25 @@ sched(void)
 
   struct proc *next = schednext();
   if (next == nullptr) {
-    if (get_proc_state(myproc()) != RUNNABLE) {
+    if (myproc()->get_state() != RUNNABLE) {
       next = idlep[mycpu()->id];
     } else {
-      set_proc_state(myproc(), RUNNING);
+      myproc()->set_state(RUNNING);
       mycpu()->intena = intena;
       release(&myproc()->lock);
       return;
     }
   }
 
-  if (get_proc_state(next) != RUNNABLE)
-    panic("non-RUNNABLE next %s %u", next->name, get_proc_state(next));
+  if (next->get_state() != RUNNABLE)
+    panic("non-RUNNABLE next %s %u", next->name, next->get_state());
 
   struct proc *prev = myproc();
   mycpu()->proc = next;
   mycpu()->prev = prev;
 
   switchvm(next);
-  set_proc_state(next, RUNNING);
+  next->set_state(RUNNING);
   next->tsc = rdtsc();
 
   mtpause(next);
@@ -99,7 +99,7 @@ addrun(struct proc *p)
   // Always called with p->lock held
   struct runq *q;
 
-  set_proc_state(p, RUNNABLE);
+  p->set_state(RUNNABLE);
 
   q = &runq[p->cpuid];
   acquire(&q->lock);
@@ -141,7 +141,7 @@ steal(void)
     if (tryacquire(&q->lock) == 0)
       continue;
     STAILQ_FOREACH(p, &q->q, runqlink) {
-      if (get_proc_state(p) == RUNNABLE && !p->cpu_pin && 
+      if (p->get_state() == RUNNABLE && !p->cpu_pin && 
           p->curcycles != 0 && p->curcycles > VICTIMAGE)
       {
         STAILQ_REMOVE(&q->q, p, proc, runqlink);
@@ -153,7 +153,7 @@ steal(void)
 
     if (steal) {
       acquire(&steal->lock);
-      if (get_proc_state(steal) == RUNNABLE && !steal->cpu_pin &&
+      if (steal->get_state() == RUNNABLE && !steal->cpu_pin &&
           steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
       {
         steal->curcycles = 0;
@@ -163,7 +163,7 @@ steal(void)
         r = 1;
         break;
       }
-      if (get_proc_state(steal) == RUNNABLE)
+      if (steal->get_state() == RUNNABLE)
         addrun(steal);
       release(&steal->lock);
     }

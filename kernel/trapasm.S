@@ -1,4 +1,5 @@
 #include "mmu.h"
+#include "asmdefines.h"
 
 #define NOEC pushq $0
 #define EC
