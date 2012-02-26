@@ -20,6 +20,8 @@ struct cpu {
   int timer_printpc;
   atomic<u64> tlbflush_done;   // last tlb flush req done on this cpu
 
+  struct proc *prev;
+
   // Cpu-local storage variables; see below
   struct cpu *cpu;
   struct proc *proc;           // The currently-running process.

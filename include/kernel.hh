@@ -184,12 +184,16 @@ int             kill(int);
 void            pinit(void);
 void            procdumpall(void);
 void            scheduler(void) __noret__;
-void            sched(void);
 void            userinit(void);
 int             wait(void);
 void            yield(void);
 struct proc*    threadalloc(void (*fn)(void*), void *arg);
 void            threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
+
+// XXX
+void            sched(void);
+void            post_swtch(void);
+void            scheddump(void);
 
 // prof.c
 extern int profenable;

@@ -14,76 +14,105 @@
 #include "vm.hh"
 #include "ns.hh"
 
-static int __mpalign__ idle[NCPU];
 static struct proc *the_idle[NCPU] __mpalign__;
+
+extern void
+forkret(void);
+
+void
+post_swtch(void)
+{
+  if (get_proc_state(mycpu()->prev) == RUNNABLE && 
+      mycpu()->prev != the_idle[mycpu()->id])
+    addrun(mycpu()->prev);
+  release(&mycpu()->prev->lock);
+  popcli();
+}
+
+void
+sched(void)
+{
+  int intena;
+
+#if SPINLOCK_DEBUG
+  if(!holding(&myproc()->lock))
+    panic("sched proc->lock");
+#endif
+  if(mycpu()->ncli != 1)
+    panic("sched locks");
+  if(get_proc_state(myproc()) == RUNNING)
+    panic("sched running");
+  if(readrflags()&FL_IF)
+    panic("sched interruptible");
+  intena = mycpu()->intena;
+  myproc()->curcycles += rdtsc() - myproc()->tsc;
+  if (get_proc_state(myproc()) == ZOMBIE)
+    mtstop(myproc());
+  else
+    mtpause(myproc());
+  mtign();
+
+  struct proc *next = schednext();
+  if (next) {
+  switchit:
+      pushcli();
+      if (get_proc_state(next) != RUNNABLE)
+        panic("non-RUNNABLE next %s %u", next->name, get_proc_state(next));
+
+      // Switch to chosen process.  It is the process's job
+      // to release proc->lock and then reacquire it
+      // before jumping back to us.
+      struct proc *prev = myproc();
+      mycpu()->proc = next;
+      mycpu()->prev = prev;
+
+      switchuvm(next);
+      set_proc_state(next, RUNNING);
+      next->tsc = rdtsc();
+
+      mtpause(next);
+      if (next->context->rip != (uptr)forkret && 
+          next->context->rip != (uptr)threadstub)
+      {
+        mtresume(next);
+      }
+      mtrec();
+
+      swtch(&prev->context, next->context);
+      mycpu()->intena = intena;
+      post_swtch();
+  } else if (get_proc_state(myproc()) != RUNNABLE) {
+    next = the_idle[mycpu()->id];
+    goto switchit;
+  } else {
+    set_proc_state(myproc(), RUNNING);
+    mycpu()->intena = intena;
+    release(&myproc()->lock);
+  }
+
+  //swtch(&myproc()->context, mycpu()->scheduler);
+  //mycpu()->intena = intena;
+}
 
 void
 idleloop(void)
 {
-  extern void forkret(void);
-  struct proc *idlep = the_idle[cpunum()];
-
   // Test the work queue
   //extern void testwq(void);
   //testwq();
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);
-  mtstart(scheduler, idlep);
+  //mtstart(scheduler, idlep);
 
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
 
-    struct proc *p = schednext();
-    if (p) {
-      cli();
-      //acquire(&p->lock);
-      if (get_proc_state(p) != RUNNABLE) {
-        panic("Huh?");
-      } else {
-        if (idle[mycpu()->id])
-	  idle[mycpu()->id] = 0;
+  sti();
+  for (;;) {
+    acquire(&myproc()->lock);
+    set_proc_state(myproc(), RUNNABLE);
+    sched();
 
-	// Switch to chosen process.  It is the process's job
-	// to release proc->lock and then reacquire it
-	// before jumping back to us.
-	mycpu()->proc = p;
-	switchuvm(p);
-	set_proc_state(p, RUNNING);
-	p->tsc = rdtsc();
-
-        mtpause(idlep);
-        if (p->context->rip != (uptr)forkret && 
-            p->context->rip != (uptr)threadstub)
-        {
-          mtresume(p);
-        }
-	mtrec();
-
-	swtch(&mycpu()->scheduler, myproc()->context);
-        mtresume(idlep);
-	mtign();
-	switchkvm();
-
-	// Process is done running for now.
-	// It should have changed its p->state before coming back.
-	mycpu()->proc = idlep;
-	if (get_proc_state(p) == RUNNABLE)
-	  addrun(p);
-	release(&p->lock);
-      }
-    } else {
-      if (steal()) {
-	if (idle[mycpu()->id])
-	  idle[mycpu()->id] = 0;
-      } else {
-	if (!idle[mycpu()->id])
-	  idle[mycpu()->id] = 1;
-      }
-    }
-
-    if (idle[mycpu()->id]) {
+    if (steal() == 0) {
       int worked;
       do {
         assert(mycpu()->ncli == 0);
@@ -106,5 +135,4 @@ initidle(void)
   mycpu()->proc = p;
   myproc()->cpu_pin = 1;
   the_idle[cpunum()] = p;
-  idle[cpunum()] = 1;
 }

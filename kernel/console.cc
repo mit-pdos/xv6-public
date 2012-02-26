@@ -245,6 +245,7 @@ consoleintr(int (*getc)(void))
     switch(c){
     case C('P'):  // Process listing.
       procdumpall();
+      scheddump();
       break;
     case C('E'):  // Print user-space PCs.
       for (u32 i = 0; i < NCPU; i++)

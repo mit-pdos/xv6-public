@@ -30,33 +30,6 @@ struct kstack_tag kstack_tag[NCPU];
 
 enum { sched_debug = 0 };
 
-void
-sched(void)
-{
-  int intena;
-
-#if SPINLOCK_DEBUG
-  if(!holding(&myproc()->lock))
-    panic("sched proc->lock");
-#endif
-  if(mycpu()->ncli != 1)
-    panic("sched locks");
-  if(get_proc_state(myproc()) == RUNNING)
-    panic("sched running");
-  if(readrflags()&FL_IF)
-    panic("sched interruptible");
-  intena = mycpu()->intena;
-  myproc()->curcycles += rdtsc() - myproc()->tsc;
-  if (get_proc_state(myproc()) == ZOMBIE)
-    mtstop(myproc());
-  else
-    mtpause(myproc());
-  mtign();
-
-  swtch(&myproc()->context, mycpu()->scheduler);
-  mycpu()->intena = intena;
-}
-
 // Give up the CPU for one scheduling round.
 void
 yield(void)
@@ -64,7 +37,7 @@ yield(void)
   acquire(&myproc()->lock);  //DOC: yieldlock
   set_proc_state(myproc(), RUNNABLE);
   sched();
-  sti();
+  //sti();
   //release(&myproc()->lock);
 }
 
@@ -74,8 +47,8 @@ yield(void)
 void
 forkret(void)
 {
-  sti();
-  //release(&myproc()->lock);
+  post_swtch();
+
   // Just for the first process. can't do it earlier
   // b/c file system code needs a process context
   // in which to call cv_sleep().
@@ -351,7 +324,6 @@ void
 procdumpall(void)
 {
   static const char *states[] = {
-    /* [UNUSED]   = */ "unused",
     /* [EMBRYO]   = */ "embryo",
     /* [SLEEPING] = */ "sleep ",
     /* [RUNNABLE] = */ "runble",
@@ -500,8 +472,7 @@ wait(void)
 void
 threadhelper(void (*fn)(void *), void *arg)
 {
-  sti();
-  //release(&myproc()->lock);
+  post_swtch();
   mtstart(fn, myproc());
   fn(arg);
   exit();

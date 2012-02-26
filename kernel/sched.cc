@@ -128,8 +128,26 @@ initsched(void)
   int i;
 
   for (i = 0; i < NCPU; i++) {
-      initlock(&runq[i].lock, "runq", LOCKSTAT_SCHED);
+    initlock(&runq[i].lock, "runq", LOCKSTAT_SCHED);
     STAILQ_INIT(&runq[i].q);
+  }
+}
+
+
+void
+scheddump(void)
+{
+  struct proc *p;
+  int i;
+
+  for (i = 0; i < NCPU; i++) {
+    struct runq *q = &runq[i];
+    cprintf("%u\n", i);
+    acquire(&q->lock);
+    STAILQ_FOREACH(p, &q->q, runqlink) {
+      cprintf("  %s\n", p->name);
+    }    
+    release(&q->lock);    
   }
 }
 

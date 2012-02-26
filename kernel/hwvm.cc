@@ -124,9 +124,11 @@ switchuvm(struct proc *p)
   mycpu()->ts.rsp[0] = (u64) myproc()->kstack + KSTACKSIZE;
   mycpu()->ts.iomba = (u16)offsetof(struct taskstate, iopb);
   ltr(TSSSEG);
-  if(p->vmap == 0 || p->vmap->pml4 == 0)
-    panic("switchuvm: no vmap/pml4");
-  lcr3(v2p(p->vmap->pml4));  // switch to new address space
+  if (p->vmap != 0 && p->vmap->pml4 != 0)
+    lcr3(v2p(p->vmap->pml4));  // switch to new address space
+  else
+    switchkvm();
+
   popcli();
 }
 
