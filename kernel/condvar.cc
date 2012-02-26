@@ -92,10 +92,7 @@ void cv_sleepto(struct condvar *cv, struct spinlock *lk, u64 timeout)
  }
 
   release(&cv->lock);
-
   sched();
-  //sti();
-
   // Reacquire original lock.
   acquire(lk);
 }

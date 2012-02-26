@@ -24,6 +24,76 @@ struct runq {
 static struct runq runq[NCPU] __mpalign__;
 
 void
+post_swtch(void)
+{
+  if (get_proc_state(mycpu()->prev) == RUNNABLE && 
+      mycpu()->prev != idlep[mycpu()->id])
+    addrun(mycpu()->prev);
+  release(&mycpu()->prev->lock);
+}
+
+void
+sched(void)
+{
+  extern void threadstub(void);
+  extern void forkret(void);
+  int intena;
+
+#if SPINLOCK_DEBUG
+  if(!holding(&myproc()->lock))
+    panic("sched proc->lock");
+#endif
+  if(mycpu()->ncli != 1)
+    panic("sched locks");
+  if(get_proc_state(myproc()) == RUNNING)
+    panic("sched running");
+  if(readrflags()&FL_IF)
+    panic("sched interruptible");
+  intena = mycpu()->intena;
+  myproc()->curcycles += rdtsc() - myproc()->tsc;
+  if (get_proc_state(myproc()) == ZOMBIE)
+    mtstop(myproc());
+  else
+    mtpause(myproc());
+  mtign();
+
+  struct proc *next = schednext();
+  if (next == nullptr) {
+    if (get_proc_state(myproc()) != RUNNABLE) {
+      next = idlep[mycpu()->id];
+    } else {
+      set_proc_state(myproc(), RUNNING);
+      mycpu()->intena = intena;
+      release(&myproc()->lock);
+      return;
+    }
+  }
+
+  if (get_proc_state(next) != RUNNABLE)
+    panic("non-RUNNABLE next %s %u", next->name, get_proc_state(next));
+
+  struct proc *prev = myproc();
+  mycpu()->proc = next;
+  mycpu()->prev = prev;
+
+  switchuvm(next);
+  set_proc_state(next, RUNNING);
+  next->tsc = rdtsc();
+
+  mtpause(next);
+  if (next->context->rip != (uptr)forkret && 
+      next->context->rip != (uptr)threadstub)
+  {
+    mtresume(next);
+  }
+  mtrec();
+
+  swtch(&prev->context, next->context);
+  mycpu()->intena = intena;
+  post_swtch();
+}
+
+void
 addrun(struct proc *p)
 {
   // Always called with p->lock held
@@ -86,7 +156,6 @@ steal(void)
       if (get_proc_state(steal) == RUNNABLE && !steal->cpu_pin &&
           steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
       {
-        //delrun(steal);
         steal->curcycles = 0;
         steal->cpuid = mycpu()->id;
         addrun(steal);
@@ -130,24 +199,6 @@ initsched(void)
   for (i = 0; i < NCPU; i++) {
     initlock(&runq[i].lock, "runq", LOCKSTAT_SCHED);
     STAILQ_INIT(&runq[i].q);
-  }
-}
-
-
-void
-scheddump(void)
-{
-  struct proc *p;
-  int i;
-
-  for (i = 0; i < NCPU; i++) {
-    struct runq *q = &runq[i];
-    cprintf("%u\n", i);
-    acquire(&q->lock);
-    STAILQ_FOREACH(p, &q->q, runqlink) {
-      cprintf("  %s\n", p->name);
-    }    
-    release(&q->lock);    
   }
 }
 

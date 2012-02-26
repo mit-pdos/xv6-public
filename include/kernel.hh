@@ -125,6 +125,9 @@ void            ideinit(void);
 void            ideintr(void);
 void            iderw(struct buf*);
 
+// idle.cc
+extern struct proc *idlep[NCPU];
+
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
 
@@ -174,7 +177,6 @@ int             piperead(struct pipe*, char*, int);
 int             pipewrite(struct pipe*, char*, int);
 
 // proc.c
-void            addrun(struct proc *);
 struct proc*    allocproc(void);
 struct proc*    copyproc(struct proc*);
 void            exit(void);
@@ -190,11 +192,6 @@ void            yield(void);
 struct proc*    threadalloc(void (*fn)(void*), void *arg);
 void            threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
 
-// XXX
-void            sched(void);
-void            post_swtch(void);
-void            scheddump(void);
-
 // prof.c
 extern int profenable;
 void            profreset(void);
@@ -205,6 +202,12 @@ void            sampstart(void);
 int             sampintr(struct trapframe*);
 void            sampdump(void);
 void            sampconf(void);
+
+// sched.cc
+void            addrun(struct proc *);
+void            sched(void);
+void            post_swtch(void);
+void            scheddump(void);
 
 // spinlock.c
 void            acquire(struct spinlock*);

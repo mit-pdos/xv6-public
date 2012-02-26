@@ -19,8 +19,7 @@ struct cpu {
   struct cilkframe *cilkframe;
   int timer_printpc;
   atomic<u64> tlbflush_done;   // last tlb flush req done on this cpu
-
-  struct proc *prev;
+  struct proc *prev;           // The previously-running process
 
   // Cpu-local storage variables; see below
   struct cpu *cpu;
