@@ -44,6 +44,7 @@
 // FS/GS base registers
 #define MSR_FS_BASE     0xc0000100
 #define MSR_GS_BASE     0xc0000101
+#define MSR_GS_KERNBASE 0xc0000102
 
 // SYSCALL and SYSRET registers
 #define MSR_STAR        0xc0000081

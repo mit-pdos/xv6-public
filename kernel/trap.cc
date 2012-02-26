@@ -10,11 +10,35 @@
 #include "proc.hh"
 #include "kmtrace.hh"
 #include "bits.hh"
+#include "kalloc.hh"
 
 struct intdesc idt[256] __attribute__((aligned(16)));
 
 // boot.S
 extern u64 trapentry[];
+
+void
+sysentry_c()
+{
+  writegs(KDSEG);
+  writemsr(MSR_GS_BASE, (u64)&cpus[cpunum()].cpu);
+
+  sti();
+
+  if(myproc()->killed) {
+    mtstart(trap, myproc());
+    exit();
+  }
+
+  trapframe *tf = (trapframe*) (myproc()->kstack + KSTACKSIZE - sizeof(*tf));
+  myproc()->tf = tf;
+  syscall();
+
+  if(myproc()->killed) {
+    mtstart(trap, myproc());
+    exit();
+  }
+}
 
 void
 trap(struct trapframe *tf)
@@ -30,7 +54,6 @@ trap(struct trapframe *tf)
     panic("NMI");
   }
 
-  // XXX(sbw) sysenter/sysexit
   if(tf->trapno == T_SYSCALL){
     sti();
     if(myproc()->killed) {
@@ -183,9 +206,18 @@ inittrap(void)
 }
 
 void
+initnmi(void)
+{
+  void *nmistackbase = ksalloc(slab_stack);
+  mycpu()->ts.ist[1] = (u64) nmistackbase + KSTACKSIZE;
+
+  if (mycpu()->id == 0)
+    idt[T_NMI].ist = 1;
+}
+
+void
 initseg(void)
 {
-  extern void sysentry(void);
   volatile struct desctr dtr;
   struct cpu *c;
 
@@ -201,7 +233,6 @@ initseg(void)
   dtr.base = (u64)c->gdt;
   lgdt((void *)&dtr.limit);
 
-#if 0
   // When executing a syscall instruction the CPU sets the SS selector
   // to (star >> 32) + 8 and the CS selector to (star >> 32).
   // When executing a sysret instruction the CPU sets the SS selector
@@ -209,8 +240,7 @@ initseg(void)
   u64 star = ((((u64)UCSEG|0x3) - 16)<<48)|((u64)KCSEG<<32);
   writemsr(MSR_STAR, star);
   writemsr(MSR_LSTAR, (u64)&sysentry);
-  writemsr(MSR_SFMASK, FL_TF);
-#endif
+  writemsr(MSR_SFMASK, FL_TF | FL_IF);
 }
 
 // Pushcli/popcli are like cli/sti except that they are matched:

@@ -180,6 +180,7 @@ inittls(void)
   c = &cpus[cpunum()];
   writegs(KDSEG);
   writemsr(MSR_GS_BASE, (u64)&c->cpu);
+  writemsr(MSR_GS_KERNBASE, (u64)&c->cpu);
   c->cpu = c;
   c->proc = NULL;
   c->kmem = &kmems[cpunum()];

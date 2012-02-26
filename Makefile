@@ -36,7 +36,7 @@ COMFLAGS  = -static -fno-builtin -fno-strict-aliasing -O2 -Wall \
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS   := $(COMFLAGS) -std=c99 $(CFLAGS)
 CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-exceptions -fno-rtti -fcheck-new $(CXXFLAGS)
-ASFLAGS   = -Iinclude -m64 -gdwarf-2 -MD
+ASFLAGS   = -Iinclude -m64 -gdwarf-2 -MD -DHW_$(HW) -include param.h
 LDFLAGS   = -m elf_x86_64
 
 all:

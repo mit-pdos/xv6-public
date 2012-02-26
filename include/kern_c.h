@@ -59,4 +59,5 @@ void threadhelper(void (*fn)(void *), void *arg);
 
 struct trapframe;
 void trap(struct trapframe *tf);
-
+void sysentry(void);
+void sysentry_c(void);

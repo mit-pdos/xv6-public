@@ -19,7 +19,7 @@ struct header {
 };
 
 struct freelist {
-  versioned<header*> buckets[KMMAX+1];
+  versioned<vptr48<header*>> buckets[KMMAX+1];
   char name[MAXNAME];
 };
 

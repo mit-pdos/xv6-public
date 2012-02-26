@@ -11,12 +11,12 @@
 #define MAXNAME      16  // max string names
 #define NEPOCH        4
 #define CACHELINE    64  // cache line size
-#define CPUKSTACKS   (NPROC + NCPU)
+#define CPUKSTACKS   (NPROC + NCPU*2)
 #define QUANTUM      10  // scheduling time quantum and tick length (in msec)
 #define CILKSHIFT     4  // 2^WORKSHIFT work queue slots
 #define VICTIMAGE 1000000 // cycles a proc executes before an eligible victim
 #define VERBOSE       0  // print kernel diagnostics
-#define	SPINLOCK_DEBUG 1 // Debug spin locks
+#define SPINLOCK_DEBUG 1 // Debug spin locks
 #define RCU_TYPE_DEBUG 1
 #define LOCKSTAT      1
 #define VERIFYFREE    0  // Unreliable, e.g. vma's vmnode pointer gets reused
