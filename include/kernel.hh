@@ -307,6 +307,7 @@ void initnet(void);
 void initsched(void);
 void initlockstat(void);
 void initwq(void);
+void initsperf(void);
 
 // other exported/imported functions
 void cmain(u64 mbmagic, u64 mbaddr);

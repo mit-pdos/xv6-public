@@ -63,6 +63,7 @@ __cxa_atexit(void (*f)(void*), void *p, void *d)
 }
 
 void *__dso_handle;
+std::ostream std::cout;
 
 namespace std {
 
