@@ -164,8 +164,6 @@ kalloc_pool(struct kmem *km)
   struct run *r = 0;
   struct kmem *m;
 
-  scoped_gc_epoch gc;
-
   u32 startcpu = mycpu()->id;
   for (u32 i = 0; r == 0 && i < NCPU; i++) {
     int cn = (i + startcpu) % NCPU;
