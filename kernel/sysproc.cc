@@ -8,6 +8,7 @@
 #include "proc.hh"
 #include "cpu.hh"
 #include "vm.hh"
+#include "sperf.hh"
 
 long
 sys_fork(int flags)
@@ -85,6 +86,8 @@ sys_uptime(void)
 long
 sys_map(uptr addr, u64 len)
 {
+  ANON_REGION(__func__, perfgroup);
+
   vmnode *vmn = new vmnode(PGROUNDUP(len) / PGSIZE);
   if (vmn == 0)
     return -1;
@@ -100,6 +103,8 @@ sys_map(uptr addr, u64 len)
 long
 sys_unmap(uptr addr, u64 len)
 {
+  ANON_REGION(__func__, perfgroup);
+
   uptr align_addr = PGROUNDDOWN(addr);
   uptr align_len = PGROUNDUP(addr + len) - align_addr;
   if (myproc()->vmap->remove(align_addr, align_len) < 0)
