@@ -10,6 +10,7 @@
 #include "proc.hh"
 #include "kmtrace.hh"
 #include "bits.hh"
+#include "kalloc.hh"
 
 struct intdesc idt[256] __attribute__((aligned(16)));
 
@@ -202,6 +203,16 @@ inittrap(void)
   }
   entry = trapentry[T_SYSCALL];
   idt[T_SYSCALL] = INTDESC(KCSEG, entry, SEG_DPL(3) | SEG_INTR64 |INT_P);
+}
+
+void
+initnmi(void)
+{
+  void *nmistackbase = ksalloc(slab_stack);
+  mycpu()->ts.ist[1] = (u64) nmistackbase + KSTACKSIZE;
+
+  if (mycpu()->id == 0)
+    idt[T_NMI].ist = 1;
 }
 
 void

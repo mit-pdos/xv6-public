@@ -286,6 +286,7 @@ void initpg(void);
 void initmp(void);
 void initlapic(void);
 void inittls(void);
+void initnmi(void);
 void inittrap(void);
 void initseg(void);
 void initkalloc(u64 mbaddr);

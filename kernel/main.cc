@@ -18,6 +18,7 @@ mpboot(void)
   inittls();
   initlapic();
   initsamp();
+  initnmi();
   bstate = 1;
   scheduler();     // start running processes
 }
@@ -94,6 +95,7 @@ cmain(u64 mbmagic, u64 mbaddr)
     cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);
 
   inituser();      // first user process
+  initnmi();
   bootothers();    // start other processors
   kpml4.e[0] = 0;  // don't need 1 GB identity mapping anymore
   lcr3(rcr3());

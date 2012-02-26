@@ -95,7 +95,7 @@ struct intdesc
 {
   u16 rip0;
   u16 cs;
-  u8 reserved0;
+  u8 ist;
   u8 bits;
   u16 rip1;
   u32 rip2;
