@@ -63,7 +63,6 @@ walkpgdir(pgmap *pml4, u64 va, int create)
 void
 initpg(void)
 {
-  extern char end[]; 
   u64 va = KBASE;
   paddr pa = 0;
 
@@ -71,12 +70,9 @@ initpg(void)
     auto pdp = descend(&kpml4, va, 0, 1, 3);
     auto pd = descend(pdp, va, 0, 1, 2);
     atomic<pme_t> *sp = &pd->e[PX(1,va)];
-    u64 flags = PTE_W | PTE_P | PTE_PS;
-    // Set NX for non-code pages
-    if (va >= (u64) end)
-      flags |= PTE_NX;
+    u64 flags = PTE_W | PTE_P | PTE_PS | PTE_NX;
     *sp = pa | flags;
-    va = va + PGSIZE*512;
+    va += PGSIZE*512;
     pa += PGSIZE*512;
   }
 }
@@ -196,22 +192,15 @@ tlbflush()
 {
   u64 myreq = tlbflush_req++;
 
-  pushcli();
   // the caller may not hold any spinlock, because other CPUs might
   // be spinning waiting for that spinlock, with interrupts disabled,
   // so we will deadlock waiting for their TLB flush..
-  assert(mycpu()->ncli == 1);
-
-  int myid = mycpu()->id;
-  lcr3(rcr3());
-  popcli();
+  assert(mycpu()->ncli == 0);
 
   for (int i = 0; i < ncpu; i++)
-    if (i != myid)
-      lapic_tlbflush(i);
+    lapic_tlbflush(i);
 
   for (int i = 0; i < ncpu; i++)
-    if (i != myid)
-      while (cpus[i].tlbflush_done < myreq)
-        /* spin */ ;
+    while (cpus[i].tlbflush_done < myreq)
+      /* spin */ ;
 }

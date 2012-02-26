@@ -101,9 +101,7 @@ kmalignfree(void *ptr, size_t align, size_t size)
 }
 
 struct proc {
-  spinlock gc_epoch_lock;
-  u64 epoch;
-  u64 epoch_depth;
+  std::atomic<u64> epoch;
   u32 cpuid;
   u32 pid;
   char name[32];

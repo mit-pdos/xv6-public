@@ -83,7 +83,7 @@ sampstart(void)
 {
   pushcli();
   for(struct cpu *c = cpus; c < cpus+ncpu; c++) {
-    if(c == cpus+cpunum())
+    if(c == cpus+mycpu()->id)
       continue;
     lapic_sampconf(c->id);
   }
@@ -95,7 +95,7 @@ static int
 samplog(struct trapframe *tf)
 {
   struct pmulog *l;
-  l = &pmulog[cpunum()];
+  l = &pmulog[mycpu()->id];
 
   if (l->count == l->capacity)
     return 0;
@@ -199,7 +199,7 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
 
     cc = MIN(LOGHEADER_SZ-off, n);
     memmove(dst, (char*)hdr + off, cc);
-    kmfree(hdr, len);
+    kmfree(hdr, LOGHEADER_SZ);
 
     n -= cc;
     ret += cc;

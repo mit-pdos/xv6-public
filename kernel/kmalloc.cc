@@ -19,7 +19,7 @@ struct header {
 };
 
 struct freelist {
-  std::atomic<header*> buckets[KMMAX+1];
+  versioned<header*> buckets[KMMAX+1];
   char name[MAXNAME];
 };
 
@@ -46,9 +46,12 @@ morecore(int c, int b)
   assert(sz >= sizeof(header));
   for(char *q = p; q + sz <= p + PGSIZE; q += sz){
     struct header *h = (struct header *) q;
-    h->next = freelists[c].buckets[b];
-    while (!cmpxch_update(&freelists[c].buckets[b], &h->next, h))
-      ; /* spin */
+    for (;;) {
+      auto headptr = freelists[c].buckets[b].load();
+      h->next = headptr.ptr();
+      if (freelists[c].buckets[b].compare_exchange(headptr, h))
+        break;
+    }
   }
 
   return 0;
@@ -66,7 +69,7 @@ bucket(u64 nbytes)
   if(nn != (1 << b))
     panic("kmalloc oops");
   if(b > KMMAX)
-    panic("kmalloc too big");
+    panic("kmalloc too big %ld", nbytes);
 
   return b;
 }
@@ -81,17 +84,25 @@ kmalloc(u64 nbytes)
   int c = mycpu()->id;
 
   for (;;) {
-    h = freelists[c].buckets[b];
+    auto headptr = freelists[c].buckets[b].load();
+    h = headptr.ptr();
     if (!h) {
       if (morecore(c, b) < 0) {
         cprintf("kmalloc(%d) failed\n", (int) nbytes);
         return 0;
       }
     } else {
-      if (cmpxch(&freelists[c].buckets[b], h, h->next))
+      header *nxt = h->next;
+      if (freelists[c].buckets[b].compare_exchange(headptr, nxt)) {
+        if (h->next != nxt)
+          panic("kmalloc: aba race");
         break;
+      }
     }
   }
+
+  if (ALLOC_MEMSET)
+    memset(h, 4, (1<<b));
 
   mtlabel(mtrace_label_heap, (void*) h, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
   return h;
@@ -110,9 +121,12 @@ kmfree(void *ap, u64 nbytes)
     memset(ap, 3, (1<<b));
 
   int c = mycpu()->id;
-  h->next = freelists[c].buckets[b];
-  while (!cmpxch_update(&freelists[c].buckets[b], &h->next, h))
-    ; /* spin */
+  for (;;) {
+    auto headptr = freelists[c].buckets[b].load();
+    h->next = headptr.ptr();
+    if (freelists[c].buckets[b].compare_exchange(headptr, h))
+      break;
+  }
 
   mtunlabel(mtrace_label_heap, ap);
 }

@@ -8,14 +8,28 @@ extern "C" {
 #include <stdarg.h>
 
 #define KBASE   0xFFFFFF0000000000ull
+#define KCODE   0xFFFFFFFFC0000000ull
 #define KSHARED 0xFFFFF00000000000ull
 #define USERTOP 0x0000800000000000ull
 
 #define KCSEG (2<<3)  /* kernel code segment */
 #define KDSEG (3<<3)  /* kernel data segment */
 
-static inline uptr v2p(void *a) { return (uptr) a  - KBASE; }
-static inline void *p2v(uptr a) { return (u8 *) a + KBASE; }
+static inline uptr v2p(void *a) {
+  uptr ua = (uptr) a;
+  if (ua >= KCODE)
+    return ua - KCODE;
+  else
+    return ua - KBASE;
+}
+
+static inline void *p2v(uptr a) {
+  uptr ac = a + KCODE;
+  if (ac >= KCODE)
+    return (void*) ac;
+  else
+    return (u8 *) a + KBASE;
+}
 
 struct trapframe;
 struct cilkframe;

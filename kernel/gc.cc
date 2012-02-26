@@ -51,16 +51,22 @@ gc_free_tofreelist(atomic<rcu_freed*> *head, u64 epoch)
   int nfree = 0;
   rcu_freed *r, *nr;
 
-  for (r = *head; r != NULL; r = nr) {
+  r = *head;
+  while (!std::atomic_compare_exchange_strong(head, &r, (rcu_freed*) 0))
+    ; /* spin */
+
+  for (; r; r = nr) {
     if (r->_rcu_epoch > epoch) {
       cprintf("gc_free_tofreelist: r->epoch %ld > epoch %ld\n", r->_rcu_epoch, epoch);
+#if RCU_TYPE_DEBUG
+      cprintf("gc_free_tofreelist: name %s\n", r->_rcu_type);
+#endif
       assert(0);
     }
     nr = r->_rcu_next;
     r->do_gc();
     nfree++;
   }
-  *head = r;
   return nfree;
 }
 
@@ -89,6 +95,7 @@ gc_move_to_tofree_cpu(int c, u64 epoch)
   // move delayed NEPOCH's adhead
   gc_state[c].delayed[fe].epoch += NEPOCH;
   assert(gc_state[c].delayed[fe].head == 0);
+  // XXX race with gc_delayed()?
 
   return 0;
 }
@@ -125,20 +132,22 @@ gc_delayfreelist(void)
   if (gc_debug) {
     cprintf("(%d,%d) (%s): min %lu global %lu\n", myproc()->cpuid, myproc()->pid, myproc()->name, min, global);
   }
-  myproc()->epoch_depth++; // ensure enumerate's call to gc_begin_epoch doesn't have sideeffects
+  myproc()->epoch++; // ensure enumerate's call to gc_begin_epoch doesn't have sideeffects
   xnspid->enumerate([&min](u32, proc *p)->bool{
       // Some threads may never call begin/end_epoch(), and never update
-      // p->epoch, so gc_thread does it for them.  XXX get rid off lock?
-      acquire(&p->gc_epoch_lock);
-      if (p->epoch_depth == 0)
-        p->epoch = global_epoch;
-      release(&p->gc_epoch_lock);
+      // p->epoch, so gc_thread does it for them.
+      u64 x = p->epoch.load();
+      if (!(x & 0xff)) {
+        cmpxch(&p->epoch, x, global_epoch.load() << 8);
+        x = p->epoch.load();
+      }
+
       // cprintf("gc_min %d(%s): %lu %ld\n", p->pid, p->name, p->epoch, p->epoch_depth);
-      if (min > p->epoch)
-        min = p->epoch;
+      if (min > (x>>8))
+        min = (x>>8);
       return false;
     });
-  myproc()->epoch_depth--;
+  myproc()->epoch--;
   if (min >= global) {
     gc_move_to_tofree(min);
   }
@@ -148,10 +157,10 @@ gc_delayfreelist(void)
 void
 gc_delayed(rcu_freed *e)
 {
-  gc_state[mycpu()->id].ndelayed++;
-  pushcli();
   int c = mycpu()->id;
-  u64 myepoch = myproc()->epoch;
+  gc_state[c].ndelayed++;
+
+  u64 myepoch = (myproc()->epoch >> 8);
   u64 minepoch = gc_state[c].delayed[myepoch % NEPOCH].epoch;
   if (gc_debug) 
     cprintf("(%d, %d): gc_delayed: %lu ndelayed %d\n", c, myproc()->pid,
@@ -163,30 +172,26 @@ gc_delayed(rcu_freed *e)
   e->_rcu_epoch = myepoch;
   e->_rcu_next = gc_state[c].delayed[myepoch % NEPOCH].head;
   while (!cmpxch_update(&gc_state[c].delayed[myepoch % NEPOCH].head, &e->_rcu_next, e)) {}
-  popcli();
 }
 
 void
 gc_begin_epoch(void)
 {
   if (myproc() == NULL) return;
-  acquire(&myproc()->gc_epoch_lock);
-  if (myproc()->epoch_depth++ > 0)
-    goto done;
-  myproc()->epoch = global_epoch;  // not atomic, but it never goes backwards
+  u64 v = myproc()->epoch++;
+  if (v & 0xff)
+    return;
+
+  cmpxch(&myproc()->epoch, v+1, (global_epoch.load()<<8)+1);
   // __sync_synchronize();
- done:
-  release(&myproc()->gc_epoch_lock);
 }
 
 void
 gc_end_epoch(void)
 {
   if (myproc() == NULL) return;
-  acquire(&myproc()->gc_epoch_lock);
-  --myproc()->epoch_depth;
-  release(&myproc()->gc_epoch_lock);
-  if (myproc()->epoch_depth == 0 && gc_state[mycpu()->id].ndelayed > NGC) 
+  u64 e = --myproc()->epoch;
+  if ((e & 0xff) == 0 && gc_state[mycpu()->id].ndelayed > NGC) 
     cv_wakeup(&gc_state[mycpu()->id].cv);
 }
 
@@ -214,7 +219,7 @@ gc_worker(void *x)
     release(&wl);
     gc_state[mycpu()->id].nrun++;
     u64 global = global_epoch;
-    myproc()->epoch = global_epoch;      // move the gc thread to next epoch
+    myproc()->epoch = global_epoch.load() << 8;      // move the gc thread to next epoch
     for (i = gc_state[mycpu()->id].min_epoch; i < global-2; i++) {
       int nfree = gc_free_tofreelist(&gc_state[mycpu()->id].tofree[i%NEPOCH].head, i);
       gc_state[mycpu()->id].tofree[i%NEPOCH].epoch += NEPOCH;
@@ -232,9 +237,7 @@ gc_worker(void *x)
 void
 initprocgc(struct proc *p)
 {
-  p->epoch = global_epoch;
-  p->epoch_depth = 0;
-  initlock(&p->gc_epoch_lock, "per process gc_lock", 0);
+  p->epoch = global_epoch.load() << 8;
 }
 
 void

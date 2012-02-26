@@ -19,7 +19,7 @@
 #define	SPINLOCK_DEBUG 1 // Debug spin locks
 #define RCU_TYPE_DEBUG 1
 #define LOCKSTAT      1
-#define VERIFYFREE    LOCKSTAT
+#define VERIFYFREE    0  // Unreliable, e.g. vma's vmnode pointer gets reused
 #define ALLOC_MEMSET  1
 #define KSHAREDSIZE   (32 << 10)
 #define WQSHIFT       4
