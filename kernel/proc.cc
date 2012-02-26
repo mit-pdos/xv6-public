@@ -37,8 +37,6 @@ yield(void)
   acquire(&myproc()->lock);  //DOC: yieldlock
   set_proc_state(myproc(), RUNNABLE);
   sched();
-  //sti();
-  //release(&myproc()->lock);
 }
 
 
@@ -403,21 +401,11 @@ fork(int flags)
   SLIST_INSERT_HEAD(&myproc()->childq, np, child_next);
   release(&myproc()->lock);
 
-#if 0
-  if (migrate(np)) {
-    acquire(&np->lock);
-    np->cpuid = mycpu()->id;
-    addrun(np);
-    release(&np->lock);
-  }
-#else
   acquire(&np->lock);
   np->cpuid = mycpu()->id;
   addrun(np);
   release(&np->lock);
-#endif
 
-  //  cprintf("%d: fork done (pid %d)\n", myproc()->pid, pid);
   return pid;
 }
 
