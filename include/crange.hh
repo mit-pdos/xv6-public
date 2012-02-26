@@ -88,7 +88,7 @@ struct range : public rcu_freed {
   const int nlevel;      // the number of levels this range should appear
   crange *const cr;      // the crange this range is part of
   markptr<range>* const next; // one next pointer per level
-  spinlock *lock;        // on separate cache line?
+  spinlock lock;         // on separate cache line?
 
   void print(int l);
   void dec_ref(void);
@@ -166,7 +166,7 @@ struct crange_locked {
       for (range *e = prev_; e && e != succ_; e = n) {
         // as soon a we release, the next pointer can change, so read it first
         n = e->next[0].ptr();
-        release(e->lock);
+        release(&e->lock);
       }
     }
   }

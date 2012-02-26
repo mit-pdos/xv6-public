@@ -87,12 +87,11 @@ range::~range()
 {
   //dprintf("%d: range_free: 0x%lx 0x%lx-0x%lx(%ld)\n", myproc()->cpuid, (u64) this, key, key+size, size);
   cr->check(this);
-  //    assert(curlevel == -1);
+  // assert(curlevel == -1);
   for (int l = 0; l < nlevel; l++) {
     next[l] = (struct range *) 0xDEADBEEF;
   }
-  destroylock(lock);
-  kmalignfree(lock, CACHELINE, sizeof(struct spinlock));
+  destroylock(&lock);
   delete[] next;
 }
 
@@ -118,9 +117,7 @@ range::range(crange *crarg, u64 k, u64 sz, int nl)
   assert(cr->nlevel > 0);
   assert(next);
   for (int l = 0; l < nlevel; l++) next[l] = 0;
-  assert(kmalign((void **) &lock, CACHELINE, 
-			   sizeof(struct spinlock)) == 0);
-  initlock(lock, "crange", LOCKSTAT_CRANGE);
+  initlock(&lock, "crange", LOCKSTAT_CRANGE);
 }
 
 // 
@@ -132,11 +129,11 @@ int
 range::lockif(markptr<range> e)
 {
   assert(!e.mark());
-  acquire(lock);
+  acquire(&lock);
   if (next[0] == e) {
       return 1;
   } 
-  release(lock);
+  release(&lock);
   // cprintf("%d: range_lock_pred: retry %u\n", mycpu()->id, key);
   return 0;
 }
@@ -329,7 +326,7 @@ crange::lock_range(u64 k, u64 sz, int l, range **er, range **pr, range **fr, ran
     assert(*fr);
     *lr = e;
     if (l == 0) {
-      acquire(e->lock);    // lock all ranges in the sequence
+      acquire(&e->lock);    // lock all ranges in the sequence
     }
     e = e->next[l].ptr();
   }
@@ -444,7 +441,7 @@ crange_locked::replace(range *prev, range *repl)
   range *newlast = 0;
   for (range *e = repl; e; e = e->next[0].ptr()) {
     assert(e->key >= base_ && e->key + e->size <= base_ + size_);
-    acquire(e->lock);
+    acquire(&e->lock);
     newlast = e;
   }
 
@@ -458,7 +455,7 @@ crange_locked::replace(range *prev, range *repl)
   crange::mark(replaced, succ_);
 
   for (range *e = replaced; e && e != succ_; e = e->next[0].ptr()) {
-    release(e->lock);
+    release(&e->lock);
     e->dec_ref();
   }
 }
