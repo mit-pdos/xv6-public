@@ -58,7 +58,8 @@ argint64(int n, u64 *ip)
   case 2: *ip = myproc()->tf->rdx; break;
   case 3: *ip = myproc()->tf->rcx; break;
   case 4: *ip = myproc()->tf->r8;  break;
-  case 5: *ip = myproc()->tf->r9;  break;
+  // r9 is corrupted by sysentry
+  // case 5: *ip = myproc()->tf->r9;  break;
   default:
     cprintf("argint64: bad arg %d\n", n);
     return -1;

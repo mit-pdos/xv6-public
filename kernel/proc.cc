@@ -281,7 +281,6 @@ growproc(int n)
     if (e->vma_start <= newstart) {
       if (e->vma_end >= newstart + newn) {
         myproc()->brk += n;
-        switchuvm(myproc());
         return 0;
       }
 
@@ -311,7 +310,6 @@ growproc(int n)
   span.replace(prev, repl);
 
   myproc()->brk += n;
-  switchuvm(myproc());
   return 0;
 }
 

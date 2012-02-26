@@ -18,13 +18,71 @@
 #define TRAPCODE(x) _TRAP(x, EC)
 
 .code64
-#if 0
 .globl sysentry
 .align 8
 sysentry:
-        jmp sysentry
-#endif
-        
+        // can syscall/sysret be used safely in the presence of NMIs?
+        // we are executing with cpl=0 but without a valid stack.
+
+        // blow away %r9: syscalls can take at most 5 args
+        swapgs
+        movq    %gs:8, %r9  // myproc()
+        swapgs
+
+        movq    %ss:PROC_KSTACK_OFFSET(%r9), %r9
+        addq    $(KSTACKSIZE-TRAPFRAME_SIZE), %r9
+
+        // syscall number: %rax
+        // function arguments: %rdi, %rsi, %rdx, %rcx, %r8, %r9 (killed)
+
+        // skip padding3, ds
+        movq    %r15, %ss:0x10(%r9)
+        movq    %r14, %ss:0x18(%r9)
+        movq    %r13, %ss:0x20(%r9)
+        movq    %r12, %ss:0x28(%r9)
+        movq    %rbp, %ss:0x30(%r9)
+        movq    %rbx, %ss:0x38(%r9)
+        // skip r11 (0x40)
+        // skip r10 (0x48)
+        // skip r9 (0x50)
+        movq    %r8,  %ss:0x58(%r9)
+        movq    %rax, %ss:0x60(%r9)
+        movq    %r10, %ss:0x68(%r9)  // rcx saved by usys.S
+        movq    %rdx, %ss:0x70(%r9)
+        movq    %rsi, %ss:0x78(%r9)
+        movq    %rdi, %ss:0x80(%r9)
+        // skip trapno (0x88)
+        // skip err, padding2 (0x90)
+        movq    %rcx, %ss:0x98(%r9)  // rip saved by syscall
+        // skip cs, padding (0xa0)
+        movq    %r11, %ss:0xa8(%r9)  // eflags saved by syscall
+        movq    %rsp, %ss:0xb0(%r9)
+
+        movw    $KDSEG, %ax
+        movw    %ax, %ds
+        movw    %ax, %es
+
+        movq    %r9, %rsp
+        call    sysentry_c
+
+        // return using SYSRET
+        cli
+        movq    %rsp, %r11
+        movw    $UDSEG, %ax
+        movw    %ax, %ds
+        movw    %ax, %es
+        movq    %ss:0x10(%r11), %r15
+        movq    %ss:0x18(%r11), %r14
+        movq    %ss:0x20(%r11), %r13
+        movq    %ss:0x28(%r11), %r12
+        movq    %ss:0x30(%r11), %rbp
+        movq    %ss:0x38(%r11), %rbx
+        movq    %ss:0x60(%r11), %rax
+        movq    %ss:0x98(%r11), %rcx    // rip to be restored by sysret
+        movq    %ss:0xb0(%r11), %rsp
+        movq    %ss:0xa8(%r11), %r11    // eflags to be restored by sysret
+        sysretq
+
 trapcommon:
         pushq %rdi
         pushq %rsi
