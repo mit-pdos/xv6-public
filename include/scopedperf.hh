@@ -221,7 +221,7 @@ class perfsum_base {
       print_row(ps->name, ps->get_names(), w0, w, [](const char *name)
 		{ return name; });
       print_row("  avg",   p, w0, w, [](const pair<uint64_t, uint64_t> &e)
-	        { return e.second / e.first; });
+	        { return e.first ? e.second / e.first : 0; });
       print_row("  total", p, w0, w, [](const pair<uint64_t, uint64_t> &e)
 		{ return e.second; });
       print_row("  count", p, w0, w, [](const pair<uint64_t, uint64_t> &e)
