@@ -41,7 +41,6 @@ struct proc : public rcu_freed {
   struct vmap *vmap;           // va -> vma
   uptr brk;                    // Top of heap
   char *kstack;                // Bottom of kernel stack for this process
-  enum procstate _state;       // Process state
   volatile int pid;            // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
@@ -73,61 +72,15 @@ struct proc : public rcu_freed {
   LIST_ENTRY(proc) cv_waiters; // Linked list of processes waiting for oncv
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
 
-  proc(int npid) : rcu_freed("proc"), vmap(0), brk(0), kstack(0),
-    _state(EMBRYO), pid(npid), parent(0), tf(0), context(0), killed(0),
-    cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
-    on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0)
-  {
-    snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
-    initlock(&lock, lockname+3, LOCKSTAT_PROC);
-    initcondvar(&cv, lockname);
+  proc(int npid);
+  ~proc(void);
 
-    memset(&childq, 0, sizeof(childq));
-    memset(&child_next, 0, sizeof(child_next));
-    memset(ofile, 0, sizeof(ofile));
-    memset(&runqlink, 0, sizeof(runqlink));
-    memset(&cv_waiters, 0, sizeof(cv_waiters));
-    memset(&cv_sleep, 0, sizeof(cv_sleep));
-  }
-
-  ~proc() {
-    destroylock(&lock);
-    destroycondvar(&cv);
-  }
-
-  virtual void do_gc() { delete this; }
+  virtual void do_gc(void) { delete this; }
   NEW_DELETE_OPS(proc)
+
+  void set_state(enum procstate s);
+  enum procstate get_state(void) const { return state_; }
+
+private:
+  enum procstate state_;       // Process state  
 };
-
-static inline void
-set_proc_state(struct proc *p, enum procstate s)
-{
-  switch(p->_state) {
-  case EMBRYO:
-    if (s != RUNNABLE)
-      panic("EMBRYO -> %u", s);
-    break;
-  case SLEEPING:
-    if (s != RUNNABLE)
-      panic("SLEEPING -> %u", s);
-    break;
-  case RUNNABLE:
-    if (s != RUNNING && s != RUNNABLE)
-      panic("RUNNABLE -> %u", s);
-    break;
-  case RUNNING:
-    if (s != RUNNABLE && s != SLEEPING && s != ZOMBIE)
-      panic("RUNNING -> %u", s);
-    break;
-  case ZOMBIE:
-    panic("ZOMBIE -> %u", s);
-  }
-  p->_state = s;
-}
-
-static inline enum procstate
-get_proc_state(struct proc *p)
-{
-  return p->_state;
-}
-
