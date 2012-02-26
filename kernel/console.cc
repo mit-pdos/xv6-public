@@ -288,6 +288,7 @@ consoleintr(int (*getc)(void))
       break;
     case C('Y'):  // scopedperf stats
       scopedperf::perfsum_base::printall();
+      scopedperf::perfsum_base::resetall();
       break;
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
