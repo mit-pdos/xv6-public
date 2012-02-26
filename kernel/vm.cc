@@ -274,7 +274,7 @@ vmap::lookup(uptr start, uptr len)
 int
 vmap::insert(vmnode *n, uptr vma_start, int dotlb)
 {
-  ANON_REGION("vmap::insert", perfgroup);
+  ANON_REGION("vmap::insert", &perfgroup);
 
   vma *e;
 

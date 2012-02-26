@@ -409,6 +409,7 @@ class tsc_ctr : public namedctr<64> {
     __asm __volatile("rdtsc" : "=a" (a), "=d" (d));
     return a | (d << 32);
   }
+  NEW_DELETE_OPS(tsc_ctr)
 };
 
 class tscp_ctr : public namedctr<64> {

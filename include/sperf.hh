@@ -1,5 +1,5 @@
 #pragma once
 
 #include "scopedperf.hh"
-extern scopedperf::ctrgroup_chain<scopedperf::tsc_ctr> *perfgroup;
+extern scopedperf::ctrgroup_chain<scopedperf::tsc_ctr> perfgroup;
 

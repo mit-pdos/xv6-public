@@ -7,11 +7,13 @@
 
 using namespace scopedperf;
 
-ctrgroup_chain<tsc_ctr> *perfgroup;
+static tsc_ctr tsc;
+ctrgroup_chain<tsc_ctr> perfgroup(&tsc);
+// but xv6 doesn't run static constructors, so call them explicitly below..
 
 void
 initsperf()
 {
-  static tsc_ctr tsc;
-  perfgroup = new ctrgroup_chain<tsc_ctr>(&tsc);
+  new (&tsc) tsc_ctr();
+  new (&perfgroup) ctrgroup_chain<tsc_ctr>(&tsc);
 }

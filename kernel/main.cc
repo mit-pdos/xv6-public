@@ -76,11 +76,11 @@ cmain(u64 mbmagic, u64 mbaddr)
   inituart();
   initcga();
   initconsole();
+  initsperf();
   inittrap();
   initmp();
   initlapic();
   initkalloc(mbaddr);
-  initsperf();
   initproc();      // process table
   initsched();     // scheduler run queues
   initgc();        // gc epochs and threads
