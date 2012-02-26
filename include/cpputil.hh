@@ -64,6 +64,37 @@ namespace std {
   {
     return static_cast<typename remove_reference<T>::type&&>(a);
   }
+
+  class ios_base {};
+  class ostream : public ios_base {};
+  extern ostream cout;
+
+  static inline
+  ostream& operator<<(ostream &s, const char *str) {
+    cprintf("%s", str);
+    return s;
+  }
+
+  static inline
+  ostream& operator<<(ostream &s, u32 v) {
+    cprintf("%d", v);
+    return s;
+  }
+
+  static inline
+  ostream& operator<<(ostream &s, u64 v) {
+    cprintf("%ld", v);
+    return s;
+  }
+
+  static inline
+  ostream& operator<<(ostream &s, ostream& (*xform)(ostream&)) {
+    return xform(s);
+  }
+
+  static inline ostream& endl(ostream &s) { s << "\n"; return s; }
+  static inline ostream& left(ostream &s) { return s; }
+  static inline const char *setw(int n) { return ""; }
 }
 
 /* C++ runtime */
