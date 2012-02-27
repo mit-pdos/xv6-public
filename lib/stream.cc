@@ -16,13 +16,13 @@ fasync(FILE *fp, size_t count, off_t off)
   pageid_t pageid;
 
   msgid = ipc_msg_alloc();
-  if (msgid == nullptr_MSGID) {
+  if (msgid == NULL_MSGID) {
     fprintf(2, "fasync: ipc_msg_alloc failed\n");
     return -1;
   }
 
   pageid = ipc_page_alloc();
-  if (pageid == nullptr_PAGEID) {
+  if (pageid == NULL_PAGEID) {
     fprintf(2, "fasync: ipc_alloc_page failed\n");
     return -1;
   }
