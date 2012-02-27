@@ -538,7 +538,7 @@ threadalloc(void (*fn)(void *), void *arg)
   return p;
 }
 
-void
+struct proc*
 threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
 {
   struct proc *p;
@@ -553,4 +553,5 @@ threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
   acquire(&p->lock);
   addrun(p);
   release(&p->lock);
+  return p;
 }

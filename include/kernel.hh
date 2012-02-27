@@ -126,7 +126,7 @@ void            ideintr(void);
 void            iderw(struct buf*);
 
 // idle.cc
-extern struct proc *idlep[NCPU];
+struct proc *   idleproc(void);
 
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
@@ -190,7 +190,7 @@ void            userinit(void);
 int             wait(void);
 void            yield(void);
 struct proc*    threadalloc(void (*fn)(void*), void *arg);
-void            threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
+struct proc*    threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
 
 // prof.c
 extern int profenable;
