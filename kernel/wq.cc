@@ -233,10 +233,102 @@ testwq(void)
       if (wq_push2(__test_stub, (void*)i, (void*)&running) < 0)
         panic("testwq: oops");
     }
-    e = rdtsc();
-    cprintf("testwq: %lu\n", (e-s)/iters);
     while (running)
       nop_pause();
+    e = rdtsc();
+    cprintf("testwq: %lu\n", (e-s)/iters);
+    wq_dump();
+  } else {
+    while (running)
+      wq_trywork();
+  }
+  popcli();
+}
+
+static struct work **
+do_allocwork(struct work **w, int iters)
+{
+  int i;
+
+  for (i = 0; i < iters; i++)
+    w[i] = allocwork();
+  return w;
+}
+
+static struct work **
+do_freework(struct work **w, int iters)
+{
+  int i;
+
+  for (i = 0; i < iters; i++)
+    freework(w[i]);
+  return w;
+}
+
+void
+benchwq(void)
+{
+  enum { alloc_iters = 100 };
+
+  static volatile atomic<int> running(alloc_iters);
+  static struct work *w[alloc_iters];
+  u64 e2, e, s;
+  long i;
+  
+  pushcli();
+  if (mycpu()->id == 0) {
+    microdelay(1);
+
+    // Warm up
+    do_allocwork(w, alloc_iters);
+    do_freework(w, alloc_iters);
+
+    s = rdtsc();
+    do_allocwork(w, alloc_iters);
+    e = rdtsc();
+    cprintf("allocwork: %lu\n", (e-s)/alloc_iters);
+
+    s = rdtsc();
+    do_freework(w, alloc_iters);
+    e = rdtsc();
+    cprintf("freework: %lu\n", (e-s)/alloc_iters);
+
+    do_allocwork(w, alloc_iters);
+    for (i = 0;i < alloc_iters; i++) {
+      w[i]->rip = (void*)__test_stub;
+      w[i]->arg1 = (void*)&running;
+    }
+
+    s = rdtsc();
+    for (i = 0; i < alloc_iters; i++) {
+      if (wq_push(w[i]) < 0)
+        panic("testwq: oops");
+    }
+    e = rdtsc();
+    while (running)
+      nop_pause();
+    e2 = rdtsc();
+
+    cprintf("wq_push: %lu\n", (e-s)/alloc_iters);
+    cprintf("wq finished: %lu\n", (e2-s)/alloc_iters);
+
+    do_allocwork(w, alloc_iters);
+    for (i = 0;i < alloc_iters; i++) {
+      w[i]->rip = (void*)__test_stub;
+      w[i]->arg1 = (void*)&running;
+    }
+
+    s = rdtsc();
+    for (i = 0; i < alloc_iters; i++) {
+      running = 1;
+      if (wq_push(w[i]) < 0)
+        panic("testwq: oops");
+      while (running)
+        nop_pause();
+    }
+    e = rdtsc();
+    cprintf("wq_push one: %lu\n", (e-s)/alloc_iters);
+
     wq_dump();
   } else {
     while (running)
