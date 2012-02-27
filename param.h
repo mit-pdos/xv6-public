@@ -1,4 +1,5 @@
 #pragma once
+#define DEBUG         1
 #define NPROC        64  // maximum number of processes
 #define KSTACKSIZE 8192  // size of per-process kernel stack
 #define NOFILE       16  // open files per process
@@ -16,11 +17,11 @@
 #define CILKSHIFT     4  // 2^WORKSHIFT work queue slots
 #define VICTIMAGE 1000000 // cycles a proc executes before an eligible victim
 #define VERBOSE       0  // print kernel diagnostics
-#define SPINLOCK_DEBUG 1 // Debug spin locks
-#define RCU_TYPE_DEBUG 1
-#define LOCKSTAT      1
+#define SPINLOCK_DEBUG DEBUG // Debug spin locks
+#define RCU_TYPE_DEBUG DEBUG
+#define LOCKSTAT      DEBUG
 #define VERIFYFREE    0  // Unreliable, e.g. vma's vmnode pointer gets reused
-#define ALLOC_MEMSET  1
+#define ALLOC_MEMSET  DEBUG
 #define KSHAREDSIZE   (32 << 10)
 #define WQSHIFT       4
 #if defined(HW_josmp)
