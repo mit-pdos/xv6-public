@@ -209,7 +209,7 @@ parse(const char *b, char **rurl)
   len = b - url;
 
   r = (char *) malloc(len+1);
-  if (r == NULL)
+  if (r == nullptr)
     return -1;
   memmove(r, url, len);
   r[len] = 0;

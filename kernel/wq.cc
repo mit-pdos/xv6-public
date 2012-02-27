@@ -82,7 +82,7 @@ int
 wq_push1(void (*fn)(struct work *w, void *a0), void *a0)
 {
   struct work *w = allocwork();
-  if (w == NULL)
+  if (w == nullptr)
     return -1;
   w->rip = (void*) fn;
   w->arg0 = a0;
@@ -97,7 +97,7 @@ int
 wq_push2(void (*fn)(struct work*, void*, void*), void *a0, void *a1)
 {
   struct work *w = allocwork();
-  if (w == NULL)
+  if (w == nullptr)
     return -1;
   w->rip = (void*) fn;
   w->arg0 = a0;
@@ -177,7 +177,7 @@ wq_trywork(void)
 
   pushcli();
   w = __wq_pop(mycpu()->id);
-  if (w != NULL) {
+  if (w != nullptr) {
     __wq_run(w);
     popcli();
     return 1;
@@ -188,7 +188,7 @@ wq_trywork(void)
         continue;
     
     w = __wq_steal(i);
-    if (w != NULL) {
+    if (w != nullptr) {
       __wq_run(w);
       popcli();
       return 1;
@@ -330,9 +330,6 @@ benchwq(void)
     cprintf("wq_push one: %lu\n", (e-s)/alloc_iters);
 
     wq_dump();
-  } else {
-    while (running)
-      wq_trywork();
   }
   popcli();
 }

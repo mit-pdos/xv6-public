@@ -10,7 +10,6 @@
 #include "condvar.h"
 #include "proc.hh"
 #include "vm.hh"
-#include <stddef.h>
 
 using namespace std;
 
@@ -28,10 +27,10 @@ retry:
     next = (pgmap*) p2v(PTE_ADDR(entry));
   } else {
     if (!create)
-      return NULL;
+      return nullptr;
     next = (pgmap*) kalloc();
     if (!next)
-      return NULL;
+      return nullptr;
     memset(next, 0, PGSIZE);
     if (!cmpxch(entryp, entry, v2p(next) | PTE_P | PTE_W | flags)) {
       kfree((void*) next);
@@ -48,14 +47,14 @@ atomic<pme_t>*
 walkpgdir(pgmap *pml4, u64 va, int create)
 {
   auto pdp = descend(pml4, va, PTE_U, create, 3);
-  if (pdp == NULL)
-    return NULL;
+  if (pdp == nullptr)
+    return nullptr;
   auto pd = descend(pdp, va, PTE_U, create, 2);
-  if (pd == NULL)
-    return NULL;
+  if (pd == nullptr)
+    return nullptr;
   auto pt = descend(pd, va, PTE_U, create, 1);
-  if (pt == NULL)
-    return NULL;
+  if (pt == nullptr)
+    return nullptr;
   return &pt->e[PX(0,va)];
 }
 
@@ -97,7 +96,7 @@ setupkshared(pgmap *pml4, char *kshared)
 {
   for (u64 off = 0; off < KSHAREDSIZE; off+=4096) {
     atomic<pme_t> *pte = walkpgdir(pml4, (u64) (KSHARED+off), 1);
-    if (pte == NULL)
+    if (pte == nullptr)
       panic("setupkshared: oops");
     *pte = v2p(kshared+off) | PTE_P | PTE_U | PTE_W;
   }
@@ -122,7 +121,7 @@ switchvm(struct proc *p)
     SEGDESC(base, (sizeof(mycpu()->ts)-1), SEG_P|SEG_TSS64A);
   mycpu()->gdt[(TSSSEG>>3)+1] = (struct segdesc) SEGDESCHI(base);
   mycpu()->ts.rsp[0] = (u64) myproc()->kstack + KSTACKSIZE;
-  mycpu()->ts.iomba = (u16)offsetof(struct taskstate, iopb);
+  mycpu()->ts.iomba = (u16)__offsetof(struct taskstate, iopb);
   ltr(TSSSEG);
   if (p->vmap != 0 && p->vmap->pml4 != 0)
     lcr3(v2p(p->vmap->pml4));  // switch to new address space
@@ -184,7 +183,7 @@ inittls(void)
   writemsr(MSR_GS_BASE, (u64)&c->cpu);
   writemsr(MSR_GS_KERNBASE, (u64)&c->cpu);
   c->cpu = c;
-  c->proc = NULL;
+  c->proc = nullptr;
   c->kmem = &kmems[cpunum()];
 }
 

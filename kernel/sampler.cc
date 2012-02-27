@@ -185,7 +185,7 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
     u64 cc;
     
     hdr = (logheader*) kmalloc(len);
-    if (hdr == NULL)
+    if (hdr == nullptr)
       return -1;
     hdr->ncpus = NCPU;
     i = 0;
@@ -261,7 +261,7 @@ initsamp(void)
   lcr4(cr4 | CR4_PCE);
   
   void *p = ksalloc(slab_perf);
-  if (p == NULL)
+  if (p == nullptr)
     panic("initprof: ksalloc");
   pmulog[cpunum()].event = (pmuevent*) p;
   pmulog[cpunum()].capacity = PERFSIZE / sizeof(struct pmuevent);

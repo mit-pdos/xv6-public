@@ -16,7 +16,6 @@
 #include "lib.h"
 #include <stdarg.h>
 #include "fmt.hh"
-#include <stddef.h>
 #include "sperf.hh"
 
 #define BACKSPACE 0x100
@@ -144,7 +143,7 @@ puts(const char *s)
   ep = p+strlen(s);
 
   for (; p < ep; p++)
-    writecons(*p, NULL);
+    writecons(*p, nullptr);
 
 }
 
@@ -162,13 +161,13 @@ void __noret__
 kerneltrap(struct trapframe *tf)
 {
   const char *name = "(no name)";
-  void *kstack = NULL;
+  void *kstack = nullptr;
   int pid = 0;
 
   cli();
   acquire(&cons.lock);
 
-  if (myproc() != NULL) {
+  if (myproc() != nullptr) {
     if (myproc()->name && myproc()->name[0] != 0)
       name = myproc()->name;
     pid = myproc()->pid;

@@ -45,7 +45,7 @@ locking(struct spinlock *lk)
 #endif
 
 #if LOCKSTAT
-  if (lockstat_enable && lk->stat != NULL)
+  if (lockstat_enable && lk->stat != nullptr)
     mylockstat(lk)->locking_ts = rdtsc();
 #endif
 
@@ -64,7 +64,7 @@ locked(struct spinlock *lk, u64 retries)
 #endif
 
 #if LOCKSTAT
-  if (lockstat_enable && lk->stat != NULL) {
+  if (lockstat_enable && lk->stat != nullptr) {
     struct cpulockstat *s = mylockstat(lk);
     if (retries > 0)
       s->contends++;
@@ -92,7 +92,7 @@ releasing(struct spinlock *lk)
 #endif
 
 #if LOCKSTAT
-  if (lockstat_enable && lk->stat != NULL) {
+  if (lockstat_enable && lk->stat != nullptr) {
     struct cpulockstat *s = mylockstat(lk);
     u64 ts = rdtsc();
     s->locking += ts - s->locking_ts;
@@ -112,12 +112,12 @@ holding(struct spinlock *lock)
 
 #if LOCKSTAT
 LIST_HEAD(lockstat_list, klockstat);
-static struct lockstat_list lockstat_list = { (struct klockstat*) NULL };
+static struct lockstat_list lockstat_list = { (struct klockstat*) nullptr };
 static struct spinlock lockstat_lock = { 
  locked: 0,
 #if SPINLOCK_DEBUG
  name: "lockstat",
- cpu: (struct cpu*) NULL,
+ cpu: (struct cpu*) nullptr,
 #endif
 };
 
@@ -144,7 +144,7 @@ lockstat_init(struct spinlock *lk)
 static void
 lockstat_stop(struct spinlock *lk)
 {
-  if (lk->stat != NULL)
+  if (lk->stat != nullptr)
     lk->stat->magic = 0;
 }
 
@@ -183,14 +183,14 @@ lockstat_read(struct inode *ip, char *dst, u32 off, u32 n)
     return -1;
 
   acquire(&lockstat_lock);
-  if (cache.off == off && cache.stat != NULL) {
+  if (cache.off == off && cache.stat != nullptr) {
     cur = cache.off;
     stat = cache.stat;
   } else {
     cur = 0;
     stat = LIST_FIRST(&lockstat_list);
   }
-  for (; stat != NULL; stat = LIST_NEXT(stat, link)) {
+  for (; stat != nullptr; stat = LIST_NEXT(stat, link)) {
     struct lockstat *ls = &stat->s;
     if (n < sizeof(*ls))
       break;
@@ -205,7 +205,7 @@ lockstat_read(struct inode *ip, char *dst, u32 off, u32 n)
 
   if (cur < off) {
     cache.off = 0;
-    cache.stat = (struct klockstat*) NULL;
+    cache.stat = (struct klockstat*) nullptr;
     return 0;
   }
 
@@ -256,7 +256,7 @@ initlock(struct spinlock *lk, const char *name, int lockstat)
   lk->cpu = 0;
 #endif
 #if LOCKSTAT
-  lk->stat = (struct klockstat*) NULL;
+  lk->stat = (struct klockstat*) nullptr;
   if (lockstat)
     lockstat_init(lk);
 #endif

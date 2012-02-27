@@ -100,7 +100,7 @@ start_timer(struct timer_thread *t, void (*func)(void),
   initcondvar(&t->waitcv, name);
   initlock(&t->waitlk, name, LOCKSTAT_NET);
   p = threadalloc(net_timer, t);
-  if (p == NULL)
+  if (p == nullptr)
     panic("net: start_timer");
 
   acquire(&p->lock);
@@ -187,7 +187,7 @@ initnet_worker(void *x)
 
   lwip_core_lock();
   memset(&nif, 0, sizeof(nif));
-  lwip_init(&nif, NULL, 0, 0, 0);
+  lwip_init(&nif, nullptr, 0, 0, 0);
 
   dhcp_start(&nif);
 
@@ -249,11 +249,11 @@ initnet(void)
 {
   struct proc *t;
 
-  devsw[NETIF].write = NULL;
+  devsw[NETIF].write = nullptr;
   devsw[NETIF].read = netifread;
 
-  t = threadalloc(initnet_worker, NULL);
-  if (t == NULL)
+  t = threadalloc(initnet_worker, nullptr);
+  if (t == nullptr)
     panic("initnet: threadalloc");
 
   acquire(&t->lock);
@@ -279,7 +279,7 @@ netbind(int sock, void *xaddr, int xaddrlen)
   long r;
   
   addr = kmalloc(xaddrlen);
-  if (addr == NULL)
+  if (addr == nullptr)
     return -1;
 
   if (umemcpy(addr, xaddr, xaddrlen))
@@ -315,7 +315,7 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
     return -1;
 
   addr = kmalloc(len);
-  if (addr == NULL)
+  if (addr == nullptr)
     return -1;
 
   lwip_core_lock();
@@ -353,7 +353,7 @@ netwrite(int sock, char *ubuf, int len)
   int r;
 
   kbuf = kalloc();
-  if (kbuf == NULL)
+  if (kbuf == nullptr)
     return -1;
 
   cc = MIN(len, PGSIZE);
@@ -376,7 +376,7 @@ netread(int sock, char *ubuf, int len)
   int r;
 
   kbuf = kalloc();
-  if (kbuf == NULL)
+  if (kbuf == nullptr)
     return -1;
 
   cc = MIN(len, PGSIZE);

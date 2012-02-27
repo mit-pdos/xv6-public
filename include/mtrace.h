@@ -22,7 +22,7 @@ char* strncpy(char *s, const char *t, int n);
 #define mtlabel(type, addr, bytes, str, n) \
   mtrace_label_register(type, addr, bytes, str, n, RET_IP())
 #define mtunlabel(type, addr) \
-  mtrace_label_register(type, addr, 0, NULL, 0, RET_IP())
+  mtrace_label_register(type, addr, 0, nullptr, 0, RET_IP())
 
 // Tell mtrace about locking
 #define mtlock(ptr) \

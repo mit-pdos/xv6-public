@@ -11,7 +11,6 @@
 #include "kmtrace.hh"
 #include "sched.hh"
 #include "vm.hh"
-#include <stddef.h>
 
 enum { sched_debug = 0 };
 
@@ -137,7 +136,7 @@ steal(void)
     // then p->lock can result in deadlock.  So we acquire
     // q->lock, scan for a process, drop q->lock, acquire p->lock,
     // and then check that it's still ok to steal p.
-    steal = NULL;
+    steal = nullptr;
     if (tryacquire(&q->lock) == 0)
       continue;
     STAILQ_FOREACH(p, &q->q, runqlink) {
@@ -178,7 +177,7 @@ schednext(void)
 {
   // No locks, interrupts enabled
   struct runq *q;
-  struct proc *p = NULL;
+  struct proc *p = nullptr;
 
   pushcli();
   q = &runq[mycpu()->id];

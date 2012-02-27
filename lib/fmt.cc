@@ -1,5 +1,4 @@
 #include "types.h"
-#include <stddef.h>
 #include <stdarg.h>
 #include "fmt.hh"
 #include "lib.h"
@@ -168,7 +167,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat,
 
       // string
     case 's':
-      if ((p = va_arg (ap, char *)) == NULL)
+      if ((p = va_arg (ap, char *)) == nullptr)
 	p = "(null)";
       if (width > 0 && padc != '-')
 	for (width -= strlen (p); width > 0; width--)

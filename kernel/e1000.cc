@@ -143,7 +143,7 @@ allocrx(void)
   if (desc->wrx_status & WRX_ST_DD)
     panic("allocrx");
   buf = netalloc();
-  if (buf == NULL)
+  if (buf == nullptr)
     panic("Oops");
   desc->wrx_addr = v2p(buf);
 

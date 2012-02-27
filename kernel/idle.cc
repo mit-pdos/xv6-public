@@ -16,6 +16,9 @@ idleloop(void)
   //extern void testwq(void);
   //testwq();
 
+  extern void benchwq(void);
+  benchwq();
+
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);
   //mtstart(scheduler, idlep);

@@ -7,8 +7,8 @@ typedef u32 msgid_t;
 #define IPC_CTLSIZE 4096
 #define IPC_PGSIZE  4096
 #define IPC_NMSG    16
-#define NULL_MSGID  (-1)
-#define NULL_PAGEID (-1)
+#define nullptr_MSGID  (-1)
+#define nullptr_PAGEID (-1)
 #define IPC_NPAGE   ((KSHAREDSIZE/IPC_PGSIZE) - 1)
 
 struct ipcmsg {

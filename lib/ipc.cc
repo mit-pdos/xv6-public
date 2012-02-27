@@ -8,7 +8,7 @@ msgid_t
 ipc_msg_alloc(void)
 {
   if (ipcctl->msghead - ipcctl->msgtail == IPC_NMSG)
-    return NULL_MSGID;
+    return nullptr_MSGID;
 
   msgid_t i = ipcctl->msghead % IPC_NMSG;
   ipcctl->msghead++;
@@ -30,7 +30,7 @@ pageid_t
 ipc_page_alloc(void)
 {
   if (ipcctl->pagehead - ipcctl->pagetail == IPC_NPAGE)
-    return NULL_PAGEID;
+    return nullptr_PAGEID;
 
   pageid_t i = ipcctl->pagehead % IPC_NPAGE;
   ipcctl->pagehead++;

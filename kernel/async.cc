@@ -39,7 +39,7 @@ pread_allocwork(struct inode *ip, size_t count, off_t off,
                 struct ipcmsg *msg, void *ubuf)
 {
   struct work *w = allocwork();
-  if (w == NULL)
+  if (w == nullptr)
     return 0;
 
   w->rip = (void*) pread_work;
@@ -79,7 +79,7 @@ sys_async(int fd, size_t count, off_t off,
 
   f->ip->ref++;
   w = pread_allocwork(f->ip, count, off, msg, ubuf);
-  if (w == NULL) {
+  if (w == nullptr) {
     iput(f->ip);
     return -1;
   }

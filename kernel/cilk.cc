@@ -163,7 +163,7 @@ cilk_push(void (*fn)(uptr, uptr), u64 arg0, u64 arg1)
   struct cilkthread *th;
 
   th = (struct cilkthread *) kalloc();
-  if (th == NULL) {
+  if (th == nullptr) {
     fn(arg0, arg1);
     return;
   }
@@ -189,7 +189,7 @@ cilk_trywork(void)
 
   pushcli();
   th = __cilk_pop(cilk_cur());
-  if (th != NULL) {
+  if (th != nullptr) {
     __cilk_run(th);
     popcli();
     return 1;
@@ -201,7 +201,7 @@ cilk_trywork(void)
         continue;
     
     th = __cilk_steal(&queue[i]);
-    if (th != NULL) {
+    if (th != nullptr) {
       __cilk_run(th);
       popcli();
       return 1;
@@ -233,12 +233,12 @@ cilk_end(void)
     struct cilkthread *th;
     int i;
 
-    while ((th = __cilk_pop(cilk_cur())) != NULL)
+    while ((th = __cilk_pop(cilk_cur())) != nullptr)
       __cilk_run(th);
 
     for (i = 0; i < NCPU; i++) {
       th = __cilk_steal(&queue[i]);
-      if (th != NULL) {
+      if (th != nullptr) {
         __cilk_run(th);
         break;
       }

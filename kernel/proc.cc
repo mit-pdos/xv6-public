@@ -77,7 +77,6 @@ proc::set_state(enum procstate s)
     panic("ZOMBIE -> %u", s);
   }
   state_ = s;
-
 }
 
 // Give up the CPU for one scheduling round.
@@ -100,7 +99,7 @@ forkret(void)
   // Just for the first process. can't do it earlier
   // b/c file system code needs a process context
   // in which to call cv_sleep().
-  if(myproc()->cwd == NULL) {
+  if(myproc()->cwd == nullptr) {
     mtstart(forkret, myproc());
     myproc()->cwd = namei("/");
     mtstop(myproc());
@@ -131,7 +130,7 @@ exit(void)
   }
 
   // Kernel threads might not have a cwd
-  if (myproc()->cwd != NULL) {
+  if (myproc()->cwd != nullptr) {
       iput(myproc()->cwd);
       myproc()->cwd = 0;
   }
@@ -154,7 +153,7 @@ exit(void)
   // Parent might be sleeping in wait().
   acquire(&(myproc()->lock));
   // Kernel threads might not have a parent
-  if (myproc()->parent != NULL)
+  if (myproc()->parent != nullptr)
       cv_wakeup(&(myproc()->parent->cv));
   if (wakeupinit)
     cv_wakeup(&bootproc->cv); 
@@ -522,11 +521,11 @@ threadalloc(void (*fn)(void *), void *arg)
   struct proc *p;
 
   p = allocproc();
-  if (p == NULL)
+  if (p == nullptr)
     return 0;
   
   p->vmap = new vmap();
-  if (p->vmap == NULL) {
+  if (p->vmap == nullptr) {
     freeproc(p);
     return 0;
   }
@@ -545,7 +544,7 @@ threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
   struct proc *p;
 
   p = threadalloc(fn, arg);
-  if (p == NULL)
+  if (p == nullptr)
     panic("threadpin: alloc");
 
   snprintf(p->name, sizeof(p->name), "%s", name);

@@ -13,7 +13,6 @@
 #include "elf.hh"
 #include "cpu.hh"
 #include "prof.hh"
-#include <stddef.h>
 
 #define USTACKPAGES 2
 #define BRK (USERTOP >> 1)
@@ -33,7 +32,7 @@ dosegment(uptr a0, u64 a1)
 {
   struct eargs *args = (eargs*) a0;
   u64 off = a1;
-  struct vmnode *vmn = NULL;
+  struct vmnode *vmn = nullptr;
   struct proghdr ph;
 
   prof_start(dosegment_prof);
@@ -71,7 +70,7 @@ bad:
 
 static void dostack(uptr a0, u64 a1)
 {
-  struct vmnode *vmn = NULL;
+  struct vmnode *vmn = nullptr;
   struct eargs *args = (eargs*) a0;  
   int argc;
   uptr sp;
@@ -124,7 +123,7 @@ bad:
 
 static void doheap(uptr a0, u64 a1)
 {
-  struct vmnode *vmn = NULL;
+  struct vmnode *vmn = nullptr;
   struct eargs *args = (eargs*) a0;
 
   prof_start(doheap_prof);
@@ -145,8 +144,8 @@ bad:
 int
 exec(const char *path, char **argv)
 {
-  struct inode *ip = NULL;
-  struct vmap *vmp = NULL;
+  struct inode *ip = nullptr;
+  struct vmap *vmp = nullptr;
   struct elfhdr elf;
   struct proghdr ph;
   u64 off;
@@ -182,7 +181,7 @@ exec(const char *path, char **argv)
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     Elf64_Word type;
     if(readi(ip, (char*)&type, 
-             off+offsetof(struct proghdr, type), 
+             off+__offsetof(struct proghdr, type), 
              sizeof(type)) != sizeof(type))
       goto bad;
     if(type != ELF_PROG_LOAD)

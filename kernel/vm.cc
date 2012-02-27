@@ -144,7 +144,7 @@ vmap::vmap()
     goto err;
   }
 
-  if (kshared == NULL) {
+  if (kshared == nullptr) {
     cprintf("vmap::vmap: kshared out of memory\n");
     goto err;
   }

@@ -43,7 +43,7 @@ memsize(void *va)
   paddr pa = v2p(va);
 
   e = memsearch(pa);
-  if (e == NULL)
+  if (e == nullptr)
     return -1;
   return (e->base+e->length) - pa;
 }
@@ -55,7 +55,7 @@ memnext(void *va, u64 inc)
   paddr pa = v2p(va);
 
   e = memsearch(pa);
-  if (e == NULL)
+  if (e == nullptr)
     return (void *)-1;
 
   pa += inc;

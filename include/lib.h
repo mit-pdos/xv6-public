@@ -1,7 +1,3 @@
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-
 #define MIN(_a, _b)             \
   ({                            \
     __typeof__(_a) __a = (_a);  \

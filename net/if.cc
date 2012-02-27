@@ -56,7 +56,7 @@ low_level_output(struct netif *netif, struct pbuf *p)
 
   size = 0;
   buf = (u8*) netalloc();
-  if (buf == NULL) {
+  if (buf == nullptr) {
     cprintf("low_level_output: netalloc failed\n");
     return ERR_MEM;
   }
@@ -65,7 +65,7 @@ low_level_output(struct netif *netif, struct pbuf *p)
   pbuf_header(p, -ETH_PAD_SIZE); /* drop the padding word */
 #endif
 
-  for(q = p; q != NULL; q = q->next) {
+  for(q = p; q != nullptr; q = q->next) {
     /* Send the data from the pbuf to the interface, one pbuf at a
        time. The size of the data in each pbuf is kept in the ->len
        variable. */
@@ -90,7 +90,7 @@ low_level_output(struct netif *netif, struct pbuf *p)
  *
  * @param netif the lwip network interface structure for this ethernetif
  * @return a pbuf filled with the received packet (including MAC header)
- *         NULL on memory error
+ *         nullptr on memory error
  */
 static struct pbuf *
 low_level_input(struct netif *netif, void *buf, u16_t len)
@@ -104,7 +104,7 @@ low_level_input(struct netif *netif, void *buf, u16_t len)
   /* We allocate a pbuf chain of pbufs from the pool. */
   p = pbuf_alloc(PBUF_RAW, len, PBUF_POOL);
   
-  if (p != NULL) {
+  if (p != nullptr) {
 
 #if ETH_PAD_SIZE
     pbuf_header(p, -ETH_PAD_SIZE); /* drop the padding word */
@@ -113,7 +113,7 @@ low_level_input(struct netif *netif, void *buf, u16_t len)
     int copied = 0;
     /* We iterate over the pbuf chain until we have read the entire
      * packet into the pbuf. */
-    for(q = p; q != NULL; q = q->next) {
+    for(q = p; q != nullptr; q = q->next) {
       /* Read enough bytes to fill this pbuf in the chain. The
        * available data in the pbuf is given by the q->len
        * variable.
@@ -161,7 +161,7 @@ if_input(struct netif *netif, void *buf, u16 len)
   p = low_level_input(netif, buf, len);
   netfree(buf);
   /* no packet could be read, silently ignore this */
-  if (p == NULL) return;
+  if (p == nullptr) return;
   /* points to packet payload, which starts with an Ethernet header */
   ethhdr = (eth_hdr*) p->payload;
 
@@ -198,7 +198,7 @@ if_input(struct netif *netif, void *buf, u16 len)
 err_t
 if_init(struct netif *netif)
 {
-  netif->state = NULL;
+  netif->state = nullptr;
   netif->output = etharp_output;
   netif->linkoutput = low_level_output;
   memmove(&netif->name[0], "en", 2);

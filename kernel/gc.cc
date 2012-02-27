@@ -177,7 +177,7 @@ gc_delayed(rcu_freed *e)
 void
 gc_begin_epoch(void)
 {
-  if (myproc() == NULL) return;
+  if (myproc() == nullptr) return;
   u64 v = myproc()->epoch++;
   if (v & 0xff)
     return;
@@ -189,7 +189,7 @@ gc_begin_epoch(void)
 void
 gc_end_epoch(void)
 {
-  if (myproc() == NULL) return;
+  if (myproc() == nullptr) return;
   u64 e = --myproc()->epoch;
   if ((e & 0xff) == 0 && gc_state[mycpu()->id].ndelayed > NGC) 
     cv_wakeup(&gc_state[mycpu()->id].cv);

@@ -449,7 +449,7 @@ allocsocket(struct file **rf, int *rfd)
   int fd;
 
   f = filealloc();
-  if (f == NULL)
+  if (f == nullptr)
     return -1;
 
   fd = fdalloc(f);
