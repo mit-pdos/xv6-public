@@ -1,9 +1,5 @@
 #pragma once
 
-#if 0
-#define __sync_synchronize() do { __asm__ __volatile__("" ::: "memory"); } while (0)
-#endif
-
 #define _GLIBCXX_VISIBILITY(x)
 #define _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #define _GLIBCXX_END_NAMESPACE_VERSION
