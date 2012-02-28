@@ -1,4 +1,4 @@
-CXXFLAGS := -Iuser $(filter-out -nostdinc++, $(CXXFLAGS)) -msse
+CXXFLAGS := -Iuser $(filter-out -nostdinc++ -Istdinc, $(CXXFLAGS)) -msse
 
 $(O)/utest: $(O)/kernel/crange.o \
             $(O)/kernel/gc.o \
