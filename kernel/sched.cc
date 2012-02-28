@@ -26,7 +26,7 @@ void
 post_swtch(void)
 {
   if (mycpu()->prev->get_state() == RUNNABLE && 
-      mycpu()->prev != idlep[mycpu()->id])
+      mycpu()->prev != idleproc())
     addrun(mycpu()->prev);
   release(&mycpu()->prev->lock);
 }
@@ -42,6 +42,11 @@ sched(void)
   if(!holding(&myproc()->lock))
     panic("sched proc->lock");
 #endif
+  if (myproc() == idleproc() && 
+      myproc()->get_state() != RUNNABLE) {
+    extern void idlebequeath(void);
+    idlebequeath();
+  }
   if(mycpu()->ncli != 1)
     panic("sched locks");
   if(myproc()->get_state() == RUNNING)
@@ -59,7 +64,7 @@ sched(void)
   struct proc *next = schednext();
   if (next == nullptr) {
     if (myproc()->get_state() != RUNNABLE) {
-      next = idlep[mycpu()->id];
+      next = idleproc();
     } else {
       myproc()->set_state(RUNNING);
       mycpu()->intena = intena;

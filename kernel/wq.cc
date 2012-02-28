@@ -175,11 +175,11 @@ wq_trywork(void)
   struct work *w;
   int i;
 
-  pushcli();
+  //pushcli();
   w = __wq_pop(mycpu()->id);
   if (w != nullptr) {
     __wq_run(w);
-    popcli();
+    //popcli();
     return 1;
   }
   // XXX(sbw) should be random
@@ -190,12 +190,12 @@ wq_trywork(void)
     w = __wq_steal(i);
     if (w != nullptr) {
       __wq_run(w);
-      popcli();
+      //popcli();
       return 1;
     }
   }
 
-  popcli();
+  //popcli();
   return 0;
 }
 

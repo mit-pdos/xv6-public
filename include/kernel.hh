@@ -126,7 +126,7 @@ void            ideintr(void);
 void            iderw(struct buf*);
 
 // idle.cc
-extern struct proc *idlep[NCPU];
+struct proc *   idleproc(void);
 
 // ioapic.c
 void            ioapicenable(int irq, int cpu);

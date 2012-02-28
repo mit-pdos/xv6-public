@@ -7,11 +7,60 @@
 #include "cpu.hh"
 #include "sched.hh"
 
-struct proc *idlep[NCPU] __mpalign__;
+// XXX(sbw) these should be padded out
+struct proc * idlep[NCPU] __mpalign__;
+
+struct heir {
+  struct proc *proc;
+  __padout__;
+} __mpalign__;
+
+struct heir heir[NCPU] __mpalign__;
+
+void idleloop(void);
+
+struct proc *
+idleproc(void)
+{
+  assert(mycpu()->ncli > 0);
+  return idlep[mycpu()->id];
+}
+
+void
+idlebequeath(void)
+{
+  // Only the current idle thread may call this function
+  struct heir *h;
+
+  assert(mycpu()->ncli > 0);
+  assert(myproc() == idlep[mycpu()->id]);
+
+  h = &heir[mycpu()->id];
+  assert(h->proc != nullptr);
+
+  idlep[mycpu()->id] = h->proc;
+  acquire(&h->proc->lock);
+  h->proc->set_state(RUNNABLE);
+  release(&h->proc->lock);
+}
+
+
+static void
+idleheir(void *x)
+{
+  post_swtch();
+
+  heir[mycpu()->id].proc = nullptr;
+  idleloop();
+}
 
 void
 idleloop(void)
 {
+  struct heir *h;
+
+  h = &heir[mycpu()->id];
+
   // Test the work queue
   //extern void testwq(void);
   //testwq();
@@ -33,7 +82,25 @@ idleloop(void)
       int worked;
       do {
         assert(mycpu()->ncli == 0);
+
+        // If we don't have an heir, try to allocate one
+        if (h->proc == nullptr) {
+          struct proc *p;
+          p = allocproc();
+          if (p == nullptr)
+            break;
+          snprintf(p->name, sizeof(p->name), "idleh_%u", mycpu()->id);          
+          p->cpuid = mycpu()->id;
+          p->cpu_pin = 1;
+          p->context->rip = (u64)idleheir;
+          p->cwd = nullptr;
+          h->proc = p;
+        }
+
         worked = wq_trywork();
+        // If we are no longer the idle thread, exit
+        if (worked && idlep[mycpu()->id] != myproc())
+          exit();
       } while(worked);
       sti();
     }
@@ -43,13 +110,13 @@ idleloop(void)
 void
 initidle(void)
 {
-  // allocate a fake PID for each scheduler thread
   struct proc *p = allocproc();
   if (!p)
     panic("initidle allocproc");
 
   snprintf(p->name, sizeof(p->name), "idle_%u", cpunum());
   mycpu()->proc = p;
+  myproc()->cpuid = cpunum();
   myproc()->cpu_pin = 1;
   idlep[cpunum()] = p;
 }
