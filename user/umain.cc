@@ -7,7 +7,7 @@
 #include "crange.hh"
 #include "atomic_util.hh"
 #include "ns.hh"
-#include "scopedperf.hh"
+#include "uscopedperf.hh"
 #include "intelctr.hh"
 #include "arc4.hh"
 #include "amd64.h"
@@ -60,7 +60,7 @@ proc_start(void *arg)
   return 0;
 }
 
-void
+static void
 makeproc(proc *p)
 {
   pthread_t tid;

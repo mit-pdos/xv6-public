@@ -8,3 +8,5 @@ $(O)/utest: $(O)/kernel/crange.o \
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) -o $@ $^ -lpthread -lrt -ljemalloc
 
+.PRECIOUS: $(O)/user/%.o
+-include $(O)/user/*.d
