@@ -6,5 +6,5 @@ $(O)/utest: $(O)/kernel/crange.o \
             $(O)/user/umain.o
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
-	$(Q)$(CXX) -o $@ $^ -lpthread -lrt
+	$(Q)$(CXX) -o $@ $^ -lpthread -lrt -ljemalloc
 

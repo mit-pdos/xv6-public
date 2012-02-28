@@ -87,7 +87,7 @@ struct my_range : public range {
 
 static pthread_barrier_t worker_b, populate_b;
 
-enum { iter_total = 1000000 };
+enum { iter_total = 10000000 };
 enum { crange_items = 1024 };
 
 static void

@@ -54,5 +54,6 @@
 
 * user-space version
 
+  $ apt-get install libjemalloc-dev
   $ make HW=user o.user/utest
 
