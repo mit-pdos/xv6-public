@@ -116,10 +116,10 @@ namespace std {
 }
 
 /* C++ runtime */
-// void *operator new(unsigned long nbytes);
-// void *operator new(unsigned long nbytes, void *buf);
+void *operator new(unsigned long nbytes);
+void *operator new(unsigned long nbytes, void *buf);
 void *operator new[](unsigned long nbytes);
-// void operator delete(void *p);
+void operator delete(void *p);
 void operator delete[](void *p);
 
 /* Ref: http://sourcery.mentor.com/public/cxx-abi/abi.html */

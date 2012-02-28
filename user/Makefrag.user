@@ -1,4 +1,4 @@
-CXXFLAGS := -Iuser $(filter-out -nostdinc++, $(CXXFLAGS)) -msse
+CXXFLAGS := -Iuser $(filter-out -nostdinc++ -Istdinc, $(CXXFLAGS)) -msse
 
 $(O)/utest: $(O)/kernel/crange.o \
             $(O)/kernel/gc.o \
@@ -6,5 +6,7 @@ $(O)/utest: $(O)/kernel/crange.o \
             $(O)/user/umain.o
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
-	$(Q)$(CXX) -o $@ $^ -lpthread -lrt
+	$(Q)$(CXX) -o $@ $^ -ljemalloc -lpthread -lrt
 
+.PRECIOUS: $(O)/user/%.o
+-include $(O)/user/*.d

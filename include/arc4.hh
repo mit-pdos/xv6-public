@@ -3,7 +3,7 @@ class arc4 {
   arc4(const u8 *key, size_t nbytes) {
     reset();
     for (size_t n = 0; n < nbytes; n += 128)
-      addkey(&key[n], nbytes > n + 128 ? 128 : n + 128 - nbytes);
+      addkey(&key[n], nbytes - n > 128 ? 128 : nbytes - n);
     j = i;
   }
 
@@ -21,7 +21,7 @@ class arc4 {
   template<class T> T rand() {
     T v;
     for (u32 i = 0; i < sizeof(v); i++)
-      *(u8*) &v = getbyte();
+      i[(u8*) &v] = getbyte();
     return v;
   }
 

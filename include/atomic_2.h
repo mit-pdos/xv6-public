@@ -284,9 +284,11 @@ namespace __atomic2
 	__glibcxx_assert(__m != memory_order_release);
 	__glibcxx_assert(__m != memory_order_acq_rel);
 
-	__sync_synchronize();
+	// __sync_synchronize();
+        __barrier();
 	__int_type __ret = _M_i;
-	__sync_synchronize();
+	// __sync_synchronize();
+        __barrier();
 	return __ret;
       }
 
@@ -296,9 +298,11 @@ namespace __atomic2
 	__glibcxx_assert(__m != memory_order_release);
 	__glibcxx_assert(__m != memory_order_acq_rel);
 
-	__sync_synchronize();
+	// __sync_synchronize();
+        __barrier();
 	__int_type __ret = _M_i;
-	__sync_synchronize();
+	// __sync_synchronize();
+        __barrier();
 	return __ret;
       }
 
@@ -576,9 +580,11 @@ namespace __atomic2
 	__glibcxx_assert(__m != memory_order_release);
 	__glibcxx_assert(__m != memory_order_acq_rel);
 
-	__sync_synchronize();
+	// __sync_synchronize();
+        __barrier();
 	__pointer_type __ret = _M_p;
-	__sync_synchronize();
+	// __sync_synchronize();
+        __barrier();
 	return __ret;
       }
 
@@ -588,9 +594,11 @@ namespace __atomic2
 	__glibcxx_assert(__m != memory_order_release);
 	__glibcxx_assert(__m != memory_order_acq_rel);
 
-	__sync_synchronize();
+	// __sync_synchronize();
+        __barrier();
 	__pointer_type __ret = _M_p;
-	__sync_synchronize();
+	// __sync_synchronize();
+        __barrier();
 	return __ret;
       }
 

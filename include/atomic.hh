@@ -1,15 +1,12 @@
 #pragma once
 
-#if 0
-#define __sync_synchronize() do { __asm__ __volatile__("" ::: "memory"); } while (0)
-#endif
-
 #define _GLIBCXX_VISIBILITY(x)
 #define _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #define _GLIBCXX_END_NAMESPACE_VERSION
 #define _GLIBCXX_BEGIN_EXTERN_C extern "C" {
 #define _GLIBCXX_END_EXTERN_C }
 #define __glibcxx_assert(x)
+#define __barrier() do { __asm__ __volatile__("" ::: "memory"); } while (0)
 
 #define _GLIBCXX_ATOMIC_BUILTINS_1 1
 #define _GLIBCXX_ATOMIC_BUILTINS_2 1

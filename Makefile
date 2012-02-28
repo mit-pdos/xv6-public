@@ -26,7 +26,7 @@ NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
 STRIP = $(TOOLPREFIX)strip
 
-INCLUDES  = -Iinclude -I$(QEMUSRC) -include param.h -include include/compiler.h
+INCLUDES  = -Iinclude -Istdinc -I$(QEMUSRC) -include param.h -include include/compiler.h
 COMFLAGS  = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) -DXV6 \
 	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer -fms-extensions \
 	    -mno-sse -mcx16 -mno-red-zone $(INCLUDES)

@@ -183,7 +183,8 @@ gc_begin_epoch(void)
     return;
 
   cmpxch(&myproc()->epoch, v+1, (global_epoch.load()<<8)+1);
-  // __sync_synchronize();
+  // We effectively need an mfence here, and cmpxch provides one
+  // by virtue of being a LOCK instuction.
 }
 
 void

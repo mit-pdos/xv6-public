@@ -666,6 +666,10 @@ dir_flush(struct inode *dp)
       off += sizeof(de);
       return false;
     });
+  if (dp->size != off) {
+    dp->size = off;
+    iupdate(dp);
+  }
 }
 
 // Look for a directory entry in a directory.
