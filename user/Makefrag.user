@@ -6,7 +6,7 @@ $(O)/utest: $(O)/kernel/crange.o \
             $(O)/user/umain.o
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
-	$(Q)$(CXX) -o $@ $^ -lpthread -lrt -ljemalloc
+	$(Q)$(CXX) -o $@ $^ -ljemalloc -lpthread -lrt
 
 .PRECIOUS: $(O)/user/%.o
 -include $(O)/user/*.d
