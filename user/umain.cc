@@ -89,6 +89,7 @@ static pthread_barrier_t worker_b, populate_b;
 
 enum { iter_total = 10000000 };
 enum { crange_items = 1024 };
+enum { random_keys = 0 };
 
 static void
 worker(void *arg)
@@ -97,7 +98,8 @@ worker(void *arg)
 
   for (u32 i = 0; i < iter_total / ncpu; i++) {
     ANON_REGION("worker op", &perfgroup);
-    u64 k = 1 + rnd<u32>() % (crange_items * 2);
+    u64 rval = random_keys ? rnd<u32>() : myproc()->cpuid;
+    u64 k = 1 + rval % (crange_items * 2);
     auto span = cr->search_lock(k, 1);
     if (rnd<u8>() & 1) {
       ANON_REGION("worker del", &perfgroup);
