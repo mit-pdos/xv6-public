@@ -6,16 +6,17 @@
 #include "proc.hh"
 #include "cpu.hh"
 #include "sched.hh"
+#include "percpu.hh"
 
 // XXX(sbw) these should be padded out
-struct idle {
+struct idle : public pad {
   struct proc *cur;
   struct proc *heir;
   SLIST_HEAD(zombies, proc) zombies;
   struct spinlock lock;
 };
 
-struct idle idlem[NCPU] __mpalign__;
+static percpu<idle> idlem;
 
 struct proc * idlep[NCPU] __mpalign__;
 
