@@ -42,6 +42,7 @@ struct klockstat;
 
 // Debug knobs
 #define LOCKSTAT_BIO       1
+#define LOCKSTAT_CILK      1
 #define LOCKSTAT_CONDVAR   0
 #define LOCKSTAT_CONSOLE   1
 #define LOCKSTAT_CRANGE    1

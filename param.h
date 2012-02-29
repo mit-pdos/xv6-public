@@ -24,6 +24,7 @@
 #define ALLOC_MEMSET  DEBUG
 #define KSHAREDSIZE   (32 << 10)
 #define WQSHIFT       7
+#define CILKENABLE    0
 #if defined(HW_josmp)
 #define NCPU         16  // maximum number of CPUs
 #define MTRACE       0

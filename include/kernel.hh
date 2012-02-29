@@ -264,7 +264,7 @@ void            freework(struct work *w);
 
 // cilk.c
 #if CILKENABLE
-void            cilk_push(void *rip, u64 arg0, u64 arg1);
+void            cilk_push(void (*fn)(uptr, uptr), u64 arg0, u64 arg1);
 void            cilk_start(void);
 void            cilk_end(void);
 void            cilk_dump(void);
