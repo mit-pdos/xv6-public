@@ -1,7 +1,3 @@
-struct pad {
-  __padout__;
-} __mpalign__;
-
 template <typename T>
 struct percpu {
   int myid() {
@@ -25,8 +21,11 @@ struct percpu {
   }
 
   T* cpu(int id) {
-    return &v_[id];
+    return &pad_[id].v_;
   }
 
-  T v_[NCPU] __mpalign__;
+  struct {
+    T v_ __mpalign__;
+    __padout__;
+  } pad_[NCPU];
 };

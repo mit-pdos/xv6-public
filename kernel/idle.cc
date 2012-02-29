@@ -8,7 +8,7 @@
 #include "sched.hh"
 #include "percpu.hh"
 
-struct idle : public pad {
+struct idle {
   struct proc *cur;
   struct proc *heir;
   SLIST_HEAD(zombies, proc) zombies;
