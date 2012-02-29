@@ -8,6 +8,15 @@
 #include "sched.hh"
 
 // XXX(sbw) these should be padded out
+struct idle {
+  struct proc *cur;
+  struct proc *heir;
+  SLIST_HEAD(zombies, proc) zombies;
+  struct spinlock lock;
+};
+
+struct idle idlem[NCPU] __mpalign__;
+
 struct proc * idlep[NCPU] __mpalign__;
 
 struct heir {
@@ -24,6 +33,14 @@ idleproc(void)
 {
   assert(mycpu()->ncli > 0);
   return idlep[mycpu()->id];
+}
+
+void
+idlezombie(struct proc *p)
+{
+  acquire(&idlem[mycpu()->id].lock);
+  SLIST_INSERT_HEAD(&idlem[mycpu()->id].zombies, p, child_next);
+  release(&idlem[mycpu()->id].lock);
 }
 
 void
@@ -54,6 +71,22 @@ idleheir(void *x)
   idleloop();
 }
 
+static inline void
+finishzombies(void)
+{
+  struct idle *i = &idlem[mycpu()->id];
+
+  if (!SLIST_EMPTY(&i->zombies)) {
+    struct proc *p, *np;
+    acquire(&i->lock);
+    SLIST_FOREACH_SAFE(p, &i->zombies, child_next, np) {
+      SLIST_REMOVE(&i->zombies, p, proc, child_next);
+      finishproc(p);
+    }
+    release(&i->lock);
+  }
+}
+
 void
 idleloop(void)
 {
@@ -77,6 +110,8 @@ idleloop(void)
     acquire(&myproc()->lock);
     myproc()->set_state(RUNNABLE);
     sched();
+
+    finishzombies();
 
     if (steal() == 0) {
       int worked;
@@ -113,6 +148,9 @@ initidle(void)
   struct proc *p = allocproc();
   if (!p)
     panic("initidle allocproc");
+
+  SLIST_INIT(&idlem[cpunum()].zombies);
+  initlock(&idlem[cpunum()].lock, "idle_lock", LOCKSTAT_IDLE);
 
   snprintf(p->name, sizeof(p->name), "idle_%u", cpunum());
   mycpu()->proc = p;

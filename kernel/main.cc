@@ -83,6 +83,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initkalloc(mbaddr);
   initproc();      // process table
   initsched();     // scheduler run queues
+  initidle();
   initgc();        // gc epochs and threads
   initbio();       // buffer cache
   initinode();     // inode cache
@@ -95,7 +96,6 @@ cmain(u64 mbmagic, u64 mbaddr)
   initlockstat();
   initpci();
   initnet();
-  initidle();
 
   if (VERBOSE)
     cprintf("ncpu %d %lu MHz\n", ncpu, cpuhz / 1000000);

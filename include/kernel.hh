@@ -127,6 +127,7 @@ void            iderw(struct buf*);
 
 // idle.cc
 struct proc *   idleproc(void);
+void            idlezombie(struct proc*);
 
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
@@ -179,6 +180,7 @@ int             pipewrite(struct pipe*, char*, int);
 // proc.c
 struct proc*    allocproc(void);
 struct proc*    copyproc(struct proc*);
+void            finishproc(struct proc*);
 void            exit(void);
 int             fork(int);
 int             growproc(int);
