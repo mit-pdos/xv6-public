@@ -302,7 +302,6 @@ void initbio(void);
 void initinode(void);
 void initdisk(void);
 void inituser(void);
-void initcilk(void);
 void initsamp(void);
 void initpci(void);
 void initnet(void);

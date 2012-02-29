@@ -89,9 +89,6 @@ cmain(u64 mbmagic, u64 mbaddr)
   initinode();     // inode cache
   initdisk();      // disk
   initwq();
-#if CILKENABLE
-  initcilk();
-#endif
   initsamp();
   initlockstat();
   initpci();
