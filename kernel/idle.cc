@@ -8,7 +8,6 @@
 #include "sched.hh"
 #include "percpu.hh"
 
-// XXX(sbw) these should be padded out
 struct idle : public pad {
   struct proc *cur;
   struct proc *heir;
@@ -18,22 +17,13 @@ struct idle : public pad {
 
 static percpu<idle> idlem;
 
-struct proc * idlep[NCPU] __mpalign__;
-
-struct heir {
-  struct proc *proc;
-  __padout__;
-} __mpalign__;
-
-struct heir heir[NCPU] __mpalign__;
-
 void idleloop(void);
 
 struct proc *
 idleproc(void)
 {
   assert(mycpu()->ncli > 0);
-  return idlep[mycpu()->id];
+  return idlem->cur;
 }
 
 void
@@ -48,18 +38,16 @@ void
 idlebequeath(void)
 {
   // Only the current idle thread may call this function
-  struct heir *h;
 
   assert(mycpu()->ncli > 0);
-  assert(myproc() == idlep[mycpu()->id]);
+  assert(myproc() == idlem->cur);
 
-  h = &heir[mycpu()->id];
-  assert(h->proc != nullptr);
+  assert(idlem->heir != nullptr);
 
-  idlep[mycpu()->id] = h->proc;
-  acquire(&h->proc->lock);
-  h->proc->set_state(RUNNABLE);
-  release(&h->proc->lock);
+  idlem->cur = idlem->heir;
+  acquire(&idlem->heir->lock);
+  idlem->heir->set_state(RUNNABLE);
+  release(&idlem->heir->lock);
 }
 
 
@@ -68,7 +56,7 @@ idleheir(void *x)
 {
   post_swtch();
 
-  heir[mycpu()->id].proc = nullptr;
+  idlem->heir = nullptr;
   idleloop();
 }
 
@@ -91,10 +79,6 @@ finishzombies(void)
 void
 idleloop(void)
 {
-  struct heir *h;
-
-  h = &heir[mycpu()->id];
-
   // Test the work queue
   //extern void testwq(void);
   //testwq();
@@ -120,7 +104,7 @@ idleloop(void)
         assert(mycpu()->ncli == 0);
 
         // If we don't have an heir, try to allocate one
-        if (h->proc == nullptr) {
+        if (idlem->heir == nullptr) {
           struct proc *p;
           p = allocproc();
           if (p == nullptr)
@@ -130,12 +114,12 @@ idleloop(void)
           p->cpu_pin = 1;
           p->context->rip = (u64)idleheir;
           p->cwd = nullptr;
-          h->proc = p;
+          idlem->heir = p;
         }
 
         worked = wq_trywork();
         // If we are no longer the idle thread, exit
-        if (worked && idlep[mycpu()->id] != myproc())
+        if (worked && idlem->cur != myproc())
           exit();
       } while(worked);
       sti();
@@ -157,5 +141,5 @@ initidle(void)
   mycpu()->proc = p;
   myproc()->cpuid = cpunum();
   myproc()->cpu_pin = 1;
-  idlep[cpunum()] = p;
+  idlem->cur = p;
 }
