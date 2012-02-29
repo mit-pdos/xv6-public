@@ -12,6 +12,10 @@ struct percpu {
     return cpu(myid());
   }
 
+  T& operator*() {
+    return *cpu(myid());
+  }
+
   T& operator[](int id) { 
     return *cpu(id);
   }
