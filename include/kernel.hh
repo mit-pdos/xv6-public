@@ -282,34 +282,6 @@ void            initcilkframe(struct cilkframe *wq);
 #define initcilkframe(x) do { } while (0)
 #endif
 
-// various init functions
-void initpic(void);
-void initioapic(void);
-void inituart(void);
-void initcga(void);
-void initconsole(void);
-void initpg(void);
-void initmp(void);
-void initlapic(void);
-void inittls(void);
-void initnmi(void);
-void inittrap(void);
-void initseg(void);
-void initkalloc(u64 mbaddr);
-void initrcu(void);
-void initproc(void);
-void initbio(void);
-void initinode(void);
-void initdisk(void);
-void inituser(void);
-void initsamp(void);
-void initpci(void);
-void initnet(void);
-void initsched(void);
-void initlockstat(void);
-void initwq(void);
-void initsperf(void);
-
 // other exported/imported functions
 void cmain(u64 mbmagic, u64 mbaddr);
 void mpboot(void);

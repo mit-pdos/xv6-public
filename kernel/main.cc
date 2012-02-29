@@ -9,8 +9,34 @@
 #include "condvar.h"
 #include "proc.hh"
 
-extern void initidle(void);
-extern void idleloop(void);
+void initpic(void);
+void initioapic(void);
+void inituart(void);
+void initcga(void);
+void initconsole(void);
+void initpg(void);
+void initmp(void);
+void initlapic(void);
+void inittls(void);
+void initnmi(void);
+void inittrap(void);
+void initseg(void);
+void initkalloc(u64 mbaddr);
+void initrcu(void);
+void initproc(void);
+void initbio(void);
+void initinode(void);
+void initdisk(void);
+void inituser(void);
+void initsamp(void);
+void initpci(void);
+void initnet(void);
+void initsched(void);
+void initlockstat(void);
+void initwq(void);
+void initsperf(void);
+void initidle(void);
+void idleloop(void);
 
 static volatile int bstate;
 
