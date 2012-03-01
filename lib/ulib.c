@@ -130,3 +130,9 @@ memmove(void *vdst, const void *vsrc, int n)
     *dst++ = *src++;
   return vdst;
 }
+
+int
+open(const char *path, int omode)
+{
+  return openat(AT_FDCWD, path, omode);
+}

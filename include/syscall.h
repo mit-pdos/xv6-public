@@ -8,7 +8,7 @@
 #define SYS_close   7
 #define SYS_kill    8
 #define SYS_exec    9
-#define SYS_open   10
+#define SYS_openat 10
 #define SYS_mknod  11
 #define SYS_unlink 12
 #define SYS_fstat  13

@@ -132,7 +132,7 @@ sys_link(const char *old, const char *newn)
 
   if(argcheckstr(old) < 0 || argcheckstr(newn) < 0)
     return -1;
-  if((ip = namei(old)) == 0)
+  if((ip = namei(myproc()->cwd, old)) == 0)
     return -1;
   ilock(ip, 1);
   if(ip->type == T_DIR){
@@ -143,7 +143,7 @@ sys_link(const char *old, const char *newn)
   iupdate(ip);
   iunlock(ip);
 
-  if((dp = nameiparent(newn, name)) == 0)
+  if((dp = nameiparent(myproc()->cwd, newn, name)) == 0)
     goto bad;
   if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0)
     goto bad;
@@ -185,7 +185,7 @@ sys_unlink(const char *path)
 
   if(argcheckstr(path) < 0)
     return -1;
-  if((dp = nameiparent(path, name)) == 0)
+  if((dp = nameiparent(myproc()->cwd, path, name)) == 0)
     return -1;
   if(dp->type != T_DIR)
     panic("sys_unlink");
@@ -234,13 +234,13 @@ sys_unlink(const char *path)
 }
 
 static struct inode*
-create(const char *path, short type, short major, short minor)
+create(inode *cwd, const char *path, short type, short major, short minor)
 {
   struct inode *ip, *dp;
   char name[DIRSIZ];
 
  retry:
-  if((dp = nameiparent(path, name)) == 0)
+  if((dp = nameiparent(cwd, path, name)) == 0)
     return 0;
   if(dp->type != T_DIR)
     panic("create");
@@ -284,20 +284,32 @@ create(const char *path, short type, short major, short minor)
 }
 
 long
-sys_open(const char *path, int omode)
+sys_openat(int dirfd, const char *path, int omode)
 {
   int fd;
   struct file *f;
   struct inode *ip;
+  struct inode *cwd;
+
+  if (dirfd == AT_FDCWD) {
+    cwd = myproc()->cwd;
+  } else if (dirfd < 0 || dirfd >= NOFILE) {
+    return -1;
+  } else {
+    struct file *fdir = myproc()->ofile[dirfd];
+    if (fdir->type != file::FD_INODE)
+      return -1;
+    cwd = fdir->ip;
+  }
 
   if(argcheckstr(path) < 0)
     return -1;
   if(omode & O_CREATE){
-    if((ip = create(path, T_FILE, 0, 0)) == 0)
+    if((ip = create(cwd, path, T_FILE, 0, 0)) == 0)
       return -1;
   } else {
  retry:
-    if((ip = namei(path)) == 0)
+    if((ip = namei(cwd, path)) == 0)
       return -1;
     ilock(ip, 0);
     if(ip->type == 0) {
@@ -335,7 +347,7 @@ sys_mkdir(const char *path)
 {
   struct inode *ip;
 
-  if(argcheckstr(path) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0)
+  if(argcheckstr(path) < 0 || (ip = create(myproc()->cwd, path, T_DIR, 0, 0)) == 0)
     return -1;
   iunlockput(ip);
   return 0;
@@ -348,7 +360,7 @@ sys_mknod(const char *path, int major, int minor)
   int len;
   
   if((len=argcheckstr(path)) < 0 ||
-     (ip = create(path, T_DEV, major, minor)) == 0)
+     (ip = create(myproc()->cwd, path, T_DEV, major, minor)) == 0)
     return -1;
   iunlockput(ip);
   return 0;
@@ -359,7 +371,7 @@ sys_chdir(const char *path)
 {
   struct inode *ip;
 
-  if(argcheckstr(path) < 0 || (ip = namei(path)) == 0)
+  if(argcheckstr(path) < 0 || (ip = namei(myproc()->cwd, path)) == 0)
     return -1;
   ilock(ip, 0);
   if(ip->type != T_DIR){

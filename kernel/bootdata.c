@@ -41,7 +41,7 @@ long (*syscalls[])(u64, u64, u64, u64, u64) = {
   SYSCALL(link),
   SYSCALL(mkdir),
   SYSCALL(mknod),
-  SYSCALL(open),
+  SYSCALL(openat),
   SYSCALL(pipe),
   SYSCALL(read),
   SYSCALL(sbrk),

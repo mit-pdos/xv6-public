@@ -15,6 +15,7 @@ filealloc(void)
 {
   struct file *f = (file*) kmalloc(sizeof(struct file));
   f->ref = 1;
+  f->type = file::FD_NONE;
   return f;
 }
 
@@ -40,7 +41,7 @@ fileclose(struct file *f)
     iput(f->ip);
   else if(f->type == file::FD_SOCKET)
     netclose(f->socket);
-  else
+  else if(f->type != file::FD_NONE)
     panic("fileclose bad type");
   kmfree(f, sizeof(struct file));
 }

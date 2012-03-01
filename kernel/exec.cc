@@ -154,7 +154,7 @@ exec(const char *path, char **argv)
   struct vmap *oldvmap;
 
   prof_start(exec_prof);
-  if((ip = namei(path)) == 0)
+  if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
 
   gc_begin_epoch();
