@@ -48,14 +48,14 @@ void*
 pthread_getspecific(pthread_key_t key)
 {
   u64 v;
-  __asm volatile("movq %%fs:(%1), %0" : "=r" (v) : "r" (key * 8));
+  __asm volatile("movq %%fs:(%1), %0" : "=r" (v) : "r" ((u64) key * 8));
   return (void*) v;
 }
 
 int
 pthread_setspecific(pthread_key_t key, void* value)
 {
-  __asm volatile("movq %0, %%fs:(%1)" : : "r" (value), "r" (key * 8));
+  __asm volatile("movq %0, %%fs:(%1)" : : "r" (value), "r" ((u64) key * 8));
   return 0;
 }
 
