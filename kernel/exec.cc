@@ -68,7 +68,7 @@ static void
 dostack(struct eargs *args)
 {
   struct vmnode *vmn = nullptr;
-  uptr ustack[1+MAXARG+1];
+  uptr argstck[1+MAXARG];
   const char *s, *last;
   s64 argc;
   uptr sp;
@@ -91,9 +91,6 @@ dostack(struct eargs *args)
     if(argc >= MAXARG)
       goto bad;
 
-  // Fake return %rip between stack 
-  ustack[0] = 0ull;
-
   // Push argument strings
   sp = USERTOP;
   for(int i = argc-1; i >= 0; i--) {
@@ -101,15 +98,19 @@ dostack(struct eargs *args)
     sp &= ~7;
     if(args->vmap->copyout(sp, args->argv[i], strlen(args->argv[i]) + 1) < 0)
       goto bad;
-    ustack[1+i] = sp;
+    argstck[i] = sp;
   }
-  ustack[1+argc] = 0;
+  argstck[argc] = 0;
 
   args->proc->tf->rdi = argc;
   args->proc->tf->rsi = sp - (argc+1)*8;
 
-  sp -= (1+argc+1) * 8;
-  if(args->vmap->copyout(sp, ustack, (1+argc+1)*8) < 0)
+  sp -= (argc+1) * 8;
+  if(args->vmap->copyout(sp, argstck, (argc+1)*8) < 0)
+    goto bad;
+
+  sp -= 8;
+  if(args->vmap->copyout(sp, &argc, 8) < 0)
     goto bad;
 
   // Save program name for debugging.
