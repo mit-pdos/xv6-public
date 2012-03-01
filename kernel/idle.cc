@@ -6,8 +6,75 @@
 #include "proc.hh"
 #include "cpu.hh"
 #include "sched.hh"
+#include "percpu.hh"
 
-struct proc *idlep[NCPU] __mpalign__;
+struct idle {
+  struct proc *cur;
+  struct proc *heir;
+  SLIST_HEAD(zombies, proc) zombies;
+  struct spinlock lock;
+};
+
+static percpu<idle> idlem;
+
+void idleloop(void);
+
+struct proc *
+idleproc(void)
+{
+  assert(mycpu()->ncli > 0);
+  return idlem->cur;
+}
+
+void
+idlezombie(struct proc *p)
+{
+  acquire(&idlem[mycpu()->id].lock);
+  SLIST_INSERT_HEAD(&idlem[mycpu()->id].zombies, p, child_next);
+  release(&idlem[mycpu()->id].lock);
+}
+
+void
+idlebequeath(void)
+{
+  // Only the current idle thread may call this function
+
+  assert(mycpu()->ncli > 0);
+  assert(myproc() == idlem->cur);
+
+  assert(idlem->heir != nullptr);
+
+  idlem->cur = idlem->heir;
+  acquire(&idlem->heir->lock);
+  idlem->heir->set_state(RUNNABLE);
+  release(&idlem->heir->lock);
+}
+
+
+static void
+idleheir(void *x)
+{
+  post_swtch();
+
+  idlem->heir = nullptr;
+  idleloop();
+}
+
+static inline void
+finishzombies(void)
+{
+  struct idle *i = &idlem[mycpu()->id];
+
+  if (!SLIST_EMPTY(&i->zombies)) {
+    struct proc *p, *np;
+    acquire(&i->lock);
+    SLIST_FOREACH_SAFE(p, &i->zombies, child_next, np) {
+      SLIST_REMOVE(&i->zombies, p, proc, child_next);
+      finishproc(p);
+    }
+    release(&i->lock);
+  }
+}
 
 void
 idleloop(void)
@@ -29,11 +96,31 @@ idleloop(void)
     myproc()->set_state(RUNNABLE);
     sched();
 
+    finishzombies();
+
     if (steal() == 0) {
       int worked;
       do {
         assert(mycpu()->ncli == 0);
+
+        // If we don't have an heir, try to allocate one
+        if (idlem->heir == nullptr) {
+          struct proc *p;
+          p = allocproc();
+          if (p == nullptr)
+            break;
+          snprintf(p->name, sizeof(p->name), "idleh_%u", mycpu()->id);          
+          p->cpuid = mycpu()->id;
+          p->cpu_pin = 1;
+          p->context->rip = (u64)idleheir;
+          p->cwd = nullptr;
+          idlem->heir = p;
+        }
+
         worked = wq_trywork();
+        // If we are no longer the idle thread, exit
+        if (worked && idlem->cur != myproc())
+          exit();
       } while(worked);
       sti();
     }
@@ -43,13 +130,16 @@ idleloop(void)
 void
 initidle(void)
 {
-  // allocate a fake PID for each scheduler thread
   struct proc *p = allocproc();
   if (!p)
     panic("initidle allocproc");
 
+  SLIST_INIT(&idlem[cpunum()].zombies);
+  initlock(&idlem[cpunum()].lock, "idle_lock", LOCKSTAT_IDLE);
+
   snprintf(p->name, sizeof(p->name), "idle_%u", cpunum());
   mycpu()->proc = p;
+  myproc()->cpuid = cpunum();
   myproc()->cpu_pin = 1;
-  idlep[cpunum()] = p;
+  idlem->cur = p;
 }

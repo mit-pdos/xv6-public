@@ -126,7 +126,8 @@ void            ideintr(void);
 void            iderw(struct buf*);
 
 // idle.cc
-extern struct proc *idlep[NCPU];
+struct proc *   idleproc(void);
+void            idlezombie(struct proc*);
 
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
@@ -179,6 +180,7 @@ int             pipewrite(struct pipe*, char*, int);
 // proc.c
 struct proc*    allocproc(void);
 struct proc*    copyproc(struct proc*);
+void            finishproc(struct proc*);
 void            exit(void);
 int             fork(int);
 int             growproc(int);
@@ -190,7 +192,7 @@ void            userinit(void);
 int             wait(void);
 void            yield(void);
 struct proc*    threadalloc(void (*fn)(void*), void *arg);
-void            threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
+struct proc*    threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
 
 // prof.c
 extern int profenable;
@@ -262,7 +264,7 @@ void            freework(struct work *w);
 
 // cilk.c
 #if CILKENABLE
-void            cilk_push(void *rip, u64 arg0, u64 arg1);
+void            cilk_push(void (*fn)(uptr, uptr), u64 arg0, u64 arg1);
 void            cilk_start(void);
 void            cilk_end(void);
 void            cilk_dump(void);

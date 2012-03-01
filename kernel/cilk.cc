@@ -36,6 +36,7 @@
 #include "queue.h"
 #include "proc.hh"
 #include "mtrace.h"
+#include "wq.hh"
 
 #define NSLOTS (1 << CILKSHIFT)
 
@@ -59,19 +60,12 @@ struct cilkthread {
 struct cilkstat {
   u64 push;
   u64 full;
-  u64 pop;
   u64 steal;
   __padout__;
 } __mpalign__;
 
 static struct cilkqueue queue[NCPU] __mpalign__;
 static struct cilkstat stat[NCPU] __mpalign__;
-
-static struct cilkqueue *
-cilk_cur(void)
-{
-  return &queue[mycpu()->id];
-}
 
 static struct cilkframe *
 cilk_frame(void)
@@ -85,73 +79,20 @@ cilk_stat(void)
   return &stat[mycpu()->id];
 }
 
-static int
-__cilk_push(struct cilkqueue *q, struct cilkthread *t)
-{
-  int i;
-
-  i = q->head;
-  if ((i - q->tail) == NSLOTS) {
-    cilk_stat()->full++;
-    return -1;
-  }
-  i = i & (NSLOTS-1);
-  q->thread[i] = t;
-  q->head++;
-
-  cilk_stat()->push++;
-  return 0;
-}
-
-static struct cilkthread *
-__cilk_pop(struct cilkqueue *q)
-{
-  int i;
-
-  acquire(&q->lock);
-  i = q->head;
-  if ((i - q->tail) == 0) {
-    release(&q->lock);
-    return 0;
-  }
-  i = (i-1) & (NSLOTS-1);
-  q->head--;
-  release(&q->lock);
-
-  cilk_stat()->pop++;
-  return q->thread[i];
-}
-
-static struct cilkthread *
-__cilk_steal(struct cilkqueue *q)
-{
-  int i;
-
-  acquire(&q->lock);
-  i = q->tail;
-  if ((i - q->head) == 0) {
-    release(&q->lock);
-    return 0;
-  }
-  i = i & (NSLOTS-1);
-  q->tail++;
-  release(&q->lock);
-
-  cilk_stat()->steal++;
-  return q->thread[i];
-}
-
 static void
-__cilk_run(struct cilkthread *th)
+__cilk_run(struct work *w, void *xfn, void *arg0, void *arg1, void *xframe)
 {
-  void (*fn)(uptr arg0, uptr arg1) = (void(*)(uptr,uptr))th->rip;
+  void (*fn)(uptr arg0, uptr arg1) = (void(*)(uptr,uptr))xfn;
+  struct cilkframe *frame = (struct cilkframe *)xframe;
   struct cilkframe *old = mycpu()->cilkframe;
 
-  mycpu()->cilkframe = th->frame;
-  fn(th->arg0, th->arg1);
+  if (old != frame)
+    cilk_stat()->steal++;
+
+  mycpu()->cilkframe = frame;
+  fn((uptr)arg0, (uptr)arg1);
   mycpu()->cilkframe = old;
-  th->frame->ref--;
-  kfree(th);
+  frame->ref--;
 }
 
 // Add the (rip, arg0, arg1) work to the local work queue.
@@ -160,56 +101,27 @@ __cilk_run(struct cilkthread *th)
 void
 cilk_push(void (*fn)(uptr, uptr), u64 arg0, u64 arg1)
 {
-  struct cilkthread *th;
+  struct work *w;
 
-  th = (struct cilkthread *) kalloc();
-  if (th == nullptr) {
+  w = allocwork();
+  if (w == nullptr) {
     fn(arg0, arg1);
     return;
   }
-  th->rip = (uptr) fn;
-  th->arg0 = arg0;
-  th->arg1 = arg1;
-  th->frame = cilk_frame();
+  w->rip = (void*)__cilk_run;
+  w->arg0 = (void*)fn;
+  w->arg1 = (void*)arg0;
+  w->arg2 = (void*)arg1;
+  w->arg3 = (void*)cilk_frame();
 
-  if (__cilk_push(cilk_cur(), th)) {
-    kfree(th);
+  if (wq_push(w)) {
+    freework(w);
     fn(arg0, arg1);
-  } else
+    cilk_stat()->full++;
+  } else {
     cilk_frame()->ref++;
-}
-
-// Try to execute one cilkthread.
-// Check local queue then steal from other queues. 
-int
-cilk_trywork(void)
-{
-  struct cilkthread *th;
-  int i;
-
-  pushcli();
-  th = __cilk_pop(cilk_cur());
-  if (th != nullptr) {
-    __cilk_run(th);
-    popcli();
-    return 1;
+    cilk_stat()->push++;
   }
-
-  // XXX(sbw) should be random
-  for (i = 0; i < NCPU; i++) {
-    if (i == mycpu()->id)
-        continue;
-    
-    th = __cilk_steal(&queue[i]);
-    if (th != nullptr) {
-      __cilk_run(th);
-      popcli();
-      return 1;
-    }
-  }
-
-  popcli();
-  return 0;
 }
 
 // Start a new work queue frame.
@@ -229,21 +141,9 @@ cilk_start(void)
 void
 cilk_end(void)
 {
-  while (cilk_frame()->ref != 0) {
-    struct cilkthread *th;
-    int i;
+  while (cilk_frame()->ref != 0)
+    wq_trywork();
 
-    while ((th = __cilk_pop(cilk_cur())) != nullptr)
-      __cilk_run(th);
-
-    for (i = 0; i < NCPU; i++) {
-      th = __cilk_steal(&queue[i]);
-      if (th != nullptr) {
-        __cilk_run(th);
-        break;
-      }
-    }
-  }
   mycpu()->cilkframe = 0;
   popcli();
 }
@@ -253,8 +153,8 @@ cilk_dump(void)
 {
   int i;
   for (i = 0; i < NCPU; i++)
-    cprintf("push %lu full %lu pop %lu steal %lu\n",
-            stat[i].push, stat[i].full, stat[i].pop, stat[i].steal);
+    cprintf("push %lu full %lu steal %lu\n",
+            stat[i].push, stat[i].full, stat[i].steal);
 }
 
 static void
@@ -285,7 +185,7 @@ testcilk(void)
     running = 0;
   } else {
     while (running)
-      cilk_trywork();
+      wq_trywork();
   }
   popcli();
 }

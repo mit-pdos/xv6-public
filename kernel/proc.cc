@@ -152,9 +152,13 @@ exit(void)
 
   // Parent might be sleeping in wait().
   acquire(&(myproc()->lock));
+
   // Kernel threads might not have a parent
   if (myproc()->parent != nullptr)
-      cv_wakeup(&(myproc()->parent->cv));
+    cv_wakeup(&(myproc()->parent->cv));
+  else
+    idlezombie(myproc());
+
   if (wakeupinit)
     cv_wakeup(&bootproc->cv); 
 
@@ -458,6 +462,21 @@ fork(int flags)
   return pid;
 }
 
+void
+finishproc(struct proc *p)
+{
+  ksfree(slab_stack, p->kstack);
+  p->kstack = 0;
+  p->vmap->decref();
+  if (!xnspid->remove(p->pid, &p))
+    panic("wait: ns_remove");
+  p->pid = 0;
+  p->parent = 0;
+  p->name[0] = 0;
+  p->killed = 0;
+  freeproc(p);
+}
+
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
@@ -478,16 +497,7 @@ wait(void)
 	  pid = p->pid;
 	  SLIST_REMOVE(&myproc()->childq, p, proc, child_next);
 	  release(&myproc()->lock);
-	  ksfree(slab_stack, p->kstack);
-	  p->kstack = 0;
-	  p->vmap->decref();
-	  if (!xnspid->remove(p->pid, &p))
-	    panic("wait: ns_remove");
-	  p->pid = 0;
-	  p->parent = 0;
-	  p->name[0] = 0;
-	  p->killed = 0;
-          freeproc(p);
+          finishproc(p);
 	  return pid;
 	}
 	release(&p->lock);
@@ -533,12 +543,12 @@ threadalloc(void (*fn)(void *), void *arg)
   p->context->rip = (u64)threadstub;
   p->context->r12 = (u64)fn;
   p->context->r13 = (u64)arg;
-  p->parent = myproc();
-  p->cwd = 0;
+  p->parent = nullptr;
+  p->cwd = nullptr;
   return p;
 }
 
-void
+struct proc*
 threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
 {
   struct proc *p;
@@ -553,4 +563,5 @@ threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
   acquire(&p->lock);
   addrun(p);
   release(&p->lock);
+  return p;
 }
