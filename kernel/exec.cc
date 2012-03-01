@@ -13,6 +13,8 @@
 #include "elf.hh"
 #include "cpu.hh"
 #include "prof.hh"
+#include "wq.hh"
+#include "cilk.hh"
 
 #define USTACKPAGES 2
 #define BRK (USERTOP >> 1)
@@ -28,10 +30,8 @@ struct eargs {
 };
 
 static void
-dosegment(uptr a0, u64 a1)
+dosegment(struct eargs *args, u64 off)
 {
-  struct eargs *args = (eargs*) a0;
-  u64 off = a1;
   struct vmnode *vmn = nullptr;
   struct proghdr ph;
   uptr va_start, va_end;
@@ -69,10 +69,10 @@ bad:
   cilk_abort(-1);
 }
 
-static void  __attribute__((unused)) dostack(uptr a0, u64 a1)
+static void
+dostack(struct eargs *args)
 {
   struct vmnode *vmn = nullptr;
-  struct eargs *args = (eargs*) a0;  
   int argc;
   uptr sp;
   uptr ustack[1+MAXARG+1];
@@ -123,10 +123,10 @@ bad:
   cilk_abort(-1);
 }
 
-static void __attribute__((unused)) doheap(uptr a0, u64 a1)
+static void 
+doheap(struct eargs *args)
 {
   struct vmnode *vmn = nullptr;
-  struct eargs *args = (eargs*) a0;
 
   prof_start(doheap_prof);
   // Allocate a vmnode for the heap.
@@ -188,7 +188,7 @@ exec(const char *path, char **argv)
       goto bad;
     if(type != ELF_PROG_LOAD)
       continue;
-    cilk_push(dosegment, (uptr)&args, (uptr)off);
+    cilk_call(dosegment, &args, off);
   }
 
   if (odp) {
@@ -199,12 +199,11 @@ exec(const char *path, char **argv)
     ip = 0;
   }
 
-  cilk_push(doheap, (uptr)&args, (uptr)0);
+  cilk_call(doheap, &args);
 
-  // dostack reads from the user address space.  The wq
-  // stuff doesn't switch to the user address space.
-  //cilk_push(dostack, (uptr)&args, (uptr)0);
-  dostack((uptr)&args, (uptr)0);
+  // dostack reads from the user vm space.  wq workers don't switch 
+  // the user vm.
+  dostack(&args);
 
   if (cilk_end())
     goto bad;
