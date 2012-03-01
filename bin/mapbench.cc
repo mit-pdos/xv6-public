@@ -4,12 +4,13 @@
 #include "mtrace.h"
 #include "amd64.h"
 #include "uspinlock.h"
+#include "pthread.h"
 
 enum { readaccess = 0 };
 enum { verbose = 0 };
 enum { npg = 1 };
 
-void
+void*
 thr(void *arg)
 {
   u64 tid = (u64)arg;
@@ -34,6 +35,7 @@ thr(void *arg)
       exit();
     }
   }
+  return 0;
 }
 
 int
@@ -50,11 +52,9 @@ main(int ac, char **av)
 
   // fprintf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
 
-  for(int i = 0; i < nthread; i++) {
-    sbrk(8192);
-    void *tstack = sbrk(0);
-    // fprintf(1, "tstack %lx\n", tstack);
-    int tid = forkt(tstack, (void*) thr, (void *)(u64)i);
+  for(u64 i = 0; i < nthread; i++) {
+    pthread_t tid;
+    pthread_create(&tid, 0, thr, (void*) i);
     if (0) fprintf(1, "mapbench[%d]: child %d\n", getpid(), tid);
   }
 

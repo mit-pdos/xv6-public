@@ -1,4 +1,5 @@
-ULIB = ulib.o usys.o printf.o umalloc.o uthread.o fmt.o stream.o ipc.o
+ULIB = ulib.o usys.o printf.o umalloc.o uthread.o fmt.o stream.o ipc.o \
+       threads.o
 ULIB := $(addprefix $(O)/lib/, $(ULIB))
 
 .PRECIOUS: $(O)/lib/%.o

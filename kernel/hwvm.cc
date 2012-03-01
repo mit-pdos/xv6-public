@@ -127,6 +127,8 @@ switchvm(struct proc *p)
     lcr3(v2p(p->vmap->pml4));  // switch to new address space
   else
     switchkvm();
+
+  writefs(UDSEG);
   writemsr(MSR_FS_BASE, p->user_fs_);
 
   popcli();

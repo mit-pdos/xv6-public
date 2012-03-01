@@ -133,6 +133,20 @@ ltr(u16 sel)
 }
 
 static inline void
+writefs(u16 v)
+{
+  __asm volatile("movw %0, %%fs" : : "r" (v));
+}
+
+static inline u16
+readfs(void)
+{
+  u16 v;
+  __asm volatile("movw %%fs, %0" : "=r" (v));
+  return v;
+}
+
+static inline void
 writegs(u16 v)
 {
   __asm volatile("movw %0, %%gs" : : "r" (v));
