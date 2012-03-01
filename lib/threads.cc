@@ -13,8 +13,6 @@ struct tlsdata {
 void
 forkt_setup()
 {
-  printf("forkt_setup: pid %d\n", getpid());
-
   tlsdata* t = (tlsdata*) sbrk(sizeof(*t));
   setfs((u64) t);
 }

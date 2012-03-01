@@ -8,8 +8,9 @@ forkt:
         pushq %r12
         andq $(~0xf), %rdi      # new stack ptr amd64 ABI alignment 
         movq %rdi, %r12
-        movq %rdx, -16(%r12)    # arg
-        movq %rsi, -8(%r12)     # function ptr
+        subq $0x10, %r12
+        movq %rdx, 0x00(%r12)   # arg
+        movq %rsi, 0x08(%r12)   # function ptr
 
         movq $1, %rdi           # flag for sys_fork
         movq $SYS_fork, %rax
@@ -19,9 +20,11 @@ forkt:
         jne 1f
 
         # child
-        movq -8(%r12), %rax
-        movq -16(%r12), %rdi
         movq %r12, %rsp
+        movq %rax, %rdi
+        call forkt_setup
+        popq %rdi
+        popq %rax
         call *%rax
         call exit
 1:      # parent
