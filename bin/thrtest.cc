@@ -4,12 +4,13 @@
 #include "mtrace.h"
 #include "amd64.h"
 #include "uspinlock.h"
+#include "pthread.h"
 
 static struct uspinlock l;
 static volatile int tcount;
 enum { nthread = 8 };
 
-void
+void*
 thr(void *arg)
 {
   acquire(&l);
@@ -26,9 +27,8 @@ main(void)
   fprintf(1, "thrtest[%d]: start esp %x\n", getpid(), rrsp());
 
   for(int i = 0; i < nthread; i++) {
-    sbrk(8192);
-    void *tstack = sbrk(0);
-    int tid = forkt(tstack, (void*) thr, (void*)(u64)(0xc0ffee00|i));
+    pthread_t tid;
+    pthread_create(&tid, 0, &thr, (void*) (0xc0ffee00ULL | i));
     fprintf(1, "thrtest[%d]: child %d\n", getpid(), tid);
   }
 

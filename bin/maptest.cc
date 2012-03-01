@@ -4,6 +4,7 @@
 #include "mtrace.h"
 #include "amd64.h"
 #include "uspinlock.h"
+#include "pthread.h"
 
 static volatile char *p;
 static struct uspinlock l;
@@ -17,8 +18,8 @@ spin(void)
     ;
 }
 
-void
-thr(void)
+void*
+thr(void*)
 {
   for (;;) {
     acquire(&l);
@@ -54,8 +55,8 @@ main(void)
     exit();
   }
 
-  sbrk(4096);
-  forkt(sbrk(0), (void*) thr, 0);
+  pthread_t tid;
+  pthread_create(&tid, 0, thr, 0);
 
   acquire(&l);
   state = 1;
