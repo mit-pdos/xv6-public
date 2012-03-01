@@ -34,6 +34,10 @@ dosegment(uptr a0, u64 a1)
   u64 off = a1;
   struct vmnode *vmn = nullptr;
   struct proghdr ph;
+  uptr va_start, va_end;
+  uptr in_off;
+  uptr in_sz;
+  int npg;
 
   prof_start(dosegment_prof);
   if(readi(args->ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
@@ -42,27 +46,24 @@ dosegment(uptr a0, u64 a1)
     goto bad;
   if(ph.memsz < ph.filesz)
     goto bad;
-  // XXX(sbw) vaddr doesn't have to be page aligned..
-  if(ph.vaddr % PGSIZE) {
-    cprintf("unaligned ph.va\n");
+  if (ph.offset < PGOFFSET(ph.vaddr))
     goto bad;
-  }
 
-  {
-    uptr va_start = PGROUNDDOWN(ph.vaddr);
-    uptr va_end = PGROUNDUP(ph.vaddr + ph.memsz);
-  
-    int npg = (va_end - va_start) / PGSIZE;
-    if ((vmn = new vmnode(npg, odp ? ONDEMAND : EAGER,
-                          args->ip, ph.offset, ph.filesz)) == 0)
-      goto bad;
+  va_start = PGROUNDDOWN(ph.vaddr);
+  va_end = PGROUNDUP(ph.vaddr + ph.memsz);
+  in_off = ph.offset - PGOFFSET(ph.vaddr);
+  in_sz = ph.filesz + PGOFFSET(ph.vaddr);
 
-    if(args->vmap->insert(vmn, ph.vaddr, 1) < 0)
-      goto bad;
+  npg = (va_end - va_start) / PGSIZE;
+  if ((vmn = new vmnode(npg, odp ? ONDEMAND : EAGER,
+                        args->ip, in_off, in_sz)) == 0)
+    goto bad;
 
-    prof_end(dosegment_prof);
-    return;
-  }
+  if(args->vmap->insert(vmn, va_start, 1) < 0)
+    goto bad;
+
+  prof_end(dosegment_prof);
+  return;
   
 bad:
   cilk_abort(-1);
