@@ -110,9 +110,9 @@ static void  __attribute__((unused)) dostack(uptr a0, u64 a1)
   for(last=s=args->path; *s; s++)
     if(*s == '/')
       last = s+1;
-  safestrcpy(args->proc->name, last, sizeof(args->proc->name));
 
   // XXX(sbw) Oops, don't want to do this, unless we have abort
+  safestrcpy(args->proc->name, last, sizeof(args->proc->name));
   args->proc->tf->rsp = sp;
 
   prof_end(dostack_prof);
