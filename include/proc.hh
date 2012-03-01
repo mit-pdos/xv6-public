@@ -71,6 +71,7 @@ struct proc : public rcu_freed {
   u64 cv_wakeup;               // Wakeup time for this process
   LIST_ENTRY(proc) cv_waiters; // Linked list of processes waiting for oncv
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
+  u64 user_fs_;
 
   proc(int npid);
   ~proc(void);

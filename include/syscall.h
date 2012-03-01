@@ -30,4 +30,5 @@
 #define SYS_pread  29
 #define SYS_async  30
 #define SYS_script 31
-#define SYS_ncount 32   /* total number of system calls */
+#define SYS_setfs  32
+#define SYS_ncount 33   /* total number of system calls */

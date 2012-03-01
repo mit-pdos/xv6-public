@@ -12,7 +12,7 @@ int read(int, void*, int);
 int close(int);
 int kill(int);
 int exec(const char*, const char**);
-int open(const char*, int);
+int openat(int dirfd, const char *pathname, int omode);
 int mknod(const char*, short, short);
 int unlink(const char*);
 int fstat(int fd, struct stat*);
@@ -30,7 +30,7 @@ void halt(void);
 ssize_t pread(int, void*, size_t, off_t);
 int async(int, size_t, off_t, u32, u32);
 int script(void *addr, u64 len, u64 chunk);
-int openat(int dirfd, const char *pathname, int omode);
+int setfs(u64 base);
 
 // ulib.c
 int stat(char*, struct stat*);
@@ -39,6 +39,7 @@ void *memmove(void*, const void*, int);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
 int strncmp(const char *p, const char *q, u32 n);
+int open(const char*, int);
 
 char* gets(char*, int max);
 unsigned int strlen(const char*);

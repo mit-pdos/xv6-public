@@ -123,3 +123,12 @@ sys_halt(void)
     outb(0x8900, s[i]);
   return 0;
 }
+
+long
+sys_setfs(u64 base)
+{
+  proc *p = myproc();
+  p->user_fs_ = base;
+  switchvm(p);
+  return 0;
+}
