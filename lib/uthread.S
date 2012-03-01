@@ -13,7 +13,7 @@ forkt:
 
         movq $1, %rdi           # flag for sys_fork
         movq $SYS_fork, %rax
-        int $T_SYSCALL
+        syscall
 
         cmpq $0, %rax           # pid/tid
         jne 1f
