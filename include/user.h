@@ -50,7 +50,7 @@ int atoi(const char*);
 
 // uthread.S
 int forkt(void *sp, void *pc, void *arg);
-void forkt_setup(void);
+void forkt_setup(u64 pid);
 
 // printf.c
 void printf(const char*, ...);
