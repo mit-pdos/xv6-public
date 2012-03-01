@@ -1597,6 +1597,35 @@ preads(void)
   fprintf(1, "concurrent preads OK\n");
 }
 
+void
+tls_test(void)
+{
+  u64 buf[128];
+
+  for (int i = 0; i < sizeof(buf) / sizeof(buf[0]); i++)
+    buf[i] = 0x11deadbeef2200 + i;
+
+  for (int i = 0; i < sizeof(buf) / sizeof(buf[0]) - 1; i++) {
+    setfs((uptr) &buf[i]);
+
+    u64 x;
+    u64 exp = 0x11deadbeef2200 + i;
+    __asm volatile("movq %%fs:0, %0" : "=r" (x));
+    if (x != buf[i] || x != exp)
+      fprintf(2, "tls_test: 0x%lx != 0x%lx\n", x, buf[0]);
+
+    getpid();  // make sure syscalls don't trash %fs
+    __asm volatile("movq %%fs:0, %0" : "=r" (x));
+    if (x != buf[i] || x != exp)
+      fprintf(2, "tls_test: 0x%lx != 0x%lx again\n", x, buf[0]);
+
+    __asm volatile("movq %%fs:8, %0" : "=r" (x));
+    if (x != buf[i+1] || x != exp+1)
+      fprintf(2, "tls_test: 0x%lx != 0x%lx next\n", x, buf[0]);
+  }
+  fprintf(1, "tls_test ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1644,6 +1673,7 @@ main(int argc, char *argv[])
   bigdir(); // slow
 
   exectest();
+  tls_test();
 
   exit();
 }

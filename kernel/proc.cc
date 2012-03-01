@@ -33,7 +33,8 @@ proc::proc(int npid) :
   rcu_freed("proc"), vmap(0), brk(0), kstack(0),
   pid(npid), parent(0), tf(0), context(0), killed(0),
   cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
-  on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0), state_(EMBRYO)
+  on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0),
+  user_fs_(0), state_(EMBRYO)
 {
   snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
   initlock(&lock, lockname+3, LOCKSTAT_PROC);

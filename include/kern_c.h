@@ -50,6 +50,7 @@ long sys_accept(int, void*, void*);
 long sys_pread(int fd, void *ubuf, size_t count, off_t offset);
 long sys_async(int, size_t, off_t, u32, u32);
 long sys_script(void *addr, u64 len, u64 chunk);
+long sys_setfs(u64 base);
 extern long (*syscalls[])(u64, u64, u64, u64, u64);
 
 // other exported/imported functions

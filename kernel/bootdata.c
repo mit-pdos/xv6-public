@@ -60,5 +60,6 @@ long (*syscalls[])(u64, u64, u64, u64, u64) = {
   SYSCALL(pread),
   SYSCALL(async),
   SYSCALL(script),
+  SYSCALL(setfs),
 };
 
