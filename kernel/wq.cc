@@ -171,7 +171,7 @@ int
 wq_trywork(void)
 {
   struct work *w;
-  int i, k;
+  u64 i, k;
 
   // A "random" victim CPU
   k = rdtsc();
@@ -183,7 +183,7 @@ wq_trywork(void)
   }
 
   for (i = 0; i < NCPU; i++) {
-    int j = (i+k) % NCPU;
+    u64 j = (i+k) % NCPU;
 
     if (j == mycpu()->id)
         continue;
