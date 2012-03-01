@@ -33,7 +33,7 @@ UPROGS := $(addprefix $(O)/bin/, $(UPROGS))
 $(O)/bin/%.unstripped: $(O)/bin/%.o $(ULIB)
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
-	$(Q)$(LD) $(LDFLAGS) -N -e main -Ttext 0x100000 -o $@ $^
+	$(Q)$(LD) $(LDFLAGS) -N -Ttext 0x100000 -o $@ $^
 
 $(O)/bin/%: $(O)/bin/%.unstripped
 	@echo "  STRIP  $@"

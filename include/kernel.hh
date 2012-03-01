@@ -194,11 +194,6 @@ void            yield(void);
 struct proc*    threadalloc(void (*fn)(void*), void *arg);
 struct proc*    threadpin(void (*fn)(void*), void *arg, const char *name, int cpu);
 
-// prof.c
-extern int profenable;
-void            profreset(void);
-void            profdump(void);
-
 // sampler.c
 void            sampstart(void);
 int             sampintr(struct trapframe*);

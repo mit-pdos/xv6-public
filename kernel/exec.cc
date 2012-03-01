@@ -12,12 +12,11 @@
 #include "vm.hh"
 #include "elf.hh"
 #include "cpu.hh"
-#include "prof.hh"
+#include "wq.hh"
+#include "cilk.hh"
 
 #define USTACKPAGES 2
 #define BRK (USERTOP >> 1)
-
-static const int odp = 1;
 
 struct eargs {
   struct proc *proc;
@@ -28,10 +27,8 @@ struct eargs {
 };
 
 static void
-dosegment(uptr a0, u64 a1)
+dosegment(struct eargs *args, u64 off)
 {
-  struct eargs *args = (eargs*) a0;
-  u64 off = a1;
   struct vmnode *vmn = nullptr;
   struct proghdr ph;
   uptr va_start, va_end;
@@ -39,7 +36,6 @@ dosegment(uptr a0, u64 a1)
   uptr in_sz;
   int npg;
 
-  prof_start(dosegment_prof);
   if(readi(args->ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
     goto bad;
   if(ph.type != ELF_PROG_LOAD)
@@ -55,56 +51,63 @@ dosegment(uptr a0, u64 a1)
   in_sz = ph.filesz + PGOFFSET(ph.vaddr);
 
   npg = (va_end - va_start) / PGSIZE;
-  if ((vmn = new vmnode(npg, odp ? ONDEMAND : EAGER,
+  if ((vmn = new vmnode(npg, ONDEMAND,
                         args->ip, in_off, in_sz)) == 0)
     goto bad;
 
   if(args->vmap->insert(vmn, va_start, 1) < 0)
     goto bad;
 
-  prof_end(dosegment_prof);
   return;
   
 bad:
   cilk_abort(-1);
 }
 
-static void  __attribute__((unused)) dostack(uptr a0, u64 a1)
+static void
+dostack(struct eargs *args)
 {
   struct vmnode *vmn = nullptr;
-  struct eargs *args = (eargs*) a0;  
-  int argc;
-  uptr sp;
-  uptr ustack[1+MAXARG+1];
+  uptr argstck[1+MAXARG];
   const char *s, *last;
+  s64 argc;
+  uptr sp;
 
-  prof_start(dostack_prof);
-    // Allocate a one-page stack at the top of the (user) address space
+  // User stack should be:
+  //   char argv[argc-1]
+  //   char argv[argc-2]
+  //   ...
+  //   char argv[0]
+  //   char *argv[argc+1]
+  //   u64 argc
+
+  // Allocate a one-page stack at the top of the (user) address space
   if((vmn = new vmnode(USTACKPAGES)) == 0)
     goto bad;
   if(args->vmap->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE), 1) < 0)
     goto bad;
 
-  // Push argument strings, prepare rest of stack in ustack.
-  sp = USERTOP;
-  for(argc = 0; args->argv[argc]; argc++) {
+  for (argc = 0; args->argv[argc]; argc++)
     if(argc >= MAXARG)
       goto bad;
-    sp -= strlen(args->argv[argc]) + 1;
+
+  // Push argument strings
+  sp = USERTOP;
+  for(int i = argc-1; i >= 0; i--) {
+    sp -= strlen(args->argv[i]) + 1;
     sp &= ~7;
-    if(args->vmap->copyout(sp, args->argv[argc], strlen(args->argv[argc]) + 1) < 0)
+    if(args->vmap->copyout(sp, args->argv[i], strlen(args->argv[i]) + 1) < 0)
       goto bad;
-    ustack[1+argc] = sp;
+    argstck[i] = sp;
   }
-  ustack[1+argc] = 0;
+  argstck[argc] = 0;
 
-  //prof_start(exec3_prof);
-  ustack[0] = 0xffffffffffffffffull;  // fake return PC
-  args->proc->tf->rdi = argc;
-  args->proc->tf->rsi = sp - (argc+1)*8;
+  sp -= (argc+1) * 8;
+  if(args->vmap->copyout(sp, argstck, (argc+1)*8) < 0)
+    goto bad;
 
-  sp -= (1+argc+1) * 8;
-  if(args->vmap->copyout(sp, ustack, (1+argc+1)*8) < 0)
+  sp -= 8;
+  if(args->vmap->copyout(sp, &argc, 8) < 0)
     goto bad;
 
   // Save program name for debugging.
@@ -116,26 +119,23 @@ static void  __attribute__((unused)) dostack(uptr a0, u64 a1)
   safestrcpy(args->proc->name, last, sizeof(args->proc->name));
   args->proc->tf->rsp = sp;
 
-  prof_end(dostack_prof);
   return;
 
 bad:
   cilk_abort(-1);
 }
 
-static void __attribute__((unused)) doheap(uptr a0, u64 a1)
+static void 
+doheap(struct eargs *args)
 {
   struct vmnode *vmn = nullptr;
-  struct eargs *args = (eargs*) a0;
 
-  prof_start(doheap_prof);
   // Allocate a vmnode for the heap.
   // XXX pre-allocate 32 pages..
   if((vmn = new vmnode(32)) == 0)
     goto bad;
   if(args->vmap->insert(vmn, BRK, 1) < 0)
     goto bad;
-  prof_end(doheap_prof);
 
   return;
 
@@ -154,7 +154,6 @@ exec(const char *path, char **argv)
   int i;
   struct vmap *oldvmap;
 
-  prof_start(exec_prof);
   if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
 
@@ -188,23 +187,14 @@ exec(const char *path, char **argv)
       goto bad;
     if(type != ELF_PROG_LOAD)
       continue;
-    cilk_push(dosegment, (uptr)&args, (uptr)off);
+    cilk_call(dosegment, &args, off);
   }
 
-  if (odp) {
-    // iunlock(ip);
-  } else {
-    // iunlockput(ip);
-    iput(ip);
-    ip = 0;
-  }
+  cilk_call(doheap, &args);
 
-  cilk_push(doheap, (uptr)&args, (uptr)0);
-
-  // dostack reads from the user address space.  The wq
-  // stuff doesn't switch to the user address space.
-  //cilk_push(dostack, (uptr)&args, (uptr)0);
-  dostack((uptr)&args, (uptr)0);
+  // dostack reads from the user vm space.  wq workers don't switch 
+  // the user vm.
+  dostack(&args);
 
   if (cilk_end())
     goto bad;
@@ -219,7 +209,6 @@ exec(const char *path, char **argv)
   oldvmap->decref();
 
   gc_end_epoch();
-  prof_end(exec_prof);
   return 0;
 
  bad:

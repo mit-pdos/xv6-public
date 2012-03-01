@@ -29,7 +29,6 @@ OBJS = \
 	picirq.o \
 	pipe.o \
 	proc.o \
-	prof.o \
 	gc.o \
 	rnd.o \
 	sampler.o \
