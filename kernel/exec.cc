@@ -18,8 +18,6 @@
 #define USTACKPAGES 2
 #define BRK (USERTOP >> 1)
 
-static const int odp = 1;
-
 struct eargs {
   struct proc *proc;
   struct inode *ip;
@@ -53,7 +51,7 @@ dosegment(struct eargs *args, u64 off)
   in_sz = ph.filesz + PGOFFSET(ph.vaddr);
 
   npg = (va_end - va_start) / PGSIZE;
-  if ((vmn = new vmnode(npg, odp ? ONDEMAND : EAGER,
+  if ((vmn = new vmnode(npg, ONDEMAND,
                         args->ip, in_off, in_sz)) == 0)
     goto bad;
 
@@ -75,11 +73,14 @@ dostack(struct eargs *args)
   uptr ustack[1+MAXARG+1];
   const char *s, *last;
 
-    // Allocate a one-page stack at the top of the (user) address space
+  // Allocate a one-page stack at the top of the (user) address space
   if((vmn = new vmnode(USTACKPAGES)) == 0)
     goto bad;
   if(args->vmap->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE), 1) < 0)
     goto bad;
+
+  // Fake return %rip between stack 
+  ustack[0] = 0ull;
 
   // Push argument strings, prepare rest of stack in ustack.
   sp = USERTOP;
@@ -94,7 +95,6 @@ dostack(struct eargs *args)
   }
   ustack[1+argc] = 0;
 
-  ustack[0] = 0xffffffffffffffffull;  // fake return PC
   args->proc->tf->rdi = argc;
   args->proc->tf->rsi = sp - (argc+1)*8;
 
@@ -180,14 +180,6 @@ exec(const char *path, char **argv)
     if(type != ELF_PROG_LOAD)
       continue;
     cilk_call(dosegment, &args, off);
-  }
-
-  if (odp) {
-    // iunlock(ip);
-  } else {
-    // iunlockput(ip);
-    iput(ip);
-    ip = 0;
   }
 
   cilk_call(doheap, &args);
