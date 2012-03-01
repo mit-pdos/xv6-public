@@ -68,10 +68,18 @@ static void
 dostack(struct eargs *args)
 {
   struct vmnode *vmn = nullptr;
-  int argc;
-  uptr sp;
   uptr ustack[1+MAXARG+1];
   const char *s, *last;
+  s64 argc;
+  uptr sp;
+
+  // User stack should be:
+  //   char argv[argc-1]
+  //   char argv[argc-2]
+  //   ...
+  //   char argv[0]
+  //   char *argv[argc+1]
+  //   u64 argc
 
   // Allocate a one-page stack at the top of the (user) address space
   if((vmn = new vmnode(USTACKPAGES)) == 0)
@@ -79,19 +87,21 @@ dostack(struct eargs *args)
   if(args->vmap->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE), 1) < 0)
     goto bad;
 
+  for (argc = 0; args->argv[argc]; argc++)
+    if(argc >= MAXARG)
+      goto bad;
+
   // Fake return %rip between stack 
   ustack[0] = 0ull;
 
-  // Push argument strings, prepare rest of stack in ustack.
+  // Push argument strings
   sp = USERTOP;
-  for(argc = 0; args->argv[argc]; argc++) {
-    if(argc >= MAXARG)
-      goto bad;
-    sp -= strlen(args->argv[argc]) + 1;
+  for(int i = argc-1; i >= 0; i--) {
+    sp -= strlen(args->argv[i]) + 1;
     sp &= ~7;
-    if(args->vmap->copyout(sp, args->argv[argc], strlen(args->argv[argc]) + 1) < 0)
+    if(args->vmap->copyout(sp, args->argv[i], strlen(args->argv[i]) + 1) < 0)
       goto bad;
-    ustack[1+argc] = sp;
+    ustack[1+i] = sp;
   }
   ustack[1+argc] = 0;
 
