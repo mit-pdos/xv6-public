@@ -31,7 +31,7 @@ long sys_kill(int);
 long sys_link(const char*, const char*);
 long sys_mkdir(const char*);
 long sys_mknod(const char*, int, int);
-long sys_open(const char*, int);
+long sys_openat(int, const char*, int);
 long sys_pipe(int*);
 long sys_read(int, char*, int);
 long sys_sbrk(int);

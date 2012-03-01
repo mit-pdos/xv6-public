@@ -30,6 +30,7 @@ void halt(void);
 ssize_t pread(int, void*, size_t, off_t);
 int async(int, size_t, off_t, u32, u32);
 int script(void *addr, u64 len, u64 chunk);
+int openat(int dirfd, const char *pathname, int omode);
 
 // ulib.c
 int stat(char*, struct stat*);

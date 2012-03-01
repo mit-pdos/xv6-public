@@ -101,7 +101,7 @@ forkret(void)
   // in which to call cv_sleep().
   if(myproc()->cwd == nullptr) {
     mtstart(forkret, myproc());
-    myproc()->cwd = namei("/");
+    myproc()->cwd = namei(myproc()->cwd, "/");
     mtstop(myproc());
   }
 
