@@ -1716,10 +1716,10 @@ main(int argc, char *argv[])
   iref();
   forktest();
   bigdir(); // slow
-
-  exectest();
   tls_test();
   thrtest();
+
+  exectest();
 
   exit();
 }
