@@ -109,10 +109,18 @@ wq_push2(void (*fn)(struct work*, void*, void*), void *a0, void *a1)
   return 0;
 }
 
-static struct work *
+static void
+__wq_run(struct work *w)
+{
+  void (*fn)(struct work*, void*, void*, void*, void*, void*) = 
+    (void(*)(work*,void*,void*,void*,void*,void*))w->rip;
+  fn(w, w->arg0, w->arg1, w->arg2, w->arg3, w->arg4);
+  freework(w);
+}
+
+static inline struct work *
 __wq_pop(int c)
 {
-  // Called with cli
   struct wqueue *wq = &queue[c];
   struct work *w;
   int i;
@@ -136,10 +144,9 @@ __wq_pop(int c)
   return w;
 }
 
-static struct work *
+static inline struct work *
 __wq_steal(int c)
 {
-  // Called with cli
   struct wqueue *wq = &queue[c];
   struct work *w;
   int i;
@@ -160,42 +167,34 @@ __wq_steal(int c)
   return w;
 }
 
-static void
-__wq_run(struct work *w)
-{
-  void (*fn)(struct work*, void*, void*, void*, void*, void*) = 
-    (void(*)(work*,void*,void*,void*,void*,void*))w->rip;
-  fn(w, w->arg0, w->arg1, w->arg2, w->arg3, w->arg4);
-  freework(w);
-}
-
 int
 wq_trywork(void)
 {
   struct work *w;
-  int i;
+  int i, k;
 
-  //pushcli();
+  // A "random" victim CPU
+  k = rdtsc();
+
   w = __wq_pop(mycpu()->id);
   if (w != nullptr) {
     __wq_run(w);
-    //popcli();
     return 1;
   }
-  // XXX(sbw) should be random
+
   for (i = 0; i < NCPU; i++) {
-    if (i == mycpu()->id)
+    int j = (i+k) % NCPU;
+
+    if (j == mycpu()->id)
         continue;
     
-    w = __wq_steal(i);
+    w = __wq_steal(j);
     if (w != nullptr) {
       __wq_run(w);
-      //popcli();
       return 1;
     }
   }
 
-  //popcli();
   return 0;
 }
 
