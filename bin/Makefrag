@@ -1,5 +1,6 @@
 UPROGS= \
 	cat \
+        du \
 	echo \
 	init \
 	forkexectree \
