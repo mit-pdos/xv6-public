@@ -58,3 +58,20 @@ pthread_setspecific(pthread_key_t key, void* value)
   __asm volatile("movq %0, %%fs:(%1)" : : "r" (value), "r" (key * 8));
   return 0;
 }
+
+int
+pthread_barrier_init(pthread_barrier_t *b,
+                     const pthread_barrierattr_t *attr, unsigned count)
+{
+  b->store(count);
+  return 0;
+}
+
+int
+pthread_barrier_wait(pthread_barrier_t *b)
+{
+  (*b)--;
+  while (*b != 0)
+    ;   // spin
+  return 0;
+}
