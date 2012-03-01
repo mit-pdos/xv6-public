@@ -12,7 +12,6 @@
 #include "vm.hh"
 #include "elf.hh"
 #include "cpu.hh"
-#include "prof.hh"
 #include "wq.hh"
 #include "cilk.hh"
 
@@ -39,7 +38,6 @@ dosegment(struct eargs *args, u64 off)
   uptr in_sz;
   int npg;
 
-  prof_start(dosegment_prof);
   if(readi(args->ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
     goto bad;
   if(ph.type != ELF_PROG_LOAD)
@@ -62,7 +60,6 @@ dosegment(struct eargs *args, u64 off)
   if(args->vmap->insert(vmn, va_start, 1) < 0)
     goto bad;
 
-  prof_end(dosegment_prof);
   return;
   
 bad:
@@ -78,7 +75,6 @@ dostack(struct eargs *args)
   uptr ustack[1+MAXARG+1];
   const char *s, *last;
 
-  prof_start(dostack_prof);
     // Allocate a one-page stack at the top of the (user) address space
   if((vmn = new vmnode(USTACKPAGES)) == 0)
     goto bad;
@@ -98,7 +94,6 @@ dostack(struct eargs *args)
   }
   ustack[1+argc] = 0;
 
-  //prof_start(exec3_prof);
   ustack[0] = 0xffffffffffffffffull;  // fake return PC
   args->proc->tf->rdi = argc;
   args->proc->tf->rsi = sp - (argc+1)*8;
@@ -116,7 +111,6 @@ dostack(struct eargs *args)
   safestrcpy(args->proc->name, last, sizeof(args->proc->name));
   args->proc->tf->rsp = sp;
 
-  prof_end(dostack_prof);
   return;
 
 bad:
@@ -128,14 +122,12 @@ doheap(struct eargs *args)
 {
   struct vmnode *vmn = nullptr;
 
-  prof_start(doheap_prof);
   // Allocate a vmnode for the heap.
   // XXX pre-allocate 32 pages..
   if((vmn = new vmnode(32)) == 0)
     goto bad;
   if(args->vmap->insert(vmn, BRK, 1) < 0)
     goto bad;
-  prof_end(doheap_prof);
 
   return;
 
@@ -154,7 +146,6 @@ exec(const char *path, char **argv)
   int i;
   struct vmap *oldvmap;
 
-  prof_start(exec_prof);
   if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
 
@@ -218,7 +209,6 @@ exec(const char *path, char **argv)
   oldvmap->decref();
 
   gc_end_epoch();
-  prof_end(exec_prof);
   return 0;
 
  bad:

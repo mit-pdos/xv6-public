@@ -270,18 +270,6 @@ consoleintr(int (*getc)(void))
     case C('W'):
       wq_dump();
       break;
-    case C('L'):  // Prof stats
-      profdump();
-      break;
-    case C('K'):  // Prof enable
-      profreset();
-      cprintf("prof enabled\n");
-      profenable = 1;
-      break;
-    case C('I'):  // Prof disable
-      profenable = 0;
-      cprintf("prof disabled\n");
-      break;
     case C('F'):  // kmem stats
       kmemprint();
       break;
