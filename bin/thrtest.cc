@@ -8,13 +8,19 @@
 
 static struct uspinlock l;
 static volatile int tcount;
+static pthread_key_t tkey;
+static pthread_barrier_t bar;
 enum { nthread = 8 };
 
 void*
 thr(void *arg)
 {
+  pthread_setspecific(tkey, arg);
+  pthread_barrier_wait(&bar);
+
   acquire(&l);
-  fprintf(1, "thrtest[%d]: arg 0x%lx rsp %lx\n", getpid(), arg, rrsp());
+  printf("thrtest[%d]: arg 0x%lx rsp %lx spec %p\n",
+         getpid(), arg, rrsp(), pthread_getspecific(tkey));
   tcount++;
   release(&l);
   exit();
@@ -25,6 +31,9 @@ main(void)
 {
   acquire(&l);
   fprintf(1, "thrtest[%d]: start esp %x\n", getpid(), rrsp());
+
+  pthread_key_create(&tkey, 0);
+  pthread_barrier_init(&bar, 0, nthread);
 
   for(int i = 0; i < nthread; i++) {
     pthread_t tid;
