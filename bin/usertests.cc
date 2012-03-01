@@ -5,6 +5,7 @@
 #include "fcntl.h"
 #include "syscall.h"
 #include "traps.h"
+#include "pthread.h"
 
 char buf[2048];
 char name[3];
@@ -1600,6 +1601,7 @@ preads(void)
 void
 tls_test(void)
 {
+  printf("tls_test\n");
   u64 buf[128];
 
   for (int i = 0; i < sizeof(buf) / sizeof(buf[0]); i++)
@@ -1625,6 +1627,49 @@ tls_test(void)
   }
   fprintf(1, "tls_test ok\n");
 }
+
+static pthread_key_t tkey;
+static pthread_barrier_t bar0, bar1;
+enum { nthread = 8 };
+
+static void*
+thr(void *arg)
+{
+  pthread_setspecific(tkey, arg);
+  pthread_barrier_wait(&bar0);
+
+  u64 x = (u64) arg;
+  if ((x >> 8) != 0xc0ffee)
+    fprintf(2, "thr: x 0x%lx\n", x);
+  if (arg != pthread_getspecific(tkey))
+    fprintf(2, "thr: arg %p getspec %p\n", arg, pthread_getspecific(tkey));
+
+  pthread_barrier_wait(&bar1);
+  return 0;
+}
+
+void
+thrtest(void)
+{
+  printf("thrtest\n");
+
+  pthread_key_create(&tkey, 0);
+  pthread_barrier_init(&bar0, 0, nthread);
+  pthread_barrier_init(&bar1, 0, nthread+1);
+
+  for(int i = 0; i < nthread; i++) {
+    pthread_t tid;
+    pthread_create(&tid, 0, &thr, (void*) (0xc0ffee00ULL | i));
+  }
+
+  pthread_barrier_wait(&bar1);
+
+  for(int i = 0; i < nthread; i++)
+    wait();
+
+  printf("thrtest ok\n");
+}
+
 
 int
 main(int argc, char *argv[])
@@ -1674,6 +1719,7 @@ main(int argc, char *argv[])
 
   exectest();
   tls_test();
+  thrtest();
 
   exit();
 }
