@@ -102,9 +102,6 @@ dostack(struct eargs *args)
   }
   argstck[argc] = 0;
 
-  args->proc->tf->rdi = argc;
-  args->proc->tf->rsi = sp - (argc+1)*8;
-
   sp -= (argc+1) * 8;
   if(args->vmap->copyout(sp, argstck, (argc+1)*8) < 0)
     goto bad;
