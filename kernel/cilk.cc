@@ -24,7 +24,6 @@
 //     cprintf("%c %c\n", arg[0], arg[1]);
 //   }
 
-#if CILKENABLE
 #include "types.h"
 #include "kernel.hh"
 #include "amd64.h"
@@ -34,6 +33,8 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.hh"
+
+#if CILKENABLE
 #include "mtrace.h"
 #include "wq.hh"
 #include "percpu.hh"
@@ -62,7 +63,8 @@ __cilk_run(struct work *w, void *xfn, void *arg0, void *arg1, void *xframe)
     stat->steal++;
 
   mycpu()->cilkframe = frame;
-  fn((uptr)arg0, (uptr)arg1);
+  if (frame->abort == 0)
+    fn((uptr)arg0, (uptr)arg1);
   mycpu()->cilkframe = old;
   frame->ref--;
 }
@@ -110,14 +112,26 @@ cilk_start(void)
 // End of the current work queue frame.
 // The core works while the reference count of the current
 // work queue frame is not 0.
-void
+u64
 cilk_end(void)
 {
+  u64 r;
+
   while (cilk_frame()->ref != 0)
     wq_trywork();
 
+  r = cilk_frame()->abort;
+
   mycpu()->cilkframe = 0;
   popcli();
+
+  return r;
+}
+
+void
+cilk_abort(u64 val)
+{
+  cmpxch(&cilk_frame()->abort, (u64)0, val);
 }
 
 void
@@ -161,10 +175,11 @@ testcilk(void)
   }
   popcli();
 }
+#endif // CILKENABLE
 
 void
 initcilkframe(struct cilkframe *cilk)
 {
-  memset(cilk, 0, sizeof(*cilk));
+  cilk->ref = 0;
+  cilk->abort = 0;
 }
-#endif // CILKENABLE

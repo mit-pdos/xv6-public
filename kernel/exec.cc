@@ -65,10 +65,10 @@ dosegment(uptr a0, u64 a1)
   }
   
 bad:
-  panic("dosegment: Oops");
+  cilk_abort(-1);
 }
 
-static void dostack(uptr a0, u64 a1)
+static void  __attribute__((unused)) dostack(uptr a0, u64 a1)
 {
   struct vmnode *vmn = nullptr;
   struct eargs *args = (eargs*) a0;  
@@ -112,16 +112,17 @@ static void dostack(uptr a0, u64 a1)
       last = s+1;
   safestrcpy(args->proc->name, last, sizeof(args->proc->name));
 
+  // XXX(sbw) Oops, don't want to do this, unless we have abort
   args->proc->tf->rsp = sp;
 
   prof_end(dostack_prof);
   return;
 
 bad:
-  panic("dostack: Oops");
+  cilk_abort(-1);
 }
 
-static void doheap(uptr a0, u64 a1)
+static void __attribute__((unused)) doheap(uptr a0, u64 a1)
 {
   struct vmnode *vmn = nullptr;
   struct eargs *args = (eargs*) a0;
@@ -138,7 +139,7 @@ static void doheap(uptr a0, u64 a1)
   return;
 
 bad:
-  panic("doheap: Oops");
+  cilk_abort(-1);
 }
 
 int
@@ -204,7 +205,8 @@ exec(const char *path, char **argv)
   //cilk_push(dostack, (uptr)&args, (uptr)0);
   dostack((uptr)&args, (uptr)0);
 
-  cilk_end();
+  if (cilk_end())
+    goto bad;
 
   // Commit to the user image.
   oldvmap = myproc()->vmap;

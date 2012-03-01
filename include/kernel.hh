@@ -263,23 +263,25 @@ struct work *   allocwork(void);
 void            freework(struct work *w);
 
 // cilk.c
+void            initcilkframe(struct cilkframe*);
 #if CILKENABLE
 void            cilk_push(void (*fn)(uptr, uptr), u64 arg0, u64 arg1);
 void            cilk_start(void);
-void            cilk_end(void);
+u64             cilk_end(void);
 void            cilk_dump(void);
-int             cilk_trywork(void);
-void            initcilkframe(struct cilkframe *wq);
+void            cilk_abort(u64 val);
 #else
 #define cilk_push(rip, arg0, arg1) do { \
   void (*fn)(uptr, uptr) = rip; \
   fn(arg0, arg1); \
 } while(0)
 #define cilk_start() do { } while(0)
-#define cilk_end() do { } while(0)
+
+#define cilk_end() (myproc()->cilkframe.abort)
 #define cilk_dump() do { } while(0)
-#define cilk_trywork() 0
-#define initcilkframe(x) do { } while (0)
+#define cilk_abort(val) do { \
+  cmpxch(&myproc()->cilkframe.abort, (u64)0, (u64)val);   \
+} while (0)
 #endif
 
 // other exported/imported functions
