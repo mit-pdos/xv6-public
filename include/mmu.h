@@ -24,6 +24,7 @@
 
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) ((__typeof__(a))((((uptr)(a)) & ~(PGSIZE-1))))
+#define PGOFFSET(a) ((a) & ((1<<PGSHIFT)-1))
 
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)	((uptr)(pte) & ~0xFFF)

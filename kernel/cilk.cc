@@ -1,8 +1,7 @@
-// cilk style run queue
-// A work queue is built from NCPU per-core wqueues.
-// A core pushes work to the head of its per-core wqueue.
-// A core pops work from the head of its per-core wqueue.
-// A core pops work from the tail of another core's per-core wqueue.
+// cilk style run queue built on wq.cc:
+//   A core pushes work to the head of its per-core wq.
+//   A core pops work from the head of its per-core wq.
+//   A core pops work from the tail of another core's per-core wqueue.
 //
 // Usage:
 //   void goo(uptr a0, uptr a1) {
@@ -25,7 +24,6 @@
 //     cprintf("%c %c\n", arg[0], arg[1]);
 //   }
 
-#if CILKENABLE
 #include "types.h"
 #include "kernel.hh"
 #include "amd64.h"
@@ -35,48 +33,23 @@
 #include "condvar.h"
 #include "queue.h"
 #include "proc.hh"
+
+#if CILKENABLE
 #include "mtrace.h"
 #include "wq.hh"
-
-#define NSLOTS (1 << CILKSHIFT)
-
-struct cilkqueue {
-  struct cilkthread *thread[NSLOTS];
-  volatile int head __mpalign__;
-
-  struct spinlock lock;
-  volatile int tail;
-  __padout__;
-} __mpalign__;
-
-struct cilkthread {
-  u64 rip;
-  u64 arg0;
-  u64 arg1;
-  struct cilkframe *frame;  // parent cilkframe
-  __padout__;
-} __mpalign__;
+#include "percpu.hh"
 
 struct cilkstat {
   u64 push;
   u64 full;
   u64 steal;
-  __padout__;
-} __mpalign__;
-
-static struct cilkqueue queue[NCPU] __mpalign__;
-static struct cilkstat stat[NCPU] __mpalign__;
+};
+static percpu<cilkstat> stat;
 
 static struct cilkframe *
 cilk_frame(void)
 {
   return mycpu()->cilkframe;
-}
-
-static struct cilkstat *
-cilk_stat(void)
-{
-  return &stat[mycpu()->id];
 }
 
 static void
@@ -87,10 +60,11 @@ __cilk_run(struct work *w, void *xfn, void *arg0, void *arg1, void *xframe)
   struct cilkframe *old = mycpu()->cilkframe;
 
   if (old != frame)
-    cilk_stat()->steal++;
+    stat->steal++;
 
   mycpu()->cilkframe = frame;
-  fn((uptr)arg0, (uptr)arg1);
+  if (frame->abort == 0)
+    fn((uptr)arg0, (uptr)arg1);
   mycpu()->cilkframe = old;
   frame->ref--;
 }
@@ -117,10 +91,10 @@ cilk_push(void (*fn)(uptr, uptr), u64 arg0, u64 arg1)
   if (wq_push(w)) {
     freework(w);
     fn(arg0, arg1);
-    cilk_stat()->full++;
+    stat->full++;
   } else {
     cilk_frame()->ref++;
-    cilk_stat()->push++;
+    stat->push++;
   }
 }
 
@@ -138,14 +112,26 @@ cilk_start(void)
 // End of the current work queue frame.
 // The core works while the reference count of the current
 // work queue frame is not 0.
-void
+u64
 cilk_end(void)
 {
+  u64 r;
+
   while (cilk_frame()->ref != 0)
     wq_trywork();
 
+  r = cilk_frame()->abort;
+
   mycpu()->cilkframe = 0;
   popcli();
+
+  return r;
+}
+
+void
+cilk_abort(u64 val)
+{
+  cmpxch(&cilk_frame()->abort, (u64)0, val);
 }
 
 void
@@ -189,19 +175,11 @@ testcilk(void)
   }
   popcli();
 }
+#endif // CILKENABLE
 
 void
 initcilkframe(struct cilkframe *cilk)
 {
-  memset(cilk, 0, sizeof(*cilk));
+  cilk->ref = 0;
+  cilk->abort = 0;
 }
-
-void
-initcilk(void)
-{
-  int i;
-
-  for (i = 0; i < NCPU; i++)
-    initlock(&queue[i].lock, "queue lock", LOCKSTAT_CILK);
-}
-#endif // CILKENABLE

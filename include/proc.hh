@@ -19,6 +19,7 @@ struct context {
 // Work queue frame
 struct cilkframe {
   volatile std::atomic<u64> ref;
+  volatile std::atomic<u64> abort;
 };
 
 // Per-process, per-stack meta data for mtrace
