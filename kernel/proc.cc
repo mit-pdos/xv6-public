@@ -298,9 +298,14 @@ growproc(int n)
   // sbrk() would start to use the next region (e.g. the stack).
   uptr newstart = PGROUNDUP(curbrk);
   s64 newn = PGROUNDUP(n + curbrk - newstart);
+#if VM_CRANGE
   range *prev = 0;
   auto span = m->cr.search_lock(newstart, newn + PGSIZE);
-  for (range *r: span) {
+#endif
+#if VM_RADIX
+  auto span = m->rx.search_lock(newstart, newn + PGSIZE);
+#endif
+  for (auto r: span) {
     vma *e = (vma*) r;
 
     if (e->vma_start <= newstart) {
@@ -311,7 +316,9 @@ growproc(int n)
 
       newn -= e->vma_end - newstart;
       newstart = e->vma_end;
+#if VM_CRANGE
       prev = e;
+#endif
     } else {
       cprintf("growproc: overlap with existing mapping; brk %lx n %d\n",
               curbrk, n);
@@ -332,7 +339,13 @@ growproc(int n)
     return -1;
   }
 
+#if VM_CRANGE
   span.replace(prev, repl);
+#endif
+
+#if VM_RADIX
+  span.replace(newstart, newn, repl);
+#endif
 
   myproc()->brk += n;
   return 0;

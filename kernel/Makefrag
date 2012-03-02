@@ -30,6 +30,7 @@ OBJS = \
 	pipe.o \
 	proc.o \
 	gc.o \
+        radix.o \
 	rnd.o \
 	sampler.o \
 	sched.o \
