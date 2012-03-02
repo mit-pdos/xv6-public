@@ -21,6 +21,7 @@ UPROGS= \
 	scripttest \
 	ftest \
 	perf
+	# pdu
 	# pls
 
 ifeq ($(HAVE_LWIP),y)
