@@ -221,9 +221,11 @@ vmap::copy(int share)
   for (auto r: cr) {
 #endif
 #if VM_RADIX
+  void *last = 0;
   for (auto r: rx) {
-    if (!r)
+    if (!r || r == last)
       continue;
+    last = r;
 #endif
     vma *e = (vma *) r;
 
@@ -235,6 +237,9 @@ vmap::copy(int share)
       if (e->va_type != COW) {
         vma *repl = new vma(this, e->vma_start, e->vma_end, COW, e->n);
         replace_vma(e, repl);
+#if VM_RADIX
+        last = repl;
+#endif
         updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t>* p) {
             for (;;) {
               pme_t v = p->load();
@@ -264,13 +269,13 @@ vmap::copy(int share)
 #if VM_RADIX
     auto span = nm->rx.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
 #endif
-    for (auto x __attribute__((unused)): span) {
+    for (auto x: span) {
 #if VM_RADIX
       if (!x)
         continue;
 #endif
-      cprintf("non-empty span: %p (orig 0x%lx--0x%lx)\n",
-              x, ne->vma_start, ne->vma_end);
+      cprintf("non-empty span 0x%lx--0x%lx in %p: %p\n",
+              ne->vma_start, ne->vma_end, &nm->rx, x);
       assert(0);  /* span must be empty */
     }
 #if VM_CRANGE
