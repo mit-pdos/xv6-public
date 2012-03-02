@@ -6,8 +6,8 @@
 #include "cpputil.hh"
 #include "hwvm.hh"
 
-#define VM_CRANGE 0
-#define VM_RADIX  1
+#define VM_CRANGE 1
+#define VM_RADIX  0
 
 using std::atomic;
 
