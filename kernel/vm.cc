@@ -275,7 +275,7 @@ vmap::copy(int share)
         continue;
 #endif
       cprintf("non-empty span 0x%lx--0x%lx in %p: %p\n",
-              ne->vma_start, ne->vma_end, &nm->rx, x);
+              ne->vma_start, ne->vma_end, nm, x);
       assert(0);  /* span must be empty */
     }
 #if VM_CRANGE
