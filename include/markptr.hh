@@ -42,12 +42,28 @@ class markptr {
 template<class T>
 class markptr_ptr : private markptr<T> {
  public:
-  void operator=(T *p) {
+  void operator=(T* p) {
     uptr p0, p1;
     do {
       p0 = markptr<T>::_p.load();
       p1 = (p0 & 1) | (uptr) p;
     } while (!markptr<T>::_p.compare_exchange_weak(p0, p1));
+  }
+
+  bool cmpxch_update(T** expected, T* desired) {
+    uptr p0, p1;
+    do {
+      p0 = markptr<T>::_p.load();
+      p1 = (p0 & 1) | (uptr) desired;
+
+      T* cur = (T*) (p0 & ~1);
+      if (cur != *expected) {
+        *expected = cur;
+        return false;
+      }
+    } while (!markptr<T>::_p.compare_exchange_weak(p0, p1));
+
+    return true;
   }
 
   T* load() const {

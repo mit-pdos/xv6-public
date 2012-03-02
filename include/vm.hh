@@ -2,8 +2,12 @@
 #include "atomic.hh"
 #include "crange_arch.hh"
 #include "crange.hh"
+#include "radix.hh"
 #include "cpputil.hh"
 #include "hwvm.hh"
+
+#define VM_CRANGE 0
+#define VM_RADIX  1
 
 using std::atomic;
 
@@ -34,7 +38,14 @@ struct vmnode {
 // a specific memory object.
 enum vmatype { PRIVATE, COW };
 
-struct vma : public range {
+struct vma
+#if VM_CRANGE
+  : public range
+#endif
+#if VM_RADIX
+  : public radix_elem
+#endif
+{
   const uptr vma_start;        // start of mapping
   const uptr vma_end;          // one past the last byte
   const enum vmatype va_type;
@@ -50,7 +61,14 @@ struct vma : public range {
 // An address space: a set of vmas plus h/w page table.
 // The elements of e[] are not ordered by address.
 struct vmap {
+#if VM_CRANGE
   struct crange cr;
+#endif
+
+#if VM_RADIX
+  struct radix rx;
+#endif
+
   atomic<u64> ref;
   pgmap *const pml4;           // Page table
   char *const kshared;

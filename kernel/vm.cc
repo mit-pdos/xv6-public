@@ -118,8 +118,10 @@ vmnode::demand_load()
  * vma
  */
 
-vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn)
-  : range(&vmap->cr, start, end-start),
+vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn) :
+#if VM_CRANGE
+    range(&vmap->cr, start, end-start),
+#endif
     vma_start(start), vma_end(end), va_type(vtype), n(vmn)
 {
   if (n)
@@ -136,8 +138,14 @@ vma::~vma()
  * vmap
  */
 
-vmap::vmap()
-  : cr(10), ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared))
+vmap::vmap() :
+#if VM_CRANGE
+    cr(10),
+#endif
+#if VM_RADIX
+    rx(PGSHIFT),
+#endif
+    ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared))
 {
   if (pml4 == 0) {
     cprintf("vmap_alloc: setupkvm out of memory\n");
@@ -181,12 +189,24 @@ vmap::decref()
 bool
 vmap::replace_vma(vma *a, vma *b)
 {
+#if VM_CRANGE
   auto span = cr.search_lock(a->vma_start, a->vma_end - a->vma_start);
+#endif
+#if VM_RADIX
+  auto span = rx.search_lock(a->vma_start, a->vma_end - a->vma_start);
+#endif
   if (a->deleted())
     return false;
   for (auto e: span)
     assert(a == e);
+#if VM_CRANGE
   span.replace(b);
+#endif
+#if VM_RADIX
+  span.replace(a->vma_start, b->vma_start-a->vma_start, 0);
+  span.replace(b->vma_start, b->vma_end-b->vma_start, b);
+  span.replace(b->vma_end, a->vma_end-b->vma_end, 0);
+#endif
   return true;
 }
 
@@ -197,7 +217,14 @@ vmap::copy(int share)
   if(nm == 0)
     return 0;
 
-  for (range *r: cr) {
+#if VM_CRANGE
+  for (auto r: cr) {
+#endif
+#if VM_RADIX
+  for (auto r: rx) {
+    if (!r)
+      continue;
+#endif
     vma *e = (vma *) r;
 
     struct vma *ne;
@@ -231,10 +258,27 @@ vmap::copy(int share)
       goto err;
     }
 
+#if VM_CRANGE
     auto span = nm->cr.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
-    for (auto x __attribute__((unused)): span)
+#endif
+#if VM_RADIX
+    auto span = nm->rx.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
+#endif
+    for (auto x __attribute__((unused)): span) {
+#if VM_RADIX
+      if (!x)
+        continue;
+#endif
+      cprintf("non-empty span: %p (orig 0x%lx--0x%lx)\n",
+              x, ne->vma_start, ne->vma_end);
       assert(0);  /* span must be empty */
+    }
+#if VM_CRANGE
     span.replace(ne);
+#endif
+#if VM_RADIX
+    span.replace(ne->vma_start, ne->vma_end-ne->vma_start, ne);
+#endif
   }
 
   if (share)
@@ -259,7 +303,13 @@ vmap::lookup(uptr start, uptr len)
   if (start + len < start)
     panic("vmap::lookup bad len");
 
-  range *r = cr.search(start, len);
+#if VM_CRANGE
+  auto r = cr.search(start, len);
+#endif
+#if VM_RADIX
+  assert(len <= PGSIZE);
+  auto r = rx.search(start);
+#endif
   if (r != 0) {
     vma *e = (vma *) r;
     if (e->vma_end <= e->vma_start)
@@ -282,10 +332,20 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb)
   {
     // new scope to release the search lock before tlbflush
     u64 len = n->npages * PGSIZE;
+#if VM_CRANGE
     auto span = cr.search_lock(vma_start, len);
+#endif
+#if VM_RADIX
+    auto span = rx.search_lock(vma_start, len);
+#endif
     for (auto r: span) {
+#if VM_RADIX
+      if (!r)
+        continue;
+#endif
       vma *rvma = (vma*) r;
-      cprintf("vmap::insert: overlap with 0x%lx--0x%lx\n", rvma->vma_start, rvma->vma_end);
+      cprintf("vmap::insert: overlap with %p: 0x%lx--0x%lx\n",
+              rvma, rvma->vma_start, rvma->vma_end);
       return -1;
     }
 
@@ -297,7 +357,12 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb)
       return -1;
     }
 
+#if VM_CRANGE
     span.replace(e);
+#endif
+#if VM_RADIX
+    span.replace(e->vma_start, e->vma_end-e->vma_start, e);
+#endif
   }
 
   bool needtlb = false;
@@ -327,7 +392,12 @@ vmap::remove(uptr vma_start, uptr len)
     // new scope to release the search lock before tlbflush
     uptr vma_end = vma_start + len;
 
+#if VM_CRANGE
     auto span = cr.search_lock(vma_start, len);
+#endif
+#if VM_RADIX
+    auto span = rx.search_lock(vma_start, len);
+#endif
     for (auto r: span) {
       vma *rvma = (vma*) r;
       if (rvma->vma_start < vma_start || rvma->vma_end > vma_end) {
@@ -338,7 +408,12 @@ vmap::remove(uptr vma_start, uptr len)
 
     // XXX handle partial unmap
 
+#if VM_CRANGE
     span.replace(0);
+#endif
+#if VM_RADIX
+    span.replace(vma_start, len, 0);
+#endif
   }
 
   bool needtlb = false;
