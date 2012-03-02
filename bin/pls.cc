@@ -2,6 +2,7 @@
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
+#include "wq.hh"
 
 const char*
 fmtname(const char *path)
@@ -76,6 +77,8 @@ work(void *arg)
   u64 tid = (u64)arg;
   // grab and push work  (may divide into blocks? and call ls on a block)?
   // maybe implement getdirent sys call that gives you some unread dir entry
+  printf("%d\n", tid);
+  while (wq_trywork()) ;
 }
 
 int
@@ -84,24 +87,27 @@ main(int argc, char *argv[])
   int i;
   int nthread = 4;
 
-  for(int i = 0; i < nthread; i++) {
-    sbrk(8192);
-    void *tstack = sbrk(0);
-    // fprintf(1, "tstack %lx\n", tstack);
-    int tid = forkt(tstack, (void*) thr, (void *)(u64)i);
-    if (0) fprintf(1, "pls[%d]: child %d\n", getpid(), tid);
-  }
+  wq_init(nthread);   // create a workqueue instance with nthread workers
 
-  // push work wq.cc
+  // create some intial work
   if(argc < 2){
-    ls(".");
-    exit();
+    // ls(".");
+    struct work *w = (struct work *) malloc(sizeof(struct work));
+    w->rip = (void*) ls;
+    w->arg0 = (void *) ".";
+    wq_push(w);
+  } else {
+    for(i=1; i<argc; i++) {
+      // ls(argv[i]);
+      struct work *w = (struct work *) malloc(sizeof(struct work));
+      w->rip = (void*) ls;
+      w->arg0 = (void *) argv[i];
+      wq_push(w);
+    }
   }
-  for(i=1; i<argc; i++)
-    ls(argv[i]);
 
-  for(int i = 0; i < nthread; i++)
-    wait();
+  // start workers; terminate when all workers have no work
+  wq_start();
 
   exit();
 }
