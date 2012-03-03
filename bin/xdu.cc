@@ -66,6 +66,9 @@ du(int fd)
 int
 main(int ac, char **av)
 {
+  extern void initwq(void);
+  //initwq();
+
   printf("%d\n", du(open(".", 0)));
   return 0;
 }
