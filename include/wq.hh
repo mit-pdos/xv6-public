@@ -7,3 +7,12 @@ struct work {
   void *arg4;
   char data[];
 };
+
+template <typename IT, typename BODY>
+static inline void
+wq_for(IT &init, bool (*cond)(IT &it), BODY body) {
+  for (IT &it = init; cond(it); ++it) {
+    body(it);
+  }
+}
+

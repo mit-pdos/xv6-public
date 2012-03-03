@@ -1,0 +1,17 @@
+NCXXFLAGS = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) -DXV6 \
+	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer \
+	    -fms-extensions -mno-sse -mcx16 -mno-red-zone -std=c++0x \
+	    -Wno-sign-compare -fno-exceptions -fno-rtti -fcheck-new -I.
+
+$(O)/user/%.o: bin/%.cc
+	@echo "  CXX    $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CXX) -DLINUX $(NCXXFLAGS) -c -o $@ $<
+
+$(O)/xdu: $(O)/user/xdu.o
+	@echo "  LD     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CXX) -o $@ $^ -lpthread
+
+.PRECIOUS: $(O)/user/%.o
+-include $(O)/user/*.d
