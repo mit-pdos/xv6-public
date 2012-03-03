@@ -20,9 +20,10 @@ UPROGS= \
 	preadtest \
 	scripttest \
 	ftest \
-	perf
-	# pdu
-	# pls
+	perf \
+	xdu
+# pdu
+# pls
 
 ifeq ($(HAVE_LWIP),y)
 UPROGS += \
