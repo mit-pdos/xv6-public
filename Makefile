@@ -53,7 +53,7 @@ $(O)/%.o: %.c
 $(O)/%.o: %.cc
 	@echo "  CXX    $@"
 	$(Q)mkdir -p $(@D)
-	$(Q)$(CXX) $(CXXFLAGS) $(XXFLAGS) -c -o $@ $<
+	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(O)/%.o: %.S
 	@echo "  CC     $@"
