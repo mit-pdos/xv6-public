@@ -9,8 +9,14 @@ public:
     return *this;
   }
 
+  const char * operator*() {
+    char *buf = (char*)malloc(256);
+    return name(buf, 256);
+  }
+
   bool end() const { return end_; }
 
+private:
   char *name(char *buf, size_t n) const {
     n = MIN(DIRSIZ+1, n);
     memmove(buf, de_.name, n-1);
@@ -18,7 +24,6 @@ public:
     return buf;
   } 
 
-private:
   void refill(void) {
     int r;
 

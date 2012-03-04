@@ -46,16 +46,17 @@ du(int fd)
 
     wq_for<dirit>(di,
                   [](dirit &i)->bool { return !i.end(); },
-                  [&](dirit &i)->void
+                  [&](const char *name)->void
     {
-      char buf[BSIZ];
-      i.name(buf, BSIZ);
-      if (!strcmp(buf, ".") || !strcmp(buf, ".."))
-          return;
+      if (!strcmp(name, ".") || !strcmp(name, "..")) {
+        free((void*)name);
+        return;
+      }
 
-      int nfd = openat(fd, buf, 0);
+      int nfd = openat(fd, name, 0);
       if (nfd >= 0)
         size += du(nfd);  // should go into work queue
+      free((void*)name);
     });
   }
 
@@ -66,7 +67,6 @@ du(int fd)
 int
 main(int ac, char **av)
 {
-  extern void initwq(void);
   //initwq();
 
   printf("%d\n", du(open(".", 0)));

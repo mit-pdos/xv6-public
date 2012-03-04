@@ -8,11 +8,17 @@ struct work {
   char data[];
 };
 
+void            initwq(void);
+struct work *   allocwork(void);
+void            freework(struct work *w);
+int             wq_push(struct work *w);
+
 template <typename IT, typename BODY>
 static inline void
-wq_for(IT &init, bool (*cond)(IT &it), BODY body) {
+wq_for(IT &init, bool (*cond)(IT &it), BODY body)
+{
+  // XXX(sbw) should be able to coarsen loop
   for (IT &it = init; cond(it); ++it) {
-    body(it);
+    body(*it);
   }
 }
-

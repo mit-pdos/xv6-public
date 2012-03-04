@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <stdlib.h>
 #include <dirent.h>
 
 class dirit {
@@ -9,20 +10,29 @@ public:
     refill();
   }
 
+  ~dirit() {
+    closedir(d_);
+  }
+
   dirit& operator ++() {
     refill();
     return *this;
   }
 
+  const char * operator*() {
+    char *buf = (char*)malloc(256);
+    return name(buf, 256);
+  }
+
   bool end() const { return end_; }
 
+private:
   char *name(char *buf, size_t n) const {
     strncpy(buf, ent_->d_name, n-1);
     buf[n-1] = 0;
     return buf;
   } 
 
-private:
   void refill(void) {
     struct dirent *result;
     int r = readdir_r(d_, ent_, &result);
