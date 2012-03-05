@@ -13,7 +13,7 @@
 static_assert(sizeof(struct ipcctl) < PGSIZE, "struct ipcctl too large");
 
 static void
-pread_work(struct work *w, void *a0, void *a1, void *a2,
+pread_work(void *a0, void *a1, void *a2,
            void *a3, void *a4)
 {
   struct inode *ip = (inode*) a0;
@@ -34,11 +34,11 @@ pread_work(struct work *w, void *a0, void *a1, void *a2,
   iput(ip);
 }
 
-static struct work *
+static cwork *
 pread_allocwork(struct inode *ip, size_t count, off_t off,
                 struct ipcmsg *msg, void *ubuf)
 {
-  struct work *w = allocwork();
+  cwork *w = new cwork();
   if (w == nullptr)
     return 0;
 
@@ -57,7 +57,7 @@ sys_async(int fd, size_t count, off_t off,
           msgid_t msgid, pageid_t pageid)
 {
   struct file *f;
-  struct work *w;
+  cwork *w;
 
   char *kshared = myproc()->vmap->kshared;
   struct ipcctl *ipcctl = (struct ipcctl*)kshared;
@@ -85,7 +85,7 @@ sys_async(int fd, size_t count, off_t off,
   }
   if (wq_push(w) < 0) {
     iput(f->ip);
-    freework(w);
+    delete w;
     return -1;
   }
   msg->off = off;

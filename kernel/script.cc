@@ -11,7 +11,7 @@
 #include "file.hh"
 
 void
-script_mmap_work(struct work *w, void *a0, void *a1, void *a2, void *a3)
+script_mmap_work(void *a0, void *a1, void *a2, void *a3)
 {
   void *addr = (void *) a0;
   u64 len = (u64) a1;
@@ -40,7 +40,7 @@ sys_script(void *addr, u64 len, u64 chunk)
     if(x > chunk)
       x = chunk;
 
-    struct work *w = allocwork();
+    cwork *w = new cwork();
     if(w == 0)
       panic("sys_script allocwork");
     w->rip = (void*) script_mmap_work;

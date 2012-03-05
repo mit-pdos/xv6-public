@@ -97,7 +97,7 @@ wq_push(struct work *w)
 }
 
 static void
-__wq_run(struct work *w)
+__wq_run(work *w)
 {
   void (*fn)(struct work*, void*, void*, void*, void*, void*) = 
     (void(*)(work*,void*,void*,void*,void*,void*))w->rip;

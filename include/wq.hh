@@ -1,11 +1,20 @@
 struct work {
+  virtual void run() = 0;
+};
+
+struct cwork : public work{
+  virtual void run();
+
+  static void* operator new(unsigned long);
+  static void* operator new(unsigned long, cwork*);
+  static void operator delete(void*p);
+
   void *rip;
   void *arg0;
   void *arg1;
   void *arg2;
   void *arg3;
   void *arg4;
-  char data[];
 };
 
 struct run_work {
@@ -15,7 +24,7 @@ struct run_work {
 void            initwq(void);
 struct work *   allocwork(void);
 void            freework(struct work *w);
-int             wq_push(struct work *w);
+int             wq_push(work *w);
 
 template<typename IT, typename BODY>
 struct for_work : public run_work {
