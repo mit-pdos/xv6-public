@@ -55,7 +55,7 @@ du(int fd)
 
       int nfd = openat(fd, name, 0);
       if (nfd >= 0)
-        size += du(nfd);  // should go into work queue
+        ;//size += du(nfd);  // should go into work queue
       free((void*)name);
     });
   }
@@ -67,6 +67,16 @@ du(int fd)
 int
 main(int ac, char **av)
 {
+
+  dirit di(open(".", 0));
+
+  wq_for<dirit>(di,
+                [](dirit &i)->bool { return !i.end(); },
+                [&](const char *name)->void
+  {
+    printf("no..\n");
+  });
+
   //initwq();
 
   printf("%d\n", du(open(".", 0)));
