@@ -68,13 +68,12 @@ du(int fd)
     return 0;
   }
 
-  // XXX(sbw) size should use an add reducer
   reducer_opadd<size_t> size(ST_SIZE(st));
   if (ST_ISDIR(st)) {
     dirit di(fd);
     wq_for<dirit>(di,
                   [](dirit &i)->bool { return !i.end(); },
-                  [&](const char *name)->void
+                  [&size, &fd](const char *name)->void
     {
       if (!strcmp(name, ".") || !strcmp(name, "..")) {
         free((void*)name);
