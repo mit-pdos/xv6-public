@@ -44,5 +44,3 @@ wqarch_init(void)
 }
 
 #define xprintf      cprintf 
-#define xmalloc(n)   kmalloc(n) 
-#define xfree(p, sz) kmfree(p, sz)

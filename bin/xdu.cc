@@ -42,6 +42,7 @@ du(int fd)
     return 0;
   }
 
+  // XXX(sbw) size should use an add reducer
   int size = ST_SIZE(st);
   if (ST_ISDIR(st)) {
     dirit di(fd);
@@ -69,6 +70,7 @@ du(int fd)
 int
 main(int ac, char **av)
 {
+  initwq();
   printf("%d\n", du(open(".", 0)));
   return 0;
 }
