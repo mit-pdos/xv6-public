@@ -52,7 +52,7 @@ ls(const char *path)
   } else if (ST_ISDIR(st)) {
     dirit di(fd);
     for (; !di.end(); ++di) {
-      const char *name = *di;
+      const char *name = di.copy_value();
       
       if (xfstatat(fd, name, &st) < 0){
         printf("ls: cannot stat %s\n", name);

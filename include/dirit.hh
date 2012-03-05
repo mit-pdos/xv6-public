@@ -13,7 +13,7 @@ public:
     return *this;
   }
 
-  const char * operator*() {
+  const char * copy_value() {
     char *buf = (char*)malloc(256);
     return name(buf, 256);
   }
