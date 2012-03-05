@@ -5,8 +5,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "user/dirit.hh"
 #define ST_SIZE(st)  (st).st_size
-#define ST_TYPE(st)  0
+#define ST_TYPE(st)  (ST_ISDIR(st) ? 1 : ST_ISREG(st) ? 2 : 3)
 #define ST_INO(st)   (st).st_ino
 #define ST_ISDIR(st) S_ISDIR((st).st_mode)
 #define ST_ISREG(st) S_ISREG((st).st_mode)
@@ -16,40 +17,22 @@
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
+#include "lib.h"
+#include "dirit.hh"
 #define ST_SIZE(st)  (st).size
 #define ST_TYPE(st)  (st).type
 #define ST_INO(st)   (st).ino
 #define ST_ISDIR(st) ((st).type == T_DIR)
 #define ST_ISREG(st) ((st).type == T_FILE)
-#define BSIZE (DIRSIZ + 1)
+#define BSIZ (DIRSIZ + 1)
 #define stderr 2
 #endif
-
-const char*
-fmtname(const char *path)
-{
-  static char buf[BSIZ];
-  const char *p;
-  
-  // Find first character after last slash.
-  for(p=path+strlen(path); p >= path && *p != '/'; p--)
-    ;
-  p++;
-  
-  // Return blank-padded name.
-  if(strlen(p) >= BSIZ-1)
-    return p;
-  memmove(buf, p, strlen(p));
-  memset(buf+strlen(p), ' ', BSIZ-1-strlen(p));
-  return buf;
-}
 
 void
 ls(const char *path)
 {
   char buf[512], *p;
   int fd;
-  struct dirent de;
   struct stat st;
   
   if((fd = open(path, 0)) < 0){
@@ -64,7 +47,7 @@ ls(const char *path)
   }
   
   if (ST_ISREG(st)) {
-    printf("%s %d %d %d\n", fmtname(path), ST_TYPE(st), ST_INO(st), ST_SIZE(st));
+    printf("%u %10lu %10lu %s\n", ST_TYPE(st), ST_INO(st), ST_SIZE(st), path);
   } else if (ST_ISDIR(st)) {
     if(strlen(path) + 1 + BSIZ > sizeof buf) {
       printf("ls: path too long\n");
@@ -72,16 +55,20 @@ ls(const char *path)
     strcpy(buf, path);
     p = buf+strlen(buf);
     *p++ = '/';
-    while(read(fd, &de, sizeof(de)) == sizeof(de)){
-      if(de.inum == 0)
-        continue;
-      memmove(p, de.name, BSIZ-1);
-      p[BSIZ-1] = 0;
-      if(stat(buf, &st) < 0){
+    dirit di(fd);
+    for (; !di.end(); ++di) {
+      const char *name = *di;
+      size_t len = strlen(name);
+      memmove(p, name, len);
+      p[len] = 0;
+      if (stat(buf, &st) < 0){
+        free((void*)name);
         printf("ls: cannot stat %s\n", buf);
         continue;
       }
-      printf("%s %d %d %d\n", fmtname(buf), ST_TYPE(st), ST_INO(st), ST_SIZE(st));
+
+      printf("%u %10lu %10lu %s\n", ST_TYPE(st), ST_INO(st), ST_SIZE(st), name);
+      free((void*)name);
     }
   }
   close(fd);
