@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "user/dirit.hh"
+#include "wq.hh"
 #define ST_SIZE(st)  (st).st_size
 #define ST_TYPE(st)  (ST_ISDIR(st) ? 1 : ST_ISREG(st) ? 2 : 3)
 #define ST_INO(st)   (st).st_ino
@@ -46,25 +47,29 @@ ls(const char *path)
     close(fd);
     return;
   }
-  
+ 
   if (ST_ISREG(st)) {
     printf("%u %10lu %10lu %s\n", ST_TYPE(st), ST_INO(st), ST_SIZE(st), path);
+    close(fd);
   } else if (ST_ISDIR(st)) {
     dirit di(fd);
-    for (; !di.end(); ++di) {
-      const char *name = di.copy_value();
-      
+    wq_for<dirit>(di,
+                  [](dirit &i)->bool { return !i.end(); },
+                  [&fd](const char *name)->void
+    {
+      struct stat st;
       if (xfstatat(fd, name, &st) < 0){
         printf("ls: cannot stat %s\n", name);
         free((void*)name);
-        continue;
+        return;
       }
 
       printf("%u %10lu %10lu %s\n", ST_TYPE(st), ST_INO(st), ST_SIZE(st), name);
       free((void*)name);
-    }
+    });
+  } else {
+    close(fd);
   }
-  close(fd);
 }
 
 int
@@ -72,11 +77,16 @@ main(int argc, char *argv[])
 {
   int i;
 
-  if(argc < 2){
+  initwq();
+
+  if(argc < 2) {
     ls(".");
-    return 0;
+  } else {
+    // XXX(sbw) wq_for
+    for (i=1; i<argc; i++)
+      ls(argv[i]);
   }
-  for(i=1; i<argc; i++)
-    ls(argv[i]);
+  
+  wq_dump();
   return 0;
 }

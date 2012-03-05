@@ -7,6 +7,7 @@ class work;
 int             wq_trywork(void);
 int             wq_push(work *w);
 void            initwq(void);
+void            wq_dump(void);
 
 struct work {
   virtual void run() = 0;
