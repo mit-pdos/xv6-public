@@ -32,7 +32,7 @@ typedef uint64_t u64;
 #define BSIZ (DIRSIZ+1)
 #endif
 
-static int
+static size_t
 du(int fd)
 {
   struct stat st;
@@ -43,7 +43,7 @@ du(int fd)
   }
 
   // XXX(sbw) size should use an add reducer
-  int size = ST_SIZE(st);
+  size_t size = ST_SIZE(st);
   if (ST_ISDIR(st)) {
     dirit di(fd);
 
@@ -71,6 +71,6 @@ int
 main(int ac, char **av)
 {
   initwq();
-  printf("%d\n", du(open(".", 0)));
+  printf("%ld\n", du(open(".", 0)));
   return 0;
 }
