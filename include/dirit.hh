@@ -4,6 +4,10 @@ public:
     refill();
   }
 
+  ~dirit() {
+    close(fd_);
+  }
+
   dirit& operator ++() {
     refill();
     return *this;

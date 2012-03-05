@@ -46,7 +46,6 @@ du(int fd)
   size_t size = ST_SIZE(st);
   if (ST_ISDIR(st)) {
     dirit di(fd);
-
     wq_for<dirit>(di,
                   [](dirit &i)->bool { return !i.end(); },
                   [&](const char *name)->void
@@ -61,9 +60,9 @@ du(int fd)
         size += du(nfd);  // should go into work queue
       free((void*)name);
     });
+  } else {
+    close(fd);
   }
-
-  close(fd);
   return size;
 }
 
