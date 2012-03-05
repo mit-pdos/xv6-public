@@ -1,18 +1,5 @@
 #pragma once
 
-#if defined(LINUX)
-#include <stdlib.h>
-#include <assert.h>
-#include <atomic>
-#define xmalloc(n)     malloc(n)
-#define xfree(p, sz)   free(p)
-#elif defined(XV6_KERNEL)
-#define xmalloc(n)   kmalloc(n) 
-#define xfree(p, sz) kmfree(p, sz)
-#else
-#warning "Unknown wq implementation"
-#endif
-
 #define WQSIZE 8192
 
 class work;
@@ -39,5 +26,18 @@ struct cwork : public work {
   void *arg3;
   void *arg4;
 };
+
+#if defined(LINUX)
+#include <stdlib.h>
+#include <assert.h>
+#include <atomic>
+#define xmalloc(n)     malloc(n)
+#define xfree(p, sz)   free(p)
+#elif defined(XV6_KERNEL)
+#define xmalloc(n)   kmalloc(n) 
+#define xfree(p, sz) kmfree(p, sz)
+#else
+#warning "Unknown wq implementation"
+#endif
 
 #include "wqfor.hh"

@@ -1,6 +1,6 @@
 #if defined(LINUX)
 #include "user/wqlinux.hh"
-#include "include/percpu.hh"
+#include "percpu.hh"
 #elif defined(XV6_KERNEL)
 #include "wqkernel.hh"
 #include "percpu.hh"

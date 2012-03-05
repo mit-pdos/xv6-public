@@ -1,3 +1,5 @@
+#include "percpu.hh"
+
 template <typename T>
 struct reducer_opadd
 {

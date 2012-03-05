@@ -10,10 +10,9 @@
 #include <stddef.h>
 #include <errno.h>
 typedef uint64_t u64;
-#include "include/wq.hh"
+#include "wq.hh"
+#include "reducer.hh"
 #include "user/dirit.hh"
-#include "include/percpu.hh"
-#include "include/reducer.hh"
 #define ST_SIZE(st)  (st).st_size
 #define ST_ISDIR(st) S_ISDIR((st).st_mode)
 #define BSIZ 256
