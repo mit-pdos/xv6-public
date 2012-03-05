@@ -1,15 +1,34 @@
 #if defined(LINUX)
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#define ST_SIZE(st)  (st).st_size
+#define ST_TYPE(st)  0
+#define ST_INO(st)   (st).st_ino
+#define ST_ISDIR(st) S_ISDIR((st).st_mode)
+#define ST_ISREG(st) S_ISREG((st).st_mode)
+#define BSIZ 256
 #else // assume xv6
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
+#define ST_SIZE(st)  (st).size
+#define ST_TYPE(st)  (st).type
+#define ST_INO(st)   (st).ino
+#define ST_ISDIR(st) ((st).type == T_DIR)
+#define ST_ISREG(st) ((st).type == T_FILE)
+#define BSIZE (DIRSIZ + 1)
+#define stderr 2
 #endif
 
 const char*
 fmtname(const char *path)
 {
-  static char buf[DIRSIZ+1];
+  static char buf[BSIZ];
   const char *p;
   
   // Find first character after last slash.
@@ -18,10 +37,10 @@ fmtname(const char *path)
   p++;
   
   // Return blank-padded name.
-  if(strlen(p) >= DIRSIZ)
+  if(strlen(p) >= BSIZ-1)
     return p;
   memmove(buf, p, strlen(p));
-  memset(buf+strlen(p), ' ', DIRSIZ-strlen(p));
+  memset(buf+strlen(p), ' ', BSIZ-1-strlen(p));
   return buf;
 }
 
@@ -34,25 +53,21 @@ ls(const char *path)
   struct stat st;
   
   if((fd = open(path, 0)) < 0){
-    fprintf(2, "ls: cannot open %s\n", path);
+    fprintf(stderr, "ls: cannot open %s\n", path);
     return;
   }
   
   if(fstat(fd, &st) < 0){
-    fprintf(2, "ls: cannot stat %s\n", path);
+    fprintf(stderr, "ls: cannot stat %s\n", path);
     close(fd);
     return;
   }
   
-  switch(st.type){
-  case T_FILE:
-    fprintf(1, "%s %d %d %d\n", fmtname(path), st.type, st.ino, st.size);
-    break;
-  
-  case T_DIR:
-    if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
-      fprintf(1, "ls: path too long\n");
-      break;
+  if (ST_ISREG(st)) {
+    printf("%s %d %d %d\n", fmtname(path), ST_TYPE(st), ST_INO(st), ST_SIZE(st));
+  } else if (ST_ISDIR(st)) {
+    if(strlen(path) + 1 + BSIZ > sizeof buf) {
+      printf("ls: path too long\n");
     }
     strcpy(buf, path);
     p = buf+strlen(buf);
@@ -60,15 +75,14 @@ ls(const char *path)
     while(read(fd, &de, sizeof(de)) == sizeof(de)){
       if(de.inum == 0)
         continue;
-      memmove(p, de.name, DIRSIZ);
-      p[DIRSIZ] = 0;
+      memmove(p, de.name, BSIZ-1);
+      p[BSIZ-1] = 0;
       if(stat(buf, &st) < 0){
-        fprintf(1, "ls: cannot stat %s\n", buf);
+        printf("ls: cannot stat %s\n", buf);
         continue;
       }
-      fprintf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+      printf("%s %d %d %d\n", fmtname(buf), ST_TYPE(st), ST_INO(st), ST_SIZE(st));
     }
-    break;
   }
   close(fd);
 }
@@ -80,9 +94,9 @@ main(int argc, char *argv[])
 
   if(argc < 2){
     ls(".");
-    exit();
+    return 0;
   }
   for(i=1; i<argc; i++)
     ls(argv[i]);
-  exit();
+  return 0;
 }

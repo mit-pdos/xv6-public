@@ -1,5 +1,4 @@
 #if defined(LINUX)
-#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
