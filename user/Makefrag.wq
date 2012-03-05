@@ -15,7 +15,7 @@ $(O)/user/%.o: bin/%.cc
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) -DLINUX $(NCXXFLAGS) -c -o $@ $<
 
-$(O)/xdu: $(O)/user/xdu.o $(O)/user/wq.o
+$(O)/%: $(O)/user/%.o $(O)/user/wq.o
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) -o $@ $^ -lpthread
