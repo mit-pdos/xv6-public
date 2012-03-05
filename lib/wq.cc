@@ -1,117 +1,49 @@
 #if defined(LINUX)
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-#include <pthread.h>
-
-#include "include/types.h"
-#include "include/wq.hh"
-static __thread int myid_;
-
-int
-mycpuid(void)
-{
-  return myid_;
-}
-
-static inline void*
-allocwq(void)
-{
-  return malloc(sizeof(wq));
-}
-
-static inline void
-wqlock_acquire(wqlock_t *lock)
-{
-  pthread_spin_lock(lock);
-}
-
-static inline int
-wqlock_tryacquire(wqlock_t *lock)
-{
-  return (pthread_spin_trylock(lock) == 0);
-}
-
-static inline void
-wqlock_release(wqlock_t *lock)
-{
-  pthread_spin_unlock(lock);
-}
-
-static inline void
-wqlock_init(wqlock_t *lock) 
-{
-  pthread_spin_init(lock, 0);
-}
-
-static inline u64
-rdtsc(void)
-{
-  u32 hi, lo;
-  __asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
-  return ((u64)lo)|(((u64)hi)<<32);
-}
-
-#define xprintf        printf
-#define xmalloc(n)     malloc(n)
-#define xfree(p, sz)   free(p)
-#define pushcli()
-#define popcli()
-
+#include "user/wqlinux.hh"
+#include "include/percpu.hh"
 #elif defined(XV6_KERNEL)
-
-#include "types.h"
-#include "kernel.hh"
-#include "spinlock.h"
-#include "amd64.h"
-#include "cpu.hh"
-#include "kalloc.hh"
-#include "wq.hh"
-static inline int
-mywqid(void)
-{
-  return mycpu()->id;
-}
-
-static inline void*
-allocwq(void)
-{
-  return ksalloc(slab_wq);
-}
-
-static inline void
-wqlock_acquire(wqlock_t *lock)
-{
-  acquire(lock);
-}
-
-static inline int
-wqlock_tryacquire(wqlock_t *lock)
-{
-  return tryacquire(lock);
-}
-
-static inline void
-wqlock_release(wqlock_t *lock)
-{
-  release(lock);
-}
-
-static inline void
-wqlock_init(wqlock_t *lock) 
-{
-  initlock(lock, "wq lock", LOCKSTAT_WQ);
-}
-
-#define xprintf      cprintf 
-#define xmalloc(n)   kmalloc(n) 
-#define xfree(p, sz) kmfree(p, sz)
-
+#include "wqkernel.hh"
+#include "percpu.hh"
 #else
 #warning "Unknown wq implementation"
 #endif
 
+#define NSLOTS (1 << WQSHIFT)
+
+class wq {
+public:
+  wq();
+  int push(work *w);
+  int trywork();
+  void dump();
+
+  static void* operator new(unsigned long);
+
+private:
+  work *steal(int c);
+  work *pop(int c);
+
+  struct wqueue {
+    work *w[NSLOTS];
+    volatile int head __mpalign__;
+    volatile int tail;
+    wqlock_t lock;
+  };
+
+  struct stat {
+    u64 push;
+    u64 full;
+    u64 pop;
+    u64 steal;
+  };
+
+  percpu<wqueue> q_;
+  percpu<stat> stat_;
+};
+
 static wq *wq_;
+
+static_assert(sizeof(wq) <= WQSIZE, "WQSIZE too small");
 
 int
 wq_push(work *w)
@@ -135,6 +67,7 @@ void
 initwq(void)
 {
   wq_ = new wq();
+  wqarch_init();
 }
 
 //
