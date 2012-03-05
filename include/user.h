@@ -57,4 +57,5 @@ void printf(const char*, ...);
 void fprintf(int, const char*, ...);
 void snprintf(char *buf, unsigned int n, const char *fmt, ...);
 void die(const char* errstr, ...) __attribute__((noreturn));
+#define assert(c) if (!(c)) { fprintf(2, "%s:%d: ", __FILE__, __LINE__); die("assertion failure"); }
 END_DECLS

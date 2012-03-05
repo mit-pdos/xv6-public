@@ -1,19 +1,19 @@
+#pragma once
+
+extern int mycpuid(void);
+
 template <typename T>
 struct percpu {
-  int myid() {
-    return mycpu()->id;
-  }
-
   const T* operator->() const {
-    return cpu(myid());
+    return cpu(mycpuid());
   }
 
   T* operator->() {
-    return cpu(myid());
+    return cpu(mycpuid());
   }
 
   T& operator*() {
-    return *cpu(myid());
+    return *cpu(mycpuid());
   }
 
   T& operator[](int id) { 

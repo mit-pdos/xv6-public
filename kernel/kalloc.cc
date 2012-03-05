@@ -11,6 +11,7 @@
 #include "mtrace.h"
 #include "cpu.hh"
 #include "multiboot.hh"
+#include "wq.hh"
 
 static struct Mbmem mem[128];
 static u64 nmem;
@@ -272,6 +273,10 @@ initkalloc(u64 mbaddr)
     strncpy(slabmem[slab_kshared][c].name, " kshared", MAXNAME);
     slabmem[slab_kshared][c].size = KSHAREDSIZE;
     slabmem[slab_kshared][c].ninit = CPUKSTACKS;
+
+    strncpy(slabmem[slab_wq][c].name, " wq", MAXNAME);
+    slabmem[slab_wq][c].size = PGROUNDUP(sizeof(wq));
+    slabmem[slab_wq][c].ninit = NCPU;
 
     for (int i = 0; i < slab_type_max; i++) {
       slabmem[i][c].name[0] = (char) c + '0';
