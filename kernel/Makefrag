@@ -54,6 +54,9 @@ KERN = $(O)/kernel.elf
 
 all: $(KERN)
 
+$(O)/kernel/%.o: CFLAGS+=-mcmodel=kernel -DXV6_KERNEL
+$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel -DXV6_KERNEL
+
 $(KERN): $(O)/kernel/boot.o $(OBJS) $(LDEPS) kernel/kernel.ld
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
@@ -64,9 +67,6 @@ $(O)/kernel/%.o: lib/%.cc
 	@echo "  CXX    $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
-
-$(O)/kernel/%.o: CFLAGS+=-mcmodel=kernel
-$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel
 
 $(O)/kernel/incbin.o: ASFLAGS+=-DMAKE_OUT=$(O)
 $(O)/kernel/incbin.o: $(O)/kernel/initcode $(O)/kernel/bootother $(O)/fs.img
