@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
+typedef uint64_t u64;
 #include "include/wq.hh"
 #include "user/dirit.hh"
 #define ST_SIZE(st)  (st).st_size
@@ -22,6 +23,7 @@
 #include "user.h"
 #include "lib.h"
 #include "fs.h"
+#include "uspinlock.h"
 #include "wq.hh"
 #include "dirit.hh"
 #define ST_SIZE(st)  (st).size
@@ -55,7 +57,7 @@ du(int fd)
 
       int nfd = openat(fd, name, 0);
       if (nfd >= 0)
-        ;//size += du(nfd);  // should go into work queue
+        size += du(nfd);  // should go into work queue
       free((void*)name);
     });
   }
@@ -67,18 +69,6 @@ du(int fd)
 int
 main(int ac, char **av)
 {
-
-  dirit di(open(".", 0));
-
-  wq_for<dirit>(di,
-                [](dirit &i)->bool { return !i.end(); },
-                [&](const char *name)->void
-  {
-    printf("no..\n");
-  });
-
-  //initwq();
-
   printf("%d\n", du(open(".", 0)));
   return 0;
 }

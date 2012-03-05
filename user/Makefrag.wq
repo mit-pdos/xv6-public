@@ -1,9 +1,10 @@
-NCXXFLAGS = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) -DXV6 \
+NCXXFLAGS = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) \
 	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer \
 	    -fms-extensions -mcx16 -mno-red-zone -std=c++0x \
-	    -Wno-sign-compare -fno-exceptions -fno-rtti -fcheck-new -I.
+	    -Wno-sign-compare -fno-exceptions -fno-rtti -fcheck-new \
+	    -I. -include param.h -include include/compiler.h
 
-$(O)/user/%.o: user/%.cc
+$(O)/user/%.o: lib/%.cc
 	@echo "  CXX    $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) -DLINUX $(NCXXFLAGS) -c -o $@ $<

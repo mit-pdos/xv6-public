@@ -1,10 +1,115 @@
+#if defined(LINUX)
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <pthread.h>
+
+#include "include/types.h"
+#include "include/wq.hh"
+static __thread int myid_;
+
+int
+mycpuid(void)
+{
+  return myid_;
+}
+
+static inline void*
+allocwq(void)
+{
+  return malloc(sizeof(wq));
+}
+
+static inline void
+wqlock_acquire(wqlock_t *lock)
+{
+  pthread_spin_lock(lock);
+}
+
+static inline int
+wqlock_tryacquire(wqlock_t *lock)
+{
+  return (pthread_spin_trylock(lock) == 0);
+}
+
+static inline void
+wqlock_release(wqlock_t *lock)
+{
+  pthread_spin_unlock(lock);
+}
+
+static inline void
+wqlock_init(wqlock_t *lock) 
+{
+  pthread_spin_init(lock, 0);
+}
+
+static inline u64
+rdtsc(void)
+{
+  u32 hi, lo;
+  __asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+  return ((u64)lo)|(((u64)hi)<<32);
+}
+
+#define xprintf        printf
+#define xmalloc(n)     malloc(n)
+#define xfree(p, sz)   free(p)
+#define pushcli()
+#define popcli()
+
+#elif defined(XV6_KERNEL)
+
 #include "types.h"
 #include "kernel.hh"
 #include "spinlock.h"
 #include "amd64.h"
 #include "cpu.hh"
-#include "wq.hh"
 #include "kalloc.hh"
+#include "wq.hh"
+static inline int
+mywqid(void)
+{
+  return mycpu()->id;
+}
+
+static inline void*
+allocwq(void)
+{
+  return ksalloc(slab_wq);
+}
+
+static inline void
+wqlock_acquire(wqlock_t *lock)
+{
+  acquire(lock);
+}
+
+static inline int
+wqlock_tryacquire(wqlock_t *lock)
+{
+  return tryacquire(lock);
+}
+
+static inline void
+wqlock_release(wqlock_t *lock)
+{
+  release(lock);
+}
+
+static inline void
+wqlock_init(wqlock_t *lock) 
+{
+  initlock(lock, "wq lock", LOCKSTAT_WQ);
+}
+
+#define xprintf      cprintf 
+#define xmalloc(n)   kmalloc(n) 
+#define xfree(p, sz) kmfree(p, sz)
+
+#else
+#warning "Unknown wq implementation"
+#endif
 
 static wq *wq_;
 
@@ -39,7 +144,7 @@ void*
 wq::operator new(unsigned long nbytes)
 {
   assert(nbytes == sizeof(wq));
-  return ksalloc(slab_wq);
+  return allocwq();
 }
 
 wq::wq(void)
@@ -47,7 +152,7 @@ wq::wq(void)
   int i;
 
   for (i = 0; i < NCPU; i++)
-    initlock(&q_[i].lock, "wq lock", LOCKSTAT_WQ);
+    wqlock_init(&q_[i].lock);
 }
 
 void
@@ -55,7 +160,7 @@ wq::dump(void)
 {
   int i;
   for (i = 0; i < NCPU; i++)
-    cprintf("push %lu full %lu pop %lu steal %lu\n",
+    xprintf("push %lu full %lu pop %lu steal %lu\n",
             stat_[i].push, stat_[i].full,
             stat_[i].pop, stat_[i].steal);
 }
@@ -92,16 +197,16 @@ wq::pop(int c)
   if ((i - q->tail) == 0)
     return 0;
   
-  acquire(&q->lock);
+  wqlock_acquire(&q->lock);
   i = q->head;
   if ((i - q->tail) == 0) {
-    release(&q->lock);
+    wqlock_release(&q->lock);
     return 0;
   }
   i = (i-1) & (NSLOTS-1);
   w = q->w[i];
   q->head--;
-  release(&q->lock);
+  wqlock_release(&q->lock);
 
   stat_->pop++;
   return w;
@@ -114,17 +219,17 @@ wq::steal(int c)
   work *w;
   int i;
 
-  if (tryacquire(&q->lock) == 0)
+  if (wqlock_tryacquire(&q->lock) == 0)
     return 0;
   i = q->tail;
   if ((i - q->head) == 0) {
-    release(&q->lock);
+    wqlock_release(&q->lock);
     return 0;
   }
   i = i & (NSLOTS-1);
   w = q->w[i];
   q->tail++;
-  release(&q->lock);
+  wqlock_release(&q->lock);
 
   stat_->steal++;
   return w;
@@ -177,7 +282,7 @@ void*
 cwork::operator new(unsigned long nbytes)
 {
   assert(nbytes == sizeof(cwork));
-  return kmalloc(sizeof(cwork));
+  return xmalloc(sizeof(cwork));
 }
 
 void*
@@ -190,5 +295,5 @@ cwork::operator new(unsigned long nbytes, cwork* buf)
 void
 cwork::operator delete(void *p)
 {
-  kmfree(p, sizeof(cwork));
+  xfree(p, sizeof(cwork));
 }
