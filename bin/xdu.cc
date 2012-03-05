@@ -12,6 +12,7 @@
 typedef uint64_t u64;
 #include "include/wq.hh"
 #include "user/dirit.hh"
+#include "include/percpu.hh"
 #define ST_SIZE(st)  (st).st_size
 #define ST_ISDIR(st) S_ISDIR((st).st_mode)
 #define BSIZ 256
@@ -26,11 +27,36 @@ typedef uint64_t u64;
 #include "uspinlock.h"
 #include "wq.hh"
 #include "dirit.hh"
+#include "percpu.hh"
 #define ST_SIZE(st)  (st).size
 #define ST_ISDIR(st) ((st).type == T_DIR)
 #define stderr 2
 #define BSIZ (DIRSIZ+1)
 #endif
+
+template <typename T>
+struct reducer_opadd
+{
+  reducer_opadd(T v) {
+    for (int i = 0; i < NCPU; i++)
+      v_[i] = 0;
+    *v_ = v;
+  }
+
+  T operator+=(T i) {
+    (*v_) += i;
+    return *v_;
+  }
+
+  T get_value() {
+    T t = 0;
+    for (int i = 0; i < NCPU; i++)
+      t += v_[i];
+    return t;
+  }
+
+  percpu<T> v_;
+};
 
 static size_t
 du(int fd)
@@ -43,7 +69,7 @@ du(int fd)
   }
 
   // XXX(sbw) size should use an add reducer
-  size_t size = ST_SIZE(st);
+  reducer_opadd<size_t> size(ST_SIZE(st));
   if (ST_ISDIR(st)) {
     dirit di(fd);
     wq_for<dirit>(di,
@@ -63,7 +89,8 @@ du(int fd)
   } else {
     close(fd);
   }
-  return size;
+
+  return size.get_value();
 }
 
 int
