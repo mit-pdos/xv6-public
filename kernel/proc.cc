@@ -481,7 +481,8 @@ finishproc(struct proc *p)
 {
   ksfree(slab_stack, p->kstack);
   p->kstack = 0;
-  p->vmap->decref();
+  if (p->vmap != nullptr)
+    p->vmap->decref();
   if (!xnspid->remove(p->pid, &p))
     panic("wait: ns_remove");
   p->pid = 0;
