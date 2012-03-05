@@ -12,6 +12,7 @@
 #define ST_ISDIR(st) S_ISDIR((st).st_mode)
 #define ST_ISREG(st) S_ISREG((st).st_mode)
 #define BSIZ 256
+#define xfstatat(fd, n, st) fstatat(fd, n, st, 0)
 #else // assume xv6
 #include "types.h"
 #include "stat.h"
@@ -26,12 +27,12 @@
 #define ST_ISREG(st) ((st).type == T_FILE)
 #define BSIZ (DIRSIZ + 1)
 #define stderr 2
+#define xfstatat fstatat
 #endif
 
 void
 ls(const char *path)
 {
-  char buf[512], *p;
   int fd;
   struct stat st;
   
@@ -49,21 +50,13 @@ ls(const char *path)
   if (ST_ISREG(st)) {
     printf("%u %10lu %10lu %s\n", ST_TYPE(st), ST_INO(st), ST_SIZE(st), path);
   } else if (ST_ISDIR(st)) {
-    if(strlen(path) + 1 + BSIZ > sizeof buf) {
-      printf("ls: path too long\n");
-    }
-    strcpy(buf, path);
-    p = buf+strlen(buf);
-    *p++ = '/';
     dirit di(fd);
     for (; !di.end(); ++di) {
       const char *name = *di;
-      size_t len = strlen(name);
-      memmove(p, name, len);
-      p[len] = 0;
-      if (stat(buf, &st) < 0){
+      
+      if (xfstatat(fd, name, &st) < 0){
+        printf("ls: cannot stat %s\n", name);
         free((void*)name);
-        printf("ls: cannot stat %s\n", buf);
         continue;
       }
 
