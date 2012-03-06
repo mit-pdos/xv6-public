@@ -297,7 +297,7 @@ sys_openat(int dirfd, const char *path, int omode)
     return -1;
   } else {
     struct file *fdir = myproc()->ofile[dirfd];
-    if (fdir->type != file::FD_INODE)
+    if (fdir == nullptr || fdir->type != file::FD_INODE)
       return -1;
     cwd = fdir->ip;
   }
