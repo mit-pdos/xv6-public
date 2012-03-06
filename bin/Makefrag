@@ -23,6 +23,7 @@ UPROGS= \
 	preadtest \
 	scripttest \
 	ftest \
+	wqsh \
 	perf
 # pdu
 # pls
