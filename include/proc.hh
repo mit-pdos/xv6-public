@@ -3,6 +3,7 @@
 #include "spinlock.h"
 #include "atomic.hh"
 #include "cpputil.hh"
+#include "filetable.hh"
 
 // Saved registers for kernel context switches.
 // (also implicitly defined in swtch.S)
@@ -47,7 +48,7 @@ struct proc : public rcu_freed {
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
   int killed;                  // If non-zero, have been killed
-  struct file *ofile[NOFILE];  // Open files
+  filetable *ftable;
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   u64 tsc;

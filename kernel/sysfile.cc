@@ -19,7 +19,7 @@ argfd(int fd, struct file **pf)
 {
   struct file *f;
 
-  if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
+  if((f = myproc()->ftable->getfile(fd)) == nullptr)
     return -1;
   if(pf)
     *pf = f;
@@ -31,15 +31,7 @@ argfd(int fd, struct file **pf)
 static int
 fdalloc(struct file *f)
 {
-  int fd;
-
-  for(fd = 0; fd < NOFILE; fd++){
-    if(myproc()->ofile[fd] == 0){
-      myproc()->ofile[fd] = f;
-      return fd;
-    }
-  }
-  return -1;
+  return myproc()->ftable->allocfd(f);
 }
 
 long
@@ -73,7 +65,7 @@ sys_pread(int fd, void *ubuf, size_t count, off_t offset)
   uptr i = (uptr)ubuf;
   int r;
 
-  if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
+  if ((f = myproc()->ftable->getfile(fd)) == nullptr)
     return -1;
 
   for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
@@ -108,8 +100,7 @@ sys_close(int fd)
   
   if(argfd(fd, &f) < 0)
     return -1;
-  myproc()->ofile[fd] = 0;
-  fileclose(f);
+  myproc()->ftable->close(fd);
   return 0;
 }
 
@@ -296,7 +287,7 @@ sys_openat(int dirfd, const char *path, int omode)
   } else if (dirfd < 0 || dirfd >= NOFILE) {
     return -1;
   } else {
-    struct file *fdir = myproc()->ofile[dirfd];
+    struct file *fdir = myproc()->ftable->getfile(dirfd);
     if (fdir == nullptr || fdir->type != file::FD_INODE)
       return -1;
     cwd = fdir->ip;
@@ -424,8 +415,7 @@ sys_pipe(int *fd)
   fd0 = -1;
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
     if(fd0 >= 0)
-      myproc()->ofile[fd0] = 0;
-    fileclose(rf);
+      myproc()->ftable->close(fd0);
     fileclose(wf);
     return -1;
   }
@@ -437,15 +427,14 @@ sys_pipe(int *fd)
 static void
 freesocket(int fd)
 {
-  fileclose(myproc()->ofile[fd]);
-  myproc()->ofile[fd] = 0;  
+  myproc()->ftable->close(fd);
 }
 
 static int
 getsocket(int fd, struct file **ret)
 {
   struct file *f;
-  if (fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
+  if ((f = myproc()->ftable->getfile(fd)) == nullptr)
     return -1;
   if (f->type != file::FD_SOCKET)
     return -1;
@@ -493,8 +482,7 @@ sys_socket(int domain, int type, int protocol)
 
   s = netsocket(domain, type, protocol);
   if (s < 0) {
-    myproc()->ofile[fd] = 0;
-    fileclose(f);
+    myproc()->ftable->close(fd);
     return s;
   }
 
