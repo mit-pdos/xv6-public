@@ -1,12 +1,11 @@
 #if defined(LINUX)
 #include "user/wqlinux.hh"
-#include "percpu.hh"
 #elif defined(XV6_KERNEL)
 #include "wqkernel.hh"
-#include "percpu.hh"
 #else
-#warning "Unknown wq implementation"
+#include "wquser.hh"
 #endif
+#include "percpu.hh"
 
 #define NSLOTS (1 << WQSHIFT)
 

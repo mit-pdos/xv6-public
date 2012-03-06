@@ -38,7 +38,8 @@ struct cwork : public work {
 #define xmalloc(n)   kmalloc(n) 
 #define xfree(p, sz) kmfree(p, sz)
 #else
-#warning "Unknown wq implementation"
+#define xmalloc(n)     malloc(n)
+#define xfree(p, sz)   free(p)
 #endif
 
 #include "wqfor.hh"

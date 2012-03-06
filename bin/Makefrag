@@ -24,7 +24,8 @@ UPROGS= \
 	scripttest \
 	ftest \
 	wqsh \
-	perf
+	perf \
+	xls
 # pdu
 # pls
 

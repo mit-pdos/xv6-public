@@ -2,7 +2,7 @@ $(O)/lib/%.o: CFLAGS:=$(CFLAGS)
 $(O)/lib/%.o: CXXFLAGS:=$(CXXFLAGS)
 
 ULIB = ulib.o usys.o printf.o umalloc.o uthread.o fmt.o stream.o ipc.o \
-       threads.o crt.o
+       threads.o crt.o wq.o
 ULIB := $(addprefix $(O)/lib/, $(ULIB))
 
 .PRECIOUS: $(O)/lib/%.o
