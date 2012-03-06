@@ -1,7 +1,14 @@
+struct forframe
+{
+  forframe(int v) : v_(v) {}
+  int inc() { return __sync_add_and_fetch(&v_, 1); }
+  int dec() { return __sync_sub_and_fetch(&v_, 1); }
+  bool zero() volatile { return v_ == 0; };
+  volatile int v_;
+};
+
 template <typename IT, typename BODY>
 struct forwork : public work {
-  typedef std::atomic<int> forframe;
-
   forwork(IT &it, bool (*cond)(IT &it), BODY &body, forframe &frame) 
     : it_(it), cond_(cond), body_(body), frame_(frame) {}
 
@@ -10,11 +17,11 @@ struct forwork : public work {
     ++it_;
     if (cond_(it_)) {
       forwork<IT, BODY> *w = new forwork<IT, BODY>(it_, cond_, body_, frame_);
-      ++frame_;
+      frame_.inc();
       wq_push(w);    
     }
     body_(v);
-    --frame_;
+    frame_.dec();
     delete this;
   }
 
@@ -37,7 +44,7 @@ template <typename IT, typename BODY>
 static inline void
 wq_for(IT &init, bool (*cond)(IT &it), BODY body)
 {
-  typename forwork<IT, BODY>::forframe frame(0);
+  forframe frame(0);
 
   // XXX(sbw) should be able to coarsen loop
 
@@ -45,11 +52,11 @@ wq_for(IT &init, bool (*cond)(IT &it), BODY body)
   ++init;
   if (cond(init)) {
     forwork<IT, BODY> *w = new forwork<IT, BODY>(init, cond, body, frame);
-    ++frame;
+    frame.inc();
     wq_push(w);
   }
   body(v);
 
-  while (frame != 0)
+  while (!frame.zero())
     wq_trywork();
 }
