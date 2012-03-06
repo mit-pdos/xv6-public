@@ -21,6 +21,7 @@
 #include "fs.h"
 #include "lib.h"
 #include "dirit.hh"
+#include "wq.hh"
 #define ST_SIZE(st)  (st).size
 #define ST_TYPE(st)  (st).type
 #define ST_INO(st)   (st).ino

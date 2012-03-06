@@ -150,3 +150,15 @@ open(const char *path, int omode)
 {
   return openat(AT_FDCWD, path, omode);
 }
+
+extern void __cxa_pure_virtual(void);
+void __cxa_pure_virtual(void)
+{ 
+  die("__cxa_pure_virtual");
+}
+
+void
+usetup(void)
+{
+  forkt_setup(getpid());
+}
