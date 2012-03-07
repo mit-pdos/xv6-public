@@ -1,8 +1,11 @@
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
+#include "wq.hh"
 
 class thing {
+protected:
+  int done;
 public:
   static void * operator new(unsigned long n){
     return malloc(n);
@@ -10,38 +13,45 @@ public:
   static void operator delete(void *p){
     free(p);
   }
-  virtual void print();
+  thing() { done = 0; }
+  virtual ~thing();
+  virtual void print() = 0;
+  virtual void run() = 0;
+  int checkdone() { return done; }
 };
 
 class cmd : public thing {
-public:
-  cmd();
-  virtual ~cmd();
+private:
   int argc;
   char *argv[20];
+public:
+  cmd() { argc = 0; }
 
   void print();
+  void run();
   static cmd *parse();
 };
 
 class sequence : public thing {
-public:
-  sequence();
-  virtual ~sequence();
+private:
   int n;
   class cmd *a[20];
+public:
+  sequence() { n = 0; }
 
   void print();
+  void run();
   static sequence *parse();
 };
 
-cmd::cmd()
+thing::~thing()
 {
-  argc = 0;
 }
 
-cmd::~cmd()
+int
+isspace(char c)
 {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
 cmd *
@@ -55,7 +65,7 @@ cmd::parse()
   cmd *c = new cmd();
   for(int i = 0; buf[i]; ){
     int j;
-    for(j = i; buf[j] && buf[j] != ' '; j++)
+    for(j = i; buf[j] && !isspace(buf[j]); j++)
       ;
 
     char *p = (char *) malloc(j - i + 1);
@@ -65,11 +75,30 @@ cmd::parse()
     assert(c->argc < 20);
     c->argv[c->argc++] = p;
 
-    while(buf[j] == ' ')
+    while(isspace(buf[j]))
       j++;
     i = j;
   }
   return c;
+}
+
+void
+cmd::run()
+{
+  int pid = fork(0);
+  if(pid < 0){
+    printf("fork failed\n");
+    exit();
+  }
+  if(pid == 0){
+    argv[argc] = 0;
+    exec(argv[0], (const char **) argv);
+    printf("exec failed\n");
+    exit();
+  } else {
+    wait();
+    done = 1;
+  }
 }
 
 void
@@ -78,15 +107,6 @@ cmd::print()
   for(int i = 0; i < argc; i++)
     printf("%s ", argv[i]);
   printf("\n");
-}
-
-sequence::sequence()
-{
-  n = 0;
-}
-
-sequence::~sequence()
-{
 }
 
 sequence *
@@ -103,6 +123,36 @@ sequence::parse()
 }
 
 void
+blah(void *x)
+{
+  thing *t = (thing *) x;
+  t->run();
+}
+
+void
+sequence::run()
+{
+  for(int i = 0; i < n; i++){
+    cwork *w = new cwork();
+    w->rip = (void*) blah;
+    w->arg0 = a[i];
+    wq_push(w);
+  }
+  while(1){
+    int do_more = 0;
+    for(int i = 0; i < n; i++){
+      if(a[i]->checkdone() == 0){
+        do_more += 1;
+      }
+    }
+    if(do_more == 0)
+      break;
+    wq_trywork();
+  }
+  done = 1;
+}
+
+void
 sequence::print()
 {
   for(int i = 0; i < n; i++)
@@ -112,8 +162,9 @@ sequence::print()
 int
 main(void)
 {
+  initwq();
   sequence *s = sequence::parse();
   if(s){
-    s->print();
+    s->run();
   }
 }
