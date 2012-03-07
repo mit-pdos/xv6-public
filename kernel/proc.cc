@@ -460,11 +460,16 @@ fork(int flags)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->rax = 0;
 
-  np->ftable = new filetable(*myproc()->ftable);
-  if (np->ftable == nullptr) {
-    // XXX(sbw) leaking?
-    freeproc(np);
-    return -1;
+  if (flags == 0) {
+    np->ftable = new filetable(*myproc()->ftable);
+    if (np->ftable == nullptr) {
+      // XXX(sbw) leaking?
+      freeproc(np);
+      return -1;
+    }
+  } else {
+    myproc()->ftable->incref();
+    np->ftable = myproc()->ftable;
   }
 
   np->cwd = idup(myproc()->cwd);

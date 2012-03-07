@@ -1628,6 +1628,41 @@ tls_test(void)
   fprintf(1, "tls_test ok\n");
 }
 
+static pthread_barrier_t ftable_bar;
+static volatile int ftable_fd;
+
+static void*
+ftablethr(void *arg)
+{
+  char buf[32];
+  int r;
+
+  pthread_barrier_wait(&ftable_bar);
+  
+  r = read(ftable_fd, buf, sizeof(buf));
+  if (r < 0)
+    fprintf(2, "ftablethr: FAILED bad fd\n");
+  return 0;
+}
+
+static void
+ftabletest(void)
+{
+  printf("ftabletest...\n");
+  pthread_barrier_init(&ftable_bar, 0, 2);
+
+  pthread_t th;
+  pthread_create(&th, 0, &ftablethr, 0);
+
+  ftable_fd = open("README", 0);
+  if (ftable_fd < 0)
+    die("open");
+
+  pthread_barrier_wait(&ftable_bar);
+  wait();
+  printf("ftabletest ok\n");
+}
+
 static pthread_key_t tkey;
 static pthread_barrier_t bar0, bar1;
 enum { nthread = 8 };
@@ -1718,6 +1753,7 @@ main(int argc, char *argv[])
   bigdir(); // slow
   tls_test();
   thrtest();
+  ftabletest();
 
   exectest();
 
