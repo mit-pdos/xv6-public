@@ -28,16 +28,20 @@ public:
     destroylock(&lock_);
   }
 
-  file *getfile(int fd) {
+  bool getfile(int fd, sref<file> *sf) {
     file *f;
 
     if (fd < 0 || fd >= NOFILE)
-      return nullptr;
+      return false;
     acquire(&lock_);
     f = ofile_[fd];
-    // XXX(sbw) f->inc();
+    if (!f) {
+      release(&lock_);
+      return false;
+    }
+    sf->init(f);
     release(&lock_);
-    return f;
+    return true;
   }
 
   int allocfd(struct file *f) {

@@ -12,24 +12,16 @@
 #include "cpu.hh"
 #include "net.hh"
 
-// Fetch the nth word-sized system call argument as a file descriptor
-// and return both the descriptor and the corresponding struct file.
-static int
-argfd(int fd, struct file **pf)
+static bool
+getfile(int fd, sref<file> *f)
 {
-  struct file *f;
-
-  if((f = myproc()->ftable->getfile(fd)) == nullptr)
-    return -1;
-  if(pf)
-    *pf = f;
-  return 0;
+  return myproc()->ftable->getfile(fd, f);
 }
 
 // Allocate a file descriptor for the given file.
 // Takes over file reference from caller on success.
 static int
-fdalloc(struct file *f)
+fdalloc(file *f)
 {
   return myproc()->ftable->allocfd(f);
 }
@@ -37,35 +29,37 @@ fdalloc(struct file *f)
 long
 sys_dup(int ofd)
 {
-  struct file *f;
+  sref<file> f;
   int fd;
   
-  if(argfd(ofd, &f) < 0)
+  if (!getfile(ofd, &f))
     return -1;
-  if((fd=fdalloc(f)) < 0)
+  f->inc();
+  if ((fd = fdalloc(f.ptr())) < 0) {
+    f->dec();
     return -1;
-  f->dup();
+  }
   return fd;
 }
 
 s64
 sys_read(int fd, char *p, int n)
 {
-  struct file *f;
+  sref<file> f;
 
-  if(argfd(fd, &f) < 0 || argcheckptr(p, n) < 0)
+  if(!getfile(fd, &f) || argcheckptr(p, n) < 0)
     return -1;
-  return fileread(f, p, n);
+  return fileread(f.ptr(), p, n);
 }
 
 ssize_t
 sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 {
-  struct file *f;
+  sref<file> f;
   uptr i = (uptr)ubuf;
   int r;
 
-  if ((f = myproc()->ftable->getfile(fd)) == nullptr)
+  if (!getfile(fd, &f))
     return -1;
 
   for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
@@ -86,19 +80,19 @@ sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 long
 sys_write(int fd, char *p, int n)
 {
-  struct file *f;
+  sref<file> f;
 
-  if(argfd(fd, &f) < 0 || argcheckptr(p, n) < 0)
+  if (!getfile(fd, &f) || argcheckptr(p, n) < 0)
     return -1;
-  return filewrite(f, p, n);
+  return filewrite(f.ptr(), p, n);
 }
 
 long
 sys_close(int fd)
 {
-  struct file *f;
+  sref<file> f;
   
-  if(argfd(fd, &f) < 0)
+  if (!getfile(fd, &f))
     return -1;
   myproc()->ftable->close(fd);
   return 0;
@@ -107,11 +101,11 @@ sys_close(int fd)
 long
 sys_fstat(int fd, struct stat *st)
 {
-  struct file *f;
+  sref<file> f;
   
-  if(argfd(fd, &f) < 0 || argcheckptr(st, sizeof(*st)) < 0)
+  if (!getfile(fd, &f) || argcheckptr(st, sizeof(*st)) < 0)
     return -1;
-  return filestat(f, st);
+  return filestat(f.ptr(), st);
 }
 
 // Create the path new as a link to the same inode as old.
@@ -287,8 +281,8 @@ sys_openat(int dirfd, const char *path, int omode)
   } else if (dirfd < 0 || dirfd >= NOFILE) {
     return -1;
   } else {
-    struct file *fdir = myproc()->ftable->getfile(dirfd);
-    if (fdir == nullptr || fdir->type != file::FD_INODE)
+    sref<file> fdir;
+    if (!getfile(dirfd, &fdir) || fdir->type != file::FD_INODE)
       return -1;
     cwd = fdir->ip;
   }
@@ -430,17 +424,16 @@ freesocket(int fd)
   myproc()->ftable->close(fd);
 }
 
-static int
-getsocket(int fd, struct file **ret)
+static bool
+getsocket(int fd, sref<file> *f)
 {
-  struct file *f;
-  if ((f = myproc()->ftable->getfile(fd)) == nullptr)
-    return -1;
-  if (f->type != file::FD_SOCKET)
-    return -1;
-
-  *ret = f;
-  return 0;
+  if (!getfile(fd, f))
+    return false;
+  if ((*f)->type != file::FD_SOCKET) {
+    f->init(nullptr);
+    return false;
+  }
+  return true;
 }
 
 static int
@@ -494,9 +487,9 @@ long
 sys_bind(int xsock, void *xaddr, int xaddrlen)
 {
   extern long netbind(int, void*, int);
-  struct file *f;
+  sref<file> f;
 
-  if (getsocket(xsock, &f))
+  if (!getsocket(xsock, &f))
     return -1;
 
   return netbind(f->socket, xaddr, xaddrlen);
@@ -506,9 +499,9 @@ long
 sys_listen(int xsock, int backlog)
 {
   extern long netlisten(int, int);
-  struct file *f;
+  sref<file> f;
 
-  if (getsocket(xsock, &f))
+  if (!getsocket(xsock, &f))
     return -1;
 
   return netlisten(f->socket, backlog);
@@ -518,11 +511,12 @@ long
 sys_accept(int xsock, void *xaddr, void *xaddrlen)
 {
   extern long netaccept(int, void*, void*);
-  struct file *f, *cf;
+  file *cf;
+  sref<file> f;
   int cfd;
   int ss;
 
-  if (getsocket(xsock, &f))
+  if (!getsocket(xsock, &f))
     return -1;
 
   if (allocsocket(&cf, &cfd))

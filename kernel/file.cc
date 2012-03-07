@@ -10,11 +10,8 @@
 struct devsw __mpalign__ devsw[NDEV];
 
 void
-file::close(void)
+file::onzero() const
 {
-  if (--ref_ > 0)
-    return;
-
   if(type == file::FD_PIPE)
     pipeclose(pipe, writable);
   else if(type == file::FD_INODE)
@@ -26,11 +23,16 @@ file::close(void)
   delete this;
 }
 
+void
+file::close(void)
+{
+  dec();
+}
+
 file*
 file::dup(void)
 {
-  if (ref_++ < 1)
-    panic("file::dup");
+  inc();
   return this;
 }
 
