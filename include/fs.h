@@ -1,3 +1,5 @@
+#pragma once
+
 // On-disk file system format. 
 // Both the kernel and user programs use this header file.
 

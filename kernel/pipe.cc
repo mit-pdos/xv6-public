@@ -28,7 +28,7 @@ pipealloc(struct file **f0, struct file **f1)
 
   p = 0;
   *f0 = *f1 = 0;
-  if((*f0 = filealloc()) == 0 || (*f1 = filealloc()) == 0)
+  if((*f0 = new file()) == 0 || (*f1 = new file()) == 0)
     goto bad;
   if((p = (pipe*)kmalloc(sizeof(*p))) == 0)
     goto bad;
@@ -55,9 +55,9 @@ pipealloc(struct file **f0, struct file **f1)
     kmfree((char*)p, sizeof(*p));
   }
   if(*f0)
-    fileclose(*f0);
+    (*f0)->close();
   if(*f1)
-    fileclose(*f1);
+    (*f1)->close();
   return -1;
 }
 

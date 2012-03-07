@@ -38,7 +38,7 @@ enum { sched_debug = 0 };
 proc::proc(int npid) :
   rcu_freed("proc"), vmap(0), brk(0), kstack(0),
   pid(npid), parent(0), tf(0), context(0), killed(0),
-  cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
+  ftable(0), cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
   on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0),
   user_fs_(0), state_(EMBRYO)
 {
@@ -48,7 +48,6 @@ proc::proc(int npid) :
 
   memset(&childq, 0, sizeof(childq));
   memset(&child_next, 0, sizeof(child_next));
-  memset(ofile, 0, sizeof(ofile));
   memset(&runqlink, 0, sizeof(runqlink));
   memset(&cv_waiters, 0, sizeof(cv_waiters));
   memset(&cv_sleep, 0, sizeof(cv_sleep));
@@ -122,19 +121,13 @@ void
 exit(void)
 {
   struct proc *p, *np;
-  int fd;
   int wakeupinit;
 
   if(myproc() == bootproc)
     panic("init exiting");
 
-  // Close all open files.
-  for(fd = 0; fd < NOFILE; fd++){
-    if(myproc()->ofile[fd]){
-      fileclose(myproc()->ofile[fd]);
-      myproc()->ofile[fd] = 0;
-    }
-  }
+  if (myproc()->ftable)
+    myproc()->ftable->decref();
 
   // Kernel threads might not have a cwd
   if (myproc()->cwd != nullptr) {
@@ -246,6 +239,9 @@ inituser(void)
   extern u64 _initcode_size;
 
   p = allocproc();
+  p->ftable = new filetable();
+  if (p->ftable == nullptr)
+    panic("userinit: new filetable");
   bootproc = p;
   if((p->vmap = new vmap()) == 0)
     panic("userinit: out of vmaps?");
@@ -432,7 +428,7 @@ procdumpall(void)
 int
 fork(int flags)
 {
-  int i, pid;
+  int pid;
   struct proc *np;
   int cow = 1;
 
@@ -464,9 +460,13 @@ fork(int flags)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->rax = 0;
 
-  for(i = 0; i < NOFILE; i++)
-    if(myproc()->ofile[i])
-      np->ofile[i] = filedup(myproc()->ofile[i]);
+  np->ftable = new filetable(*myproc()->ftable);
+  if (np->ftable == nullptr) {
+    // XXX(sbw) leaking?
+    freeproc(np);
+    return -1;
+  }
+
   np->cwd = idup(myproc()->cwd);
   pid = np->pid;
   safestrcpy(np->name, myproc()->name, sizeof(myproc()->name));
