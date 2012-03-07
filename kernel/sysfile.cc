@@ -49,7 +49,7 @@ sys_read(int fd, char *p, int n)
 
   if(!getfile(fd, &f) || argcheckptr(p, n) < 0)
     return -1;
-  return fileread(f.ptr(), p, n);
+  return f->read(p, n);
 }
 
 ssize_t
@@ -84,7 +84,7 @@ sys_write(int fd, char *p, int n)
 
   if (!getfile(fd, &f) || argcheckptr(p, n) < 0)
     return -1;
-  return filewrite(f.ptr(), p, n);
+  return f->write(p, n);
 }
 
 long
@@ -105,7 +105,7 @@ sys_fstat(int fd, struct stat *st)
   
   if (!getfile(fd, &f) || argcheckptr(st, sizeof(*st)) < 0)
     return -1;
-  return filestat(f.ptr(), st);
+  return f->stat(st);
 }
 
 // Create the path new as a link to the same inode as old.
@@ -311,9 +311,9 @@ sys_openat(int dirfd, const char *path, int omode)
     }
   }
 
-  if((f = new file()) == 0 || (fd = fdalloc(f)) < 0){
+  if((f = file::alloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
-      f->close();
+      f->dec();
     iunlockput(ip);
     return -1;
   }
@@ -410,7 +410,7 @@ sys_pipe(int *fd)
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
     if(fd0 >= 0)
       myproc()->ftable->close(fd0);
-    wf->close();
+    wf->dec();
     return -1;
   }
   fd[0] = fd0;
@@ -442,13 +442,13 @@ allocsocket(struct file **rf, int *rfd)
   struct file *f;
   int fd;
 
-  f = new file();
+  f = file::alloc();
   if (f == nullptr)
     return -1;
 
   fd = fdalloc(f);
   if (fd < 0) {
-    f->close();
+    f->dec();
     return fd;
   }
 

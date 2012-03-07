@@ -21,7 +21,7 @@ public:
   ~filetable() {
     for(int fd = 0; fd < NOFILE; fd++){
       if (ofile_[fd]){
-        ofile_[fd]->close();
+        ofile_[fd]->dec();
         ofile_[fd] = 0;
       }
     }
@@ -63,7 +63,7 @@ public:
     acquire(&lock_);
     ofile_[fd] = nullptr;
     release(&lock_);
-    f->close();
+    f->dec();
   }
 
   void decref() {

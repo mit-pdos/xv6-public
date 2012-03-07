@@ -9,8 +9,21 @@
 
 struct devsw __mpalign__ devsw[NDEV];
 
+file*
+file::alloc(void)
+{
+  return new file();
+}
+
+file::file(void)
+  : type(file::FD_NONE), readable(0), writable(0), 
+    socket(0), pipe(nullptr), ip(nullptr), off(0)
+{
+  inc();
+}
+
 void
-file::onzero() const
+file::onzero(void) const
 {
   if(type == file::FD_PIPE)
     pipeclose(pipe, writable);
@@ -23,12 +36,6 @@ file::onzero() const
   delete this;
 }
 
-void
-file::close(void)
-{
-  dec();
-}
-
 file*
 file::dup(void)
 {
@@ -36,65 +43,62 @@ file::dup(void)
   return this;
 }
 
-// Get metadata about file f.
 int
-filestat(struct file *f, struct stat *st)
+file::stat(struct stat *st)
 {
-  if(f->type == file::FD_INODE){
-    ilock(f->ip, 0);
-    if(f->ip->type == 0)
+  if(type == file::FD_INODE){
+    ilock(ip, 0);
+    if(ip->type == 0)
       panic("filestat");
-    stati(f->ip, st);
-    iunlock(f->ip);
+    stati(ip, st);
+    iunlock(ip);
     return 0;
   }
   return -1;
 }
 
-// Read from file f.  Addr is kernel address.
 int
-fileread(struct file *f, char *addr, int n)
+file::read(char *addr, int n)
 {
   int r;
 
-  if(f->readable == 0)
+  if(readable == 0)
     return -1;
-  if(f->type == file::FD_PIPE)
-    return piperead(f->pipe, addr, n);
-  if(f->type == file::FD_INODE){
-    ilock(f->ip, 0);
-    if(f->ip->type == 0)
+  if(type == file::FD_PIPE)
+    return piperead(pipe, addr, n);
+  if(type == file::FD_INODE){
+    ilock(ip, 0);
+    if(ip->type == 0)
       panic("fileread");
-    if((r = readi(f->ip, addr, f->off, n)) > 0)
-      f->off += r;
-    iunlock(f->ip);
+    if((r = readi(ip, addr, off, n)) > 0)
+      off += r;
+    iunlock(ip);
     return r;
   }
-  if(f->type == file::FD_SOCKET)
-    return netread(f->socket, addr, n);
+  if(type == file::FD_SOCKET)
+    return netread(socket, addr, n);
   panic("fileread");
 }
 
-// Write to file f.  Addr is kernel address.
 int
-filewrite(struct file *f, char *addr, int n)
+file::write(char *addr, int n)
 {
   int r;
 
-  if(f->writable == 0)
+  if(writable == 0)
     return -1;
-  if(f->type == file::FD_PIPE)
-    return pipewrite(f->pipe, addr, n);
-  if(f->type == file::FD_INODE){
-    ilock(f->ip, 1);
-    if(f->ip->type == 0 || f->ip->type == T_DIR)
+  if(type == file::FD_PIPE)
+    return pipewrite(pipe, addr, n);
+  if(type == file::FD_INODE){
+    ilock(ip, 1);
+    if(ip->type == 0 || ip->type == T_DIR)
       panic("filewrite but 0 or T_DIR");
-    if((r = writei(f->ip, addr, f->off, n)) > 0)
-      f->off += r;
-    iunlock(f->ip);
+    if((r = writei(ip, addr, off, n)) > 0)
+      off += r;
+    iunlock(ip);
     return r;
   }
-  if(f->type == file::FD_SOCKET)
-    return netwrite(f->socket, addr, n);
+  if(type == file::FD_SOCKET)
+    return netwrite(socket, addr, n);
   panic("filewrite");
 }

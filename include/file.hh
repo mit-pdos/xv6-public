@@ -9,12 +9,11 @@
 u64 namehash(const strbuf<DIRSIZ>&);
 
 struct file : public referenced {
-  file() : type(file::FD_NONE), readable(0), writable(0), 
-           socket(0), pipe(nullptr), ip(nullptr), off(0) {
-    inc();
-  }
+  static file *alloc();
   file *dup();
-  void close();
+  int stat(struct stat*);
+  int read(char *addr, int n);
+  int write(char *addr, int n);
 
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;  
 
@@ -26,6 +25,9 @@ struct file : public referenced {
   struct inode *ip;
   u32 off;
   NEW_DELETE_OPS(file);
+
+private:
+  file();  
 
 protected:
   virtual void onzero() const;

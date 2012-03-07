@@ -86,15 +86,6 @@ void            e1000hwaddr(u8 *hwaddr);
 // exec.c
 int             exec(const char*, char**);
 
-// file.c
-struct file*    filealloc(void);
-void            fileclose(struct file*);
-struct file*    filedup(struct file*);
-void            fileinit(void);
-int             fileread(struct file*, char*, int n);
-int             filestat(struct file*, struct stat*);
-int             filewrite(struct file*, char*, int n);
-
 // fs.c
 int             namecmp(const char*, const char*);
 struct inode*   dirlookup(struct inode*, char*);
