@@ -44,7 +44,7 @@ sys_dup(int ofd)
     return -1;
   if((fd=fdalloc(f)) < 0)
     return -1;
-  filedup(f);
+  f->dup();
   return fd;
 }
 
@@ -317,9 +317,9 @@ sys_openat(int dirfd, const char *path, int omode)
     }
   }
 
-  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
+  if((f = new file()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
-      fileclose(f);
+      f->close();
     iunlockput(ip);
     return -1;
   }
@@ -416,7 +416,7 @@ sys_pipe(int *fd)
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
     if(fd0 >= 0)
       myproc()->ftable->close(fd0);
-    fileclose(wf);
+    wf->close();
     return -1;
   }
   fd[0] = fd0;
@@ -449,13 +449,13 @@ allocsocket(struct file **rf, int *rfd)
   struct file *f;
   int fd;
 
-  f = filealloc();
+  f = new file();
   if (f == nullptr)
     return -1;
 
   fd = fdalloc(f);
   if (fd < 0) {
-    fileclose(f);
+    f->close();
     return fd;
   }
 

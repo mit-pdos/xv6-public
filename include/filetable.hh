@@ -10,7 +10,7 @@ public:
   filetable(const filetable &f) : ref_(1) {
     for(int fd = 0; fd < NOFILE; fd++) {
       if (f.ofile_[fd])
-        ofile_[fd] = filedup(f.ofile_[fd]);
+        ofile_[fd] = f.ofile_[fd]->dup();
       else
         ofile_[fd] = nullptr;
     }
@@ -19,7 +19,7 @@ public:
   ~filetable() {
     for(int fd = 0; fd < NOFILE; fd++){
       if (ofile_[fd]){
-        fileclose(ofile_[fd]);
+        ofile_[fd]->close();
         ofile_[fd] = 0;
       }
     }
@@ -46,7 +46,7 @@ public:
   void close(int fd) {
     struct file *f = ofile_[fd];
     ofile_[fd] = nullptr;
-    fileclose(f);
+    f->close();
   }
 
   void decref() {

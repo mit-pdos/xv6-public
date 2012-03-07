@@ -9,41 +9,29 @@
 
 struct devsw __mpalign__ devsw[NDEV];
 
-// Allocate a file structure.
-struct file*
-filealloc(void)
-{
-  struct file *f = (file*) kmalloc(sizeof(struct file));
-  f->ref = 1;
-  f->type = file::FD_NONE;
-  return f;
-}
-
-// Increment ref count for file f.
-struct file*
-filedup(struct file *f)
-{
-  if (f->ref++ < 1)
-    panic("filedup");
-  return f;
-}
-
-// Close file f.  (Decrement ref count, close when reaches 0.)
 void
-fileclose(struct file *f)
+file::close(void)
 {
-  if (--f->ref > 0)
+  if (--ref_ > 0)
     return;
 
-  if(f->type == file::FD_PIPE)
-    pipeclose(f->pipe, f->writable);
-  else if(f->type == file::FD_INODE)
-    iput(f->ip);
-  else if(f->type == file::FD_SOCKET)
-    netclose(f->socket);
-  else if(f->type != file::FD_NONE)
-    panic("fileclose bad type");
-  kmfree(f, sizeof(struct file));
+  if(type == file::FD_PIPE)
+    pipeclose(pipe, writable);
+  else if(type == file::FD_INODE)
+    iput(ip);
+  else if(type == file::FD_SOCKET)
+    netclose(socket);
+  else if(type != file::FD_NONE)
+    panic("file::close bad type");
+  delete this;
+}
+
+file*
+file::dup(void)
+{
+  if (ref_++ < 1)
+    panic("file::dup");
+  return this;
 }
 
 // Get metadata about file f.

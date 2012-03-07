@@ -3,6 +3,8 @@
 #include "spinlock.h"
 #include "atomic.hh"
 #include "cpputil.hh"
+#include "fs.h"
+#include "file.hh"
 #include "filetable.hh"
 
 // Saved registers for kernel context switches.
