@@ -5,6 +5,7 @@ public:
   filetable() : ref_(1) {
     for(int fd = 0; fd < NOFILE; fd++)
       ofile_[fd] = nullptr;
+    initlock(&lock_, "filetable", 0);
   }
 
   filetable(const filetable &f) : ref_(1) {
@@ -14,6 +15,7 @@ public:
       else
         ofile_[fd] = nullptr;
     }
+    initlock(&lock_, "filetable", 0);
   }
   
   ~filetable() {
@@ -23,29 +25,40 @@ public:
         ofile_[fd] = 0;
       }
     }
+    destroylock(&lock_);
   }
 
-  struct file *getfile(int fd) {
+  file *getfile(int fd) {
+    file *f;
+
     if (fd < 0 || fd >= NOFILE)
       return nullptr;
-
-    return ofile_[fd];
+    acquire(&lock_);
+    f = ofile_[fd];
+    // XXX(sbw) f->inc();
+    release(&lock_);
+    return f;
   }
 
   int allocfd(struct file *f) {
-    for (int fd = 0; fd < NOFILE; fd++){
+    acquire(&lock_);
+    for (int fd = 0; fd < NOFILE; fd++) {
       if (ofile_[fd] == nullptr){
         ofile_[fd] = f;
+        release(&lock_);
         return fd;
       }
     }
-    
+    release(&lock_);    
     return -1;
   }
 
   void close(int fd) {
     struct file *f = ofile_[fd];
+    
+    acquire(&lock_);
     ofile_[fd] = nullptr;
+    release(&lock_);
     f->close();
   }
 
@@ -63,4 +76,5 @@ public:
 private:
   struct file *ofile_[NOFILE];
   std::atomic<u64> ref_;
+  struct spinlock lock_;
 };
