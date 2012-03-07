@@ -58,12 +58,17 @@ public:
   }
 
   void close(int fd) {
-    struct file *f = ofile_[fd];
+    // XXX(sbw) if f->ref_ > 1 the kernel will not actually close 
+    // the file when this function returns (i.e. sys_close can return 
+    // while the file/pipe/socket is still open).  Maybe we should clear 
+    // ofile_[fd], wait until f.ref_ == 1, f->dec(), and then return.
     
     acquire(&lock_);
+    struct file *f = ofile_[fd];
     ofile_[fd] = nullptr;
     release(&lock_);
-    f->dec();
+    if (f)
+      f->dec();
   }
 
   void decref() {
