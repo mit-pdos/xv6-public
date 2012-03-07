@@ -4,13 +4,15 @@
 #include "ns.hh"
 #include "gc.hh"
 #include "atomic.hh"
+#include "ref.hh"
 
 u64 namehash(const strbuf<DIRSIZ>&);
 
-struct file {
+struct file : public referenced {
   file() : type(file::FD_NONE), readable(0), writable(0), 
-           socket(0), pipe(nullptr), ip(nullptr), off(0), 
-           ref_(1) {}
+           socket(0), pipe(nullptr), ip(nullptr), off(0) {
+    inc();
+  }
   file *dup();
   void close();
 
@@ -25,8 +27,8 @@ struct file {
   u32 off;
   NEW_DELETE_OPS(file);
 
-private:
-  std::atomic<int> ref_;
+protected:
+  virtual void onzero() const;
 };
 
 // in-core file system types

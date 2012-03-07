@@ -26,7 +26,8 @@ UPROGS= \
 	wqsh \
 	cp \
 	perf \
-	xls
+	xls \
+	xdu
 # pdu
 # pls
 
