@@ -1,4 +1,4 @@
-CXXFLAGS := -Iuser $(filter-out -nostdinc++ -Istdinc, $(CXXFLAGS)) -msse
+CXXFLAGS := -iquote user $(filter-out -nostdinc++ -Istdinc, $(CXXFLAGS)) -msse
 
 $(O)/utest: $(O)/kernel/crange.o \
             $(O)/kernel/gc.o \
@@ -10,3 +10,6 @@ $(O)/utest: $(O)/kernel/crange.o \
 
 .PRECIOUS: $(O)/user/%.o
 -include $(O)/user/*.d
+
+ALL := $(O)/utest
+

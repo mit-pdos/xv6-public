@@ -26,7 +26,7 @@ NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
 STRIP = $(TOOLPREFIX)strip
 
-INCLUDES  = -Iinclude -Istdinc -I$(QEMUSRC) -include param.h -include include/compiler.h
+INCLUDES  = -iquote include -Istdinc -I$(QEMUSRC) -include param.h -include include/compiler.h
 COMFLAGS  = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) -DXV6 \
 	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer -fms-extensions \
 	    -mno-sse -mcx16 -mno-red-zone $(INCLUDES)
@@ -36,6 +36,7 @@ CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-exceptions -fno-rtti -
 ASFLAGS   = -Iinclude -I$(O)/include -m64 -gdwarf-2 -MD -DHW_$(HW) -include param.h
 LDFLAGS   = -m elf_x86_64
 
+ALL := 
 all:
 
 include net/Makefrag
@@ -113,3 +114,6 @@ reboot:
 
 clean: 
 	rm -fr $(O)
+
+all:	$(ALL)
+

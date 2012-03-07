@@ -6,4 +6,4 @@ $(O)/tools/perf-report: tools/perf-report.cc include/sampler.h
 	$(Q)mkdir -p $(@D)
 	g++ -std=c++0x -m64 -Werror -Wall -I. -o $@ $<
 
-all: $(O)/tools/perf-report
+ALL += $(O)/tools/perf-report

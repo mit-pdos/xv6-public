@@ -22,3 +22,5 @@ $(O)/%: $(O)/user/%.o $(O)/user/wq.o
 
 .PRECIOUS: $(O)/user/%.o
 -include $(O)/user/*.d
+
+ALL := $(O)/xdu $(O)/xls

@@ -51,8 +51,7 @@ OBJS = \
 OBJS := $(addprefix $(O)/kernel/, $(OBJS))
 
 KERN = $(O)/kernel.elf
-
-all: $(KERN)
+ALL += $(KERN)
 
 $(O)/kernel/%.o: CFLAGS+=-mcmodel=kernel -DXV6_KERNEL
 $(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel -DXV6_KERNEL

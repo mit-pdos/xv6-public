@@ -1,7 +1,7 @@
 #ifndef LWIP_ARCH_CC_H
 #define LWIP_ARCH_CC_H
 
-#include <types.h>
+#include "types.h"
 
 void lwip_cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
 void lwip_panic(const char*, ...) __noret__ __attribute__((format(printf, 1, 2)));
