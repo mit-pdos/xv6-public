@@ -13,6 +13,7 @@ struct file : public referenced {
   file *dup();
   int stat(struct stat*);
   int read(char *addr, int n);
+  ssize_t pread(char *addr, size_t n, off_t offset);
   int write(char *addr, int n);
 
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;  

@@ -57,7 +57,6 @@ sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 {
   sref<file> f;
   uptr i = (uptr)ubuf;
-  int r;
 
   if (!getfile(fd, &f))
     return -1;
@@ -65,16 +64,8 @@ sys_pread(int fd, void *ubuf, size_t count, off_t offset)
   for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
     if(pagefault(myproc()->vmap, va, 0) < 0)
       return -1;
-  
-  if(f->type == file::FD_INODE){
-    ilock(f->ip, 0);
-    if(f->ip->type == 0)
-      panic("fileread");
-    r = readi(f->ip, (char*)ubuf, offset, count);
-    iunlock(f->ip);
-    return r;
-  }
-  return -1;
+
+  return f->pread((char*)ubuf, count, offset);
 }
 
 long

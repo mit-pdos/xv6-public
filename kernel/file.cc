@@ -80,6 +80,21 @@ file::read(char *addr, int n)
   panic("fileread");
 }
 
+ssize_t
+file::pread(char *addr, size_t n, off_t off)
+{
+  if(type == file::FD_INODE){
+    int r;
+    ilock(ip, 0);
+    if(ip->type == 0)
+      panic("file::pread");
+    r = readi(ip, addr, off, n);
+    iunlock(ip);
+    return r;
+  }
+  return -1;
+}
+
 int
 file::write(char *addr, int n)
 {
