@@ -24,7 +24,8 @@ UPROGS= \
 	scripttest \
 	ftest \
 	perf \
-	xls
+	xls \
+	xdu
 # pdu
 # pls
 
