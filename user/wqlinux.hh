@@ -84,7 +84,5 @@ wqarch_init(void)
 }
 
 #define xprintf        printf
-#define xmalloc(n)     malloc(n)
-#define xfree(p, sz)   free(p)
 #define pushcli()
 #define popcli()

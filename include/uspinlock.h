@@ -17,3 +17,9 @@ release(struct uspinlock *lk)
 {
   xchg32(&lk->locked, 0);
 }
+
+static int inline
+tryacquire(struct uspinlock *lk)
+{
+  return xchg32(&lk->locked, 1) == 0;
+}

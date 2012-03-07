@@ -7,6 +7,7 @@ class work;
 int             wq_trywork(void);
 int             wq_push(work *w);
 void            initwq(void);
+void            wq_dump(void);
 
 struct work {
   virtual void run() = 0;
@@ -37,7 +38,8 @@ struct cwork : public work {
 #define xmalloc(n)   kmalloc(n) 
 #define xfree(p, sz) kmfree(p, sz)
 #else
-#warning "Unknown wq implementation"
+#define xmalloc(n)     malloc(n)
+#define xfree(p, sz)   free(p)
 #endif
 
 #include "wqfor.hh"

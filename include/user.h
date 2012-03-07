@@ -34,6 +34,7 @@ int setfs(u64 base);
 
 // ulib.c
 int stat(char*, struct stat*);
+int fstatat(int dirfd, const char*, struct stat*);
 char* strcpy(char*, const char*);
 void *memmove(void*, const void*, int);
 char* strchr(const char*, char c);

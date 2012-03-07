@@ -6,12 +6,14 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "user/dirit.hh"
+#include "wq.hh"
 #define ST_SIZE(st)  (st).st_size
 #define ST_TYPE(st)  (ST_ISDIR(st) ? 1 : ST_ISREG(st) ? 2 : 3)
 #define ST_INO(st)   (st).st_ino
 #define ST_ISDIR(st) S_ISDIR((st).st_mode)
 #define ST_ISREG(st) S_ISREG((st).st_mode)
 #define BSIZ 256
+#define xfstatat(fd, n, st) fstatat(fd, n, st, 0)
 #else // assume xv6
 #include "types.h"
 #include "stat.h"
@@ -19,6 +21,7 @@
 #include "fs.h"
 #include "lib.h"
 #include "dirit.hh"
+#include "wq.hh"
 #define ST_SIZE(st)  (st).size
 #define ST_TYPE(st)  (st).type
 #define ST_INO(st)   (st).ino
@@ -26,12 +29,12 @@
 #define ST_ISREG(st) ((st).type == T_FILE)
 #define BSIZ (DIRSIZ + 1)
 #define stderr 2
+#define xfstatat fstatat
 #endif
 
 void
 ls(const char *path)
 {
-  char buf[512], *p;
   int fd;
   struct stat st;
   
@@ -45,33 +48,29 @@ ls(const char *path)
     close(fd);
     return;
   }
-  
+ 
   if (ST_ISREG(st)) {
     printf("%u %10lu %10lu %s\n", ST_TYPE(st), ST_INO(st), ST_SIZE(st), path);
+    close(fd);
   } else if (ST_ISDIR(st)) {
-    if(strlen(path) + 1 + BSIZ > sizeof buf) {
-      printf("ls: path too long\n");
-    }
-    strcpy(buf, path);
-    p = buf+strlen(buf);
-    *p++ = '/';
     dirit di(fd);
-    for (; !di.end(); ++di) {
-      const char *name = *di;
-      size_t len = strlen(name);
-      memmove(p, name, len);
-      p[len] = 0;
-      if (stat(buf, &st) < 0){
+    wq_for<dirit>(di,
+                  [](dirit &i)->bool { return !i.end(); },
+                  [&fd](const char *name)->void
+    {
+      struct stat st;
+      if (xfstatat(fd, name, &st) < 0){
+        printf("ls: cannot stat %s\n", name);
         free((void*)name);
-        printf("ls: cannot stat %s\n", buf);
-        continue;
+        return;
       }
 
       printf("%u %10lu %10lu %s\n", ST_TYPE(st), ST_INO(st), ST_SIZE(st), name);
       free((void*)name);
-    }
+    });
+  } else {
+    close(fd);
   }
-  close(fd);
 }
 
 int
@@ -79,11 +78,16 @@ main(int argc, char *argv[])
 {
   int i;
 
-  if(argc < 2){
+  initwq();
+
+  if(argc < 2) {
     ls(".");
-    return 0;
+  } else {
+    // XXX(sbw) wq_for
+    for (i=1; i<argc; i++)
+      ls(argv[i]);
   }
-  for(i=1; i<argc; i++)
-    ls(argv[i]);
+  
+  wq_dump();
   return 0;
 }

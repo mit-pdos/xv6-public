@@ -1,13 +1,23 @@
+#pragma once
+
 #include "cpputil.hh"
 #include "ns.hh"
 #include "gc.hh"
 #include "atomic.hh"
+#include "ref.hh"
 
 u64 namehash(const strbuf<DIRSIZ>&);
 
-struct file {
-  enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;
-  std::atomic<int> ref; // reference count
+struct file : public referenced {
+  static file *alloc();
+  file *dup();
+  int stat(struct stat*);
+  int read(char *addr, int n);
+  ssize_t pread(char *addr, size_t n, off_t offset);
+  int write(char *addr, int n);
+
+  enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;  
+
   char readable;
   char writable;
 
@@ -15,8 +25,14 @@ struct file {
   struct pipe *pipe;
   struct inode *ip;
   u32 off;
-};
+  NEW_DELETE_OPS(file);
 
+private:
+  file();  
+
+protected:
+  virtual void onzero() const;
+};
 
 // in-core file system types
 

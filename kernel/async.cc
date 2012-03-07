@@ -56,7 +56,7 @@ long
 sys_async(int fd, size_t count, off_t off,
           msgid_t msgid, pageid_t pageid)
 {
-  struct file *f;
+  sref<file> f;;
   cwork *w;
 
   char *kshared = myproc()->vmap->kshared;
@@ -72,9 +72,9 @@ sys_async(int fd, size_t count, off_t off,
   msg = &ipcctl->msg[msgid];
   ubuf = (kshared+PGSIZE+(pageid*PGSIZE));
 
-  if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
+  if (!myproc()->ftable->getfile(fd, &f))
     return -1;
-  if(f->type != file::FD_INODE)
+  if (f->type != file::FD_INODE)
     return -1;
 
   f->ip->ref++;

@@ -12,115 +12,91 @@
 #include "cpu.hh"
 #include "net.hh"
 
-// Fetch the nth word-sized system call argument as a file descriptor
-// and return both the descriptor and the corresponding struct file.
-static int
-argfd(int fd, struct file **pf)
+static bool
+getfile(int fd, sref<file> *f)
 {
-  struct file *f;
-
-  if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
-    return -1;
-  if(pf)
-    *pf = f;
-  return 0;
+  return myproc()->ftable->getfile(fd, f);
 }
 
 // Allocate a file descriptor for the given file.
 // Takes over file reference from caller on success.
 static int
-fdalloc(struct file *f)
+fdalloc(file *f)
 {
-  int fd;
-
-  for(fd = 0; fd < NOFILE; fd++){
-    if(myproc()->ofile[fd] == 0){
-      myproc()->ofile[fd] = f;
-      return fd;
-    }
-  }
-  return -1;
+  return myproc()->ftable->allocfd(f);
 }
 
 long
 sys_dup(int ofd)
 {
-  struct file *f;
+  sref<file> f;
   int fd;
   
-  if(argfd(ofd, &f) < 0)
+  if (!getfile(ofd, &f))
     return -1;
-  if((fd=fdalloc(f)) < 0)
+  f->inc();
+  if ((fd = fdalloc(f.ptr())) < 0) {
+    f->dec();
     return -1;
-  filedup(f);
+  }
   return fd;
 }
 
 s64
 sys_read(int fd, char *p, int n)
 {
-  struct file *f;
+  sref<file> f;
 
-  if(argfd(fd, &f) < 0 || argcheckptr(p, n) < 0)
+  if(!getfile(fd, &f) || argcheckptr(p, n) < 0)
     return -1;
-  return fileread(f, p, n);
+  return f->read(p, n);
 }
 
 ssize_t
 sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 {
-  struct file *f;
+  sref<file> f;
   uptr i = (uptr)ubuf;
-  int r;
 
-  if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
+  if (!getfile(fd, &f))
     return -1;
 
   for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
     if(pagefault(myproc()->vmap, va, 0) < 0)
       return -1;
-  
-  if(f->type == file::FD_INODE){
-    ilock(f->ip, 0);
-    if(f->ip->type == 0)
-      panic("fileread");
-    r = readi(f->ip, (char*)ubuf, offset, count);
-    iunlock(f->ip);
-    return r;
-  }
-  return -1;
+
+  return f->pread((char*)ubuf, count, offset);
 }
 
 long
 sys_write(int fd, char *p, int n)
 {
-  struct file *f;
+  sref<file> f;
 
-  if(argfd(fd, &f) < 0 || argcheckptr(p, n) < 0)
+  if (!getfile(fd, &f) || argcheckptr(p, n) < 0)
     return -1;
-  return filewrite(f, p, n);
+  return f->write(p, n);
 }
 
 long
 sys_close(int fd)
 {
-  struct file *f;
+  sref<file> f;
   
-  if(argfd(fd, &f) < 0)
+  if (!getfile(fd, &f))
     return -1;
-  myproc()->ofile[fd] = 0;
-  fileclose(f);
+  myproc()->ftable->close(fd);
   return 0;
 }
 
 long
 sys_fstat(int fd, struct stat *st)
 {
-  struct file *f;
+  sref<file> f;
   
-  if(argfd(fd, &f) < 0 || argcheckptr(st, sizeof(*st)) < 0)
+  if (!getfile(fd, &f) || argcheckptr(st, sizeof(*st)) < 0)
     return -1;
-  return filestat(f, st);
+  return f->stat(st);
 }
 
 // Create the path new as a link to the same inode as old.
@@ -296,8 +272,8 @@ sys_openat(int dirfd, const char *path, int omode)
   } else if (dirfd < 0 || dirfd >= NOFILE) {
     return -1;
   } else {
-    struct file *fdir = myproc()->ofile[dirfd];
-    if (fdir->type != file::FD_INODE)
+    sref<file> fdir;
+    if (!getfile(dirfd, &fdir) || fdir->type != file::FD_INODE)
       return -1;
     cwd = fdir->ip;
   }
@@ -326,9 +302,9 @@ sys_openat(int dirfd, const char *path, int omode)
     }
   }
 
-  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
+  if((f = file::alloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
-      fileclose(f);
+      f->dec();
     iunlockput(ip);
     return -1;
   }
@@ -424,9 +400,8 @@ sys_pipe(int *fd)
   fd0 = -1;
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
     if(fd0 >= 0)
-      myproc()->ofile[fd0] = 0;
-    fileclose(rf);
-    fileclose(wf);
+      myproc()->ftable->close(fd0);
+    wf->dec();
     return -1;
   }
   fd[0] = fd0;
@@ -437,21 +412,19 @@ sys_pipe(int *fd)
 static void
 freesocket(int fd)
 {
-  fileclose(myproc()->ofile[fd]);
-  myproc()->ofile[fd] = 0;  
+  myproc()->ftable->close(fd);
 }
 
-static int
-getsocket(int fd, struct file **ret)
+static bool
+getsocket(int fd, sref<file> *f)
 {
-  struct file *f;
-  if (fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
-    return -1;
-  if (f->type != file::FD_SOCKET)
-    return -1;
-
-  *ret = f;
-  return 0;
+  if (!getfile(fd, f))
+    return false;
+  if ((*f)->type != file::FD_SOCKET) {
+    f->init(nullptr);
+    return false;
+  }
+  return true;
 }
 
 static int
@@ -460,13 +433,13 @@ allocsocket(struct file **rf, int *rfd)
   struct file *f;
   int fd;
 
-  f = filealloc();
+  f = file::alloc();
   if (f == nullptr)
     return -1;
 
   fd = fdalloc(f);
   if (fd < 0) {
-    fileclose(f);
+    f->dec();
     return fd;
   }
 
@@ -493,8 +466,7 @@ sys_socket(int domain, int type, int protocol)
 
   s = netsocket(domain, type, protocol);
   if (s < 0) {
-    myproc()->ofile[fd] = 0;
-    fileclose(f);
+    myproc()->ftable->close(fd);
     return s;
   }
 
@@ -506,9 +478,9 @@ long
 sys_bind(int xsock, void *xaddr, int xaddrlen)
 {
   extern long netbind(int, void*, int);
-  struct file *f;
+  sref<file> f;
 
-  if (getsocket(xsock, &f))
+  if (!getsocket(xsock, &f))
     return -1;
 
   return netbind(f->socket, xaddr, xaddrlen);
@@ -518,9 +490,9 @@ long
 sys_listen(int xsock, int backlog)
 {
   extern long netlisten(int, int);
-  struct file *f;
+  sref<file> f;
 
-  if (getsocket(xsock, &f))
+  if (!getsocket(xsock, &f))
     return -1;
 
   return netlisten(f->socket, backlog);
@@ -530,11 +502,12 @@ long
 sys_accept(int xsock, void *xaddr, void *xaddrlen)
 {
   extern long netaccept(int, void*, void*);
-  struct file *f, *cf;
+  file *cf;
+  sref<file> f;
   int cfd;
   int ss;
 
-  if (getsocket(xsock, &f))
+  if (!getsocket(xsock, &f))
     return -1;
 
   if (allocsocket(&cf, &cfd))
