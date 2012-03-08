@@ -9,7 +9,7 @@
 typedef struct spinlock wqlock_t;
 
 static inline void*
-allocwq(void)
+allocwq(unsigned long nbytes)
 {
   return ksalloc(slab_wq);
 }

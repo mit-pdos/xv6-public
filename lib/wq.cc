@@ -42,7 +42,11 @@ private:
 
 static wq *wq_;
 
-static_assert(sizeof(wq) <= WQSIZE, "WQSIZE too small");
+size_t
+wq_size(void)
+{
+  return sizeof(wq);
+}
 
 int
 wq_push(work *w)
@@ -76,7 +80,7 @@ void*
 wq::operator new(unsigned long nbytes)
 {
   assert(nbytes == sizeof(wq));
-  return allocwq();
+  return allocwq(nbytes);
 }
 
 wq::wq(void)

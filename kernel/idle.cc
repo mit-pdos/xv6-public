@@ -7,6 +7,7 @@
 #include "cpu.hh"
 #include "sched.hh"
 #include "percpu.hh"
+#include "wq.hh"
 
 struct idle {
   struct proc *cur;

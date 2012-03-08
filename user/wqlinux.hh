@@ -18,9 +18,9 @@ mycpuid(void)
 }
 
 static inline void*
-allocwq(void)
+allocwq(unsigned long nbytes)
 {
-  return malloc(WQSIZE);
+  return malloc(nbytes);
 }
 
 static inline void

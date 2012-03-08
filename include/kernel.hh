@@ -241,11 +241,6 @@ void            uartintr(void);
 void            switchvm(struct proc*);
 int             pagefault(struct vmap *, uptr, u32);
 
-// wq.c
-int             wq_trywork(void);
-int             wq_push(work *w);
-void            wq_dump(void);
-
 // cilk.c
 void            initcilkframe(struct cilkframe*);
 #if CILKENABLE

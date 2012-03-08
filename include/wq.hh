@@ -1,13 +1,12 @@
 #pragma once
 
-#define WQSIZE 8192
-
 class work;
 
 int             wq_trywork(void);
 int             wq_push(work *w);
-void            initwq(void);
 void            wq_dump(void);
+size_t          wq_size(void);
+void            initwq(void);
 
 struct work {
   virtual void run() = 0;

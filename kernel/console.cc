@@ -17,6 +17,7 @@
 #include <stdarg.h>
 #include "fmt.hh"
 #include "sperf.hh"
+#include "wq.hh"
 
 #define BACKSPACE 0x100
 
