@@ -73,6 +73,12 @@ initwq(void)
   wqarch_init();
 }
 
+void
+exitwq(void)
+{
+  wqarch_exit();
+}
+
 //
 // wq
 //

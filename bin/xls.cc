@@ -89,5 +89,6 @@ main(int argc, char *argv[])
   }
   
   wq_dump();
+  exitwq();
   return 0;
 }

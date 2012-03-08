@@ -74,5 +74,6 @@ main(int ac, char **av)
   initwq();
   printf("%ld\n", du(open(".", 0)));
   wq_dump();
+  exitwq();
   return 0;
 }

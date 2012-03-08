@@ -8,6 +8,7 @@
 typedef struct uspinlock wqlock_t;
 
 static pthread_key_t idkey;
+static volatile int exiting;
 
 int
 mycpuid(void)
@@ -58,7 +59,7 @@ workerth(void *x)
   
   setaffinity(c);
   pthread_setspecific(idkey, (void*)c);
-  while (1)
+  while (!exiting)
     wq_trywork();
 
   return 0;
@@ -81,6 +82,12 @@ wqarch_init(void)
     if (r < 0)
       die("wqarch_init: pthread_create");
   }
+}
+
+static inline void
+wqarch_exit(void)
+{
+  exiting = 1;
 }
 
 #define xprintf      printf 

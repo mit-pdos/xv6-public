@@ -7,6 +7,7 @@ int             wq_push(work *w);
 void            wq_dump(void);
 size_t          wq_size(void);
 void            initwq(void);
+void            exitwq(void);
 
 struct work {
   virtual void run() = 0;
