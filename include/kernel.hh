@@ -73,6 +73,7 @@ void            panic(const char*, ...)
                   __noret__ __attribute__((format(printf, 1, 2)));
 void            kerneltrap(struct trapframe *tf) __noret__;
 void            snprintf(char *buf, u32 n, const char *fmt, ...);
+void            printtrace(u64 rbp);
 
 #define assert(c)   if (!(c)) { cprintf("%s:%d: ", __FILE__, __LINE__); panic("assertion failure"); }
 

@@ -479,8 +479,10 @@ vmap::pagefault(uptr va, u32 err)
     return -1;
 
   atomic<pme_t> *pte = walkpgdir(pml4, va, 1);
-  if (pte == nullptr)
-    panic("pagefault: couldn't allocate page table");
+  if (pte == nullptr) {
+    cprintf("pagefault: couldn't allocate page table\n");
+    return -1;
+  }
 
  retry:
   pme_t ptev = pte->load();
