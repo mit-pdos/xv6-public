@@ -95,12 +95,16 @@ static int
 samplog(struct trapframe *tf)
 {
   struct pmulog *l;
+  struct pmuevent *e;
   l = &pmulog[mycpu()->id];
 
   if (l->count == l->capacity)
     return 0;
 
-  l->event[l->count].rip = tf->rip;
+  e = &l->event[l->count];
+
+  e->rip = tf->rip;
+  getcallerpcs((void*)tf->rbp, e->trace, NELEM(e->trace));
   l->count++;
   return 1;
 }

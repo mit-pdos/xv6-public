@@ -6,8 +6,11 @@ struct sampconf {
   u64 period;
 };
 
+#define NTRACE 4
+
 struct pmuevent {
   u64 rip;
+  uptr trace[NTRACE];
 };
 
 struct logheader {
