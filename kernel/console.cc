@@ -148,7 +148,7 @@ puts(const char *s)
 
 }
 
-static inline void
+void
 printtrace(u64 rbp)
 {
   uptr pc[10];
