@@ -7,7 +7,8 @@ struct kstack_tag {
 extern struct kstack_tag kstack_tag[NCPU];
 
 // Tell mtrace about switching threads/processes
-static inline void mtstart(void *ip, struct proc *p)
+template<typename Ret, typename... Args>
+static inline void mtstart(Ret (*ip)(Args...), struct proc *p)
 {
   unsigned long new_tag;
   int i;

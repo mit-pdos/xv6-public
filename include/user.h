@@ -36,6 +36,8 @@ int setfs(u64 base);
 int stat(char*, struct stat*);
 int fstatat(int dirfd, const char*, struct stat*);
 char* strcpy(char*, const char*);
+char* strncpy(char *s, const char *t, size_t n);
+void* memcpy(void *dst, const void *src, size_t n);
 void* memmove(void*, const void*, size_t);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);

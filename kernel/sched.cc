@@ -84,7 +84,6 @@ sched(void)
   next->set_state(RUNNING);
   next->tsc = rdtsc();
 
-  mtpause(next);
   if (next->context->rip != (uptr)forkret && 
       next->context->rip != (uptr)threadstub)
   {

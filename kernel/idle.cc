@@ -8,6 +8,7 @@
 #include "sched.hh"
 #include "percpu.hh"
 #include "wq.hh"
+#include "kmtrace.hh"
 
 struct idle {
   struct proc *cur;
@@ -89,7 +90,7 @@ idleloop(void)
 
   // Enabling mtrace calls in scheduler generates many mtrace_call_entrys.
   // mtrace_call_set(1, cpu->id);
-  //mtstart(scheduler, idlep);
+  mtstart(idleloop, myproc());
 
   sti();
   for (;;) {
