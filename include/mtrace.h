@@ -11,8 +11,8 @@ typedef unsigned long long uint64_t;
 typedef __PTRDIFF_TYPE__ intptr_t;
 typedef unsigned __PTRDIFF_TYPE__ uintptr_t;
 
-void* memcpy(void *dst, const void *src, u32 n);
-char* strncpy(char *s, const char *t, int n);
+void* memcpy(void *dst, const void *src, size_t n);
+char* strncpy(char *s, const char *t, size_t n);
 
 #define RET_IP() ((unsigned long)__builtin_return_address(0))
 

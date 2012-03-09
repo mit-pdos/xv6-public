@@ -36,10 +36,10 @@ int setfs(u64 base);
 int stat(char*, struct stat*);
 int fstatat(int dirfd, const char*, struct stat*);
 char* strcpy(char*, const char*);
-void *memmove(void*, const void*, int);
+void* memmove(void*, const void*, size_t);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
-int strncmp(const char *p, const char *q, u32 n);
+int strncmp(const char *p, const char *q, size_t n);
 int open(const char*, int);
 
 char* gets(char*, int max);

@@ -5,7 +5,7 @@
 #include "amd64.h"
 
 char*
-strncpy(char *s, const char *t, int n)
+strncpy(char *s, const char *t, size_t n)
 {
   int tlen = strlen((char *)t);
   memmove(s, (char *)t, n > tlen ? tlen : n);
@@ -34,7 +34,7 @@ strcmp(const char *p, const char *q)
 }
 
 int
-strncmp(const char *p, const char *q, u32 n)
+strncmp(const char *p, const char *q, size_t n)
 {
   while(n > 0 && *p && *p == *q)
     n--, p++, q++;
@@ -127,13 +127,13 @@ atoi(const char *s)
 }
 
 void*
-memcpy(void *dst, const void *src, unsigned int n)
+memcpy(void *dst, const void *src, size_t n)
 {
   return memmove(dst, (void *)src, n);
 }
 
 void*
-memmove(void *vdst, const void *vsrc, int n)
+memmove(void *vdst, const void *vsrc, size_t n)
 {
   const char *src;
   char *dst;

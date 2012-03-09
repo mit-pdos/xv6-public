@@ -215,14 +215,14 @@ int             kmemcpy(void*, void*, u64);
 u64             syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num);
 
 // string.c
-extern  "C" int  memcmp(const void*, const void*, u32);
-void*           memmove(void*, const void*, u32);
-extern "C" void* memset(void*, int, u32);
-extern "C" void* memcpy(void*, const void *, u32);
-char*           safestrcpy(char*, const char*, u32);
+extern  "C" int  memcmp(const void*, const void*, size_t);
+void*           memmove(void*, const void*, size_t);
+extern "C" void* memset(void*, int, size_t);
+extern "C" void* memcpy(void*, const void *, size_t);
+char*           safestrcpy(char*, const char*, size_t);
 extern "C" unsigned int strlen(const char*);
-int             strncmp(const char*, const char*, u32);
-char*           strncpy(char*, const char*, u32);
+int             strncmp(const char*, const char*, size_t);
+char*           strncpy(char*, const char*, size_t);
 int             strcmp(const char *p, const char *q);
 
 // swtch.S
