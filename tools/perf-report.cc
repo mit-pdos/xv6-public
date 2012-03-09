@@ -18,6 +18,8 @@
 #include "include/types.h"
 #include "include/sampler.h"
 
+static bool stacktrace_mode = true;
+
 static void __attribute__((noreturn)) 
 edie(const char* errstr, ...) 
 {
@@ -168,6 +170,56 @@ struct gt
   }
 };
 
+struct pmuevent_ops {
+  size_t operator()(const pmuevent* x) const {
+    size_t h = std::hash<u64>()(x->rip);
+    if (!stacktrace_mode)
+      return h;
+    for (int i = 0; i < NTRACE; i++)
+      h ^= std::hash<u64>()(x->trace[i]);
+    return h;
+  }
+
+  bool operator() (const pmuevent* x0, const pmuevent* x1) const {
+    if (x0->rip != x1->rip)
+      return false;
+    if (!stacktrace_mode)
+      return true;
+    for (int i = 0; i < NTRACE; i++)
+      if (x0->trace[i] != x1->trace[i])
+        return false;
+    return true;
+  }
+};
+
+static void
+print_entry(Addr2line &addr2line, int count, struct pmuevent *e)
+{
+  char *func;
+  char *file;
+  int line;
+  addr2line.lookup(e->rip, &func, &file, &line);
+  printf("%-10u %016"PRIx64" %s:%u %s\n", 
+         count, e->rip, file, line, func);
+  free(func);
+  free(file);
+
+  if (!stacktrace_mode)
+    return;
+
+  for (int i = 0; i < NTRACE; i++) {
+    if (e->trace[i] == 0)
+      break;
+    addr2line.lookup(e->trace[i], &func, &file, &line);    
+    printf("           %016"PRIx64" %s:%u %s\n", 
+           e->trace[i], file, line, func);
+    free(func);
+    free(file);
+  }
+
+  printf("\n");
+}
+
 int
 main(int ac, char **av)
 {
@@ -178,8 +230,10 @@ main(int ac, char **av)
   char *x;
   int fd;
 
-  if (ac < 3)
-    edie("usage: %s sample-file elf-file", av[0]);
+  if (ac < 3) {
+    fprintf(stderr, "usage: %s sample-file elf-file\n", av[0]);
+    exit(EXIT_FAILURE);
+  }
 
   sample = av[1];
   elf = av[2];
@@ -192,10 +246,8 @@ main(int ac, char **av)
 
   Addr2line addr2line(elf);
   
-  if (fstat(fd, &buf) < 0) {
-    perror("fstat");
-    exit(EXIT_FAILURE);
-  }
+  if (fstat(fd, &buf) < 0)
+    edie("fstat");
 
   x = (char*)mmap(0, buf.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
   if (x == MAP_FAILED) {
@@ -204,7 +256,7 @@ main(int ac, char **av)
   }
   header = (struct logheader*)x;
 
-  std::unordered_map<u64, int> map;
+  std::unordered_map<struct pmuevent*, int, pmuevent_ops, pmuevent_ops> map;
   for (u32 i = 0; i < header->ncpus; i++) {
     struct pmuevent *p;
     struct pmuevent *q;
@@ -212,28 +264,20 @@ main(int ac, char **av)
     p = (struct pmuevent*)(x + header->cpu[i].offset);
     q = (struct pmuevent*)(x + header->cpu[i].offset + header->cpu[i].size);
     for (; p < q; p++) {
-      auto it = map.find(p->rip);
+      auto it = map.find(p);
       if (it == map.end())
-        map[p->rip] = 1;
+        map[p] = 1;
       else
         it->second = it->second + 1;
     }
   }
-
-  std::map<int, u64, gt> sorted;
-  for (std::pair<const u64, int> &p : map)
+  
+  std::map<int, struct pmuevent*, gt> sorted;
+  for (std::pair<struct pmuevent* const, int> &p : map)
     sorted[p.second] = p.first;
 
-  for (std::pair<const int, u64> &p : sorted) {
-    char *func;
-    char *file;
-    int line;
-    addr2line.lookup(p.second, &func, &file, &line);
-    printf("%-10u %016"PRIx64" %s:%u %s\n", 
-           p.first, p.second, file, line, func);
-    free(func);
-    free(file);
-  }
+  for (std::pair<const int, struct pmuevent*> &p : sorted)
+    print_entry(addr2line, p.first, p.second);
 
   return 0;
 }
