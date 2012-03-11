@@ -14,6 +14,8 @@
 #define ST_ISREG(st) S_ISREG((st).st_mode)
 #define BSIZ 256
 #define xfstatat(fd, n, st) fstatat(fd, n, st, 0)
+#define perf_stop() do { } while(0)
+#define perf_start(x, y) do { } while (0)
 #else // assume xv6
 #include "types.h"
 #include "stat.h"
@@ -31,6 +33,8 @@
 #define stderr 2
 #define xfstatat fstatat
 #endif
+
+static const bool silent = false;
 
 void
 ls(const char *path)
@@ -50,7 +54,9 @@ ls(const char *path)
   }
  
   if (ST_ISREG(st)) {
-    printf("%u %10lu %10lu %s\n", ST_TYPE(st), ST_INO(st), ST_SIZE(st), path);
+    if (!silent)
+      printf("%u %10lu %10lu %s\n",
+             ST_TYPE(st), ST_INO(st), ST_SIZE(st), path);
     close(fd);
   } else if (ST_ISDIR(st)) {
     dirit di(fd);
@@ -64,8 +70,10 @@ ls(const char *path)
         free((void*)name);
         return;
       }
-
-      printf("%u %10lu %10lu %s\n", ST_TYPE(st), ST_INO(st), ST_SIZE(st), name);
+      
+      if (!silent)
+        printf("%u %10lu %10lu %s\n",
+               ST_TYPE(st), ST_INO(st), ST_SIZE(st), name);
       free((void*)name);
     });
   } else {
@@ -80,6 +88,7 @@ main(int argc, char *argv[])
 
   initwq();
 
+  perf_start(PERF_SELECTOR, 10000);
   if(argc < 2) {
     ls(".");
   } else {
@@ -87,6 +96,7 @@ main(int argc, char *argv[])
     for (i=1; i<argc; i++)
       ls(argv[i]);
   }
+  perf_stop();
   
   wq_dump();
   exitwq();

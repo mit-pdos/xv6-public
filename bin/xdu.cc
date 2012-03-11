@@ -15,9 +15,9 @@ typedef uint64_t u64;
 #define ST_SIZE(st)  (st).st_size
 #define ST_ISDIR(st) S_ISDIR((st).st_mode)
 #define BSIZ 256
-
+#define perf_stop() do { } while(0)
+#define perf_start(x, y) do { } while (0)
 #else // assume xv6
-
 #include "types.h"
 #include "stat.h"
 #include "user.h"
@@ -71,8 +71,13 @@ du(int fd)
 int
 main(int ac, char **av)
 {
+  size_t s;
+
   initwq();
-  printf("%ld\n", du(open(".", 0)));
+  perf_start(PERF_SELECTOR, PERF_PERIOD);
+  s = du(open(".", 0));
+  perf_stop();
+  printf("%ld\n", s);
   wq_dump();
   exitwq();
   return 0;
