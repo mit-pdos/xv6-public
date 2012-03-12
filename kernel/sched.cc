@@ -36,6 +36,8 @@ sched(void)
 {
   extern void threadstub(void);
   extern void forkret(void);
+  extern void idleheir(void *x);
+
   int intena;
 
 #if SPINLOCK_DEBUG
@@ -86,7 +88,8 @@ sched(void)
   next->tsc = rdtsc();
 
   if (next->context->rip != (uptr)forkret && 
-      next->context->rip != (uptr)threadstub)
+      next->context->rip != (uptr)threadstub &&
+      next->context->rip != (uptr)idleheir)
   {
     mtresume(next);
   }

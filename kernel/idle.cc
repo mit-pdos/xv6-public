@@ -52,8 +52,7 @@ idlebequeath(void)
   release(&idlem->heir->lock);
 }
 
-
-static void
+void
 idleheir(void *x)
 {
   post_swtch();
