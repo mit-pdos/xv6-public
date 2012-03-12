@@ -55,11 +55,6 @@ sched(void)
     panic("sched interruptible");
   intena = mycpu()->intena;
   myproc()->curcycles += rdtsc() - myproc()->tsc;
-  if (myproc()->get_state() == ZOMBIE)
-    mtstop(myproc());
-  else
-    mtpause(myproc());
-  mtign();
 
   struct proc *next = schednext();
   if (next == nullptr) {
@@ -79,6 +74,12 @@ sched(void)
   struct proc *prev = myproc();
   mycpu()->proc = next;
   mycpu()->prev = prev;
+
+  if (prev->get_state() == ZOMBIE)
+    mtstop(prev);
+  else
+    mtpause(prev);
+  mtign();
 
   switchvm(next);
   next->set_state(RUNNING);
