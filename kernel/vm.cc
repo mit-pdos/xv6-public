@@ -179,6 +179,7 @@ vmap::~vmap()
     ksfree(slab_kshared, kshared);
   if (pml4)
     freevm(pml4);
+  destroylock(&brklock_);
 }
 
 void
