@@ -136,6 +136,7 @@ doheap(struct eargs *args)
     goto bad;
   if(args->vmap->insert(vmn, BRK, 1) < 0)
     goto bad;
+  args->vmap->brk_ = BRK + 8;  // XXX so that brk-1 points within heap vma..
 
   return;
 
@@ -202,7 +203,6 @@ exec(const char *path, char **argv)
   // Commit to the user image.
   oldvmap = myproc()->vmap;
   myproc()->vmap = vmp;
-  myproc()->brk = BRK + 8;  // XXX so that brk-1 points within heap vma..
   myproc()->tf->rip = elf.entry;  // main
   
   switchvm(myproc());

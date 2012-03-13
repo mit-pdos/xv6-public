@@ -88,6 +88,8 @@ struct vmap {
   int copyout(uptr va, void *p, u64 len);
   NEW_DELETE_OPS(vmap)
 
+  uptr brk_;                    // Top of heap
+
  private:
   int pagefault_wcow(vma *m);
 };

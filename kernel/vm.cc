@@ -145,7 +145,8 @@ vmap::vmap() :
 #if VM_RADIX
     rx(PGSHIFT),
 #endif
-    ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared))
+    ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
+    brk_(0)
 {
   if (pml4 == 0) {
     cprintf("vmap_alloc: setupkvm out of memory\n");
@@ -288,6 +289,8 @@ vmap::copy(int share)
 
   if (share)
     tlbflush();  // Reload hardware page table
+
+  nm->brk_ = brk_;
 
   return nm;
 

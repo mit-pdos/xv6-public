@@ -36,7 +36,7 @@ struct kstack_tag kstack_tag[NCPU];
 enum { sched_debug = 0 };
 
 proc::proc(int npid) :
-  rcu_freed("proc"), vmap(0), brk(0), kstack(0),
+  rcu_freed("proc"), vmap(0), kstack(0),
   pid(npid), parent(0), tf(0), context(0), killed(0),
   ftable(0), cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
   on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0),
@@ -285,10 +285,10 @@ int
 growproc(int n)
 {
   struct vmap *m = myproc()->vmap;
-  auto curbrk = myproc()->brk;
+  auto curbrk = m->brk_;
 
   if(n < 0 && 0 - n <= curbrk){
-    myproc()->brk += n;
+    m->brk_ += n;
     return 0;
   }
 
@@ -312,7 +312,7 @@ growproc(int n)
 
     if (e->vma_start <= newstart) {
       if (e->vma_end >= newstart + newn) {
-        myproc()->brk += n;
+        m->brk_ += n;
         return 0;
       }
 
@@ -349,7 +349,7 @@ growproc(int n)
   span.replace(newstart, newn, repl);
 #endif
 
-  myproc()->brk += n;
+  m->brk_ += n;
   return 0;
 }
 
@@ -453,7 +453,6 @@ fork(int flags)
     np->vmap->ref++;
   }
 
-  np->brk = myproc()->brk;
   np->parent = myproc();
   *np->tf = *myproc()->tf;
 

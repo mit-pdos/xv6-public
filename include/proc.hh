@@ -43,7 +43,6 @@ enum procstate { EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 // Per-process state
 struct proc : public rcu_freed {
   struct vmap *vmap;           // va -> vma
-  uptr brk;                    // Top of heap
   char *kstack;                // Bottom of kernel stack for this process
   volatile int pid;            // Process ID
   struct proc *parent;         // Parent process

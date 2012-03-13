@@ -46,7 +46,7 @@ sys_sbrk(int n)
 {
   uptr addr;
 
-  addr = myproc()->brk;
+  addr = myproc()->vmap->brk_;
   if(growproc(n) < 0)
     return -1;
   return addr;
