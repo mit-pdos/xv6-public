@@ -148,6 +148,7 @@ vmap::vmap() :
     ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
     brk_(0)
 {
+  initlock(&brklock_, "brk_lock", LOCKSTAT_VM);
   if (pml4 == 0) {
     cprintf("vmap_alloc: setupkvm out of memory\n");
     goto err;
@@ -587,9 +588,11 @@ vmap::copyout(uptr va, void *p, u64 len)
 // Shrinking just decreases proc->brk; doesn't deallocate.
 // Return 0 on success, -1 on failure.
 int
-vmap::sbrk(int n)
+vmap::sbrk(ssize_t n, uptr *addr)
 {
+  scoped_acquire xlock(&brklock_);
   auto curbrk = brk_;
+  *addr = curbrk;
 
   if(n < 0 && 0 - n <= curbrk){
     brk_ += n;
@@ -626,7 +629,7 @@ vmap::sbrk(int n)
       prev = e;
 #endif
     } else {
-      cprintf("growproc: overlap with existing mapping; brk %lx n %d\n",
+      cprintf("growproc: overlap with existing mapping; brk %lx n %ld\n",
               curbrk, n);
       return -1;
     }

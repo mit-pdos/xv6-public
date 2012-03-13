@@ -86,7 +86,7 @@ struct vmap {
 
   int pagefault(uptr va, u32 err);
   int copyout(uptr va, void *p, u64 len);
-  int sbrk(int n);
+  int sbrk(ssize_t n, uptr *addr);
 
   NEW_DELETE_OPS(vmap)
 
@@ -94,4 +94,5 @@ struct vmap {
 
  private:
   int pagefault_wcow(vma *m);
+  struct spinlock brklock_;
 };
