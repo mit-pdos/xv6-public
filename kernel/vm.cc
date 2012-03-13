@@ -581,12 +581,6 @@ vmap::copyout(uptr va, void *p, u64 len)
   return 0;
 }
 
-// Grow/shrink current process's memory by n bytes.
-// Growing may allocate vmas and physical memory,
-// but avoids interfering with any existing vma.
-// Assumes vmas around proc->brk are part of the growable heap.
-// Shrinking just decreases proc->brk; doesn't deallocate.
-// Return 0 on success, -1 on failure.
 int
 vmap::sbrk(ssize_t n, uptr *addr)
 {
