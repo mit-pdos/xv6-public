@@ -579,3 +579,80 @@ vmap::copyout(uptr va, void *p, u64 len)
   }
   return 0;
 }
+
+// Grow/shrink current process's memory by n bytes.
+// Growing may allocate vmas and physical memory,
+// but avoids interfering with any existing vma.
+// Assumes vmas around proc->brk are part of the growable heap.
+// Shrinking just decreases proc->brk; doesn't deallocate.
+// Return 0 on success, -1 on failure.
+int
+vmap::sbrk(int n)
+{
+  auto curbrk = brk_;
+
+  if(n < 0 && 0 - n <= curbrk){
+    brk_ += n;
+    return 0;
+  }
+
+  if(n < 0 || n > USERTOP || curbrk + n > USERTOP)
+    return -1;
+
+  // look one page ahead, to check if the newly allocated region would
+  // abut the next-higher vma? we can't allow that, since then a future
+  // sbrk() would start to use the next region (e.g. the stack).
+  uptr newstart = PGROUNDUP(curbrk);
+  s64 newn = PGROUNDUP(n + curbrk - newstart);
+#if VM_CRANGE
+  range *prev = 0;
+  auto span = cr.search_lock(newstart, newn + PGSIZE);
+#endif
+#if VM_RADIX
+  auto span = rx.search_lock(newstart, newn + PGSIZE);
+#endif
+  for (auto r: span) {
+    vma *e = (vma*) r;
+
+    if (e->vma_start <= newstart) {
+      if (e->vma_end >= newstart + newn) {
+        brk_ += n;
+        return 0;
+      }
+
+      newn -= e->vma_end - newstart;
+      newstart = e->vma_end;
+#if VM_CRANGE
+      prev = e;
+#endif
+    } else {
+      cprintf("growproc: overlap with existing mapping; brk %lx n %d\n",
+              curbrk, n);
+      return -1;
+    }
+  }
+
+  vmnode *vmn = new vmnode(newn / PGSIZE);
+  if(vmn == 0){
+    cprintf("growproc: vmn_allocpg failed\n");
+    return -1;
+  }
+
+  vma *repl = new vma(this, newstart, newstart+newn, PRIVATE, vmn);
+  if (!repl) {
+    cprintf("growproc: out of vma\n");
+    delete vmn;
+    return -1;
+  }
+
+#if VM_CRANGE
+  span.replace(prev, repl);
+#endif
+
+#if VM_RADIX
+  span.replace(newstart, newn, repl);
+#endif
+
+  brk_ += n;
+  return 0;
+}

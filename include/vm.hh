@@ -86,6 +86,8 @@ struct vmap {
 
   int pagefault(uptr va, u32 err);
   int copyout(uptr va, void *p, u64 len);
+  int sbrk(int n);
+
   NEW_DELETE_OPS(vmap)
 
   uptr brk_;                    // Top of heap
