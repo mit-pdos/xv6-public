@@ -10,7 +10,7 @@ extern pgmap kpml4;
 
 void            freevm(pgmap *pml4);
 pgmap*          setupkvm(void);
-int             setupkshared(pgmap *pml4, char *kshared);
+int             setupuvm(pgmap *pml4, char *kshared, char *uwq);
 std::atomic<pme_t>* walkpgdir(pgmap *pml4, u64, int);
 void            tlbflush(void);
 

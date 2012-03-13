@@ -9,6 +9,8 @@
 #define VM_CRANGE 1
 #define VM_RADIX  0
 
+class wq;
+
 using std::atomic;
 
 // A memory object (physical pages or inode).
@@ -94,5 +96,7 @@ struct vmap {
 
  private:
   int pagefault_wcow(vma *m);
+
+  wq *const uwq_;
   struct spinlock brklock_;
 };

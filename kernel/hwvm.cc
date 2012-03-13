@@ -10,6 +10,7 @@
 #include "condvar.h"
 #include "proc.hh"
 #include "vm.hh"
+#include "wq.hh"
 
 using namespace std;
 
@@ -92,13 +93,24 @@ setupkvm(void)
 }
 
 int
-setupkshared(pgmap *pml4, char *kshared)
+setupuvm(pgmap *pml4, char *kshared, char *uwq)
 {
-  for (u64 off = 0; off < KSHAREDSIZE; off+=4096) {
-    atomic<pme_t> *pte = walkpgdir(pml4, (u64) (KSHARED+off), 1);
-    if (pte == nullptr)
-      panic("setupkshared: oops");
-    *pte = v2p(kshared+off) | PTE_P | PTE_U | PTE_W;
+  struct todo {
+    char *kvm;
+    char *uvm;
+    size_t size;
+  } todo[] = {
+    { kshared, (char*)KSHARED, KSHAREDSIZE },
+    { uwq,     (char*)USERWQ,  PGROUNDUP(wq_size()) }
+  };
+
+  for (int i = 0; i < NELEM(todo); i++) {
+    for (u64 off = 0; off < todo[i].size; off+=4096) {
+      atomic<pme_t> *pte = walkpgdir(pml4, (u64) (todo[i].uvm+off), 1);
+      if (pte == nullptr)
+        return -1;
+      *pte = v2p(todo[i].kvm+off) | PTE_P | PTE_U | PTE_W;
+    }
   }
   return 0;
 }

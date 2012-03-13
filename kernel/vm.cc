@@ -140,13 +140,13 @@ vma::~vma()
 
 vmap::vmap() :
 #if VM_CRANGE
-    cr(10),
+  cr(10),
 #endif
 #if VM_RADIX
-    rx(PGSHIFT),
+  rx(PGSHIFT),
 #endif
-    ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
-    brk_(0)
+  ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
+  brk_(0), uwq_((wq*) ksalloc(slab_userwq))
 {
   initlock(&brklock_, "brk_lock", LOCKSTAT_VM);
   if (pml4 == 0) {
@@ -159,7 +159,12 @@ vmap::vmap() :
     goto err;
   }
 
-  if (setupkshared(pml4, kshared)) {
+  if (uwq_ == nullptr) {
+    cprintf("vmap::vmap: userwq out of memory\n");
+    goto err;
+  }
+
+  if (setupuvm(pml4, kshared, (char*)uwq_)) {
     cprintf("vmap::vmap: setupkshared out of memory\n");
     goto err;
   }
@@ -169,6 +174,8 @@ vmap::vmap() :
  err:
   if (kshared)
     ksfree(slab_kshared, kshared);
+  if (uwq_)
+    ksfree(slab_userwq, uwq_);
   if (pml4)
     freevm(pml4);
 }
@@ -177,6 +184,8 @@ vmap::~vmap()
 {
   if (kshared)
     ksfree(slab_kshared, kshared);
+  if (uwq_)
+    ksfree(slab_userwq, uwq_);
   if (pml4)
     freevm(pml4);
 }

@@ -4,6 +4,7 @@
 #include "user.h"
 #include "wq.hh"
 #include "pthread.h"
+#include "memlayout.h"
 
 typedef struct uspinlock wqlock_t;
 
@@ -19,7 +20,11 @@ mycpuid(void)
 static inline void*
 allocwq(unsigned long nbytes)
 {
-  return malloc(nbytes);
+  static bool alloced;
+  if (alloced)
+    die("allocwq: allocing more than once");
+  alloced = true;
+  return (void*)USERWQ;
 }
 
 static inline void

@@ -27,9 +27,8 @@ UPROGS= \
 	cp \
 	perf \
 	xls \
-	xdu
-# pdu
-# pls
+	xdu \
+        wqtest
 
 ifeq ($(HAVE_LWIP),y)
 UPROGS += \
