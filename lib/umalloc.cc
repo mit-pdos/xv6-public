@@ -23,12 +23,11 @@ static Header *freep;
 
 static struct uspinlock lock;
 
-void
-free(void *ap)
+static void
+__free(void *ap)
 {
   Header *bp, *p;
 
-  acquire(&lock);
   bp = (Header*)ap - 1;
   for(p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
     if(p >= p->s.ptr && (bp > p || bp < p->s.ptr))
@@ -44,6 +43,13 @@ free(void *ap)
   } else
     p->s.ptr = bp;
   freep = p;
+}
+
+void
+free(void *ap)
+{
+  acquire(&lock);
+  __free(ap);
   release(&lock);
 }
 
@@ -60,7 +66,7 @@ morecore(u32 nu)
     return 0;
   hp = (Header*)p;
   hp->s.size = nu;
-  free((void*)(hp + 1));
+  __free((void*)(hp + 1));
   return freep;
 }
 
