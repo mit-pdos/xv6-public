@@ -23,3 +23,9 @@ tryacquire(struct uspinlock *lk)
 {
   return xchg32(&lk->locked, 1) == 0;
 }
+
+static void inline
+initlock(struct uspinlock *lk)
+{
+  lk->locked = 0;
+}

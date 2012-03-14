@@ -160,5 +160,7 @@ void __cxa_pure_virtual(void)
 void
 usetup(void)
 {
+  extern void initmalloc(void);
   forkt_setup(getpid());
+  initmalloc();
 }
