@@ -48,7 +48,7 @@ wqlock_release(wqlock_t *lock)
 static inline void
 wqlock_init(wqlock_t *lock) 
 {
-  lock->locked = 0;
+  initlock(lock);
 }
 
 static void

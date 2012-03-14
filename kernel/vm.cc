@@ -188,6 +188,7 @@ vmap::~vmap()
     ksfree(slab_userwq, uwq_);
   if (pml4)
     freevm(pml4);
+  destroylock(&brklock_);
 }
 
 void
