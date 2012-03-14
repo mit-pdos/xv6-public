@@ -45,7 +45,6 @@ main(int ac, char **av)
   initwq();
   sleep(5);
   test();
-  for (;;);
   exitwq();
   printf("all done!\n");
   return 0;

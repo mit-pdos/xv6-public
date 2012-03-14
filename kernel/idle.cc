@@ -118,6 +118,8 @@ idleloop(void)
           idlem->heir = p;
         }
 
+        worked = uwq_trywork();
+
         worked = wq_trywork();
         // If we are no longer the idle thread, exit
         if (worked && idlem->cur != myproc())

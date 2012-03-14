@@ -79,6 +79,14 @@ exitwq(void)
   wqarch_exit();
 }
 
+#if defined(XV6_KERNEL)
+int
+uwq_trywork(void)
+{
+  return 0;
+}
+#endif
+
 //
 // wq
 //
