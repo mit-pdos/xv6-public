@@ -23,6 +23,7 @@
 #define VERIFYFREE    0  // Unreliable, e.g. vma's vmnode pointer gets reused
 #define ALLOC_MEMSET  DEBUG
 #define KSHAREDSIZE   (32 << 10)
+#define USERWQSIZE    (1 << 14)
 #define WQSHIFT       7
 #define CILKENABLE    0
 #if defined(HW_josmp)

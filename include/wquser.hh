@@ -11,6 +11,11 @@ typedef struct uspinlock wqlock_t;
 static pthread_key_t idkey;
 static volatile int exiting;
 
+struct padded_length {
+  volatile u64 v_ __mpalign__;;
+  __padout__;
+};
+
 int
 mycpuid(void)
 {
@@ -20,11 +25,19 @@ mycpuid(void)
 static inline void*
 allocwq(unsigned long nbytes)
 {
+  return malloc(nbytes);
+}
+
+static inline padded_length*
+allocklen(unsigned long nbytes)
+{
   static bool alloced;
   if (alloced)
-    die("allocwq: allocing more than once");
+    die("allocklen: allocing more than once");
+  if (nbytes > USERWQSIZE)
+    die("allocklen: too large");
   alloced = true;
-  return (void*)USERWQ;
+  return (padded_length*)USERWQLEN;
 }
 
 static inline void
