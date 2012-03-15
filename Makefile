@@ -99,6 +99,7 @@ MTRACEOPTS = -rtc clock=vm -mtrace-enable -mtrace-file mtrace.out \
 mtrace.out: mscan.kern mscan.syms 
 	$(Q)rm -f mtrace.out
 	$(MTRACE) $(QEMUOPTS) $(MTRACEOPTS) -kernel mscan.kern
+.PHONY: mtrace.out
 
 mscan.out: $(QEMUSRC)/mtrace-tools/mscan mtrace.out
 	$(QEMUSRC)/mtrace-tools/mscan > $@ || (rm -f $@; exit 2)
