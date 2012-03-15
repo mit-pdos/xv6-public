@@ -14,6 +14,7 @@
 #include "crange.hh"
 #include "cpputil.hh"
 #include "sperf.hh"
+#include "uwq.hh"
 
 enum { vm_debug = 0 };
 
@@ -162,6 +163,8 @@ vmap::vmap() :
   if (uwq_len_ == nullptr) {
     cprintf("vmap::vmap: userwq out of memory\n");
     goto err;
+  } else {
+    uwq_length(uwq_len_).clear();
   }
 
   if (setupuvm(pml4, kshared, (char*)uwq_len_)) {

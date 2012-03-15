@@ -93,10 +93,10 @@ struct vmap {
   NEW_DELETE_OPS(vmap)
 
   uptr brk_;                    // Top of heap
+  padded_length* const uwq_len_;
 
  private:
   int pagefault_wcow(vma *m);
 
-  padded_length* const uwq_len_;
   struct spinlock brklock_;
 };
