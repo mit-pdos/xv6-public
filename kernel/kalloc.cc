@@ -279,7 +279,7 @@ initkalloc(u64 mbaddr)
     slabmem[slab_wq][c].ninit = NCPU;
 
     strncpy(slabmem[slab_userwq][c].name, " uwq", MAXNAME);
-    slabmem[slab_userwq][c].size = PGROUNDUP(wq_size());
+    slabmem[slab_userwq][c].size = USERWQSIZE;
     slabmem[slab_userwq][c].ninit = CPUKSTACKS;
 
     for (int i = 0; i < slab_type_max; i++) {

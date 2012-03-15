@@ -37,7 +37,7 @@ allocklen(unsigned long nbytes)
   if (nbytes > USERWQSIZE)
     die("allocklen: too large");
   alloced = true;
-  return (padded_length*)USERWQLEN;
+  return (padded_length*)USERWQ;
 }
 
 static inline void

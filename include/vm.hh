@@ -9,7 +9,7 @@
 #define VM_CRANGE 1
 #define VM_RADIX  0
 
-class wq;
+struct padded_length;
 
 using std::atomic;
 
@@ -97,6 +97,6 @@ struct vmap {
  private:
   int pagefault_wcow(vma *m);
 
-  wq *const uwq_;
+  padded_length* const uwq_len_;
   struct spinlock brklock_;
 };

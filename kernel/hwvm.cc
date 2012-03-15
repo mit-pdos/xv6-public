@@ -100,8 +100,8 @@ setupuvm(pgmap *pml4, char *kshared, char *uwq)
     char *uvm;
     size_t size;
   } todo[] = {
-    { kshared, (char*)KSHARED,    KSHAREDSIZE },
-    { uwq,     (char*)USERWQLEN,  PGROUNDUP(wq_size()) }
+    { kshared, (char*)KSHARED, KSHAREDSIZE },
+    { uwq,     (char*)USERWQ,  USERWQSIZE }
   };
 
   for (int i = 0; i < NELEM(todo); i++) {

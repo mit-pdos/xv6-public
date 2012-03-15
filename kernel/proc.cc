@@ -55,6 +55,9 @@ proc::proc(int npid) :
 
 proc::~proc(void)
 {
+  if (vmap != nullptr)
+    vmap->decref();
+
   destroylock(&lock);
   destroycondvar(&cv);
 }
@@ -413,8 +416,6 @@ finishproc(struct proc *p)
 {
   ksfree(slab_stack, p->kstack);
   p->kstack = 0;
-  if (p->vmap != nullptr)
-    p->vmap->decref();
   if (!xnspid->remove(p->pid, &p))
     panic("wait: ns_remove");
   p->pid = 0;
