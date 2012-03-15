@@ -139,6 +139,12 @@ vma::~vma()
  * vmap
  */
 
+vmap*
+vmap::alloc(void)
+{
+  return new vmap();
+}
+
 vmap::vmap() : rcu_freed("vm"),
 #if VM_CRANGE
   cr(10),

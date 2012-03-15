@@ -243,7 +243,7 @@ inituser(void)
   if (p->ftable == nullptr)
     panic("userinit: new filetable");
   bootproc = p;
-  if((p->vmap = new vmap()) == 0)
+  if((p->vmap = vmap::alloc()) == 0)
     panic("userinit: out of vmaps?");
   vmnode *vmn =  new vmnode(PGROUNDUP(_initcode_size) / PGSIZE);
   if(vmn == 0)
@@ -481,7 +481,7 @@ threadalloc(void (*fn)(void *), void *arg)
   if (p == nullptr)
     return 0;
   
-  p->vmap = new vmap();
+  p->vmap = vmap::alloc();
   if (p->vmap == nullptr) {
     freeproc(p);
     return 0;
