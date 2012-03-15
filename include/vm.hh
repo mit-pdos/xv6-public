@@ -69,12 +69,11 @@ struct vmap {
   struct radix rx;
 #endif
 
+  static vmap* alloc();
+
   atomic<u64> ref;
   pgmap *const pml4;           // Page table
   char *const kshared;
-
-  vmap();
-  ~vmap();
 
   bool replace_vma(vma *a, vma *b);
 
@@ -88,11 +87,15 @@ struct vmap {
   int copyout(uptr va, void *p, u64 len);
   int sbrk(ssize_t n, uptr *addr);
 
-  NEW_DELETE_OPS(vmap)
-
   uptr brk_;                    // Top of heap
 
- private:
+private:
+  vmap();
+  vmap(const vmap&);
+  vmap& operator=(const vmap&);
+  ~vmap();
+  NEW_DELETE_OPS(vmap)
   int pagefault_wcow(vma *m);
+
   struct spinlock brklock_;
 };

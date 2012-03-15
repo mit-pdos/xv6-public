@@ -168,7 +168,7 @@ exec(const char *path, char **argv)
   if(elf.magic != ELF_MAGIC)
     goto bad;
 
-  if((vmp = new vmap()) == 0)
+  if((vmp = vmap::alloc()) == 0)
     goto bad;
 
   // Arguments for work queue
