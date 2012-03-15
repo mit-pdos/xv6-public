@@ -9,6 +9,7 @@
 #include "condvar.h"
 #include "proc.hh"
 #include "vm.hh"
+#include "kalloc.hh"
 
 int
 uwq_trywork(void)
@@ -28,16 +29,53 @@ uwq_trywork(void)
     struct proc *p = c->proc;
     if (p == nullptr || p->vmap == nullptr)
       continue;
-    padded_length *len = p->vmap->uwq_len_;
+    uwq* uwq = &p->vmap->uwq_;
 
-    if (len == nullptr)
-      break;
-
-    if (uwq_length(len).haswork()) {
+    if (uwq->haswork()) {
       // XXX(sbw) start a worker thread..
       break;
     }
   }
 
   return 0;
+}
+
+//
+// uwq
+//
+uwq::uwq(padded_length *len) 
+  : len_(len)
+{
+  if (len_ != nullptr) {
+    for (int i = 0; i < NCPU; i++)
+        len_[i].v_ = 0;
+  } else {
+    cprintf("uwq::uwq: nullptr len\n");
+  }
+}
+
+uwq::~uwq(void)
+{ 
+  if (len_ != nullptr)
+    ksfree(slab_userwq, len_);
+}
+
+bool
+uwq::haswork(void)
+{
+  if (len_ == nullptr)
+    return false;
+
+  for (int i = 0; i < NCPU; i++) {
+    if (len_[i].v_ > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void*
+uwq::buffer(void)
+{
+  return (void*)len_;
 }

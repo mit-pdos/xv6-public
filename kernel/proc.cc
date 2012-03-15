@@ -55,9 +55,6 @@ proc::proc(int npid) :
 
 proc::~proc(void)
 {
-  if (vmap != nullptr)
-    vmap->decref();
-
   destroylock(&lock);
   destroycondvar(&cv);
 }
@@ -414,6 +411,8 @@ fork(int flags)
 void
 finishproc(struct proc *p)
 {
+  if (p->vmap != nullptr)
+    p->vmap->decref();
   ksfree(slab_stack, p->kstack);
   p->kstack = 0;
   if (!xnspid->remove(p->pid, &p))

@@ -5,6 +5,7 @@
 #include "radix.hh"
 #include "cpputil.hh"
 #include "hwvm.hh"
+#include "uwq.hh"
 
 #define VM_CRANGE 1
 #define VM_RADIX  0
@@ -62,7 +63,7 @@ struct vma
 
 // An address space: a set of vmas plus h/w page table.
 // The elements of e[] are not ordered by address.
-struct vmap {
+struct vmap : public rcu_freed {
 #if VM_CRANGE
   struct crange cr;
 #endif
@@ -90,10 +91,11 @@ struct vmap {
   int copyout(uptr va, void *p, u64 len);
   int sbrk(ssize_t n, uptr *addr);
 
+  virtual void do_gc(void) { delete this; }
   NEW_DELETE_OPS(vmap)
 
   uptr brk_;                    // Top of heap
-  padded_length* const uwq_len_;
+  uwq uwq_;
 
  private:
   int pagefault_wcow(vma *m);
