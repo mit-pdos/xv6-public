@@ -9,12 +9,24 @@ struct padded_length {
 struct uwq {
   uwq(padded_length *len);
   ~uwq();
-  bool haswork();
+  bool  haswork();
+  int   trywork();
   void* buffer();
 
 private:
+  uwq& operator=(const uwq&);
   uwq(const uwq& x);
+  proc* getworker();
+
+  struct spinlock lock_;
   padded_length* len_;
+
+  struct worker {
+    int running;
+    proc *proc;
+  };
+
+  worker worker_[NCPU];
 };
 
 int             uwq_trywork(void);

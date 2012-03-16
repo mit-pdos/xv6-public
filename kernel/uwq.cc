@@ -2,11 +2,11 @@
 #include "amd64.h"
 #include "kernel.hh"
 #include "cpu.hh"
-#include "uwq.hh"
 #include "gc.hh"
 #include "percpu.hh"
 #include "spinlock.h"
 #include "condvar.h"
+#include "uwq.hh"
 #include "proc.hh"
 #include "vm.hh"
 #include "kalloc.hh"
@@ -25,13 +25,15 @@ uwq_trywork(void)
       continue;
     struct cpu *c = &cpus[j];
 
-    scoped_gc_epoch();
+    scoped_gc_epoch gcx();
+    barrier();
     struct proc *p = c->proc;
     if (p == nullptr || p->vmap == nullptr)
       continue;
     uwq* uwq = &p->vmap->uwq_;
 
     if (uwq->haswork()) {
+      uwq->trywork();
       // XXX(sbw) start a worker thread..
       break;
     }
@@ -52,6 +54,9 @@ uwq::uwq(padded_length *len)
   } else {
     cprintf("uwq::uwq: nullptr len\n");
   }
+
+  initlock(&lock_, "uwq_lock", 0);
+  memset(worker_, 0, sizeof(worker_));
 }
 
 uwq::~uwq(void)
@@ -74,8 +79,44 @@ uwq::haswork(void)
   return false;
 }
 
+int
+uwq::trywork(void)
+{
+  struct proc* p;
+
+  p = getworker();
+  if (p == nullptr)
+    return -1;
+
+  return 0;
+}
+
 void*
 uwq::buffer(void)
 {
   return (void*)len_;
+}
+
+proc*
+uwq::getworker(void)
+{
+  int slot = -1;
+
+  scoped_acquire lockx(&lock_);
+
+  for (int i = 0; i < NCPU; i++) {
+    if (worker_[i].proc != nullptr) {
+      worker_[i].running = 1;
+      return worker_[i].proc;
+    } else if (slot == -1) {
+      slot = i;
+    }
+  }
+
+  if (slot != -1) {
+    
+    panic("XXX");
+  }
+
+  return nullptr;
 }
