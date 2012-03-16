@@ -208,7 +208,7 @@ sys_thread_new(const char *name, lwip_thread_fn thread, void *arg,
   struct lwip_thread *lt;
   struct proc *p;
 
-  lt = (struct lwip_thread*) kmalloc(sizeof(*lt));
+  lt = (struct lwip_thread*) kmalloc(sizeof(*lt), "lwip_thread");
   if (lt == nullptr)
     return 0;
   lt->thread = thread;

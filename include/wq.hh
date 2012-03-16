@@ -35,7 +35,7 @@ struct cwork : public work {
 #define xmalloc(n)     malloc(n)
 #define xfree(p, sz)   free(p)
 #elif defined(XV6_KERNEL)
-#define xmalloc(n)   kmalloc(n) 
+#define xmalloc(n)   kmalloc(n, "xmalloc")
 #define xfree(p, sz) kmfree(p, sz)
 #else
 #define xmalloc(n)     malloc(n)

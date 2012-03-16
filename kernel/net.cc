@@ -278,7 +278,7 @@ netbind(int sock, void *xaddr, int xaddrlen)
   void *addr;
   long r;
   
-  addr = kmalloc(xaddrlen);
+  addr = kmalloc(xaddrlen, "sockaddr");
   if (addr == nullptr)
     return -1;
 
@@ -314,7 +314,7 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
   if (umemcpy(&len, lenptr, sizeof(*lenptr)))
     return -1;
 
-  addr = kmalloc(len);
+  addr = kmalloc(len, "sockaddr");
   if (addr == nullptr)
     return -1;
 
