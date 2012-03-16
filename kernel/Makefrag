@@ -42,6 +42,7 @@ OBJS = \
 	sysfile.o \
 	sysproc.o \
 	uart.o \
+        user.o \
 	vm.o \
 	trap.o \
 	trapasm.o \
