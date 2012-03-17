@@ -25,7 +25,7 @@ uwq_trywork(void)
       continue;
     struct cpu *c = &cpus[j];
 
-    scoped_gc_epoch gcx();
+    scoped_gc_epoch xgc();
     barrier();
     struct proc *p = c->proc;
     if (p == nullptr || p->vmap == nullptr)
@@ -45,8 +45,8 @@ uwq_trywork(void)
 //
 // uwq
 //
-uwq::uwq(padded_length *len) 
-  : len_(len)
+uwq::uwq(vmap* vmap, padded_length *len) 
+  : vmap_(vmap), len_(len)
 {
   if (len_ != nullptr) {
     for (int i = 0; i < NCPU; i++)
@@ -63,6 +63,7 @@ uwq::~uwq(void)
 { 
   if (len_ != nullptr)
     ksfree(slab_userwq, len_);
+  // XXX(sbw) clean up worker procs
 }
 
 bool
@@ -88,6 +89,12 @@ uwq::trywork(void)
   if (p == nullptr)
     return -1;
 
+  if (!vmap_->tryinc())
+    return -1;
+
+  // XXX(sbw)
+  vmap_->decref();
+  panic("XXX");
   return 0;
 }
 
@@ -114,8 +121,12 @@ uwq::getworker(void)
   }
 
   if (slot != -1) {
-    
-    panic("XXX");
+    proc* p = allocproc();
+    if (p != nullptr) {
+      worker_[slot].proc = p;
+      worker_[slot].running = 1;
+      return worker_[slot].proc;
+    }
   }
 
   return nullptr;

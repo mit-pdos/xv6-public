@@ -7,7 +7,7 @@ struct padded_length {
 
 #if defined (XV6_KERNEL)
 struct uwq {
-  uwq(padded_length *len);
+  uwq(vmap* vmap, padded_length *len);
   ~uwq();
   bool  haswork();
   int   trywork();
@@ -19,6 +19,7 @@ private:
   proc* getworker();
 
   struct spinlock lock_;
+  vmap* vmap_;
   padded_length* len_;
 
   struct worker {

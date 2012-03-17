@@ -81,6 +81,8 @@ struct vmap : public rcu_freed {
   bool replace_vma(vma *a, vma *b);
 
   void decref();
+  bool tryinc();
+
   vmap* copy(int share);
   vma* lookup(uptr start, uptr len);
   int insert(vmnode *n, uptr va_start, int dotlb);

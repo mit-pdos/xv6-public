@@ -145,7 +145,8 @@ vmap::alloc(void)
   return new vmap();
 }
 
-vmap::vmap() : rcu_freed("vm"),
+vmap::vmap() : 
+  rcu_freed("vm"),
 #if VM_CRANGE
   cr(10),
 #endif
@@ -153,7 +154,7 @@ vmap::vmap() : rcu_freed("vm"),
   rx(PGSHIFT),
 #endif
   ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
-  brk_(0), uwq_((padded_length*) ksalloc(slab_userwq))
+  brk_(0), uwq_(this, (padded_length*) ksalloc(slab_userwq))
 {
   initlock(&brklock_, "brk_lock", LOCKSTAT_VM);
   if (pml4 == 0) {
@@ -199,6 +200,20 @@ vmap::decref()
 {
   if (--ref == 0)
     gc_delayed(this);
+}
+
+bool
+vmap::tryinc()
+{
+  u64 o;
+
+  do {
+    o = ref.load();
+    if (o == 0)
+      return false;
+  } while (!cmpxch(&ref, o, o+1));
+
+  return true;
 }
 
 bool
