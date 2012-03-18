@@ -34,10 +34,10 @@ kminit(void)
 }
 
 // get more space for freelists[c].buckets[b]
-int
+static int
 morecore(int c, int b)
 {
-  char *p = kalloc();
+  char *p = kalloc(nullptr);
   if(p == 0)
     return -1;
 
@@ -103,10 +103,11 @@ kmalloc(u64 nbytes, const char *name)
     }
   }
 
+  mtlabel(mtrace_label_heap, (void*) h, nbytes, name, strlen(name));
+
   if (ALLOC_MEMSET)
     memset(h, 4, (1<<b));
 
-  mtlabel(mtrace_label_heap, (void*) h, nbytes, name, strlen(name));
   return h;
 }
 

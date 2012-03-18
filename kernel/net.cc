@@ -32,7 +32,7 @@ netfree(void *va)
 void *
 netalloc(void)
 {
-  return kalloc();
+  return kalloc("(netalloc)");
 }
 
 int
@@ -352,7 +352,7 @@ netwrite(int sock, char *ubuf, int len)
   int cc;
   int r;
 
-  kbuf = kalloc();
+  kbuf = kalloc("(netwrite)");
   if (kbuf == nullptr)
     return -1;
 
@@ -375,7 +375,7 @@ netread(int sock, char *ubuf, int len)
   int cc;
   int r;
 
-  kbuf = kalloc();
+  kbuf = kalloc("(netread)");
   if (kbuf == nullptr)
     return -1;
 

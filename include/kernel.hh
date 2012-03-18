@@ -125,7 +125,7 @@ void            idlezombie(struct proc*);
 void            ioapicenable(int irq, int cpu);
 
 // kalloc.c
-char*           kalloc(void);
+char*           kalloc(const char *name);
 void            kfree(void*);
 void*           ksalloc(int slabtype);
 void            ksfree(int slabtype, void*);

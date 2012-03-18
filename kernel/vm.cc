@@ -56,7 +56,7 @@ vmnode::allocpg()
     if (page[i])
       continue;
 
-    char *p = kalloc();
+    char *p = kalloc("(vmnode::allocpg)");
     if (!p) {
       cprintf("allocpg: out of memory, leaving half-filled vmnode\n");
       return -1;

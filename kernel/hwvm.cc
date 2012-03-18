@@ -13,6 +13,10 @@
 
 using namespace std;
 
+static const char *levelnames[] = {
+  "PT", "PD", "PDP", "PML4"
+};
+
 static pgmap*
 descend(pgmap *dir, u64 va, u64 flags, int create, int level)
 {
@@ -28,7 +32,7 @@ retry:
   } else {
     if (!create)
       return nullptr;
-    next = (pgmap*) kalloc();
+    next = (pgmap*) kalloc(levelnames[level-1]);
     if (!next)
       return nullptr;
     memset(next, 0, PGSIZE);
@@ -83,7 +87,7 @@ setupkvm(void)
   pgmap *pml4;
   int k;
 
-  if((pml4 = (pgmap*)kalloc()) == 0)
+  if((pml4 = (pgmap*)kalloc("PML4")) == 0)
     return 0;
   k = PX(3, KBASE);
   memset(&pml4->e[0], 0, 8*k);
