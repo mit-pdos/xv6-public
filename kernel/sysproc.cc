@@ -131,3 +131,9 @@ sys_setfs(u64 base)
   switchvm(p);
   return 0;
 }
+
+long
+sys_setaffinity(int cpu)
+{
+  return myproc()->set_cpu_pin(cpu);
+}

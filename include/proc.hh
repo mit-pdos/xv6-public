@@ -84,6 +84,8 @@ struct proc : public rcu_freed {
   void set_state(enum procstate s);
   enum procstate get_state(void) const { return state_; }
 
+  int set_cpu_pin(int cpu);
+
 private:
   enum procstate state_;       // Process state  
 };

@@ -60,7 +60,9 @@ sched(void)
 
   struct proc *next = schednext();
   if (next == nullptr) {
-    if (myproc()->get_state() != RUNNABLE) {
+    if (myproc()->get_state() != RUNNABLE ||
+        // proc changed its CPU pin?
+        myproc()->cpuid != mycpu()->id) {
       next = idleproc();
     } else {
       myproc()->set_state(RUNNING);

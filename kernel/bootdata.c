@@ -61,5 +61,6 @@ long (*syscalls[])(u64, u64, u64, u64, u64) = {
   SYSCALL(async),
   SYSCALL(script),
   SYSCALL(setfs),
+  SYSCALL(setaffinity),
 };
 

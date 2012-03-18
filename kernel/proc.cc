@@ -85,6 +85,30 @@ proc::set_state(enum procstate s)
   state_ = s;
 }
 
+int
+proc::set_cpu_pin(int cpu)
+{
+  if (cpu < -1 || cpu >= ncpu)
+    return -1;
+
+  acquire(&lock);
+  if (myproc() != this)
+    panic("set_cpu_pin not implemented for non-current proc");
+  if (cpu == -1) {
+    cpu_pin = 0;
+    release(&lock);
+    return 0;
+  }
+  // Since we're the current proc, there's no runq to get off.
+  // post_swtch will put us on the new runq.
+  cpuid = cpu;
+  cpu_pin = 1;
+  myproc()->set_state(RUNNABLE);
+  sched();
+  assert(mycpu()->id == cpu);
+  return 0;
+}
+
 // Give up the CPU for one scheduling round.
 void
 yield(void)

@@ -46,12 +46,6 @@ wqlock_init(wqlock_t *lock)
   initlock(lock);
 }
 
-static void
-setaffinity(int c)
-{
-  // XXX(sbw)
-}
-
 static void*
 workerth(void *x)
 {
