@@ -61,7 +61,6 @@ struct proc : public rcu_freed {
   struct condvar cv;
   std::atomic<u64> epoch;      // low 8 bits are depth count
   char lockname[16];
-  int on_runq;
   int cpu_pin;
 #if MTRACE
   struct mtrace_stacks mtrace_stacks;
