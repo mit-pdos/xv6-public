@@ -40,10 +40,49 @@ struct proghdr {
   Elf64_Xword align;            // Segment alignment, file & memory
 };
 
+struct elfnote {
+  Elf64_Word namesz;            // Name size
+  Elf64_Word descsz;	        // Content size
+  Elf64_Word type;	        // Content type
+};
+
 // Values for Proghdr type
 #define ELF_PROG_LOAD           1
+#define ELF_PROG_NOTE           4
 
 // Flag bits for Proghdr flags
 #define ELF_PROG_FLAG_EXEC      1
 #define ELF_PROG_FLAG_WRITE     2
 #define ELF_PROG_FLAG_READ      4
+
+// All known .note types
+#define ELF_NOTE_XV6_ADDR       1
+
+// xv6-specific address note
+struct xv6_addrdesc {
+  Elf64_Word id;
+  Elf64_Addr vaddr;
+};
+
+struct xv6_addrnote {
+  struct elfnote elfnote;
+  // name is 0 bytes
+  struct xv6_addrdesc desc;
+};
+
+// All xv6-specific IDs for notes about addresses
+#define XV6_ADDR_ID_WQ 1
+
+#define DEFINE_XV6_ADDRNOTE(xname, xid, xvaddr)                         \
+  const struct xv6_addrnote xname PROG_NOTE_ATTRIBUTE = {               \
+    elfnote: {                                                          \
+      namesz: 0,                                                        \
+      descsz: sizeof(((xv6_addrnote *)nullptr)->desc),                  \
+      type: ELF_NOTE_XV6_ADDR                                           \
+    },                                                                  \
+    desc: {                                                             \
+      id: (xid),                                                        \
+      vaddr: (Elf64_Addr)(xvaddr) }                                     \
+  }
+
+#define PROG_NOTE_ATTRIBUTE __attribute__ ((section(".note"), used))
