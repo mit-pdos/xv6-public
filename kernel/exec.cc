@@ -26,6 +26,36 @@ struct eargs {
   char **argv;
 };
 
+static int
+donotes(struct inode *ip, vmap *vmap, u64 off)
+{
+  struct proghdr ph;
+  struct elfnote note;
+
+  if (readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
+    return -1;
+  
+  if (readi(ip, (char*)&note, ph.offset, sizeof(note)) != sizeof(note))
+    return -1;
+
+  if (note.type == ELF_NOTE_XV6_ADDR) {
+    struct xv6_addrdesc desc;
+
+    if (note.descsz != sizeof(desc))
+      return -1;
+    if (readi(ip, (char*)&desc,
+              ph.offset+__offsetof(struct xv6_addrnote, desc),
+              sizeof(desc)) != sizeof(desc))
+      return -1;
+
+    if (desc.id == XV6_ADDR_ID_WQ) {
+      vmap->uwq_.setuentry(desc.vaddr);
+      return 0;
+    }
+  }
+  return -1;
+}
+
 static void
 dosegment(struct eargs *args, u64 off)
 {
@@ -186,7 +216,12 @@ exec(const char *path, char **argv)
              off+__offsetof(struct proghdr, type), 
              sizeof(type)) != sizeof(type))
       goto bad;
-    if(type != ELF_PROG_LOAD)
+    if (type == ELF_PROG_NOTE) {
+      if (donotes(ip, vmp, off) < 0) {
+        cilk_abort(-1);
+        break;
+      }
+    } if(type != ELF_PROG_LOAD)
       continue;
     cilk_call(dosegment, &args, off);
   }
