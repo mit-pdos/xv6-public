@@ -154,7 +154,7 @@ vmap::vmap() :
   rx(PGSHIFT),
 #endif
   ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
-  brk_(0), uwq_(this, (padded_length*) ksalloc(slab_userwq))
+  brk_(0)
 {
   initlock(&brklock_, "brk_lock", LOCKSTAT_VM);
   if (pml4 == 0) {
@@ -167,13 +167,8 @@ vmap::vmap() :
     goto err;
   }
 
-  if (uwq_.buffer() == nullptr) {
-    cprintf("vmap::vmap: userwq out of memory\n");
-    goto err;
-  }
-
-  if (setupuvm(pml4, kshared, (char*)uwq_.buffer())) {
-    cprintf("vmap::vmap: setupkshared out of memory\n");
+  if (mapkva(pml4, kshared, KSHARED, KSHAREDSIZE)) {
+    cprintf("vmap::vmap: mapkva out of memory\n");
     goto err;
   }
 
@@ -202,18 +197,10 @@ vmap::decref()
     gc_delayed(this);
 }
 
-bool
-vmap::tryinc()
+void
+vmap::incref()
 {
-  u64 o;
-
-  do {
-    o = ref.load();
-    if (o == 0)
-      return false;
-  } while (!cmpxch(&ref, o, o+1));
-
-  return true;
+  ++ref;
 }
 
 bool

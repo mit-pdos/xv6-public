@@ -120,6 +120,10 @@ idleloop(void)
 
         // XXX(sbw)
         worked = uwq_trywork();
+        if (worked == 1) {
+          cprintf("did some work..\n");
+          break;
+        }
 
         worked = wq_trywork();
         // If we are no longer the idle thread, exit

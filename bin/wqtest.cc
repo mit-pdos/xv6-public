@@ -43,7 +43,6 @@ int
 main(int ac, char **av)
 {
   initwq();
-  sleep(5);
   test();
   exitwq();
   printf("all done!\n");

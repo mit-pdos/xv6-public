@@ -36,7 +36,7 @@ struct kstack_tag kstack_tag[NCPU];
 enum { sched_debug = 0 };
 
 proc::proc(int npid) :
-  rcu_freed("proc"), vmap(0), kstack(0),
+  rcu_freed("proc"), vmap(0), uwq(0), kstack(0),
   pid(npid), parent(0), tf(0), context(0), killed(0),
   ftable(0), cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
   on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0),
@@ -376,6 +376,8 @@ finishproc(struct proc *p)
 {
   if (p->vmap != nullptr)
     p->vmap->decref();
+  if (p->uwq != nullptr)
+    p->uwq->dec();
   ksfree(slab_stack, p->kstack);
   p->kstack = 0;
   if (!xnspid->remove(p->pid, &p))

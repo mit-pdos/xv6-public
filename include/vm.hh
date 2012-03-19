@@ -81,7 +81,7 @@ struct vmap : public rcu_freed {
   bool replace_vma(vma *a, vma *b);
 
   void decref();
-  bool tryinc();
+  void incref();
 
   vmap* copy(int share);
   vma* lookup(uptr start, uptr len);
@@ -94,7 +94,6 @@ struct vmap : public rcu_freed {
 
   virtual void do_gc(void) { delete this; }
   uptr brk_;                    // Top of heap
-  uwq uwq_;
 
 private:
   vmap();

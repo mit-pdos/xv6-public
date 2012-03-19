@@ -27,7 +27,7 @@ struct eargs {
 };
 
 static int
-donotes(struct inode *ip, vmap *vmap, u64 off)
+donotes(struct inode *ip, uwq *uwq, u64 off)
 {
   struct proghdr ph;
   struct elfnote note;
@@ -49,7 +49,7 @@ donotes(struct inode *ip, vmap *vmap, u64 off)
       return -1;
 
     if (desc.id == XV6_ADDR_ID_WQ) {
-      vmap->uwq_.setuentry(desc.vaddr);
+      uwq->setuentry(desc.vaddr);
       return 0;
     }
   }
@@ -179,12 +179,13 @@ exec(const char *path, char **argv)
 {
   struct inode *ip = nullptr;
   struct vmap *vmp = nullptr;
+  uwq* uwq = nullptr;
   struct elfhdr elf;
   struct proghdr ph;
   u64 off;
   int i;
   struct vmap *oldvmap;
-
+  
   if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
 
@@ -199,6 +200,9 @@ exec(const char *path, char **argv)
     goto bad;
 
   if((vmp = vmap::alloc()) == 0)
+    goto bad;
+
+  if((uwq = uwq::alloc(vmp, myproc()->ftable)) == 0)
     goto bad;
 
   // Arguments for work queue
@@ -217,7 +221,7 @@ exec(const char *path, char **argv)
              sizeof(type)) != sizeof(type))
       goto bad;
     if (type == ELF_PROG_NOTE) {
-      if (donotes(ip, vmp, off) < 0) {
+      if (donotes(ip, uwq, off) < 0) {
         cilk_abort(-1);
         break;
       }
@@ -238,7 +242,10 @@ exec(const char *path, char **argv)
   // Commit to the user image.
   oldvmap = myproc()->vmap;
   myproc()->vmap = vmp;
-  myproc()->tf->rip = elf.entry;  // main
+  if (myproc()->uwq != nullptr)
+    myproc()->uwq->dec();
+  myproc()->uwq = uwq;
+  myproc()->tf->rip = elf.entry;
   
   switchvm(myproc());
   oldvmap->decref();
@@ -250,7 +257,8 @@ exec(const char *path, char **argv)
   cprintf("exec failed\n");
   if(vmp)
     vmp->decref();
+  if(uwq)
+    uwq->dec();
   gc_end_epoch();
-
   return 0;
 }

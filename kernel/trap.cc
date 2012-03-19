@@ -158,6 +158,7 @@ trap(struct trapframe *tf)
 #endif
         return;
       }
+      cprintf("pagefault: failed\n");
       cli();
     }
 
