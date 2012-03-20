@@ -9,7 +9,7 @@ struct padded_length {
 struct uwq : public referenced, public rcu_freed {
   static uwq* alloc(vmap* vmap, filetable *ftable);
   bool  haswork();
-  int   trywork();
+  bool  trywork();
   void* buffer();
 
   void  setuentry(uptr uentry);

@@ -1,6 +1,5 @@
 //
 // XXX
-//  - vmap doesn't need to be rcu_freed anymore
 //  - workers should have a uwq
 //  - pin workers
 
@@ -43,7 +42,7 @@ uwq_trywork(void)
     uwq* uwq = p->uwq;
 
     if (uwq->haswork()) {
-      if (uwq->trywork() == 1)
+      if (uwq->trywork())
         return 1;
       // XXX(sbw) start a worker thread..
       break;
@@ -130,24 +129,21 @@ uwq::haswork(void)
   return false;
 }
 
-int
+bool
 uwq::trywork(void)
 {
   struct proc* p;
 
   p = getworker();
   if (p == nullptr)
-    return -1;
+    return false;
 
-  // XXX(sbw) filetable, etc
   p->cpuid = mycpuid();
-
   acquire(&p->lock);
   addrun(p);
   release(&p->lock);
 
-  cprintf("trying to run..\n");
-  return 1;
+  return true;
 }
 
 void
@@ -183,9 +179,9 @@ uwq::allocworker(void)
     return nullptr;
   safestrcpy(p->name, "uwq_worker", sizeof(p->name));
 
+  // finishproc will drop these refs
   vmap_->incref();
   ftable_->incref();
-  // finishproc will drop these refs
   
   p->vmap = vmap_;
   p->ftable = ftable_;
@@ -205,7 +201,6 @@ uwq::allocworker(void)
   ustack_ += (UWQSTACKPAGES*PGSIZE);
 
   p->tf->rsp = stacktop - 8;
-  cprintf("stacktop %lx\n", stacktop);
   p->tf->rip = uentry;
   p->tf->cs = UCSEG | 0x3;
   p->tf->ds = UDSEG | 0x3;
