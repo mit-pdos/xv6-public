@@ -38,7 +38,6 @@ private:
   ~uwq();
   uwq& operator=(const uwq&);
   uwq(const uwq& x);
-  proc* getworker();
   proc* allocworker();
   void  finishworkers();
   void  finish();

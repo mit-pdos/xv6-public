@@ -169,18 +169,52 @@ uwq::haswork(void)
 bool
 uwq::trywork(void)
 {
-  struct proc* p;
+  scoped_acquire lock0(&lock_);
 
-  p = getworker();
-  if (p == nullptr)
+  if (ref() == 0)
     return false;
 
-  p->cpuid = mycpuid();
-  acquire(&p->lock);
-  addrun(p);
-  release(&p->lock);
+  int slot = -1;
+  for (int i = 0; i < NCPU; i++) {
+    if (worker_[i].running)
+      continue;
+    else if (worker_[i].proc != nullptr) {
+      scoped_acquire lock1(&worker_[i].lock);
+      proc* p = worker_[i].proc;
 
-  return true;
+      panic("uwq::trywork: untested");
+      acquire(&p->lock);
+      p->cpu_pin = 1;
+      p->cpuid = mycpuid();
+      release(&p->lock);
+
+      worker_[i].running = true;
+      cv_wakeup(&worker_[i].cv);
+      return true;
+    } else if (slot == -1) {
+      slot = i;
+    }
+  }
+
+  if (slot != -1) {
+    proc* p = allocworker();
+    if (p != nullptr) {
+      ++uref_;
+      p->worker = &worker_[slot];
+      worker_[slot].proc = p;
+      worker_[slot].running = true;
+
+      acquire(&p->lock);
+      p->cpu_pin = 1;
+      p->cpuid = mycpuid();
+      addrun(p);
+      release(&p->lock);
+
+      return true;
+    }
+  }
+    
+  return nullptr;
 }
 
 void
@@ -263,40 +297,4 @@ uwq::allocworker(void)
   p->tf->rflags = FL_IF;
 
   return p;
-}
-
-proc*
-uwq::getworker(void)
-{
-  int slot = -1;
-
-  scoped_acquire lockx(&lock_);
-
-  if (ref() == 0)
-    return nullptr;
-
-  for (int i = 0; i < NCPU; i++) {
-    if (worker_[i].running)
-      continue;
-    if (worker_[i].proc != nullptr) {
-      panic("uwq::getworker: oops");
-      worker_[i].running = true;
-      return worker_[i].proc;
-    } else if (slot == -1) {
-      slot = i;
-    }
-  }
-
-  if (slot != -1) {
-    proc* p = allocworker();
-    if (p != nullptr) {
-      ++uref_;
-      p->worker = &worker_[slot];
-      worker_[slot].proc = p;
-      worker_[slot].running = true;
-      return worker_[slot].proc;
-    }
-  }
-    
-  return nullptr;
 }
