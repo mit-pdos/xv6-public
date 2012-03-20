@@ -184,7 +184,6 @@ uwq::trywork(void)
 
       panic("uwq::trywork: untested");
       acquire(&p->lock);
-      p->cpu_pin = 1;
       p->cpuid = mycpuid();
       release(&p->lock);
 
@@ -205,7 +204,6 @@ uwq::trywork(void)
       worker_[slot].running = true;
 
       acquire(&p->lock);
-      p->cpu_pin = 1;
       p->cpuid = mycpuid();
       addrun(p);
       release(&p->lock);
