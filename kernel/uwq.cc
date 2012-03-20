@@ -55,6 +55,24 @@ uwq_trywork(void)
 long
 sys_wqwait(void)
 {
+  uwq_worker* w = myproc()->worker;
+  if (w == nullptr)
+    return -1;
+
+  return w->wait();
+}
+
+//
+// uwq_worker
+//
+long
+uwq_worker::wait(void)
+{
+  acquire(&lock);
+  uwq->tryexit(this);
+  cv_sleep(&cv, &lock);
+  uwq->tryexit(this);
+  release(&lock);
   return 0;
 }
 
@@ -97,13 +115,21 @@ uwq::alloc(vmap* vmap, filetable *ftable)
 uwq::uwq(vmap* vmap, filetable *ftable, padded_length *len) 
   : rcu_freed("uwq"),
     vmap_(vmap), ftable_(ftable), len_(len),
-    uentry_(0), ustack_(UWQSTACK)
+    uentry_(0), ustack_(UWQSTACK), uref_(0)
 {
   for (int i = 0; i < NCPU; i++)
     len_[i].v_ = 0;
 
   initlock(&lock_, "uwq_lock", 0);
-  memset(worker_, 0, sizeof(worker_));
+
+  // XXX(sbw) move to uwq_worker constructor
+  for (int i = 0; i < NCPU; i++) {
+    initlock(&worker_[i].lock, "worker_lock", 0);
+    initcondvar(&worker_[i].cv, "worker_cv");
+    worker_[i].uwq = this;
+    worker_[i].running = false;
+    worker_[i].proc = nullptr;
+  }
 }
 
 uwq::~uwq(void)
@@ -112,7 +138,18 @@ uwq::~uwq(void)
     ksfree(slab_userwq, len_);
   vmap_->decref();
   ftable_->decref();
-  finishworkers();
+}
+
+void
+uwq::tryexit(uwq_worker *w)
+{
+  if (ref() == 0) {
+    if (--uref_ == 0)
+      gc_delayed(this);
+    release(&w->lock);
+    w->proc = nullptr;
+    exit();
+  }
 }
 
 bool
@@ -147,11 +184,29 @@ uwq::trywork(void)
 }
 
 void
-uwq::finishworkers(void)
+uwq::finish(void)
 {
-  for (int i = 0; i < NCPU; i++)
-    if (worker_[i].proc != nullptr)
-      panic("uwq::finishworkers");
+  bool gcnow = true;
+
+  scoped_acquire lock0(&lock_);
+  for (int i = 0; i < NCPU; i++) {
+    if (worker_[i].proc != nullptr) {
+      gcnow = false;
+      acquire(&worker_[i].lock);
+      cv_wakeup(&worker_[i].cv);
+      release(&worker_[i].lock);
+    }
+  }
+  
+  if (gcnow)
+    gc_delayed(this);
+}
+
+void
+uwq::onzero() const
+{
+  uwq *u = (uwq*)this;
+  u->finish();
 }
 
 void*
@@ -217,10 +272,14 @@ uwq::getworker(void)
 
   scoped_acquire lockx(&lock_);
 
+  if (ref() == 0)
+    return nullptr;
+
   for (int i = 0; i < NCPU; i++) {
     if (worker_[i].running)
       continue;
     if (worker_[i].proc != nullptr) {
+      panic("uwq::getworker: oops");
       worker_[i].running = true;
       return worker_[i].proc;
     } else if (slot == -1) {
@@ -231,6 +290,8 @@ uwq::getworker(void)
   if (slot != -1) {
     proc* p = allocworker();
     if (p != nullptr) {
+      ++uref_;
+      p->worker = &worker_[slot];
       worker_[slot].proc = p;
       worker_[slot].running = true;
       return worker_[slot].proc;

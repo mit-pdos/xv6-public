@@ -8,6 +8,7 @@
 #include "filetable.hh"
 
 class uwq;
+class uwq_worker;
 
 // Saved registers for kernel context switches.
 // (also implicitly defined in swtch.S)
@@ -46,6 +47,7 @@ enum procstate { EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 struct proc : public rcu_freed {
   struct vmap *vmap;           // va -> vma
   uwq* uwq;
+  uwq_worker* worker;
   char *kstack;                // Bottom of kernel stack for this process
   volatile int pid;            // Process ID
   struct proc *parent;         // Parent process

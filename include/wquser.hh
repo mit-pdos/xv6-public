@@ -75,7 +75,7 @@ initworker(void)
   pthread_setspecific(idkey, (void*)(u64)id);
   while (1) {
     if (!wq_trywork())
-      wqwait();
+      assert(wqwait() == 0);
   }
 }
 DEFINE_XV6_ADDRNOTE(xnote, XV6_ADDR_ID_WQ, &initworker);
