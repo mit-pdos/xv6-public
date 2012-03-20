@@ -146,7 +146,6 @@ vmap::alloc(void)
 }
 
 vmap::vmap() : 
-  rcu_freed("vm"),
 #if VM_CRANGE
   cr(10),
 #endif
@@ -194,7 +193,7 @@ void
 vmap::decref()
 {
   if (--ref == 0)
-    gc_delayed(this);
+    delete this;
 }
 
 void

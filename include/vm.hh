@@ -63,7 +63,7 @@ struct vma
 
 // An address space: a set of vmas plus h/w page table.
 // The elements of e[] are not ordered by address.
-struct vmap : public rcu_freed {
+struct vmap {
 #if VM_CRANGE
   struct crange cr;
 #endif
@@ -92,7 +92,6 @@ struct vmap : public rcu_freed {
   int copyout(uptr va, void *p, u64 len);
   int sbrk(ssize_t n, uptr *addr);
 
-  virtual void do_gc(void) { delete this; }
   uptr brk_;                    // Top of heap
 
 private:
