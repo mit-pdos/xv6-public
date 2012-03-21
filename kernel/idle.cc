@@ -118,12 +118,10 @@ idleloop(void)
           idlem->heir = p;
         }
 
-        // XXX(sbw)
+        // XXX(sbw) what should be the policy here?
         worked = uwq_trywork();
-        if (worked == 1) {
-          cprintf("did some work..\n");
+        if (worked == 1)
           break;
-        }
 
         worked = wq_trywork();
         // If we are no longer the idle thread, exit
