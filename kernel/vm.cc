@@ -23,7 +23,7 @@ enum { vm_debug = 0 };
  */
 
 vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
-  : npages(npg), ref(0), type(ntype), ip(i), offset(off), sz(s)
+  : npages(npg), type(ntype), ip(i), offset(off), sz(s), ref_(0)
 {
   if (npg > NELEM(page))
     panic("vmnode too big\n");
@@ -44,10 +44,22 @@ vmnode::~vmnode()
 }
 
 void
-vmnode::decref()
+vmnode::decref(void)
 {
-  if(--ref == 0)
+  if(--ref_ == 0)
     delete this;
+}
+
+void
+vmnode::incref(void)
+{
+  ++ref_;
+}
+
+u64
+vmnode::ref(void)
+{
+  return ref_.load();
 }
 
 int
@@ -126,7 +138,7 @@ vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn) :
     vma_start(start), vma_end(end), va_type(vtype), n(vmn)
 {
   if (n)
-    n->ref++;
+    n->incref();
 }
 
 vma::~vma()
@@ -524,7 +536,7 @@ vmap::pagefault(uptr va, u32 err)
   u64 npg = (PGROUNDDOWN(va) - m->vma_start) / PGSIZE;
   if (vm_debug)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
-            err, va, m->va_type, m->n->ref.load(), myproc()->pid);
+            err, va, m->va_type, m->n->ref(), myproc()->pid);
 
   if (m->n && !m->n->page[npg])
     if (m->n->allocpg() < 0)
@@ -553,7 +565,8 @@ vmap::pagefault(uptr va, u32 err)
   if (m->va_type == COW) {
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
-    assert(m->n->ref == 1);
+    if (m->n->ref() != 1)
+      panic("vmap::pagefault: ref %lu va %lx", m->n->ref(), va);
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
 

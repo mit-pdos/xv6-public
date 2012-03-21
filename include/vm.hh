@@ -20,7 +20,6 @@ enum vmntype { EAGER, ONDEMAND };
 struct vmnode {
   const u64 npages;
   atomic<char*> page[128];
-  atomic<u64> ref;
   const enum vmntype type;
   struct inode *const ip;
   const u64 offset;
@@ -30,11 +29,15 @@ struct vmnode {
          inode *i = 0, u64 off = 0, u64 s = 0);
   ~vmnode();
   void decref();
+  void incref();
+  u64 ref();
   int allocpg();
   vmnode* copy();
 
   int demand_load();
-  NEW_DELETE_OPS(vmnode)
+  NEW_DELETE_OPS(vmnode);
+private:
+  atomic<u64> ref_;
 };
 
 // A mapping of a chunk of an address space to
