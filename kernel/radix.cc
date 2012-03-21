@@ -7,7 +7,7 @@
 
 template<class CB>
 void
-descend(u64 key, markptr<void> *n, u32 level, CB cb)
+descend(u64 key, markptr<void> *n, u32 level, CB cb, bool create)
 {
   static_assert(key_bits == bits_per_level * radix_levels,
                 "for now, we only support exact multiples of bits_per_level");
@@ -15,6 +15,9 @@ descend(u64 key, markptr<void> *n, u32 level, CB cb)
 
   void *v = n->ptr();
   if (v == 0) {
+    // Node isn't there. Just return.
+    if (!create)
+      return;
     radix_node *new_rn = new radix_node();
     if (n->ptr().cmpxch_update(&v, (void*) new_rn))
       v = new_rn;
@@ -30,7 +33,7 @@ descend(u64 key, markptr<void> *n, u32 level, CB cb)
   if (level == 0)
     cb(vptr);
   else
-    descend(key, vptr, level-1, cb);
+    descend(key, vptr, level-1, cb, create);
 }
 
 radix_elem*
@@ -39,7 +42,7 @@ radix::search(u64 key)
   radix_elem *result = 0;
   descend(key >> shift_, &root_, radix_levels-1, [&result](markptr<void> *v) {
       result = (radix_elem*) v->ptr().load();
-    });
+    }, false);
   return result;
 }
 
@@ -56,7 +59,7 @@ radix_range::radix_range(radix *r, u64 start, u64 size)
     descend(k, &r_->root_, radix_levels-1, [](markptr<void> *v) {
         while (!v->mark().xchg(true))
           ; // spin
-      });
+      }, true);
 }
 
 radix_range::~radix_range()
@@ -67,7 +70,7 @@ radix_range::~radix_range()
   for (u64 k = start_; k != start_ + size_; k++)
     descend(k, &r_->root_, radix_levels-1, [](markptr<void> *v) {
         v->mark() = false;
-      });
+      }, true);
 }
 
 void
@@ -87,7 +90,7 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
         val->incref();
         if (cur)
           ((radix_elem*) cur)->decref();
-      });
+      }, true);
 }
 
 radix_elem*
@@ -96,6 +99,6 @@ radix_iterator::operator*()
   radix_elem *result = 0;
   descend(k_, (markptr<void>*) &r_->root_, radix_levels-1, [&result](markptr<void> *v) {
       result = (radix_elem*) v->ptr().load();
-    });
+    }, false);
   return result;
 }
