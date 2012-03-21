@@ -546,7 +546,6 @@ vmap::pagefault(uptr va, u32 err)
   if (m->va_type == COW) {
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
-    assert(m->n->ref == 1);
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
 
