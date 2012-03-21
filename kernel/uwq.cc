@@ -70,6 +70,7 @@ uwq_worker::wait(void)
 {
   acquire(&lock);
   uwq->tryexit(this);
+  running = false;
   cv_sleep(&cv, &lock);
   uwq->tryexit(this);
   release(&lock);
@@ -182,7 +183,7 @@ uwq::trywork(void)
       scoped_acquire lock1(&worker_[i].lock);
       proc* p = worker_[i].proc;
 
-      panic("uwq::trywork: untested");
+      //cprintf("uwq::trywork: untested\n");
       acquire(&p->lock);
       p->cpuid = mycpuid();
       release(&p->lock);
