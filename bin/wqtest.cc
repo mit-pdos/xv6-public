@@ -81,12 +81,52 @@ testfork(void)
   printf("testfork done\n");
 }
 
+struct execwork : public work {
+  execwork(forframe *b) : barrier_(b) {}
+
+  virtual void run() {
+    int pid;
+
+    pid = fork(0);
+    if (pid < 0)
+      die("execwork::run: fork");
+    else if (pid == 0) {
+      static const char *args[] = { "echo", 0 };
+      exec(args[0], args);
+      die("execwork: exec failed");
+    }
+    wait();
+
+    barrier_->dec();
+    delete this;
+  }
+
+  static void test(void) {
+    enum { execs = 100 };
+    struct forframe wqbarrier(execs);
+
+    printf("testexec...\n");
+    for (int i = 0; i < execs; i++) {
+      execwork *w = new execwork(&wqbarrier);
+      wq_push(w);
+    }
+    
+    while (!wqbarrier.zero())
+      nop_pause();
+    printf("testexec done\n");
+  }
+
+  NEW_DELETE_OPS(execwork);
+  struct forframe *barrier_;
+};
+
 int
 main(int ac, char **av)
 {
   initwq();
   test0();
   testfork();
+  execwork::test();
   exitwq();
   return 0;
 }
