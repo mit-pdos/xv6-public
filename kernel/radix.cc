@@ -5,8 +5,9 @@
 #include "cpputil.hh"
 #include "radix.hh"
 
+// Returns the level we stopped at.
 template<class CB>
-void
+u32
 descend(u64 key, markptr<void> *n, u32 level, CB cb, bool create)
 {
   static_assert(key_bits == bits_per_level * radix_levels,
@@ -14,15 +15,16 @@ descend(u64 key, markptr<void> *n, u32 level, CB cb, bool create)
   assert(n);
 
   void *v = n->ptr();
-  if (v == 0) {
-    // Node isn't there. Just return.
-    if (!create)
-      return;
+  if (v == 0 && create) {
     radix_node *new_rn = new radix_node();
     if (n->ptr().cmpxch_update(&v, (void*) new_rn))
       v = new_rn;
     else
       delete new_rn;
+  }
+  // Node isn't there. Just return.
+  if (v == 0) {
+    return level+1;
   }
 
   radix_node *rn = (radix_node*) v;
@@ -30,10 +32,12 @@ descend(u64 key, markptr<void> *n, u32 level, CB cb, bool create)
   u64 idx = key >> (bits_per_level * level);
   idx &= (1<<bits_per_level)-1;
   markptr<void> *vptr = &rn->ptr[idx];
-  if (level == 0)
+  if (level == 0) {
     cb(vptr);
-  else
-    descend(key, vptr, level-1, cb, create);
+    return level;
+  } else {
+    return descend(key, vptr, level-1, cb, create);
+  }
 }
 
 radix_elem*
@@ -55,11 +59,14 @@ radix::search_lock(u64 start, u64 size)
 radix_range::radix_range(radix *r, u64 start, u64 size)
   : r_(r), start_(start), size_(size)
 {
-  for (u64 k = start_; k != start_ + size_; k++)
-    descend(k, &r_->root_, radix_levels-1, [](markptr<void> *v) {
-        while (!v->mark().xchg(true))
-          ; // spin
-      }, true);
+  for (u64 k = start_; k != start_ + size_; k++) {
+    if (descend(k, &r_->root_, radix_levels-1, [](markptr<void> *v) {
+          while (!v->mark().xchg(true))
+            ; // spin
+        }, true) != 0) {
+      panic("radix_range");
+    }
+  }
 }
 
 radix_range::~radix_range()
@@ -67,10 +74,13 @@ radix_range::~radix_range()
   if (!r_)
     return;
 
-  for (u64 k = start_; k != start_ + size_; k++)
-    descend(k, &r_->root_, radix_levels-1, [](markptr<void> *v) {
-        v->mark() = false;
-      }, true);
+  for (u64 k = start_; k != start_ + size_; k++) {
+    if (descend(k, &r_->root_, radix_levels-1, [](markptr<void> *v) {
+          v->mark() = false;
+        }, true) != 0) {
+      panic("~radix_range");
+    }
+  }
 }
 
 void
@@ -82,15 +92,18 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
   assert(start >= start_);
   assert(start + size <= start_ + size_);
 
-  for (u64 k = start; k != start + size; k++)
-    descend(k, &r_->root_, radix_levels-1, [val](markptr<void> *v) {
-        void* cur = v->ptr().load();
-        while (!v->ptr().cmpxch_update(&cur, val))
-          ; // spin
-        val->incref();
-        if (cur)
-          ((radix_elem*) cur)->decref();
-      }, true);
+  for (u64 k = start; k != start + size; k++) {
+    if (descend(k, &r_->root_, radix_levels-1, [val](markptr<void> *v) {
+          void* cur = v->ptr().load();
+          while (!v->ptr().cmpxch_update(&cur, val))
+            ; // spin
+          val->incref();
+          if (cur)
+            ((radix_elem*) cur)->decref();
+        }, true)) {
+      panic("radix_range::replace");
+    }
+  }
 }
 
 radix_elem*
