@@ -9,8 +9,8 @@ template<class CB>
 void
 descend(u64 key, markptr<void> *n, u32 level, CB cb)
 {
-  // for now, we only support exact multiples of bits_per_level
-  assert(key_bits == bits_per_level * radix_levels);
+  static_assert(key_bits == bits_per_level * radix_levels,
+                "for now, we only support exact multiples of bits_per_level");
   assert(n);
 
   void *v = n->ptr();
