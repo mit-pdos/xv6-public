@@ -189,6 +189,9 @@ exec(const char *path, char **argv)
   if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
 
+  if(myproc()->worker != nullptr)
+    return -1;
+
   gc_begin_epoch();
 
   // Check ELF header
