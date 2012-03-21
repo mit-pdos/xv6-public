@@ -72,6 +72,7 @@ void            vcprintf(const char *fmt, va_list ap);
 void            panic(const char*, ...) 
                   __noret__ __attribute__((format(printf, 1, 2)));
 void            kerneltrap(struct trapframe *tf) __noret__;
+void            vsnprintf(char *buf, u32 n, const char *fmt, va_list ap);
 void            snprintf(char *buf, u32 n, const char *fmt, ...);
 void            printtrace(u64 rbp);
 
