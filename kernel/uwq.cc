@@ -65,15 +65,22 @@ sys_wqwait(void)
 //
 // uwq_worker
 //
+uwq_worker::uwq_worker(uwq* u, proc* p)
+  : uwq_(u), proc_(p), running_(false)
+{
+  initlock(&lock_, "worker_lock", 0);
+  initcondvar(&cv_, "worker_cv");
+}
+
 long
 uwq_worker::wait(void)
 {
-  acquire(&lock);
-  uwq->tryexit(this);
-  running = false;
-  cv_sleep(&cv, &lock);
-  uwq->tryexit(this);
-  release(&lock);
+  acquire(&lock_);
+  uwq_->tryexit(this);
+  running_ = false;
+  cv_sleep(&cv_, &lock_);
+  uwq_->tryexit(this);
+  release(&lock_);
   return 0;
 }
 
@@ -92,7 +99,7 @@ uwq::alloc(vmap* vmap, filetable *ftable)
 
   ftable->incref();
   vmap->incref();
-    
+
   u = new uwq(vmap, ftable, len);
   if (u == nullptr) {
     ftable->decref();
@@ -122,15 +129,7 @@ uwq::uwq(vmap* vmap, filetable *ftable, padded_length *len)
     len_[i].v_ = 0;
 
   initlock(&lock_, "uwq_lock", 0);
-
-  // XXX(sbw) move to uwq_worker constructor
-  for (int i = 0; i < NCPU; i++) {
-    initlock(&worker_[i].lock, "worker_lock", 0);
-    initcondvar(&worker_[i].cv, "worker_cv");
-    worker_[i].uwq = this;
-    worker_[i].running = false;
-    worker_[i].proc = nullptr;
-  }
+  memset(worker_, 0, sizeof(worker_));
 }
 
 uwq::~uwq(void)
@@ -147,8 +146,8 @@ uwq::tryexit(uwq_worker *w)
   if (ref() == 0) {
     if (--uref_ == 0)
       gc_delayed(this);
-    release(&w->lock);
-    w->proc = nullptr;
+    release(&w->lock_);
+    delete w;
     exit();
   }
 }
@@ -177,38 +176,46 @@ uwq::trywork(void)
 
   int slot = -1;
   for (int i = 0; i < NCPU; i++) {
-    if (worker_[i].running)
+    if (worker_[i] == nullptr) {
+      if (slot == -1)
+        slot = i;
       continue;
-    else if (worker_[i].proc != nullptr) {
-      scoped_acquire lock1(&worker_[i].lock);
-      proc* p = worker_[i].proc;
+    }
 
-      //cprintf("uwq::trywork: untested\n");
+    uwq_worker *w = worker_[i];
+    if (w->running_)
+      continue;
+    else {
+      scoped_acquire lock1(&w->lock_);
+      proc* p = w->proc_;
+
+      cprintf("uwq::trywork: untested\n");
       acquire(&p->lock);
       p->cpuid = mycpuid();
       release(&p->lock);
 
-      worker_[i].running = true;
-      cv_wakeup(&worker_[i].cv);
+      w->running_ = true;
+      cv_wakeup(&w->cv_);
       return true;
-    } else if (slot == -1) {
-      slot = i;
     }
   }
 
   if (slot != -1) {
     proc* p = allocworker();
     if (p != nullptr) {
+      uwq_worker* w = new uwq_worker(this, p);
+      assert(w != nullptr);
+
       ++uref_;
-      p->worker = &worker_[slot];
-      worker_[slot].proc = p;
-      worker_[slot].running = true;
+      p->worker = w;
+      w->running_ = true;
 
       acquire(&p->lock);
       p->cpuid = mycpuid();
       addrun(p);
       release(&p->lock);
 
+      worker_[slot] = w;
       return true;
     }
   }
@@ -223,11 +230,12 @@ uwq::finish(void)
 
   scoped_acquire lock0(&lock_);
   for (int i = 0; i < NCPU; i++) {
-    if (worker_[i].proc != nullptr) {
+    if (worker_[i] != nullptr) {
+      uwq_worker* w = worker_[i];
       gcnow = false;
-      acquire(&worker_[i].lock);
-      cv_wakeup(&worker_[i].cv);
-      release(&worker_[i].lock);
+      acquire(&w->lock_);
+      cv_wakeup(&w->cv_);
+      release(&w->lock_);
     }
   }
   

@@ -9,13 +9,16 @@ struct padded_length {
 struct uwq;
 
 struct uwq_worker {
+  uwq_worker(uwq*, proc*);
   long wait();
 
-  uwq* uwq;
-  bool running;
-  proc *proc;
-  struct spinlock lock;
-  struct condvar cv;
+  uwq* uwq_;
+  proc *proc_;
+  bool running_;
+  struct spinlock lock_;
+  struct condvar cv_;
+
+  NEW_DELETE_OPS(uwq_worker);
 };
 
 struct uwq : public referenced, public rcu_freed {
@@ -51,7 +54,7 @@ private:
   uptr ustack_;
   std::atomic<u64> uref_;
 
-  uwq_worker worker_[NCPU];
+  uwq_worker* worker_[NCPU];
 };
 
 int             uwq_trywork(void);
