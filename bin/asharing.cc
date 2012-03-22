@@ -52,17 +52,13 @@ fssharing(void* arg)
   char filename[32];
   snprintf(filename, sizeof(filename), "f%d", i);
 
-  mtenable("xv6-fssharing");
   open(filename, O_CREATE|O_RDWR);
-  mtdisable("xv6-fssharing");
 
   pthread_barrier_wait(&bar);
 
   for (u64 j = 0; j < ncore; j++) {
     snprintf(filename, sizeof(filename), "f%d", j);
-    mtenable("xv6-fssharing");
     open(filename, O_RDWR);
-    mtdisable("xv6-fssharing");
   }
   return 0;
 }
@@ -79,11 +75,13 @@ main(int ac, char **av)
     fprintf(1, "usage: %s vm|fs\n", av[0]);
 
   if (op) {
+    mtenable_type(mtrace_record_ascope, "xv6-asharing");
     pthread_barrier_init(&bar, 0, ncore);
     for (u64 i = 0; i < ncore; i++) {
       next();
       pthread_t tid;
       pthread_create(&tid, 0, op, (void*) i);
     }
+    mtdisable("xv6-asharing");
   }
 }
