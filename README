@@ -65,7 +65,7 @@
 * abstract sharing
 
   Obtain and configure mtrace as described above.
-  Disable DEBUG in param.h.
+  Disable DEBUG and enable MTRACE in param.h.
   $ make QEMUSMP=8 mtrace.out
   Run asharing in xv6 to generate abstract sharing traces
   $ mscan --abstract-scopes --unexpected-sharing
