@@ -3,7 +3,7 @@
   You need to build and install mtrace:
     git+ssh://amsterdam.csail.mit.edu/home/am6/mpdev/qemu.git -b mtrace
 
-  #define MTRACE 1 in param.h
+  #define MTRACE 1 in param.h  (for qemu!)
   If mtrace isn't cloned next to the xv6-scale repository, then set
   QEMUSRC in config.mk to the directory containing mtrace-magic.h.
   Set MTRACE in config.mk to the mtrace QEMU binary's path.
