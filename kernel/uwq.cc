@@ -264,7 +264,7 @@ uwq::allocworker(void)
   if (uentry == 0)
     return nullptr;
 
-  proc* p = allocproc();
+  proc* p = proc::alloc();
   if (p == nullptr)
     return nullptr;
   safestrcpy(p->name, "uwq_worker", sizeof(p->name));

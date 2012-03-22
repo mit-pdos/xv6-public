@@ -108,7 +108,7 @@ idleloop(void)
         // If we don't have an heir, try to allocate one
         if (idlem->heir == nullptr) {
           struct proc *p;
-          p = allocproc();
+          p = proc::alloc();
           if (p == nullptr)
             break;
           snprintf(p->name, sizeof(p->name), "idleh_%u", mycpu()->id);          
@@ -135,9 +135,9 @@ idleloop(void)
 void
 initidle(void)
 {
-  struct proc *p = allocproc();
+  struct proc *p = proc::alloc();
   if (!p)
-    panic("initidle allocproc");
+    panic("initidle proc::alloc");
 
   SLIST_INIT(&idlem[cpunum()].zombies);
   initlock(&idlem[cpunum()].lock, "idle_lock", LOCKSTAT_IDLE);

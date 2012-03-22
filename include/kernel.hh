@@ -167,7 +167,6 @@ int             piperead(struct pipe*, char*, int);
 int             pipewrite(struct pipe*, char*, int);
 
 // proc.c
-struct proc*    allocproc(void);
 struct proc*    copyproc(struct proc*);
 void            finishproc(struct proc*);
 void            exit(void);

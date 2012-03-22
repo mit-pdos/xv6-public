@@ -20,7 +20,7 @@ inituser(void)
   extern u8 _initcode_start[];
   extern u64 _initcode_size;
 
-  p = allocproc();
+  p = proc::alloc();
   p->ftable = new filetable();
   if (p->ftable == nullptr)
     panic("userinit: new filetable");

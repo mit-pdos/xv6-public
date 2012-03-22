@@ -198,18 +198,15 @@ freeproc(struct proc *p)
   gc_delayed(p);
 }
 
-// Look in the process table for an UNUSED proc.
-// If found, change state to EMBRYO and initialize
-// state required to run in the kernel.
-// Otherwise return 0.
-struct proc*
-allocproc(void)
+proc*
+proc::alloc(void)
 {
-  struct proc *p;
   char *sp;
+  proc* p;
 
   p = new proc(xnspid->allockey());
-  if (p == 0) return 0;
+  if (p == nullptr)
+    return nullptr;
 
   p->cpuid = mycpu()->id;
   initprocgc(p);
@@ -344,7 +341,7 @@ fork(int flags)
   // cprintf("%d: fork\n", myproc()->pid);
 
   // Allocate process.
-  if((np = allocproc()) == 0)
+  if((np = proc::alloc()) == 0)
     return -1;
 
   if(flags == 0) {
@@ -466,7 +463,7 @@ threadalloc(void (*fn)(void *), void *arg)
 {
   struct proc *p;
 
-  p = allocproc();
+  p = proc::alloc();
   if (p == nullptr)
     return 0;
   

@@ -80,17 +80,19 @@ struct proc : public rcu_freed {
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
   u64 user_fs_;
 
-  proc(int npid);
-  ~proc(void);
-
   virtual void do_gc(void) { delete this; }
-  NEW_DELETE_OPS(proc)
 
   void set_state(enum procstate s);
   enum procstate get_state(void) const { return state_; }
-
   int set_cpu_pin(int cpu);
+  static proc* alloc();
 
 private:
+  proc(int npid);
+  ~proc(void);
+  proc& operator=(const proc&);
+  proc(const proc& x);
+  NEW_DELETE_OPS(proc);
+  
   enum procstate state_;       // Process state  
 };
