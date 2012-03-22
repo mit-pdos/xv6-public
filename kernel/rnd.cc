@@ -3,7 +3,7 @@
 
 struct seed {
   u64 v;
-} __mapalign__;
+} __mpalign__;
 static struct seed seeds[NCPU] __mpalign__;
 
 u64 
