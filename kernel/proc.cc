@@ -364,6 +364,7 @@ fork(int flags)
 
   np->parent = myproc();
   *np->tf = *myproc()->tf;
+  np->cpu_pin = myproc()->cpu_pin;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->rax = 0;
