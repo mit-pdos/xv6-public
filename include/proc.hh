@@ -66,7 +66,6 @@ struct proc : public rcu_freed {
   struct condvar cv;
   std::atomic<u64> epoch;      // low 8 bits are depth count
   char lockname[16];
-  int on_runq;
   int cpu_pin;
 #if MTRACE
   struct mtrace_stacks mtrace_stacks;
@@ -89,6 +88,8 @@ struct proc : public rcu_freed {
 
   void set_state(enum procstate s);
   enum procstate get_state(void) const { return state_; }
+
+  int set_cpu_pin(int cpu);
 
 private:
   enum procstate state_;       // Process state  

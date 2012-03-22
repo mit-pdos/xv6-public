@@ -22,6 +22,7 @@
 #include "buf.hh"
 #include "file.hh"
 #include "cpu.hh"
+#include "kmtrace.hh"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
@@ -757,6 +758,16 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
     ip = idup(cwd);
 
   while((r = skipelem(&path, name)) == 1){
+    // XXX Doing this here requires some annoying reasoning about all
+    // of the callers of namei/nameiparent.  Also, since the abstract
+    // scope is implicit, it might be wrong (or non-existent) and
+    // documenting the abstract object sets of each scope becomes
+    // difficult and probably unmaintainable.  We have to compute this
+    // information here because it's the only place that's canonical.
+    // Maybe this should return the set of inodes traversed and let
+    // the caller declare the variables?  Would it help for the caller
+    // to pass in an abstract scope?
+    mtreadavar("inode:%x.%x", ip->dev, ip->inum);
     next = 0;
     if(next == 0){
       if(ip->type == 0)
@@ -785,6 +796,7 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
     gc_end_epoch();
     return 0;
   }
+  mtreadavar("inode:%x.%x", ip->dev, ip->inum);
   gc_end_epoch();
   return ip;
 }

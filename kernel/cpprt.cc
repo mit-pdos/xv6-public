@@ -7,7 +7,7 @@
 void *
 operator new[](unsigned long nbytes)
 {
-  u64 *x = (u64*) kmalloc(nbytes + sizeof(u64));
+  u64 *x = (u64*) kmalloc(nbytes + sizeof(u64), "array");
   *x = nbytes + sizeof(u64);
   return x+1;
 }

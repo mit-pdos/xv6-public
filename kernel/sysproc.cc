@@ -9,6 +9,7 @@
 #include "cpu.hh"
 #include "vm.hh"
 #include "sperf.hh"
+#include "kmtrace.hh"
 
 long
 sys_fork(int flags)
@@ -87,6 +88,12 @@ sys_map(uptr addr, u64 len)
 {
   ANON_REGION(__func__, &perfgroup);
 
+#if MTRACE
+  mt_ascope ascope("%s(%p,%lx)", __func__, addr, len);
+  for (uptr i = PGROUNDDOWN(addr); i < PGROUNDUP(addr + len); i += PGSIZE)
+    mtwriteavar("page:%016x", i);
+#endif
+
   vmnode *vmn = new vmnode(PGROUNDUP(len) / PGSIZE);
   if (vmn == 0)
     return -1;
@@ -103,6 +110,12 @@ long
 sys_unmap(uptr addr, u64 len)
 {
   ANON_REGION(__func__, &perfgroup);
+
+#if MTRACE
+  mt_ascope ascope("%s(%p,%lx)", __func__, addr, len);
+  for (uptr i = PGROUNDDOWN(addr); i < PGROUNDUP(addr + len); i += PGSIZE)
+    mtwriteavar("page:%016x", i);
+#endif
 
   uptr align_addr = PGROUNDDOWN(addr);
   uptr align_len = PGROUNDUP(addr + len) - align_addr;
@@ -130,4 +143,10 @@ sys_setfs(u64 base)
   p->user_fs_ = base;
   switchvm(p);
   return 0;
+}
+
+long
+sys_setaffinity(int cpu)
+{
+  return myproc()->set_cpu_pin(cpu);
 }

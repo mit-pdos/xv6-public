@@ -15,6 +15,7 @@
 #include "cpputil.hh"
 #include "sperf.hh"
 #include "uwq.hh"
+#include "kmtrace.hh"
 
 enum { vm_debug = 0 };
 
@@ -69,7 +70,7 @@ vmnode::allocpg()
     if (page[i])
       continue;
 
-    char *p = kalloc();
+    char *p = kalloc("(vmnode::allocpg)");
     if (!p) {
       cprintf("allocpg: out of memory, leaving half-filled vmnode\n");
       return -1;
@@ -574,6 +575,11 @@ vmap::pagefault(uptr va, u32 err)
 int
 pagefault(struct vmap *vmap, uptr va, u32 err)
 {
+#if MTRACE
+  mt_ascope ascope("%s(%p)", __func__, va);
+  mtwriteavar("page:%016x", PGROUNDDOWN(va));
+#endif
+
   return vmap->pagefault(va, err);
 }
 

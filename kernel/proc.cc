@@ -39,7 +39,7 @@ proc::proc(int npid) :
   rcu_freed("proc"), vmap(0), uwq(0), worker(0), kstack(0),
   pid(npid), parent(0), tf(0), context(0), killed(0),
   ftable(0), cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
-  on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0),
+  cpu_pin(0), runq(0), oncv(0), cv_wakeup(0),
   user_fs_(0), state_(EMBRYO)
 {
   snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
@@ -83,6 +83,30 @@ proc::set_state(enum procstate s)
     panic("ZOMBIE -> %u", s);
   }
   state_ = s;
+}
+
+int
+proc::set_cpu_pin(int cpu)
+{
+  if (cpu < -1 || cpu >= ncpu)
+    return -1;
+
+  acquire(&lock);
+  if (myproc() != this)
+    panic("set_cpu_pin not implemented for non-current proc");
+  if (cpu == -1) {
+    cpu_pin = 0;
+    release(&lock);
+    return 0;
+  }
+  // Since we're the current proc, there's no runq to get off.
+  // post_swtch will put us on the new runq.
+  cpuid = cpu;
+  cpu_pin = 1;
+  myproc()->set_state(RUNNABLE);
+  sched();
+  assert(mycpu()->id == cpu);
+  return 0;
 }
 
 // Give up the CPU for one scheduling round.

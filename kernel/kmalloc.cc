@@ -34,10 +34,10 @@ kminit(void)
 }
 
 // get more space for freelists[c].buckets[b]
-int
+static int
 morecore(int c, int b)
 {
-  char *p = kalloc();
+  char *p = kalloc(nullptr);
   if(p == 0)
     return -1;
 
@@ -78,7 +78,7 @@ bucket(u64 nbytes)
 }
 
 void *
-kmalloc(u64 nbytes)
+kmalloc(u64 nbytes, const char *name)
 {
   int b = bucket(nbytes);
 
@@ -103,10 +103,11 @@ kmalloc(u64 nbytes)
     }
   }
 
+  mtlabel(mtrace_label_heap, (void*) h, nbytes, name, strlen(name));
+
   if (ALLOC_MEMSET)
     memset(h, 4, (1<<b));
 
-  mtlabel(mtrace_label_heap, (void*) h, nbytes, "kmalloc'ed", sizeof("kmalloc'ed"));
   return h;
 }
 
@@ -132,9 +133,9 @@ kmfree(void *ap, u64 nbytes)
 }
 
 int
-kmalign(void **p, int align, u64 size)
+kmalign(void **p, int align, u64 size, const char *name)
 {
-  void *mem = kmalloc(size + (align-1) + sizeof(void*));
+  void *mem = kmalloc(size + (align-1) + sizeof(void*), name);
   char *amem = ((char*)mem) + sizeof(void*);
   amem += align - ((uptr)amem & (align - 1));
   ((void**)amem)[-1] = mem;

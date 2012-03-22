@@ -11,6 +11,7 @@
 #include "fcntl.h"
 #include "cpu.hh"
 #include "net.hh"
+#include "kmtrace.hh"
 
 static bool
 getfile(int fd, sref<file> *f)
@@ -280,6 +281,12 @@ sys_openat(int dirfd, const char *path, int omode)
 
   if(argcheckstr(path) < 0)
     return -1;
+
+  // Reads the dirfd FD, dirfd's inode, the inodes of all files in
+  // path; writes the returned FD
+  mt_ascope ascope("%s(%d,%s,%d)", __func__, dirfd, path, omode);
+  mtreadavar("inode:%x.%x", cwd->dev, cwd->inum);
+
   if(omode & O_CREATE){
     if((ip = create(cwd, path, T_FILE, 0, 0)) == 0)
       return -1;
@@ -309,6 +316,7 @@ sys_openat(int dirfd, const char *path, int omode)
     return -1;
   }
   iunlock(ip);
+  mtwriteavar("fd:%x.%x", myproc()->pid, fd);
 
   f->type = file::FD_INODE;
   f->ip = ip;
