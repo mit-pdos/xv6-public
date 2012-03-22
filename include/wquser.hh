@@ -72,6 +72,8 @@ initworker(void)
   int id;
   forkt_setup(0);
   id = nextid++;
+  if (id >= NCPU)
+    die("initworker: to man IDs");
   pthread_setspecific(idkey, (void*)(u64)id);
   while (1) {
     if (!wq_trywork())
@@ -86,7 +88,8 @@ wqarch_init(void)
   if (pthread_key_create(&idkey, 0))
     die("wqarch_init: pthread_key_create");
 
-  pthread_setspecific(idkey, 0);
+  int id = nextid++;
+  pthread_setspecific(idkey, (void*)(u64)id);
 }
 
 static inline void

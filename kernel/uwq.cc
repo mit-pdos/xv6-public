@@ -175,7 +175,7 @@ uwq::trywork(void)
     return false;
 
   int slot = -1;
-  for (int i = 0; i < NCPU; i++) {
+  for (int i = 0; i < NWORKERS; i++) {
     if (worker_[i] == nullptr) {
       if (slot == -1)
         slot = i;
@@ -189,7 +189,6 @@ uwq::trywork(void)
       scoped_acquire lock1(&w->lock_);
       proc* p = w->proc_;
 
-      cprintf("uwq::trywork: untested\n");
       acquire(&p->lock);
       p->cpuid = mycpuid();
       release(&p->lock);
@@ -229,7 +228,7 @@ uwq::finish(void)
   bool gcnow = true;
 
   scoped_acquire lock0(&lock_);
-  for (int i = 0; i < NCPU; i++) {
+  for (int i = 0; i < NWORKERS; i++) {
     if (worker_[i] != nullptr) {
       uwq_worker* w = worker_[i];
       gcnow = false;

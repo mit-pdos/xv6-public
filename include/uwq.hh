@@ -6,6 +6,8 @@ struct padded_length {
 };
 
 #if defined (XV6_KERNEL)
+#define NWORKERS (NCPU-1)
+
 struct uwq;
 
 struct uwq_worker {
