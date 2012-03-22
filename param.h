@@ -30,7 +30,7 @@
 #define MTRACE       0
 #define PERFSIZE     (1<<20ull)
 #elif defined(HW_qemu)
-#define NCPU         4   // maximum number of CPUs
+#define NCPU         8   // maximum number of CPUs
 #define MTRACE       0
 #define PERFSIZE     (16<<20ull)
 #elif defined(HW_ud0)
