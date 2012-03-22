@@ -97,7 +97,8 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
           void* cur = v->ptr().load();
           while (!v->ptr().cmpxch_update(&cur, val))
             ; // spin
-          val->incref();
+          if (val)
+            val->incref();
           if (cur)
             ((radix_elem*) cur)->decref();
         }, true)) {
