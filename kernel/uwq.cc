@@ -153,7 +153,7 @@ uwq::~uwq(void)
 }
 
 bool
-uwq::haswork(void)
+uwq::haswork(void) const
 {
   if (len_ == nullptr)
     return false;

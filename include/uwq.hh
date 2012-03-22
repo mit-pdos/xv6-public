@@ -29,7 +29,7 @@ struct uwq : public referenced, public rcu_freed {
   friend struct uwq_worker;
 
   static uwq* alloc(vmap* vmap, filetable *ftable);
-  bool  haswork();
+  bool  haswork() const;
   bool  tryworker();
 
   void  setuentry(uptr uentry);
@@ -45,7 +45,6 @@ private:
   uwq& operator=(const uwq&);
   uwq(const uwq& x);
   proc* allocworker();
-  void  finishworkers();
   void  finish();
   NEW_DELETE_OPS(uwq);
 
@@ -57,6 +56,6 @@ private:
   uptr ustack_;
   std::atomic<u64> uref_;
 
-  uwq_worker* worker_[NCPU];
+  uwq_worker* worker_[NWORKERS];
 };
 #endif
