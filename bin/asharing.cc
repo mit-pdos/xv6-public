@@ -4,8 +4,11 @@
 #include "user.h"
 #include "fcntl.h"
 #include "mtrace.h"
+#include "pthread.h"
 
 static int cpu;
+static pthread_barrier_t bar;
+enum { ncore = 8 };
 
 void
 next()
@@ -18,60 +21,67 @@ next()
   cpu++;
 }
 
-void
-vmsharing(void)
+void*
+vmsharing(void* arg)
 {
-  for (int i = 0; i < 8; i++) {
-    next();
+  u64 i = (u64) arg;
 
-    volatile char *p = (char*)(0x40000UL + i * 4096);
-    mtenable("xv6-mapsharing");
-    if (map((void *) p, 4096) < 0)
-      die("map failed");
-    mtdisable("xv6-mapsharing");
+  volatile char *p = (char*)(0x40000UL + i * 4096);
+  mtenable("xv6-mapsharing");
+  if (map((void *) p, 4096) < 0)
+    die("map failed");
+  mtdisable("xv6-mapsharing");
 
-    mtenable("xv6-mapsharing");
-    if (unmap((void *) p, 4096) < 0)
-      die("unmap failed");
-    mtdisable("xv6-mapsharing");
-  }
+  mtenable("xv6-mapsharing");
+  if (unmap((void *) p, 4096) < 0)
+    die("unmap failed");
+  mtdisable("xv6-mapsharing");
+
+  return 0;
 }
 
-void
-fssharing(void)
+void*
+fssharing(void* arg)
 {
+  u64 i = (u64) arg;
+
   // Note that we keep these files open; otherwise all of these
   // operations will share the abstract FD object and we won't get any
   // results.
 
-  next();
-  mtenable("xv6-fssharing");
-  open("a", O_CREATE|O_RDWR);
-  mtdisable("xv6-fssharing");
+  char filename[32];
+  snprintf(filename, sizeof(filename), "f%d", i);
 
-  next();
-  mtenable("xv6-fssharing");
-  open("b", O_CREATE|O_RDWR);
-  mtdisable("xv6-fssharing");
+  open(filename, O_CREATE|O_RDWR);
 
-  next();
-  mtenable("xv6-fssharing");
-  open("a", O_RDWR);
-  mtdisable("xv6-fssharing");
+  pthread_barrier_wait(&bar);
 
-  next();
-  mtenable("xv6-fssharing");
-  open("b", O_RDWR);
-  mtdisable("xv6-fssharing");
+  for (u64 j = 0; j < ncore; j++) {
+    snprintf(filename, sizeof(filename), "f%d", j);
+    open(filename, O_RDWR);
+  }
+  return 0;
 }
 
 int
 main(int ac, char **av)
 {
+  void* (*op)(void*) = 0;
   if (ac == 2 && strcmp(av[1], "vm") == 0)
-    vmsharing();
+    op = vmsharing;
   else if (ac == 2 && strcmp(av[1], "fs") == 0)
-    fssharing();
+    op = fssharing;
   else
     fprintf(1, "usage: %s vm|fs\n", av[0]);
+
+  if (op) {
+    mtenable_type(mtrace_record_ascope, "xv6-asharing");
+    pthread_barrier_init(&bar, 0, ncore);
+    for (u64 i = 0; i < ncore; i++) {
+      next();
+      pthread_t tid;
+      pthread_create(&tid, 0, op, (void*) i);
+    }
+    mtdisable("xv6-asharing");
+  }
 }
