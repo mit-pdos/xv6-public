@@ -8,6 +8,7 @@
 #include "sched.hh"
 #include "percpu.hh"
 #include "wq.hh"
+#include "uwq.hh"
 #include "kmtrace.hh"
 
 struct idle {
@@ -118,9 +119,7 @@ idleloop(void)
           idlem->heir = p;
         }
 
-        // XXX(sbw) what should be the policy here?
-        worked = uwq_trywork();
-        if (worked == 1)
+        if (uwq_trywork())
           break;
 
         worked = wq_trywork();

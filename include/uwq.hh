@@ -6,13 +6,15 @@ struct padded_length {
 };
 
 #if defined (XV6_KERNEL)
-#define NWORKERS (NCPU-1)
+bool uwq_trywork(void);
 
+#define NWORKERS (NCPU-1)
 struct uwq;
 
 struct uwq_worker {
   uwq_worker(uwq*, proc*);
   long wait();
+  void exit();
 
   uwq* uwq_;
   proc *proc_;
@@ -24,14 +26,13 @@ struct uwq_worker {
 };
 
 struct uwq : public referenced, public rcu_freed {
+  friend struct uwq_worker;
+
   static uwq* alloc(vmap* vmap, filetable *ftable);
   bool  haswork();
-  bool  trywork();
-  void* buffer();
+  bool  tryworker();
 
   void  setuentry(uptr uentry);
-  // XXX(sbw) should be part of struct worker
-  void  tryexit(uwq_worker *w);
 
   virtual void do_gc(void) { delete this; }
 
@@ -58,6 +59,4 @@ private:
 
   uwq_worker* worker_[NCPU];
 };
-
-int             uwq_trywork(void);
 #endif

@@ -1,8 +1,3 @@
-//
-// XXX
-//  - workers should have a uwq
-//  - pin workers
-
 #include "types.h"
 #include "amd64.h"
 #include "kernel.hh"
@@ -20,9 +15,11 @@ extern "C" {
 #include "kern_c.h"
 }
 
-int
+bool
 uwq_trywork(void)
 {
+  // Returning true means uwq added a thread to the run queue
+
   u64 i, k;
 
   // A "random" victim CPU
@@ -33,23 +30,24 @@ uwq_trywork(void)
     if (j == mycpuid())
       continue;
     struct cpu *c = &cpus[j];
-
+    
+    // The gc_epoch is for p and uwq
     scoped_gc_epoch xgc();
     barrier();
+
     struct proc *p = c->proc;
     if (p == nullptr || p->uwq == nullptr)
       continue;
     uwq* uwq = p->uwq;
 
     if (uwq->haswork()) {
-      if (uwq->trywork())
-        return 1;
-      // XXX(sbw) start a worker thread..
+      if (uwq->tryworker())
+        return true;
       break;
     }
   }
 
-  return 0;
+  return false;
 }
 
 long
@@ -72,14 +70,28 @@ uwq_worker::uwq_worker(uwq* u, proc* p)
   initcondvar(&cv_, "worker_cv");
 }
 
+void
+uwq_worker::exit(void)
+{
+  if (--uwq_->uref_ == 0)
+    gc_delayed(uwq_);
+  release(&lock_);
+  delete this;
+  ::exit();
+}
+
 long
 uwq_worker::wait(void)
 {
   acquire(&lock_);
-  uwq_->tryexit(this);
+  if (uwq_->ref() == 0)
+    this->exit();
+
   running_ = false;
   cv_sleep(&cv_, &lock_);
-  uwq_->tryexit(this);
+
+  if (uwq_->ref() == 0)
+    this->exit();
   release(&lock_);
   return 0;
 }
@@ -140,18 +152,6 @@ uwq::~uwq(void)
   ftable_->decref();
 }
 
-void
-uwq::tryexit(uwq_worker *w)
-{
-  if (ref() == 0) {
-    if (--uref_ == 0)
-      gc_delayed(this);
-    release(&w->lock_);
-    delete w;
-    exit();
-  }
-}
-
 bool
 uwq::haswork(void)
 {
@@ -167,8 +167,9 @@ uwq::haswork(void)
 }
 
 bool
-uwq::trywork(void)
+uwq::tryworker(void)
 {
+  // Try to start a worker thread
   scoped_acquire lock0(&lock_);
 
   if (ref() == 0)
@@ -247,12 +248,6 @@ uwq::onzero() const
 {
   uwq *u = (uwq*)this;
   u->finish();
-}
-
-void*
-uwq::buffer(void)
-{
-  return (void*)len_;
 }
 
 void

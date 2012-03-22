@@ -9,10 +9,6 @@ size_t          wq_size(void);
 void            initwq(void);
 void            exitwq(void);
 
-#if defined(XV6_KERNEL)
-int             uwq_trywork(void);
-#endif
-
 struct work {
   virtual void run() = 0;
 };
