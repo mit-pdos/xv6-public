@@ -13,6 +13,7 @@ UPROGS= \
 	ls \
 	mapbench \
 	maptest \
+	mktree \
 	sh \
 	halt \
 	time \
