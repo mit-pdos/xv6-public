@@ -90,6 +90,7 @@ sys_map(uptr addr, u64 len)
 
 #if MTRACE
   mt_ascope ascope("%s(%p,%lx)", __func__, addr, len);
+  mtwriteavar("thread:%x", myproc()->pid);
   for (uptr i = PGROUNDDOWN(addr); i < PGROUNDUP(addr + len); i += PGSIZE)
     mtwriteavar("page:%016x", i);
 #endif
@@ -113,6 +114,7 @@ sys_unmap(uptr addr, u64 len)
 
 #if MTRACE
   mt_ascope ascope("%s(%p,%lx)", __func__, addr, len);
+  mtwriteavar("thread:%x", myproc()->pid);
   for (uptr i = PGROUNDDOWN(addr); i < PGROUNDUP(addr + len); i += PGSIZE)
     mtwriteavar("page:%016x", i);
 #endif
