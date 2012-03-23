@@ -27,15 +27,11 @@ vmsharing(void* arg)
   u64 i = (u64) arg;
 
   volatile char *p = (char*)(0x40000UL + i * 4096);
-  mtenable("xv6-mapsharing");
   if (map((void *) p, 4096) < 0)
     die("map failed");
-  mtdisable("xv6-mapsharing");
 
-  mtenable("xv6-mapsharing");
   if (unmap((void *) p, 4096) < 0)
     die("unmap failed");
-  mtdisable("xv6-mapsharing");
 
   return 0;
 }
