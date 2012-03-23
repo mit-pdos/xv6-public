@@ -57,6 +57,10 @@ struct radix {
   }
   radix_elem* search(u64 key);
   radix_range search_lock(u64 start, u64 size);
+
+  // k is shifted value.
+  u64 skip_empty(u64 k) const;
+
   NEW_DELETE_OPS(radix)
 };
 
@@ -64,8 +68,8 @@ struct radix_iterator {
   const radix* r_;
   u64 k_;
 
-  radix_iterator(const radix* r, u64 k) : r_(r), k_(k) {}
-  radix_iterator &operator++() { k_++; return *this; }
+  radix_iterator(const radix* r, u64 k) : r_(r), k_(r->skip_empty(k)) {}
+  radix_iterator &operator++() { k_++; k_ = r_->skip_empty(k_); return *this; }
   radix_elem* operator*();
   bool operator==(const radix_iterator &other) {
     return r_ == other.r_ && k_ == other.k_; }

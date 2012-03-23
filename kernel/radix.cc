@@ -56,6 +56,26 @@ radix::search_lock(u64 start, u64 size)
   return radix_range(this, start >> shift_, size >> shift_);
 }
 
+u64
+radix::skip_empty(u64 k) const
+{
+  u64 next_k = k;
+  while (next_k < (1UL<<key_bits)) {
+    // Does next_k exist?
+    // FIXME: evil evil const_cast
+    u32 level = descend(next_k, const_cast<markptr<void>*>(&root_),
+                        radix_levels-1, [](markptr<void> *v){}, false);
+    if (level == 0) {
+      return next_k;
+    }
+    u64 mask = 1UL<<(bits_per_level * level);
+    // Skip past everything we know is missing.
+    next_k = (next_k & ~(mask-1)) + mask;
+  }
+  // Nope, no successor.
+  return ~0ULL;
+}
+
 radix_range::radix_range(radix *r, u64 start, u64 size)
   : r_(r), start_(start), size_(size)
 {
