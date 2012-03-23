@@ -1,6 +1,14 @@
 #include "crange_arch.hh"
 #include "radix.hh"
 
+static u64
+index(u64 key, u32 level)
+{
+  u64 idx = key >> (bits_per_level * level);
+  idx &= (1 << bits_per_level) - 1;
+  return idx;
+}
+
 // Returns the level we stopped at.
 template<class CB>
 u32
@@ -25,9 +33,7 @@ descend(u64 key, markptr<void> *n, u32 level, CB cb, bool create)
 
   radix_node *rn = (radix_node*) v;
 
-  u64 idx = key >> (bits_per_level * level);
-  idx &= (1<<bits_per_level)-1;
-  markptr<void> *vptr = &rn->ptr[idx];
+  markptr<void> *vptr = &rn->ptr[index(key, level)];
   if (level == 0) {
     cb(vptr);
     return level;
