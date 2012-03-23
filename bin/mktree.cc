@@ -13,7 +13,7 @@ dolevel(int fd, int branch, int depth)
       if (mkdirat(fd, &name) < 0)
         die("mkdirat");
 
-      int nfd = openat(fd, &name, O_RDWR);
+      int nfd = openat(fd, &name, O_RDONLY);
       if (nfd < 0)
         die("openat");
       dolevel(nfd, branch, depth-1);
@@ -36,7 +36,7 @@ main(int ac, char **av)
   if (mkdir(dir))
     die("mkdir");
   
-  int fd = open(dir, O_RDWR);
+  int fd = open(dir, O_RDONLY);
   if (fd < 0)
     die("open");
   
