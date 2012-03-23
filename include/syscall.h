@@ -13,7 +13,7 @@
 #define SYS_unlink 12
 #define SYS_fstat  13
 #define SYS_link   14
-#define SYS_mkdir  15
+#define SYS_mkdirat 15
 #define SYS_chdir  16
 #define SYS_dup    17
 #define SYS_getpid 18
