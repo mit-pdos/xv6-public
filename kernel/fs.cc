@@ -602,7 +602,10 @@ namecmp(const char *s, const char *t)
 u64
 namehash(const strbuf<DIRSIZ> &n)
 {
-  return n._buf[0];   /* XXX */
+  u64 h = 0;
+  for (int i = 0; i < DIRSIZ && n._buf[i]; i++)
+    h = ((h << 8) ^ n._buf[i]) % 0xdeadbeef;
+  return h;
 }
 
 void
