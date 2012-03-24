@@ -46,11 +46,11 @@ static struct buf*
 bget(u32 dev, u64 sector, int *writer)
 {
   struct buf *b;
+  scoped_gc_epoch e;
 
  loop:
   // Try for cached block.
   // XXX ignore dev
-  gc_begin_epoch();
   b = bufns->lookup(mkpair(dev, sector));
   if (b) {
     if (b->dev != dev || b->sector != sector)
@@ -60,7 +60,6 @@ bget(u32 dev, u64 sector, int *writer)
       if (b->flags & B_BUSY) {
 	cv_sleep(&b->cv, &b->lock);
 	release(&b->lock);
-	gc_end_epoch();
 	goto loop;
       }
 
@@ -72,45 +71,15 @@ bget(u32 dev, u64 sector, int *writer)
     // rcu_end_read() happens in brelse
     return b;
   }
-  gc_end_epoch();
 
   // Allocate fresh block.
-  struct buf *victim = 0;
-  bufns->enumerate([&victim](const pair<u32, u64>&, buf *eb)->bool {
-      acquire(&eb->lock);
-      if ((eb->flags & (B_BUSY | B_DIRTY | B_VALID)) == 0) {
-        victim = eb;
-        return true;
-      }
-      release(&eb->lock);
-      return false;
-    });
-  if (victim == 0)
-    bufns->enumerate([&victim](const pair<u32, u64>&, buf *eb)->bool {
-        acquire(&eb->lock);
-        if ((eb->flags & (B_BUSY | B_DIRTY)) == 0) {
-          victim = eb;
-          return true;
-        }
-        release(&eb->lock);
-        return false;
-      });
-  if (victim == 0)
-    panic("bget all busy");
-  victim->flags |= B_BUSY;
-  bufns->remove(mkpair(victim->dev, victim->sector), &victim);
-  release(&victim->lock);
-  gc_delayed(victim);
-
   b = new buf(dev, sector);
   b->flags = B_BUSY;
   *writer = 1;
-  gc_begin_epoch();
   if (bufns->insert(mkpair(b->dev, b->sector), b) < 0) {
     gc_delayed(b);
     goto loop;
   }
-  // rcu_end_read() happens in brelse
   return b;
 }
 
@@ -152,8 +121,6 @@ brelse(struct buf *b, int writer)
     b->flags &= ~B_BUSY;
     cv_wakeup(&b->cv);
   }
-  // rcu_begin_read() happens in bread
-  gc_end_epoch();
 }
 
 void
