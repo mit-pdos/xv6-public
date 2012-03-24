@@ -92,12 +92,6 @@ wqarch_init(void)
   pthread_setspecific(idkey, (void*)(u64)id);
 }
 
-static inline void
-wqarch_exit(void)
-{
-  exiting = 1;
-}
-
 #define xprintf      printf 
 #define pushcli()
 #define popcli()

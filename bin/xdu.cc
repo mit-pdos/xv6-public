@@ -79,6 +79,5 @@ main(int ac, char **av)
   perf_stop();
   printf("%ld\n", s);
   wq_dump();
-  exitwq();
   return 0;
 }

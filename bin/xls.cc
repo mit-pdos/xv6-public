@@ -99,6 +99,5 @@ main(int argc, char *argv[])
   perf_stop();
   
   wq_dump();
-  exitwq();
   return 0;
 }
