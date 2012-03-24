@@ -185,7 +185,8 @@ ialloc(u32 dev, short type)
       //cprintf("ialloc oops %d\n", inum); // XXX harmless
     }
   }
-  panic("ialloc: no inodes");
+  cprintf("ialloc: no inodes\n");
+  return nullptr;
 }
 
 // Copy inode, which has changed, from memory to disk.

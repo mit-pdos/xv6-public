@@ -228,11 +228,11 @@ create(inode *cwd, const char *path, short type, short major, short minor)
     if(type == T_FILE && ip->type == T_FILE)
       return ip;
     iunlockput(ip);
-    return 0;
+    return nullptr;
   }
 
-  if((ip = ialloc(dp->dev, type)) == 0)
-    panic("create: ialloc");
+  if((ip = ialloc(dp->dev, type)) == nullptr)
+    return nullptr;
 
   ip->major = major;
   ip->minor = minor;

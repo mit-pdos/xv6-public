@@ -9,11 +9,12 @@ dolevel(int fd, int branch, int depth)
 {
   if (depth > 0) {
     for (int i = 0; i < branch; i++) {
-      char name = 'a' + i;
-      if (mkdirat(fd, &name) < 0)
+      char name[] = "a";
+      *name += i;
+      if (mkdirat(fd, name) < 0)
         die("mkdirat");
 
-      int nfd = openat(fd, &name, O_RDONLY);
+      int nfd = openat(fd, name, O_RDONLY);
       if (nfd < 0)
         die("openat");
       dolevel(nfd, branch, depth-1);
