@@ -55,8 +55,19 @@ wq_for(IT &init, bool (*cond)(IT &it), BODY body)
     frame.inc();
     wq_push(w);
   }
+
+  // XXX(sbw) oops, skip first cond check
+
   body(v);
 
   while (!frame.zero())
     wq_trywork();
+}
+
+template <typename IT, typename BODY>
+static inline void
+wq_for_serial(IT &init, bool (*cond)(IT &it), BODY body)
+{
+  for (; cond(init); ++init)
+    body(init.copy_value());
 }
