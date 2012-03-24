@@ -54,7 +54,7 @@ void free(void*);
 int atoi(const char*);
 
 // uthread.S
-int forkt(void *sp, void *pc, void *arg);
+int forkt(void *sp, void *pc, void *arg, int forkflags);
 void forkt_setup(u64 pid);
 
 // printf.c
