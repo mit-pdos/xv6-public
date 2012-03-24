@@ -640,7 +640,16 @@ vmap::sbrk(ssize_t n, uptr *addr)
 #if VM_RADIX
   auto span = rx.search_lock(newstart, newn + PGSIZE);
 #endif
+#if VM_CRANGE
   for (auto r: span) {
+#endif
+#if VM_RADIX
+  void *last = 0;
+  for (auto r: span) {
+    if (!r || r == last)
+      continue;
+    last = r;
+#endif
     vma *e = (vma*) r;
 
     if (e->vma_start <= newstart) {
