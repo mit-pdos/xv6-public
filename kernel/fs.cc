@@ -775,7 +775,13 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
   if(r == -1 || nameiparent)
     return 0;
 
-  mtreadavar("inode:%x.%x", ip->dev, ip->inum);
+  // XXX write is necessary because of idup.  not logically required,
+  // so we should replace this with mtreadavar() eventually, perhaps
+  // once we implement sloppy counters for long-term inode refs.
+
+  // mtreadavar("inode:%x.%x", ip->dev, ip->inum);
+  mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
+
   idup(ip);
   return ip;
 }

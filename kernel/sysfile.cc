@@ -296,6 +296,10 @@ sys_openat(int dirfd, const char *path, int omode)
   if(omode & O_CREATE){
     if((ip = create(cwd, path, T_FILE, 0, 0)) == 0)
       return -1;
+
+    // XXX necessary because the mtwriteavar() to the same abstract variable
+    // does not propagate to our scope, since create() has its own inner scope.
+    mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
   } else {
  retry:
     if((ip = namei(cwd, path)) == 0)
