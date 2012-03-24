@@ -13,6 +13,7 @@
 #include "kalloc.hh"
 #include "vm.hh"
 #include "ns.hh"
+#include "fcntl.h"
 
 u64
 proc_hash(const u32 &p)
@@ -344,7 +345,10 @@ fork(int flags)
   if((np = proc::alloc()) == 0)
     return -1;
 
-  if(flags == 0) {
+  if(flags & FORK_SHARE_VMAP) {
+    np->vmap = myproc()->vmap;
+    np->vmap->ref++;
+  } else {
     // Copy process state from p.
     if((np->vmap = myproc()->vmap->copy(cow)) == 0){
       ksfree(slab_stack, np->kstack);
@@ -354,9 +358,6 @@ fork(int flags)
       freeproc(np);
       return -1;
     }
-  } else {
-    np->vmap = myproc()->vmap;
-    np->vmap->ref++;
   }
 
   np->parent = myproc();
@@ -366,16 +367,16 @@ fork(int flags)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->rax = 0;
 
-  if (flags == 0) {
+  if (flags & FORK_SHARE_FD) {
+    myproc()->ftable->incref();
+    np->ftable = myproc()->ftable;
+  } else {
     np->ftable = new filetable(*myproc()->ftable);
     if (np->ftable == nullptr) {
       // XXX(sbw) leaking?
       freeproc(np);
       return -1;
     }
-  } else {
-    myproc()->ftable->incref();
-    np->ftable = myproc()->ftable;
   }
 
   np->cwd = idup(myproc()->cwd);

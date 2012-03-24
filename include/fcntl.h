@@ -4,3 +4,7 @@
 #define O_CREATE  0x200
 
 #define AT_FDCWD  -100
+
+#define FORK_SHARE_VMAP   (1<<0)
+#define FORK_SHARE_FD     (1<<1)
+
