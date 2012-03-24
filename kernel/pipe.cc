@@ -30,7 +30,7 @@ pipealloc(struct file **f0, struct file **f1)
   *f0 = *f1 = 0;
   if((*f0 = file::alloc()) == 0 || (*f1 = file::alloc()) == 0)
     goto bad;
-  if((p = (pipe*)kmalloc(sizeof(*p))) == 0)
+  if((p = (pipe*)kmalloc(sizeof(*p), "pipe")) == 0)
     goto bad;
   p->readopen = 1;
   p->writeopen = 1;

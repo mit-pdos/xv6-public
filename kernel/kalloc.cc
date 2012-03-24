@@ -160,7 +160,7 @@ kmemprint()
 }
 
 static char*
-kalloc_pool(struct kmem *km)
+kalloc_pool(struct kmem *km, const char *name)
 {
   struct run *r = 0;
   struct kmem *m;
@@ -196,7 +196,8 @@ kalloc_pool(struct kmem *km)
     return 0;
   }
 
-  mtlabel(mtrace_label_block, r, m->size, "kalloc", sizeof("kalloc"));
+  if (name)
+    mtlabel(mtrace_label_block, r, m->size, name, strlen(name));
 
   if (ALLOC_MEMSET && m->size <= 16384)
     memset(r, 2, m->size);
@@ -207,17 +208,17 @@ kalloc_pool(struct kmem *km)
 // Returns a pointer that the kernel can use.
 // Returns 0 if the memory cannot be allocated.
 char*
-kalloc(void)
+kalloc(const char *name)
 {
   if (!kinited)
     return pgalloc();
-  return kalloc_pool(kmems);
+  return kalloc_pool(kmems, name);
 }
 
 void *
 ksalloc(int slab)
 {
-  return kalloc_pool(slabmem[slab]);
+  return kalloc_pool(slabmem[slab], slabmem[slab]->name);
 }
 
 void
@@ -277,6 +278,10 @@ initkalloc(u64 mbaddr)
     strncpy(slabmem[slab_wq][c].name, " wq", MAXNAME);
     slabmem[slab_wq][c].size = PGROUNDUP(wq_size());
     slabmem[slab_wq][c].ninit = NCPU;
+
+    strncpy(slabmem[slab_userwq][c].name, " uwq", MAXNAME);
+    slabmem[slab_userwq][c].size = USERWQSIZE;
+    slabmem[slab_userwq][c].ninit = CPUKSTACKS;
 
     for (int i = 0; i < slab_type_max; i++) {
       slabmem[i][c].name[0] = (char) c + '0';

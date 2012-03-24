@@ -13,6 +13,8 @@ UPROGS= \
 	ls \
 	mapbench \
 	maptest \
+	mkdir \
+	mktree \
 	sh \
 	halt \
 	time \
@@ -26,10 +28,11 @@ UPROGS= \
 	wqsh \
 	cp \
 	perf \
+	asharing \
 	xls \
-	xdu
-# pdu
-# pls
+	xdu \
+	wqtest \
+	rm
 
 ifeq ($(HAVE_LWIP),y)
 UPROGS += \

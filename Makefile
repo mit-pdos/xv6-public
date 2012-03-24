@@ -89,7 +89,7 @@ gdb: $(KERN)
 ## mtrace
 ##
 mscan.syms: $(KERN)
-	$(NM) -S $< > $@
+	$(NM) -C -S $< > $@
 
 mscan.kern: $(KERN)
 	cp $< $@

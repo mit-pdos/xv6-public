@@ -29,7 +29,7 @@ long sys_fstat(int, struct stat*);
 long sys_getpid(void);
 long sys_kill(int);
 long sys_link(const char*, const char*);
-long sys_mkdir(const char*);
+long sys_mkdirat(int, const char*);
 long sys_mknod(const char*, int, int);
 long sys_openat(int, const char*, int);
 long sys_pipe(int*);
@@ -51,6 +51,8 @@ long sys_pread(int fd, void *ubuf, size_t count, off_t offset);
 long sys_async(int, size_t, off_t, u32, u32);
 long sys_script(void *addr, u64 len, u64 chunk);
 long sys_setfs(u64 base);
+long sys_wqwait(void);
+long sys_setaffinity(int cpu);
 extern long (*syscalls[])(u64, u64, u64, u64, u64);
 
 // other exported/imported functions

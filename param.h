@@ -23,6 +23,8 @@
 #define VERIFYFREE    0  // Unreliable, e.g. vma's vmnode pointer gets reused
 #define ALLOC_MEMSET  DEBUG
 #define KSHAREDSIZE   (32 << 10)
+#define USERWQSIZE    (1 << 14)
+#define UWQSTACKPAGES 2
 #define WQSHIFT       7
 #define CILKENABLE    0
 #if defined(HW_josmp)
@@ -30,7 +32,7 @@
 #define MTRACE       0
 #define PERFSIZE     (1<<20ull)
 #elif defined(HW_qemu)
-#define NCPU         4   // maximum number of CPUs
+#define NCPU         8   // maximum number of CPUs
 #define MTRACE       0
 #define PERFSIZE     (16<<20ull)
 #elif defined(HW_ud0)

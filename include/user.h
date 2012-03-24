@@ -18,6 +18,7 @@ int unlink(const char*);
 int fstat(int fd, struct stat*);
 int link(const char*, const char*);
 int mkdir(const char*);
+int mkdirat(int dirfd, const char *pathname);
 int chdir(const char*);
 int dup(int);
 int getpid(void);
@@ -31,6 +32,7 @@ ssize_t pread(int, void*, size_t, off_t);
 int async(int, size_t, off_t, u32, u32);
 int script(void *addr, u64 len, u64 chunk);
 int setfs(u64 base);
+int setaffinity(int cpu);
 
 // ulib.c
 int stat(char*, struct stat*);

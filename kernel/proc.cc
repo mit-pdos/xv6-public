@@ -27,7 +27,7 @@ mycpuid(void)
 }
 
 xns<u32, proc*, proc_hash> *xnspid __mpalign__;
-static struct proc *bootproc __mpalign__;
+struct proc *bootproc __mpalign__;
 
 #if MTRACE
 struct kstack_tag kstack_tag[NCPU];
@@ -36,10 +36,10 @@ struct kstack_tag kstack_tag[NCPU];
 enum { sched_debug = 0 };
 
 proc::proc(int npid) :
-  rcu_freed("proc"), vmap(0), kstack(0),
+  rcu_freed("proc"), vmap(0), uwq(0), worker(0), kstack(0),
   pid(npid), parent(0), tf(0), context(0), killed(0),
   ftable(0), cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
-  on_runq(-1), cpu_pin(0), runq(0), oncv(0), cv_wakeup(0),
+  cpu_pin(0), runq(0), oncv(0), cv_wakeup(0),
   user_fs_(0), state_(EMBRYO)
 {
   snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
@@ -83,6 +83,30 @@ proc::set_state(enum procstate s)
     panic("ZOMBIE -> %u", s);
   }
   state_ = s;
+}
+
+int
+proc::set_cpu_pin(int cpu)
+{
+  if (cpu < -1 || cpu >= ncpu)
+    return -1;
+
+  acquire(&lock);
+  if (myproc() != this)
+    panic("set_cpu_pin not implemented for non-current proc");
+  if (cpu == -1) {
+    cpu_pin = 0;
+    release(&lock);
+    return 0;
+  }
+  // Since we're the current proc, there's no runq to get off.
+  // post_swtch will put us on the new runq.
+  cpuid = cpu;
+  cpu_pin = 1;
+  myproc()->set_state(RUNNABLE);
+  sched();
+  assert(mycpu()->id == cpu);
+  return 0;
 }
 
 // Give up the CPU for one scheduling round.
@@ -174,18 +198,15 @@ freeproc(struct proc *p)
   gc_delayed(p);
 }
 
-// Look in the process table for an UNUSED proc.
-// If found, change state to EMBRYO and initialize
-// state required to run in the kernel.
-// Otherwise return 0.
-struct proc*
-allocproc(void)
+proc*
+proc::alloc(void)
 {
-  struct proc *p;
   char *sp;
+  proc* p;
 
   p = new proc(xnspid->allockey());
-  if (p == 0) return 0;
+  if (p == nullptr)
+    return nullptr;
 
   p->cpuid = mycpu()->id;
   initprocgc(p);
@@ -228,43 +249,6 @@ allocproc(void)
   p->context->rip = (uptr)forkret;
 
   return p;
-}
-
-// Set up first user process.
-void
-inituser(void)
-{
-  struct proc *p;
-  extern u8 _initcode_start[];
-  extern u64 _initcode_size;
-
-  p = allocproc();
-  p->ftable = new filetable();
-  if (p->ftable == nullptr)
-    panic("userinit: new filetable");
-  bootproc = p;
-  if((p->vmap = vmap::alloc()) == 0)
-    panic("userinit: out of vmaps?");
-  vmnode *vmn =  new vmnode(PGROUNDUP(_initcode_size) / PGSIZE);
-  if(vmn == 0)
-    panic("userinit: vmn_allocpg");
-  if(p->vmap->insert(vmn, 0, 1) < 0)
-    panic("userinit: vmap_insert");
-  if(p->vmap->copyout(0, _initcode_start, _initcode_size) < 0)
-    panic("userinit: copyout");
-  memset(p->tf, 0, sizeof(*p->tf));
-  p->tf->cs = UCSEG | 0x3;
-  p->tf->ds = UDSEG | 0x3;
-  p->tf->ss = p->tf->ds;
-  p->tf->rflags = FL_IF;
-  p->tf->rsp = PGSIZE;
-  p->tf->rip = 0x0;  // beginning of initcode.S
-
-  safestrcpy(p->name, "initcode", sizeof(p->name));
-  p->cwd = 0; // forkret will fix in the process's context
-  acquire(&p->lock);
-  addrun(p);
-  release(&p->lock);
 }
 
 void
@@ -357,7 +341,7 @@ fork(int flags)
   // cprintf("%d: fork\n", myproc()->pid);
 
   // Allocate process.
-  if((np = allocproc()) == 0)
+  if((np = proc::alloc()) == 0)
     return -1;
 
   if(flags == 0) {
@@ -377,6 +361,7 @@ fork(int flags)
 
   np->parent = myproc();
   *np->tf = *myproc()->tf;
+  np->cpu_pin = myproc()->cpu_pin;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->rax = 0;
@@ -411,10 +396,12 @@ fork(int flags)
 void
 finishproc(struct proc *p)
 {
-  ksfree(slab_stack, p->kstack);
-  p->kstack = 0;
   if (p->vmap != nullptr)
     p->vmap->decref();
+  if (p->uwq != nullptr)
+    p->uwq->dec();
+  ksfree(slab_stack, p->kstack);
+  p->kstack = 0;
   if (!xnspid->remove(p->pid, &p))
     panic("wait: ns_remove");
   p->pid = 0;
@@ -477,7 +464,7 @@ threadalloc(void (*fn)(void *), void *arg)
 {
   struct proc *p;
 
-  p = allocproc();
+  p = proc::alloc();
   if (p == nullptr)
     return 0;
   

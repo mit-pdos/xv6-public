@@ -3,8 +3,12 @@
   You need to build and install mtrace:
     git+ssh://amsterdam.csail.mit.edu/home/am6/mpdev/qemu.git -b mtrace
 
-  #define MTRACE 1 in param.h
+  #define MTRACE 1 in param.h  (for qemu!)
+  If mtrace isn't cloned next to the xv6-scale repository, then set
+  QEMUSRC in config.mk to the directory containing mtrace-magic.h.
+  Set MTRACE in config.mk to the mtrace QEMU binary's path.
   $ make mscan.out
+  or make mtrace.out to generate just the trace file and not the summary.
 
 * Networking with lwIP
 
@@ -57,3 +61,11 @@
   $ apt-get install libjemalloc-dev
   $ make HW=user
   $ ./o.user/utest
+
+* abstract sharing
+
+  Obtain and configure mtrace as described above.
+  Disable DEBUG and enable MTRACE in param.h.
+  $ make QEMUSMP=8 mtrace.out
+  Run asharing in xv6 to generate abstract sharing traces
+  $ mscan --abstract-scopes --unexpected-sharing

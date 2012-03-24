@@ -63,6 +63,7 @@ enum {
   slab_perf,
   slab_kshared,
   slab_wq,
+  slab_userwq,
   slab_type_max
 };
 

@@ -14,6 +14,8 @@
 #include "crange.hh"
 #include "cpputil.hh"
 #include "sperf.hh"
+#include "uwq.hh"
+#include "kmtrace.hh"
 
 enum { vm_debug = 0 };
 
@@ -22,7 +24,7 @@ enum { vm_debug = 0 };
  */
 
 vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
-  : npages(npg), ref(0), type(ntype), ip(i), offset(off), sz(s)
+  : npages(npg), type(ntype), ip(i), offset(off), sz(s), ref_(0)
 {
   if (npg > NELEM(page))
     panic("vmnode too big\n");
@@ -43,10 +45,22 @@ vmnode::~vmnode()
 }
 
 void
-vmnode::decref()
+vmnode::decref(void)
 {
-  if(--ref == 0)
+  if(--ref_ == 0)
     delete this;
+}
+
+void
+vmnode::incref(void)
+{
+  ++ref_;
+}
+
+u64
+vmnode::ref(void)
+{
+  return ref_.load();
 }
 
 int
@@ -56,7 +70,7 @@ vmnode::allocpg()
     if (page[i])
       continue;
 
-    char *p = kalloc();
+    char *p = kalloc("(vmnode::allocpg)");
     if (!p) {
       cprintf("allocpg: out of memory, leaving half-filled vmnode\n");
       return -1;
@@ -125,7 +139,7 @@ vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn) :
     vma_start(start), vma_end(end), va_type(vtype), n(vmn)
 {
   if (n)
-    n->ref++;
+    n->incref();
 }
 
 vma::~vma()
@@ -144,15 +158,15 @@ vmap::alloc(void)
   return new vmap();
 }
 
-vmap::vmap() :
+vmap::vmap() : 
 #if VM_CRANGE
-    cr(10),
+  cr(10),
 #endif
 #if VM_RADIX
-    rx(PGSHIFT),
+  rx(PGSHIFT),
 #endif
-    ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
-    brk_(0)
+  ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
+  brk_(0)
 {
   initlock(&brklock_, "brk_lock", LOCKSTAT_VM);
   if (pml4 == 0) {
@@ -165,8 +179,8 @@ vmap::vmap() :
     goto err;
   }
 
-  if (setupkshared(pml4, kshared)) {
-    cprintf("vmap::vmap: setupkshared out of memory\n");
+  if (mapkva(pml4, kshared, KSHARED, KSHAREDSIZE)) {
+    cprintf("vmap::vmap: mapkva out of memory\n");
     goto err;
   }
 
@@ -193,6 +207,12 @@ vmap::decref()
 {
   if (--ref == 0)
     delete this;
+}
+
+void
+vmap::incref()
+{
+  ++ref;
 }
 
 bool
@@ -517,7 +537,7 @@ vmap::pagefault(uptr va, u32 err)
   u64 npg = (PGROUNDDOWN(va) - m->vma_start) / PGSIZE;
   if (vm_debug)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
-            err, va, m->va_type, m->n->ref.load(), myproc()->pid);
+            err, va, m->va_type, m->n->ref(), myproc()->pid);
 
   if (m->n && !m->n->page[npg])
     if (m->n->allocpg() < 0)
@@ -546,7 +566,6 @@ vmap::pagefault(uptr va, u32 err)
   if (m->va_type == COW) {
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;
   } else {
-    assert(m->n->ref == 1);
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
 
@@ -556,6 +575,12 @@ vmap::pagefault(uptr va, u32 err)
 int
 pagefault(struct vmap *vmap, uptr va, u32 err)
 {
+#if MTRACE
+  mt_ascope ascope("%s(%p)", __func__, va);
+  mtwriteavar("thread:%x", myproc()->pid);
+  mtwriteavar("page:%016x", PGROUNDDOWN(va));
+#endif
+
   return vmap->pagefault(va, err);
 }
 

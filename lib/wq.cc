@@ -21,6 +21,8 @@ public:
 private:
   work *steal(int c);
   work *pop(int c);
+  void inclen(int c);
+  void declen(int c);
 
   struct wqueue {
     work *w[NSLOTS];
@@ -38,6 +40,10 @@ private:
 
   percpu<wqueue> q_;
   percpu<stat> stat_;
+
+#if defined(XV6_USER)
+  padded_length* len_;
+#endif
 };
 
 static wq *wq_;
@@ -95,6 +101,10 @@ wq::wq(void)
 
   for (i = 0; i < NCPU; i++)
     wqlock_init(&q_[i].lock);
+
+#if defined(XV6_USER)
+  len_ = allocklen(NCPU*sizeof(padded_length));
+#endif
 }
 
 void
@@ -105,6 +115,22 @@ wq::dump(void)
     xprintf("push %lu full %lu pop %lu steal %lu\n",
             stat_[i].push, stat_[i].full,
             stat_[i].pop, stat_[i].steal);
+}
+
+inline void
+wq::inclen(int c)
+{
+#if defined(XV6_USER)
+  __sync_fetch_and_add(&len_[c].v_, 1);
+#endif
+}
+
+inline void
+wq::declen(int c)
+{
+#if defined(XV6_USER)
+  __sync_fetch_and_sub(&len_[c].v_, 1);
+#endif
 }
 
 int
@@ -123,6 +149,7 @@ wq::push(work *w)
   q_->w[i] = w;
   barrier();
   q_->head++;
+  inclen(mycpuid());
   stat_->push++;
   popcli();
   return 0;
@@ -148,6 +175,7 @@ wq::pop(int c)
   i = (i-1) & (NSLOTS-1);
   w = q->w[i];
   q->head--;
+  declen(c);
   wqlock_release(&q->lock);
 
   stat_->pop++;
@@ -171,6 +199,7 @@ wq::steal(int c)
   i = i & (NSLOTS-1);
   w = q->w[i];
   q->tail++;
+  declen(c);
   wqlock_release(&q->lock);
 
   stat_->steal++;

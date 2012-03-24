@@ -5,12 +5,8 @@ extern "C" {
 }
 
 #include "atomic.hh"
+#include "memlayout.h"
 #include <stdarg.h>
-
-#define KBASE   0xFFFFFF0000000000ull
-#define KCODE   0xFFFFFFFFC0000000ull
-#define KSHARED 0xFFFFF00000000000ull
-#define USERTOP 0x0000800000000000ull
 
 #define KCSEG (2<<3)  /* kernel code segment */
 #define KDSEG (3<<3)  /* kernel data segment */
@@ -72,6 +68,7 @@ void            vcprintf(const char *fmt, va_list ap);
 void            panic(const char*, ...) 
                   __noret__ __attribute__((format(printf, 1, 2)));
 void            kerneltrap(struct trapframe *tf) __noret__;
+void            vsnprintf(char *buf, u32 n, const char *fmt, va_list ap);
 void            snprintf(char *buf, u32 n, const char *fmt, ...);
 void            printtrace(u64 rbp);
 
@@ -125,13 +122,13 @@ void            idlezombie(struct proc*);
 void            ioapicenable(int irq, int cpu);
 
 // kalloc.c
-char*           kalloc(void);
+char*           kalloc(const char *name);
 void            kfree(void*);
 void*           ksalloc(int slabtype);
 void            ksfree(int slabtype, void*);
-void*           kmalloc(u64 nbytes);
+void*           kmalloc(u64 nbytes, const char *name);
 void            kmfree(void*, u64 nbytes);
-int             kmalign(void **p, int align, u64 size);
+int             kmalign(void **p, int align, u64 size, const char *name);
 void            kmalignfree(void *, int align, u64 size);
 void            verifyfree(char *ptr, u64 nbytes);
 void            kminit(void);
@@ -170,7 +167,6 @@ int             piperead(struct pipe*, char*, int);
 int             pipewrite(struct pipe*, char*, int);
 
 // proc.c
-struct proc*    allocproc(void);
 struct proc*    copyproc(struct proc*);
 void            finishproc(struct proc*);
 void            exit(void);
