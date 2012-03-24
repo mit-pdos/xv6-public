@@ -4,6 +4,7 @@
  * A page-table-like structure for mapping fixed-length keys to void* ptrs.
  */
 
+#include "gc.hh"
 #include "markptr.hh"
 
 enum { bits_per_level = 9 };

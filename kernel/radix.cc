@@ -1,8 +1,4 @@
-#include "types.h"
-#include "atomic.hh"
-#include "spinlock.h"
-#include "kernel.hh"
-#include "cpputil.hh"
+#include "crange_arch.hh"
 #include "radix.hh"
 
 // Returns the level we stopped at.

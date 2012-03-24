@@ -1,8 +1,9 @@
-CXXFLAGS := -iquote user $(filter-out -nostdinc++ -Istdinc, $(CXXFLAGS)) -msse
+CXXFLAGS := -iquote user $(filter-out -nostdinc++ -Istdinc -Inet, $(CXXFLAGS)) -msse
 
 $(O)/utest: $(O)/kernel/crange.o \
             $(O)/kernel/gc.o \
             $(O)/kernel/rnd.o \
+            $(O)/kernel/radix.o \
             $(O)/user/umain.o
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
