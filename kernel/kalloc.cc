@@ -126,6 +126,9 @@ kfree_pool(struct kmem *m, char *v)
   if (ALLOC_MEMSET && kinited && m->size <= 16384)
     memset(v, 1, m->size);
 
+  if (kinited)
+    mtunlabel(mtrace_label_block, v);
+
   r = (struct run*)v;
   for (;;) {
     auto headval = m->freelist.load();
@@ -135,8 +138,6 @@ kfree_pool(struct kmem *m, char *v)
   }
 
   m->nfree++;
-  if (kinited)
-    mtunlabel(mtrace_label_block, r);
 }
 
 static void
