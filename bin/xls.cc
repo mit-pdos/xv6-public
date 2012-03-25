@@ -67,14 +67,12 @@ ls(const char *path)
       struct stat st;
       if (xfstatat(fd, name, &st) < 0){
         printf("ls: cannot stat %s\n", name);
-        free((void*)name);
         return;
       }
       
       if (!silent)
         printf("%u %10lu %10lu %s\n",
                ST_TYPE(st), ST_INO(st), ST_SIZE(st), name);
-      free((void*)name);
     });
   } else {
     close(fd);

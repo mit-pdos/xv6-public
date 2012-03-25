@@ -42,8 +42,14 @@ private:
 };
 
 static inline const char*
-copy_value(const dirit &it)
+copy_value(dirit &it)
 {
   char *buf = (char*)malloc(256);
   return it.name(buf, 256);
+}
+
+static inline void
+free_value(dirit &it, const char *name)
+{
+  free((void*)name);
 }

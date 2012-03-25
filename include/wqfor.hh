@@ -21,6 +21,7 @@ struct forwork : public work {
       wq_push(w);    
     }
     body_(v);
+    free_value(it_, v);
     frame_.dec();
     delete this;
   }
@@ -60,22 +61,36 @@ wq_for(IT &init, bool (*cond)(IT &it), BODY body)
   }
 
   body(v);
+  free_value(init, v);
 
   while (!frame.zero())
     wq_trywork();
 }
 
+// For debugging
+// Same API as wq_for but serially executes body 
 template <typename IT, typename BODY>
 static inline void
 wq_for_serial(IT &init, bool (*cond)(IT &it), BODY body)
 {
-  for (; cond(init); ++init)
-    body(copy_value(init));
+  for (; cond(init); ++init) {
+    decltype(copy_value(init)) v = copy_value(init);
+    body(v);
+    free_value(init, v);
+  }
 }
 
+// Default copy_value
 template <typename T>
 static inline T
-copy_value(const T &it)
+copy_value(T &it)
 {
   return it;
+}
+
+// Default free_value
+template <typename T>
+static inline void
+free_value(T &it, T &v)
+{
 }
