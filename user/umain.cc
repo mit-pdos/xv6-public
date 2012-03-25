@@ -1,10 +1,12 @@
 #include <unistd.h>
 #include <signal.h>
 #include <getopt.h>
+#include <string.h>
 
 #include "crange_arch.hh"
 #include "gc.hh"
 #include "crange.hh"
+#include "radix.hh"
 #include "atomic_util.hh"
 #include "ns.hh"
 #include "uscopedperf.hh"
@@ -80,8 +82,13 @@ threadpin(void (*fn)(void*), void *arg, const char *name, int cpu)
   makeproc(p);
 }
 
-struct my_range : public range {
-  my_range(crange *cr, u64 k, u64 sz) : range(cr, k, sz) {}
+struct my_crange_range : public range {
+  my_crange_range(crange *cr, u64 k, u64 sz) : range(cr, k, sz) {}
+  virtual void do_gc() { delete this; }
+};
+
+struct my_radix_range : public radix_elem {
+  my_radix_range(radix *cr, u64 k, u64 sz) {}
   virtual void do_gc() { delete this; }
 };
 
@@ -92,7 +99,7 @@ enum { crange_items = 1024 };
 enum { random_keys = 0 };
 
 static void
-worker(void *arg)
+worker_crange(void *arg)
 {
   crange *cr = (crange*) arg;
 
@@ -106,7 +113,7 @@ worker(void *arg)
       span.replace(0);
     } else {
       ANON_REGION("worker add", &perfgroup);
-      span.replace(new my_range(cr, k, 1));
+      span.replace(new my_crange_range(cr, k, 1));
     }
   }
 
@@ -114,16 +121,48 @@ worker(void *arg)
 }
 
 static void
-populate(void *arg)
+populate_crange(void *arg)
 {
   crange *cr = (crange*) arg;
   for (u32 i = 0; i < crange_items; i++)
-    cr->search_lock(1 + 2*i, 1).replace(new my_range(cr, 1+2*i, 1));
+    cr->search_lock(1 + 2*i, 1).replace(new my_crange_range(cr, 1+2*i, 1));
+  pthread_barrier_wait(&populate_b);
+}
+
+static void
+worker_radix(void *arg)
+{
+  radix *cr = (radix*) arg;
+
+  for (u32 i = 0; i < iter_total / ncpu; i++) {
+    ANON_REGION("worker op", &perfgroup);
+    u64 rval = random_keys ? rnd<u32>() : myproc()->cpuid;
+    u64 k = 1 + rval % (crange_items * 2);
+    auto span = cr->search_lock(k, 1);
+    if (rnd<u8>() & 1) {
+      ANON_REGION("worker del", &perfgroup);
+      span.replace(k, 1, 0);
+    } else {
+      ANON_REGION("worker add", &perfgroup);
+      span.replace(k, 1, new my_radix_range(cr, k, 1));
+    }
+  }
+
+  pthread_barrier_wait(&worker_b);
+}
+
+static void
+populate_radix(void *arg)
+{
+  radix *cr = (radix*) arg;
+  for (u32 i = 0; i < crange_items; i++)
+    cr->search_lock(1 + 2*i, 1).replace(1+2*i, 1, new my_radix_range(cr, 1+2*i, 1));
   pthread_barrier_wait(&populate_b);
 }
 
 static const struct option long_opts[] = {
   { "ncpu", required_argument, 0, 'n' },
+  { "tree-type", required_argument, 0, 't' },
   { 0, no_argument, 0, 0 }
 };
 
@@ -140,14 +179,17 @@ l2(u64 v)
   return l;
 }
 
+enum { type_crange, type_radix };
+
 int
 main(int ac, char **av)
 {
   ncpu = NCPU;
+  int treetype = type_crange;
 
   for (;;) {
     int long_idx;
-    int opt = getopt_long(ac, av, "n:", long_opts, &long_idx);
+    int opt = getopt_long(ac, av, "n:t:", long_opts, &long_idx);
     if (opt == -1)
       break;
 
@@ -155,6 +197,15 @@ main(int ac, char **av)
     case 'n':
       ncpu = atoi(optarg);
       assert(ncpu <= NCPU);
+      break;
+
+    case 't':
+      if (!strcmp(optarg, "crange"))
+        treetype = type_crange;
+      else if (!strcmp(optarg, "radix"))
+        treetype = type_radix;
+      else
+        assert(0);
       break;
 
     case '?':
@@ -178,15 +229,25 @@ main(int ac, char **av)
   initgc();
 
   pthread_barrier_init(&populate_b, 0, 2);
+
   crange cr(l2(crange_items));
-  threadpin(populate, &cr, "populate", 0);
+  radix rr(0);
+
+  if (treetype == type_crange)
+    threadpin(populate_crange, &cr, "populate", 0);
+  else if (treetype == type_radix)
+    threadpin(populate_radix, &rr, "populate", 0);
+
   pthread_barrier_wait(&populate_b);
 
   pthread_barrier_init(&worker_b, 0, ncpu+1);
   for (u32 i = 0; i < ncpu; i++) {
     char buf[32];
     sprintf(buf, "worker%d", i);
-    threadpin(worker, &cr, buf, i);
+    if (treetype == type_crange)
+      threadpin(worker_crange, &cr, buf, i);
+    else if (treetype == type_radix)
+      threadpin(worker_radix, &rr, buf, i);
   }
   pthread_barrier_wait(&worker_b);
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gc.hh"
+#include "percpu.hh"
 
 // name spaces
 // XXX maybe use open hash table, no chain, better cache locality
@@ -15,11 +16,19 @@ template<class K, class V>
 class xelem : public rcu_freed {
  public:
   V val;
-  std::atomic<int> next_lock;
-  std::atomic<xelem<K, V>*> volatile next;
   K key;
 
-  xelem(const K &k, const V &v) : rcu_freed("xelem"), val(v), next_lock(0), next(0), key(k) {}
+  std::atomic<int> next_lock;
+  std::atomic<xelem<K, V>*> next;
+
+  int percore_c;
+  std::atomic<xelem<K, V>*> percore_next;
+  std::atomic<xelem<K, V>*>* percore_pprev;
+
+  xelem(const K &k, const V &v)
+    : rcu_freed("xelem"), val(v), key(k),
+      next_lock(0), next(0),
+      percore_next(0), percore_pprev(0) {}
   virtual void do_gc() {
     delete this;
   }
@@ -39,6 +48,8 @@ class xns : public rcu_freed {
   bool allowdup;
   std::atomic<u64> nextkey;
   xbucket<K, V> table[NHASH];
+  std::atomic<xelem<K, V>*> percore[NCPU];
+  spinlock percore_lock[NCPU];
 
  public:
   xns(bool dup) : rcu_freed("xns") {
@@ -46,6 +57,10 @@ class xns : public rcu_freed {
     nextkey = 1;
     for (int i = 0; i < NHASH; i++)
       table[i].chain = 0;
+    for (int i = 0; i < NCPU; i++) {
+      percore[i] = nullptr;
+      initlock(&percore_lock[i], "xns_lock", LOCKSTAT_NS);
+    }
   }
 
   ~xns() {
@@ -86,8 +101,18 @@ class xns : public rcu_freed {
       }
 
       e->next = root.load();
-      if (cmpxch(&table[i].chain, e->next.load(), e))
+      if (cmpxch(&table[i].chain, e->next.load(), e)) {
+        int c = mycpuid();
+        acquire(&percore_lock[c]);
+        e->percore_c = c;
+        e->percore_next = percore[c].load();
+        if (percore[c])
+          percore[c].load()->percore_pprev = &e->percore_next;
+        e->percore_pprev = &percore[c];
+        percore[c] = e;
+        release(&percore_lock[c]);
         return 0;
+      }
     }
   }
 
@@ -134,6 +159,13 @@ class xns : public rcu_freed {
             break;
           }
 
+          int c = e->percore_c;
+          acquire(&percore_lock[c]);
+          *e->percore_pprev = e->percore_next.load();
+          if (e->percore_next)
+            e->percore_next.load()->percore_pprev = e->percore_pprev;
+          release(&percore_lock[c]);
+
           *pelock = 0;
           gc_delayed(e);
           return true;
@@ -148,12 +180,13 @@ class xns : public rcu_freed {
   template<class CB>
   void enumerate(CB cb) {
     scoped_gc_epoch gc;
-    for (int i = 0; i < NHASH; i++) {
-      auto e = table[i].chain.load();
+    int cpuoffset = mycpuid();
+    for (int i = 0; i < NCPU; i++) {
+      auto e = percore[(i + cpuoffset) % NCPU].load();
       while (e) {
         if (cb(e->key, e->val))
           return;
-        e = e->next;
+        e = e->percore_next;
       }
     }
   }

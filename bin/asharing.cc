@@ -78,6 +78,9 @@ main(int ac, char **av)
       pthread_t tid;
       pthread_create(&tid, 0, op, (void*) i);
     }
+
+    for (u64 i = 0; i < ncore; i++)
+      wait();
     mtdisable("xv6-asharing");
   }
 }

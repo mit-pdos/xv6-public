@@ -3,7 +3,7 @@
 Q          ?= @
 TOOLPREFIX ?= x86_64-jos-elf-
 QEMU 	   ?= qemu-system-x86_64
-QEMUSMP	   ?= 4
+QEMUSMP	   ?= 8
 QEMUSRC    ?= ../mtrace
 MTRACE	   ?= $(QEMU)
 HW	   ?= qemu

@@ -12,7 +12,7 @@ forkt:
         movq %rdx, 0x00(%r12)   # arg
         movq %rsi, 0x08(%r12)   # function ptr
 
-        movq $1, %rdi           # flag for sys_fork
+        movq %rcx, %rdi         # flag for sys_fork
         movq $SYS_fork, %rax
         syscall
 

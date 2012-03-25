@@ -52,6 +52,7 @@ struct klockstat;
 #define LOCKSTAT_KALLOC    1
 #define LOCKSTAT_KMALLOC   1
 #define LOCKSTAT_NET       1
+#define LOCKSTAT_NS        1
 #define LOCKSTAT_PIPE      1
 #define LOCKSTAT_PROC      1
 #define LOCKSTAT_SCHED     1

@@ -83,11 +83,6 @@ wqarch_init(void)
   }
 }
 
-static inline void
-wqarch_exit(void)
-{
-}
-
 #define xprintf        printf
 #define pushcli()
 #define popcli()

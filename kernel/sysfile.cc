@@ -215,6 +215,9 @@ create(inode *cwd, const char *path, short type, short major, short minor)
 {
   struct inode *ip, *dp;
   char name[DIRSIZ];
+  mt_ascope ascope("%s(%d.%d,%s,%d,%d,%d)",
+                   __func__, cwd->dev, cwd->inum,
+                   path, type, major, minor);
 
  retry:
   if((dp = nameiparent(cwd, path, name)) == 0)
@@ -238,6 +241,8 @@ create(inode *cwd, const char *path, short type, short major, short minor)
   ip->minor = minor;
   ip->nlink = 1;
   iupdate(ip);
+
+  mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
 
   if(type == T_DIR){  // Create . and .. entries.
     dp->nlink++;  // for ".."
@@ -291,6 +296,10 @@ sys_openat(int dirfd, const char *path, int omode)
   if(omode & O_CREATE){
     if((ip = create(cwd, path, T_FILE, 0, 0)) == 0)
       return -1;
+
+    // XXX necessary because the mtwriteavar() to the same abstract variable
+    // does not propagate to our scope, since create() has its own inner scope.
+    mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
   } else {
  retry:
     if((ip = namei(cwd, path)) == 0)
