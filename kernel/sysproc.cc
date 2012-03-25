@@ -33,7 +33,7 @@ sys_wait(void)
 long
 sys_kill(int pid)
 {
-  return kill(pid);
+  return proc::kill(pid);
 }
 
 long

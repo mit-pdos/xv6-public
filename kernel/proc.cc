@@ -264,18 +264,11 @@ initproc(void)
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
 int
-kill(int pid)
+proc::kill(void)
 {
-  struct proc *p;
-
-  p = xnspid->lookup(pid);
-  if (p == 0) {
-    panic("kill");
-    return -1;
-  }
-  acquire(&p->lock);
-  p->killed = 1;
-  if(p->get_state() == SLEEPING){
+  acquire(&lock);
+  killed = 1;
+  if(get_state() == SLEEPING) {
     // XXX
     // we need to wake p up if it is cv_sleep()ing.
     // can't change p from SLEEPING to RUNNABLE since that
@@ -287,8 +280,21 @@ kill(int pid)
     //   cv might be deallocated while we're using it
     //   (pipes dynamically allocate condvars).
   }
-  release(&p->lock);
+  release(&lock);
   return 0;
+}
+
+int
+proc::kill(int pid)
+{
+  struct proc *p;
+
+  p = xnspid->lookup(pid);
+  if (p == 0) {
+    panic("kill");
+    return -1;
+  }
+  return p->kill();
 }
 
 // Print a process listing to console.  For debugging.
