@@ -13,7 +13,7 @@ struct forwork : public work {
     : it_(it), cond_(cond), body_(body), frame_(frame) {}
 
   virtual void run() {
-    decltype(it_.copy_value()) v = it_.copy_value();
+    decltype(copy_value(it_)) v = copy_value(it_);
     ++it_;
     if (cond_(it_)) {
       forwork<IT, BODY> *w = new forwork<IT, BODY>(it_, cond_, body_, frame_);
@@ -48,15 +48,16 @@ wq_for(IT &init, bool (*cond)(IT &it), BODY body)
 
   // XXX(sbw) should be able to coarsen loop
 
-  decltype(init.copy_value()) v = init.copy_value();
+  if (!cond(init))
+    return;
+
+  decltype(copy_value(init)) v = copy_value(init);
   ++init;
   if (cond(init)) {
     forwork<IT, BODY> *w = new forwork<IT, BODY>(init, cond, body, frame);
     frame.inc();
     wq_push(w);
   }
-
-  // XXX(sbw) oops, skip first cond check
 
   body(v);
 
@@ -69,5 +70,12 @@ static inline void
 wq_for_serial(IT &init, bool (*cond)(IT &it), BODY body)
 {
   for (; cond(init); ++init)
-    body(init.copy_value());
+    body(copy_value(init));
+}
+
+template <typename T>
+static inline T
+copy_value(const T &it)
+{
+  return it;
 }

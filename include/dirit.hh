@@ -13,14 +13,6 @@ public:
     return *this;
   }
 
-  const char * copy_value() {
-    char *buf = (char*)malloc(256);
-    return name(buf, 256);
-  }
-
-  bool end() const { return end_; }
-
-private:
   char *name(char *buf, size_t n) const {
     n = MIN(DIRSIZ+1, n);
     memmove(buf, de_.name, n-1);
@@ -28,6 +20,9 @@ private:
     return buf;
   } 
 
+  bool end() const { return end_; }
+
+private:
   void refill(void) {
     int r;
 
@@ -45,3 +40,10 @@ private:
   bool end_;
   struct dirent de_;
 };
+
+static inline const char*
+copy_value(const dirit &it)
+{
+  char *buf = (char*)malloc(256);
+  return it.name(buf, 256);
+}

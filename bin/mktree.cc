@@ -4,7 +4,6 @@
 #include "lib.h"
 #include "fcntl.h"
 #include "wq.hh"
-#include "wqit.hh"
 
 static int branch;
 
@@ -12,10 +11,10 @@ static void
 dolevel(int fd, int depth)
 {
   if (depth > 0) {
-    wq_num<int> it(0);
-    wq_for_serial<wq_num<int> >(it,
-                         [](wq_num<int> &it)->bool { return it < branch; },
-                         [&fd, &depth](int i)->void
+    int it = 0;                                
+    wq_for_serial<int>(it,
+                       [](int &it)->bool { return it < branch; },
+                       [&fd, &depth](int i)->void
     {
       char name[] = "a";
       *name += i;
