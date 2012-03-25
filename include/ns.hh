@@ -56,6 +56,10 @@ class xns : public rcu_freed {
     nextkey = 1;
     for (int i = 0; i < NHASH; i++)
       table[i].chain = 0;
+    for (int i = 0; i < NCPU; i++) {
+      percore[i] = nullptr;
+      initlock(&percore_lock[i], "xns_lock", LOCKSTAT_NS);
+    }
   }
 
   ~xns() {

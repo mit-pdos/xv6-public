@@ -3,12 +3,19 @@
 #include "user.h"
 #include "lib.h"
 #include "fcntl.h"
+#include "wq.hh"
+
+static int branch;
 
 static void
-dolevel(int fd, int branch, int depth)
+dolevel(int fd, int depth)
 {
   if (depth > 0) {
-    for (int i = 0; i < branch; i++) {
+    int it = 0;                                
+    wq_for_serial<int>(it,
+                       [](int &it)->bool { return it < branch; },
+                       [&fd, &depth](int i)->void
+    {
       char name[] = "a";
       *name += i;
       if (mkdirat(fd, name) < 0)
@@ -16,9 +23,9 @@ dolevel(int fd, int branch, int depth)
 
       int nfd = openat(fd, name, O_RDONLY);
       if (nfd < 0)
-        die("openat");
-      dolevel(nfd, branch, depth-1);
-    }
+        die("openat: %s at %u", name, depth);
+      dolevel(nfd, depth-1);
+    });
   }
 
   close(fd);
@@ -30,8 +37,10 @@ main(int ac, char **av)
   if (ac < 4)
     die("usage: %s dir branch depth", av[0]);
 
+  initwq();
+
   const char *dir = av[1];
-  int branch = atoi(av[2]);
+  branch = atoi(av[2]);
   int depth = atoi(av[3]);
 
   if (mkdir(dir))
@@ -41,5 +50,5 @@ main(int ac, char **av)
   if (fd < 0)
     die("open");
   
-  dolevel(fd, branch, depth);
+  dolevel(fd, depth);
 }

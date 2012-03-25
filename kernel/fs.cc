@@ -201,7 +201,7 @@ ialloc(u32 dev, short type)
       //cprintf("ialloc oops %d\n", inum); // XXX harmless
     }
   }
-  cprintf("ialloc: no inodes\n");
+  cprintf("ialloc: 0/%u inodes\n", sb.ninodes);
   return nullptr;
 }
 

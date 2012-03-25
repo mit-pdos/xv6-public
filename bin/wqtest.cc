@@ -127,6 +127,5 @@ main(int ac, char **av)
   test0();
   testfork();
   execwork::test();
-  exitwq();
   return 0;
 }
