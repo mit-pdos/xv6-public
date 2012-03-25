@@ -8,7 +8,7 @@
 #if SPINLOCK_DEBUG
 #define NHASH 10
 #else
-#define NHASH 30
+#define NHASH 257
 #endif
 
 template<class K, class V>
@@ -27,10 +27,11 @@ class xelem : public rcu_freed {
   NEW_DELETE_OPS(xelem)
 };
 
+// XXX maybe not cache align, because it takes too much space
 template<class K, class V>
 struct xbucket {
   std::atomic<xelem<K, V>*> volatile chain;
-} __attribute__((aligned (CACHELINE)));
+} ; // __attribute__((aligned (CACHELINE)));
 
 template<class K, class V, u64 (*HF)(const K&)>
 class xns : public rcu_freed {
