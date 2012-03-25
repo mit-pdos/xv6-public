@@ -32,7 +32,8 @@ UPROGS= \
 	xls \
 	xdu \
 	wqtest \
-	rm
+	rm \
+	avar
 
 ifeq ($(HAVE_LWIP),y)
 UPROGS += \
