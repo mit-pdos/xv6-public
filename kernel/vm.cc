@@ -110,6 +110,9 @@ vmnode::copy()
 int
 vmnode::demand_load()
 {
+#ifdef MTRACE 
+  mtreadavar("inode:%x.%x", ip->dev, ip->inum);
+#endif
   for (u64 i = 0; i < sz; i += PGSIZE) {
     char *p = page[i / PGSIZE];
     s64 n;
