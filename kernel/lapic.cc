@@ -142,16 +142,10 @@ cpunum(void)
 {
   // Cannot call cpu when interrupts are enabled:
   // result not guaranteed to last long enough to be used!
-  // Would prefer to panic but even printing is chancy here:
-  // almost everything, including cprintf and panic, calls cpu,
-  // often indirectly through acquire and release.
   if(readrflags()&FL_IF){
-    static int n __mpalign__;
-    if(n == 0) {
-      n++;
-      cprintf("cpu called from %p with interrupts enabled\n",
-        __builtin_return_address(0));
-    }
+    cli();
+    panic("cpunum() called from %p with interrupts enabled\n",
+      __builtin_return_address(0));
   }
 
   if(lapic)
