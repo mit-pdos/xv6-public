@@ -112,6 +112,7 @@ vmnode::demand_load()
 {
 #ifdef MTRACE 
   mtreadavar("inode:%x.%x", ip->dev, ip->inum);
+  mtwriteavar("vmnode:%016x", this);
 #endif
   for (u64 i = 0; i < sz; i += PGSIZE) {
     char *p = page[i / PGSIZE];
@@ -571,6 +572,8 @@ vmap::pagefault(uptr va, u32 err)
   } else {
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
+
+  mtreadavar("vmnode:%016x", m->n);
 
   return 1;
 }
