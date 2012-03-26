@@ -14,6 +14,7 @@ UPROGS= \
 	mapbench \
 	maptest \
 	sh \
+	nsh \
 	halt \
 	time \
 	sleep \
