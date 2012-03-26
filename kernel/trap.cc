@@ -75,6 +75,7 @@ trap(struct trapframe *tf)
   if (myproc()->mtrace_stacks.curr >= 0)
     mtpause(myproc());
   mtstart(trap, myproc());
+  // XXX mt_ascope ascope("trap:%d", tf->trapno);
 #endif
 
   switch(tf->trapno){

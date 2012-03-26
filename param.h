@@ -1,5 +1,5 @@
 #pragma once
-#define DEBUG         1
+#define DEBUG         0
 #define NPROC        64  // maximum number of processes
 #define KSTACKSIZE 8192  // size of per-process kernel stack
 #define NOFILE       16  // open files per process
@@ -33,7 +33,7 @@
 #define PERFSIZE     (1<<20ull)
 #elif defined(HW_qemu)
 #define NCPU         8   // maximum number of CPUs
-#define MTRACE       0
+#define MTRACE       1
 #define PERFSIZE     (16<<20ull)
 #elif defined(HW_ud0)
 #define NCPU         4   // maximum number of CPUs
