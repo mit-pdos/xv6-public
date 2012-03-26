@@ -41,7 +41,13 @@ struct mtrace_stacks {
 };
 #endif
 
-enum procstate { EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+typedef enum procstate { 
+  EMBRYO,
+  SLEEPING,
+  RUNNABLE,
+  RUNNING,
+  ZOMBIE 
+} procstate_t;;
 
 // Per-process state
 struct proc : public rcu_freed {
@@ -80,12 +86,14 @@ struct proc : public rcu_freed {
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
   u64 user_fs_;
 
-  virtual void do_gc(void) { delete this; }
-
-  void set_state(enum procstate s);
-  enum procstate get_state(void) const { return state_; }
-  int set_cpu_pin(int cpu);
   static proc* alloc();
+  void         set_state(procstate_t s);
+  procstate_t  get_state(void) const { return state_; }
+  int          set_cpu_pin(int cpu);
+  static int   kill(int pid);
+  int          kill();
+
+  virtual void do_gc(void) { delete this; }
 
 private:
   proc(int npid);
@@ -94,5 +102,5 @@ private:
   proc(const proc& x);
   NEW_DELETE_OPS(proc);
   
-  enum procstate state_;       // Process state  
+  procstate_t state_;       // Process state  
 };

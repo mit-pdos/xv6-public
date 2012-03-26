@@ -15,7 +15,6 @@
 #include "wq.hh"
 #include "cilk.hh"
 
-#define USTACKPAGES 2
 #define BRK (USERTOP >> 1)
 
 struct eargs {

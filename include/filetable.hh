@@ -54,6 +54,7 @@ public:
       }
     }
     release(&lock_);    
+    cprintf("filetable::allocfd: failed\n");
     return -1;
   }
 

@@ -275,9 +275,8 @@ sys_openat(int dirfd, const char *path, int omode)
 
   if (dirfd == AT_FDCWD) {
     cwd = myproc()->cwd;
-  } else if (dirfd < 0 || dirfd >= NOFILE) {
-    return -1;
   } else {
+    // XXX(sbw) do we need the sref while we touch fdir->ip?
     sref<file> fdir;
     if (!getfile(dirfd, &fdir) || fdir->type != file::FD_INODE)
       return -1;

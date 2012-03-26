@@ -12,9 +12,9 @@ dolevel(int fd, int depth)
 {
   if (depth > 0) {
     int it = 0;                                
-    wq_for_serial<int>(it,
-                       [](int &it)->bool { return it < branch; },
-                       [&fd, &depth](int i)->void
+    wq_for<int>(it,
+                [](int &it)->bool { return it < branch; },
+                [&fd, &depth](int i)->void
     {
       char name[] = "a";
       *name += i;

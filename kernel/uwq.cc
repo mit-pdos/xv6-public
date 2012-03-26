@@ -277,18 +277,19 @@ uwq::allocworker(void)
   p->ftable = ftable_;
     
   struct vmnode *vmn;
-  if ((vmn = new vmnode(UWQSTACKPAGES)) == nullptr) {
+  if ((vmn = new vmnode(USTACKPAGES)) == nullptr) {
     finishproc(p);
     return nullptr;
   }
 
-  uptr stacktop = ustack_ + (UWQSTACKPAGES*PGSIZE);
+  uptr stacktop = ustack_ + (USTACKPAGES*PGSIZE);
   if (vmap_->insert(vmn, ustack_, 1) < 0) {
     delete vmn;
     finishproc(p);
     return nullptr;
   }
-  ustack_ += (UWQSTACKPAGES*PGSIZE);
+  // Include a bumper page
+  ustack_ += (USTACKPAGES*PGSIZE)+PGSIZE;
 
   p->tf->rsp = stacktop - 8;
   p->tf->rip = uentry;

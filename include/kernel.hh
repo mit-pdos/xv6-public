@@ -173,7 +173,6 @@ void            finishproc(struct proc*);
 void            exit(void);
 int             fork(int);
 int             growproc(int);
-int             kill(int);
 void            pinit(void);
 void            procdumpall(void);
 void            scheduler(void) __noret__;

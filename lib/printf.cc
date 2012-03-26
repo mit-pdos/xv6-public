@@ -3,33 +3,67 @@
 #include "user.h"
 #include <stdarg.h>
 #include "fmt.hh"
+#include "lib.h"
 
-// Print to the given fd.
+struct outbuf {
+  char b[128];
+  int  n;
+  int  fd;
+};
+
 static void
-writec(int c, void *arg)
+flushoutbuf(struct outbuf* b)
 {
-  int fd = (int) (u64) arg;
-  write(fd, &c, 1);
+  int i = 0;
+  int r;
+  
+  while (b->n != 0) {
+    r = write(b->fd, &b->b[i], b->n);
+    if (r == 0 || r < 0) {
+      b->n = 0;
+    } else {
+      b->n -= r;
+      i += r;
+    }
+  }
+}
+
+static void
+writeoutbuf(int c, void *arg)
+{
+  struct outbuf* b = (struct outbuf*)arg;
+  if (b->n == NELEM(b->b))
+    flushoutbuf(b);
+  b->b[b->n] = c;
+  b->n++;
 }
 
 void
 fprintf(int fd, const char *fmt, ...)
 {
+  struct outbuf b;
   va_list ap;
 
+  b.n = 0;
+  b.fd = fd;
   va_start(ap, fmt);
-  vprintfmt(writec, (void*) (u64)fd, fmt, ap);
+  vprintfmt(writeoutbuf, (void*) &b, fmt, ap);
   va_end(ap);
+  flushoutbuf(&b);
 }
 
 void
 printf(const char *fmt, ...)
 {
+  struct outbuf b;
   va_list ap;
 
+  b.n = 0;
+  b.fd = 1;
   va_start(ap, fmt);
-  vprintfmt(writec, (void*) 1, fmt, ap);
+  vprintfmt(writeoutbuf, (void*) &b, fmt, ap);
   va_end(ap);
+  flushoutbuf(&b);
 }
 
 // Print to a buffer.
@@ -69,11 +103,15 @@ snprintf(char *buf, u32 n, const char *fmt, ...)
 void __attribute__((noreturn))
 die(const char* errstr, ...)
 {
+  struct outbuf b;
   va_list ap;
 
+  b.n = 0;
+  b.fd = 2;
   va_start(ap, errstr);
-  vprintfmt(writec, (void*) (u64)1, errstr, ap);
+  vprintfmt(writeoutbuf, (void*)&b, errstr, ap);
   va_end(ap);
+  flushoutbuf(&b);
   fprintf(2, "\n");
   exit();
 }
