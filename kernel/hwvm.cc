@@ -10,8 +10,13 @@
 #include "condvar.h"
 #include "proc.hh"
 #include "vm.hh"
+#include "wq.hh"
 
 using namespace std;
+
+static const char *levelnames[] = {
+  "PT", "PD", "PDP", "PML4"
+};
 
 static pgmap*
 descend(pgmap *dir, u64 va, u64 flags, int create, int level)
@@ -28,7 +33,7 @@ retry:
   } else {
     if (!create)
       return nullptr;
-    next = (pgmap*) kalloc();
+    next = (pgmap*) kalloc(levelnames[level-1]);
     if (!next)
       return nullptr;
     memset(next, 0, PGSIZE);
@@ -83,7 +88,7 @@ setupkvm(void)
   pgmap *pml4;
   int k;
 
-  if((pml4 = (pgmap*)kalloc()) == 0)
+  if((pml4 = (pgmap*)kalloc("PML4")) == 0)
     return 0;
   k = PX(3, KBASE);
   memset(&pml4->e[0], 0, 8*k);
@@ -92,13 +97,36 @@ setupkvm(void)
 }
 
 int
-setupkshared(pgmap *pml4, char *kshared)
+mapkva(pgmap *pml4, char* kva, uptr uva, size_t size)
 {
-  for (u64 off = 0; off < KSHAREDSIZE; off+=4096) {
-    atomic<pme_t> *pte = walkpgdir(pml4, (u64) (KSHARED+off), 1);
+  for (u64 off = 0; off < size; off+=4096) {
+    atomic<pme_t> *pte = walkpgdir(pml4, (u64) (uva+off), 1);
     if (pte == nullptr)
-      panic("setupkshared: oops");
-    *pte = v2p(kshared+off) | PTE_P | PTE_U | PTE_W;
+      return -1;
+    *pte = v2p(kva+off) | PTE_P | PTE_U | PTE_W;
+  }
+  return 0;
+}
+
+int
+setupuvm(pgmap *pml4, char *kshared, char *uwq)
+{
+  struct todo {
+    char *kvm;
+    char *uvm;
+    size_t size;
+  } todo[] = {
+    { kshared, (char*)KSHARED, KSHAREDSIZE },
+    { uwq,     (char*)USERWQ,  USERWQSIZE }
+  };
+
+  for (int i = 0; i < NELEM(todo); i++) {
+    for (u64 off = 0; off < todo[i].size; off+=4096) {
+      atomic<pme_t> *pte = walkpgdir(pml4, (u64) (todo[i].uvm+off), 1);
+      if (pte == nullptr)
+        return -1;
+      *pte = v2p(todo[i].kvm+off) | PTE_P | PTE_U | PTE_W;
+    }
   }
   return 0;
 }

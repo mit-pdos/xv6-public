@@ -24,7 +24,7 @@ void*
 klockstat::operator new(unsigned long nbytes)
 {
   assert(nbytes == sizeof(klockstat));
-  return kmalloc(sizeof(klockstat));
+  return kmalloc(sizeof(klockstat), "klockstat");
 }
 
 void

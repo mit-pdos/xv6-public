@@ -13,7 +13,7 @@ struct forwork : public work {
     : it_(it), cond_(cond), body_(body), frame_(frame) {}
 
   virtual void run() {
-    decltype(it_.copy_value()) v = it_.copy_value();
+    decltype(copy_value(it_)) v = copy_value(it_);
     ++it_;
     if (cond_(it_)) {
       forwork<IT, BODY> *w = new forwork<IT, BODY>(it_, cond_, body_, frame_);
@@ -21,6 +21,7 @@ struct forwork : public work {
       wq_push(w);    
     }
     body_(v);
+    free_value(it_, v);
     frame_.dec();
     delete this;
   }
@@ -48,15 +49,48 @@ wq_for(IT &init, bool (*cond)(IT &it), BODY body)
 
   // XXX(sbw) should be able to coarsen loop
 
-  decltype(init.copy_value()) v = init.copy_value();
+  if (!cond(init))
+    return;
+
+  decltype(copy_value(init)) v = copy_value(init);
   ++init;
   if (cond(init)) {
     forwork<IT, BODY> *w = new forwork<IT, BODY>(init, cond, body, frame);
     frame.inc();
     wq_push(w);
   }
+
   body(v);
+  free_value(init, v);
 
   while (!frame.zero())
     wq_trywork();
+}
+
+// For debugging
+// Same API as wq_for but serially executes body 
+template <typename IT, typename BODY>
+static inline void
+wq_for_serial(IT &init, bool (*cond)(IT &it), BODY body)
+{
+  for (; cond(init); ++init) {
+    decltype(copy_value(init)) v = copy_value(init);
+    body(v);
+    free_value(init, v);
+  }
+}
+
+// Default copy_value
+template <typename T>
+static inline T
+copy_value(T &it)
+{
+  return it;
+}
+
+// Default free_value
+template <typename T>
+static inline void
+free_value(T &it, T &v)
+{
 }

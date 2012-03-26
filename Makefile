@@ -3,7 +3,7 @@
 Q          ?= @
 TOOLPREFIX ?= x86_64-jos-elf-
 QEMU 	   ?= qemu-system-x86_64
-QEMUSMP	   ?= 4
+QEMUSMP	   ?= 8
 QEMUSRC    ?= ../mtrace
 MTRACE	   ?= $(QEMU)
 HW	   ?= qemu
@@ -89,7 +89,7 @@ gdb: $(KERN)
 ## mtrace
 ##
 mscan.syms: $(KERN)
-	$(NM) -S $< > $@
+	$(NM) -C -S $< > $@
 
 mscan.kern: $(KERN)
 	cp $< $@

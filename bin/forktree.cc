@@ -1,7 +1,6 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-#include "mtrace.h"
 
 #define NCHILD 2
 #define NDEPTH 5
@@ -12,7 +11,6 @@ forktree(void)
   int depth = 0;
 
   fprintf(1, "%d: fork tree\n", getpid());
-  mtenable("xv6-forktree");
 
  next_level:
   //printf(1, "pid %d, depth %d\n", getpid(), depth);
@@ -47,9 +45,6 @@ forktree(void)
   if (depth > 0)
     exit();
 
-  mtops(0);
-  mtdisable("xv6-forktree");
-  
   fprintf(1, "%d: fork tree OK\n", getpid());
   // halt();
 }

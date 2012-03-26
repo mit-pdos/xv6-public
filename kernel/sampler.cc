@@ -188,7 +188,7 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
     u64 len = LOGHEADER_SZ;
     u64 cc;
     
-    hdr = (logheader*) kmalloc(len);
+    hdr = (logheader*) kmalloc(len, "logheader");
     if (hdr == nullptr)
       return -1;
     hdr->ncpus = NCPU;

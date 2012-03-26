@@ -2,6 +2,7 @@
 #include "pthread.h"
 #include "user.h"
 #include "atomic.hh"
+#include "fcntl.h"
 
 enum { stack_size = 8192 };
 static std::atomic<int> nextkey;
@@ -22,7 +23,7 @@ pthread_create(pthread_t* tid, const pthread_attr_t* attr,
                void* (*start)(void*), void* arg)
 {
   char* base = (char*) sbrk(stack_size);
-  int t = forkt(base + stack_size, (void*) start, arg);
+  int t = forkt(base + stack_size, (void*) start, arg, FORK_SHARE_VMAP | FORK_SHARE_FD);
   if (t < 0)
     return t;
 
@@ -55,7 +56,7 @@ pthread_getspecific(pthread_key_t key)
 int
 pthread_setspecific(pthread_key_t key, void* value)
 {
-  __asm volatile("movq %0, %%fs:(%1)" : : "r" (value), "r" ((u64) key * 8));
+  __asm volatile("movq %0, %%fs:(%1)" : : "r" (value), "r" ((u64) key * 8) : "memory");
   return 0;
 }
 

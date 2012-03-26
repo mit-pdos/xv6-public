@@ -10,6 +10,22 @@
 // routines.  The (higher-level) system call implementations
 // are in sysfile.c.
 
+/*
+ * inode cache will be RCU-managed:
+ * 
+ * - to evict, mark inode as a victim
+ * - lookups that encounter a victim inode must return an error (-E_RETRY)
+ * - E_RETRY rolls back to the beginning of syscall/pagefault and retries
+ * - out-of-memory error should be treated like -E_RETRY
+ * - once an inode is marked as victim, it can be gc_delayed()
+ * - the do_gc() method should remove inode from the namespace & free it
+ * 
+ * - inodes have a refcount that lasts beyond a GC epoch
+ * - to bump refcount, first bump, then check victim flag
+ * - if victim flag is set, reduce the refcount and -E_RETRY
+ *
+ */
+
 #include "types.h"
 #include "stat.h"
 #include "mmu.h"
@@ -22,6 +38,7 @@
 #include "buf.hh"
 #include "file.hh"
 #include "cpu.hh"
+#include "kmtrace.hh"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
@@ -184,7 +201,8 @@ ialloc(u32 dev, short type)
       //cprintf("ialloc oops %d\n", inum); // XXX harmless
     }
   }
-  panic("ialloc: no inodes");
+  cprintf("ialloc: 0/%u inodes\n", sb.ninodes);
+  return nullptr;
 }
 
 // Copy inode, which has changed, from memory to disk.
@@ -237,72 +255,36 @@ inode::~inode()
 struct inode*
 iget(u32 dev, u32 inum)
 {
-  struct inode *ip;
+  struct inode *ip = igetnoref(dev, inum);
+  if (ip)
+    idup(ip);
+  return ip;
+}
 
+struct inode*
+igetnoref(u32 dev, u32 inum)
+{
  retry:
   // Try for cached inode.
-  gc_begin_epoch();
-  ip = ins->lookup(mkpair(dev, inum));
-  if (ip) {
-    // tricky: first bump ref, then check free flag
-    ip->ref++;
-    if (ip->flags & I_FREE) {
-      gc_end_epoch();
-      ip->ref--;
-      goto retry;
-    }
-    gc_end_epoch();
-    if (!(ip->flags & I_VALID)) {
-      acquire(&ip->lock);
-      while((ip->flags & I_VALID) == 0)
-	cv_sleep(&ip->cv, &ip->lock);
-      release(&ip->lock);
-    }
+  {
+    scoped_gc_epoch e;
+    struct inode *ip = ins->lookup(mkpair(dev, inum));
+    if (ip) {
+      if (!(ip->flags & I_VALID)) {
+        acquire(&ip->lock);
+        while((ip->flags & I_VALID) == 0)
+	  cv_sleep(&ip->cv, &ip->lock);
+        release(&ip->lock);
+      }
     return ip;
+    }
   }
-  gc_end_epoch();
 
   // Allocate fresh inode cache slot.
- retry_evict:
-  (void) 0;
-  u32 cur_free = icache_free[mycpu()->id].x;
-  if (cur_free == 0) {
-    struct inode *victim = 0;
-    ins->enumerate([&victim](const pair<u32, u32>&, inode* eip)->bool{
-        if (eip->ref || eip->type == T_DIR)
-          return false;
-
-        acquire(&eip->lock);
-        if (eip->ref == 0 && eip->type != T_DIR &&
-            !(eip->flags & (I_FREE | I_BUSYR | I_BUSYW))) {
-          victim = eip;
-          return true;
-        }
-
-        release(&eip->lock);
-        return false;
-      });
-    if (!victim)
-      panic("iget out of space");
-    // tricky: first flag as free, then check refcnt, then remove from ns
-    victim->flags |= I_FREE;
-    if (victim->ref > 0) {
-      victim->flags &= ~(I_FREE);
-      release(&victim->lock);
-      goto retry_evict;
-    }
-    release(&victim->lock);
-    ins->remove(mkpair(victim->dev, victim->inum), &victim);
-    gc_delayed(victim);
-  } else {
-    if (!cmpxch(&icache_free[mycpu()->id].x, cur_free, cur_free-1))
-      goto retry_evict;
-  }
-
-  ip = new inode();
+  struct inode *ip = new inode();
   ip->dev = dev;
   ip->inum = inum;
-  ip->ref = 1;
+  ip->ref = 0;
   ip->flags = I_BUSYR | I_BUSYW;
   ip->readbusy = 1;
   snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
@@ -364,7 +346,7 @@ ilock(struct inode *ip, int writer)
 void
 iunlock(struct inode *ip)
 {
-  if(ip == 0 || !(ip->flags & (I_BUSYR | I_BUSYW)) || ip->ref < 1)
+  if(ip == 0 || !(ip->flags & (I_BUSYR | I_BUSYW)))
     panic("iunlock");
 
   acquire(&ip->lock);
@@ -404,6 +386,9 @@ iput(struct inode *ip)
 
       ip->flags |= (I_BUSYR | I_BUSYW);
       ip->readbusy++;
+
+      // XXX: use gc_delayed() to truncate the inode later.
+      // flag it as a victim in the meantime.
 
       release(&ip->lock);
 
@@ -617,7 +602,10 @@ namecmp(const char *s, const char *t)
 u64
 namehash(const strbuf<DIRSIZ> &n)
 {
-  return n._buf[0];   /* XXX */
+  u64 h = 0;
+  for (int i = 0; i < DIRSIZ && n._buf[i]; i++)
+    h = ((h << 8) ^ n._buf[i]) % 0xdeadbeef;
+  return h;
 }
 
 void
@@ -749,43 +737,52 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
   int r;
+  scoped_gc_epoch e;
 
-  gc_begin_epoch();
   if(*path == '/') 
-    ip = iget(ROOTDEV, ROOTINO);
+    ip = igetnoref(ROOTDEV, ROOTINO);
   else
-    ip = idup(cwd);
+    ip = cwd;
 
   while((r = skipelem(&path, name)) == 1){
+    // XXX Doing this here requires some annoying reasoning about all
+    // of the callers of namei/nameiparent.  Also, since the abstract
+    // scope is implicit, it might be wrong (or non-existent) and
+    // documenting the abstract object sets of each scope becomes
+    // difficult and probably unmaintainable.  We have to compute this
+    // information here because it's the only place that's canonical.
+    // Maybe this should return the set of inodes traversed and let
+    // the caller declare the variables?  Would it help for the caller
+    // to pass in an abstract scope?
+    mtreadavar("inode:%x.%x", ip->dev, ip->inum);
     next = 0;
     if(next == 0){
       if(ip->type == 0)
         panic("namex");
-      if(ip->type != T_DIR){
-        iput(ip);
-	gc_end_epoch();
+      if(ip->type != T_DIR)
         return 0;
-      }
       if(nameiparent && *path == '\0'){
         // Stop one level early.
-	gc_end_epoch();
+        idup(ip);
         return ip;
       }
-      if((next = dirlookup(ip, name)) == 0){
-        iput(ip);
-	gc_end_epoch();
+      if((next = dirlookup(ip, name)) == 0)
         return 0;
-      }
-      iput(ip);
     }
     ip = next;
   }
-  if(r == -1 || nameiparent){
-    iput(ip);
-    gc_end_epoch();
+
+  if(r == -1 || nameiparent)
     return 0;
-  }
-  gc_end_epoch();
+
+  // XXX write is necessary because of idup.  not logically required,
+  // so we should replace this with mtreadavar() eventually, perhaps
+  // once we implement sloppy counters for long-term inode refs.
+
+  // mtreadavar("inode:%x.%x", ip->dev, ip->inum);
+  mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
+
+  idup(ip);
   return ip;
 }
 

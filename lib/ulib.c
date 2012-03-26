@@ -151,6 +151,12 @@ open(const char *path, int omode)
   return openat(AT_FDCWD, path, omode);
 }
 
+int
+mkdir(const char *path)
+{
+  return mkdirat(AT_FDCWD, path);
+}
+
 extern void __cxa_pure_virtual(void);
 void __cxa_pure_virtual(void)
 { 

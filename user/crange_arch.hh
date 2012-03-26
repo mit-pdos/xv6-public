@@ -133,6 +133,12 @@ mycpu()
   return (cpu*) &cpus[myproc()->cpuid];
 }
 
+static inline int
+mycpuid()
+{
+  return mycpu()->id;
+}
+
 static inline void pushcli() {}
 static inline void popcli()  {}
 

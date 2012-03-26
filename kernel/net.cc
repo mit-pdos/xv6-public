@@ -32,7 +32,7 @@ netfree(void *va)
 void *
 netalloc(void)
 {
-  return kalloc();
+  return kalloc("(netalloc)");
 }
 
 int
@@ -278,7 +278,7 @@ netbind(int sock, void *xaddr, int xaddrlen)
   void *addr;
   long r;
   
-  addr = kmalloc(xaddrlen);
+  addr = kmalloc(xaddrlen, "sockaddr");
   if (addr == nullptr)
     return -1;
 
@@ -314,7 +314,7 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
   if (umemcpy(&len, lenptr, sizeof(*lenptr)))
     return -1;
 
-  addr = kmalloc(len);
+  addr = kmalloc(len, "sockaddr");
   if (addr == nullptr)
     return -1;
 
@@ -352,7 +352,7 @@ netwrite(int sock, char *ubuf, int len)
   int cc;
   int r;
 
-  kbuf = kalloc();
+  kbuf = kalloc("(netwrite)");
   if (kbuf == nullptr)
     return -1;
 
@@ -375,7 +375,7 @@ netread(int sock, char *ubuf, int len)
   int cc;
   int r;
 
-  kbuf = kalloc();
+  kbuf = kalloc("(netread)");
   if (kbuf == nullptr)
     return -1;
 

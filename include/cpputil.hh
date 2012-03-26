@@ -133,7 +133,7 @@ extern void *__dso_handle;
 #define NEW_DELETE_OPS(classname)                                   \
   static void* operator new(unsigned long nbytes) {                 \
     assert(nbytes == sizeof(classname));                            \
-    return kmalloc(sizeof(classname));                              \
+    return kmalloc(sizeof(classname), #classname);                  \
   }                                                                 \
                                                                     \
   static void* operator new(unsigned long nbytes, classname *buf) { \

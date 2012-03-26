@@ -7,6 +7,9 @@
 #include "file.hh"
 #include "filetable.hh"
 
+class uwq;
+class uwq_worker;
+
 // Saved registers for kernel context switches.
 // (also implicitly defined in swtch.S)
 struct context {
@@ -38,11 +41,19 @@ struct mtrace_stacks {
 };
 #endif
 
-enum procstate { EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+typedef enum procstate { 
+  EMBRYO,
+  SLEEPING,
+  RUNNABLE,
+  RUNNING,
+  ZOMBIE 
+} procstate_t;;
 
 // Per-process state
 struct proc : public rcu_freed {
   struct vmap *vmap;           // va -> vma
+  uwq* uwq;
+  uwq_worker* worker;
   char *kstack;                // Bottom of kernel stack for this process
   volatile int pid;            // Process ID
   struct proc *parent;         // Parent process
@@ -61,7 +72,6 @@ struct proc : public rcu_freed {
   struct condvar cv;
   std::atomic<u64> epoch;      // low 8 bits are depth count
   char lockname[16];
-  int on_runq;
   int cpu_pin;
 #if MTRACE
   struct mtrace_stacks mtrace_stacks;
@@ -76,15 +86,21 @@ struct proc : public rcu_freed {
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
   u64 user_fs_;
 
-  proc(int npid);
-  ~proc(void);
+  static proc* alloc();
+  void         set_state(procstate_t s);
+  procstate_t  get_state(void) const { return state_; }
+  int          set_cpu_pin(int cpu);
+  static int   kill(int pid);
+  int          kill();
 
   virtual void do_gc(void) { delete this; }
-  NEW_DELETE_OPS(proc)
-
-  void set_state(enum procstate s);
-  enum procstate get_state(void) const { return state_; }
 
 private:
-  enum procstate state_;       // Process state  
+  proc(int npid);
+  ~proc(void);
+  proc& operator=(const proc&);
+  proc(const proc& x);
+  NEW_DELETE_OPS(proc);
+  
+  procstate_t state_;       // Process state  
 };

@@ -51,15 +51,12 @@ du(int fd)
                   [](dirit &i)->bool { return !i.end(); },
                   [&size, &fd](const char *name)->void
     {
-      if (!strcmp(name, ".") || !strcmp(name, "..")) {
-        free((void*)name);
+      if (!strcmp(name, ".") || !strcmp(name, ".."))
         return;
-      }
 
       int nfd = openat(fd, name, 0);
       if (nfd >= 0)
         size += du(nfd);  // should go into work queue
-      free((void*)name);
     });
   } else {
     close(fd);
@@ -79,6 +76,5 @@ main(int ac, char **av)
   perf_stop();
   printf("%ld\n", s);
   wq_dump();
-  exitwq();
   return 0;
 }

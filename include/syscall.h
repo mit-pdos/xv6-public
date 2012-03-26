@@ -13,7 +13,7 @@
 #define SYS_unlink 12
 #define SYS_fstat  13
 #define SYS_link   14
-#define SYS_mkdir  15
+#define SYS_mkdirat 15
 #define SYS_chdir  16
 #define SYS_dup    17
 #define SYS_getpid 18
@@ -31,4 +31,6 @@
 #define SYS_async  30
 #define SYS_script 31
 #define SYS_setfs  32
-#define SYS_ncount 33   /* total number of system calls */
+#define SYS_wqwait 33
+#define SYS_setaffinity 34
+#define SYS_ncount 35   /* total number of system calls */

@@ -1,8 +1,8 @@
 #pragma once
-#define DEBUG         1
+#define DEBUG         0
 #define NPROC        64  // maximum number of processes
 #define KSTACKSIZE 8192  // size of per-process kernel stack
-#define NOFILE       16  // open files per process
+#define NOFILE       64  // open files per process
 #define NFILE       100  // open files per system
 #define NBUF      10000  // size of disk block cache
 #define NINODE     5000  // maximum number of active i-nodes
@@ -23,6 +23,8 @@
 #define VERIFYFREE    0  // Unreliable, e.g. vma's vmnode pointer gets reused
 #define ALLOC_MEMSET  DEBUG
 #define KSHAREDSIZE   (32 << 10)
+#define USERWQSIZE    (1 << 14)
+#define USTACKPAGES   4
 #define WQSHIFT       7
 #define CILKENABLE    0
 #if defined(HW_josmp)
@@ -30,8 +32,8 @@
 #define MTRACE       0
 #define PERFSIZE     (1<<20ull)
 #elif defined(HW_qemu)
-#define NCPU         4   // maximum number of CPUs
-#define MTRACE       0
+#define NCPU         8   // maximum number of CPUs
+#define MTRACE       1
 #define PERFSIZE     (16<<20ull)
 #elif defined(HW_ud0)
 #define NCPU         4   // maximum number of CPUs

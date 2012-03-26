@@ -33,8 +33,9 @@ char* strncpy(char *s, const char *t, size_t n);
   mtrace_lock_register(RET_IP(), ptr, lockname(ptr), mtrace_lockop_release, 0)
 
 // Enable/disable all mtrace logging
-#define mtenable(name)  mtrace_enable_set(1, name)
-#define mtdisable(name) mtrace_enable_set(0, name)
+#define mtenable(name)  mtrace_enable_set(mtrace_record_movement, name)
+#define mtenable_type(type, name)  mtrace_enable_set(type, name)
+#define mtdisable(name) mtrace_enable_set(mtrace_record_disable, name)
 
 // Log the number of operations 
 static inline void mtops(u64 n)
@@ -54,6 +55,7 @@ static inline void mtops(u64 n)
 #define mtrec(cpu) do { } while (0)
 #define mtign(cpu) do { } while (0)
 #define mtenable(name) do { } while (0)
+#define mtenable_type(type, name) do { } while (0)
 #define mtdisable(name) do { } while (0)
 #define mtops(n) do { } while (0)
 #endif

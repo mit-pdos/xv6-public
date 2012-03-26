@@ -11,6 +11,7 @@
 #include "fcntl.h"
 #include "cpu.hh"
 #include "net.hh"
+#include "kmtrace.hh"
 
 static bool
 getfile(int fd, sref<file> *f)
@@ -214,6 +215,9 @@ create(inode *cwd, const char *path, short type, short major, short minor)
 {
   struct inode *ip, *dp;
   char name[DIRSIZ];
+  mt_ascope ascope("%s(%d.%d,%s,%d,%d,%d)",
+                   __func__, cwd->dev, cwd->inum,
+                   path, type, major, minor);
 
  retry:
   if((dp = nameiparent(cwd, path, name)) == 0)
@@ -227,16 +231,18 @@ create(inode *cwd, const char *path, short type, short major, short minor)
     if(type == T_FILE && ip->type == T_FILE)
       return ip;
     iunlockput(ip);
-    return 0;
+    return nullptr;
   }
 
-  if((ip = ialloc(dp->dev, type)) == 0)
-    panic("create: ialloc");
+  if((ip = ialloc(dp->dev, type)) == nullptr)
+    return nullptr;
 
   ip->major = major;
   ip->minor = minor;
   ip->nlink = 1;
   iupdate(ip);
+
+  mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
 
   if(type == T_DIR){  // Create . and .. entries.
     dp->nlink++;  // for ".."
@@ -269,9 +275,8 @@ sys_openat(int dirfd, const char *path, int omode)
 
   if (dirfd == AT_FDCWD) {
     cwd = myproc()->cwd;
-  } else if (dirfd < 0 || dirfd >= NOFILE) {
-    return -1;
   } else {
+    // XXX(sbw) do we need the sref while we touch fdir->ip?
     sref<file> fdir;
     if (!getfile(dirfd, &fdir) || fdir->type != file::FD_INODE)
       return -1;
@@ -280,6 +285,13 @@ sys_openat(int dirfd, const char *path, int omode)
 
   if(argcheckstr(path) < 0)
     return -1;
+
+  // Reads the dirfd FD, dirfd's inode, the inodes of all files in
+  // path; writes the returned FD
+  mt_ascope ascope("%s(%d,%s,%d)", __func__, dirfd, path, omode);
+  mtwriteavar("thread:%x", myproc()->pid);
+  mtreadavar("inode:%x.%x", cwd->dev, cwd->inum);
+
   if(omode & O_CREATE){
     if((ip = create(cwd, path, T_FILE, 0, 0)) == 0)
       return -1;
@@ -295,6 +307,9 @@ sys_openat(int dirfd, const char *path, int omode)
         release(&pip->lock);
       }
     }
+    // XXX necessary because the mtwriteavar() to the same abstract variable
+    // does not propagate to our scope, since create() has its own inner scope.
+    mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
   } else {
  retry:
     if((ip = namei(cwd, path)) == 0){
@@ -337,6 +352,7 @@ sys_openat(int dirfd, const char *path, int omode)
     return -1;
   }
   iunlock(ip);
+  mtwriteavar("fd:%x.%x", myproc()->pid, fd);
 
   f->type = file::FD_INODE;
   f->ip = ip;
@@ -347,11 +363,25 @@ sys_openat(int dirfd, const char *path, int omode)
 }
 
 long
-sys_mkdir(const char *path)
+sys_mkdirat(int dirfd, const char *path)
 {
+  struct inode *cwd;
   struct inode *ip;
 
-  if(argcheckstr(path) < 0 || (ip = create(myproc()->cwd, path, T_DIR, 0, 0)) == 0)
+  if (dirfd == AT_FDCWD) {
+    cwd = myproc()->cwd;
+  } else {
+    // XXX(sbw) do we need the sref while we touch fdir->ip?
+    sref<file> fdir;
+    if (!getfile(dirfd, &fdir) || fdir->type != file::FD_INODE)
+      return -1;
+    cwd = fdir->ip;
+  }
+
+  if (argcheckstr(path) < 0)
+    return -1;
+  ip = create(cwd, path, T_DIR, 0, 0);
+  if (ip == nullptr)
     return -1;
   iunlockput(ip);
   return 0;

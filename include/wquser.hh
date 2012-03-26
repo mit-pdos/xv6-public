@@ -4,10 +4,16 @@
 #include "user.h"
 #include "wq.hh"
 #include "pthread.h"
+#include "memlayout.h"
+#include "uwq.hh"
+#include "atomic.hh"
+#include "lib.h"
+#include "elf.hh"
 
 typedef struct uspinlock wqlock_t;
 
 static pthread_key_t idkey;
+static std::atomic<int> nextid;
 static volatile int exiting;
 
 int
@@ -20,6 +26,18 @@ static inline void*
 allocwq(unsigned long nbytes)
 {
   return malloc(nbytes);
+}
+
+static inline padded_length*
+allocklen(unsigned long nbytes)
+{
+  static bool alloced;
+  if (alloced)
+    die("allocklen: allocing more than once");
+  if (nbytes > USERWQSIZE)
+    die("allocklen: too large");
+  alloced = true;
+  return (padded_length*)USERWQ;
 }
 
 static inline void
@@ -46,48 +64,32 @@ wqlock_init(wqlock_t *lock)
   initlock(lock);
 }
 
-static void
-setaffinity(int c)
-{
-  // XXX(sbw)
-}
+extern "C" long wqwait(void);
 
-static void*
-workerth(void *x)
+static void __attribute__((used))
+initworker(void)
 {
-  u64 c = (u64)x;
-  
-  setaffinity(c);
-  pthread_setspecific(idkey, (void*)c);
-  while (!exiting)
-    wq_trywork();
-
-  return 0;
+  int id;
+  forkt_setup(0);
+  id = nextid++;
+  if (id >= NCPU)
+    die("initworker: to man IDs");
+  pthread_setspecific(idkey, (void*)(u64)id);
+  while (1) {
+    if (!wq_trywork())
+      assert(wqwait() == 0);
+  }
 }
+DEFINE_XV6_ADDRNOTE(xnote, XV6_ADDR_ID_WQ, &initworker);
 
 static inline void
 wqarch_init(void)
 {
-  pthread_t th;
-  int r;
-
   if (pthread_key_create(&idkey, 0))
     die("wqarch_init: pthread_key_create");
 
-  pthread_setspecific(idkey, 0);
-  setaffinity(0);
-
-  for (int i = 1; i < NCPU; i++) {
-    r = pthread_create(&th, 0, workerth, (void*)(u64)i);
-    if (r < 0)
-      die("wqarch_init: pthread_create");
-  }
-}
-
-static inline void
-wqarch_exit(void)
-{
-  exiting = 1;
+  int id = nextid++;
+  pthread_setspecific(idkey, (void*)(u64)id);
 }
 
 #define xprintf      printf 

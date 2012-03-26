@@ -5,3 +5,7 @@
 #define O_WAIT    0x400 // open waits for create, read for write
 
 #define AT_FDCWD  -100
+
+#define FORK_SHARE_VMAP   (1<<0)
+#define FORK_SHARE_FD     (1<<1)
+
