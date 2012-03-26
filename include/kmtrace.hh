@@ -66,7 +66,7 @@ static inline void mtresume(struct proc *p)
 
 class mt_ascope
 {
-  char name[32];
+  char name[64];
 public:
   explicit mt_ascope(const char *fmt, ...)
   {
@@ -87,7 +87,7 @@ public:
 
 static inline void mtreadavar(const char *fmt, ...)
 {
-  char name[32];
+  char name[64];
   va_list ap;
 
   va_start(ap, fmt);
@@ -99,7 +99,7 @@ static inline void mtreadavar(const char *fmt, ...)
 
 static inline void mtwriteavar(const char *fmt, ...)
 {
-  char name[32];
+  char name[64];
   va_list ap;
 
   va_start(ap, fmt);
