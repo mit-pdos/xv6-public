@@ -8,7 +8,7 @@
 
 u64 namehash(const strbuf<DIRSIZ>&);
 
-struct file : public referenced {
+struct file : public referenced, public rcu_freed {
   static file* alloc();
   file*        dup();
   int          stat(struct stat*);
@@ -25,6 +25,8 @@ struct file : public referenced {
   struct pipe *pipe;
   struct inode *ip;
   u32 off;
+
+  virtual void do_gc(void);
 
 private:
   file();
