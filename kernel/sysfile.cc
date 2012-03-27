@@ -295,14 +295,41 @@ sys_openat(int dirfd, const char *path, int omode)
   if(omode & O_CREATE){
     if((ip = create(cwd, path, T_FILE, 0, 0)) == 0)
       return -1;
-
+    if(omode & O_WAIT){
+      // XXX wake up any open(..., O_WAIT).
+      // there's a race here that's hard to fix because
+      // of how non-locking create() is.
+      char dummy[DIRSIZ];
+      struct inode *pip = nameiparent(cwd, path, dummy);
+      if(pip){
+        acquire(&pip->lock);
+        cv_wakeup(&pip->cv);
+        release(&pip->lock);
+      }
+    }
     // XXX necessary because the mtwriteavar() to the same abstract variable
     // does not propagate to our scope, since create() has its own inner scope.
     mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
   } else {
  retry:
-    if((ip = namei(cwd, path)) == 0)
+    if((ip = namei(cwd, path)) == 0){
+      if(omode & O_WAIT){
+        char dummy[DIRSIZ];
+        struct inode *pip = nameiparent(cwd, path, dummy);
+        if(pip == 0)
+          return -1;
+        cprintf("O_WAIT waiting %s %p %d...\n", path, pip, pip->inum);
+        // XXX wait for cv_wakeup above
+        acquire(&pip->lock);
+        cv_sleep(&pip->cv, &pip->lock);
+        release(&pip->lock);
+        cprintf("O_WAIT done\n");
+        iput(pip);
+        if(myproc()->killed == 0)
+          goto retry;
+      }
       return -1;
+    }
     ilock(ip, 0);
     if(ip->type == 0) {
       iunlockput(ip);

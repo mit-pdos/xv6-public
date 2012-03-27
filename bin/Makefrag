@@ -16,6 +16,7 @@ UPROGS= \
 	mkdir \
 	mktree \
 	sh \
+	nsh \
 	halt \
 	time \
 	sleep \
