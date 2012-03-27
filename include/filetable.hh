@@ -29,18 +29,13 @@ public:
   }
 
   bool getfile(int fd, sref<file> *sf) {
-    file *f;
-
     if (fd < 0 || fd >= NOFILE)
       return false;
-    acquire(&lock_);
-    f = ofile_[fd];
-    if (!f) {
-      release(&lock_);
+
+    scoped_gc_epoch gc;
+    file* f = ofile_[fd];
+    if (!f || !sf->init(f))
       return false;
-    }
-    sf->init(f);
-    release(&lock_);
     return true;
   }
 
