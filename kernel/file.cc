@@ -19,7 +19,6 @@ file::file(void)
   : type(file::FD_NONE), readable(0), writable(0), 
     socket(0), pipe(nullptr), ip(nullptr), off(0)
 {
-  inc();
 }
 
 void
