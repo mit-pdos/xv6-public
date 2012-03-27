@@ -11,13 +11,11 @@ public:
       ptr_->dec();
   }
 
-  void init(T* p) {
-    const T* save = ptr_;
+  bool init(T* p) {
+    if (ptr_ || !p->tryinc())
+      return false;
     ptr_ = p;
-    if (ptr_)
-      ptr_->inc();
-    if (save)
-      save->dec();
+    return true;
   }
 
   bool operator==(const sref<T>& pr) const { return ptr_ == pr.ptr_; }
