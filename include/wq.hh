@@ -32,14 +32,16 @@ struct cwork : public work {
 #include <stdlib.h>
 #include <assert.h>
 #include <atomic>
-#define xmalloc(n)     malloc(n)
-#define xfree(p, sz)   free(p)
+#define xallocwork(n)    malloc(n)
+#define xfreework(p, sz) free(p)
 #elif defined(XV6_KERNEL)
-#define xmalloc(n)   kmalloc(n, "xmalloc")
-#define xfree(p, sz) kmfree(p, sz)
+#define xallocwork(n)    kmalloc(n, "xallocwork")
+#define xfreework(p, sz) kmfree(p, sz)
 #else
-#define xmalloc(n)     malloc(n)
-#define xfree(p, sz)   free(p)
+extern void* allocwork(unsigned long nbytes);
+extern void  freework(void *ptr);
+#define xallocwork(n)    allocwork(n)
+#define xfreework(n, sz) freework(n)
 #endif
 
 #include "wqfor.hh"

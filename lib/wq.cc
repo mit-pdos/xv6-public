@@ -247,7 +247,7 @@ void*
 cwork::operator new(unsigned long nbytes)
 {
   assert(nbytes == sizeof(cwork));
-  return xmalloc(sizeof(cwork));
+  return xallocwork(sizeof(cwork));
 }
 
 void*
@@ -260,5 +260,5 @@ cwork::operator new(unsigned long nbytes, cwork* buf)
 void
 cwork::operator delete(void *p)
 {
-  xfree(p, sizeof(cwork));
+  xfreework(p, sizeof(cwork));
 }

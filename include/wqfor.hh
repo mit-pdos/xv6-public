@@ -28,11 +28,11 @@ struct forwork : public work {
 
   static void* operator new(unsigned long nbytes) {
     assert(nbytes == sizeof(forwork<IT, BODY>));
-    return xmalloc(sizeof(forwork));
+    return xallocwork(sizeof(forwork));
   }
 
   static void operator delete(void*p) {
-    xfree(p, sizeof(forwork));
+    xfreework(p, sizeof(forwork));
   }
 
   IT &it_;
