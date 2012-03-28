@@ -85,6 +85,7 @@ struct proc : public rcu_freed {
   LIST_ENTRY(proc) cv_waiters; // Linked list of processes waiting for oncv
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
   u64 user_fs_;
+  u64 unmap_tlbreq_;
 
   static proc* alloc();
   void         set_state(procstate_t s);
