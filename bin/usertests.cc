@@ -1705,6 +1705,38 @@ thrtest(void)
   printf("thrtest ok\n");
 }
 
+void
+unmappedtest(void)
+{
+  // Chosen to conflict with default start addr in kernel
+  off_t off = 0x1000;
+
+  printf("unmappedtest\n");
+  for (int i = 1; i <= 8; i++) {
+    int r = map((void*)off, i*4096);
+    if (r < 0)
+      die("unmappedtest: map failed");
+    off += (i*2*4096);
+  }
+
+  for (int i = 8; i >= 1; i--) {
+    long r = map(0, i*4096);
+    if (r < 0)
+      die("unmappedtest: map failed");
+    r = unmap((void*)r, i*4096);
+    if (r < 0)
+      die("unmappedtest: unmap failed");
+  }
+  
+  off = 0x1000;
+  for (int i = 1; i <= 8; i++) {
+    int r = unmap((void*)off, i*4096);
+    if (r < 0)
+      die("unmappedtest: unmap failed");
+    off += (i*2*4096);
+  }
+  printf("unmappedtest ok\n");
+}
 
 int
 main(int argc, char *argv[])
@@ -1722,6 +1754,8 @@ main(int argc, char *argv[])
   bsstest();
   sbrktest();
   // we should be able to grow a user process to consume all phys mem
+
+  unmappedtest();
 
   validatetest();
 
