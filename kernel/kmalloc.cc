@@ -121,6 +121,8 @@ kmfree(void *ap, u64 nbytes)
   if (ALLOC_MEMSET)
     memset(ap, 3, (1<<b));
 
+  mtunlabel(mtrace_label_heap, ap);
+
   int c = mycpu()->id;
   for (;;) {
     auto headptr = freelists[c].buckets[b].load();
@@ -128,8 +130,6 @@ kmfree(void *ap, u64 nbytes)
     if (freelists[c].buckets[b].compare_exchange(headptr, h))
       break;
   }
-
-  mtunlabel(mtrace_label_heap, ap);
 }
 
 int
