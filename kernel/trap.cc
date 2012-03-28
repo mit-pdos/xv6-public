@@ -127,8 +127,8 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_TLBFLUSH: {
-    u64 nreq = tlbflush_req.load();
     lapiceoi();
+    u64 nreq = tlbflush_req.load();
     lcr3(rcr3());
     mycpu()->tlbflush_done = nreq;
     break;
