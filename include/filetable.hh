@@ -2,29 +2,25 @@
 
 class filetable {
 public:
-  filetable() : ref_(1) {
-    for(int fd = 0; fd < NOFILE; fd++)
-      ofile_[fd] = nullptr;
+  static filetable* alloc() {
+    return new filetable();
   }
 
-  filetable(const filetable &f) : ref_(1) {
+  filetable* copy() {
+    filetable* t = alloc();
+    if (t == nullptr)
+      return nullptr;
+
     for(int fd = 0; fd < NOFILE; fd++) {
-      if (f.ofile_[fd])
-        ofile_[fd].store(f.ofile_[fd].load()->dup());
+      sref<file> f;
+      if (getfile(fd, &f))
+        t->ofile_[fd].store(f->dup());
       else
-        ofile_[fd] = nullptr;
+        t->ofile_[fd] = nullptr;
     }
+    return t;
   }
   
-  ~filetable() {
-    for(int fd = 0; fd < NOFILE; fd++){
-      if (ofile_[fd]){
-        ofile_[fd].load()->dec();
-        ofile_[fd] = nullptr;
-      }
-    }
-  }
-
   bool getfile(int fd, sref<file> *sf) {
     if (fd < 0 || fd >= NOFILE)
       return false;
@@ -65,9 +61,25 @@ public:
     ref_++;
   }
 
-  NEW_DELETE_OPS(filetable)
-
 private:
+  filetable() : ref_(1) {
+    for(int fd = 0; fd < NOFILE; fd++)
+      ofile_[fd] = nullptr;
+  }
+
+  ~filetable() {
+    for(int fd = 0; fd < NOFILE; fd++){
+      if (ofile_[fd]){
+        ofile_[fd].load()->dec();
+        ofile_[fd] = nullptr;
+      }
+    }
+  }
+
+  filetable& operator=(const filetable&);
+  filetable(const filetable& x);
+  NEW_DELETE_OPS(filetable);  
+
   std::atomic<file*> ofile_[NOFILE];
   std::atomic<u64> ref_;
 };

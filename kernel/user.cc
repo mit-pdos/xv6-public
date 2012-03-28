@@ -21,7 +21,7 @@ inituser(void)
   extern u64 _initcode_size;
 
   p = proc::alloc();
-  p->ftable = new filetable();
+  p->ftable = filetable::alloc();
   if (p->ftable == nullptr)
     panic("userinit: new filetable");
   bootproc = p;

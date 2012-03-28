@@ -377,7 +377,7 @@ fork(int flags)
     myproc()->ftable->incref();
     np->ftable = myproc()->ftable;
   } else {
-    np->ftable = new filetable(*myproc()->ftable);
+    np->ftable = myproc()->ftable->copy();
     if (np->ftable == nullptr) {
       // XXX(sbw) leaking?
       freeproc(np);
