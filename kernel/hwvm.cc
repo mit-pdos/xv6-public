@@ -151,10 +151,13 @@ switchvm(struct proc *p)
   mycpu()->ts.rsp[0] = (u64) myproc()->kstack + KSTACKSIZE;
   mycpu()->ts.iomba = (u16)__offsetof(struct taskstate, iopb);
   ltr(TSSSEG);
+
+  u64 nreq = tlbflush_req.load();
   if (p->vmap != 0 && p->vmap->pml4 != 0)
     lcr3(v2p(p->vmap->pml4));  // switch to new address space
   else
     switchkvm();
+  mycpu()->tlbflush_done = nreq;
 
   writefs(UDSEG);
   writemsr(MSR_FS_BASE, p->user_fs_);
@@ -224,14 +227,20 @@ void
 tlbflush()
 {
   u64 myreq = tlbflush_req++;
+  tlbflush(myreq);
+}
 
+void
+tlbflush(u64 myreq)
+{
   // the caller may not hold any spinlock, because other CPUs might
   // be spinning waiting for that spinlock, with interrupts disabled,
   // so we will deadlock waiting for their TLB flush..
   assert(mycpu()->ncli == 0);
 
   for (int i = 0; i < ncpu; i++)
-    lapic_tlbflush(i);
+    if (cpus[i].tlbflush_done < myreq)
+      lapic_tlbflush(i);
 
   for (int i = 0; i < ncpu; i++)
     while (cpus[i].tlbflush_done < myreq)

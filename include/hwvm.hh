@@ -13,6 +13,7 @@ pgmap*          setupkvm(void);
 int             mapkva(pgmap *pml4, char* kva, uptr uva, size_t size);
 std::atomic<pme_t>* walkpgdir(pgmap *pml4, u64, int);
 void            tlbflush(void);
+void            tlbflush(u64 req);
 
 template<class CB>
 void
