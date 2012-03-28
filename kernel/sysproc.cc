@@ -99,12 +99,13 @@ sys_map(uptr addr, u64 len)
   if (vmn == 0)
     return -1;
 
-  if (myproc()->vmap->insert(vmn, PGROUNDDOWN(addr), 1) < 0) {
+  long r = myproc()->vmap->insert(vmn, PGROUNDDOWN(addr), 1);
+  if (r < 0) {
     delete vmn;
     return -1;
   }
 
-  return 0;
+  return r;
 }
 
 long

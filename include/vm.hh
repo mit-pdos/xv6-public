@@ -88,7 +88,7 @@ struct vmap {
 
   vmap* copy(int share);
   vma* lookup(uptr start, uptr len);
-  int insert(vmnode *n, uptr va_start, int dotlb);
+  long insert(vmnode *n, uptr va_start, int dotlb);
   int remove(uptr start, uptr len);
 
   int pagefault(uptr va, u32 err);
@@ -104,6 +104,7 @@ private:
   ~vmap();
   NEW_DELETE_OPS(vmap)
   int pagefault_wcow(vma *m);
+  uptr unmapped_area(size_t n);
 
   struct spinlock brklock_;
 };

@@ -362,13 +362,23 @@ vmap::lookup(uptr start, uptr len)
   return 0;
 }
 
-int
+long
 vmap::insert(vmnode *n, uptr vma_start, int dotlb)
 {
   ANON_REGION("vmap::insert", &perfgroup);
 
   vma *e;
   bool replaced = false;
+  bool fixed = (vma_start != 0);
+
+again:
+  if (!fixed) {
+    vma_start = unmapped_area(n->npages);
+    if (vma_start == 0) {
+      cprintf("vmap::insert: no unmapped areas\n");
+      return -1;
+    }
+  }
 
   {
     // new scope to release the search lock before tlbflush
@@ -384,6 +394,9 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb)
       if (!r)
         continue;
 #endif
+      if (!fixed)
+        goto again;
+
       vma *rvma = (vma*) r;
       cprintf("vmap::insert: overlap with %p: 0x%lx--0x%lx\n",
               rvma, rvma->vma_start, rvma->vma_end);
@@ -426,7 +439,8 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb)
   else
     if (tlb_lazy)
       tlbflush(myproc()->unmap_tlbreq_);
-  return 0;
+
+  return vma_start;
 }
 
 int
@@ -707,5 +721,21 @@ vmap::sbrk(ssize_t n, uptr *addr)
 #endif
 
   brk_ += n;
+  return 0;
+}
+
+uptr
+vmap::unmapped_area(size_t npages)
+{
+  size_t n = npages*PGSIZE;
+  uptr addr = 0x1000;
+
+  while (addr < USERTOP) {
+    auto x = cr.search(addr, n);
+    if (x == nullptr)
+      return addr;
+    vma* a = (vma*) x;
+    addr = a->vma_end;
+  }
   return 0;
 }
