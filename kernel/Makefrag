@@ -72,7 +72,7 @@ $(O)/kernel/%.o: lib/%.cc
 $(O)/kernel/incbin.o: ASFLAGS+=-DMAKE_OUT=$(O)
 $(O)/kernel/incbin.o: $(O)/kernel/initcode $(O)/kernel/bootother $(O)/fs.img
 
-$(O)/kernel/initcode: TTEXT = 0x0
+$(O)/kernel/initcode: TTEXT = 0x1000
 $(O)/kernel/bootother: TTEXT = 0x7000
 $(O)/kernel/%: kernel/%.S
 	@echo "  CC     $@"

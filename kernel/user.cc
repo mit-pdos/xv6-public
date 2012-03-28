@@ -10,6 +10,8 @@
 #include "bits.hh"
 #include "vm.hh"
 
+#define INIT_START 0x1000
+
 extern struct proc *bootproc;
 
 // Set up first user process.
@@ -30,9 +32,9 @@ inituser(void)
   vmnode *vmn =  new vmnode(PGROUNDUP(_initcode_size) / PGSIZE);
   if(vmn == 0)
     panic("userinit: vmn_allocpg");
-  if(p->vmap->insert(vmn, 0, 1) < 0)
+  if(p->vmap->insert(vmn, INIT_START, 1) < 0)
     panic("userinit: vmap_insert");
-  if(p->vmap->copyout(0, _initcode_start, _initcode_size) < 0)
+  if(p->vmap->copyout(INIT_START, _initcode_start, _initcode_size) < 0)
     panic("userinit: copyout");
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = UCSEG | 0x3;
@@ -40,7 +42,7 @@ inituser(void)
   p->tf->ss = p->tf->ds;
   p->tf->rflags = FL_IF;
   p->tf->rsp = PGSIZE;
-  p->tf->rip = 0x0;  // beginning of initcode.S
+  p->tf->rip = INIT_START;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = 0; // forkret will fix in the process's context
