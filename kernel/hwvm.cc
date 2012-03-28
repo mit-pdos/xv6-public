@@ -226,7 +226,7 @@ atomic<u64> tlbflush_req;
 void
 tlbflush()
 {
-  u64 myreq = tlbflush_req++;
+  u64 myreq = ++tlbflush_req;
   tlbflush(myreq);
 }
 
