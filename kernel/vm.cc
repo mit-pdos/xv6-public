@@ -18,6 +18,7 @@
 #include "kmtrace.hh"
 
 enum { vm_debug = 0 };
+enum { tlb_lazy = 1 };
 
 /*
  * vmnode
@@ -423,7 +424,8 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb)
   if (needtlb && dotlb)
     tlbflush();
   else
-    tlbflush(myproc()->unmap_tlbreq_);
+    if (tlb_lazy)
+      tlbflush(myproc()->unmap_tlbreq_);
   return 0;
 }
 
@@ -473,10 +475,11 @@ vmap::remove(uptr vma_start, uptr len)
       }
     });
   if (needtlb) {
-    // eager tlb shootdown
-    //tlbflush();
-    // lazy tlb shootdown
-    myproc()->unmap_tlbreq_ = tlbflush_req++;
+    if (tlb_lazy) {
+      myproc()->unmap_tlbreq_ = tlbflush_req++;
+    } else {
+      tlbflush();
+    }
   }
   return 0;
 }
