@@ -16,10 +16,10 @@ file::alloc(void)
 }
 
 file::file(void)
-  : type(file::FD_NONE), readable(0), writable(0), 
+  : rcu_freed("file"), 
+    type(file::FD_NONE), readable(0), writable(0), 
     socket(0), pipe(nullptr), ip(nullptr), off(0)
 {
-  inc();
 }
 
 void
@@ -33,6 +33,12 @@ file::onzero(void) const
     netclose(socket);
   else if(type != file::FD_NONE)
     panic("file::close bad type");
+  gc_delayed((file*)this);
+}
+
+void
+file::do_gc(void)
+{
   delete this;
 }
 

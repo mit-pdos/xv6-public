@@ -1,5 +1,3 @@
-#include "atomic.hh"
-
 template <class T>
 class sref {
 public:
@@ -13,13 +11,11 @@ public:
       ptr_->dec();
   }
 
-  void init(T* p) {
-    const T* save = ptr_;
+  bool init(T* p) {
+    if (ptr_ || !p->tryinc())
+      return false;
     ptr_ = p;
-    if (ptr_)
-      ptr_->inc();
-    if (save)
-      save->dec();
+    return true;
   }
 
   bool operator==(const sref<T>& pr) const { return ptr_ == pr.ptr_; }
@@ -40,65 +36,36 @@ private:
   T *ptr_;
 };
 
-template <class T>
-class lref {
-public:
-  lref(T* p = nullptr) : ptr_(p) {
-    if (ptr_)
-      ptr_->inc();
-  }
-
-  lref(const lref<T>& pr) : ptr_(pr.ptr_) {
-    if (ptr_)
-      ptr_->inc();
-  }
-
-  ~lref() {
-    if (ptr_)
-      ptr_->dec();
-  }
-
-  bool operator==(const lref<T>& pr) const { return ptr_ == pr.ptr_; }
-  bool operator!=(const lref<T>& pr) const { return ptr_ != pr.ptr_; }
-  bool operator==(T* p) const { return ptr_ == p; }
-  bool operator!=(T* p) const { return ptr_ != p; }
-
-  const T * operator->() const { return ptr_; }
-  T * operator->() { return ptr_; }
-  T * ptr() const { return ptr_; }
-
-  lref<T>& operator=(const lref<T>& pr) {
-    const T* save = ptr_;
-    ptr_ = pr.ptr_; 
-    if (ptr_)
-      ptr_->inc();
-    if (save)
-      save->dec();
-    return *this;
-  }
-
-private:
-  lref<T>& operator=( lref<T>& mp );
-  lref<T>& operator=( T* p );
-
-  T *ptr_;
-};
-
 class referenced {
 public:
-  referenced() : ref_(0) {}
+  // Start with 1 reference
+  referenced() { ref_.v = 0; }
 
-  u64 ref() const { 
-    return ref_;
+  // The number of valid references is:
+  //   ref_.invalid ? 0 : ref_.count+1;
+
+  inline bool valid() const {
+    return ref_.invalid == 0;
   }
 
-  inline const referenced* inc() const { 
-    ++ref_;
-    return this;
+  inline void inc() const {
+    // If references is 0 (i.e. ref_.count is 0xffffffff) a 32-bit 
+    // increment will increases ref_.count to 0, but ref_.invalid
+    // will remain unchanged.
+    asm volatile("lock; incl %0" : "+m" (ref_.count));
+  }
+
+  inline bool tryinc() const {
+    inc();
+    return valid();
   }
 
   inline void dec() const {
-    if (--ref_ == 0)
+    unsigned char c;
+    // If references is 1 (i.e. ref_.v is 0), a 64-bit decrement will
+    // underflow ref_.invalid to 0xffffffff (and ref_.count to 0xffffffff).
+    asm volatile("lock; decq %0; sets %1" : "+m" (ref_.v), "=qm" (c));
+    if (c)
       onzero();
   }
   
@@ -109,5 +76,11 @@ protected:
   virtual void onzero() const { delete this; }
 
 private:
-    mutable std::atomic<u64> ref_;
+  mutable union {
+    volatile u64 v;
+    struct {
+      volatile u32 count;
+      volatile u32 invalid;
+    };
+  } ref_;
 };

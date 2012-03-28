@@ -8,13 +8,13 @@
 
 u64 namehash(const strbuf<DIRSIZ>&);
 
-struct file : public referenced {
-  static file *alloc();
-  file *dup();
-  int stat(struct stat*);
-  int read(char *addr, int n);
-  ssize_t pread(char *addr, size_t n, off_t offset);
-  int write(char *addr, int n);
+struct file : public referenced, public rcu_freed {
+  static file* alloc();
+  file*        dup();
+  int          stat(struct stat*);
+  int          read(char *addr, int n);
+  ssize_t      pread(char *addr, size_t n, off_t offset);
+  int          write(char *addr, int n);
 
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;  
 
@@ -25,10 +25,14 @@ struct file : public referenced {
   struct pipe *pipe;
   struct inode *ip;
   u32 off;
-  NEW_DELETE_OPS(file);
+
+  virtual void do_gc(void);
 
 private:
-  file();  
+  file();
+  file& operator=(const file&);
+  file(const file& x);
+  NEW_DELETE_OPS(file);
 
 protected:
   virtual void onzero() const;

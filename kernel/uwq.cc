@@ -84,13 +84,13 @@ long
 uwq_worker::wait(void)
 {
   acquire(&lock_);
-  if (uwq_->ref() == 0)
+  if (!uwq_->valid())
     this->exit();
 
   running_ = false;
   cv_sleep(&cv_, &lock_);
 
-  if (uwq_->ref() == 0)
+  if (!uwq_->valid())
     this->exit();
   release(&lock_);
   return 0;
@@ -119,7 +119,6 @@ uwq::alloc(vmap* vmap, filetable *ftable)
     ksfree(slab_userwq, len);
     return nullptr;
   }
-  u->inc();
 
   if (mapkva(vmap->pml4, (char*)len, USERWQ, USERWQSIZE)) {
     ftable->decref();
@@ -172,7 +171,7 @@ uwq::tryworker(void)
   // Try to start a worker thread
   scoped_acquire lock0(&lock_);
 
-  if (ref() == 0)
+  if (!valid())
     return false;
 
   int slot = -1;
