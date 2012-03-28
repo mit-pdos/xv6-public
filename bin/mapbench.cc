@@ -1,7 +1,6 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-#include "mtrace.h"
 #include "amd64.h"
 #include "uspinlock.h"
 #include "pthread.h"
@@ -41,8 +40,6 @@ thr(void *arg)
 int
 main(int ac, char **av)
 {
-  mtenable("xv6-mapbench");
-
   if (ac != 2) {
     fprintf(1, "usage: %s nthreads\n", av[0]);
     exit();
@@ -62,7 +59,6 @@ main(int ac, char **av)
     wait();
 
   // fprintf(1, "mapbench[%d]: done\n", getpid());
-  mtdisable("xv6-mapbench");
   // halt();
   exit();
 }
