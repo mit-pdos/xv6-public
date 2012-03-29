@@ -85,7 +85,7 @@ sampstart(void)
   for(struct cpu *c = cpus; c < cpus+ncpu; c++) {
     if(c == cpus+mycpu()->id)
       continue;
-    lapic_sampconf(c->id);
+    lapic_sampconf(c->hwid);
   }
   sampconf();
   popcli();

@@ -140,10 +140,10 @@ void            kbdintr(void);
 
 // lapic.c
 hwid_t          lapicid(void);
-void            lapicstartap(u8, u32 addr);
+void            lapicstartap(hwid, u32 addr);
 void            lapiceoi(void);
-void            lapic_tlbflush(u32);
-void            lapic_sampconf(u32);
+void            lapic_tlbflush(hwid);
+void            lapic_sampconf(hwid);
 void            lapicpc(char mask);
 
 // mp.c

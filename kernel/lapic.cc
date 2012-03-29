@@ -140,17 +140,16 @@ lapicpc(char mask)
 hwid_t
 lapicid(void)
 {
-  // Cannot call cpu when interrupts are enabled:
-  // result not guaranteed to last long enough to be used!
-  if(readrflags()&FL_IF){
+  if (readrflags() & FL_IF) {
     cli();
     panic("cpunum() called from %p with interrupts enabled\n",
       __builtin_return_address(0));
   }
 
-  if(lapic)
-    return lapic[ID]>>24;
-  return 0;
+  if (lapic == nullptr)
+    panic("lapicid");
+
+  return HWID(lapic[ID]>>24);
 }
 
 // Acknowledge interrupt.
@@ -163,30 +162,30 @@ lapiceoi(void)
 
 // Send IPI
 void
-lapic_ipi(int cpu, int ino)
+lapic_ipi(hwid_t hwid, int ino)
 {
-  lapicw(ICRHI, cpu << 24);
+  lapicw(ICRHI, hwid.num << 24);
   lapicw(ICRLO, FIXED | DEASSERT | ino);
   if (lapicwait() < 0)
     panic("lapic_ipi: lapicwait failure");
 }
 
 void
-lapic_tlbflush(u32 cpu)
+lapic_tlbflush(hwid_t hwid)
 {
-  lapic_ipi(cpu, T_TLBFLUSH);
+  lapic_ipi(hwid, T_TLBFLUSH);
 }
 
 void
-lapic_sampconf(u32 cpu)
+lapic_sampconf(hwid_t hwid)
 {
-  lapic_ipi(cpu, T_SAMPCONF);
+  lapic_ipi(hwid, T_SAMPCONF);
 }
 
 // Start additional processor running bootstrap code at addr.
 // See Appendix B of MultiProcessor Specification.
 void
-lapicstartap(u8 apicid, u32 addr)
+lapicstartap(hwid hwid, u32 addr)
 {
   int i;
   volatile u16 *wrv;
@@ -202,11 +201,11 @@ lapicstartap(u8 apicid, u32 addr)
 
   // "Universal startup algorithm."
   // Send INIT (level-triggered) interrupt to reset other CPU.
-  lapicw(ICRHI, apicid<<24);
-  lapicw(ICRLO, apicid | INIT | LEVEL | ASSERT);
+  lapicw(ICRHI, hwid.num<<24);
+  lapicw(ICRLO, hwid.num | INIT | LEVEL | ASSERT);
   lapicwait();
   microdelay(10000);
-  lapicw(ICRLO, apicid |INIT | LEVEL);
+  lapicw(ICRLO, hwid.num |INIT | LEVEL);
   lapicwait();
   microdelay(10000);    // should be 10ms, but too slow in Bochs!
   
@@ -216,7 +215,7 @@ lapicstartap(u8 apicid, u32 addr)
   // should be ignored, but it is part of the official Intel algorithm.
   // Bochs complains about the second one.  Too bad for Bochs.
   for(i = 0; i < 2; i++){
-    lapicw(ICRHI, apicid<<24);
+    lapicw(ICRHI, hwid.num<<24);
     lapicw(ICRLO, STARTUP | (addr>>12));
     microdelay(200);
   }

@@ -1,3 +1,5 @@
+#pragma once
+
 typedef unsigned char   u8;
 typedef char            s8;
 typedef unsigned short  u16;
@@ -16,8 +18,8 @@ typedef uptr            paddr;
 // Page Map Entry (refers to any entry in any level)
 typedef u64             pme_t;
 
+// Logical CPU ID type
 typedef u8              cpuid_t;
-typedef u8              hwid_t;
 
 #ifdef XV6
 // POSIX types

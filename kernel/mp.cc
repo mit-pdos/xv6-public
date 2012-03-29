@@ -113,14 +113,10 @@ initmp(void)
       proc = (struct mpproc*)p;
       if (ncpu == NCPU)
         panic("initmp: too many CPUs");
-      if(ncpu != proc->apicid){
-        cprintf("mpinit: ncpu=%d apicid=%d\n", ncpu, proc->apicid);
-        //ismp = 0;
-      }
       if(proc->flags & MPBOOT)
         bcpu = &cpus[ncpu];
       cpus[ncpu].id = ncpu;
-      cpus[ncpu].hwid = proc->apicid;
+      cpus[ncpu].hwid = HWID(proc->apicid);
       ncpu++;
       p += sizeof(struct mpproc);
       continue;

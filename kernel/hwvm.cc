@@ -213,7 +213,7 @@ inittls(void)
   cpuid_t id = -1;
 
   for (id = 0; id < NCPU; id++)
-    if (cpus[id].hwid == lapicid())
+    if (cpus[id].hwid.num == lapicid().num)
       break;
   assert(id != -1);
 
@@ -246,7 +246,7 @@ tlbflush(u64 myreq)
 
   for (int i = 0; i < ncpu; i++)
     if (cpus[i].tlbflush_done < myreq)
-      lapic_tlbflush(i);
+      lapic_tlbflush(cpus[i].hwid);
 
   for (int i = 0; i < ncpu; i++)
     while (cpus[i].tlbflush_done < myreq)

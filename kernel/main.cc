@@ -81,7 +81,7 @@ bootothers(void)
     *(u64*)(code-12) = (u64)stack + KSTACKSIZE;
 
     bstate = 0;
-    lapicstartap(c->id, v2p(code));
+    lapicstartap(c->hwid, v2p(code));
     // Wait for cpu to finish mpmain()
     while(bstate == 0)
       ;
