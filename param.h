@@ -27,18 +27,22 @@
 #define USTACKPAGES   4
 #define WQSHIFT       7
 #define CILKENABLE    0
-#if defined(HW_josmp)
-#define NCPU         16  // maximum number of CPUs
-#define MTRACE       0
-#define PERFSIZE     (1<<20ull)
-#elif defined(HW_qemu)
+#if defined(HW_qemu)
 #define NCPU         8   // maximum number of CPUs
 #define MTRACE       0
 #define PERFSIZE     (16<<20ull)
+#elif defined(HW_josmp)
+#define NCPU         16  // maximum number of CPUs
+#define MTRACE       0
+#define PERFSIZE     (1<<20ull)
 #elif defined(HW_ud0)
 #define NCPU         4   // maximum number of CPUs
 #define MTRACE       0
 #define PERFSIZE     (512<<20ull)
+#elif defined(HW_tom)
+#define NCPU         48  // maximum number of CPUs
+#define MTRACE       0
+#define PERFSIZE     (1<<20ull)
 #elif defined(HW_user)
 #define NCPU        256
 #define MTRACE      0
