@@ -2,6 +2,7 @@
 #include "amd64.h"
 #include "kernel.hh"
 #include "pci.hh"
+#include "pcireg.hh"
 #include "spinlock.h"
 #include "e1000reg.hh"
 
@@ -30,6 +31,27 @@ static struct {
   struct spinlock lk;
 } e1000;
 
+struct eerd {
+  u32 data_shift;
+  u32 addr_shift;
+  u32 done_bit;
+  u32 start_bit;
+};
+
+static const struct eerd eerd_default = {
+  data_shift: 16,
+  addr_shift: 8,
+  done_bit:   0x00000010,
+  start_bit:  0x00000001,
+};
+
+static const struct eerd eerd_82541xx = {
+  data_shift: 16,
+  addr_shift: 2,
+  done_bit:   0x00000002,
+  start_bit:  0x00000001
+};
+
 static inline u32
 erd(u32 reg)
 {
@@ -47,27 +69,32 @@ ewr(u32 reg, u32 val)
 }
 
 static int
-eeprom_eerd_read(u16 off)
+eeprom_eerd_read(const eerd* eerd, u16 off)
 {
   u32 reg;
   int x;
 
+  // [E1000 13.4.4] Ensure EEC control is released
+  reg = erd(WMREG_EECD);
+  reg &= ~(EECD_EE_REQ|EECD_EE_GNT);
+  ewr(WMREG_EECD, reg);
+
   // [E1000 5.3.1] Software EEPROM access 
-  ewr(WMREG_EERD, (off<<EERD_ADDR_SHIFT) | EERD_START);
+  ewr(WMREG_EERD, (off<<eerd->addr_shift) | eerd->start_bit);
   for (x = 0; x < 5; x++) {
     reg = erd(WMREG_EERD);
-    if (reg & EERD_DONE)
-      return (reg&EERD_DATA_MASK) >> EERD_DATA_SHIFT;
+    if (reg & eerd->done_bit)
+      return (reg&EERD_DATA_MASK) >> eerd->data_shift;
     microdelay(50000);
   }
   return -1;
 }
 
 static int
-eeprom_read(u16 *buf, int off, int count)
+eeprom_read(const eerd* eerd, u16 *buf, int off, int count)
 {
   for (int i = 0; i < count; i++) {
-    int r = eeprom_eerd_read(off+i);
+    int r = eeprom_eerd_read(eerd, off+i);
     if (r < 0) {
       cprintf("eeprom_read: cannot read\n");
       return -1;
@@ -267,6 +294,7 @@ e1000eattach(struct pci_func *pcif)
 int
 e1000attach(struct pci_func *pcif)
 {
+  const eerd* eerd;
   int r;
   int i;
 
@@ -278,7 +306,7 @@ e1000attach(struct pci_func *pcif)
   initlock(&e1000.lk, "e1000", 1);
   e1000.membase = pcif->reg_base[0];
   e1000.iobase = pcif->reg_base[2];
-  e1000.pcidevid = pcif->dev_id;
+  e1000.pcidevid = PCI_PRODUCT(pcif->dev_id);
   e1000irq = pcif->irq_line;
 
   picenable(e1000irq);
@@ -286,8 +314,20 @@ e1000attach(struct pci_func *pcif)
 
   e1000reset();
 
+  switch(e1000.pcidevid) {
+  case 0x100e:
+  case 0x1079:
+    eerd = &eerd_default;
+    break;
+  case 0x1076:
+    eerd = &eerd_82541xx;
+    break;
+  default:
+    panic("e1000attach: %x", e1000.pcidevid);
+  }
+
   // Get the MAC address
-  r = eeprom_read((u16*)e1000.hwaddr, EEPROM_OFF_MACADDR, 3);
+  r = eeprom_read(eerd, (u16*)e1000.hwaddr, EEPROM_OFF_MACADDR, 3);
   if (r < 0)
     return 0;
 
