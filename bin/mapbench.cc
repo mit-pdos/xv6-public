@@ -12,7 +12,7 @@ enum { npg = 1 };
 
 static pthread_barrier_t bar;
 static pthread_barrier_t bar2;
-#define NITER 10  // 1000000
+#define NITER 1000000
 
 void*
 thr(void *arg)
