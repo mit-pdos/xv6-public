@@ -36,9 +36,11 @@ uwq_trywork(void)
     barrier();
 
     struct proc *p = c->proc;
-    if (p == nullptr || p->uwq == nullptr)
+    if (p == nullptr)
       continue;
     uwq* uwq = p->uwq;
+    if (uwq == nullptr)
+      continue;
 
     if (uwq->haswork()) {
       if (uwq->tryworker())
