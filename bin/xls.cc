@@ -34,7 +34,7 @@
 #define xfstatat fstatat
 #endif
 
-static const bool silent = false;
+static const bool silent = (DEBUG == 0);
 
 void
 ls(const char *path)
@@ -96,6 +96,7 @@ main(int argc, char *argv[])
   }
   perf_stop();
   
-  wq_dump();
+  if (!silent)
+    wq_dump();
   return 0;
 }

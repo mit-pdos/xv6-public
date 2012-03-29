@@ -34,6 +34,8 @@ typedef uint64_t u64;
 #define BSIZ (DIRSIZ+1)
 #endif
 
+static const bool silent = (DEBUG == 0);
+
 static size_t
 du(int fd)
 {
@@ -74,7 +76,9 @@ main(int ac, char **av)
   perf_start(PERF_SELECTOR, PERF_PERIOD);
   s = du(open(".", 0));
   perf_stop();
-  printf("%ld\n", s);
-  wq_dump();
+  if (!silent) {
+    printf("%ld\n", s);
+    wq_dump();
+  }
   return 0;
 }
