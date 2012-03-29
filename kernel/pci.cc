@@ -37,6 +37,8 @@ struct pci_driver pci_attach_vendor[] = {
   { 0x8086, 0x100e, &e1000attach },
   // josmp's dual ported e1000 82546GB copper
   { 0x8086, 0x1079, &e1000attach },
+  // tom's e1000 82541GI copper
+  { 0x8086, 0x1076, &e1000attach },
   // Both of ud0's e1000e (82573E, 82573L)
   { 0x8086, 0x108c, &e1000eattach },
   { 0x8086, 0x109A, &e1000eattach },
