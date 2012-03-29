@@ -443,13 +443,23 @@ bmap(struct inode *ip, u32 bn)
     // Load indirect block, allocating if necessary.
     if((addr = ip->addrs[NDIRECT]) == 0)
       ip->addrs[NDIRECT] = addr = balloc(ip->dev);
-    bp = bread(ip->dev, addr, 1);
+
+    int writerflag = 0;
+    bp = bread(ip->dev, addr, writerflag);
     a = (u32*)bp->data;
     if((addr = a[bn]) == 0){
-      a[bn] = addr = balloc(ip->dev);
-      bwrite(bp);
+      brelse(bp, writerflag);
+
+      writerflag = 1;
+      bp = bread(ip->dev, addr, writerflag);
+      a = (u32*)bp->data;
+      addr = a[bn];
+      if (addr == 0) {
+        a[bn] = addr = balloc(ip->dev);
+        bwrite(bp);
+      }
     }
-    brelse(bp, 1);
+    brelse(bp, writerflag);
     return addr;
   }
 

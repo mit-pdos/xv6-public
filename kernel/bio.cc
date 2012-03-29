@@ -127,12 +127,4 @@ void
 initbio(void)
 {
   bufns = new xns<pair<u32, u64>, buf*, bio_hash>(false);
-
-  for (u64 i = 0; i < NBUF; i++) {
-    struct buf *b = new buf(0xdeadbeef, -i);
-    /* dummy to pre-allocate NBUF spaces for evict */
-    b->flags = 0;
-    if (bufns->insert(mkpair(b->dev, b->sector), b) < 0)
-      panic("binit ns_insert");
-  }
 }
