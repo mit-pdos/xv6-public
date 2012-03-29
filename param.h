@@ -1,5 +1,5 @@
 #pragma once
-#define DEBUG         0
+#define DEBUG         1
 #define NPROC        64  // maximum number of processes
 #define KSTACKSIZE 8192  // size of per-process kernel stack
 #define NOFILE       64  // open files per process
