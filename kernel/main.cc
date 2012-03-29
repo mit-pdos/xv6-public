@@ -94,17 +94,18 @@ cmain(u64 mbmagic, u64 mbaddr)
   extern u64 cpuhz;
 
   initpg();
-  initseg();
-  inittls();       // thread local storage
   inithz();        // CPU Hz, microdelay
   initpic();       // interrupt controller
   initioapic();
   inituart();
   initcga();
   initconsole();
+  initmp();
+  inittls();       // thread local storage
+
+  initseg();
   initsperf();
   inittrap();
-  initmp();
   initlapic();
   initkalloc(mbaddr);
   initproc();      // process table
