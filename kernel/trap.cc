@@ -275,7 +275,8 @@ getcallerpcs(void *v, uptr pcs[], int n)
 
   rbp = (uptr*)v;
   for(i = 0; i < n; i++){
-    if(rbp == 0 || rbp < (uptr*)KBASE || rbp == (uptr*)(~0UL))
+    if(rbp == 0 || rbp < (uptr*)KBASE || rbp == (uptr*)(~0UL) ||
+       (rbp >= (uptr*)KBASEEND && rbp < (uptr*)KCODE))
       break;
     pcs[i] = rbp[1];     // saved %rip
     rbp = (uptr*)rbp[0]; // saved %rbp

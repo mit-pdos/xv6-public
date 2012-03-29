@@ -70,7 +70,7 @@ initpg(void)
   u64 va = KBASE;
   paddr pa = 0;
 
-  while (va < (KBASE+(128ull<<30))) {
+  while (va < KBASEEND) {
     auto pdp = descend(&kpml4, va, 0, 1, 3);
     auto pd = descend(pdp, va, 0, 1, 2);
     atomic<pme_t> *sp = &pd->e[PX(1,va)];
