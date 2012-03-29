@@ -3,18 +3,27 @@
 #include "user.h"
 #include "amd64.h"
 #include "uspinlock.h"
+#include "mtrace.h"
 #include "pthread.h"
 
-enum { readaccess = 0 };
+enum { readaccess = 1 };
 enum { verbose = 0 };
 enum { npg = 1 };
+
+static pthread_barrier_t bar;
+#define NITER 10  // 1000000
 
 void*
 thr(void *arg)
 {
   u64 tid = (u64)arg;
 
-  for (int i = 0; i < 1000000; i++) {
+  pthread_barrier_wait(&bar);
+
+  if (tid == 0)
+    mtenable_type(mtrace_record_ascope, "xv6-asharing");
+
+  for (int i = 0; i < NITER; i++) {
     if (verbose && ((i % 100) == 0))
       fprintf(1, "%d: %d ops\n", tid, i);
 
@@ -48,6 +57,7 @@ main(int ac, char **av)
   int nthread = atoi(av[1]);
 
   // fprintf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
+  pthread_barrier_init(&bar, 0, nthread);
 
   for(u64 i = 0; i < nthread; i++) {
     pthread_t tid;
@@ -57,6 +67,8 @@ main(int ac, char **av)
 
   for(int i = 0; i < nthread; i++)
     wait();
+
+  mtdisable("xv6-asharing");
 
   // fprintf(1, "mapbench[%d]: done\n", getpid());
   // halt();
