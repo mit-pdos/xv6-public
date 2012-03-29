@@ -209,6 +209,8 @@ freevm(pgmap *pml4)
 void
 inittls(void)
 {
+  extern hwid_t lapicid(void);
+
   struct cpu *c;
   cpuid_t id = -1;
 

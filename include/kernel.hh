@@ -139,11 +139,10 @@ void            kmemprint(void);
 void            kbdintr(void);
 
 // lapic.c
-hwid_t          lapicid(void);
-void            lapicstartap(hwid, u32 addr);
+void            lapicstartap(hwid_t, u32 addr);
 void            lapiceoi(void);
-void            lapic_tlbflush(hwid);
-void            lapic_sampconf(hwid);
+void            lapic_tlbflush(hwid_t);
+void            lapic_sampconf(hwid_t);
 void            lapicpc(char mask);
 
 // mp.c
