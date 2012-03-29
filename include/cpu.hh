@@ -11,7 +11,6 @@ extern atomic<u64> tlbflush_req;
 // Per-CPU state
 struct cpu {
   cpuid_t id;                  // Index into cpus[] below
-  hwid_t hwid;                 // Local APIC ID
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
   struct segdesc gdt[NSEGS];   // x86 global descriptor table
@@ -21,6 +20,8 @@ struct cpu {
   int timer_printpc;
   atomic<u64> tlbflush_done;   // last tlb flush req done on this cpu
   struct proc *prev;           // The previously-running process
+
+  hwid_t hwid __mpalign__;     // Local APIC ID, accessed by other CPUs
 
   // Cpu-local storage variables; see below
   struct cpu *cpu;
