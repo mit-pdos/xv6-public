@@ -12,5 +12,6 @@ void
 asmdefines(void)
 {
   DEFINE(PROC_KSTACK_OFFSET, __offsetof(struct proc, kstack));
+  DEFINE(TF_CS, __offsetof(struct trapframe, cs));
   DEFINE(TRAPFRAME_SIZE, sizeof(trapframe));
 }

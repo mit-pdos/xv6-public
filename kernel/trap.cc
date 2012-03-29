@@ -20,9 +20,6 @@ extern u64 trapentry[];
 u64
 sysentry_c(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
 {
-  writegs(KDSEG);
-  writemsr(MSR_GS_BASE, (u64)&cpus[lapicid()].cpu);
-
   sti();
 
   if(myproc()->killed) {
@@ -45,9 +42,6 @@ sysentry_c(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
 void
 trap(struct trapframe *tf)
 {
-  writegs(KDSEG);
-  writemsr(MSR_GS_BASE, (u64)&cpus[lapicid()].cpu);
-
   if (tf->trapno == T_NMI) {
     // The only locks that we can acquire during NMI are ones
     // we acquire only during NMI.

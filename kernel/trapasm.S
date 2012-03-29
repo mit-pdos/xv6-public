@@ -28,7 +28,6 @@ sysentry:
         // blow away %r9: syscalls can take at most 5 args
         swapgs
         movq    %gs:8, %r9  // myproc()
-        swapgs
 
         movq    %ss:PROC_KSTACK_OFFSET(%r9), %r9
         addq    $(KSTACKSIZE-TRAPFRAME_SIZE), %r9
@@ -72,6 +71,8 @@ sysentry:
         // return using SYSRET
         cli
         movq    %rsp, %r11
+        swapgs
+
         movw    $UDSEG, %cx
         movw    %cx, %ds
         movw    %cx, %es
@@ -110,9 +111,12 @@ trapcommon:
         movw $KDSEG, %ax
         movw %ax, %ds
         movw %ax, %es
-        // XXX(sbw) we should do something with fs, gs, gs.base
 
-        movq %rsp, %rdi  // first argument to trap
+        cmp  $KCSEG, TF_CS(%rsp)
+        jz 1f
+        swapgs
+
+1:      movq %rsp, %rdi  // first argument to trap
         xor %rbp, %rbp
         call trap
         // Fall through to trapret
@@ -120,11 +124,15 @@ trapcommon:
 .globl trapret
 .align 8
 trapret:
-        addq $0xe, %rsp  // padding
+        cli
+        cmp $KCSEG, TF_CS(%rsp)
+        jz 1f
+        swapgs
+
+1:      addq $0xe, %rsp  // padding
         popw %ax
         movw %ax, %ds
         movw %ax, %es
-        // XXX(sbw) we should do something with fs, gs, gs.base
         
         popq %r15
         popq %r14
