@@ -11,6 +11,7 @@ enum { verbose = 0 };
 enum { npg = 1 };
 
 static pthread_barrier_t bar;
+static pthread_barrier_t bar2;
 #define NITER 10  // 1000000
 
 void*
@@ -24,6 +25,8 @@ thr(void *arg)
 
   if (tid == 0)
     mtenable_type(mtrace_record_ascope, "xv6-asharing");
+
+  pthread_barrier_wait(&bar2);
 
   for (int i = 0; i < NITER; i++) {
     if (verbose && ((i % 100) == 0))
@@ -60,6 +63,7 @@ main(int ac, char **av)
 
   // fprintf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
   pthread_barrier_init(&bar, 0, nthread);
+  pthread_barrier_init(&bar2, 0, nthread);
 
   for(u64 i = 0; i < nthread; i++) {
     pthread_t tid;
