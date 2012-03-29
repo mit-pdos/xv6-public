@@ -99,10 +99,10 @@ cmain(u64 mbmagic, u64 mbaddr)
   initioapic();
   inituart();
   initcga();
-  initconsole();
   initmp();
   inittls();       // thread local storage
 
+  initconsole();
   initseg();
   initsperf();
   inittrap();
