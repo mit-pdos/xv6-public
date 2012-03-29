@@ -111,6 +111,8 @@ initmp(void)
     switch(*p){
     case MPPROC:
       proc = (struct mpproc*)p;
+      if (ncpu == NCPU)
+        panic("initmp: too many CPUs");
       if(ncpu != proc->apicid){
         cprintf("mpinit: ncpu=%d apicid=%d\n", ncpu, proc->apicid);
         ismp = 0;
