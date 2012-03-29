@@ -13,12 +13,14 @@ void*
 thr(void *arg)
 {
   u64 tid = (u64)arg;
+  if (setaffinity(tid) < 0)
+    fprintf(1, "setaffinity err\n");
 
   for (int i = 0; i < 1000000; i++) {
     if (verbose && ((i % 100) == 0))
       fprintf(1, "%d: %d ops\n", tid, i);
 
-    volatile char *p = (char*) (0x40000UL + tid * npg * 4096);
+    volatile char *p = (char*) (0x100000000UL + tid * npg * 0x100000);
     if (map((void *) p, npg * 4096) < 0) {
       fprintf(1, "%d: map failed\n", tid);
       exit();
