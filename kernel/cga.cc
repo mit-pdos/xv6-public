@@ -42,7 +42,6 @@ cgaputc(int c)
 void
 initcga(void)
 {
-  const char *p;
   int i;
 
   for (i = 0; i < 80*25; i++)
@@ -54,6 +53,6 @@ initcga(void)
   outb(CRTPORT+1, 0);
 
   // Announce that we're here.
-  for(p="cga..\n"; *p; p++)
+  for (const char *p=DEBUG?"xv6 DEBUG\n":"xv6\n"; *p; p++)
     cgaputc(*p);
 }

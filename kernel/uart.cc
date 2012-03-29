@@ -88,6 +88,6 @@ inituart(void)
   ioapicenable(irq_com, 0);
 
   // Announce that we're here.
-  for (const char *p="uart..\n"; *p; p++)
+  for (const char *p=DEBUG?"xv6 DEBUG\n":"xv6\n"; *p; p++)
     uartputc(*p);
 }
