@@ -210,15 +210,21 @@ void
 inittls(void)
 {
   struct cpu *c;
+  cpuid_t id = -1;
+
+  for (id = 0; id < NCPU; id++)
+    if (cpus[id].hwid == lapicid())
+      break;
+  assert(id != -1);
 
   // Initialize cpu-local storage.
-  c = &cpus[cpunum()];
+  c = &cpus[id];
   writegs(KDSEG);
   writemsr(MSR_GS_BASE, (u64)&c->cpu);
   writemsr(MSR_GS_KERNBASE, (u64)&c->cpu);
   c->cpu = c;
   c->proc = nullptr;
-  c->kmem = &kmems[cpunum()];
+  c->kmem = &kmems[id];
 }
 
 atomic<u64> tlbflush_req;

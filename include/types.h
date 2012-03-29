@@ -16,6 +16,9 @@ typedef uptr            paddr;
 // Page Map Entry (refers to any entry in any level)
 typedef u64             pme_t;
 
+typedef u8              cpuid_t;
+typedef u8              hwid_t;
+
 #ifdef XV6
 // POSIX types
 typedef s64             ssize_t;

@@ -244,7 +244,7 @@ sampwrite(struct inode *ip, char *buf, u32 off, u32 n)
 void
 initsamp(void)
 {
-  if (cpunum() == mpbcpu()) {
+  if (myid() == mpbcpu()) {
     u32 name[4];
     char *s = (char *)name;
     name[3] = 0;
@@ -267,8 +267,8 @@ initsamp(void)
   void *p = ksalloc(slab_perf);
   if (p == nullptr)
     panic("initprof: ksalloc");
-  pmulog[cpunum()].event = (pmuevent*) p;
-  pmulog[cpunum()].capacity = PERFSIZE / sizeof(struct pmuevent);
+  pmulog[myid()].event = (pmuevent*) p;
+  pmulog[myid()].capacity = PERFSIZE / sizeof(struct pmuevent);
 
   devsw[SAMPLER].write = sampwrite;
   devsw[SAMPLER].read = sampread;

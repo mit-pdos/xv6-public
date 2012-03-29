@@ -10,7 +10,8 @@ extern atomic<u64> tlbflush_req;
 
 // Per-CPU state
 struct cpu {
-  u8 id;                       // Local APIC ID; index into cpus[] below
+  cpuid_t id;                  // Index into cpus[] below
+  hwid_t hwid;                 // Local APIC ID
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
   struct segdesc gdt[NSEGS];   // x86 global descriptor table
@@ -55,4 +56,10 @@ mykmem(void)
   u64 val;
   __asm volatile("movq %%gs:16, %0" : "=r" (val));
   return (struct kmem *)val;
+}
+
+static inline cpuid_t
+myid(void)
+{
+  return mycpu()->id;
 }

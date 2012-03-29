@@ -139,7 +139,7 @@ void            kmemprint(void);
 void            kbdintr(void);
 
 // lapic.c
-int             cpunum(void);
+hwid_t          lapicid(void);
 void            lapicstartap(u8, u32 addr);
 void            lapiceoi(void);
 void            lapic_tlbflush(u32);

@@ -139,12 +139,12 @@ initidle(void)
   if (!p)
     panic("initidle proc::alloc");
 
-  SLIST_INIT(&idlem[cpunum()].zombies);
-  initlock(&idlem[cpunum()].lock, "idle_lock", LOCKSTAT_IDLE);
+  SLIST_INIT(&idlem[myid()].zombies);
+  initlock(&idlem[myid()].lock, "idle_lock", LOCKSTAT_IDLE);
 
-  snprintf(p->name, sizeof(p->name), "idle_%u", cpunum());
+  snprintf(p->name, sizeof(p->name), "idle_%u", myid());
   mycpu()->proc = p;
-  myproc()->cpuid = cpunum();
+  myproc()->cpuid = myid();
   myproc()->cpu_pin = 1;
   idlem->cur = p;
 }

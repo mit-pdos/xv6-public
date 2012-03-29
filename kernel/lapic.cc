@@ -137,8 +137,8 @@ lapicpc(char mask)
   lapicw(PCINT, mask ? MASKED : MT_NMI);
 }
 
-int
-cpunum(void)
+hwid_t
+lapicid(void)
 {
   // Cannot call cpu when interrupts are enabled:
   // result not guaranteed to last long enough to be used!

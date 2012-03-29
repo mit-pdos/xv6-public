@@ -43,8 +43,8 @@ static volatile int bstate;
 void
 mpboot(void)
 {
-  initseg();
   inittls();
+  initseg();
   initlapic();
   initsamp();
   initidle();
@@ -70,7 +70,7 @@ bootothers(void)
   memmove(code, _bootother_start, _bootother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
-    if(c == cpus+cpunum())  // We've started already.
+    if(c == cpus+myid())  // We've started already.
       continue;
 
     // Tell bootother.S what stack to use and the address of apstart;
