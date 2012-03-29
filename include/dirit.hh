@@ -44,12 +44,12 @@ private:
 static inline const char*
 copy_value(dirit &it)
 {
-  char *buf = (char*)malloc(256);
-  return it.name(buf, 256);
+  char *buf = (char*)wqalloc(DIRSIZ+1);
+  return it.name(buf, DIRSIZ+1);
 }
 
 static inline void
 free_value(dirit &it, const char *name)
 {
-  free((void*)name);
+  wqfree((void*)name);
 }

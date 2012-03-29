@@ -30,7 +30,7 @@ refill(void)
 }
 
 void*
-allocwork(unsigned long nbytes)
+wqalloc(unsigned long nbytes)
 {
   assert(nbytes <= WQBLOCKSZ);
 
@@ -44,7 +44,7 @@ allocwork(unsigned long nbytes)
 }
 
 void
-freework(void *ptr)
+wqfree(void *ptr)
 {
   wqblock* b = (wqblock*) ptr;
   b->next = *block;

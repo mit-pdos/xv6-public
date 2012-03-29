@@ -38,10 +38,10 @@ struct cwork : public work {
 #define xallocwork(n)    kmalloc(n, "xallocwork")
 #define xfreework(p, sz) kmfree(p, sz)
 #else
-extern void* allocwork(unsigned long nbytes);
-extern void  freework(void *ptr);
-#define xallocwork(n)    allocwork(n)
-#define xfreework(n, sz) freework(n)
+extern void* wqalloc(unsigned long nbytes);
+extern void  wqfree(void *ptr);
+#define xallocwork(n)    wqalloc(n)
+#define xfreework(n, sz) wqfree(n)
 #endif
 
 #include "wqfor.hh"

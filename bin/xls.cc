@@ -22,8 +22,8 @@
 #include "user.h"
 #include "fs.h"
 #include "lib.h"
-#include "dirit.hh"
 #include "wq.hh"
+#include "dirit.hh"
 #define ST_SIZE(st)  (st).size
 #define ST_TYPE(st)  (st).type
 #define ST_INO(st)   (st).ino
