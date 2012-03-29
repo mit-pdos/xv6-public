@@ -731,11 +731,28 @@ vmap::unmapped_area(size_t npages)
   uptr addr = 0x1000;
 
   while (addr < USERTOP) {
+#if VM_CRANGE
     auto x = cr.search(addr, n);
     if (x == nullptr)
       return addr;
     vma* a = (vma*) x;
     addr = a->vma_end;
+#endif
+
+#if VM_RADIX
+    bool overlap = false;
+    for (uptr ax = addr; ax < addr+n; ax += PGSIZE) {
+      auto x = rx.search(ax);
+      if (x != nullptr) {
+        overlap = true;
+        vma* a = (vma*) x;
+        addr = a->vma_end;
+        break;
+      }
+    }
+    if (!overlap)
+      return addr;
+#endif
   }
   return 0;
 }
