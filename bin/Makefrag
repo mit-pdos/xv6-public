@@ -2,6 +2,7 @@ $(O)/bin/%.o: CFLAGS:=$(CFLAGS)
 $(O)/bin/%.o: CXXFLAGS:=$(CXXFLAGS)
 
 UPROGS= \
+        bench \
 	cat \
         du \
 	echo \
