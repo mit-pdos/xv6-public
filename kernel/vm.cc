@@ -18,6 +18,7 @@
 #include "kmtrace.hh"
 
 enum { vm_debug = 0 };
+enum { tlb_shootdown = 1 };
 enum { tlb_lazy = 1 };
 
 /*
@@ -320,8 +321,14 @@ vmap::copy(int share)
 #endif
   }
 
-  if (share)
-    tlbflush();  // Reload hardware page table
+  if (share) {
+    // Reload hardware page table
+    if (tlb_shootdown) {
+      tlbflush();
+    } else {
+      lcr3(rcr3());
+    }
+  }
 
   nm->brk_ = brk_;
 
@@ -434,11 +441,13 @@ again:
           }
         }
       });
-  if (needtlb && dotlb)
-    tlbflush();
-  else
-    if (tlb_lazy)
-      tlbflush(myproc()->unmap_tlbreq_);
+  if (tlb_shootdown) {
+    if (needtlb && dotlb)
+      tlbflush();
+    else
+      if (tlb_lazy)
+        tlbflush(myproc()->unmap_tlbreq_);
+  }
 
   return vma_start;
 }
@@ -488,7 +497,7 @@ vmap::remove(uptr vma_start, uptr len)
         }
       }
     });
-  if (needtlb) {
+  if (tlb_shootdown && needtlb) {
     if (tlb_lazy) {
       myproc()->unmap_tlbreq_ = tlbflush_req++;
     } else {
@@ -578,7 +587,11 @@ vmap::pagefault(uptr va, u32 err)
     if (pagefault_wcow(m) < 0)
       return -1;
 
-    tlbflush();
+    if (tlb_shootdown) {
+      tlbflush();
+    } else {
+      lcr3(rcr3());
+    }
     goto retry;
   }
 
