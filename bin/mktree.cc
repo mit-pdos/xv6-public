@@ -34,14 +34,15 @@ dolevel(int fd, int depth)
 int
 main(int ac, char **av)
 {
-  if (ac < 4)
-    die("usage: %s dir branch depth", av[0]);
+  if (ac < 5)
+    die("usage: %s nworkers dir branch depth", av[0]);
 
+  wq_maxworkers = atoi(av[1])-1;
   initwq();
 
-  const char *dir = av[1];
-  branch = atoi(av[2]);
-  int depth = atoi(av[3]);
+  const char *dir = av[2];
+  branch = atoi(av[3]);
+  int depth = atoi(av[4]);
 
   if (mkdir(dir))
     die("mkdir");

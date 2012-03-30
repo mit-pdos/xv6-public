@@ -80,19 +80,23 @@ ls(const char *path)
 }
 
 int
-main(int argc, char *argv[])
+main(int ac, char *av[])
 {
   int i;
 
+  if (ac < 2)
+    die("usage: %s nworkers [paths]", av[0]);
+
+  wq_maxworkers = atoi(av[1])-1;
   initwq();
 
   perf_start(PERF_SELECTOR, 10000);
-  if(argc < 2) {
+  if(ac < 3) {
     ls(".");
   } else {
     // XXX(sbw) wq_for
-    for (i=1; i<argc; i++)
-      ls(argv[i]);
+    for (i=2; i<ac; i++)
+      ls(av[i]);
   }
   perf_stop();
   

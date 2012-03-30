@@ -72,6 +72,11 @@ main(int ac, char **av)
 {
   size_t s;
 
+  if (ac < 2)
+    die("usage: %s nworkers", av[0]);
+
+  wq_maxworkers = atoi(av[1])-1;
+
   initwq();
   perf_start(PERF_SELECTOR, PERF_PERIOD);
   s = du(open(".", 0));

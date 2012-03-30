@@ -63,6 +63,8 @@ struct TimedExec : public Bench
 };
 
 #define CMD(...) new TimedExec((const char *[]){__VA_ARGS__, 0})
+#define STR_1(x...) #x
+#define STR(x...)   STR_1(x)
 
 int
 main(int ac, char **av)
@@ -70,9 +72,14 @@ main(int ac, char **av)
   static Bench* the_bench[128];
   int n = 0;
 
-  the_bench[n++] = CMD("mktree", "tree.xdu", "4", "4");
-  the_bench[n++] = CMD("xdu");
-  the_bench[n++] = CMD("xls");
+  the_bench[n++] = CMD("mktree", STR(NCPU), "tree.xdu", "4", "4");
+  the_bench[n++] = CMD("xdu", "1");
+  the_bench[n++] = CMD("xdu", "4");
+  the_bench[n++] = CMD("xdu", "8");
+  the_bench[n++] = CMD("xls", "1");
+  the_bench[n++] = CMD("xls", "4");
+  the_bench[n++] = CMD("xls", "8");
+
   the_bench[n++] = CMD("mapbench", "1");
   the_bench[n++] = CMD("mapbench", "2");
   the_bench[n++] = CMD("mapbench", "16");
