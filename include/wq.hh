@@ -4,6 +4,7 @@ class work;
 
 int             wq_trywork(void);
 int             wq_push(work *w);
+int             wq_pushto(work *w, int tcpuid);
 void            wq_dump(void);
 size_t          wq_size(void);
 void            initwq(void);

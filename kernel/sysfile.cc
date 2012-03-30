@@ -428,6 +428,9 @@ sys_exec(const char *path, u64 uargv)
   if(argcheckstr(path) < 0) {
     return -1;
   }
+
+  mt_ascope ascope("%s(%s)", __func__, path);
+
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv))

@@ -12,7 +12,7 @@
 class wq {
 public:
   wq();
-  int push(work *w);
+  int push(work *w, int tcpuid);
   int trywork();
   void dump();
 
@@ -57,7 +57,13 @@ wq_size(void)
 int
 wq_push(work *w)
 {
-  return wq_->push(w);
+  return wq_->push(w, mycpuid());
+}
+
+int
+wq_pushto(work *w, int tcpuid)
+{
+  return wq_->push(w, tcpuid);
 }
 
 int
@@ -128,24 +134,24 @@ wq::declen(int c)
 }
 
 int
-wq::push(work *w)
+wq::push(work *w, int tcpuid)
 {
   int i;
 
-  pushcli();
-  i = q_->head;
-  if ((i - q_->tail) == NSLOTS) {
-    stat_->full++;
-    popcli();
+  acquire(&q_[tcpuid].lock);
+  i = q_[tcpuid].head;
+  if ((i - q_[tcpuid].tail) == NSLOTS) {
+    stat_[tcpuid].full++;
+    release(&q_[tcpuid].lock);
     return -1;
   }
   i = i & (NSLOTS-1);
-  q_->w[i] = w;
+  q_[tcpuid].w[i] = w;
   barrier();
-  q_->head++;
-  inclen(mycpuid());
-  stat_->push++;
-  popcli();
+  q_[tcpuid].head++;
+  inclen(tcpuid);
+  stat_[tcpuid].push++;
+  release(&q_[tcpuid].lock);
   return 0;
 }
 
