@@ -19,7 +19,7 @@
 
 enum { vm_debug = 0 };
 enum { tlb_shootdown = 1 };
-enum { tlb_lazy = 0 };
+enum { tlb_lazy = 1 };
 
 /*
  * vmnode
