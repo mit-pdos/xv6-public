@@ -13,6 +13,7 @@
 #include "vm.hh"
 
 enum { sched_debug = 0 };
+enum { steal_nonexec = 1 };
 
 struct runq {
   STAILQ_HEAD(queue, proc) q;
@@ -137,7 +138,7 @@ steal(void)
 
   pushcli();
 
-  for (int nonexec = 0; nonexec < 2; nonexec++) { 
+  for (int nonexec = 0; nonexec < (steal_nonexec ? 2 : 1); nonexec++) { 
     for (int i = 1; i < ncpu; i++) {
       struct runq *q = &runq[(i+mycpu()->id) % ncpu];
       struct proc *p;
