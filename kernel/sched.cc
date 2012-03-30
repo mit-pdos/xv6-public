@@ -133,51 +133,54 @@ int
 steal(void)
 {
   struct proc *steal;
-  int i;
   int r = 0;
 
   pushcli();
-  
-  for (i = 1; i < ncpu; i++) {
-    struct runq *q = &runq[(i+mycpu()->id) % ncpu];
-    struct proc *p;
 
-    // XXX(sbw) Look for a process to steal.  Acquiring q->lock
-    // then p->lock can result in deadlock.  So we acquire
-    // q->lock, scan for a process, drop q->lock, acquire p->lock,
-    // and then check that it's still ok to steal p.
-    steal = nullptr;
-    if (tryacquire(&q->lock) == 0)
-      continue;
-    STAILQ_FOREACH(p, &q->q, runqlink) {
-      if (p->get_state() == RUNNABLE && !p->cpu_pin && 
-          p->curcycles != 0 && p->curcycles > VICTIMAGE)
-      {
-        STAILQ_REMOVE(&q->q, p, proc, runqlink);
-        steal = p;
-        break;
+  for (int nonexec = 0; nonexec < 2; nonexec++) { 
+    for (int i = 1; i < ncpu; i++) {
+      struct runq *q = &runq[(i+mycpu()->id) % ncpu];
+      struct proc *p;
+
+      // XXX(sbw) Look for a process to steal.  Acquiring q->lock
+      // then p->lock can result in deadlock.  So we acquire
+      // q->lock, scan for a process, drop q->lock, acquire p->lock,
+      // and then check that it's still ok to steal p.
+      steal = nullptr;
+      if (tryacquire(&q->lock) == 0)
+        continue;
+      STAILQ_FOREACH(p, &q->q, runqlink) {
+        if (p->get_state() == RUNNABLE && !p->cpu_pin && 
+            (p->in_exec_ || nonexec) &&
+            p->curcycles != 0 && p->curcycles > VICTIMAGE)
+        {
+          STAILQ_REMOVE(&q->q, p, proc, runqlink);
+          steal = p;
+          break;
+        }
       }
-    }
-    release(&q->lock);
+      release(&q->lock);
 
-    if (steal) {
-      acquire(&steal->lock);
-      if (steal->get_state() == RUNNABLE && !steal->cpu_pin &&
-          steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
-      {
-        steal->curcycles = 0;
-        steal->cpuid = mycpu()->id;
-        addrun(steal);
+      if (steal) {
+        acquire(&steal->lock);
+        if (steal->get_state() == RUNNABLE && !steal->cpu_pin &&
+            steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
+        {
+          steal->curcycles = 0;
+          steal->cpuid = mycpu()->id;
+          addrun(steal);
+          release(&steal->lock);
+          r = 1;
+          goto found;
+        }
+        if (steal->get_state() == RUNNABLE)
+          addrun(steal);
         release(&steal->lock);
-        r = 1;
-        break;
       }
-      if (steal->get_state() == RUNNABLE)
-        addrun(steal);
-      release(&steal->lock);
     }
   }
 
+ found:
   popcli();
   return r;
 }

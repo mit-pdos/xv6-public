@@ -87,6 +87,7 @@ struct proc : public rcu_freed {
   u64 user_fs_;
   u64 unmap_tlbreq_;
   int exec_cpuid_;
+  int in_exec_;
 
   static proc* alloc();
   void         set_state(procstate_t s);

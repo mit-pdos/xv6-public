@@ -196,6 +196,10 @@ exec(const char *path, char **argv)
   cwork* w;
 
   myproc()->exec_cpuid_ = mycpuid();
+
+  myproc()->in_exec_ = 1;
+  yield();
+  myproc()->in_exec_ = 0;
   
   if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
