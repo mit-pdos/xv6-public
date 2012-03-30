@@ -1,7 +1,6 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-#include "mtrace.h"
 
 #define NCHILD 2
 #define NDEPTH 7
@@ -11,7 +10,6 @@ forktree(int depth)
 {
   if (depth == 0) {
     fprintf(1, "%d: forkexectree\n", getpid());
-    mtenable("xv6-forkexectree");
   }
 
   if (depth >= NDEPTH)
@@ -48,9 +46,6 @@ forktree(int depth)
   if (depth > 0)
     exit();
 
-  mtops(0);
-  mtdisable("xv6-forkexectree");
-  
   fprintf(1, "%d: forkexectree OK\n", getpid());
   // halt();
 }
