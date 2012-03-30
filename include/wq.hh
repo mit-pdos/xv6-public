@@ -38,11 +38,12 @@ struct cwork : public work {
 #elif defined(XV6_KERNEL)
 #define xallocwork(n)    kmalloc(n, "xallocwork")
 #define xfreework(p, sz) kmfree(p, sz)
-#else
+#else  // xv6 user
 extern void* wqalloc(unsigned long nbytes);
 extern void  wqfree(void *ptr);
 #define xallocwork(n)    wqalloc(n)
 #define xfreework(n, sz) wqfree(n)
+extern u64 wq_maxworkers;
 #endif
 
 #include "wqfor.hh"

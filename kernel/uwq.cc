@@ -104,28 +104,28 @@ uwq_worker::wait(void)
 uwq*
 uwq::alloc(vmap* vmap, filetable *ftable)
 {
-  padded_length* len;
+  uwq_ipcbuf* ipc;
   uwq* u;
 
-  len = (padded_length*) ksalloc(slab_userwq);  
-  if (len == nullptr)
+  ipc = (uwq_ipcbuf*) ksalloc(slab_userwq);  
+  if (ipc == nullptr)
     return nullptr;
 
   ftable->incref();
   vmap->incref();
 
-  u = new uwq(vmap, ftable, len);
+  u = new uwq(vmap, ftable, ipc);
   if (u == nullptr) {
     ftable->decref();
     vmap->decref();
-    ksfree(slab_userwq, len);
+    ksfree(slab_userwq, ipc);
     return nullptr;
   }
 
-  if (mapkva(vmap->pml4, (char*)len, USERWQ, USERWQSIZE)) {
+  if (mapkva(vmap->pml4, (char*)ipc, USERWQ, USERWQSIZE)) {
     ftable->decref();
     vmap->decref();
-    ksfree(slab_userwq, len);
+    ksfree(slab_userwq, ipc);
     u->dec();
     return nullptr;
   }
@@ -133,13 +133,13 @@ uwq::alloc(vmap* vmap, filetable *ftable)
   return u;
 }
 
-uwq::uwq(vmap* vmap, filetable *ftable, padded_length *len) 
+uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc) 
   : rcu_freed("uwq"),
-    vmap_(vmap), ftable_(ftable), len_(len),
+    vmap_(vmap), ftable_(ftable), ipc_(ipc),
     uentry_(0), ustack_(UWQSTACK), uref_(0)
 {
   for (int i = 0; i < NCPU; i++)
-    len_[i].v_ = 0;
+    ipc_->len[i].v_ = 0;
 
   initlock(&lock_, "uwq_lock", 0);
   memset(worker_, 0, sizeof(worker_));
@@ -147,8 +147,8 @@ uwq::uwq(vmap* vmap, filetable *ftable, padded_length *len)
 
 uwq::~uwq(void)
 { 
-  if (len_ != nullptr)
-    ksfree(slab_userwq, len_);
+  if (ipc_ != nullptr)
+    ksfree(slab_userwq, ipc_);
   vmap_->decref();
   ftable_->decref();
 }
@@ -156,11 +156,11 @@ uwq::~uwq(void)
 bool
 uwq::haswork(void) const
 {
-  if (len_ == nullptr)
+  if (ipc_ == nullptr)
     return false;
 
   for (int i = 0; i < NCPU; i++) {
-    if (len_[i].v_ > 0) {
+    if (ipc_->len[i].v_ > 0) {
       return true;
     }
   }
@@ -201,7 +201,7 @@ uwq::tryworker(void)
     }
   }
 
-  if (slot != -1) {
+  if (slot != -1 && uref_ < ipc_->maxworkers) {
     proc* p = allocworker();
     if (p != nullptr) {
       uwq_worker* w = new uwq_worker(this, p);

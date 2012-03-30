@@ -1,14 +1,21 @@
 #pragma once
 
 struct padded_length {
-  volatile u64 v_ __mpalign__;;
+  volatile u64 v_ __mpalign__;
   __padout__;
+};
+
+// Compile-time max number of workers
+#define NWORKERS (NCPU-1)
+struct uwq_ipcbuf {
+  // Run-time max number of workers
+  u64 maxworkers __mpalign__;
+  padded_length len[NWORKERS]__mpalign__;
 };
 
 #if defined (XV6_KERNEL)
 bool uwq_trywork(void);
 
-#define NWORKERS (NCPU-1)
 struct uwq;
 
 struct uwq_worker {
@@ -40,7 +47,7 @@ protected:
   virtual void onzero() const;
 
 private:
-  uwq(vmap* vmap, filetable* ftable, padded_length *len);
+  uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf *ipc);
   ~uwq();
   uwq& operator=(const uwq&);
   uwq(const uwq& x);
@@ -51,7 +58,7 @@ private:
   struct spinlock lock_;
   vmap* vmap_;
   filetable* ftable_;
-  padded_length* len_;
+  uwq_ipcbuf* ipc_;
   uptr uentry_;
   uptr ustack_;
   std::atomic<u64> uref_;

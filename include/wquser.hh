@@ -28,16 +28,16 @@ allocwq(unsigned long nbytes)
   return malloc(nbytes);
 }
 
-static inline padded_length*
-allocklen(unsigned long nbytes)
+static inline uwq_ipcbuf*
+allocipc(void)
 {
   static bool alloced;
   if (alloced)
     die("allocklen: allocing more than once");
-  if (nbytes > USERWQSIZE)
-    die("allocklen: too large");
+  if (sizeof(uwq_ipcbuf) > USERWQSIZE)
+    die("allocipc: too large");
   alloced = true;
-  return (padded_length*)USERWQ;
+  return (uwq_ipcbuf*)USERWQ;
 }
 
 static inline void
@@ -95,3 +95,5 @@ wqarch_init(void)
 #define xprintf      printf 
 #define pushcli()
 #define popcli()
+
+u64 wq_maxworkers = NWORKERS;

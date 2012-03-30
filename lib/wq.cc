@@ -42,7 +42,7 @@ private:
   percpu<stat> stat_;
 
 #if defined(XV6_USER)
-  padded_length* len_;
+  uwq_ipcbuf* ipc_;
 #endif
 };
 
@@ -103,7 +103,9 @@ wq::wq(void)
     wqlock_init(&q_[i].lock);
 
 #if defined(XV6_USER)
-  len_ = allocklen(NCPU*sizeof(padded_length));
+  ipc_ = allocipc();
+  assert(wq_maxworkers <= NWORKERS);
+  ipc_->maxworkers = wq_maxworkers;
 #endif
 }
 
@@ -121,7 +123,7 @@ inline void
 wq::inclen(int c)
 {
 #if defined(XV6_USER)
-  __sync_fetch_and_add(&len_[c].v_, 1);
+  __sync_fetch_and_add(&ipc_->len[c].v_, 1);
 #endif
 }
 
@@ -129,7 +131,7 @@ inline void
 wq::declen(int c)
 {
 #if defined(XV6_USER)
-  __sync_fetch_and_sub(&len_[c].v_, 1);
+  __sync_fetch_and_sub(&ipc_->len[c].v_, 1);
 #endif
 }
 
