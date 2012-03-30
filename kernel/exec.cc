@@ -173,17 +173,29 @@ bad:
   cilk_abort(-1);
 }
 
+static void
+exec_cleanup(vmap *oldvmap, uwq *olduwq)
+{
+  if (olduwq != nullptr)
+    olduwq->dec();
+  oldvmap->decref();
+}
+
 int
 exec(const char *path, char **argv)
 {
   struct inode *ip = nullptr;
   struct vmap *vmp = nullptr;
-  uwq* uwq = nullptr;
+  uwq* newuwq = nullptr;
   struct elfhdr elf;
   struct proghdr ph;
   u64 off;
   int i;
-  struct vmap *oldvmap;
+  vmap* oldvmap;
+  uwq* olduwq;
+  cwork* w;
+
+  myproc()->exec_cpuid_ = mycpuid();
   
   if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
@@ -204,7 +216,7 @@ exec(const char *path, char **argv)
   if((vmp = vmap::alloc()) == 0)
     goto bad;
 
-  if((uwq = uwq::alloc(vmp, myproc()->ftable)) == 0)
+  if((newuwq = uwq::alloc(vmp, myproc()->ftable)) == 0)
     goto bad;
 
   // Arguments for work queue
@@ -223,7 +235,7 @@ exec(const char *path, char **argv)
              sizeof(type)) != sizeof(type))
       goto bad;
     if (type == ELF_PROG_NOTE) {
-      if (donotes(ip, uwq, off) < 0) {
+      if (donotes(ip, newuwq, off) < 0) {
         cilk_abort(-1);
         break;
       }
@@ -243,14 +255,19 @@ exec(const char *path, char **argv)
 
   // Commit to the user image.
   oldvmap = myproc()->vmap;
+  olduwq = myproc()->uwq;
   myproc()->vmap = vmp;
-  if (myproc()->uwq != nullptr)
-    myproc()->uwq->dec();
-  myproc()->uwq = uwq;
+  myproc()->uwq = newuwq;
   myproc()->tf->rip = elf.entry;
   
   switchvm(myproc());
-  oldvmap->decref();
+
+  w = new cwork();
+  assert(w);
+  w->rip = (void*) exec_cleanup;
+  w->arg0 = oldvmap;
+  w->arg1 = olduwq;
+  assert(wq_pushto(w, myproc()->exec_cpuid_) >= 0);
 
   gc_end_epoch();
   return 0;
@@ -259,8 +276,8 @@ exec(const char *path, char **argv)
   cprintf("exec failed\n");
   if(vmp)
     vmp->decref();
-  if(uwq)
-    uwq->dec();
+  if(newuwq)
+    newuwq->dec();
   gc_end_epoch();
   return 0;
 }
