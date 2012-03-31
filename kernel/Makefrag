@@ -91,6 +91,7 @@ $(O)/include/asmdefines.h: $(O)/kernel/asmdefines.S
 	$(Q)mkdir -p $(@D)
 	$(Q)sed -n 's/remove\$$//p' $(O)/kernel/asmdefines.S > $@
 $(O)/kernel/trapasm.o: $(O)/include/asmdefines.h
+$(O)/kernel/uaccess.o: $(O)/include/asmdefines.h
 
 .PRECIOUS: $(O)/kernel/%.o
 -include $(O)/kernel/*.d
