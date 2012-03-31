@@ -24,7 +24,7 @@
 #define ALLOC_MEMSET  DEBUG
 #define KSHAREDSIZE   (32 << 10)
 #define USERWQSIZE    (1 << 14)
-#define USTACKPAGES   4
+#define USTACKPAGES   8
 #define WQSHIFT       7
 #define CILKENABLE    0
 #if defined(HW_qemu)
