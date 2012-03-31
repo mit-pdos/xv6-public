@@ -423,10 +423,11 @@ long
 sys_exec(const char *upath, u64 uargv)
 {
   ANON_REGION(__func__, &perfgroup);
+  static const int len = 32;
   char *argv[MAXARG];
   char path[DIRSIZ+1];
+  long r = -1;
   int i;
-  u64 uarg;
 
   if (fetchstr(path, upath, sizeof(path)) < 0)
     return -1;
@@ -435,19 +436,24 @@ sys_exec(const char *upath, u64 uargv)
 
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
+    u64 uarg;    
     if(i >= NELEM(argv))
-      return -1;
+      goto clean;
     if(fetchint64(uargv+8*i, &uarg) < 0)
-      return -1;
-    if(uarg == 0){
-      argv[i] = 0;
+      goto clean;
+    if(uarg == 0)
       break;
-    }
-    argv[i] = (char*) uarg;
-    if(argcheckstr(argv[i]) < 0)
-      return -1;
+
+    argv[i] = (char*) kmalloc(len, "execbuf");
+    if (argv[i]==nullptr || fetchstr(argv[i], (char*)uarg, len)<0)
+      goto clean;
   }
-  return exec(path, argv, &ascope);
+  argv[i] = 0;
+  r = exec(path, argv, &ascope);
+clean:
+  for (i=i-i; i >= 0; i--)
+    kmfree(argv[i], len);
+  return r;
 }
 
 long

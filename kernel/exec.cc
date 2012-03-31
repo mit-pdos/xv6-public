@@ -13,7 +13,7 @@
 #include "elf.hh"
 #include "cpu.hh"
 #include "wq.hh"
-#include "cilk.hh"
+#include "sperf.hh"
 #include "kmtrace.hh"
 
 #define BRK (USERTOP >> 1)
@@ -152,6 +152,7 @@ exec_cleanup(vmap *oldvmap, uwq *olduwq)
 int
 exec(const char *path, char **argv, void *ascopev)
 {
+  ANON_REGION(__func__, &perfgroup);
   struct inode *ip = nullptr;
   struct vmap *vmp = nullptr;
   uwq* newuwq = nullptr;

@@ -11,6 +11,7 @@
 #include "kmtrace.hh"
 
 extern "C" int __fetchstr(char* dst, const char* usrc, unsigned size);
+extern "C" int __fetchint64(uptr addr, u64* ip);
 
 int
 fetchstr(char* dst, const char* usrc, unsigned size)
@@ -20,22 +21,12 @@ fetchstr(char* dst, const char* usrc, unsigned size)
   return __fetchstr(dst, usrc, size);
 }
 
-// User code makes a system call with INT T_SYSCALL.
-// System call number in %eax.
-// Arguments on the stack, from the user call to the C
-// library system call function. The saved user %esp points
-// to a saved program counter, and then the first argument.
-
-// Fetch the int at addr from process p.
 int
 fetchint64(uptr addr, u64 *ip)
 {
-  if(pagefault(myproc()->vmap, addr, 0) < 0)
-    return -1;
-  if(pagefault(myproc()->vmap, addr+sizeof(*ip)-1, 0) < 0)
-    return -1;
-  *ip = *(u64*)(addr);
-  return 0;
+  if(mycpu()->ncli != 0)
+    panic("fetchstr: cli'd");
+  return __fetchint64(addr, ip);
 }
 
 // Fetch the nul-terminated string at addr from process p.
