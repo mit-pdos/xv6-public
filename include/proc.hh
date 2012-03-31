@@ -22,12 +22,6 @@ struct context {
   u64 rip;
 } __attribute__((packed));
 
-// Work queue frame
-struct cilkframe {
-  volatile std::atomic<u64> ref;
-  volatile std::atomic<u64> abort;
-};
-
 // Per-process, per-stack meta data for mtrace
 #if MTRACE
 #define MTRACE_NSTACKS 16
@@ -77,7 +71,6 @@ struct proc : public rcu_freed {
   struct mtrace_stacks mtrace_stacks;
 #endif
   struct runq *runq;
-  struct cilkframe cilkframe;
   STAILQ_ENTRY(proc) runqlink;
 
   struct condvar *oncv;        // Where it is sleeping, for kill()

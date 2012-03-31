@@ -28,7 +28,6 @@ static inline void *p2v(uptr a) {
 }
 
 struct trapframe;
-struct cilkframe;
 struct spinlock;
 struct condvar;
 struct context;
@@ -236,28 +235,6 @@ void            uartintr(void);
 // vm.c
 void            switchvm(struct proc*);
 int             pagefault(struct vmap *, uptr, u32);
-
-// cilk.c
-void            initcilkframe(struct cilkframe*);
-#if CILKENABLE
-void            cilk_push(void (*fn)(uptr, uptr), u64 arg0, u64 arg1);
-void            cilk_start(void);
-u64             cilk_end(void);
-void            cilk_dump(void);
-void            cilk_abort(u64 val);
-#else
-#define cilk_push(rip, arg0, arg1) do { \
-  void (*fn)(uptr, uptr) = rip; \
-  fn(arg0, arg1); \
-} while(0)
-#define cilk_start() do { } while(0)
-
-#define cilk_end() (myproc()->cilkframe.abort)
-#define cilk_dump() do { } while(0)
-#define cilk_abort(val) do { \
-  cmpxch(&myproc()->cilkframe.abort, (u64)0, (u64)val);   \
-} while (0)
-#endif
 
 // other exported/imported functions
 void cmain(u64 mbmagic, u64 mbaddr);

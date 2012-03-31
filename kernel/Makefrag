@@ -3,7 +3,6 @@ OBJS = \
 	bio.o \
 	bootdata.o \
 	cga.o \
-	cilk.o \
 	condvar.o \
 	console.o \
 	cpprt.o \

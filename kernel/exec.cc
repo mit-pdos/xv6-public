@@ -17,14 +17,6 @@
 
 #define BRK (USERTOP >> 1)
 
-struct eargs {
-  struct proc *proc;
-  struct inode *ip;
-  struct vmap *vmap;
-  const char *path;
-  char **argv;
-};
-
 static int
 donotes(struct inode *ip, uwq *uwq, u64 off)
 {
@@ -55,50 +47,42 @@ donotes(struct inode *ip, uwq *uwq, u64 off)
   return -1;
 }
 
-static void
-dosegment(struct eargs *args, u64 off)
+static int
+dosegment(inode* ip, vmap* vmp, u64 off)
 {
-  struct vmnode *vmn = nullptr;
   struct proghdr ph;
-  uptr va_start, va_end;
-  uptr in_off;
-  uptr in_sz;
-  int npg;
-
-  if(readi(args->ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
-    goto bad;
+  if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
+    return -1;
   if(ph.type != ELF_PROG_LOAD)
-    goto bad;
+    return -1;
   if(ph.memsz < ph.filesz)
-    goto bad;
+    return -1;
   if (ph.offset < PGOFFSET(ph.vaddr))
-    goto bad;
+    return -1;
 
-  va_start = PGROUNDDOWN(ph.vaddr);
-  va_end = PGROUNDUP(ph.vaddr + ph.memsz);
-  in_off = ph.offset - PGOFFSET(ph.vaddr);
-  in_sz = ph.filesz + PGOFFSET(ph.vaddr);
+  uptr va_start = PGROUNDDOWN(ph.vaddr);
+  uptr va_end = PGROUNDUP(ph.vaddr + ph.memsz);
+  off_t in_off = ph.offset - PGOFFSET(ph.vaddr);
+  size_t in_sz = ph.filesz + PGOFFSET(ph.vaddr);
 
-  npg = (va_end - va_start) / PGSIZE;
-  if ((vmn = new vmnode(npg, ONDEMAND,
-                        args->ip, in_off, in_sz)) == 0)
-    goto bad;
+  size_t npg = (va_end - va_start) / PGSIZE;
+  vmnode* node = new vmnode(npg, ONDEMAND, ip, in_off, in_sz);
+  if (node == nullptr)
+    return -1;
 
-  if(args->vmap->insert(vmn, va_start, 1) < 0)
-    goto bad;
+  if (vmp->insert(node, va_start, 1) < 0) {
+    delete node;
+    return -1;
+  }
 
-  return;
-  
-bad:
-  cilk_abort(-1);
+  return 0;
 }
 
-static void
-dostack(struct eargs *args)
+static long
+dostack(vmap* vmp, char** argv, const char* path)
 {
   struct vmnode *vmn = nullptr;
   uptr argstck[1+MAXARG];
-  const char *s, *last;
   s64 argc;
   uptr sp;
 
@@ -112,65 +96,48 @@ dostack(struct eargs *args)
 
   // Allocate a one-page stack at the top of the (user) address space
   if((vmn = new vmnode(USTACKPAGES)) == 0)
-    goto bad;
-  if(args->vmap->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE), 1) < 0)
-    goto bad;
+    return -1;
+  if(vmp->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE), 1) < 0)
+    return -1;
 
-  for (argc = 0; args->argv[argc]; argc++)
+  for (argc = 0; argv[argc]; argc++)
     if(argc >= MAXARG)
-      goto bad;
+      return -1;
 
   // Push argument strings
   sp = USERTOP;
   for(int i = argc-1; i >= 0; i--) {
-    sp -= strlen(args->argv[i]) + 1;
+    sp -= strlen(argv[i]) + 1;
     sp &= ~7;
-    if(args->vmap->copyout(sp, args->argv[i], strlen(args->argv[i]) + 1) < 0)
-      goto bad;
+    if(vmp->copyout(sp, argv[i], strlen(argv[i]) + 1) < 0)
+      return -1;
     argstck[i] = sp;
   }
   argstck[argc] = 0;
 
   sp -= (argc+1) * 8;
-  if(args->vmap->copyout(sp, argstck, (argc+1)*8) < 0)
-    goto bad;
+  if(vmp->copyout(sp, argstck, (argc+1)*8) < 0)
+    return -1;
 
   sp -= 8;
-  if(args->vmap->copyout(sp, &argc, 8) < 0)
-    goto bad;
+  if(vmp->copyout(sp, &argc, 8) < 0)
+    return -1;
 
-  // Save program name for debugging.
-  for(last=s=args->path; *s; s++)
-    if(*s == '/')
-      last = s+1;
-
-  // XXX(sbw) Oops, don't want to do this, unless we have abort
-  safestrcpy(args->proc->name, last, sizeof(args->proc->name));
-  args->proc->tf->rsp = sp;
-
-  return;
-
-bad:
-  cilk_abort(-1);
+  return sp;
 }
 
-static void 
-doheap(struct eargs *args)
+static int
+doheap(vmap* vmp)
 {
-  struct vmnode *vmn = nullptr;
+  struct vmnode *vmn;
 
-  // Allocate a vmnode for the heap.
-  // XXX pre-allocate 32 pages..
-  if((vmn = new vmnode(32)) == 0)
-    goto bad;
-  if(args->vmap->insert(vmn, BRK, 1) < 0)
-    goto bad;
-  args->vmap->brk_ = BRK + 8;  // XXX so that brk-1 points within heap vma..
+  if((vmn = new vmnode(32)) == nullptr)
+    return -1;
+  if(vmp->insert(vmn, BRK, 1) < 0)
+    return -1;
+  vmp->brk_ = BRK + 8;  // XXX so that brk-1 points within heap vma..
 
-  return;
-
-bad:
-  cilk_abort(-1);
+  return 0;
 }
 
 static void
@@ -187,6 +154,7 @@ exec(const char *path, char **argv)
   struct inode *ip = nullptr;
   struct vmap *vmp = nullptr;
   uwq* newuwq = nullptr;
+  const char *s, *last;
   struct elfhdr elf;
   struct proghdr ph;
   u64 off;
@@ -194,6 +162,7 @@ exec(const char *path, char **argv)
   vmap* oldvmap;
   uwq* olduwq;
   cwork* w;
+  long sp;
 
   myproc()->exec_cpuid_ = mycpuid();
 
@@ -223,38 +192,33 @@ exec(const char *path, char **argv)
   if((newuwq = uwq::alloc(vmp, myproc()->ftable)) == 0)
     goto bad;
 
-  // Arguments for work queue
-  struct eargs args;
-  args.proc = myproc();
-  args.ip = ip;
-  args.vmap = vmp;
-  args.path = path;
-  args.argv = argv;
-
-  cilk_start();
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     Elf64_Word type;
     if(readi(ip, (char*)&type, 
              off+__offsetof(struct proghdr, type), 
              sizeof(type)) != sizeof(type))
       goto bad;
-    if (type == ELF_PROG_NOTE) {
-      if (donotes(ip, newuwq, off) < 0) {
-        cilk_abort(-1);
-        break;
-      }
-    } if(type != ELF_PROG_LOAD)
+
+    switch (type) {
+    case ELF_PROG_NOTE:
+      if (donotes(ip, newuwq, off) < 0)
+        goto bad;
+      break;
+    case ELF_PROG_LOAD:
+      if (dosegment(ip, vmp, off) < 0)
+        goto bad;
+      break;
+    default:
       continue;
-    cilk_call(dosegment, &args, off);
+    }
   }
 
-  cilk_call(doheap, &args);
+  if (doheap(vmp) < 0)
+    goto bad;
 
   // dostack reads from the user vm space.  wq workers don't switch 
   // the user vm.
-  dostack(&args);
-
-  if (cilk_end())
+  if ((sp = dostack(vmp, argv, path)) < 0)
     goto bad;
 
   // Commit to the user image.
@@ -263,6 +227,13 @@ exec(const char *path, char **argv)
   myproc()->vmap = vmp;
   myproc()->uwq = newuwq;
   myproc()->tf->rip = elf.entry;
+  myproc()->tf->rsp = sp;
+
+  for(last=s=path; *s; s++)
+    if(*s == '/')
+      last = s+1;
+  safestrcpy(myproc()->name, last, sizeof(myproc()->name));
+
   
   switchvm(myproc());
 

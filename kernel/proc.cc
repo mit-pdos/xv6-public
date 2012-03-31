@@ -215,8 +215,6 @@ proc::alloc(void)
   p->mtrace_stacks.curr = -1;
 #endif
 
-  initcilkframe(&p->cilkframe);
-
   if (xnspid->insert(p->pid, p) < 0)
     panic("allocproc: ns_insert");
 
