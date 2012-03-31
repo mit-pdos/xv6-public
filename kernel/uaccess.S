@@ -4,11 +4,15 @@
 .code64
 .globl __fetchstr
 .align 8
+// rdi kernel dst
+// rsi user src
+// rdx kernel len
+// We aren't allowed to touch rbx,rsp,rbp,r12-r15
 __fetchstr:
         mov     %gs:0x8, %r11
         movl    $1, PROC_UACCESS(%r11)
 
-        // %rcx is loop instruction index
+        // %rcx is loop instruction counter
         mov     %rdx, %rcx
         xor     %rax, %rax
 1:   
