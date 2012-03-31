@@ -422,8 +422,12 @@ long
 sys_exec(const char *path, u64 uargv)
 {
   char *argv[MAXARG];
+  char pbuf[16];
   int i;
   u64 uarg;
+
+  if (fetchstr(pbuf, path, sizeof(pbuf)) < 0)
+    return -1;
 
   if(argcheckstr(path) < 0) {
     return -1;

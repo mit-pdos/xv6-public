@@ -45,6 +45,7 @@ OBJS = \
 	uwq.o \
 	vm.o \
 	trap.o \
+        uaccess.o \
 	trapasm.o \
 	wq.o \
 	script.o \

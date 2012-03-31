@@ -3,7 +3,6 @@
 #include "mmu.h"
 #include "atomic.hh"
 
-struct cilkframe;
 using std::atomic;
 
 extern atomic<u64> tlbflush_req;
@@ -16,7 +15,7 @@ struct cpu {
   struct segdesc gdt[NSEGS];   // x86 global descriptor table
   struct taskstate ts;         // Used by x86 to find stack for interrupt
   struct context *scheduler;   // swtch() here to enter scheduler
-  struct cilkframe *cilkframe;
+
   int timer_printpc;
   atomic<u64> tlbflush_done;   // last tlb flush req done on this cpu
   struct proc *prev;           // The previously-running process
