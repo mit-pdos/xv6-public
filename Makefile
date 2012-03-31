@@ -113,6 +113,9 @@ rsync: $(KERN)
 reboot:
 	ipmitool -I lanplus -A MD5 -H $(HW)adm.csail.mit.edu -U ADMIN -f .passwd.$(HW) power reset
 
+bench:
+	/bin/echo -ne "xv6\\nbench\\nexit\\n" | nc $(HW).csail.mit.edu 23
+
 clean: 
 	rm -fr $(O)
 
