@@ -164,6 +164,8 @@ main(void)
       if(chdir(buf+3) < 0)
         fprintf(2, "cannot cd %s\n", buf+3);
       continue;
+    } else if(!strcmp(buf, "exit\n") || !strcmp(buf, "exit\r")){
+      exit();
     }
     if(fork1() == 0)
       runcmd(parsecmd(buf));
