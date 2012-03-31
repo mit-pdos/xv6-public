@@ -62,7 +62,7 @@ do_pagefault(struct trapframe *tf)
     tf->rax = -1;
     tf->rip = (u64)__fetch_end;
     return 0;
-  } else if (tf->err & (1<<2)) {
+  } else if (tf->err & FEC_U) {
       sti();
       if(pagefault(myproc()->vmap, addr, tf->err) >= 0){
 #if MTRACE
