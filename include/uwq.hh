@@ -60,9 +60,9 @@ private:
   filetable* ftable_;
   uwq_ipcbuf* ipc_;
   uptr uentry_;
-  uptr ustack_;
+  std::atomic<uptr> ustack_;
   std::atomic<u64> uref_;
 
-  uwq_worker* worker_[NWORKERS];
+  std::atomic<uwq_worker*> worker_[NWORKERS];
 };
 #endif

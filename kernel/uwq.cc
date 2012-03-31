@@ -170,19 +170,15 @@ uwq::haswork(void) const
 bool
 uwq::tryworker(void)
 {
-  // Try to start a worker thread
-  scoped_acquire lock0(&lock_);
-
   if (!valid())
     return false;
 
-  int slot = -1;
+  // Try to start a worker thread
+  scoped_acquire lock0(&lock_);
+
   for (int i = 0; i < NWORKERS; i++) {
-    if (worker_[i] == nullptr) {
-      if (slot == -1)
-        slot = i;
+    if (worker_[i] == nullptr)
       continue;
-    }
 
     uwq_worker *w = worker_[i];
     if (w->running_)
@@ -200,8 +196,15 @@ uwq::tryworker(void)
       return true;
     }
   }
+  lock0.release();
 
-  if (slot != -1 && uref_ < ipc_->maxworkers) {
+again:
+  u64 uref = uref_.load();
+  if (uref < ipc_->maxworkers) {
+    if (!cmpxch(&uref_, uref, uref+1))
+      goto again;
+    // Guaranteed to have  slot in worker_
+
     proc* p = allocworker();
     if (p != nullptr) {
       uwq_worker* w = new uwq_worker(this, p);
@@ -216,12 +219,16 @@ uwq::tryworker(void)
       addrun(p);
       release(&p->lock);
 
-      worker_[slot] = w;
-      return true;
+      for (int i = 0; i < NWORKERS; i++) {
+        if (worker_[i] == nullptr)
+          if (cmpxch(&worker_[i], (uwq_worker*)nullptr, w))
+            return true;
+      }
+      panic("uwq::tryworker: oops");
     }
   }
     
-  return nullptr;
+  return false;
 }
 
 void
@@ -283,14 +290,14 @@ uwq::allocworker(void)
     return nullptr;
   }
 
-  uptr stacktop = ustack_ + (USTACKPAGES*PGSIZE);
-  if (vmap_->insert(vmn, ustack_, 1) < 0) {
+  // Include a bumper page
+  uptr ustack = ustack_.fetch_add((USTACKPAGES*PGSIZE)+PGSIZE);
+  uptr stacktop = ustack + (USTACKPAGES*PGSIZE);
+  if (vmap_->insert(vmn, ustack, 1) < 0) {
     delete vmn;
     finishproc(p);
     return nullptr;
   }
-  // Include a bumper page
-  ustack_ += (USTACKPAGES*PGSIZE)+PGSIZE;
 
   p->tf->rsp = stacktop - 8;
   p->tf->rip = uentry;
