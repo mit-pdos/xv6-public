@@ -2,6 +2,20 @@
 #include "asmdefines.h"
 
 .code64
+.globl __fetchint64
+.align 8
+// rdi user src
+// rsi kernel dst
+// We aren't allowed to touch rbx,rsp,rbp,r12-r15
+__fetchint64:
+        mov     %gs:0x8, %r11
+        movl    $1, PROC_UACCESS(%r11)
+        mov     (%rdi), %r10
+        mov     %r10, (%rsi)
+        mov     $0, %rax
+        jmp __fetch_end
+        
+.code64
 .globl __fetchstr
 .align 8
 // rdi kernel dst
@@ -20,13 +34,13 @@ __fetchstr:
         movb    %r10b, (%rdi)
         // Check for NULL
         cmp     $0, %r10b
-        je      done
+        je      2f
         inc     %rdi
         inc     %rsi
         loop    1b
         // Error
         movq    $-1, %rax
-done:
+2:      // Done
         jmp __fetch_end
 
 .code64
