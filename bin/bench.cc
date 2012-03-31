@@ -72,6 +72,7 @@ main(int ac, char **av)
   static Bench* the_bench[128];
   int n = 0;
 
+  the_bench[n++] = CMD("forkexecbench");
   the_bench[n++] = CMD("mktree", STR(NCPU), "tree.xdu", "4", "4");
   the_bench[n++] = CMD("xdu", "8");
   the_bench[n++] = CMD("xdu", "4");
