@@ -447,7 +447,7 @@ sys_exec(const char *upath, u64 uargv)
     if(argcheckstr(argv[i]) < 0)
       return -1;
   }
-  return exec(path, argv);
+  return exec(path, argv, &ascope);
 }
 
 long
