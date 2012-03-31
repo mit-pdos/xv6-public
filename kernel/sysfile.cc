@@ -12,6 +12,7 @@
 #include "cpu.hh"
 #include "net.hh"
 #include "kmtrace.hh"
+#include "sperf.hh"
 
 static bool
 getfile(int fd, sref<file> *f)
@@ -419,19 +420,16 @@ sys_chdir(const char *path)
 }
 
 long
-sys_exec(const char *path, u64 uargv)
+sys_exec(const char *upath, u64 uargv)
 {
+  ANON_REGION(__func__, &perfgroup);
   char *argv[MAXARG];
-  char pbuf[16];
+  char path[DIRSIZ+1];
   int i;
   u64 uarg;
 
-  if (fetchstr(pbuf, path, sizeof(pbuf)) < 0)
+  if (fetchstr(path, upath, sizeof(path)) < 0)
     return -1;
-
-  if(argcheckstr(path) < 0) {
-    return -1;
-  }
 
   mt_ascope ascope("%s(%s)", __func__, path);
 
