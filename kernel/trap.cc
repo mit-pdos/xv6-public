@@ -47,7 +47,7 @@ do_pagefault(struct trapframe *tf)
   uptr addr = rcr2();
   if (myproc()->uaccess_) {
     if (addr >= USERTOP)
-      panic("Oops");
+      panic("do_pagefault: %lx", addr);
 
     sti();
     if(pagefault(myproc()->vmap, addr, tf->err) >= 0){
