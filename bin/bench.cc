@@ -72,17 +72,18 @@ main(int ac, char **av)
   static Bench* the_bench[128];
   int n = 0;
 
+  the_bench[n++] = CMD("forkexecbench");
   the_bench[n++] = CMD("mktree", STR(NCPU), "tree.xdu", "4", "4");
-  the_bench[n++] = CMD("xdu", "1");
-  the_bench[n++] = CMD("xdu", "4");
   the_bench[n++] = CMD("xdu", "8");
-  the_bench[n++] = CMD("xls", "1");
-  the_bench[n++] = CMD("xls", "4");
+  the_bench[n++] = CMD("xdu", "4");
+  the_bench[n++] = CMD("xdu", "1");
   the_bench[n++] = CMD("xls", "8");
+  the_bench[n++] = CMD("xls", "4");
+  the_bench[n++] = CMD("xls", "1");
 
-  the_bench[n++] = CMD("mapbench", "1");
-  the_bench[n++] = CMD("mapbench", "2");
-  the_bench[n++] = CMD("mapbench", "16");
+  //the_bench[n++] = CMD("mapbench", "1");
+  //the_bench[n++] = CMD("mapbench", "2");
+  //the_bench[n++] = CMD("mapbench", "16");
   
   for (int i = 0; i < n; i++)
     the_bench[i]->run();

@@ -12,6 +12,8 @@
 #include "bits.hh"
 #include "kalloc.hh"
 
+extern "C" void __fetch_end(void);
+
 struct intdesc idt[256] __attribute__((aligned(16)));
 
 // boot.S
@@ -37,6 +39,43 @@ sysentry_c(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
   }
 
   return r;
+}
+
+int
+do_pagefault(struct trapframe *tf)
+{
+  uptr addr = rcr2();
+  if (myproc()->uaccess_) {
+    if (addr >= USERTOP)
+      panic("do_pagefault: %lx", addr);
+
+    sti();
+    if(pagefault(myproc()->vmap, addr, tf->err) >= 0){
+#if MTRACE
+      mtstop(myproc());
+      if (myproc()->mtrace_stacks.curr >= 0)
+        mtresume(myproc());
+#endif
+      return 0;
+    }
+    cprintf("pagefault: failed in kernel\n");
+    tf->rax = -1;
+    tf->rip = (u64)__fetch_end;
+    return 0;
+  } else if (tf->err & FEC_U) {
+      sti();
+      if(pagefault(myproc()->vmap, addr, tf->err) >= 0){
+#if MTRACE
+        mtstop(myproc());
+        if (myproc()->mtrace_stacks.curr >= 0)
+          mtresume(myproc());
+#endif
+        return 0;
+      }
+      cprintf("pagefault: failed in user\n");
+      cli();
+  }
+  return -1;
 }
 
 void
@@ -139,23 +178,11 @@ trap(struct trapframe *tf)
       break;
     }
 
+    if (tf->trapno == T_PGFLT && do_pagefault(tf) == 0)
+      return;
+      
     if (myproc() == 0 || (tf->cs&3) == 0)
       kerneltrap(tf);
-
-    if(tf->trapno == T_PGFLT){
-      uptr addr = rcr2();
-      sti();
-      if(pagefault(myproc()->vmap, addr, tf->err) >= 0){
-#if MTRACE
-        mtstop(myproc());
-        if (myproc()->mtrace_stacks.curr >= 0)
-          mtresume(myproc());
-#endif
-        return;
-      }
-      cprintf("pagefault: failed\n");
-      cli();
-    }
 
     // In user space, assume process misbehaved.
     cprintf("pid %d %s: trap %lu err %d on cpu %d "

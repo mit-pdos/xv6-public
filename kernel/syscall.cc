@@ -10,6 +10,16 @@
 #include "cpu.hh"
 #include "kmtrace.hh"
 
+extern "C" int __fetchstr(char* dst, const char* usrc, unsigned size);
+
+int
+fetchstr(char* dst, const char* usrc, unsigned size)
+{
+  if(mycpu()->ncli != 0)
+    panic("fetchstr: cli'd");
+  return __fetchstr(dst, usrc, size);
+}
+
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
 // Arguments on the stack, from the user call to the C
