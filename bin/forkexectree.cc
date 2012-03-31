@@ -3,7 +3,7 @@
 #include "user.h"
 
 #define NCHILD 2
-#define NDEPTH 7
+#define NDEPTH 5
 
 void
 forktree(int depth)
@@ -26,8 +26,10 @@ forktree(int depth)
       depth++;
       char depthbuf[16];
       snprintf(depthbuf, sizeof(depthbuf), "%d", depth);
-      const char *av[] = { "forkexectree", depthbuf };
-      exec("forkexectree", av);
+      const char *av[] = { "forkexectree", depthbuf, 0 };
+      int r = exec("forkexectree", av);
+      fprintf(1, "forkexectree: exec failed %d\n", r);
+      exit();
     }
   }
 
