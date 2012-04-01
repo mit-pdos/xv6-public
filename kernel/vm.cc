@@ -607,6 +607,18 @@ vmap::pagefault(uptr va, u32 err)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
             err, va, m->va_type, m->n->ref(), myproc()->pid);
 
+  if (m->va_type == COW && (err & FEC_WR)) {
+    if (pagefault_wcow(m) < 0)
+      return -1;
+
+    if (tlb_shootdown) {
+      tlbflush();
+    } else {
+      lcr3(rcr3());
+    }
+    goto retry;
+  }
+
   if (m->n && !m->n->page[npg])
     // m->n->ip != nullptr implies we'll copy over the page
     // with loadpg before returning
@@ -620,18 +632,6 @@ vmap::pagefault(uptr va, u32 err)
       cprintf("pagefault: couldn't load\n");
       return -1;
     }
-
-  if (m->va_type == COW && (err & FEC_WR)) {
-    if (pagefault_wcow(m) < 0)
-      return -1;
-
-    if (tlb_shootdown) {
-      tlbflush();
-    } else {
-      lcr3(rcr3());
-    }
-    goto retry;
-  }
 
   if (!cmpxch(pte, ptev, ptev | PTE_LOCK))
     goto retry;
