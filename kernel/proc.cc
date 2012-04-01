@@ -370,6 +370,7 @@ fork(int flags)
   *np->tf = *myproc()->tf;
   np->cpu_pin = myproc()->cpu_pin;
   np->exec_cpuid_ = myproc()->exec_cpuid_;
+  np->run_cpuid_ = myproc()->run_cpuid_;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->rax = 0;
@@ -442,7 +443,7 @@ wait(void)
           assert(w);
           w->rip = (void*) finishproc;
           w->arg0 = p;
-          assert(wq_pushto(w, p->exec_cpuid_) >= 0);
+          assert(wq_pushto(w, p->run_cpuid_) >= 0);
 
           if (!xnspid->remove(pid, &p))
             panic("wait: ns_remove");

@@ -175,6 +175,8 @@ exec(const char *path, char **argv, void *ascopev)
   myproc()->in_exec_ = 0;
   ascope->open("sys_exec2(%s)", path);
 
+  myproc()->run_cpuid_ = mycpuid();
+
   if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
 
