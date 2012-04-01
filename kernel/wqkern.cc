@@ -8,6 +8,18 @@
 
 static wq *wq_;
 
+void*
+xallocwork(unsigned long nbytes)
+{
+  return kmalloc(nbytes, "xallocwork");
+}
+
+void 
+xfreework(void* ptr, unsigned long nbytes)
+{
+  kmfree(ptr, nbytes);
+}
+
 size_t
 wq_size(void)
 {

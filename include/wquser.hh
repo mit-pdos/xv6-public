@@ -2,14 +2,9 @@
 #include "uspinlock.h"
 #include "amd64.h"
 #include "user.h"
-#include "pthread.h"
 #include "memlayout.h"
 #include "uwq.hh"
-#include "atomic.hh"
-#include "lib.h"
-#include "elf.hh"
-
-typedef struct uspinlock wqlock_t;
+#include "wqtypes.hh"
 
 int mycpuid(void);
 
@@ -56,7 +51,3 @@ wqlock_init(wqlock_t *lock)
 }
 
 #define xprintf      printf 
-#define pushcli()
-#define popcli()
-
-u64 wq_maxworkers = NWORKERS;

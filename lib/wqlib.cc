@@ -9,48 +9,6 @@
 
 enum { wq_steal_others = 1 };
 
-#if 0
-static wq *wq_;
-
-size_t
-wq_size(void)
-{
-  return sizeof(wq);
-}
-
-int
-wq_push(work *w)
-{
-  return wq_->push(w, mycpuid());
-}
-
-int
-wq_pushto(work *w, int tcpuid)
-{
-  return wq_->push(w, tcpuid);
-}
-
-int
-wq_trywork(void)
-{
-  return wq_->trywork();
-}
-
-void
-wq_dump(void)
-{
-  return wq_->dump();
-}
-
-void
-initwq(void)
-{
-  wq_ = new wq();
-  wqarch_init();
-}
-#endif
-
-
 //
 // wq
 //
@@ -106,11 +64,11 @@ wq::push(work *w, int tcpuid)
 {
   int i;
 
-  acquire(&q_[tcpuid].lock);
+  wqlock_acquire(&q_[tcpuid].lock);
   i = q_[tcpuid].head;
   if ((i - q_[tcpuid].tail) == NSLOTS) {
     stat_[tcpuid].full++;
-    release(&q_[tcpuid].lock);
+    wqlock_release(&q_[tcpuid].lock);
     return -1;
   }
   i = i & (NSLOTS-1);
@@ -119,7 +77,7 @@ wq::push(work *w, int tcpuid)
   q_[tcpuid].head++;
   inclen(tcpuid);
   stat_[tcpuid].push++;
-  release(&q_[tcpuid].lock);
+  wqlock_release(&q_[tcpuid].lock);
   return 0;
 }
 

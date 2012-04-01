@@ -3,6 +3,7 @@
 #include "wqtypes.hh"
 #include "percpu.hh"
 
+struct uwq_ipcbuf;
 class work;
 
 int             wq_trywork(void);
@@ -80,20 +81,17 @@ private:
 #endif
 };
 
+void* xallocwork(unsigned long nbytes);
+void  xfreework(void* ptr, unsigned long nbytes);
+
+#if defined(XV6_USER)
+void* wqalloc(unsigned long nbytes);
+void  wqfree(void *ptr);
+extern u64 wq_maxworkers;
+#endif
+
 #if defined(LINUX)
-#include <stdlib.h>
 #include <assert.h>
-#include <atomic>
-#define xallocwork(n)    malloc(n)
-#define xfreework(p, sz) free(p)
-#elif defined(XV6_KERNEL)
-#define xallocwork(n)    kmalloc(n, "xallocwork")
-#define xfreework(p, sz) kmfree(p, sz)
-#else  // xv6 user
-extern void* wqalloc(unsigned long nbytes);
-extern void  wqfree(void *ptr);
-#define xallocwork(n)    wqalloc(n)
-#define xfreework(n, sz) wqfree(n)
 extern u64 wq_maxworkers;
 #endif
 

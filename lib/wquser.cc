@@ -1,10 +1,13 @@
 #include "types.h"
 #include "user.h"
 #include "uwq.hh"
+#include "wqtypes.hh"
 #include "wq.hh"
 #include "atomic.hh"
 #include "pthread.h"
 #include "elf.hh"
+
+u64 wq_maxworkers = NWORKERS;
 
 static pthread_key_t idkey;
 static std::atomic<int> nextid;
@@ -28,16 +31,6 @@ initworker(void)
   }
 }
 DEFINE_XV6_ADDRNOTE(xnote, XV6_ADDR_ID_WQ, &initworker);
-
-static inline void
-wqarch_init(void)
-{
-  if (pthread_key_create(&idkey, 0))
-    die("wqarch_init: pthread_key_create");
-
-  int id = nextid++;
-  pthread_setspecific(idkey, (void*)(u64)id);
-}
 
 int
 mycpuid(void)
@@ -75,9 +68,28 @@ wq_dump(void)
   return wq_->dump();
 }
 
+void*
+xallocwork(unsigned long nbytes)
+{
+  return wqalloc(nbytes);
+}
+
+void 
+xfreework(void* ptr, unsigned long nbytes)
+{
+  wqfree(ptr);
+}
+
 void
 initwq(void)
 {
+  if (pthread_key_create(&idkey, 0))
+    die("wqarch_init: pthread_key_create");
+
+  int id = nextid++;
+  pthread_setspecific(idkey, (void*)(u64)id);
+
   wq_ = new wq();
-  wqarch_init();
+  if (wq_ == nullptr)
+    die("initwq");
 }
