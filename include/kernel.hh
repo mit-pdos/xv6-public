@@ -185,6 +185,7 @@ void            sampstart(void);
 int             sampintr(struct trapframe*);
 void            sampdump(void);
 void            sampconf(void);
+void            sampidle(bool);
 
 // sched.cc
 void            addrun(struct proc *);

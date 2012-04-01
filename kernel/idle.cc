@@ -93,10 +93,12 @@ idleloop(void)
   mtstart(idleloop, myproc());
 
   sti();
+  sampidle(true);
   for (;;) {
     acquire(&myproc()->lock);
     myproc()->set_state(RUNNABLE);
     sched();
+    sampidle(true);
 
     finishzombies();
 

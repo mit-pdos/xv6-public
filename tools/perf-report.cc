@@ -19,6 +19,7 @@
 #include "include/sampler.h"
 
 static bool stacktrace_mode = true;
+static bool ignoreidle_mode = false;
 
 static void __attribute__((noreturn)) 
 edie(const char* errstr, ...) 
@@ -199,8 +200,8 @@ print_entry(Addr2line &addr2line, int count, struct pmuevent *e)
   char *file;
   int line;
   addr2line.lookup(e->rip, &func, &file, &line);
-  printf("%-10u %016"PRIx64" %s:%u %s\n", 
-         count, e->rip, file, line, func);
+  printf("%-8u %4s %016"PRIx64" %s:%u %s\n", 
+         count, e->idle?"idle":"", e->rip, file, line, func);
   free(func);
   free(file);
 
@@ -211,7 +212,7 @@ print_entry(Addr2line &addr2line, int count, struct pmuevent *e)
     if (e->trace[i] == 0)
       break;
     addr2line.lookup(e->trace[i], &func, &file, &line);    
-    printf("           %016"PRIx64" %s:%u %s\n", 
+    printf("              %016"PRIx64" %s:%u %s\n", 
            e->trace[i], file, line, func);
     free(func);
     free(file);
@@ -264,6 +265,8 @@ main(int ac, char **av)
     p = (struct pmuevent*)(x + header->cpu[i].offset);
     q = (struct pmuevent*)(x + header->cpu[i].offset + header->cpu[i].size);
     for (; p < q; p++) {
+      if (ignoreidle_mode && p->idle)
+        continue;
       auto it = map.find(p);
       if (it == map.end())
         map[p] = 1;

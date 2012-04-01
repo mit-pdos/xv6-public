@@ -9,6 +9,7 @@ struct sampconf {
 #define NTRACE 4
 
 struct pmuevent {
+  u8 idle:1;
   u64 rip;
   uptr trace[NTRACE];
 };

@@ -71,6 +71,8 @@ sched(void)
       release(&myproc()->lock);
       return;
     }
+  } else {
+    sampidle(false);
   }
 
   if (next->get_state() != RUNNABLE)
