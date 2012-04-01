@@ -4,7 +4,7 @@
 #include "mtrace.h"
 #include "amd64.h"
 
-#define NITERS 16
+#define NITERS 1024
 
 static void
 execbench(void)
