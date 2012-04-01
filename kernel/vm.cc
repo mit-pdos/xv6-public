@@ -627,6 +627,8 @@ vmap::pagefault(uptr va, u32 err)
       return -1;
     }
 
+  // XXX(sbw) If m->n->page[npg] has contents (e.g. was loaded in
+  // a parent before fork) we shouldn't call loadpg
   if (m->n && m->n->type == ONDEMAND)
     if (m->n->loadpg(npg*PGSIZE) < 0) {
       cprintf("pagefault: couldn't load\n");
