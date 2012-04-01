@@ -241,7 +241,6 @@ exec(const char *path, char **argv, void *ascopev)
       last = s+1;
   safestrcpy(myproc()->name, last, sizeof(myproc()->name));
 
-  
   switchvm(myproc());
 
   w = new cwork();
