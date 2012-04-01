@@ -15,7 +15,7 @@
   }
 
 struct testwork : public work {
-  testwork(forframe *b) : barrier_(b) {}
+  testwork(wframe *b) : barrier_(b) {}
 
   virtual void run() {
     barrier_->dec();
@@ -23,14 +23,14 @@ struct testwork : public work {
   }
 
   NEW_DELETE_OPS(testwork);
-  struct forframe *barrier_;
+  struct wframe *barrier_;
 };
 
 static void
 test0(void)
 {
   enum { pushes = 100 };
-  struct forframe wqbarrier(pushes);
+  struct wframe wqbarrier(pushes);
 
   printf("test0...\n");
   for (int i = 0; i < pushes; i++) {
@@ -44,7 +44,7 @@ test0(void)
 }
 
 struct forkwork : public work {
-  forkwork(forframe *b) : barrier_(b) {}
+  forkwork(wframe *b) : barrier_(b) {}
 
   virtual void run() {
     int pid;
@@ -61,14 +61,14 @@ struct forkwork : public work {
   }
 
   NEW_DELETE_OPS(forkwork);
-  struct forframe *barrier_;
+  struct wframe *barrier_;
 };
 
 static void
 testfork(void)
 {
   enum { forks = 100 };
-  struct forframe wqbarrier(forks);
+  struct wframe wqbarrier(forks);
 
   printf("testfork...\n");
   for (int i = 0; i < forks; i++) {
@@ -82,7 +82,7 @@ testfork(void)
 }
 
 struct execwork : public work {
-  execwork(forframe *b) : barrier_(b) {}
+  execwork(wframe *b) : barrier_(b) {}
 
   virtual void run() {
     int pid;
@@ -103,7 +103,7 @@ struct execwork : public work {
 
   static void test(void) {
     enum { execs = 100 };
-    struct forframe wqbarrier(execs);
+    struct wframe wqbarrier(execs);
 
     printf("testexec...\n");
     for (int i = 0; i < execs; i++) {
@@ -117,7 +117,7 @@ struct execwork : public work {
   }
 
   NEW_DELETE_OPS(execwork);
-  struct forframe *barrier_;
+  struct wframe *barrier_;
 };
 
 int

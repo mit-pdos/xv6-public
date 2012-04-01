@@ -1,15 +1,6 @@
-struct forframe
-{
-  forframe(int v) : v_(v) {}
-  int inc() { return __sync_add_and_fetch(&v_, 1); }
-  int dec() { return __sync_sub_and_fetch(&v_, 1); }
-  bool zero() volatile { return v_ == 0; };
-  volatile int v_;
-};
-
 template <typename IT, typename BODY>
 struct forwork : public work {
-  forwork(IT &it, bool (*cond)(IT &it), BODY &body, forframe &frame) 
+  forwork(IT &it, bool (*cond)(IT &it), BODY &body, wframe &frame) 
     : it_(it), cond_(cond), body_(body), frame_(frame) {}
 
   virtual void run() {
@@ -38,14 +29,14 @@ struct forwork : public work {
   IT &it_;
   bool (*cond_)(IT&);
   BODY &body_;
-  forframe &frame_;
+  wframe &frame_;
 };
 
 template <typename IT, typename BODY>
 static inline void
 wq_for(IT &init, bool (*cond)(IT &it), BODY body)
 {
-  forframe frame(0);
+  wframe frame(0);
 
   // XXX(sbw) should be able to coarsen loop
 

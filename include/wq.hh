@@ -29,6 +29,14 @@ struct cwork : public work {
   void *arg4;
 };
 
+struct wframe {
+  wframe(int v) : v_(v) {}
+  int inc() { return __sync_add_and_fetch(&v_, 1); }
+  int dec() { return __sync_sub_and_fetch(&v_, 1); }
+  bool zero() volatile { return v_ == 0; };
+  volatile int v_;
+};
+
 #if defined(LINUX)
 #include <stdlib.h>
 #include <assert.h>
