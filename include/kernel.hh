@@ -238,6 +238,10 @@ void            uartintr(void);
 void            switchvm(struct proc*);
 int             pagefault(struct vmap *, uptr, u32);
 
+// zalloc.cc
+char*           zalloc(const char* name);
+void            zfree(char* p);
+
 // other exported/imported functions
 void cmain(u64 mbmagic, u64 mbaddr);
 void mpboot(void);

@@ -72,15 +72,14 @@ vmnode::allocpg()
     if (page[i])
       continue;
 
-    char *p = kalloc("(vmnode::allocpg)");
+    char *p = zalloc("(vmnode::allocpg)");
     if (!p) {
       cprintf("allocpg: out of memory, leaving half-filled vmnode\n");
       return -1;
     }
 
-    memset(p, 0, PGSIZE);
     if(!cmpxch(&page[i], (char*) 0, p))
-      kfree(p);
+      zfree(p);
   }
   return 0;
 }

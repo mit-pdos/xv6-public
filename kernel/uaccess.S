@@ -15,7 +15,6 @@ __fetchint64:
         mov     $0, %rax
         jmp     __fetch_end
         
-.code64
 .globl __fetchstr
 .align 8
 // rdi kernel dst
@@ -43,9 +42,16 @@ __fetchstr:
 2:      // Done
         jmp     __fetch_end
 
-.code64
 .globl __fetch_end
 .align 8
 __fetch_end:
         movl $0, PROC_UACCESS(%r11)
         ret
+
+.globl clear_page
+.align 8
+clear_page:
+        movl $4096/8,%ecx
+	xorl %eax,%eax
+	rep stosq
+	ret

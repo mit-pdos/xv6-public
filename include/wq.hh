@@ -30,7 +30,8 @@ struct cwork : public work {
 };
 
 struct wframe {
-  wframe(int v) : v_(v) {}
+  wframe(int v = 0) : v_(v) {}
+  void clear() { v_ = 0; }
   int inc() { return __sync_add_and_fetch(&v_, 1); }
   int dec() { return __sync_sub_and_fetch(&v_, 1); }
   bool zero() volatile { return v_ == 0; };

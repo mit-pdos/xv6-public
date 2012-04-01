@@ -49,6 +49,7 @@ OBJS = \
 	trapasm.o \
 	wq.o \
 	script.o \
+        zalloc.o \
 	incbin.o
 OBJS := $(addprefix $(O)/kernel/, $(OBJS))
 
