@@ -137,22 +137,21 @@ vmnode::loadpg(off_t off)
   mtreadavar("inode:%x.%x", ip->dev, ip->inum);
   mtwriteavar("vmnode:%016x", this);
 #endif
+
   char *p = page[off/PGSIZE];
-  s64 n;
-  if (sz - off < PGSIZE)
-    n = sz - off;
-  else
-    n = PGSIZE;
+  s64 filen = off > sz ? 0 : MIN(PGSIZE, sz-off);
+  off_t fileo = offset+off;
 
   //
   // Possible race condition with concurrent loadpg() calls,
   // if the underlying inode's contents change..
   //
-  if (readi(ip, p, offset+off, n) != n)
+  if (readi(ip, p, fileo, filen) != filen)
     return -1;
 
-  // XXX(sbw) we might leave the begining of page[0] and the
-  // end of page[npages-1] with some random content.
+  // XXX(sbw), we should memset the remainder, but sometimes
+  // we loadpg on a pg that already has content.
+  //memset(&p[filen], 0, PGSIZE-filen);
   return 0;
 }
 
