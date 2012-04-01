@@ -117,7 +117,6 @@ kmfree(void *ap, u64 nbytes)
   int b = bucket(nbytes);
 
   struct header *h = (struct header *) ap;
-  verifyfree((char *) ap, (1<<b));
   if (ALLOC_MEMSET)
     memset(ap, 3, (1<<b));
 
