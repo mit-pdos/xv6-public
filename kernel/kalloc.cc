@@ -108,6 +108,47 @@ pgalloc(void)
   return (char*) p;
 }
 
+//
+// kmem
+//
+run*
+kmem::alloc(const char* name)
+{
+  for (;;) {
+    auto headval = freelist.load();
+    run* r = headval.ptr();
+    if (!r)
+      return nullptr;
+    
+    run *nxt = r->next;
+    if (freelist.compare_exchange(headval, nxt)) {
+      if (r->next != nxt)
+        panic("kmem:alloc: aba race %p %p %p\n",
+              r, r->next, nxt);
+      nfree--;
+      return r;
+    }
+  }
+
+  if (name)
+    mtlabel(mtrace_label_block, r, m->size, name, strlen(name));
+}
+
+void
+kmem::free(run* r)
+{
+  if (kinited)
+    mtunlabel(mtrace_label_block, r);
+
+  for (;;) {
+    auto headval = freelist.load();
+    r->next = headval.ptr();
+    if (freelist.compare_exchange(headval, r))
+      break;
+  }
+  nfree++;
+}
+
 // Free the page of physical memory pointed at by v,
 // which normally should have been returned by a
 // call to kalloc().  (The exception is when
@@ -115,8 +156,6 @@ pgalloc(void)
 static void
 kfree_pool(struct kmem *m, char *v)
 {
-  struct run *r;
-
   if ((uptr)v % PGSIZE) 
     panic("kfree_pool: misaligned %p", v);
   if (memsize(v) == -1ull)
@@ -126,18 +165,7 @@ kfree_pool(struct kmem *m, char *v)
   if (ALLOC_MEMSET && kinited && m->size <= 16384)
     memset(v, 1, m->size);
 
-  if (kinited)
-    mtunlabel(mtrace_label_block, v);
-
-  r = (struct run*)v;
-  for (;;) {
-    auto headval = m->freelist.load();
-    r->next = headval.ptr();
-    if (m->freelist.compare_exchange(headval, r))
-      break;
-  }
-
-  m->nfree++;
+  m->free((run*)v);
 }
 
 static void
@@ -160,6 +188,7 @@ kmemprint()
     kmemprint_pool(slabmem[i]);
 }
 
+
 static char*
 kalloc_pool(struct kmem *km, const char *name)
 {
@@ -170,25 +199,7 @@ kalloc_pool(struct kmem *km, const char *name)
   for (u32 i = 0; r == 0 && i < NCPU; i++) {
     int cn = (i + startcpu) % NCPU;
     m = &km[cn];
-
-    for (;;) {
-      auto headval = m->freelist.load();
-      r = headval.ptr();
-      if (!r)
-        break;
-
-      run *nxt = r->next;
-      if (m->freelist.compare_exchange(headval, nxt)) {
-        if (r->next != nxt)
-          panic("kalloc_pool: aba race %p %p %p\n", r, r->next, nxt);
-        break;
-      }
-    }
-
-    if (r) {
-      m->nfree--;
-      break;
-    }
+    r = m->alloc(name);
   }
 
   if (r == 0) {
@@ -196,9 +207,6 @@ kalloc_pool(struct kmem *km, const char *name)
     kmemprint();
     return 0;
   }
-
-  if (name)
-    mtlabel(mtrace_label_block, r, m->size, name, strlen(name));
 
   if (ALLOC_MEMSET && m->size <= 16384)
     memset(r, 2, m->size);

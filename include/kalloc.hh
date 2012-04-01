@@ -56,6 +56,9 @@ struct kmem {
   u64 ninit;
   versioned<vptr48<run*>> freelist;
   std::atomic<u64> nfree;
+
+  run* alloc(const char* name);
+  void free(run* r);
 } __mpalign__;
 
 enum {
