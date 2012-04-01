@@ -14,6 +14,7 @@
 long
 sys_fork(int flags)
 {
+  ANON_REGION(__func__, &perfgroup);
   return fork(flags);
 }
 
@@ -27,6 +28,7 @@ sys_exit(void)
 long
 sys_wait(void)
 {
+  ANON_REGION(__func__, &perfgroup);
   return wait();
 }
 
