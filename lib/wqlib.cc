@@ -60,24 +60,25 @@ wq::declen(int c)
 }
 
 int
-wq::push(work *w, int tcpuid)
+wq::push(work *w, int c)
 {
+  struct wqueue* q = &q_[c];
   int i;
 
-  wqlock_acquire(&q_[tcpuid].lock);
-  i = q_[tcpuid].head;
-  if ((i - q_[tcpuid].tail) == NSLOTS) {
-    stat_[tcpuid].full++;
-    wqlock_release(&q_[tcpuid].lock);
+  wqlock_acquire(&q->lock);
+  i = q->head;
+  if ((i - q->tail) == NSLOTS) {
+    stat_[c].full++;
+    wqlock_release(&q->lock);
     return -1;
   }
   i = i & (NSLOTS-1);
-  q_[tcpuid].w[i] = w;
+  q->w[i] = w;
   barrier();
-  q_[tcpuid].head++;
-  inclen(tcpuid);
-  stat_[tcpuid].push++;
-  wqlock_release(&q_[tcpuid].lock);
+  q->head++;
+  inclen(c);
+  stat_[c].push++;
+  wqlock_release(&q->lock);
   return 0;
 }
 
