@@ -5,7 +5,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "types.h"
 #include "user/dirit.hh"
+#include "user/util.h"
 #include "wq.hh"
 #define ST_SIZE(st)  (st).st_size
 #define ST_TYPE(st)  (ST_ISDIR(st) ? 1 : ST_ISREG(st) ? 2 : 3)

@@ -1,12 +1,9 @@
-#include "types.h"
+#include "wqtypes.hh"
 #include "kernel.hh"
 #include "spinlock.h"
 #include "amd64.h"
 #include "cpu.hh"
 #include "kalloc.hh"
-#include "wq.hh"
-
-typedef struct spinlock wqlock_t;
 
 static inline void*
 allocwq(unsigned long nbytes)
@@ -36,11 +33,6 @@ static inline void
 wqlock_init(wqlock_t *lock) 
 {
   initlock(lock, "wq lock", LOCKSTAT_WQ);
-}
-
-static inline void
-wqarch_init(void)
-{
 }
 
 #define xprintf      cprintf 

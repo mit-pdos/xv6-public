@@ -5,87 +5,9 @@
 #else
 #include "wquser.hh"
 #endif
-#include "percpu.hh"
-
-#define NSLOTS (1 << WQSHIFT)
+#include "wq.hh"
 
 enum { wq_steal_others = 1 };
-
-class wq {
-public:
-  wq();
-  int push(work *w, int tcpuid);
-  int trywork();
-  void dump();
-
-  static void* operator new(unsigned long);
-
-private:
-  work *steal(int c);
-  work *pop(int c);
-  void inclen(int c);
-  void declen(int c);
-
-  struct wqueue {
-    work *w[NSLOTS];
-    volatile int head __mpalign__;
-    volatile int tail;
-    wqlock_t lock;
-  };
-
-  struct stat {
-    u64 push;
-    u64 full;
-    u64 pop;
-    u64 steal;
-  };
-
-  percpu<wqueue> q_;
-  percpu<stat> stat_;
-
-#if defined(XV6_USER)
-  uwq_ipcbuf* ipc_;
-#endif
-};
-
-static wq *wq_;
-
-size_t
-wq_size(void)
-{
-  return sizeof(wq);
-}
-
-int
-wq_push(work *w)
-{
-  return wq_->push(w, mycpuid());
-}
-
-int
-wq_pushto(work *w, int tcpuid)
-{
-  return wq_->push(w, tcpuid);
-}
-
-int
-wq_trywork(void)
-{
-  return wq_->trywork();
-}
-
-void
-wq_dump(void)
-{
-  return wq_->dump();
-}
-
-void
-initwq(void)
-{
-  wq_ = new wq();
-  wqarch_init();
-}
 
 //
 // wq
@@ -138,24 +60,25 @@ wq::declen(int c)
 }
 
 int
-wq::push(work *w, int tcpuid)
+wq::push(work *w, int c)
 {
+  struct wqueue* q = &q_[c];
   int i;
 
-  acquire(&q_[tcpuid].lock);
-  i = q_[tcpuid].head;
-  if ((i - q_[tcpuid].tail) == NSLOTS) {
-    stat_[tcpuid].full++;
-    release(&q_[tcpuid].lock);
+  wqlock_acquire(&q->lock);
+  i = q->head;
+  if ((i - q->tail) == NSLOTS) {
+    stat_[c].full++;
+    wqlock_release(&q->lock);
     return -1;
   }
   i = i & (NSLOTS-1);
-  q_[tcpuid].w[i] = w;
+  q->w[i] = w;
   barrier();
-  q_[tcpuid].head++;
-  inclen(tcpuid);
-  stat_[tcpuid].push++;
-  release(&q_[tcpuid].lock);
+  q->head++;
+  inclen(c);
+  stat_[c].push++;
+  wqlock_release(&q->lock);
   return 0;
 }
 

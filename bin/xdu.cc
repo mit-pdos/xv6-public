@@ -12,6 +12,7 @@ typedef uint64_t u64;
 #include "wq.hh"
 #include "reducer.hh"
 #include "user/dirit.hh"
+#include "user/util.h"
 #define ST_SIZE(st)  (st).st_size
 #define ST_ISDIR(st) S_ISDIR((st).st_mode)
 #define BSIZ 256

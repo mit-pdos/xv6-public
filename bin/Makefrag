@@ -1,5 +1,5 @@
-$(O)/bin/%.o: CFLAGS:=$(CFLAGS)
-$(O)/bin/%.o: CXXFLAGS:=$(CXXFLAGS)
+$(O)/bin/%.o: CFLAGS:=$(CFLAGS) -DXV6_USER
+$(O)/bin/%.o: CXXFLAGS:=$(CXXFLAGS) -DXV6_USER
 
 UPROGS= \
         bench \

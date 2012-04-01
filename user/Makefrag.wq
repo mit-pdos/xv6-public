@@ -5,6 +5,11 @@ NCXXFLAGS = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) \
 	    -iquote . -iquote include \
 	    -include param.h -include include/compiler.h
 
+$(O)/user/%.o: user/%.cc
+	@echo "  CXX    $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CXX) -DLINUX $(NCXXFLAGS) -c -o $@ $<
+
 $(O)/user/%.o: lib/%.cc
 	@echo "  CXX    $@"
 	$(Q)mkdir -p $(@D)
@@ -15,7 +20,7 @@ $(O)/user/%.o: bin/%.cc
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) -DLINUX $(NCXXFLAGS) -c -o $@ $<
 
-$(O)/%: $(O)/user/%.o $(O)/user/wq.o
+$(O)/%: $(O)/user/%.o $(O)/user/wqlib.o $(O)/user/wqlinux.o
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) -o $@ $^ -lpthread
