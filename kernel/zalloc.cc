@@ -9,6 +9,8 @@
 extern "C" void zpage(void*);
 extern "C" void zrun_nc(run*);
 
+static const bool prezero = true;
+
 struct zallocator {
   run*   run;
   kmem   kmem;
@@ -52,7 +54,7 @@ struct zwork : public work {
 void
 zallocator::tryrefill(void)
 {
-  if (kmem.nfree < 16 && frame.zero()) {
+  if (prezero && kmem.nfree < 16 && frame.zero()) {
     zwork* w = new zwork(&frame, this);
     if (wq_push(w) < 0)
       delete w;

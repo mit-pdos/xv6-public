@@ -26,14 +26,15 @@ enum { tlb_lazy = 1 };
  */
 
 vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
-  : npages(npg), type(ntype), ip(i), offset(off), sz(s), ref_(0)
+  : npages(npg), empty(true), type(ntype),
+    ip(i), offset(off), sz(s), ref_(0)
 {
   if (npg > NELEM(page))
     panic("vmnode too big\n");
   memset(page, 0, npg * sizeof(page[0]));
   if (type == EAGER && ip) {
-    assert(allocpg(false) == 0);
-    assert(demand_load() == 0);
+    assert(allocall(false) == 0);
+    assert(loadall() == 0);
   }
 }
 
@@ -66,28 +67,40 @@ vmnode::ref(void)
 }
 
 int
-vmnode::allocpg(bool zero)
+vmnode::allocpg(int idx, bool zero)
+{
+  char* p;
+
+  if (page[idx])
+    return 0;
+  
+  if (zero)
+    p = zalloc("(vmnode::allocall)");
+  else
+    p = kalloc("(vmnode::allocall)");
+
+  if (p == nullptr)
+    return -1;
+
+  if(!cmpxch(&page[idx], (char*) 0, p)) {
+    if (zero)
+      zfree(p);
+    else
+      kfree(p);
+  } else if (empty) {
+    empty = false;
+  }
+
+  return 0;
+}
+
+int
+vmnode::allocall(bool zero)
 {
   for(u64 i = 0; i < npages; i++) {
-    if (page[i])
-      continue;
-
-    char *p;
-    if (zero)
-      p = zalloc("(vmnode::allocpg)");
-    else
-      p = kalloc("(vmnode::allocpg)");
-
-    if (!p) {
-      cprintf("allocpg: OOM -- leaving half-filled vmnode\n");
+    if (allocpg(i, zero) < 0) {
+      cprintf("allocall: OOM -- leaving half-filled vmnode\n");
       return -1;
-    }
-
-    if(!cmpxch(&page[i], (char*) 0, p)) {
-      if (zero)
-        zfree(p);
-      else
-        kfree(p);
     }
   }
   return 0;
@@ -102,10 +115,10 @@ vmnode::copy()
   if(c == 0)
     return 0;
 
-  if (!page[0])   // If first page is absent, all pages are absent
+  if (empty)
     return c;
 
-  if (c->allocpg(false) < 0) {
+  if (c->allocall(false) < 0) {
     cprintf("vmn_copy: out of memory\n");
     delete c;
     return 0;
@@ -118,27 +131,38 @@ vmnode::copy()
 }
 
 int
-vmnode::demand_load()
+vmnode::loadpg(off_t off)
 {
 #ifdef MTRACE 
   mtreadavar("inode:%x.%x", ip->dev, ip->inum);
   mtwriteavar("vmnode:%016x", this);
 #endif
-  for (u64 i = 0; i < sz; i += PGSIZE) {
-    char *p = page[i / PGSIZE];
-    s64 n;
-    if (sz - i < PGSIZE)
-      n = sz - i;
-    else
-      n = PGSIZE;
+  char *p = page[off/PGSIZE];
+  s64 n;
+  if (sz - off < PGSIZE)
+    n = sz - off;
+  else
+    n = PGSIZE;
 
-    /*
-     * Possible race condition with concurrent demand_load() calls,
-     * if the underlying inode's contents change..
-     */
-    if (readi(ip, p, offset+i, n) != n)
+  //
+  // Possible race condition with concurrent loadpg() calls,
+  // if the underlying inode's contents change..
+  //
+  if (readi(ip, p, offset+off, n) != n)
+    return -1;
+
+  // XXX(sbw) we might leave the begining of page[0] and the
+  // end of page[npages-1] with some random content.
+  return 0;
+}
+
+
+int
+vmnode::loadall()
+{
+  for (off_t o = 0; o < sz; o += PGSIZE)
+    if (loadpg(o) < 0)
       return -1;
-  }
   return 0;
 }
 
@@ -584,12 +608,18 @@ vmap::pagefault(uptr va, u32 err)
             err, va, m->va_type, m->n->ref(), myproc()->pid);
 
   if (m->n && !m->n->page[npg])
-    if (m->n->allocpg() < 0)
-      panic("pagefault: couldn't allocate pages");
+    // m->n->ip != nullptr implies we'll copy over the page
+    // with loadpg before returning
+    if (m->n->allocpg(npg, m->n->ip == nullptr) < 0) {
+      cprintf("pagefault: couldn't allocate pages\n");
+      return -1;
+    }
 
   if (m->n && m->n->type == ONDEMAND)
-    if (m->n->demand_load() < 0)
-      panic("pagefault: couldn't load");
+    if (m->n->loadpg(npg*PGSIZE) < 0) {
+      cprintf("pagefault: couldn't load\n");
+      return -1;
+    }
 
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(m) < 0)
@@ -647,7 +677,7 @@ vmap::copyout(uptr va, void *p, u64 len)
     if(vma == 0)
       return -1;
 
-    vma->n->allocpg();
+    vma->n->allocall();
     uptr pn = (va0 - vma->vma_start) / PGSIZE;
     char *p0 = vma->n->page[pn];
     if(p0 == 0)

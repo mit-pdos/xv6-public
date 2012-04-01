@@ -19,6 +19,7 @@ enum vmntype { EAGER, ONDEMAND };
 
 struct vmnode {
   const u64 npages;
+  atomic<bool> empty;
   atomic<char*> page[128];
   const enum vmntype type;
   struct inode *const ip;
@@ -31,10 +32,13 @@ struct vmnode {
   void decref();
   void incref();
   u64 ref();
-  int allocpg(bool zero = true);
+  int allocall(bool zero = true);
+  int allocpg(int idx, bool zero = true);
+  int loadall();
+  int loadpg(off_t off);
+
   vmnode* copy();
 
-  int demand_load();
   NEW_DELETE_OPS(vmnode);
 private:
   atomic<u64> ref_;
