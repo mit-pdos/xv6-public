@@ -32,7 +32,7 @@ vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
     panic("vmnode too big\n");
   memset(page, 0, npg * sizeof(page[0]));
   if (type == EAGER && ip) {
-    assert(allocpg() == 0);
+    assert(allocpg(false) == 0);
     assert(demand_load() == 0);
   }
 }
@@ -66,20 +66,29 @@ vmnode::ref(void)
 }
 
 int
-vmnode::allocpg()
+vmnode::allocpg(bool zero)
 {
   for(u64 i = 0; i < npages; i++) {
     if (page[i])
       continue;
 
-    char *p = zalloc("(vmnode::allocpg)");
+    char *p;
+    if (zero)
+      p = zalloc("(vmnode::allocpg)");
+    else
+      p = kalloc("(vmnode::allocpg)");
+
     if (!p) {
-      cprintf("allocpg: out of memory, leaving half-filled vmnode\n");
+      cprintf("allocpg: OOM -- leaving half-filled vmnode\n");
       return -1;
     }
 
-    if(!cmpxch(&page[i], (char*) 0, p))
-      zfree(p);
+    if(!cmpxch(&page[i], (char*) 0, p)) {
+      if (zero)
+        zfree(p);
+      else
+        kfree(p);
+    }
   }
   return 0;
 }
@@ -96,7 +105,7 @@ vmnode::copy()
   if (!page[0])   // If first page is absent, all pages are absent
     return c;
 
-  if (c->allocpg() < 0) {
+  if (c->allocpg(false) < 0) {
     cprintf("vmn_copy: out of memory\n");
     delete c;
     return 0;

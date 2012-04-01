@@ -31,7 +31,7 @@ struct vmnode {
   void decref();
   void incref();
   u64 ref();
-  int allocpg();
+  int allocpg(bool zero = true);
   vmnode* copy();
 
   int demand_load();
