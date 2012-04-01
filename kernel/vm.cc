@@ -608,9 +608,10 @@ vmap::pagefault(uptr va, u32 err)
             err, va, m->va_type, m->n->ref(), myproc()->pid);
 
   if (m->n && !m->n->page[npg])
-    // m->n->ip != nullptr implies we'll copy over the page
-    // with loadpg before returning
-    if (m->n->allocpg(npg, m->n->ip == nullptr) < 0) {
+    // XXX(sbw) you might think we don't need to zero if ONDEMAND;
+    // however, our vmnode might include not backed by a file
+    // (e.g. the bss section of an ELF segment)
+    if (m->n->allocpg(npg, true) < 0) {
       cprintf("pagefault: couldn't allocate pages\n");
       return -1;
     }
