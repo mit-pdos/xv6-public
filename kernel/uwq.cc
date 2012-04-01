@@ -142,7 +142,9 @@ uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc)
     ipc_->len[i].v_ = 0;
 
   initlock(&lock_, "uwq_lock", 0);
-  memset(worker_, 0, sizeof(worker_));
+
+  for (int i = 0; i < NWORKERS; i++)
+    worker_[i].store(nullptr);
 }
 
 uwq::~uwq(void)
