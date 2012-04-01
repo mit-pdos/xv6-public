@@ -13,7 +13,7 @@ __fetchint64:
         mov     (%rdi), %r10
         mov     %r10, (%rsi)
         mov     $0, %rax
-        jmp __fetch_end
+        jmp     __fetch_end
         
 .code64
 .globl __fetchstr
@@ -41,7 +41,7 @@ __fetchstr:
         // Error
         movq    $-1, %rax
 2:      // Done
-        jmp __fetch_end
+        jmp     __fetch_end
 
 .code64
 .globl __fetch_end
