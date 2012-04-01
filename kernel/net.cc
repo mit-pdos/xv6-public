@@ -282,7 +282,7 @@ netbind(int sock, void *xaddr, int xaddrlen)
   if (addr == nullptr)
     return -1;
 
-  if (umemcpy(addr, xaddr, xaddrlen))
+  if (fetchmem(addr, xaddr, xaddrlen))
     return -1;
 
   lwip_core_lock();
@@ -311,7 +311,7 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
   void *addr;
   int ss;
 
-  if (umemcpy(&len, lenptr, sizeof(*lenptr)))
+  if (fetchmem(&len, lenptr, sizeof(*lenptr)))
     return -1;
 
   addr = kmalloc(len, "sockaddr");
@@ -326,7 +326,7 @@ netaccept(int sock, void *xaddr, void *xaddrlen)
     return ss;
   }
 
-  if (kmemcpy(xaddrlen, &len, sizeof(len)) || kmemcpy(xaddr, addr, len)) {
+  if (putmem(xaddrlen, &len, sizeof(len)) || putmem(xaddr, addr, len)) {
     lwip_core_lock();
     lwip_close(ss);
     lwip_core_unlock();
@@ -357,7 +357,7 @@ netwrite(int sock, char *ubuf, int len)
     return -1;
 
   cc = MIN(len, PGSIZE);
-  if (umemcpy(kbuf, ubuf, cc)) {
+  if (fetchmem(kbuf, ubuf, cc)) {
     kfree(kbuf);
     return -1;
   }
@@ -388,7 +388,7 @@ netread(int sock, char *ubuf, int len)
     return r;
   }
 
-  kmemcpy(ubuf, kbuf, r);
+  putmem(ubuf, kbuf, r);
   kfree(kbuf);
   return r;
 }

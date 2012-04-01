@@ -205,9 +205,9 @@ void            release(struct spinlock*);
 int             argcheckptr(void *argval, int);
 int             argcheckstr(const char*);
 int             fetchint64(uptr, u64*);
-int             fetchstr(char*, const char*, unsigned);
-int             umemcpy(void*, void*, u64);
-int             kmemcpy(void*, void*, u64);
+int             fetchstr(char*, const char*, u64);
+int             fetchmem(void*, const void*, u64);
+int             putmem(void*, const void*, u64);
 u64             syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num);
 
 // string.c

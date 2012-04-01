@@ -10,15 +10,32 @@
 #include "cpu.hh"
 #include "kmtrace.hh"
 
-extern "C" int __fetchstr(char* dst, const char* usrc, unsigned size);
-extern "C" int __fetchint64(uptr addr, u64* ip);
+extern "C" int __uaccess_mem(void* dst, const void* src, u64 size);
+extern "C" int __uaccess_str(char* dst, const char* src, u64 size);
+extern "C" int __uaccess_int64(uptr addr, u64* ip);
 
 int
-fetchstr(char* dst, const char* usrc, unsigned size)
+fetchmem(void* dst, const void* usrc, u64 size)
 {
   if(mycpu()->ncli != 0)
     panic("fetchstr: cli'd");
-  return __fetchstr(dst, usrc, size);
+  return __uaccess_mem(dst, usrc, size);
+}
+
+int
+putmem(void *udst, const void *src, u64 size)
+{
+  if(mycpu()->ncli != 0)
+    panic("fetchstr: cli'd");
+  return __uaccess_mem(udst, src, size);
+}
+
+int
+fetchstr(char* dst, const char* usrc, u64 size)
+{
+  if(mycpu()->ncli != 0)
+    panic("fetchstr: cli'd");
+  return __uaccess_str(dst, usrc, size);
 }
 
 int
@@ -26,7 +43,7 @@ fetchint64(uptr addr, u64 *ip)
 {
   if(mycpu()->ncli != 0)
     panic("fetchstr: cli'd");
-  return __fetchint64(addr, ip);
+  return __uaccess_int64(addr, ip);
 }
 
 // Fetch the nul-terminated string at addr from process p.
@@ -57,43 +74,6 @@ argcheckptr(void *p, int size)
   for(uptr va = PGROUNDDOWN(i); va < i+size; va = va + PGSIZE)
     if(pagefault(myproc()->vmap, va, 0) < 0)
       return -1;
-  return 0;
-}
-
-static int
-umemptr(void *umem, void **ret, u64 size)
-{
-  uptr ptr = (uptr) umem;
-
-  for(uptr va = PGROUNDDOWN(ptr); va < ptr+size; va = va + PGSIZE)
-    if(pagefault(myproc()->vmap, va, 0) < 0)
-      return -1;
-
-  *ret = umem;
-  return 0;
-}
-
-int
-umemcpy(void *dst, void *umem, u64 size)
-{
-  void *ptr;
-
-  if (umemptr(umem, &ptr, size))
-    return -1;
-
-  memmove(dst, ptr, size);
-  return 0;
-}
-
-int
-kmemcpy(void *umem, void *src, u64 size)
-{
-  void *ptr;
-
-  if (umemptr(umem, &ptr, size))
-    return -1;
-
-  memmove(ptr, src, size);
   return 0;
 }
 

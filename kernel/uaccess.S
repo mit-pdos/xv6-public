@@ -1,27 +1,25 @@
 #include "mmu.h"
 #include "asmdefines.h"
 
+#define ENTRY(name) .globl name ; .align 8; name :
+
+// We aren't allowed to touch rbx,rsp,rbp,r12-r15
+        
 .code64
-.globl __fetchint64
-.align 8
 // rdi user src
 // rsi kernel dst
-// We aren't allowed to touch rbx,rsp,rbp,r12-r15
-__fetchint64:
+ENTRY(__uaccess_int64)
         mov     %gs:0x8, %r11
         movl    $1, PROC_UACCESS(%r11)
         mov     (%rdi), %r10
         mov     %r10, (%rsi)
         mov     $0, %rax
-        jmp     __fetch_end
-        
-.globl __fetchstr
-.align 8
-// rdi kernel dst
-// rsi user src
-// rdx kernel len
-// We aren't allowed to touch rbx,rsp,rbp,r12-r15
-__fetchstr:
+        jmp     __uaccess_end
+
+// rdi dst
+// rsi src
+// rdx dst len
+ENTRY(__uaccess_str)
         mov     %gs:0x8, %r11
         movl    $1, PROC_UACCESS(%r11)
 
@@ -40,11 +38,30 @@ __fetchstr:
         // Error
         movq    $-1, %rax
 2:      // Done
-        jmp     __fetch_end
+        jmp     __uaccess_end
 
-.globl __fetch_end
+// rdi dst
+// rsi src
+// rdx len
+ENTRY(__uaccess_mem)
+        mov     %gs:0x8, %r11
+        movl    $1, PROC_UACCESS(%r11)
+
+        // %rcx is loop instruction counter
+        mov     %rdx, %rcx
+        xor     %rax, %rax
+1:   
+        movb    (%rsi), %r10b
+        movb    %r10b, (%rdi)
+        inc     %rdi
+        inc     %rsi
+        loop    1b
+        // Done
+        jmp     __uaccess_end
+        
+.globl __uaccess_end
 .align 8
-__fetch_end:
+__uaccess_end:
         movl $0, PROC_UACCESS(%r11)
         ret
 

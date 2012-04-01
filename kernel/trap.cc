@@ -12,7 +12,7 @@
 #include "bits.hh"
 #include "kalloc.hh"
 
-extern "C" void __fetch_end(void);
+extern "C" void __uaccess_end(void);
 
 struct intdesc idt[256] __attribute__((aligned(16)));
 
@@ -60,7 +60,7 @@ do_pagefault(struct trapframe *tf)
     }
     cprintf("pagefault: failed in kernel\n");
     tf->rax = -1;
-    tf->rip = (u64)__fetch_end;
+    tf->rip = (u64)__uaccess_end;
     return 0;
   } else if (tf->err & FEC_U) {
       sti();
