@@ -7,6 +7,7 @@
 #include "wq.hh"
 
 static wq *wq_;
+static wq *wqcrit_;
 
 void*
 xallocwork(unsigned long nbytes)
@@ -33,15 +34,15 @@ wq_push(work *w)
 }
 
 int
-wq_pushto(work *w, int tcpuid)
+wqcrit_push(work *w, int c)
 {
-  return wq_->push(w, tcpuid);
+  return wqcrit_->push(w, c);
 }
 
 int
 wq_trywork(void)
 {
-  return wq_->trywork();
+  return wqcrit_->trywork(false) || wq_->trywork(true);
 }
 
 void
@@ -54,4 +55,7 @@ void
 initwq(void)
 {
   wq_ = new wq();
+  wqcrit_ = new wq();
+  if (wq_ == nullptr || wqcrit_ == nullptr)
+    panic("initwq");
 }

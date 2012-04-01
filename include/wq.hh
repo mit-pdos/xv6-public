@@ -8,7 +8,6 @@ class work;
 
 int             wq_trywork(void);
 int             wq_push(work *w);
-int             wq_pushto(work *w, int tcpuid);
 void            wq_dump(void);
 size_t          wq_size(void);
 void            initwq(void);
@@ -48,7 +47,7 @@ class wq {
 public:
   wq();
   int push(work *w, int tcpuid);
-  int trywork();
+  int trywork(bool steal = true);
   void dump();
 
   static void* operator new(unsigned long);
@@ -83,6 +82,10 @@ private:
 
 void* xallocwork(unsigned long nbytes);
 void  xfreework(void* ptr, unsigned long nbytes);
+
+#if defined(XV6_KERNEL)
+int   wqcrit_push(work* w, int c);
+#endif
 
 #if defined(XV6_USER)
 void* wqalloc(unsigned long nbytes);

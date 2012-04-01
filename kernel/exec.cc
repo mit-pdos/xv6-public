@@ -248,7 +248,7 @@ exec(const char *path, char **argv, void *ascopev)
   w->rip = (void*) exec_cleanup;
   w->arg0 = oldvmap;
   w->arg1 = olduwq;
-  assert(wq_pushto(w, myproc()->exec_cpuid_) >= 0);
+  assert(wqcrit_push(w, myproc()->exec_cpuid_) >= 0);
 
   gc_end_epoch();
   return 0;

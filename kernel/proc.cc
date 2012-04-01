@@ -443,7 +443,7 @@ wait(void)
           assert(w);
           w->rip = (void*) finishproc;
           w->arg0 = p;
-          assert(wq_pushto(w, p->run_cpuid_) >= 0);
+          assert(wqcrit_push(w, p->run_cpuid_) >= 0);
 
           if (!xnspid->remove(pid, &p))
             panic("wait: ns_remove");

@@ -287,7 +287,7 @@ initkalloc(u64 mbaddr)
 
     strncpy(slabmem[slab_wq][c].name, " wq", MAXNAME);
     slabmem[slab_wq][c].size = PGROUNDUP(wq_size());
-    slabmem[slab_wq][c].ninit = NCPU;
+    slabmem[slab_wq][c].ninit = 2;
 
     strncpy(slabmem[slab_userwq][c].name, " uwq", MAXNAME);
     slabmem[slab_userwq][c].size = USERWQSIZE;
