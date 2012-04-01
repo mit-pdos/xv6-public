@@ -2,7 +2,6 @@
 #include "uspinlock.h"
 #include "amd64.h"
 #include "user.h"
-#include "wq.hh"
 #include "pthread.h"
 #include "memlayout.h"
 #include "uwq.hh"
@@ -12,15 +11,7 @@
 
 typedef struct uspinlock wqlock_t;
 
-static pthread_key_t idkey;
-static std::atomic<int> nextid;
-static volatile int exiting;
-
-int
-mycpuid(void)
-{
-  return (int)(u64)pthread_getspecific(idkey);
-}
+int mycpuid(void);
 
 static inline void*
 allocwq(unsigned long nbytes)
@@ -62,34 +53,6 @@ static inline void
 wqlock_init(wqlock_t *lock) 
 {
   initlock(lock);
-}
-
-extern "C" long wqwait(void);
-
-static void __attribute__((used))
-initworker(void)
-{
-  int id;
-  forkt_setup(0);
-  id = nextid++;
-  if (id >= NCPU)
-    die("initworker: to man IDs");
-  pthread_setspecific(idkey, (void*)(u64)id);
-  while (1) {
-    if (!wq_trywork())
-      assert(wqwait() == 0);
-  }
-}
-DEFINE_XV6_ADDRNOTE(xnote, XV6_ADDR_ID_WQ, &initworker);
-
-static inline void
-wqarch_init(void)
-{
-  if (pthread_key_create(&idkey, 0))
-    die("wqarch_init: pthread_key_create");
-
-  int id = nextid++;
-  pthread_setspecific(idkey, (void*)(u64)id);
 }
 
 #define xprintf      printf 

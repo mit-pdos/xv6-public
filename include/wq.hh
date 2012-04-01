@@ -1,5 +1,8 @@
 #pragma once
 
+#include "wqtypes.hh"
+#include "percpu.hh"
+
 class work;
 
 int             wq_trywork(void);
@@ -36,6 +39,45 @@ struct wframe {
   int dec() { return __sync_sub_and_fetch(&v_, 1); }
   bool zero() volatile { return v_ == 0; };
   volatile int v_;
+};
+
+#define NSLOTS (1 << WQSHIFT)
+
+class wq {
+public:
+  wq();
+  int push(work *w, int tcpuid);
+  int trywork();
+  void dump();
+
+  static void* operator new(unsigned long);
+
+private:
+  work *steal(int c);
+  work *pop(int c);
+  void inclen(int c);
+  void declen(int c);
+
+  struct wqueue {
+    work *w[NSLOTS];
+    volatile int head __mpalign__;
+    volatile int tail;
+    wqlock_t lock;
+  };
+
+  struct stat {
+    u64 push;
+    u64 full;
+    u64 pop;
+    u64 steal;
+  };
+
+  percpu<wqueue> q_;
+  percpu<stat> stat_;
+
+#if defined(XV6_USER)
+  uwq_ipcbuf* ipc_;
+#endif
 };
 
 #if defined(LINUX)

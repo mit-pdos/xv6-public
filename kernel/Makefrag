@@ -47,7 +47,8 @@ OBJS = \
 	trap.o \
         uaccess.o \
 	trapasm.o \
-	wq.o \
+        wqkern.o \
+	wqlib.o \
 	script.o \
         zalloc.o \
 	incbin.o

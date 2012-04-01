@@ -9,8 +9,6 @@
 
 static __thread int myid_;
 
-typedef pthread_spinlock_t wqlock_t;
-
 int
 mycpuid(void)
 {
