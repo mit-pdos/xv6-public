@@ -14,6 +14,7 @@
 #include "vm.hh"
 #include "ns.hh"
 #include "fcntl.h"
+#include "wq.hh"
 
 u64
 proc_hash(const u32 &p)
@@ -368,6 +369,8 @@ fork(int flags)
   np->parent = myproc();
   *np->tf = *myproc()->tf;
   np->cpu_pin = myproc()->cpu_pin;
+  np->exec_cpuid_ = myproc()->exec_cpuid_;
+  np->run_cpuid_ = myproc()->run_cpuid_;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->rax = 0;
@@ -408,8 +411,6 @@ finishproc(struct proc *p)
     p->uwq->dec();
   ksfree(slab_stack, p->kstack);
   p->kstack = 0;
-  if (!xnspid->remove(p->pid, &p))
-    panic("wait: ns_remove");
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
@@ -437,7 +438,16 @@ wait(void)
 	  pid = p->pid;
 	  SLIST_REMOVE(&myproc()->childq, p, proc, child_next);
 	  release(&myproc()->lock);
-          finishproc(p);
+
+          cwork *w = new cwork();
+          assert(w);
+          w->rip = (void*) finishproc;
+          w->arg0 = p;
+          assert(wq_pushto(w, p->run_cpuid_) >= 0);
+
+          if (!xnspid->remove(pid, &p))
+            panic("wait: ns_remove");
+
 	  return pid;
 	}
 	release(&p->lock);

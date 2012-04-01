@@ -67,21 +67,43 @@ static inline void mtresume(struct proc *p)
 class mt_ascope
 {
   char name[64];
+  bool active;
 public:
   explicit mt_ascope(const char *fmt, ...)
   {
     va_list ap;
 
     va_start(ap, fmt);
-    vsnprintf(name, sizeof(name) - 1, fmt, ap);
+    vopen(fmt, ap);
     va_end(ap);
-
-    mtrace_ascope_register(0, name);
   }
 
   ~mt_ascope()
   {
-    mtrace_ascope_register(1, name);
+    close();
+  }
+
+  void open(const char *fmt, ...)
+  {
+    va_list ap;
+
+    va_start(ap, fmt);
+    vopen(fmt, ap);
+    va_end(ap);
+  }
+
+  void vopen(const char *fmt, va_list ap)
+  {
+    vsnprintf(name, sizeof(name) - 1, fmt, ap);
+    mtrace_ascope_register(0, name);
+    active = true;
+  }
+
+  void close()
+  {
+    if (active)
+      mtrace_ascope_register(1, name);
+    active = false;
   }
 };
 

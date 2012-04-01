@@ -9,6 +9,8 @@
 
 #define NSLOTS (1 << WQSHIFT)
 
+enum { wq_steal_others = 1 };
+
 class wq {
 public:
   wq();
@@ -187,6 +189,9 @@ wq::pop(int c)
 inline work*
 wq::steal(int c)
 {
+  if (!wq_steal_others && (c != mycpuid()))
+    return 0;
+
   struct wqueue *q = &q_[c];
   work *w;
   int i;

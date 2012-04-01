@@ -14,6 +14,7 @@
 #include "cpu.hh"
 #include "wq.hh"
 #include "sperf.hh"
+#include "kmtrace.hh"
 
 #define BRK (USERTOP >> 1)
 
@@ -149,7 +150,7 @@ exec_cleanup(vmap *oldvmap, uwq *olduwq)
 }
 
 int
-exec(const char *path, char **argv)
+exec(const char *path, char **argv, void *ascopev)
 {
   ANON_REGION(__func__, &perfgroup);
   struct inode *ip = nullptr;
@@ -167,10 +168,15 @@ exec(const char *path, char **argv)
 
   myproc()->exec_cpuid_ = mycpuid();
 
+  mt_ascope *ascope = (mt_ascope*) ascopev;
+  ascope->close();
   myproc()->in_exec_ = 1;
   yield();
   myproc()->in_exec_ = 0;
-  
+  ascope->open("sys_exec2(%s)", path);
+
+  myproc()->run_cpuid_ = mycpuid();
+
   if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
 

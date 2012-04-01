@@ -449,7 +449,7 @@ sys_exec(const char *upath, u64 uargv)
       goto clean;
   }
   argv[i] = 0;
-  r = exec(path, argv);
+  r = exec(path, argv, &ascope);
 clean:
   for (i=i-i; i >= 0; i--)
     kmfree(argv[i], len);
