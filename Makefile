@@ -51,10 +51,15 @@ $(O)/%.o: %.c
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
 
-$(O)/%.o: %.cc
+$(O)/%.S: %.cc
 	@echo "  CXX    $@"
 	$(Q)mkdir -p $(@D)
-	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(Q)$(CXX) $(CXXFLAGS) -S -o $@ $<
+
+$(O)/%.o: $(O)/%.S
+	@echo "  AS     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
 
 $(O)/%.o: %.S
 	@echo "  CC     $@"
@@ -70,7 +75,7 @@ $(O)/fs.img: $(O)/tools/mkfs README $(UPROGS)
 	@echo "  MKFS   $@"
 	$(Q)$(O)/tools/mkfs $@ README $(UPROGS)
 
-.PRECIOUS: $(O)/%.o
+.PRECIOUS: $(O)/%.o $(O)/%.S
 .PHONY: clean qemu gdb rsync
 
 ##

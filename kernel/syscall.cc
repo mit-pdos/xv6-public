@@ -9,6 +9,7 @@
 #include "syscall.h"
 #include "cpu.hh"
 #include "kmtrace.hh"
+#include "errno.h"
 
 extern "C" int __uaccess_mem(void* dst, const void* src, u64 size);
 extern "C" int __uaccess_str(char* dst, const char* src, u64 size);
@@ -83,6 +84,7 @@ syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
   u64 r;
 
   mt_ascope ascope("syscall(%lx,%lx,%lx,%lx,%lx,%lx)", num, a0, a1, a2, a3, a4);
+ retry:
   if(num < SYS_ncount && syscalls[num]) {
     mtstart(syscalls[num], myproc());
     mtrec();
@@ -95,5 +97,7 @@ syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
     r = -1;
   }
 
+  if (r == E_RETRY)
+    goto retry;
   return r;
 }
