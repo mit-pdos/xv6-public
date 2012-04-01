@@ -145,6 +145,8 @@ class mt_ascope
 {
 public:
   explicit mt_ascope(const char *fmt, ...) {}
+  void open(const char *fmt, ...) {}
+  void close() {}
 };
 #define mtreadavar(fmt, ...) do { } while (0)
 #define mtwriteavar(fmt, ...) do { } while (0)
