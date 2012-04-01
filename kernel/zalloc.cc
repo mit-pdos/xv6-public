@@ -4,34 +4,110 @@
 #include "percpu.hh"
 #include "wq.hh"
 #include "kalloc.hh"
+#include "cpputil.hh"
 
-extern "C" void clear_page(void*);
+extern "C" void zpage(void*);
+extern "C" void zrun_nc(run*);
 
 struct zallocator {
   run*   run;
+  kmem   kmem;
   wframe frame;
+
+  void  init(int);
+  char* alloc(const char*);
+  void  free(char*);
+  void  tryrefill();
+};
+percpu<zallocator> z_;
+
+struct zwork : public work {
+  zwork(wframe* frame, zallocator* zer)
+    : frame_(frame), zer_(zer)
+  {
+    frame_->inc();
+  }
+
+  virtual void run() {
+    for (int i = 0; i < 32; i++) {
+      struct run* r = (struct run*)kalloc("zpage");
+      if (r == nullptr)
+        break;
+      zrun_nc(r);
+      zer_->kmem.free(r);
+    }
+    frame_->dec();
+    delete this;
+  }
+
+  wframe* frame_;
+  zallocator* zer_;
+
+  NEW_DELETE_OPS(zwork);
 };
 
-percpu<zallocator> z_;
+//
+// zallocator
+//
+void
+zallocator::tryrefill(void)
+{
+  if (kmem.nfree < 16 && frame.zero()) {
+    zwork* w = new zwork(&frame, this);
+    if (wq_push(w) < 0)
+      delete w;
+  }
+}
+
+void
+zallocator::init(int c)
+{
+  frame.clear();
+  kmem.name[0] = (char) c + '0';
+  safestrcpy(kmem.name+1, "zmem", MAXNAME-1);
+  kmem.size = PGSIZE;
+}
+
+char*
+zallocator::alloc(const char* name)
+{
+  char* p;
+
+  p = (char*) kmem.alloc(name);
+  if (p == nullptr) {
+    p = kalloc(name);
+    if (p != nullptr)
+      zpage(p);
+  }
+  tryrefill();
+  return p;
+}
+
+void
+zallocator::free(char* p)
+{
+  if (0) 
+    for (int i = 0; i < 4096; i++)
+      assert(p[i] == 0);
+
+  kmem.free((struct run*)p);
+}
 
 char*
 zalloc(const char* name)
 {
-  char* p = kalloc(name);
-  if (p)
-    clear_page(p);
-  return p;
+  return z_->alloc(name);
 }
 
 void
 zfree(char* p)
 {
-  kfree(p);
+  z_->free(p);
 }
 
 void
 initz(void)
 {
-  for (int i = 0; i < NCPU; i++)
-    z_[i].frame.clear();
+  for (int c = 0; c < NCPU; c++)
+    z_[c].init(c);
 }

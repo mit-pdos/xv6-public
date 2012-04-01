@@ -22,6 +22,7 @@ void initnmi(void);
 void inittrap(void);
 void initseg(void);
 void initkalloc(u64 mbaddr);
+void initz(void);
 void initrcu(void);
 void initproc(void);
 void initbio(void);
@@ -107,6 +108,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   inittrap();
   initlapic();
   initkalloc(mbaddr);
+  initz();
   initproc();      // process table
   initsched();     // scheduler run queues
   initidle();

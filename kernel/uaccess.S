@@ -48,10 +48,17 @@ __fetch_end:
         movl $0, PROC_UACCESS(%r11)
         ret
 
-.globl clear_page
+.globl zpage
 .align 8
-clear_page:
+zpage:
         movl $4096/8,%ecx
 	xorl %eax,%eax
 	rep stosq
 	ret
+
+// XXX(sbw) should skip first cache line, prefetchnt, then zero
+.globl zrun_nc
+.align 8
+zrun_nc:
+        jmp zpage
+        
