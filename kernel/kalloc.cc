@@ -114,9 +114,11 @@ pgalloc(void)
 run*
 kmem::alloc(const char* name)
 {
+  run* r;
+
   for (;;) {
     auto headval = freelist.load();
-    run* r = headval.ptr();
+    r = headval.ptr();
     if (!r)
       return nullptr;
     
@@ -131,7 +133,7 @@ kmem::alloc(const char* name)
   }
 
   if (name)
-    mtlabel(mtrace_label_block, r, m->size, name, strlen(name));
+    mtlabel(mtrace_label_block, r, size, name, strlen(name));
 }
 
 void
