@@ -128,12 +128,11 @@ kmem::alloc(const char* name)
         panic("kmem:alloc: aba race %p %p %p\n",
               r, r->next, nxt);
       nfree--;
+      if (name)
+        mtlabel(mtrace_label_block, r, size, name, strlen(name));
       return r;
     }
   }
-
-  if (name)
-    mtlabel(mtrace_label_block, r, size, name, strlen(name));
 }
 
 void
