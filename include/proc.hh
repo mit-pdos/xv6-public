@@ -83,6 +83,7 @@ struct proc : public rcu_freed {
   int run_cpuid_;
   int in_exec_;
   int uaccess_;
+  u8 __cxa_eh_global[16];
 
   static proc* alloc();
   void         set_state(procstate_t s);

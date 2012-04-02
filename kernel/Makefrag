@@ -51,22 +51,42 @@ OBJS = \
 	wqlib.o \
 	script.o \
         zalloc.o \
-	incbin.o
+	incbin.o \
+	gccsup/eh_personality.o \
+	gccsup/eh_catch.o \
+	gccsup/eh_throw.o \
+	gccsup/eh_call.o \
+	gccsup/eh_exception.o \
+	gccsup/eh_alloc.o \
+	gccsup/eh_terminate.o \
+	gccsup/tinfo.o \
+	gccsup/class_type_info.o \
+	gccsup/si_class_type_info.o \
+	gccsup/vmi_class_type_info.o \
+	gccsup/fundamental_type_info.o \
+	gccsup/pointer_type_info.o \
+	gccsup/pbase_type_info.o \
+
 OBJS := $(addprefix $(O)/kernel/, $(OBJS))
 
 KERN = $(O)/kernel.elf
 ALL += $(KERN)
 
 $(O)/kernel/%.o: CFLAGS+=-mcmodel=kernel -DXV6_KERNEL
-$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel -DXV6_KERNEL -fno-exceptions
+$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel -DXV6_KERNEL
 
 $(KERN): $(O)/kernel/boot.o $(OBJS) $(LDEPS) kernel/kernel.ld
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(LD) $(LDFLAGS) -T kernel/kernel.ld -z max-page-size=4096 -e start \
-		-o $@ $(O)/kernel/boot.o $(OBJS) -L$(O) $(LFLAGS)
-                # $(shell $(CC) -print-file-name=libgcc_eh.a) \
-                # $(shell $(CC) -print-file-name=libsupc++.a)
+		-o $@ $(O)/kernel/boot.o $(OBJS) -L$(O) $(LFLAGS) \
+		$(shell $(CC) -print-file-name=libgcc_eh.a)
+
+LIBSUPCPP := $(shell $(CC) -print-file-name=libsupc++.a)
+$(O)/kernel/gccsup/%: $(LIBSUPCPP)
+	@echo "  AR     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)( cd $(O)/kernel/gccsup && ar x $(LIBSUPCPP) $(@F) )
 
 $(O)/kernel/%.o: lib/%.cc
 	@echo "  CXX    $@"
@@ -99,3 +119,5 @@ $(O)/kernel/uaccess.o: $(O)/include/asmdefines.h
 
 .PRECIOUS: $(O)/kernel/%.o
 -include $(O)/kernel/*.d
+
+# vim: set noexpandtab:

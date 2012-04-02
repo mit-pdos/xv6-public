@@ -32,7 +32,7 @@ COMFLAGS  = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) -DXV6 \
 	    -mno-sse -mcx16 -mno-red-zone $(INCLUDES)
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector) -nostdinc -I$(shell $(CC) -print-file-name=include)
 CFLAGS   := $(COMFLAGS) -std=c99 $(CFLAGS)
-CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -fno-rtti -fcheck-new -nostdinc++ $(CXXFLAGS)
+CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -nostdinc++ $(CXXFLAGS)
 ASFLAGS   = -Iinclude -I$(O)/include -m64 -gdwarf-2 -MD -DHW_$(HW) -include param.h
 LDFLAGS   = -m elf_x86_64
 

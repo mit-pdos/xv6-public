@@ -54,6 +54,7 @@ proc::proc(int npid) :
   memset(&runqlink, 0, sizeof(runqlink));
   memset(&cv_waiters, 0, sizeof(cv_waiters));
   memset(&cv_sleep, 0, sizeof(cv_sleep));
+  memset(__cxa_eh_global, 0, sizeof(__cxa_eh_global));
 }
 
 proc::~proc(void)

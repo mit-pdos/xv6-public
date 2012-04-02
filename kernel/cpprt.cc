@@ -3,21 +3,38 @@
 #include "cpputil.hh"
 #include "spinlock.h"
 #include "amd64.h"
+#include "condvar.h"
+#include "proc.hh"
+#include "cpu.hh"
 
-void *
-operator new[](unsigned long nbytes)
+void*
+operator new(unsigned long nbytes)
 {
-  u64 *x = (u64*) kmalloc(nbytes + sizeof(u64), "array");
-  *x = nbytes + sizeof(u64);
+  u64* x = (u64*) kmalloc(nbytes + sizeof(u64), "cpprt new");
+  *x = nbytes;
   return x+1;
 }
 
 void
-operator delete[](void *p)
+operator delete(void* p)
 {
-  u64 *x = (u64*) p;
-  x--;
-  kmfree(x, *x);
+  u64* x = (u64*) p;
+  kmfree(x-1, x[-1] + sizeof(u64));
+}
+
+void*
+operator new[](unsigned long nbytes)
+{
+  u64* x = (u64*) kmalloc(nbytes + sizeof(u64), "array");
+  *x = nbytes;
+  return x+1;
+}
+
+void
+operator delete[](void* p)
+{
+  u64* x = (u64*) p;
+  kmfree(x-1, x[-1] + sizeof(u64));
 }
 
 void
@@ -26,12 +43,44 @@ __cxa_pure_virtual(void)
   panic("__cxa_pure_virtual");
 }
 
-// Ugh: libsupc++ calls syscall(SYS_futex, ...)
-extern "C" u64 syscall(void);
-u64
-syscall(void)
+int
+__cxa_guard_acquire(s64 *guard)
 {
-  return 0;
+  volatile u8 *x = (u8*) guard;
+  volatile u32 *l = (u32*) (x+4);
+
+  pushcli();
+  while (xchg32(l, 1) != 0)
+    ; /* spin */
+
+  if (*x) {
+    xchg32(l, 0);
+    popcli();
+    return 0;
+  }
+  return 1;
+}
+
+void
+__cxa_guard_release(s64 *guard)
+{
+  volatile u8 *x = (u8*) guard;
+  volatile u32 *l = (u32*) (x+4);
+
+  *x = 1;
+  __sync_synchronize();
+  xchg32(l, 0);
+  popcli();
+}
+
+void
+__cxa_guard_abort(s64 *guard)
+{
+  volatile u8 *x = (u8*) guard;
+  volatile u32 *l = (u32*) (x+4);
+
+  xchg32(l, 0);
+  popcli();
 }
 
 int
@@ -40,10 +89,18 @@ __cxa_atexit(void (*f)(void*), void *p, void *d)
   return 0;
 }
 
+extern "C" void abort(void);
+void
+abort(void)
+{
+  panic("abort");
+}
+
 void *__dso_handle;
-std::ostream std::cout;
 
 namespace std {
+
+std::ostream cout;
 
 template<>
 u128
@@ -70,12 +127,10 @@ atomic<u128>::compare_exchange_weak(u128 &__i1, u128 i2, memory_order __m)
 
 };
 
-extern "C" void abort(void);
-void
-abort(void)
-{
-  panic("abort");
-}
+namespace __cxxabiv1 {
+void (*__terminate_handler)() = abort;
+void (*__unexpected_handler)() = abort;
+};
 
 extern "C" void* malloc(size_t);
 void*
@@ -91,7 +146,7 @@ void
 free(void* vp)
 {
   u64* p = (u64*) vp;
-  kmfree(vp, p[-1]);
+  kmfree(p-1, p[-1]+8);
 }
 
 extern "C" void* realloc(void*, size_t);
@@ -164,4 +219,18 @@ fputs(const char* s, int stream)
 {
   cprintf("%s", s);
   return 0;
+}
+
+extern "C" void* __cxa_get_globals(void);
+void*
+__cxa_get_globals(void)
+{
+  return myproc()->__cxa_eh_global;
+}
+
+extern "C" void* __cxa_get_globals_fast(void);
+void*
+__cxa_get_globals_fast(void)
+{
+  return myproc()->__cxa_eh_global;
 }
