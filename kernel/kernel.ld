@@ -4,9 +4,12 @@ ENTRY(xxx)
 
 SECTIONS
 {
-	. = 0xFFFFFFFFC0100000;
+        /* Skip one page to leave room for ELF headers.
+         * See multiboot_header and dl_iterate_phdr.
+         */
+	. = 0xFFFFFFFFC0101000;
 	PROVIDE(text = .);
-	.text : AT(0x100000) {
+	.text : AT(0x101000) {
 		*(.text .stub .text.* .gnu.linkonce.t.*)
 	}
 	.rodata : {

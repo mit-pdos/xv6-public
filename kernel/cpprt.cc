@@ -6,6 +6,7 @@
 #include "condvar.h"
 #include "proc.hh"
 #include "cpu.hh"
+#include "elf.hh"
 
 void*
 operator new(unsigned long nbytes)
@@ -159,11 +160,34 @@ free(void* vp)
   kmfree(p-1, p[-1]+8);
 }
 
-extern "C" int dl_iterate_phdr(void);
+struct dl_phdr_info {
+  Elf64_Addr dlpi_addr;
+  const char *dlpi_name;
+  const struct proghdr *dlpi_phdr;
+  Elf64_Half dlpi_phnum;
+  unsigned long long int dlpi_adds;
+  unsigned long long int dlpi_subs;
+};
+
+extern "C" int dl_iterate_phdr(int (*cb) (struct dl_phdr_info *info,
+                                          size_t size, void *data),
+                               void *data);
 int
-dl_iterate_phdr(void)
+dl_iterate_phdr(int (*cb) (struct dl_phdr_info *info, size_t size, void *data),
+                void *data)
 {
-  return -1;
+  extern char multiboot_header[];
+  elfhdr *eh = (elfhdr*) &multiboot_header[-0x1000];
+  assert(eh->magic == ELF_MAGIC);
+
+  struct dl_phdr_info info;
+  info.dlpi_addr = 0;
+  info.dlpi_name = "kernel";
+  info.dlpi_phdr = (proghdr*) (((char*) eh) + eh->phoff);
+  info.dlpi_phnum = eh->phnum;
+  info.dlpi_adds = 0;
+  info.dlpi_subs = 0;
+  return cb(&info, sizeof(struct dl_phdr_info), data);
 }
 
 extern "C" void __stack_chk_fail(void);
