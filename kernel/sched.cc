@@ -19,6 +19,7 @@ enum { steal_nonexec = 1 };
 struct runq {
   STAILQ_HEAD(queue, proc) q;
   struct spinlock lock;
+  volatile u64 len __mpalign__;
   __padout__;
 };
 
@@ -119,6 +120,7 @@ addrun(struct proc *p)
   acquire(&q->lock);
   STAILQ_INSERT_HEAD(&q->q, p, runqlink);
   p->runq = q;
+  q->len++;
   release(&q->lock);
 }
 
@@ -131,6 +133,7 @@ delrun(struct proc *p)
   q = p->runq;
   acquire(&q->lock);
   STAILQ_REMOVE(&q->q, p, proc, runqlink);
+  q->len--;
   release(&q->lock);
 }
 
@@ -147,6 +150,9 @@ steal(void)
       struct runq *q = &runq[(i+mycpu()->id) % ncpu];
       struct proc *p;
 
+      if (q->len == 0)
+        continue;
+
       // XXX(sbw) Look for a process to steal.  Acquiring q->lock
       // then p->lock can result in deadlock.  So we acquire
       // q->lock, scan for a process, drop q->lock, acquire p->lock,
@@ -160,6 +166,7 @@ steal(void)
             p->curcycles != 0 && p->curcycles > VICTIMAGE)
         {
           STAILQ_REMOVE(&q->q, p, proc, runqlink);
+          q->len--;
           steal = p;
           break;
         }
@@ -201,8 +208,10 @@ schednext(void)
   q = &runq[mycpu()->id];
   acquire(&q->lock);
   p = STAILQ_LAST(&q->q, proc, runqlink);
-  if (p)
+  if (p) {
     STAILQ_REMOVE(&q->q, p, proc, runqlink);
+    q->len--;
+  }
   release(&q->lock);
   popcli();
   return p;
@@ -216,6 +225,7 @@ initsched(void)
   for (i = 0; i < NCPU; i++) {
     initlock(&runq[i].lock, "runq", LOCKSTAT_SCHED);
     STAILQ_INIT(&runq[i].q);
+    runq[i].len = 0;
   }
 }
 
