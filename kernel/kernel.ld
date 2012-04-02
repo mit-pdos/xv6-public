@@ -19,10 +19,13 @@ SECTIONS
 	}
 	PROVIDE(eprof = .);
 	. = ALIGN(0x1000);
-        .got : { *(.got) *(.igot) }
-        .got.plt : { *(.got.plt)  *(.igot.plt) }
 	.data : {
 		*(.data .data.* .gnu.linkonce.d.*)
+                *(.got) *(.igot)
+                *(.got.plt)  *(.igot.plt)
+                *(.eh_frame_hdr)
+                *(.eh_frame)
+                *(.gcc_except_table .gcc_except_table.*)
 	}
 	PROVIDE(edata = .);
 	.bss : {
