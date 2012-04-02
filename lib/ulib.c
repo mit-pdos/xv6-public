@@ -146,6 +146,17 @@ memmove(void *vdst, const void *vsrc, size_t n)
 }
 
 int
+memcmp(const void* s1, const void* s2, size_t n)
+{
+  const u8* p1 = s1;
+  const u8* p2 = s2;
+  for (size_t i = 0; i < n; i++)
+    if (p1[i] != p2[i])
+      return p1[i] - p2[i];
+  return 0;
+}
+
+int
 open(const char *path, int omode)
 {
   return openat(AT_FDCWD, path, omode);
