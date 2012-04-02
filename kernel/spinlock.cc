@@ -26,7 +26,7 @@ klockstat::operator new(unsigned long nbytes)
   assert(nbytes == sizeof(klockstat));
   void* p = kmalloc(sizeof(klockstat), "klockstat");
   if (!p)
-    throw std::bad_alloc();
+    throw_bad_alloc();
   return p;
 }
 

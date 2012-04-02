@@ -82,9 +82,9 @@ $(O)/kernel/%.o: CFLAGS+=-mcmodel=kernel -DXV6_KERNEL
 $(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel -DXV6_KERNEL
 
 ifeq ($(EXCEPTIONS),y)
-$(O)/kernel/%.o: CXXFLAGS+=-fnothrow-opt -Wnoexcept
+$(O)/kernel/%.o: CXXFLAGS+=-fnothrow-opt -Wnoexcept -DEXCEPTIONS=1
 else
-$(O)/kernel/%.o: CXXFLAGS+=-fno-exceptions -fno-rtti
+$(O)/kernel/%.o: CXXFLAGS+=-fno-exceptions -fno-rtti -DEXCEPTIONS=0
 endif
 
 $(KERN): $(O)/kernel/boot.o $(OBJS) $(LDEPS) kernel/kernel.ld

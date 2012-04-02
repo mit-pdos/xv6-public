@@ -139,7 +139,7 @@ extern void *__dso_handle;
     assert(nbytes == sizeof(classname));                            \
     void* p = kmalloc(sizeof(classname), #classname);               \
     if (p == nullptr)                                               \
-      throw std::bad_alloc();                                       \
+      throw_bad_alloc();                                            \
     return p;                                                       \
   }                                                                 \
                                                                     \
@@ -174,4 +174,14 @@ scoped_cleanup_obj<T>
 scoped_cleanup(const T& h)
 {
   return scoped_cleanup_obj<T>(h);
+}
+
+static void inline
+throw_bad_alloc()
+{
+#if EXCEPTIONS
+  throw std::bad_alloc();
+#else
+  panic("bad alloc");
+#endif
 }
