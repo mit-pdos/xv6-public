@@ -72,7 +72,11 @@ initpg(void)
 
   while (va < KBASEEND) {
     auto pdp = descend(&kpml4, va, 0, 1, 3);
+    assert(pdp);
+
     auto pd = descend(pdp, va, 0, 1, 2);
+    assert(pd);
+
     atomic<pme_t> *sp = &pd->e[PX(1,va)];
     u64 flags = PTE_W | PTE_P | PTE_PS | PTE_NX;
     *sp = pa | flags;

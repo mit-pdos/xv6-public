@@ -203,6 +203,12 @@ void gc_dumpstat(void)
   }
 }
 
+void
+gc_wakeup(void)
+{
+  for (int i = 0; i < NCPU; i++)
+    cv_wakeup(&gc_state[i].cv);
+}
 
 static void
 gc_worker(void *x)

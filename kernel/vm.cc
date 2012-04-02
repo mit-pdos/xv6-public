@@ -225,6 +225,7 @@ vmap::vmap() :
     ksfree(slab_kshared, kshared);
   if (pml4)
     freevm(pml4);
+  throw std::bad_alloc();
 }
 
 vmap::~vmap()
@@ -647,6 +648,8 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
       return vmap->pagefault(va, err);
     } catch (retryable& e) {
       cprintf("%d: pagefault retry\n", myproc()->pid);
+      gc_wakeup();
+      yield();
     }
   }
 }
