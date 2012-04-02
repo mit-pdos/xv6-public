@@ -58,13 +58,15 @@ KERN = $(O)/kernel.elf
 ALL += $(KERN)
 
 $(O)/kernel/%.o: CFLAGS+=-mcmodel=kernel -DXV6_KERNEL
-$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel -DXV6_KERNEL
+$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel -DXV6_KERNEL -fno-exceptions
 
 $(KERN): $(O)/kernel/boot.o $(OBJS) $(LDEPS) kernel/kernel.ld
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(LD) $(LDFLAGS) -T kernel/kernel.ld -z max-page-size=4096 -e start \
 		-o $@ $(O)/kernel/boot.o $(OBJS) -L$(O) $(LFLAGS)
+                # $(shell $(CC) -print-file-name=libgcc_eh.a) \
+                # $(shell $(CC) -print-file-name=libsupc++.a)
 
 $(O)/kernel/%.o: lib/%.cc
 	@echo "  CXX    $@"

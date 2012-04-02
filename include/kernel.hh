@@ -219,7 +219,7 @@ char*           safestrcpy(char*, const char*, size_t);
 extern "C" unsigned int strlen(const char*);
 int             strncmp(const char*, const char*, size_t);
 char*           strncpy(char*, const char*, size_t);
-int             strcmp(const char *p, const char *q);
+extern "C" int  strcmp(const char *p, const char *q);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
