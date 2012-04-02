@@ -109,3 +109,14 @@ initmalloc(void)
 {
   initlock(&lock);
 }
+
+extern "C" void* realloc(void* ap, size_t nbytes);
+void*
+realloc(void* ap, size_t nbytes)
+{
+  Header *bp = (header*) ap - 1;
+  void* n = malloc(nbytes);
+  memcpy(n, ap, bp->s.size);
+  free(ap);
+  return n;
+}

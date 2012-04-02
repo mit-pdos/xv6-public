@@ -1,3 +1,5 @@
+#include <stdarg.h>
+
 BEGIN_DECLS
 struct stat;
 struct ipcmsg;
@@ -61,6 +63,7 @@ void forkt_setup(u64 pid);
 void printf(const char*, ...);
 void fprintf(int, const char*, ...);
 void snprintf(char *buf, unsigned int n, const char *fmt, ...);
+void vsnprintf(char *buf, u32 n, const char *fmt, va_list ap);
 void die(const char* errstr, ...) __attribute__((noreturn));
 #define assert(c) if (!(c)) { fprintf(2, "%s:%d: ", __FILE__, __LINE__); die("assertion failure"); }
 
