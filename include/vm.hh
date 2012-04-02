@@ -32,7 +32,7 @@ struct vmnode {
   void decref();
   void incref();
   u64 ref();
-  int allocall(bool zero = true);
+  void allocall(bool zero = true);
   int allocpg(int idx, bool zero = true);
   int loadall();
   int loadpg(off_t off);

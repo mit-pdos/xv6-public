@@ -33,7 +33,7 @@ vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
     panic("vmnode too big\n");
   memset(page, 0, npg * sizeof(page[0]));
   if (type == EAGER && ip) {
-    assert(allocall(false) == 0);
+    allocall(false);
     assert(loadall() == 0);
   }
 }
@@ -94,16 +94,12 @@ vmnode::allocpg(int idx, bool zero)
   return 0;
 }
 
-int
+void
 vmnode::allocall(bool zero)
 {
-  for(u64 i = 0; i < npages; i++) {
-    if (allocpg(i, zero) < 0) {
-      cprintf("allocall: OOM -- leaving half-filled vmnode\n");
-      return -1;
-    }
-  }
-  return 0;
+  for(u64 i = 0; i < npages; i++)
+    if (allocpg(i, zero) < 0)
+      throw std::bad_alloc();
 }
 
 vmnode *
@@ -115,15 +111,14 @@ vmnode::copy()
   if (empty)
     return c;
 
-  if (c->allocall(false) < 0) {
-    cprintf("vmn_copy: out of memory\n");
-    delete c;
-    throw std::bad_alloc();
-  }
+  auto cleanup = scoped_cleanup([&c]() { delete c; });
+  c->allocall(false);
+
   for(u64 i = 0; i < npages; i++)
     if (page[i])
       memmove(c->page[i], page[i], PGSIZE);
 
+  cleanup.dismiss();
   return c;
 }
 
@@ -602,10 +597,8 @@ vmap::pagefault(uptr va, u32 err)
     // XXX(sbw) you might think we don't need to zero if ONDEMAND;
     // however, our vmnode might include not backed by a file
     // (e.g. the bss section of an ELF segment)
-    if (m->n->allocpg(npg, true) < 0) {
-      cprintf("pagefault: couldn't allocate pages\n");
-      return -1;
-    }
+    if (m->n->allocpg(npg, true) < 0)
+      throw std::bad_alloc();
 
   // XXX(sbw) If m->n->page[npg] has contents (e.g. was loaded in
   // a parent before fork) we shouldn't call loadpg
