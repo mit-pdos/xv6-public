@@ -354,19 +354,18 @@ fork(int flags)
   if((np = proc::alloc()) == 0)
     throw std::bad_alloc();
 
-  // XXX use a scoped cleanup handler to do xnspid->remove & freeproc
+  auto proc_cleanup = scoped_cleanup([&np]() {
+      if (!xnspid->remove(np->pid, &np))
+        panic("fork: ns_remove");
+      freeproc(np);
+    });
 
   if(flags & FORK_SHARE_VMAP) {
     np->vmap = myproc()->vmap;
     np->vmap->ref++;
   } else {
     // Copy process state from p.
-    if((np->vmap = myproc()->vmap->copy(cow)) == 0){
-      if (!xnspid->remove(np->pid, &np))
-	panic("fork: ns_remove");
-      freeproc(np);
-      throw std::bad_alloc();
-    }
+    np->vmap = myproc()->vmap->copy(cow);
   }
 
   np->parent = myproc();
@@ -383,11 +382,6 @@ fork(int flags)
     np->ftable = myproc()->ftable;
   } else {
     np->ftable = myproc()->ftable->copy();
-    if (np->ftable == nullptr) {
-      // XXX(sbw) leaking?
-      freeproc(np);
-      throw std::bad_alloc();
-    }
   }
 
   np->cwd = idup(myproc()->cwd);
@@ -402,6 +396,7 @@ fork(int flags)
   addrun(np);
   release(&np->lock);
 
+  proc_cleanup.dismiss();
   return pid;
 }
 
@@ -412,8 +407,6 @@ finishproc(struct proc *p)
     p->vmap->decref();
   if (p->uwq != nullptr)
     p->uwq->dec();
-  ksfree(slab_stack, p->kstack);
-  p->kstack = 0;
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;

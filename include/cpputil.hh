@@ -152,3 +152,26 @@ extern void *__dso_handle;
     kmfree(p, sizeof(classname));                                   \
   }
 
+template<class T>
+class scoped_cleanup_obj {
+ private:
+  T handler_;
+  bool active_;
+
+ public:
+  scoped_cleanup_obj(const T& h) : handler_(h), active_(true) {};
+  ~scoped_cleanup_obj() { if (active_) handler_(); }
+  void dismiss() { active_ = false; }
+
+  void operator=(const scoped_cleanup_obj&) = delete;
+  scoped_cleanup_obj(const scoped_cleanup_obj&) = delete;
+  scoped_cleanup_obj(scoped_cleanup_obj&& other) :
+    handler_(other.handler_), active_(other.active_) { other.dismiss(); }
+};
+
+template<class T>
+scoped_cleanup_obj<T>
+scoped_cleanup(const T& h)
+{
+  return scoped_cleanup_obj<T>(h);
+}

@@ -8,8 +8,6 @@ public:
 
   filetable* copy() {
     filetable* t = alloc();
-    if (t == nullptr)
-      return nullptr;
 
     for(int fd = 0; fd < NOFILE; fd++) {
       sref<file> f;
