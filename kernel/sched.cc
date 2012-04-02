@@ -11,6 +11,7 @@
 #include "kmtrace.hh"
 #include "sched.hh"
 #include "vm.hh"
+#include "wq.hh"
 
 enum { sched_debug = 0 };
 enum { steal_nonexec = 1 };
@@ -30,6 +31,7 @@ post_swtch(void)
       mycpu()->prev != idleproc())
     addrun(mycpu()->prev);
   release(&mycpu()->prev->lock);
+  wqcrit_trywork();
 }
 
 void

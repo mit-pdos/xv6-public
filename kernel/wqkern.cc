@@ -33,6 +33,13 @@ wq_push(work *w)
   return wq_->push(w, mycpuid());
 }
 
+void
+wqcrit_trywork(void)
+{
+  while (wqcrit_->trywork(false))
+    ;
+}
+
 int
 wqcrit_push(work *w, int c)
 {

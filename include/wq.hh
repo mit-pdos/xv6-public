@@ -86,6 +86,7 @@ void  xfreework(void* ptr, unsigned long nbytes);
 
 #if defined(XV6_KERNEL)
 int   wqcrit_push(work* w, int c);
+void  wqcrit_trywork(void);
 #endif
 
 #if defined(XV6_USER)
