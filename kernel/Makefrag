@@ -51,6 +51,10 @@ OBJS = \
 	wqlib.o \
 	script.o \
         zalloc.o \
+	incbin.o
+
+ifeq ($(EXCEPTIONS),y)
+OBJS += \
 	gcceh/unwind-dw2.o \
 	gcceh/unwind-dw2-fde-glibc.o \
 	gccsup/eh_personality.o \
@@ -66,8 +70,8 @@ OBJS = \
 	gccsup/vmi_class_type_info.o \
 	gccsup/fundamental_type_info.o \
 	gccsup/pointer_type_info.o \
-	gccsup/pbase_type_info.o \
-	incbin.o
+	gccsup/pbase_type_info.o
+endif
 
 OBJS := $(addprefix $(O)/kernel/, $(OBJS))
 
@@ -75,7 +79,13 @@ KERN = $(O)/kernel.elf
 ALL += $(KERN)
 
 $(O)/kernel/%.o: CFLAGS+=-mcmodel=kernel -DXV6_KERNEL
-$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel -DXV6_KERNEL -fnothrow-opt -Wnoexcept
+$(O)/kernel/%.o: CXXFLAGS+=-mcmodel=kernel -DXV6_KERNEL
+
+ifeq ($(EXCEPTIONS),y)
+$(O)/kernel/%.o: CXXFLAGS+=-fnothrow-opt -Wnoexcept
+else
+$(O)/kernel/%.o: CXXFLAGS+=-fno-exceptions -fno-rtti
+endif
 
 $(KERN): $(O)/kernel/boot.o $(OBJS) $(LDEPS) kernel/kernel.ld
 	@echo "  LD     $@"
