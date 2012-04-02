@@ -149,6 +149,7 @@ namespace __cxxabiv1 {
 
 static char malloc_buf[65536];
 static std::atomic<size_t> malloc_idx;
+static bool malloc_proc = false;
 
 extern "C" void* malloc(size_t);
 void*
@@ -159,6 +160,12 @@ malloc(size_t n)
     size_t myoff = atomic_fetch_add(&malloc_idx, n);
     assert(myoff + n <= sizeof(malloc_buf));
     return &malloc_buf[myoff];
+  }
+
+  if (malloc_proc) {
+    assert(n <= sizeof(myproc()->exception_buf));
+    assert(cmpxch(&myproc()->exception_inuse, 0, 1));
+    return myproc()->exception_buf;
   }
 
   u64* p = (u64*) kmalloc(n+8, "cpprt malloc");
@@ -172,6 +179,11 @@ free(void* vp)
 {
   if (vp >= malloc_buf && vp < malloc_buf + sizeof(malloc_buf))
     return;
+
+  if (vp == myproc()->exception_buf) {
+    myproc()->exception_inuse = 0;
+    return;
+  }
 
   u64* p = (u64*) vp;
   kmfree(p-1, p[-1]+8);
@@ -217,6 +229,7 @@ initcpprt(void)
     throw 5;
   } catch (int& x) {
     assert(x == 5);
+    malloc_proc = true;
     return;
   }
 

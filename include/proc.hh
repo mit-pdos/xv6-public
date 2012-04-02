@@ -85,6 +85,9 @@ struct proc : public rcu_freed {
   int uaccess_;
   u8 __cxa_eh_global[16];
 
+  std::atomic<int> exception_inuse;
+  u8 exception_buf[256];
+
   static proc* alloc();
   void         set_state(procstate_t s);
   procstate_t  get_state(void) const { return state_; }
