@@ -7,6 +7,7 @@ QEMUSMP	   ?= 8
 QEMUSRC    ?= ../mtrace
 MTRACE	   ?= $(QEMU)
 HW	   ?= qemu
+EXCEPTIONS ?= y
 O  	   = o.$(HW)
 
 ifdef USE_CLANG

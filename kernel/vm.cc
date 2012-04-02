@@ -99,7 +99,7 @@ vmnode::allocall(bool zero)
 {
   for(u64 i = 0; i < npages; i++)
     if (allocpg(i, zero) < 0)
-      throw std::bad_alloc();
+      throw_bad_alloc();
 }
 
 vmnode *
@@ -220,7 +220,7 @@ vmap::vmap() :
     ksfree(slab_kshared, kshared);
   if (pml4)
     freevm(pml4);
-  throw std::bad_alloc();
+  throw_bad_alloc();
 }
 
 vmap::~vmap()
@@ -553,7 +553,7 @@ vmap::pagefault(uptr va, u32 err)
 
   atomic<pme_t> *pte = walkpgdir(pml4, va, 1);
   if (pte == nullptr)
-    throw std::bad_alloc();
+    throw_bad_alloc();
 
  retry:
   pme_t ptev = pte->load();
@@ -596,7 +596,7 @@ vmap::pagefault(uptr va, u32 err)
     // however, our vmnode might include not backed by a file
     // (e.g. the bss section of an ELF segment)
     if (m->n->allocpg(npg, true) < 0)
-      throw std::bad_alloc();
+      throw_bad_alloc();
 
   // XXX(sbw) If m->n->page[npg] has contents (e.g. was loaded in
   // a parent before fork) we shouldn't call loadpg
@@ -635,13 +635,17 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
 #endif
 
   for (;;) {
+#if EXCEPTIONS
     try {
+#endif
       return vmap->pagefault(va, err);
+#if EXCEPTIONS
     } catch (retryable& e) {
       cprintf("%d: pagefault retry\n", myproc()->pid);
       gc_wakeup();
       yield();
     }
+#endif
   }
 }
 

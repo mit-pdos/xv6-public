@@ -221,6 +221,7 @@ extern "C" void __register_frame(u8*);
 void
 initcpprt(void)
 {
+#if EXCEPTIONS
   extern u8 __EH_FRAME_BEGIN__[];
   __register_frame(__EH_FRAME_BEGIN__);
 
@@ -234,4 +235,5 @@ initcpprt(void)
   }
 
   panic("no catch");
+#endif
 }

@@ -352,7 +352,7 @@ fork(int flags)
 
   // Allocate process.
   if((np = proc::alloc()) == 0)
-    throw std::bad_alloc();
+    throw_bad_alloc();
 
   auto proc_cleanup = scoped_cleanup([&np]() {
       if (!xnspid->remove(np->pid, &np))
