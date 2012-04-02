@@ -51,6 +51,8 @@ OBJS = \
 	wqlib.o \
 	script.o \
         zalloc.o \
+	gcceh/unwind-dw2.o \
+	gcceh/unwind-dw2-fde-glibc.o \
 	gccsup/eh_personality.o \
 	gccsup/eh_catch.o \
 	gccsup/eh_throw.o \
@@ -79,14 +81,19 @@ $(KERN): $(O)/kernel/boot.o $(OBJS) $(LDEPS) kernel/kernel.ld
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(LD) $(LDFLAGS) -T kernel/kernel.ld -z max-page-size=4096 -e start \
-		-o $@ $(O)/kernel/boot.o $(OBJS) -L$(O) $(LFLAGS) \
-		$(shell $(CC) -print-file-name=libgcc_eh.a)
+		-o $@ $(O)/kernel/boot.o $(OBJS) -L$(O) $(LFLAGS)
+
+LIBGCCEH := $(shell $(CC) -print-file-name=libgcc_eh.a)
+$(O)/kernel/gcceh/%: $(LIBGCCEH)
+	@echo "  AR     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)( cd $(@D) && ar x $< $(@F) )
 
 LIBSUPCPP := $(shell $(CC) -print-file-name=libsupc++.a)
 $(O)/kernel/gccsup/%: $(LIBSUPCPP)
 	@echo "  AR     $@"
 	$(Q)mkdir -p $(@D)
-	$(Q)( cd $(O)/kernel/gccsup && ar x $(LIBSUPCPP) $(@F) )
+	$(Q)( cd $(@D) && ar x $< $(@F) )
 
 $(O)/kernel/%.o: lib/%.cc
 	@echo "  CXX    $@"
