@@ -31,12 +31,12 @@ multiboot_header:
 	#define flags (1<<16 | 1<<0)
 	.long magic
 	.long flags
-	.long (- magic - flags)               # checksum
-	.long PADDR(multiboot_header)         # header address
-	.long PADDR(multiboot_header)-0x1000  # load address, incl elf headers
-	.long PADDR(edata)                    # load end address
-	.long PADDR(end)                      # bss end address
-	.long PADDR(start)                    # entry address
+	.long (- magic - flags)        # checksum
+	.long PADDR(multiboot_header)  # header address
+	.long PADDR(multiboot_header)  # load address
+	.long PADDR(edata)             # load end address
+	.long PADDR(end)               # bss end address
+	.long PADDR(start)             # entry address
 
 # Entry point jumped to by boot loader.  Running in 32-bit mode.
 # http://www.gnu.org/software/grub/manual/multiboot/multiboot.html#Machine-state
