@@ -99,37 +99,35 @@ abort(void)
 void *__dso_handle;
 
 namespace std {
+  std::ostream cout;
 
-std::ostream cout;
+  template<>
+  u128
+  atomic<u128>::load(memory_order __m) const
+  {
+    __sync_synchronize();
+    u128 v = _M_i;
+    __sync_synchronize();
 
-template<>
-u128
-atomic<u128>::load(memory_order __m) const
-{
-  __sync_synchronize();
-  u128 v = _M_i;
-  __sync_synchronize();
+    return v;
+  }
 
-  return v;
-}
-
-template<>
-bool
-atomic<u128>::compare_exchange_weak(u128 &__i1, u128 i2, memory_order __m)
-{
-  // XXX no __sync_val_compare_and_swap for u128
-  u128 o = __i1;
-  bool ok = __sync_bool_compare_and_swap(&_M_i, o, i2);
-  if (!ok)
-    __i1 = _M_i;
-  return ok;
-}
-
+  template<>
+  bool
+  atomic<u128>::compare_exchange_weak(u128 &__i1, u128 i2, memory_order __m)
+  {
+    // XXX no __sync_val_compare_and_swap for u128
+    u128 o = __i1;
+    bool ok = __sync_bool_compare_and_swap(&_M_i, o, i2);
+    if (!ok)
+      __i1 = _M_i;
+    return ok;
+  }
 };
 
 namespace __cxxabiv1 {
-void (*__terminate_handler)() = abort;
-void (*__unexpected_handler)() = abort;
+  void (*__terminate_handler)() = abort;
+  void (*__unexpected_handler)() = abort;
 };
 
 extern "C" void* malloc(size_t);
@@ -149,17 +147,6 @@ free(void* vp)
   kmfree(p-1, p[-1]+8);
 }
 
-extern "C" void* realloc(void*, size_t);
-void*
-realloc(void* vp, size_t n)
-{
-  u64* p = (u64*) vp;
-  u64* np = (u64*) malloc(n);
-  memcpy(np, p, p[-1]);
-  free(p);
-  return np;
-}
-
 extern "C" int dl_iterate_phdr(void);
 int
 dl_iterate_phdr(void)
@@ -167,58 +154,11 @@ dl_iterate_phdr(void)
   return -1;
 }
 
-extern "C" int __sprintf_chk(char* buf, int flags, size_t n, const char* fmt, ...);
-int
-__sprintf_chk(char* buf, int flags, size_t n, const char* fmt, ...)
-{
-  va_list ap;
-
-  va_start(ap, fmt);
-  vsnprintf(buf, n, fmt, ap);
-  va_end(ap);
-
-  return 0; // XXX
-}
-
 extern "C" void __stack_chk_fail(void);
 void
 __stack_chk_fail(void)
 {
   panic("stack_chk_fail");
-}
-
-extern "C" char* strcpy(char*, const char*);
-char*
-strcpy(char* dst, const char* src)
-{
-  return strncpy(dst, src, __SIZE_MAX__);
-}
-
-// stdio stubs to satisfy libsupc++
-int stderr = 1;
-
-extern "C" int fputc(int c, int stream);
-int
-fputc(int c, int stream)
-{
-  cprintf("%c", (u8) c);
-  return (u8) c;
-}
-
-extern "C" size_t fwrite(const void* buf, size_t n, size_t nmemb, int stream);
-size_t
-fwrite(const void* buf, size_t n, size_t nmemb, int stream)
-{
-  cprintf("%s", (char*) buf);
-  return n;
-}
-
-extern "C" int fputs(const char* s, int stream);
-int
-fputs(const char* s, int stream)
-{
-  cprintf("%s", s);
-  return 0;
 }
 
 extern "C" void* __cxa_get_globals(void);
