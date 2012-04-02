@@ -19,6 +19,12 @@ wq::operator new(unsigned long nbytes)
   return allocwq(nbytes);
 }
 
+void
+wq::operator delete(void* p)
+{
+  freewq(p);
+}
+
 wq::wq(void)
 {
   int i;

@@ -12,6 +12,12 @@ allocwq(unsigned long nbytes)
 }
 
 static inline void
+freewq(void* p)
+{
+  ksfree(slab_wq, p);
+}
+
+static inline void
 wqlock_acquire(wqlock_t *lock)
 {
   acquire(lock);

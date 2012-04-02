@@ -14,6 +14,12 @@ allocwq(unsigned long nbytes)
   return malloc(nbytes);
 }
 
+static inline void
+freewq(void* p)
+{
+  free(p);
+}
+
 static inline uwq_ipcbuf*
 allocipc(void)
 {

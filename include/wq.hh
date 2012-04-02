@@ -52,6 +52,7 @@ public:
   void dump();
 
   static void* operator new(unsigned long);
+  static void operator delete(void*);
 
 private:
   work *steal(int c);
