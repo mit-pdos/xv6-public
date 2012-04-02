@@ -19,6 +19,8 @@ SECTIONS
 	}
 	PROVIDE(eprof = .);
 	. = ALIGN(0x1000);
+        .got : { *(.got) *(.igot) }
+        .got.plt : { *(.got.plt)  *(.igot.plt) }
 	.data : {
 		*(.data .data.* .gnu.linkonce.d.*)
 	}

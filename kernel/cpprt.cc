@@ -96,6 +96,18 @@ abort(void)
   panic("abort");
 }
 
+static void
+cxx_terminate(void)
+{
+  panic("cxx terminate");
+}
+
+static void
+cxx_unexpected(void)
+{
+  panic("cxx unexpected");
+}
+
 void *__dso_handle;
 
 namespace std {
@@ -126,8 +138,8 @@ namespace std {
 };
 
 namespace __cxxabiv1 {
-  void (*__terminate_handler)() = abort;
-  void (*__unexpected_handler)() = abort;
+  void (*__terminate_handler)() = cxx_terminate;
+  void (*__unexpected_handler)() = cxx_unexpected;
 };
 
 extern "C" void* malloc(size_t);

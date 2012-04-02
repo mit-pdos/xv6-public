@@ -51,7 +51,6 @@ OBJS = \
 	wqlib.o \
 	script.o \
         zalloc.o \
-	incbin.o \
 	gccsup/eh_personality.o \
 	gccsup/eh_catch.o \
 	gccsup/eh_throw.o \
@@ -66,6 +65,7 @@ OBJS = \
 	gccsup/fundamental_type_info.o \
 	gccsup/pointer_type_info.o \
 	gccsup/pbase_type_info.o \
+	incbin.o
 
 OBJS := $(addprefix $(O)/kernel/, $(OBJS))
 
