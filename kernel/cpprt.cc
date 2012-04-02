@@ -143,10 +143,20 @@ namespace __cxxabiv1 {
   void (*__unexpected_handler)() = cxx_unexpected;
 };
 
+static char malloc_buf[65536];
+static std::atomic<size_t> malloc_idx;
+
 extern "C" void* malloc(size_t);
 void*
 malloc(size_t n)
 {
+  if (n > PGSIZE) {
+    // libgcc_eh needs to allocate a large chunk of memory once
+    size_t myoff = atomic_fetch_add(&malloc_idx, n);
+    assert(myoff + n <= sizeof(malloc_buf));
+    return &malloc_buf[myoff];
+  }
+
   u64* p = (u64*) kmalloc(n+8, "cpprt malloc");
   *p = n;
   return p+1;
@@ -156,6 +166,9 @@ extern "C" void free(void*);
 void
 free(void* vp)
 {
+  if (vp >= malloc_buf && vp < malloc_buf + sizeof(malloc_buf))
+    return;
+
   u64* p = (u64*) vp;
   kmfree(p-1, p[-1]+8);
 }
@@ -209,4 +222,12 @@ void*
 __cxa_get_globals_fast(void)
 {
   return myproc()->__cxa_eh_global;
+}
+
+extern "C" void __register_frame(u8*);
+void
+initcpprt(void)
+{
+  extern u8 __EH_FRAME_BEGIN__[];
+  __register_frame(__EH_FRAME_BEGIN__);
 }

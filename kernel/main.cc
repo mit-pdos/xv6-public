@@ -37,6 +37,7 @@ void initlockstat(void);
 void initwq(void);
 void initsperf(void);
 void initidle(void);
+void initcpprt(void);
 void idleloop(void);
 
 static volatile int bstate;
@@ -131,6 +132,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   bootothers();    // start other processors
   kpml4.e[0] = 0;  // don't need 1 GB identity mapping anymore
   lcr3(rcr3());
+  initcpprt();
 
   idleloop();
 
