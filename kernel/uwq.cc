@@ -138,6 +138,8 @@ uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc)
     vmap_(vmap), ftable_(ftable), ipc_(ipc),
     uentry_(0), ustack_(UWQSTACK), uref_(0)
 {
+  ftable_->incref();
+  vmap_->incref();
   for (int i = 0; i < NCPU; i++)
     ipc_->len[i].v_ = 0;
 
