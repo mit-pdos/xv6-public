@@ -3,7 +3,7 @@
 #include "user.h"
 
 #define NCHILD 2
-#define NDEPTH 12
+#define NDEPTH 5
 
 void
 forktree(int depth)
