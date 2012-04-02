@@ -50,3 +50,10 @@ wqfree(void *ptr)
   b->next = *block;
   *block = b;
 }
+
+void
+wqallocinit(void)
+{
+  for (int i = 0; i < NCPU; i++)
+    block[i] = nullptr;
+}

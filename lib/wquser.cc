@@ -83,11 +83,15 @@ xfreework(void* ptr, unsigned long nbytes)
 void
 initwq(void)
 {
+  extern void wqallocinit(void);
+
   if (pthread_key_create(&idkey, 0))
     die("wqarch_init: pthread_key_create");
 
   int id = nextid++;
   pthread_setspecific(idkey, (void*)(u64)id);
+
+  wqallocinit();
 
   wq_ = new wq();
   if (wq_ == nullptr)

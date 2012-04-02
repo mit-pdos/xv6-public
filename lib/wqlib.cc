@@ -7,8 +7,6 @@
 #endif
 #include "wq.hh"
 
-enum { wq_steal_others = 1 };
-
 //
 // wq
 //
@@ -118,9 +116,6 @@ wq::pop(int c)
 inline work*
 wq::steal(int c)
 {
-  if (!wq_steal_others && (c != mycpuid()))
-    return 0;
-
   struct wqueue *q = &q_[c];
   work *w;
   int i;
@@ -143,7 +138,7 @@ wq::steal(int c)
 }
 
 int
-wq::trywork(void)
+wq::trywork(bool dosteal)
 {
   work *w;
   u64 i, k;
@@ -156,6 +151,9 @@ wq::trywork(void)
     w->run();
     return 1;
   }
+
+  if (!dosteal)
+    return 0;
 
   for (i = 0; i < NCPU; i++) {
     u64 j = (i+k) % NCPU;

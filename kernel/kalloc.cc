@@ -287,7 +287,7 @@ initkalloc(u64 mbaddr)
 
     strncpy(slabmem[slab_wq][c].name, " wq", MAXNAME);
     slabmem[slab_wq][c].size = PGROUNDUP(wq_size());
-    slabmem[slab_wq][c].ninit = NCPU;
+    slabmem[slab_wq][c].ninit = 2;
 
     strncpy(slabmem[slab_userwq][c].name, " uwq", MAXNAME);
     slabmem[slab_userwq][c].size = USERWQSIZE;
@@ -315,7 +315,6 @@ initkalloc(u64 mbaddr)
 void
 kfree(void *v)
 {
-  verifyfree((char*) v, mykmem()->size);
   kfree_pool(mykmem(), (char*) v);
 }
 
@@ -323,23 +322,4 @@ void
 ksfree(int slab, void *v)
 {
   kfree_pool(slabmem[slab], (char*) v);
-}
-
-void
-verifyfree(char *ptr, u64 nbytes)
-{
-#if VERIFYFREE
-  char *p = ptr;
-  char *e = p + nbytes;
-  for (; p < e; p++) {
-    // Search for pointers in the ptr region
-    u64 x = *(uptr *)p;
-    if ((KBASE < x && x < KBASE+(128ull<<30)) || (KCODE < x)) {
-      struct klockstat *kls = (struct klockstat *) x;
-      if (kls->magic == LOCKSTAT_MAGIC)
-        panic("LOCKSTAT_MAGIC %p(%lu):%p->%p", 
-              ptr, nbytes, p, kls);
-    }
-  }
-#endif
 }
