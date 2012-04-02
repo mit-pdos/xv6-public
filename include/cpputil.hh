@@ -45,6 +45,8 @@ class scoped_acquire {
   void acquire(spinlock *l) { assert(!_l); ::acquire(l); _l = l; }
 };
 
+class retryable {};
+
 namespace std {
   template<class T>
   struct remove_reference
@@ -113,6 +115,8 @@ namespace std {
     s.next_width = sw._n;
     return s;
   }
+
+  class bad_alloc : public retryable {};
 }
 
 /* C++ runtime */
@@ -133,7 +137,10 @@ extern void *__dso_handle;
 #define NEW_DELETE_OPS(classname)                                   \
   static void* operator new(unsigned long nbytes) {                 \
     assert(nbytes == sizeof(classname));                            \
-    return kmalloc(sizeof(classname), #classname);                  \
+    void* p = kmalloc(sizeof(classname), #classname);               \
+    if (p == nullptr)                                               \
+      throw std::bad_alloc();                                       \
+    return p;                                                       \
   }                                                                 \
                                                                     \
   static void* operator new(unsigned long nbytes, classname *buf) { \

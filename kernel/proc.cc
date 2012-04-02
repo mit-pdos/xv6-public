@@ -59,6 +59,8 @@ proc::proc(int npid) :
 
 proc::~proc(void)
 {
+  if (kstack)
+    ksfree(slab_stack, kstack);
   destroylock(&lock);
   destroycondvar(&cv);
 }
@@ -350,7 +352,9 @@ fork(int flags)
 
   // Allocate process.
   if((np = proc::alloc()) == 0)
-    return -1;
+    throw std::bad_alloc();
+
+  // XXX use a scoped cleanup handler to do xnspid->remove & freeproc
 
   if(flags & FORK_SHARE_VMAP) {
     np->vmap = myproc()->vmap;
@@ -358,12 +362,10 @@ fork(int flags)
   } else {
     // Copy process state from p.
     if((np->vmap = myproc()->vmap->copy(cow)) == 0){
-      ksfree(slab_stack, np->kstack);
-      np->kstack = 0;
       if (!xnspid->remove(np->pid, &np))
 	panic("fork: ns_remove");
       freeproc(np);
-      return -1;
+      throw std::bad_alloc();
     }
   }
 
@@ -384,7 +386,7 @@ fork(int flags)
     if (np->ftable == nullptr) {
       // XXX(sbw) leaking?
       freeproc(np);
-      return -1;
+      throw std::bad_alloc();
     }
   }
 

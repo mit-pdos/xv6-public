@@ -112,16 +112,13 @@ vmnode::copy()
   vmnode *c = new vmnode(npages, type,
                          (type==ONDEMAND) ? idup(ip) : 0,
                          offset, sz);
-  if(c == 0)
-    return 0;
-
   if (empty)
     return c;
 
   if (c->allocall(false) < 0) {
     cprintf("vmn_copy: out of memory\n");
     delete c;
-    return 0;
+    throw std::bad_alloc();
   }
   for(u64 i = 0; i < npages; i++)
     if (page[i])
@@ -280,8 +277,6 @@ vmap*
 vmap::copy(int share)
 {
   vmap *nm = new vmap();
-  if(nm == 0)
-    return 0;
 
 #if VM_CRANGE
   for (auto r: cr) {
@@ -318,15 +313,8 @@ vmap::copy(int share)
           });
       }
     } else {
+      // XXX free vmnode copy if vma alloc fails
       ne = new vma(nm, e->vma_start, e->vma_end, PRIVATE, e->n->copy());
-    }
-
-    if (ne == 0)
-      goto err;
-
-    if (ne->n == 0) {
-      delete ne;
-      goto err;
     }
 
 #if VM_CRANGE
@@ -362,12 +350,7 @@ vmap::copy(int share)
   }
 
   nm->brk_ = brk_;
-
   return nm;
-
- err:
-  delete nm;
-  return 0;
 }
 
 // Does any vma overlap start..start+len?
@@ -549,10 +532,6 @@ vmap::pagefault_wcow(vma *m)
   // because other processes may change ref count while this process 
   // is handling wcow.
   struct vmnode *nodecopy = m->n->copy();
-  if (nodecopy == 0) {
-    cprintf("pagefault_wcow: out of mem\n");
-    return -1;
-  }
 
   vma *repl = new vma(this, m->vma_start, m->vma_end, PRIVATE, nodecopy);
 
@@ -663,7 +642,13 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
   mtwriteavar("page:%p.%016x", vmap, PGROUNDDOWN(va));
 #endif
 
-  return vmap->pagefault(va, err);
+  for (;;) {
+    try {
+      return vmap->pagefault(va, err);
+    } catch (retryable& e) {
+      cprintf("%d: pagefault retry\n", myproc()->pid);
+    }
+  }
 }
 
 // Copy len bytes from p to user address va in vmap.

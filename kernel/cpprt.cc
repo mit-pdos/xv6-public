@@ -211,4 +211,14 @@ initcpprt(void)
 {
   extern u8 __EH_FRAME_BEGIN__[];
   __register_frame(__EH_FRAME_BEGIN__);
+
+  // Initialize lazy exception handling data structures
+  try {
+    throw 5;
+  } catch (int& x) {
+    assert(x == 5);
+    return;
+  }
+
+  panic("no catch");
 }
