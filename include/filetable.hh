@@ -42,6 +42,10 @@ public:
     // XXX(sbw) if f->ref_ > 1 the kernel will not actually close 
     // the file when this function returns (i.e. sys_close can return 
     // while the file/pipe/socket is still open).
+    if (fd >= NOFILE) {
+      cprintf("filetable::close: bad fd %u\n", fd);
+      return;
+    }
 
     file* f = ofile_[fd].exchange(nullptr);
     if (f != nullptr)

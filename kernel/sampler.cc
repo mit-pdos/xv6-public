@@ -26,7 +26,6 @@ struct pmu pmu;
 struct pmulog {
   u64 count;
   u64 capacity;
-  u8 idle:1;                    // Currently idle?
   struct pmuevent *event;
   __padout__;
 } __mpalign__;
@@ -72,12 +71,6 @@ sampdump(void)
 }
 
 void
-sampidle(bool b)
-{
-  pmulog[myid()].idle = b;
-}
-
-void
 sampconf(void)
 {
   pushcli();
@@ -112,7 +105,7 @@ samplog(struct trapframe *tf)
 
   e = &l->event[l->count];
 
-  e->idle = l->idle;
+  e->idle = (myproc() == idleproc());
   e->rip = tf->rip;
   getcallerpcs((void*)tf->rbp, e->trace, NELEM(e->trace));
   l->count++;
