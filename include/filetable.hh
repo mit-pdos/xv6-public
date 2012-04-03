@@ -14,7 +14,7 @@ public:
       if (getfile(fd, &f))
         t->ofile_[fd].store(f->dup());
       else
-        t->ofile_[fd] = nullptr;
+        t->ofile_[fd].store(nullptr);
     }
     return t;
   }
@@ -62,7 +62,7 @@ public:
 private:
   filetable() : ref_(1) {
     for(int fd = 0; fd < NOFILE; fd++)
-      ofile_[fd] = nullptr;
+      ofile_[fd].store(nullptr);
   }
 
   ~filetable() {
