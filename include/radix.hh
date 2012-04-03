@@ -78,6 +78,39 @@ struct radix_iterator {
     return r_ != other.r_ || k_ != other.k_; }
 };
 
+struct radix_iterator2 {
+  const radix* r_;
+  u64 k_;
+  // path_[i] is the node at level i. Note that the leaf is at zero
+  // and is radix_elem. The rest are radix_node. For now we assume all
+  // leaves are at level 0. Later we'll steal a bit for them. The root
+  // is path_[radix_levels].
+  void *path_[radix_levels+1];
+
+  radix_iterator2(const radix* r, u64 k);
+
+  radix_iterator2 &operator++() {
+    if (!advance(radix_levels-1)) k_ = ~0ULL;
+    return *this;
+  }
+  radix_elem* operator*() {
+    return (radix_elem*)path_[0];
+  }
+  radix_node* node(u32 level) { return (radix_node*)path_[level]; }
+
+  // Compare equality on just the key.
+  bool operator==(const radix_iterator2 &other) {
+    return r_ == other.r_ && k_ == other.k_; }
+  bool operator!=(const radix_iterator2 &other) {
+    return r_ != other.r_ || k_ != other.k_; }
+
+private:
+  bool find_first_leaf(u32 level);
+  bool advance(u32 level);
+};
+
+#define radix_iterator radix_iterator2
+
 static inline radix_iterator
 begin(const radix &r) { return radix_iterator(&r, 0); }
 
@@ -91,3 +124,4 @@ begin(const radix_range &rr) { return radix_iterator(rr.r_, rr.start_); }
 static inline radix_iterator
 end(const radix_range &rr) { return radix_iterator(rr.r_, rr.start_ + rr.size_); }
 
+#undef radix_iterator

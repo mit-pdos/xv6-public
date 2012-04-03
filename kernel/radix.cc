@@ -1,6 +1,19 @@
 #include "crange_arch.hh"
 #include "radix.hh"
 
+enum { crange_debug = 0 };
+
+#define dprintf(...) do { if (crange_debug) cprintf(__VA_ARGS__); } while(0)
+
+// Returns the index needed to reach |level| from |level+1|.
+static u32
+index(u64 key, u32 level)
+{
+  u64 idx = key >> (bits_per_level * level);
+  idx &= (1 << bits_per_level) - 1;
+  return idx;
+}
+
 // Returns the level we stopped at.
 template<class CB>
 u32
@@ -25,9 +38,7 @@ descend(u64 key, markptr<void> *n, u32 level, CB cb, bool create)
 
   radix_node *rn = (radix_node*) v;
 
-  u64 idx = key >> (bits_per_level * level);
-  idx &= (1<<bits_per_level)-1;
-  markptr<void> *vptr = &rn->ptr[idx];
+  markptr<void> *vptr = &rn->ptr[index(key, level)];
   if (level == 0) {
     cb(vptr);
     return level;
@@ -43,6 +54,7 @@ radix::search(u64 key)
   descend(key >> shift_, &root_, radix_levels-1, [&result](markptr<void> *v) {
       result = (radix_elem*) v->ptr().load();
     }, false);
+  dprintf("%p: search(%lu) -> %p\n", this, key >> shift_, result);
   return result;
 }
 
@@ -104,6 +116,7 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
 {
   start = start >> r_->shift_;
   size = size >> r_->shift_;
+  dprintf("%p: replace: [%lu, %lu) with %p\n", r_, start, start + size, val);
 
   assert(start >= start_);
   assert(start + size <= start_ + size_);
@@ -131,4 +144,60 @@ radix_iterator::operator*()
       result = (radix_elem*) v->ptr().load();
     }, false);
   return result;
+}
+
+radix_iterator2::radix_iterator2(const radix* r, u64 k)
+  : r_(r), k_(k) {
+  dprintf("%p: Made iterator with k = %lu\n", r_, k_);
+  if (k_ != ~0ULL) {
+    path_[radix_levels] = r_->root_.ptr().load();
+    if (!find_first_leaf(radix_levels - 1))
+      k_ = ~0ULL;
+  }
+  dprintf("%p: Adjusted: k = %lu\n", r_, k_);
+}
+
+bool
+radix_iterator2::advance(u32 level)
+{
+  // First, see if we can advance a lower level.
+  if (level > 0 && advance(level-1)) {
+    // Nothing more to do.
+    return true;
+  }
+
+  // Try to advance this level, if we can.
+  u32 start_idx = index(k_, level)+1;
+  if (start_idx < (1<<bits_per_level)) {
+    // Find the first leaf starting at our sibling node.
+    k_ &= ~((1ULL<<((level+1) * bits_per_level)) - 1);
+    k_ |= (u64(start_idx) << (level * bits_per_level));
+    return find_first_leaf(level);
+  } else {
+    return false;
+  }
+}
+
+bool
+radix_iterator2::find_first_leaf(u32 level)
+{
+  // Find the first non-empty node after k_ on this level.
+  for (u32 idx = index(k_, level); idx < (1<<bits_per_level); idx++) {
+    void *next = node(level+1)->ptr[idx].ptr().load();
+    if (next != nullptr) {
+      if (index(k_, level) != idx) {
+        // We had to advance; clear everything this level and under
+        // and set this one.
+        k_ &= ~((1ULL<<((level+1) * bits_per_level)) - 1);
+        k_ |= (u64(idx) << (level * bits_per_level));
+      }
+      path_[level] = next;
+
+      if (level == 0 || find_first_leaf(level-1))
+        return true;
+    }
+  }
+
+  // Failed to find a leaf. Abort.
+  return false;
 }

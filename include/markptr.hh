@@ -25,9 +25,15 @@ class markptr {
   markptr_ptr<T>& ptr() {
     return *(markptr_ptr<T>*) this;
   }
+  const markptr_ptr<T>& ptr() const {
+    return *(const markptr_ptr<T>*) this;
+  }
 
   markptr_mark<T>& mark() {
     return *(markptr_mark<T>*) this;
+  }
+  const markptr_mark<T>& mark() const {
+    return *(const markptr_mark<T>*) this;
   }
 
   // Convenience operator to avoid having to write out xx.ptr()->...
