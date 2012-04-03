@@ -52,7 +52,7 @@ public:
     // If references is 0 (i.e. ref_.count is 0xffffffff) a 32-bit 
     // increment will increases ref_.count to 0, but ref_.invalid
     // will remain unchanged.
-    asm volatile("lock; incl %0" : "+m" (ref_.count));
+    asm volatile("lock; incl %0" : "+m" (ref_.count) :: "memory", "cc");
   }
 
   inline bool tryinc() const {
@@ -64,7 +64,8 @@ public:
     unsigned char c;
     // If references is 1 (i.e. ref_.v is 0), a 64-bit decrement will
     // underflow ref_.invalid to 0xffffffff (and ref_.count to 0xffffffff).
-    asm volatile("lock; decq %0; sets %1" : "+m" (ref_.v), "=qm" (c));
+    asm volatile("lock; decq %0; sets %1" : "+m" (ref_.v), "=qm" (c) 
+                 :: "memory", "cc");
     if (c)
       onzero();
   }
