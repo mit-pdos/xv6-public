@@ -123,7 +123,6 @@ uwq::alloc(vmap* vmap, filetable *ftable)
   }
 
   if (mapkva(vmap->pml4, (char*)ipc, USERWQ, USERWQSIZE)) {
-    ksfree(slab_userwq, ipc);
     u->dec();
     return nullptr;
   }
