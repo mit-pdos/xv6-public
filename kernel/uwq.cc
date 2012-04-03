@@ -147,8 +147,7 @@ uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc)
 
 uwq::~uwq(void)
 { 
-  if (ipc_ != nullptr)
-    ksfree(slab_userwq, ipc_);
+  ksfree(slab_userwq, ipc_);
   vmap_->decref();
   ftable_->decref();
 }
@@ -156,9 +155,6 @@ uwq::~uwq(void)
 bool
 uwq::haswork(void) const
 {
-  if (ipc_ == nullptr)
-    return false;
-
   for (int i = 0; i < NCPU; i++) {
     if (ipc_->len[i].v_ > 0) {
       return true;
