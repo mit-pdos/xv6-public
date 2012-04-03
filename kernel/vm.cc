@@ -685,12 +685,12 @@ vmap::sbrk(ssize_t n, uptr *addr)
   auto curbrk = brk_;
   *addr = curbrk;
 
-  if(n < 0 && 0 - n <= curbrk){
+  if(n <= 0 && 0 - n <= curbrk){
     brk_ += n;
     return 0;
   }
 
-  if(n < 0 || n > USERTOP || curbrk + n > USERTOP)
+  if(n <= 0 || n > USERTOP || curbrk + n > USERTOP)
     return -1;
 
   // look one page ahead, to check if the newly allocated region would
