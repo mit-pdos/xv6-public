@@ -166,24 +166,16 @@ radix_iterator2::advance(u32 level)
     return true;
   }
 
-  // Try to advance this level.
-  for (u32 idx = index(k_, level) + 1;
-       idx < (1<<bits_per_level);
-       idx++) {
-    void *next = node(level+1)->ptr[idx].ptr().load();
-    if (next != nullptr) {
-      // Clear everything this level and under and set this one.
-      k_ &= ~((1ULL<<((level+1) * bits_per_level)) - 1);
-      k_ |= (u64(idx) << (level * bits_per_level));
-      path_[level] = next;
-
-      // Try to find a leaf.
-      if (level == 0 || find_first_leaf(level-1))
-        return true;
-    }
+  // Try to advance this level, if we can.
+  u32 start_idx = index(k_, level)+1;
+  if (start_idx < (1<<bits_per_level)) {
+    // Find the first leaf starting at our sibling node.
+    k_ &= ~((1ULL<<((level+1) * bits_per_level)) - 1);
+    k_ |= (u64(start_idx) << (level * bits_per_level));
+    return find_first_leaf(level);
+  } else {
+    return false;
   }
-  // Failed to advance. Abort.
-  return false;
 }
 
 bool
