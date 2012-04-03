@@ -68,7 +68,7 @@ __uaccess_end:
 .globl zpage
 .align 8
 zpage:
-        movl $512,%ecx   # 512 = 4096/8
+        movl $4096/8,%ecx
 	xorl %eax,%eax
 	rep stosq
 	ret
