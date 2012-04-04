@@ -18,8 +18,9 @@ CFLAGS   = -no-integrated-as
 else
 CC  = $(TOOLPREFIX)gcc
 CXX = $(TOOLPREFIX)g++
-CXXFLAGS =
-CFLAGS   =
+CXXFLAGS = 
+CFLAGS =
+ASFLAGS =
 endif
 
 LD = $(TOOLPREFIX)ld
@@ -34,7 +35,7 @@ COMFLAGS  = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) -DXV6 \
 COMFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector) -nostdinc -I$(shell $(CC) -print-file-name=include)
 CFLAGS   := $(COMFLAGS) -std=c99 $(CFLAGS)
 CXXFLAGS := $(COMFLAGS) -std=c++0x -Wno-sign-compare -nostdinc++ $(CXXFLAGS)
-ASFLAGS   = -Iinclude -I$(O)/include -m64 -gdwarf-2 -MD -DHW_$(HW) -include param.h
+ASFLAGS   = -Iinclude -I$(O)/include -m64 -gdwarf-2 -MD -DHW_$(HW) -include param.h -Wa,--divide 
 LDFLAGS   = -m elf_x86_64
 
 ALL := 
@@ -58,7 +59,7 @@ $(O)/%.o: %.cc
 	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(O)/%.o: %.S
-	@echo "  CC     $@"
+	@echo "  CC     $@" $(ASFLAGS)
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
 
