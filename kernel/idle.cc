@@ -25,7 +25,6 @@ void idleloop(void);
 struct proc *
 idleproc(void)
 {
-  assert(mycpu()->ncli > 0);
   return idlem->cur;
 }
 
