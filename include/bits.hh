@@ -69,3 +69,11 @@
 // Intel performance event-count registers
 #define MSR_INTEL_PERF_CNT0 0x000000c1
 #define MSR_INTEL_PERF_CNT1 0x000000c2
+
+// Common event-select bits
+#define PERF_SEL_USR        (1ULL << 16)
+#define PERF_SEL_OS         (1ULL << 17)
+#define PERF_SEL_EDGE       (1ULL << 18)
+#define PERF_SEL_INT        (1ULL << 20)
+#define PERF_SEL_ENABLE     (1ULL << 22)
+#define PERF_SEL_INV        (1ULL << 23)
