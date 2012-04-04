@@ -74,7 +74,7 @@ void
 sampconf(void)
 {
   pushcli();
-  if (selector)
+  if (selector & PERF_SEL_INT)
     pmulog[myid()].count = 0;
   pmu.config(0, selector, -period);
   popcli();
