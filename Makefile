@@ -59,7 +59,7 @@ $(O)/%.o: %.cc
 	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(O)/%.o: %.S
-	@echo "  CC     $@" $(ASFLAGS)
+	@echo "  CC     $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
 
