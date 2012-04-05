@@ -26,13 +26,6 @@ microdelay(u64 delay)
     nop_pause();
 }
 
-u64
-nsectime(void)
-{
-  u64 msec = ticks*QUANTUM;
-  return msec*1000000;
-}
-
 void
 inithz(void)
 {

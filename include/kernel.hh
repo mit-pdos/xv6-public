@@ -51,15 +51,13 @@ void            bwrite(struct buf*);
 void            cgaputc(int c);
 
 // condvar.c
-extern u64 ticks;
-extern struct spinlock tickslock;
-extern struct condvar cv_ticks;
 void            initcondvar(struct condvar *, const char *);
 void            destroycondvar(struct condvar *);
 void            cv_sleep(struct condvar *cv, struct spinlock*);
 void            cv_sleepto(struct condvar *cv, struct spinlock*, u64);
 void            cv_wakeup(struct condvar *cv);
-void            cv_tick(void);
+void            timerintr(void);
+u64             nsectime(void);
 
 // console.c
 void            cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
@@ -106,7 +104,6 @@ void	        dir_flush(struct inode *dp);
 
 // hz.c
 void            microdelay(u64);
-u64             nsectime(void);
 void            inithz(void);
 
 // ide.c

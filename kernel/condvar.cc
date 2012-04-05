@@ -8,9 +8,7 @@
 #include "proc.hh"
 #include "cpu.hh"
 
-struct spinlock tickslock __mpalign__;
-struct condvar cv_ticks __mpalign__;
-u64 ticks __mpalign__;
+static u64 ticks __mpalign__;
 
 LIST_HEAD(sleepers, proc) sleepers __mpalign__;
 struct spinlock sleepers_lock;
@@ -23,18 +21,22 @@ wakeup(struct proc *p)
   addrun(p);
 }
 
+u64
+nsectime(void)
+{
+  u64 msec = ticks*QUANTUM;
+  return msec*1000000;
+}
+
 void
-cv_tick(void)
+timerintr(void)
 {
   struct proc *p, *tmp;
   struct condvar *cv;
   int again;
   u64 now;
   
-  acquire(&tickslock);
   ticks++;
-  cv_wakeup(&cv_ticks);
-  release(&tickslock);
 
   now = nsectime();
   again = 0;

@@ -45,7 +45,7 @@ long (*syscalls[])(u64, u64, u64, u64, u64) = {
   SYSCALL(pipe),
   SYSCALL(read),
   SYSCALL(sbrk),
-  SYSCALL(sleep),
+  SYSCALL(nsleep),
   SYSCALL(unlink),
   SYSCALL(wait),
   SYSCALL(write),

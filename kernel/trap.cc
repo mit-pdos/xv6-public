@@ -127,7 +127,7 @@ trap(struct trapframe *tf)
       mycpu()->timer_printpc = 0;
     }
     if (mycpu()->id == 0)
-      cv_tick();
+      timerintr();
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:

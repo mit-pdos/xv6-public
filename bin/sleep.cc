@@ -8,10 +8,11 @@ int
 main(int ac, char *av[])
 {
   if (ac != 2) {
-    fprintf(1, "Usage: %s ticks\n", av[0]);
+    fprintf(1, "Usage: %s seconds\n", av[0]);
     exit();
   }
 
-  sleep(atoi(av[1]));
+  u64 x = atoi(av[1])*1000000000ull;
+  nsleep(x);
   exit();
 }

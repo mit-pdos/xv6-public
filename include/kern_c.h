@@ -35,7 +35,7 @@ long sys_openat(int, const char*, int);
 long sys_pipe(int*);
 long sys_read(int, char*, int);
 long sys_sbrk(int);
-long sys_sleep(int);
+long sys_nsleep(u64);
 long sys_unlink(const char*);
 long sys_wait(void);
 long sys_write(int, char*, int);

@@ -55,20 +55,28 @@ sys_sbrk(int n)
 }
 
 long
-sys_sleep(int n)
+sys_nsleep(u64 nsec)
 {
-  u32 ticks0;
-  
-  acquire(&tickslock);
-  ticks0 = ticks;
-  while(ticks - ticks0 < n){
-    if(myproc()->killed){
-      release(&tickslock);
+  struct spinlock lock;
+  struct condvar cv;
+  u64 nsecto;
+
+  initlock(&lock, "sleep_lock", 0);
+  initcondvar(&cv, "sleep_cv");
+  acquire(&lock);
+
+  auto cleanup = scoped_cleanup([&lock, &cv]() { 
+    release(&lock);
+    destroycondvar(&cv);
+    destroylock(&lock);
+  });
+
+  nsecto = nsectime()+nsec;
+  while (nsecto > nsectime()) {
+    if (myproc()->killed)
       return -1;
-    }
-    cv_sleep(&cv_ticks, &tickslock);
+    cv_sleepto(&cv, &lock, nsecto);
   }
-  release(&tickslock);
   return 0;
 }
 
@@ -77,12 +85,7 @@ sys_sleep(int n)
 long
 sys_uptime(void)
 {
-  u64 xticks;
-  
-  acquire(&tickslock);
-  xticks = ticks;
-  release(&tickslock);
-  return xticks;
+  return nsectime();
 }
 
 long

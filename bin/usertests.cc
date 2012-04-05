@@ -1372,7 +1372,7 @@ sbrktest(void)
       sbrk((632 * 1024) - (uptr)sbrk(0));
       write(fds[1], "x", 1);
       // sit around until killed
-      for(;;) sleep(1000);
+      for(;;) nsleep(1000000000ull);
     }
     if(pids[i] != -1)
       read(fds[0], &scratch, 1);
@@ -1416,8 +1416,8 @@ validatetest(void)
         fprintf(stdout, "validatetest failed (pipe succeeded)\n");
       exit();
     }
-    sleep(0);
-    sleep(0);
+    nsleep(0);
+    nsleep(0);
     kill(pid);
     wait();
 
