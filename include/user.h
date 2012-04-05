@@ -26,7 +26,7 @@ int dup(int);
 int getpid(void);
 char* sbrk(int);
 int nsleep(u64);
-int uptime(void);
+u64 uptime(void);
 int map(void *addr, int len);
 int unmap(void *addr, int len);
 void halt(void);
