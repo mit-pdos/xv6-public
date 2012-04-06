@@ -41,10 +41,15 @@ void
 wq::dump(void)
 {
   int i;
-  for (i = 0; i < NCPU; i++)
+  for (i = 0; i < NCPU; i++) {
     xprintf("push %lu full %lu pop %lu steal %lu\n",
             stat_[i].push, stat_[i].full,
             stat_[i].pop, stat_[i].steal);
+    stat_[i].push = 0;
+    stat_[i].full = 0;
+    stat_[i].pop = 0;
+    stat_[i].steal = 0;
+  }
 }
 
 inline void
@@ -120,12 +125,16 @@ wq::steal(int c)
   work *w;
   int i;
 
+  i = q->tail;
+  if ((i - q->head) == 0)
+    return nullptr;
+
   if (wqlock_tryacquire(&q->lock) == 0)
-    return 0;
+    return nullptr;
   i = q->tail;
   if ((i - q->head) == 0) {
     wqlock_release(&q->lock);
-    return 0;
+    return nullptr;
   }
   i = i & (NSLOTS-1);
   w = q->w[i];
