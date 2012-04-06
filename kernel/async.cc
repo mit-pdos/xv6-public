@@ -52,9 +52,9 @@ pread_allocwork(struct inode *ip, size_t count, off_t off,
   return w;
 }
 
-long
+int
 sys_async(int fd, size_t count, off_t off,
-          msgid_t msgid, pageid_t pageid)
+          int msgid, int pageid)
 {
   sref<file> f;;
   cwork *w;

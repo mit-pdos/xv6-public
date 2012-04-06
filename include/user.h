@@ -31,7 +31,7 @@ int map(void *addr, size_t len);
 int unmap(void *addr, size_t len);
 int halt(void);
 ssize_t pread(int, void*, size_t, off_t);
-int async(int, size_t, off_t, u32, u32);
+int async(int, size_t, off_t, int, int);
 int script(void *addr, u64 len, u64 chunk);
 int setfs(u64 base);
 int setaffinity(int cpu);
