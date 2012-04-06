@@ -81,7 +81,7 @@ pipeclose(struct pipe *p, int writable)
 
 //PAGEBREAK: 40
 int
-pipewrite(struct pipe *p, char *addr, int n)
+pipewrite(struct pipe *p, const char *addr, int n)
 {
   int i;
 

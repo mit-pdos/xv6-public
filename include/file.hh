@@ -14,7 +14,7 @@ struct file : public referenced, public rcu_freed {
   int          stat(struct stat*);
   int          read(char *addr, int n);
   ssize_t      pread(char *addr, size_t n, off_t offset);
-  int          write(char *addr, int n);
+  int          write(const char *addr, int n);
 
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;  
 
@@ -75,7 +75,7 @@ struct inode : public rcu_freed {
 
 struct devsw {
   int (*read)(struct inode*, char*, u32, u32);
-  int (*write)(struct inode*, char*, u32, u32);
+  int (*write)(struct inode*, const char*, u32, u32);
   void (*stat)(struct inode*, struct stat*);
 };
 

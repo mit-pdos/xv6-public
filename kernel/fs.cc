@@ -569,7 +569,7 @@ readi(struct inode *ip, char *dst, u32 off, u32 n)
 // PAGEBREAK!
 // Write data to inode.
 int
-writei(struct inode *ip, char *src, u32 off, u32 n)
+writei(struct inode *ip, const char *src, u32 off, u32 n)
 {
   u32 tot, m;
   struct buf *bp;

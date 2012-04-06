@@ -95,7 +95,7 @@ void            iupdate(struct inode*);
 void            iunlock(struct inode*);
 int             readi(struct inode*, char*, u32, u32);
 void            stati(struct inode*, struct stat*);
-int             writei(struct inode*, char*, u32, u32);
+int             writei(struct inode*, const char*, u32, u32);
 struct inode*   idup(struct inode*);
 struct inode*   nameiparent(inode *cwd, const char*, char*);
 int             dirlink(struct inode*, const char*, u32);
@@ -160,7 +160,7 @@ void            piceoi(void);
 int             pipealloc(struct file**, struct file**);
 void            pipeclose(struct pipe*, int);
 int             piperead(struct pipe*, char*, int);
-int             pipewrite(struct pipe*, char*, int);
+int             pipewrite(struct pipe*, const char*, int);
 
 // proc.c
 struct proc*    copyproc(struct proc*);
@@ -201,7 +201,7 @@ void            destroylock(struct spinlock *lk);
 void            release(struct spinlock*);
 
 // syscall.c
-int             argcheckptr(void *argval, int);
+int             argcheckptr(const void *argval, int);
 int             argcheckstr(const char*);
 int             fetchint64(uptr, u64*);
 int             fetchstr(char*, const char*, u64);
@@ -248,4 +248,3 @@ void trapret(void);
 void threadstub(void);
 void threadhelper(void (*fn)(void *), void *arg);
 void trap(struct trapframe *tf);
-

@@ -80,6 +80,9 @@ zallocator::alloc(const char* name)
     p = kalloc(name);
     if (p != nullptr)
       zpage(p);
+  } else {
+    // Zero the run header used by kmem
+    memset(p, 0, sizeof(struct run));
   }
   tryrefill();
   return p;
