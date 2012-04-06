@@ -42,7 +42,7 @@ proc::proc(int npid) :
   ftable(0), cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
   cpu_pin(0), oncv(0), cv_wakeup(0),
   user_fs_(0), unmap_tlbreq_(0), in_exec_(0), uaccess_(0),
-  exception_inuse(0), state_(EMBRYO)
+  exception_inuse(0), magic(PROC_MAGIC), state_(EMBRYO)
 {
   snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
   initlock(&lock, lockname+3, LOCKSTAT_PROC);
@@ -57,6 +57,7 @@ proc::proc(int npid) :
 
 proc::~proc(void)
 {
+  magic = 0;
   if (kstack)
     ksfree(slab_stack, kstack);
   destroylock(&lock);
@@ -410,6 +411,9 @@ finishproc(struct proc *p)
   p->name[0] = 0;
   p->killed = 0;
   freeproc(p);
+#if DEBUG
+  gc_wakeup();
+#endif
 }
 
 // Wait for a child process to exit and return its pid.
@@ -433,14 +437,14 @@ wait(void)
 	  SLIST_REMOVE(&myproc()->childq, p, proc, child_next);
 	  release(&myproc()->lock);
 
+          if (!xnspid->remove(pid, &p))
+            panic("wait: ns_remove");
+
           cwork *w = new cwork();
           assert(w);
           w->rip = (void*) finishproc;
           w->arg0 = p;
           assert(wqcrit_push(w, p->run_cpuid_) >= 0);
-
-          if (!xnspid->remove(pid, &p))
-            panic("wait: ns_remove");
 
 	  return pid;
 	}

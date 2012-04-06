@@ -44,6 +44,8 @@ typedef enum procstate {
   ZOMBIE 
 } procstate_t;;
 
+#define PROC_MAGIC 0xfeedfacedeadd00dULL
+
 // Per-process state
 struct proc : public rcu_freed, public sched_link {
   struct vmap *vmap;           // va -> vma
@@ -85,6 +87,7 @@ struct proc : public rcu_freed, public sched_link {
 
   std::atomic<int> exception_inuse;
   u8 exception_buf[256];
+  u64 magic;
 
   static proc* alloc();
   void         set_state(procstate_t s);

@@ -136,6 +136,9 @@ gc_delayfreelist(void)
   xnspid->enumerate([&min](u32, proc *p)->bool{
       // Some threads may never call begin/end_epoch(), and never update
       // p->epoch, so gc_thread does it for them.
+      if (p->magic != PROC_MAGIC)
+        panic("gc_delayfreelist: no magic %lx\n", p->magic);
+
       u64 x = p->epoch.load();
       if (!(x & 0xff)) {
         cmpxch(&p->epoch, x, global_epoch.load() << 8);
