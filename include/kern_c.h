@@ -55,7 +55,6 @@ int sys_setfs(u64 base);
 int sys_wqwait(void);
 int sys_setaffinity(int cpu);
 long sys_futex(const u64* addr, int op, u64 val, u64 timer);
-extern long (*syscalls[])(u64, u64, u64, u64, u64);
 
 // other exported/imported functions
 void cmain(u64 mbmagic, u64 mbaddr);

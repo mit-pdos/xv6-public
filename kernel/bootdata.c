@@ -1,8 +1,5 @@
 #include "types.h"
 #include "mmu.h"
-#include "spinlock.h"
-#include "syscall.h"
-#include "kern_c.h"
 
 /*
  * Data structures that use C99 designated initializers,
@@ -24,44 +21,4 @@ struct segdesc  __attribute__((aligned(16))) bootgdt[NSEGS] = {
   [6]=SEGDESC(0, 0xfffff, SEG_W|SEG_S|SEG_DPL(3)|SEG_P|SEG_D|SEG_G),
   // 64-bit user code
   [7]=SEGDESC(0, 0, SEG_R|SEG_CODE|SEG_S|SEG_DPL(3)|SEG_P|SEG_L|SEG_G),
-};
-
-#define SYSCALL(name) [SYS_##name] = (void*)sys_##name
-
-long (*syscalls[])(u64, u64, u64, u64, u64) = {
-  SYSCALL(chdir),
-  SYSCALL(close),
-  SYSCALL(dup),
-  SYSCALL(exec),
-  SYSCALL(exit),
-  SYSCALL(fork),
-  SYSCALL(fstat),
-  SYSCALL(getpid),
-  SYSCALL(kill),
-  SYSCALL(link),
-  SYSCALL(mkdirat),
-  SYSCALL(mknod),
-  SYSCALL(openat),
-  SYSCALL(pipe),
-  SYSCALL(read),
-  SYSCALL(sbrk),
-  SYSCALL(nsleep),
-  SYSCALL(unlink),
-  SYSCALL(wait),
-  SYSCALL(write),
-  SYSCALL(uptime),
-  SYSCALL(map),
-  SYSCALL(unmap),
-  SYSCALL(halt),
-  SYSCALL(socket),
-  SYSCALL(bind),
-  SYSCALL(listen),
-  SYSCALL(accept),
-  SYSCALL(pread),
-  SYSCALL(async),
-  SYSCALL(script),
-  SYSCALL(setfs),
-  SYSCALL(wqwait),
-  SYSCALL(setaffinity),
-  SYSCALL(futex),
 };
