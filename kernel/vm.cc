@@ -31,6 +31,9 @@ vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
 {
   if (npg > NELEM(page))
     panic("vmnode too big\n");
+  // XXX Maybe vmnode should take just a byte size
+  if (ip && (sz > npages * PGSIZE || sz <= (npages - 1) * PGSIZE))
+    panic("vmnode bad size %lu for npages %lu", sz, npages);
   memset(page, 0, npg * sizeof(page[0]));
   if (type == EAGER && ip) {
     allocall(false);
@@ -130,8 +133,10 @@ vmnode::loadpg(off_t off)
   mtwriteavar("vmnode:%016x", this);
 #endif
 
+  assert(off <= sz);
+
   char *p = page[off/PGSIZE];
-  s64 filen = off > sz ? 0 : MIN(PGSIZE, sz-off);
+  s64 filen = MIN(PGSIZE, sz-off);
   off_t fileo = offset+off;
 
   //
