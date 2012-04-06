@@ -135,7 +135,7 @@ uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc)
     vmap_(vmap), ftable_(ftable), ipc_(ipc),
     uentry_(0), ustack_(UWQSTACK), uref_(0)
 {
-  for (int i = 0; i < NCPU; i++)
+  for (int i = 0; i < NELEM(ipc_->len); i++)
     ipc_->len[i].v_ = 0;
 
   initlock(&lock_, "uwq_lock", 0);
@@ -154,7 +154,7 @@ uwq::~uwq(void)
 bool
 uwq::haswork(void) const
 {
-  for (int i = 0; i < NCPU; i++) {
+  for (int i = 0; i < NELEM(ipc_->len); i++) {
     if (ipc_->len[i].v_ > 0) {
       return true;
     }
