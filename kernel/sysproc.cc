@@ -12,50 +12,50 @@
 #include "kmtrace.hh"
 #include "futex.h"
 
-long
+int
 sys_fork(int flags)
 {
   ANON_REGION(__func__, &perfgroup);
   return fork(flags);
 }
 
-long
+int
 sys_exit(void)
 {
   exit();
-  return 0;  // not reached
+  panic("exit() returned");
 }
 
-long
+int
 sys_wait(void)
 {
   ANON_REGION(__func__, &perfgroup);
   return wait();
 }
 
-long
+int
 sys_kill(int pid)
 {
   return proc::kill(pid);
 }
 
-long
+int
 sys_getpid(void)
 {
   return myproc()->pid;
 }
 
-long
+char*
 sys_sbrk(int n)
 {
   uptr addr;
 
   if(myproc()->vmap->sbrk(n, &addr) < 0)
-    return -1;
-  return addr;
+    return (char*)-1;
+  return (char*)addr;
 }
 
-long
+int
 sys_nsleep(u64 nsec)
 {
   struct spinlock lock;
@@ -83,14 +83,14 @@ sys_nsleep(u64 nsec)
 
 // return how many clock tick interrupts have occurred
 // since boot.
-long
+u64
 sys_uptime(void)
 {
   return nsectime();
 }
 
-long
-sys_map(uptr addr, u64 len)
+int
+sys_map(uptr addr, size_t len)
 {
   ANON_REGION(__func__, &perfgroup);
 
@@ -114,8 +114,8 @@ sys_map(uptr addr, u64 len)
   return r;
 }
 
-long
-sys_unmap(uptr addr, u64 len)
+int
+sys_unmap(uptr addr, size_t len)
 {
   ANON_REGION(__func__, &perfgroup);
 
@@ -134,7 +134,7 @@ sys_unmap(uptr addr, u64 len)
   return 0;
 }
 
-long
+int
 sys_halt(void)
 {
   int i;
@@ -145,7 +145,7 @@ sys_halt(void)
   return 0;
 }
 
-long
+int
 sys_setfs(u64 base)
 {
   proc *p = myproc();
@@ -154,7 +154,7 @@ sys_setfs(u64 base)
   return 0;
 }
 
-long
+int
 sys_setaffinity(int cpu)
 {
   return myproc()->set_cpu_pin(cpu);
