@@ -90,7 +90,7 @@ sys_uptime(void)
 }
 
 int
-sys_map(uptr addr, size_t len)
+sys_map(userptr<void> addr, size_t len)
 {
   ANON_REGION(__func__, &perfgroup);
 
@@ -115,7 +115,7 @@ sys_map(uptr addr, size_t len)
 }
 
 int
-sys_unmap(uptr addr, size_t len)
+sys_unmap(userptr<void> addr, size_t len)
 {
   ANON_REGION(__func__, &perfgroup);
 

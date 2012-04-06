@@ -420,7 +420,7 @@ sys_chdir(const char *path)
 }
 
 int
-sys_exec(const char *upath, u64 uargv)
+sys_exec(const char *upath, userptr<userptr<const char> > uargv)
 {
   ANON_REGION(__func__, &perfgroup);
   static const int len = 32;

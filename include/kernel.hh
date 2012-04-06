@@ -6,6 +6,7 @@ extern "C" {
 
 #include "atomic.hh"
 #include "memlayout.h"
+#include "userptr.hh"
 #include <stdarg.h>
 
 #define KCSEG (2<<3)  /* kernel code segment */
@@ -263,7 +264,7 @@ struct sockaddr;
 int sys_chdir(const char*);
 int sys_close(int);
 int sys_dup(int);
-int sys_exec(const char*, u64);
+int sys_exec(const char*, userptr<userptr<const char> >);
 int sys_exit(void) __attribute__((noreturn));
 int sys_fork(int);
 int sys_fstat(int, struct stat*);
@@ -281,8 +282,8 @@ int sys_unlink(const char*);
 int sys_wait(void);
 ssize_t sys_write(int, const void*, size_t);
 u64 sys_uptime(void);
-int sys_map(uptr, size_t);
-int sys_unmap(uptr, size_t);
+int sys_map(userptr<void>, size_t);
+int sys_unmap(userptr<void>, size_t);
 int sys_halt(void);
 int sys_socket(int, int, int);
 int sys_bind(int xsock, const struct sockaddr *xaddr, int xaddrlen);
