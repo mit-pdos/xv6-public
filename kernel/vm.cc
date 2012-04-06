@@ -595,6 +595,8 @@ vmap::pagefault(uptr va, u32 err)
     // XXX(sbw) you might think we don't need to zero if ONDEMAND;
     // however, our vmnode might include not backed by a file
     // (e.g. the bss section of an ELF segment)
+    // XXX(austin) Why is this still necessary now that we map zeroed
+    // parts of segments separately?
     if (m->n->allocpg(npg, true) < 0)
       throw_bad_alloc();
 

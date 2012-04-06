@@ -62,18 +62,40 @@ dosegment(inode* ip, vmap* vmp, u64 off)
     return -1;
 
   uptr va_start = PGROUNDDOWN(ph.vaddr);
+  uptr backed_end = PGROUNDUP(ph.vaddr + ph.filesz);
   uptr va_end = PGROUNDUP(ph.vaddr + ph.memsz);
   off_t in_off = ph.offset - PGOFFSET(ph.vaddr);
   size_t in_sz = ph.filesz + PGOFFSET(ph.vaddr);
 
-  size_t npg = (va_end - va_start) / PGSIZE;
-  vmnode* node = new vmnode(npg, ONDEMAND, ip, in_off, in_sz);
-  if (node == nullptr)
-    return -1;
+  if (va_start != backed_end) {
+    // Part represented in the file.  This may be empty, which is why
+    // this code is conditional.
+    size_t npg = (backed_end - va_start) / PGSIZE;
+    vmnode* node = new vmnode(npg, ONDEMAND, ip, in_off, in_sz);
+    if (node == nullptr)
+      return -1;
 
-  if (vmp->insert(node, va_start, 1) < 0) {
-    delete node;
-    return -1;
+    if (vmp->insert(node, va_start, 1) < 0) {
+      delete node;
+      return -1;
+    }
+  }
+
+  if (va_end != backed_end) {
+    // Zeroed part omitted from the file.  This must be mapped
+    // separately both to avoid mapping non-zero data that follows
+    // this segment in the file and so the size of the vmnode doesn't
+    // exceed the size of the file (which could cause a failure on
+    // page fault).
+    size_t npg = (va_end - backed_end) / PGSIZE;
+    vmnode* node = new vmnode(npg);
+    if (node == nullptr)
+      return -1;
+
+    if (vmp->insert(node, backed_end, 1) < 0) {
+      delete node;
+      return -1;
+    }
   }
 
   return 0;
