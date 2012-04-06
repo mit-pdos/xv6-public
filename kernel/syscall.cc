@@ -14,6 +14,9 @@ extern "C" int __uaccess_mem(void* dst, const void* src, u64 size);
 extern "C" int __uaccess_str(char* dst, const char* src, u64 size);
 extern "C" int __uaccess_int64(uptr addr, u64* ip);
 
+// XXX(austin) Many of these functions should take userptr<void>
+// instead of regular pointers
+
 int
 fetchmem(void* dst, const void* usrc, u64 size)
 {
