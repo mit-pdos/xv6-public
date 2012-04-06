@@ -201,7 +201,7 @@ void            destroylock(struct spinlock *lk);
 void            release(struct spinlock*);
 
 // syscall.c
-int             argcheckptr(void *argval, int);
+int             argcheckptr(const void *argval, int);
 int             argcheckstr(const char*);
 int             fetchint64(uptr, u64*);
 int             fetchstr(char*, const char*, u64);

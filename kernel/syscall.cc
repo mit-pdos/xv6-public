@@ -68,7 +68,7 @@ argcheckstr(const char *addr)
 // to a block of memory of size n bytes.  Check that the pointer
 // lies within the process address space.
 int
-argcheckptr(void *p, int size)
+argcheckptr(const void *p, int size)
 {
   u64 i = (u64) p;
   for(uptr va = PGROUNDDOWN(i); va < i+size; va = va + PGSIZE)
