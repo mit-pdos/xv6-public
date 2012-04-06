@@ -189,6 +189,8 @@ void            addrun(struct proc *);
 void            sched(void);
 void            post_swtch(void);
 void            scheddump(void);
+int             steal(void);
+void            addrun(struct proc*);
 
 // spinlock.c
 void            acquire(struct spinlock*);

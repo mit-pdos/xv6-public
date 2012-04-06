@@ -5,7 +5,6 @@
 #include "condvar.h"
 #include "proc.hh"
 #include "cpu.hh"
-#include "sched.hh"
 #include "percpu.hh"
 #include "wq.hh"
 #include "uwq.hh"

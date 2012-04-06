@@ -6,6 +6,7 @@
 #include "fs.h"
 #include "file.hh"
 #include "filetable.hh"
+#include "sched.hh"
 
 class uwq;
 class uwq_worker;
@@ -44,7 +45,7 @@ typedef enum procstate {
 } procstate_t;;
 
 // Per-process state
-struct proc : public rcu_freed {
+struct proc : public rcu_freed, public sched_link {
   struct vmap *vmap;           // va -> vma
   uwq* uwq;
   uwq_worker* worker;
@@ -70,9 +71,6 @@ struct proc : public rcu_freed {
 #if MTRACE
   struct mtrace_stacks mtrace_stacks;
 #endif
-  struct runq *runq;
-  STAILQ_ENTRY(proc) runqlink;
-
   struct condvar *oncv;        // Where it is sleeping, for kill()
   u64 cv_wakeup;               // Wakeup time for this process
   LIST_ENTRY(proc) cv_waiters; // Linked list of processes waiting for oncv

@@ -1,5 +1,6 @@
-void delrun(struct proc*);
-struct proc* schednext(void);
-int steal(void);
-void addrun(struct proc*);
+struct sched_link
+{
+  sched_link* prev;
+  sched_link* next;
+};
 

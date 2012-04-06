@@ -9,7 +9,6 @@
 #include "cpu.hh"
 #include "bits.hh"
 #include "kmtrace.hh"
-#include "sched.hh"
 #include "kalloc.hh"
 #include "vm.hh"
 #include "ns.hh"
@@ -41,7 +40,7 @@ proc::proc(int npid) :
   rcu_freed("proc"), vmap(0), uwq(0), worker(0), kstack(0),
   pid(npid), parent(0), tf(0), context(0), killed(0),
   ftable(0), cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
-  cpu_pin(0), runq(0), oncv(0), cv_wakeup(0),
+  cpu_pin(0), oncv(0), cv_wakeup(0),
   user_fs_(0), unmap_tlbreq_(0), in_exec_(0), uaccess_(0),
   exception_inuse(0), state_(EMBRYO)
 {
@@ -51,7 +50,6 @@ proc::proc(int npid) :
 
   memset(&childq, 0, sizeof(childq));
   memset(&child_next, 0, sizeof(child_next));
-  memset(&runqlink, 0, sizeof(runqlink));
   memset(&cv_waiters, 0, sizeof(cv_waiters));
   memset(&cv_sleep, 0, sizeof(cv_sleep));
   memset(__cxa_eh_global, 0, sizeof(__cxa_eh_global));

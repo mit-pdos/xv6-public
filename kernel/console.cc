@@ -271,6 +271,9 @@ consoleintr(int (*getc)(void))
     case C('W'):
       wq_dump();
       break;
+    case C('S'):
+      scheddump();
+      break;
     case C('F'):  // kmem stats
       kmemprint();
       break;

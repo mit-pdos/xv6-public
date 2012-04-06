@@ -9,21 +9,145 @@
 #include "cpu.hh"
 #include "bits.hh"
 #include "kmtrace.hh"
-#include "sched.hh"
 #include "vm.hh"
 #include "wq.hh"
+#include "percpu.hh"
+#include "sperf.hh"
 
 enum { sched_debug = 0 };
 enum { steal_nonexec = 1 };
 
-struct runq {
-  STAILQ_HEAD(queue, proc) q;
-  struct spinlock lock;
-  volatile u64 len __mpalign__;
-  __padout__;
-};
+class schedule
+{
+public:
+  schedule();
+  void enq(proc* entry);
+  proc* deq();
+  proc* steal(bool nonexec);
+  void dump();
 
-static struct runq runq[NCPU] __mpalign__;
+  static void* operator new(unsigned long nbytes, schedule* buf) {
+    assert(nbytes == sizeof(schedule));
+    return buf;
+  }
+  
+private:
+  struct spinlock lock_;
+  sched_link head_;
+
+  void sanity(void);
+
+  struct {
+    std::atomic<u64> enqs;
+    std::atomic<u64> deqs;
+    std::atomic<u64> steals;
+  } stats_;
+
+  u64 ncansteal_ __mpalign__;
+};
+percpu<schedule> schedule_;
+
+static bool cansteal(proc* p, bool nonexec);
+
+schedule::schedule(void)
+{
+  initlock(&lock_, "schedule::lock_", LOCKSTAT_SCHED);
+  head_.next = &head_;
+  head_.prev = &head_;
+  ncansteal_ = 0;
+  stats_.enqs = 0;
+  stats_.deqs = 0;
+  stats_.steals = 0;
+}
+
+void
+schedule::enq(proc* p)
+{
+  sched_link* entry = p;
+  // Add to tail
+  scoped_acquire x(&lock_);
+  entry->next = &head_;
+  entry->prev = head_.prev;
+  head_.prev->next = entry;
+  head_.prev = entry;
+  if (cansteal((proc*)entry, true))
+    ncansteal_++;
+  sanity();
+  stats_.enqs++;
+}
+
+proc*
+schedule::deq(void)
+{   
+  // Remove from head
+  scoped_acquire x(&lock_);
+  sched_link* entry = head_.next;
+  if (entry == &head_)
+    return nullptr;
+  
+  entry->next->prev = entry->prev;
+  entry->prev->next = entry->next;
+  if (cansteal((proc*)entry, true))
+    ncansteal_--;
+  sanity();
+  stats_.deqs++;
+  return (proc*)entry;
+}
+
+proc*
+schedule::steal(bool nonexec)
+{
+  if (ncansteal_ == 0 || !tryacquire(&lock_))
+    return nullptr;
+
+  for (sched_link* ptr = head_.next; ptr != &head_; ptr = ptr->next)
+    if (cansteal((proc*)ptr, nonexec)) {
+      ptr->next->prev = ptr->prev;
+      ptr->prev->next = ptr->next;
+      ncansteal_--;
+      sanity();
+      stats_.steals++;
+      release(&lock_);
+      return (proc*)ptr;
+    }
+  release(&lock_);
+  return nullptr;
+}
+
+void
+schedule::dump(void)
+{
+  cprintf("%lu %lu %lu\n",
+          stats_.enqs.load(),
+          stats_.deqs.load(),
+          stats_.steals.load());
+  stats_.enqs = 0;
+  stats_.deqs = 0;
+  stats_.steals = 0;
+}
+
+void
+schedule::sanity(void)
+{
+#if DEBUG
+  u64 n = 0;
+
+  for (sched_link* ptr = head_.next; ptr != &head_; ptr = ptr->next)
+    if (cansteal((proc*)ptr, true))
+      n++;
+  
+  if (n != ncansteal_)
+    panic("schedule::sanity: %lu != %lu", n, ncansteal_);
+#endif
+}
+
+static bool
+cansteal(proc* p, bool nonexec)
+{
+  return (p->get_state() == RUNNABLE && !p->cpu_pin && 
+          (p->in_exec_ || nonexec) &&
+          p->curcycles != 0 && p->curcycles > VICTIMAGE);
+}
 
 void
 post_swtch(void)
@@ -35,14 +159,67 @@ post_swtch(void)
   wqcrit_trywork();
 }
 
+int
+steal(void)
+{
+  struct proc *steal;
+  int r = 0;
+
+  pushcli();
+
+  for (int nonexec = 0; nonexec < (steal_nonexec ? 2 : 1); nonexec++) { 
+    for (int i = 1; i < ncpu; i++) {
+      steal = schedule_[i].steal(nonexec);
+      if (steal != nullptr) {
+        acquire(&steal->lock);
+        if (steal->get_state() == RUNNABLE && !steal->cpu_pin &&
+            steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
+        {
+          steal->curcycles = 0;
+          steal->cpuid = mycpu()->id;
+          addrun(steal);
+          release(&steal->lock);
+          r = 1;
+          goto found;
+        }
+        if (steal->get_state() == RUNNABLE) {
+          addrun(steal);
+        }
+        release(&steal->lock);
+      }
+    }
+  }
+
+ found:
+  popcli();
+  return r;
+}
+
+void
+scheddump(void)
+{
+  for (int i = 0; i < NCPU; i++) {
+    cprintf("%u ", i);
+    schedule_[i].dump();
+  }
+}
+
+void
+addrun(struct proc* p)
+{
+  p->set_state(RUNNABLE);
+  schedule_[p->cpuid].enq(p);
+}
+
 void
 sched(void)
 {
   extern void threadstub(void);
   extern void forkret(void);
   extern void idleheir(void *x);
-
   int intena;
+  proc* prev;
+  proc* next;
 
 #if SPINLOCK_DEBUG
   if(!holding(&myproc()->lock))
@@ -53,6 +230,7 @@ sched(void)
     extern void idlebequeath(void);
     idlebequeath();
   }
+
   if(mycpu()->ncli != 1)
     panic("sched locks");
   if(myproc()->get_state() == RUNNING)
@@ -62,7 +240,9 @@ sched(void)
   intena = mycpu()->intena;
   myproc()->curcycles += rdtsc() - myproc()->tsc;
 
-  struct proc *next = schednext();
+  // Interrupts are disabled
+  next = schedule_->deq();
+
   if (next == nullptr) {
     if (myproc()->get_state() != RUNNABLE ||
         // proc changed its CPU pin?
@@ -79,7 +259,7 @@ sched(void)
   if (next->get_state() != RUNNABLE)
     panic("non-RUNNABLE next %s %u", next->name, next->get_state());
 
-  struct proc *prev = myproc();
+  prev = myproc();
   mycpu()->proc = next;
   mycpu()->prev = prev;
 
@@ -107,158 +287,8 @@ sched(void)
 }
 
 void
-addrun(struct proc *p)
-{
-  // Always called with p->lock held
-  struct runq *q;
-
-  p->set_state(RUNNABLE);
-
-  q = &runq[p->cpuid];
-  acquire(&q->lock);
-  STAILQ_INSERT_HEAD(&q->q, p, runqlink);
-  p->runq = q;
-  q->len++;
-  release(&q->lock);
-}
-
-void
-delrun(struct proc *p)
-{
-  // Always called with p->lock held
-  struct runq *q;
-
-  q = p->runq;
-  acquire(&q->lock);
-  STAILQ_REMOVE(&q->q, p, proc, runqlink);
-  q->len--;
-  release(&q->lock);
-}
-
-int
-steal(void)
-{
-  struct proc *steal;
-  int r = 0;
-
-  pushcli();
-
-  for (int nonexec = 0; nonexec < (steal_nonexec ? 2 : 1); nonexec++) { 
-    for (int i = 1; i < ncpu; i++) {
-      struct runq *q = &runq[(i+mycpu()->id) % ncpu];
-      struct proc *p;
-
-      if (q->len == 0)
-        continue;
-
-      // XXX(sbw) Look for a process to steal.  Acquiring q->lock
-      // then p->lock can result in deadlock.  So we acquire
-      // q->lock, scan for a process, drop q->lock, acquire p->lock,
-      // and then check that it's still ok to steal p.
-      steal = nullptr;
-      if (tryacquire(&q->lock) == 0)
-        continue;
-      STAILQ_FOREACH(p, &q->q, runqlink) {
-        if (p->get_state() == RUNNABLE && !p->cpu_pin && 
-            (p->in_exec_ || nonexec) &&
-            p->curcycles != 0 && p->curcycles > VICTIMAGE)
-        {
-          STAILQ_REMOVE(&q->q, p, proc, runqlink);
-          q->len--;
-          steal = p;
-          break;
-        }
-      }
-      release(&q->lock);
-
-      if (steal) {
-        acquire(&steal->lock);
-        if (steal->get_state() == RUNNABLE && !steal->cpu_pin &&
-            steal->curcycles != 0 && steal->curcycles > VICTIMAGE)
-        {
-          steal->curcycles = 0;
-          steal->cpuid = mycpu()->id;
-          addrun(steal);
-          release(&steal->lock);
-          r = 1;
-          goto found;
-        }
-        if (steal->get_state() == RUNNABLE)
-          addrun(steal);
-        release(&steal->lock);
-      }
-    }
-  }
-
- found:
-  popcli();
-  return r;
-}
-
-struct proc *
-schednext(void)
-{
-  // No locks, interrupts enabled
-  struct runq *q;
-  struct proc *p = nullptr;
-
-  pushcli();
-  q = &runq[mycpu()->id];
-  acquire(&q->lock);
-  p = STAILQ_LAST(&q->q, proc, runqlink);
-  if (p) {
-    STAILQ_REMOVE(&q->q, p, proc, runqlink);
-    q->len--;
-  }
-  release(&q->lock);
-  popcli();
-  return p;
-}
-
-void
 initsched(void)
 {
-  int i;
-
-  for (i = 0; i < NCPU; i++) {
-    initlock(&runq[i].lock, "runq", LOCKSTAT_SCHED);
-    STAILQ_INIT(&runq[i].q);
-    runq[i].len = 0;
-  }
+  for (int i = 0; i < NCPU; i++)
+    new (&schedule_[i]) schedule();
 }
-
-#if 0
-static int
-migrate(struct proc *p)
-{
-  // p should not be running, or be on a runqueue, or be myproc()
-  int c;
-
-  if (p == myproc())
-    panic("migrate: myproc");
-
-  for (c = 0; c < ncpu; c++) {
-    if (c == mycpu()->id)
-      continue;
-    if (idle[c]) {    // OK if there is a race
-      acquire(&p->lock);
-      if (p->state == RUNNING)
-        panic("migrate: pid %u name %s is running",
-              p->pid, p->name);
-      if (p->cpu_pin)
-        panic("migrate: pid %u name %s is pinned",
-              p->pid, p->name);
-
-      p->curcycles = 0;
-      p->cpuid = c;
-      addrun(p);
-      idle[c] = 0;
-
-      release(&p->lock);
-      return 0;
-    }
-  }
-
-  return -1;
-}
-#endif
