@@ -41,6 +41,9 @@ morecore(int c, int b)
   if(p == 0)
     return -1;
 
+  if (ALLOC_MEMSET)
+    memset(p, 3, PGSIZE);
+
   int sz = 1 << b;
   assert(sz >= sizeof(header));
   for(char *q = p; q + sz <= p + PGSIZE; q += sz){
@@ -105,8 +108,13 @@ kmalloc(u64 nbytes, const char *name)
 
   mtlabel(mtrace_label_heap, (void*) h, nbytes, name, strlen(name));
 
-  if (ALLOC_MEMSET)
+  if (ALLOC_MEMSET) {
+    char* chk = (char*)(h + 1);
+    for (int i = 0; i < (1<<b)-sizeof(*h); i++)
+      if (chk[i] != 3)
+        panic("kmalloc: oops %p+%x", chk, i);
     memset(h, 4, (1<<b));
+  }
 
   return h;
 }
