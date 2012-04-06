@@ -71,13 +71,13 @@ sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 }
 
 long
-sys_write(int fd, char *p, int n)
+sys_write(int fd, const void *p, int n)
 {
   sref<file> f;
 
   if (!getfile(fd, &f) || argcheckptr(p, n) < 0)
     return -1;
-  return f->write(p, n);
+  return f->write(static_cast<const char*>(p), n);
 }
 
 long

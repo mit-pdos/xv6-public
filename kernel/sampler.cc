@@ -220,7 +220,7 @@ sampread(struct inode *ip, char *dst, u32 off, u32 n)
 }
 
 static int
-sampwrite(struct inode *ip, char *buf, u32 off, u32 n)
+sampwrite(struct inode *ip, const char *buf, u32 off, u32 n)
 {
   struct sampconf *conf;
 

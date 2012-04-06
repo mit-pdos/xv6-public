@@ -38,7 +38,7 @@ long sys_sbrk(int);
 long sys_nsleep(u64);
 long sys_unlink(const char*);
 long sys_wait(void);
-long sys_write(int, char*, int);
+long sys_write(int, const void*, int);
 long sys_uptime(void);
 long sys_map(uptr, u64);
 long sys_unmap(uptr, u64);

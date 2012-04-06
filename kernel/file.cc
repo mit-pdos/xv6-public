@@ -102,7 +102,7 @@ file::pread(char *addr, size_t n, off_t off)
 }
 
 int
-file::write(char *addr, int n)
+file::write(const char *addr, int n)
 {
   int r;
 

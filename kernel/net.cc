@@ -346,7 +346,7 @@ netclose(int sock)
 }
 
 int
-netwrite(int sock, char *ubuf, int len)
+netwrite(int sock, const char *ubuf, int len)
 {
   void *kbuf;
   int cc;
@@ -436,7 +436,7 @@ netclose(int sock)
 }
 
 int
-netwrite(int sock, char *buf, int len)
+netwrite(int sock, const char *buf, int len)
 {
   return -1;
 }

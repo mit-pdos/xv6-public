@@ -210,7 +210,7 @@ panic(const char *fmt, ...)
 }
 
 static int
-consolewrite(struct inode *ip, char *buf, u32 off, u32 n)
+consolewrite(struct inode *ip, const char *buf, u32 off, u32 n)
 {
   int i;
 
