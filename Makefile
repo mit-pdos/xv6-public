@@ -41,6 +41,13 @@ LDFLAGS   = -m elf_x86_64
 ALL := 
 all:
 
+define SYSCALLGEN
+	@echo "  GEN    $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)python tools/syscalls.py $(1) kernel/*.cc > $@.tmp
+	$(Q)cmp -s $@.tmp $@ || mv $@.tmp $@
+endef
+
 include net/Makefrag
 include lib/Makefrag
 include bin/Makefrag
