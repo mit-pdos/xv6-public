@@ -431,7 +431,7 @@ sys_chdir(const char *path)
   return 0;
 }
 
-//SYSCALL INT
+//SYSCALL
 int
 sys_exec(const char *upath, userptr<userptr<const char> > uargv)
 {

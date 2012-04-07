@@ -55,13 +55,11 @@ SYS_%(uname)s = %(num)d
 
 .globl %(uname)s
 %(uname)s:
-  movq $%(num)d, %%rax""" % syscall.__dict__
-            if "INT" in syscall.flags:
-                print "  int $T_SYSCALL"
-            else:
-                print "  movq %rcx, %r10\n  syscall"
-            print "  ret"
-            print
+  movq $%(num)d, %%rax
+  movq %%rcx, %%r10
+  syscall
+  ret
+""" % syscall.__dict__
 
     if options.udecls:
         for syscall in syscalls:
