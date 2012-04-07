@@ -5,6 +5,8 @@ def main():
     parser = OptionParser(usage="usage: %prog [options] source...")
     parser.add_option("--kvectors", action="store_true",
                       help="output kernel syscall vectors")
+    parser.add_option("--ustubs", action="store_true",
+                      help="output user syscall stubs")
     (options, args) = parser.parse_args()
 
     if len(args) < 1:
@@ -42,16 +44,34 @@ def main():
         print
         print "extern const int nsyscalls = %d;" % (max(bynum.keys()) + 1)
 
+    if options.ustubs:
+        print "#include \"traps.h\""
+        print
+        for syscall in syscalls:
+            print """\
+.globl %(uname)s
+%(uname)s:
+  movq $%(num)d, %%rax""" % syscall.__dict__
+            if "INT" in syscall.flags:
+                print "  int $T_SYSCALL"
+            else:
+                print "  movq %rcx, %r10\n  syscall"
+            print "  ret"
+            print
+
 class Syscall(object):
-    def __init__(self, kname, rettype, kargs, num=None):
-        self.kname, self.rettype, self.kargs, self.num = \
-            kname, rettype, kargs, num
+    def __init__(self, kname, rettype, kargs, flags, num=None):
+        self.kname, self.rettype, self.kargs, self.flags, self.num = \
+            kname, rettype, kargs, flags, num
 
         self.basename = kname[4:]
 
+        # Construct user space prototype
+        self.uname = self.basename
+
     def __repr__(self):
-        return "Syscall(%r,%r,%r,%r)" % (
-            self.kname, self.rettype, self.kargs, self.num)
+        return "Syscall(%r,%r,%r,%r,%r)" % (
+            self.kname, self.rettype, self.kargs, self.flags, self.num)
 
 class ParseError(RuntimeError):
     def __init__(self, fname, msg):
@@ -60,7 +80,7 @@ class ParseError(RuntimeError):
 def parse(fp):
     res = []
 
-    for proto in re.findall(r"//SYSCALL\n([^{]*)", fp.read()):
+    for flags, proto in re.findall(r"//SYSCALL(.*)([^{]*)", fp.read()):
         # Parse the prototype
         proto = " ".join(proto.split())
         m = re.match(r"(.+) ([a-z_]+) *\(([^)]+)\)", proto)
@@ -69,7 +89,7 @@ def parse(fp):
         rettype, name, kargs = m.groups()
         kargs = re.split(" *, *", kargs)
 
-        res.append(Syscall(name, rettype, kargs))
+        res.append(Syscall(name, rettype, kargs, flags.split()))
 
     return res
 
