@@ -8,12 +8,12 @@ start:
   movq $argv, %rsi
   movq $init, %rdi
   movq $SYS_exec, %rax
-  int $T_SYSCALL
+  syscall
 
 # for(;;) exit();
 exit:
   movq $SYS_exit, %rax
-  int $T_SYSCALL
+  syscall
   jmp exit
 
 # char init[] = "/init\0";

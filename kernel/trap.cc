@@ -89,21 +89,6 @@ trap(struct trapframe *tf)
     panic("NMI");
   }
 
-  if(tf->trapno == T_SYSCALL){
-    sti();
-    if(myproc()->killed) {
-      mtstart(trap, myproc());
-      exit();
-    }
-    myproc()->tf = tf;
-    tf->rax = syscall(tf->rdi, tf->rsi, tf->rdx, tf->rcx, tf->r8, tf->rax);
-    if(myproc()->killed) {
-      mtstart(trap, myproc());
-      exit();
-    }
-    return;
-  }
-
 #if MTRACE
   if (myproc()->mtrace_stacks.curr >= 0)
     mtpause(myproc());
@@ -226,8 +211,6 @@ inittrap(void)
     entry = trapentry[i];
     idt[i] = INTDESC(KCSEG, entry, bits);
   }
-  entry = trapentry[T_SYSCALL];
-  idt[T_SYSCALL] = INTDESC(KCSEG, entry, SEG_DPL(3) | SEG_INTR64 |INT_P);
 }
 
 void
