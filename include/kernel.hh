@@ -235,7 +235,8 @@ void            uartintr(void);
 
 // vm.c
 void            switchvm(struct proc*);
-int             pagefault(struct vmap *, uptr, u32);
+int             pagefault(struct vmap*, uptr, u32);
+void*           pagelookup(struct vmap*, uptr);
 
 // zalloc.cc
 char*           zalloc(const char* name);

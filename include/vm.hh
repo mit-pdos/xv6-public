@@ -96,6 +96,7 @@ struct vmap {
   int remove(uptr start, uptr len);
 
   int pagefault(uptr va, u32 err);
+  void* pagelookup(uptr va);
   int copyout(uptr va, void *p, u64 len);
   int sbrk(ssize_t n, uptr *addr);
 

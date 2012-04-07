@@ -633,7 +633,7 @@ vmap::pagefault(uptr va, u32 err)
 }
 
 int
-pagefault(struct vmap *vmap, uptr va, u32 err)
+pagefault(vmap *vmap, uptr va, u32 err)
 {
 #if MTRACE
   mt_ascope ascope("%s(%p)", __func__, va);
@@ -649,6 +649,57 @@ pagefault(struct vmap *vmap, uptr va, u32 err)
 #if EXCEPTIONS
     } catch (retryable& e) {
       cprintf("%d: pagefault retry\n", myproc()->pid);
+      gc_wakeup();
+      yield();
+    }
+#endif
+  }
+}
+
+void*
+vmap::pagelookup(uptr va)
+{
+  if (va >= USERTOP)
+    return nullptr;
+
+  scoped_gc_epoch gc;
+  vma *m = lookup(va, 1);
+  if (m == 0 || m->n == nullptr)
+    return nullptr;
+
+  u64 npg = (PGROUNDDOWN(va)-m->vma_start) / PGSIZE;
+
+  if (!m->n->page[npg])
+    // XXX(sbw) you might think we don't need to zero if ONDEMAND;
+    // however, our vmnode might include not backed by a file
+    // (e.g. the bss section of an ELF segment)
+    // XXX(austin) Why is this still necessary now that we map zeroed
+    // parts of segments separately?
+    if (m->n->allocpg(npg, true) < 0)
+      throw_bad_alloc();
+
+  char* kptr = (char*)(m->n->page[npg]);
+  mtreadavar("vmnode:%016x", m->n);
+  return &kptr[va & (PGSIZE-1)];
+}
+
+void*
+pagelookup(vmap* vmap, uptr va)
+{
+#if MTRACE
+  mt_ascope ascope("%s(%p)", __func__, va);
+  mtwriteavar("thread:%x", myproc()->pid);
+  mtwriteavar("page:%p.%016x", vmap, PGROUNDDOWN(va));
+#endif
+
+  for (;;) {
+#if EXCEPTIONS
+    try {
+#endif
+      return vmap->pagelookup(va);
+#if EXCEPTIONS
+    } catch (retryable& e) {
+      cprintf("%d: pagelookup retry\n", myproc()->pid);
       gc_wakeup();
       yield();
     }
