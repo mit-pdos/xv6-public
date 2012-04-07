@@ -71,7 +71,7 @@ private:
 
   ~filetable() {
     for(int fd = 0; fd < NOFILE; fd++){
-      if (ofile_[fd]){
+      if (ofile_[fd].load() != nullptr) {
         ofile_[fd].load()->dec();
         ofile_[fd] = nullptr;
       }
