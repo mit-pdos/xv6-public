@@ -144,8 +144,8 @@ sys_unmap(userptr<void> addr, size_t len)
   return 0;
 }
 
-//SYSCALL
-int
+//SYSCALL NORET
+void
 sys_halt(void)
 {
   halt();
