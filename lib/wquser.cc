@@ -14,8 +14,6 @@ static std::atomic<int> nextid;
 
 static wq *wq_;
 
-extern "C" long wqwait(void);
-
 static void __attribute__((used))
 initworker(void)
 {

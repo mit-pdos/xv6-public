@@ -10,5 +10,10 @@ $(O)/lib/sysstubs.S: tools/syscalls.py kernel/*.cc
 	$(Q)mkdir -p $(@D)
 	$(Q)python $^ --ustubs > $@
 
+$(O)/include/sysstubs.h: tools/syscalls.py kernel/*.cc
+	@echo "  GEN    $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)python $^ --udecls > $@
+
 .PRECIOUS: $(O)/lib/%.o
 -include $(O)/lib/*.d

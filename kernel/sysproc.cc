@@ -20,7 +20,7 @@ sys_fork(int flags)
   return fork(flags);
 }
 
-//SYSCALL
+//SYSCALL NORET
 int
 sys_exit(void)
 {

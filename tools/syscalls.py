@@ -7,6 +7,8 @@ def main():
                       help="output kernel syscall vectors")
     parser.add_option("--ustubs", action="store_true",
                       help="output user syscall stubs")
+    parser.add_option("--udecls", action="store_true",
+                      help="output user syscall declarations")
     (options, args) = parser.parse_args()
 
     if len(args) < 1:
@@ -59,6 +61,14 @@ def main():
             print "  ret"
             print
 
+    if options.udecls:
+        for syscall in syscalls:
+            extra = ""
+            if "NORET" in syscall.flags:
+                extra = " __attribute__((noreturn))"
+            print "%s %s(%s)%s;" % (syscall.rettype, syscall.uname,
+                                    ", ".join(syscall.uargs), extra)
+
 class Syscall(object):
     def __init__(self, kname, rettype, kargs, flags, num=None):
         self.kname, self.rettype, self.kargs, self.flags, self.num = \
@@ -68,6 +78,17 @@ class Syscall(object):
 
         # Construct user space prototype
         self.uname = self.basename
+        uargs = []
+        for karg in kargs:
+            m = re.match("(.*?) *[a-z_]+$", karg)
+            atype = m.group(1)
+            while True:
+                atype2 = re.sub("userptr<(.*)>", r"\1*", atype)
+                if atype2 == atype:
+                    break
+                atype = atype2
+            uargs.append(atype)
+        self.uargs = uargs
 
     def __repr__(self):
         return "Syscall(%r,%r,%r,%r,%r)" % (
