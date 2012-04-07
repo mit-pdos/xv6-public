@@ -142,9 +142,7 @@ $(O)/kernel/trapasm.o: $(O)/include/asmdefines.h
 $(O)/kernel/uaccess.o: $(O)/include/asmdefines.h
 
 $(O)/kernel/sysvectors.cc: tools/syscalls.py kernel/*.cc
-	@echo "  GEN    $@"
-	$(Q)mkdir -p $(@D)
-	$(Q)python $^ --kvectors > $@
+	$(call SYSCALLGEN,--kvectors)
 
 .PRECIOUS: $(O)/kernel/%.o
 -include $(O)/kernel/*.d

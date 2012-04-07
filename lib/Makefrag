@@ -6,14 +6,10 @@ ULIB = ulib.o printf.o umalloc.o uthread.o fmt.o stream.o ipc.o \
 ULIB := $(addprefix $(O)/lib/, $(ULIB))
 
 $(O)/lib/sysstubs.S: tools/syscalls.py kernel/*.cc
-	@echo "  GEN    $@"
-	$(Q)mkdir -p $(@D)
-	$(Q)python $^ --ustubs > $@
+	$(call SYSCALLGEN,--ustubs)
 
 $(O)/include/sysstubs.h: tools/syscalls.py kernel/*.cc
-	@echo "  GEN    $@"
-	$(Q)mkdir -p $(@D)
-	$(Q)python $^ --udecls > $@
+	$(call SYSCALLGEN,--udecls)
 
 .PRECIOUS: $(O)/lib/%.o
 -include $(O)/lib/*.d
