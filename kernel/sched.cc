@@ -41,9 +41,10 @@ private:
     std::atomic<u64> enqs;
     std::atomic<u64> deqs;
     std::atomic<u64> steals;
+    std::atomic<u64> misses;
   } stats_;
 
-  u64 ncansteal_ __mpalign__;
+  volatile u64 ncansteal_ __mpalign__;
 };
 percpu<schedule> schedule_;
 
@@ -58,6 +59,7 @@ schedule::schedule(void)
   stats_.enqs = 0;
   stats_.deqs = 0;
   stats_.steals = 0;
+  stats_.misses = 0;
 }
 
 void
@@ -88,7 +90,7 @@ schedule::deq(void)
   entry->next->prev = entry->prev;
   entry->prev->next = entry->next;
   if (cansteal((proc*)entry, true))
-    ncansteal_--;
+    --ncansteal_;
   sanity();
   stats_.deqs++;
   return (proc*)entry;
@@ -104,26 +106,30 @@ schedule::steal(bool nonexec)
     if (cansteal((proc*)ptr, nonexec)) {
       ptr->next->prev = ptr->prev;
       ptr->prev->next = ptr->next;
-      ncansteal_--;
+      --ncansteal_;
       sanity();
-      stats_.steals++;
+      ++stats_.steals;
       release(&lock_);
       return (proc*)ptr;
     }
   release(&lock_);
+  ++stats_.misses;
   return nullptr;
 }
 
 void
 schedule::dump(void)
 {
-  cprintf("%lu %lu %lu\n",
+  cprintf("%lu %lu %lu %lu\n",
           stats_.enqs.load(),
           stats_.deqs.load(),
-          stats_.steals.load());
+          stats_.steals.load(),
+          stats_.misses.load());
+  
   stats_.enqs = 0;
   stats_.deqs = 0;
   stats_.steals = 0;
+  stats_.misses = 0;
 }
 
 void
