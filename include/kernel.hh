@@ -6,6 +6,7 @@ extern "C" {
 
 #include "atomic.hh"
 #include "memlayout.h"
+#include "userptr.hh"
 #include <stdarg.h>
 
 #define KCSEG (2<<3)  /* kernel code segment */
@@ -146,6 +147,9 @@ void            lapiceoi(void);
 void            lapic_tlbflush(hwid_t);
 void            lapic_sampconf(hwid_t);
 void            lapicpc(char mask);
+
+// main.c
+void            halt(void) __attribute__((noreturn));
 
 // mp.c
 extern int      ncpu;

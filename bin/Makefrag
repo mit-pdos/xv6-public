@@ -57,5 +57,7 @@ $(O)/bin/%: $(O)/bin/%.unstripped
 	$(Q)mkdir -p $(@D)
 	$(Q)$(STRIP) -o $@ $<
 
+$(addsuffix .o,$(UPROGS)): $(O)/include/sysstubs.h
+
 .PRECIOUS: $(O)/bin/%.o $(O)/bin/%.unstripped
 -include $(O)/bin/*.d

@@ -28,7 +28,7 @@ NM = $(TOOLPREFIX)nm
 OBJCOPY = $(TOOLPREFIX)objcopy
 STRIP = $(TOOLPREFIX)strip
 
-INCLUDES  = -iquote include -Istdinc -I$(QEMUSRC) -include param.h -include include/compiler.h
+INCLUDES  = -iquote include -iquote$(O)/include -Istdinc -I$(QEMUSRC) -include param.h -include include/compiler.h
 COMFLAGS  = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) -DXV6 \
 	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer -fms-extensions \
 	    -mno-sse -mcx16 -mno-red-zone $(INCLUDES)
@@ -58,7 +58,17 @@ $(O)/%.o: %.cc
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
 
+$(O)/%.o: $(O)/%.cc
+	@echo "  CXX    $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $<
+
 $(O)/%.o: %.S
+	@echo "  CC     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<
+
+$(O)/%.o: $(O)/%.S
 	@echo "  CC     $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CC) $(ASFLAGS) -c -o $@ $<

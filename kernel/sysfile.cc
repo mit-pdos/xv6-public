@@ -28,7 +28,8 @@ fdalloc(file *f)
   return myproc()->ftable->allocfd(f);
 }
 
-long
+//SYSCALL
+int
 sys_dup(int ofd)
 {
   sref<file> f;
@@ -44,16 +45,18 @@ sys_dup(int ofd)
   return fd;
 }
 
-s64
-sys_read(int fd, char *p, int n)
+//SYSCALL
+ssize_t
+sys_read(int fd, void *p, size_t n)
 {
   sref<file> f;
 
   if(!getfile(fd, &f) || argcheckptr(p, n) < 0)
     return -1;
-  return f->read(p, n);
+  return f->read(static_cast<char*>(p), n);
 }
 
+//SYSCALL
 ssize_t
 sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 {
@@ -70,8 +73,9 @@ sys_pread(int fd, void *ubuf, size_t count, off_t offset)
   return f->pread((char*)ubuf, count, offset);
 }
 
-long
-sys_write(int fd, const void *p, int n)
+//SYSCALL
+ssize_t
+sys_write(int fd, const void *p, size_t n)
 {
   sref<file> f;
 
@@ -80,7 +84,8 @@ sys_write(int fd, const void *p, int n)
   return f->write(static_cast<const char*>(p), n);
 }
 
-long
+//SYSCALL
+int
 sys_close(int fd)
 {
   sref<file> f;
@@ -91,7 +96,8 @@ sys_close(int fd)
   return 0;
 }
 
-long
+//SYSCALL
+int
 sys_fstat(int fd, struct stat *st)
 {
   sref<file> f;
@@ -102,7 +108,8 @@ sys_fstat(int fd, struct stat *st)
 }
 
 // Create the path new as a link to the same inode as old.
-long
+//SYSCALL
+int
 sys_link(const char *old, const char *newn)
 {
   char name[DIRSIZ];
@@ -155,7 +162,8 @@ isdirempty(struct inode *dp)
   return empty;
 }
 
-long
+//SYSCALL
+int
 sys_unlink(const char *path)
 {
   struct inode *ip, *dp;
@@ -266,7 +274,8 @@ create(inode *cwd, const char *path, short type, short major, short minor)
   return ip;
 }
 
-long
+//SYSCALL
+int
 sys_openat(int dirfd, const char *path, int omode)
 {
   int fd;
@@ -363,7 +372,8 @@ sys_openat(int dirfd, const char *path, int omode)
   return fd;
 }
 
-long
+//SYSCALL
+int
 sys_mkdirat(int dirfd, const char *path)
 {
   struct inode *cwd;
@@ -388,7 +398,8 @@ sys_mkdirat(int dirfd, const char *path)
   return 0;
 }
 
-long
+//SYSCALL
+int
 sys_mknod(const char *path, int major, int minor)
 {
   struct inode *ip;
@@ -401,7 +412,8 @@ sys_mknod(const char *path, int major, int minor)
   return 0;
 }
 
-long
+//SYSCALL
+int
 sys_chdir(const char *path)
 {
   struct inode *ip;
@@ -419,8 +431,9 @@ sys_chdir(const char *path)
   return 0;
 }
 
-long
-sys_exec(const char *upath, u64 uargv)
+//SYSCALL INT
+int
+sys_exec(const char *upath, userptr<userptr<const char> > uargv)
 {
   ANON_REGION(__func__, &perfgroup);
   static const int len = 32;
@@ -456,7 +469,8 @@ clean:
   return r;
 }
 
-long
+//SYSCALL
+int
 sys_pipe(int *fd)
 {
   struct file *rf, *wf;
@@ -522,7 +536,8 @@ allocsocket(struct file **rf, int *rfd)
   return 0;
 }
 
-long
+//SYSCALL
+int
 sys_socket(int domain, int type, int protocol)
 {
   extern long netsocket(int domain, int type, int protocol);
@@ -543,10 +558,11 @@ sys_socket(int domain, int type, int protocol)
   return fd;
 }
 
-long
-sys_bind(int xsock, void *xaddr, int xaddrlen)
+//SYSCALL
+int
+sys_bind(int xsock, const struct sockaddr *xaddr, int xaddrlen)
 {
-  extern long netbind(int, void*, int);
+  extern long netbind(int, const struct sockaddr*, int);
   sref<file> f;
 
   if (!getsocket(xsock, &f))
@@ -555,7 +571,8 @@ sys_bind(int xsock, void *xaddr, int xaddrlen)
   return netbind(f->socket, xaddr, xaddrlen);
 }
 
-long
+//SYSCALL
+int
 sys_listen(int xsock, int backlog)
 {
   extern long netlisten(int, int);
@@ -567,10 +584,11 @@ sys_listen(int xsock, int backlog)
   return netlisten(f->socket, backlog);
 }
 
-long
-sys_accept(int xsock, void *xaddr, void *xaddrlen)
+//SYSCALL
+int
+sys_accept(int xsock, struct sockaddr *xaddr, int *xaddrlen)
 {
-  extern long netaccept(int, void*, void*);
+  extern long netaccept(int, struct sockaddr*, int*);
   file *cf;
   sref<file> f;
   int cfd;

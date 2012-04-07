@@ -28,7 +28,8 @@ script_mmap_work(void *a0, void *a1, void *a2, void *a3)
   *donep += 1;
 }
 
-long
+//SYSCALL
+int
 sys_script(void *addr, u64 len, u64 chunk)
 {
   atomic<int> done;

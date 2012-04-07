@@ -3,7 +3,6 @@
 #include "user.h"
 #include "fs.h"
 #include "fcntl.h"
-#include "syscall.h"
 #include "traps.h"
 #include "pthread.h"
 

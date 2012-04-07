@@ -52,7 +52,8 @@ OBJS = \
 	wqlib.o \
 	script.o \
         zalloc.o \
-	incbin.o
+	incbin.o \
+	sysvectors.o \
 
 ifeq ($(EXCEPTIONS),y)
 OBJS += \
@@ -114,13 +115,18 @@ $(O)/kernel/%.o: lib/%.cc
 $(O)/kernel/incbin.o: ASFLAGS+=-DMAKE_OUT=$(O)
 $(O)/kernel/incbin.o: $(O)/kernel/initcode $(O)/kernel/bootother $(O)/fs.img
 
+# link initcode against sysstubs to get syscall numbers
 $(O)/kernel/initcode: TTEXT = 0x1000
+$(O)/kernel/initcode: LDEXTRA = $(O)/lib/sysstubs.o
+$(O)/kernel/initcode: $(O)/lib/sysstubs.o
+
 $(O)/kernel/bootother: TTEXT = 0x7000
+
 $(O)/kernel/%: kernel/%.S
 	@echo "  CC     $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CC) $(CFLAGS) -nostdinc -I. -c $< -o $@.o
-	$(Q)$(LD) $(LDFLAGS) -N -e start -Ttext $(TTEXT) -o $@.out $@.o
+	$(Q)$(LD) $(LDFLAGS) -N -e start -Ttext $(TTEXT) -o $@.out $@.o $(LDEXTRA)
 	$(Q)$(OBJCOPY) -S -O binary $@.out $@
 
 $(O)/kernel/asmdefines.S: kernel/asmdefines.c
@@ -134,6 +140,11 @@ $(O)/include/asmdefines.h: $(O)/kernel/asmdefines.S
 	$(Q)sed -n 's/remove\$$//p' $(O)/kernel/asmdefines.S > $@
 $(O)/kernel/trapasm.o: $(O)/include/asmdefines.h
 $(O)/kernel/uaccess.o: $(O)/include/asmdefines.h
+
+$(O)/kernel/sysvectors.cc: tools/syscalls.py kernel/*.cc
+	@echo "  GEN    $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)python $^ --kvectors > $@
 
 .PRECIOUS: $(O)/kernel/%.o
 -include $(O)/kernel/*.d

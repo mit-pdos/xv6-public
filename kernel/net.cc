@@ -273,9 +273,9 @@ netsocket(int domain, int type, int protocol)
 }
 
 long
-netbind(int sock, void *xaddr, int xaddrlen)
+netbind(int sock, const sockaddr *xaddr, int xaddrlen)
 {
-  void *addr;
+  const sockaddr *addr;
   long r;
   
   addr = kmalloc(xaddrlen, "sockaddr");
@@ -286,7 +286,7 @@ netbind(int sock, void *xaddr, int xaddrlen)
     return -1;
 
   lwip_core_lock();
-  r = lwip_bind(sock, (const sockaddr*) addr, xaddrlen);
+  r = lwip_bind(sock, addr, xaddrlen);
   lwip_core_unlock();
   kmfree(addr, xaddrlen);
   return r;
@@ -304,14 +304,13 @@ netlisten(int sock, int backlog)
 }
 
 long
-netaccept(int sock, void *xaddr, void *xaddrlen)
+netaccept(int sock, struct sockaddr *xaddr, int *xaddrlen)
 {
-  socklen_t *lenptr = (socklen_t*) xaddrlen;
   socklen_t len;
   void *addr;
   int ss;
 
-  if (fetchmem(&len, lenptr, sizeof(*lenptr)))
+  if (fetchmem(&len, xaddrlen, sizeof(*xaddrlen)))
     return -1;
 
   addr = kmalloc(len, "sockaddr");
@@ -413,7 +412,7 @@ netsocket(int domain, int type, int protocol)
 }
 
 long
-netbind(int sock, void *xaddr, int xaddrlen)
+netbind(int sock, const struct sockaddr *xaddr, int xaddrlen)
 {
   return -1;
 }
@@ -425,7 +424,7 @@ netlisten(int sock, int backlog)
 }
 
 long
-netaccept(int sock, void *xaddr, void *xaddrlen)
+netaccept(int sock, struct sockaddr *xaddr, int *xaddrlen)
 {
   return -1;
 }

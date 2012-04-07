@@ -2,40 +2,9 @@
 
 BEGIN_DECLS
 struct stat;
-struct ipcmsg;
+struct sockaddr;
 
-// system calls
-int fork(int);
-int exit(void) __attribute__((noreturn));
-int wait(void);
-int pipe(int*);
-int write(int, const void*, int);
-int read(int, void*, int);
-int close(int);
-int kill(int);
-int exec(const char*, const char**);
-int openat(int dirfd, const char *pathname, int omode);
-int mknod(const char*, short, short);
-int unlink(const char*);
-int fstat(int fd, struct stat*);
-int link(const char*, const char*);
-int mkdir(const char*);
-int mkdirat(int dirfd, const char *pathname);
-int chdir(const char*);
-int dup(int);
-int getpid(void);
-char* sbrk(int);
-int nsleep(u64);
-u64 uptime(void);
-int map(void *addr, int len);
-int unmap(void *addr, int len);
-void halt(void);
-ssize_t pread(int, void*, size_t, off_t);
-int async(int, size_t, off_t, u32, u32);
-int script(void *addr, u64 len, u64 chunk);
-int setfs(u64 base);
-int setaffinity(int cpu);
-long futex(const u64* addr, int op, u64 val, u64 timer);
+#include "sysstubs.h"
 
 // ulib.c
 int stat(char*, struct stat*);
@@ -48,6 +17,7 @@ char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
 int strncmp(const char *p, const char *q, size_t n);
 int open(const char*, int);
+int mkdir(const char*);
 
 char* gets(char*, int max);
 unsigned int strlen(const char*);

@@ -1,6 +1,3 @@
-#include "syscall.h"
-#include "traps.h"
-
 # We assume that the kernel follows the amd64 ABI, but not
 # that it saves caller-saved registers.
 .globl forkt

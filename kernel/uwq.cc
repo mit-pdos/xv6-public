@@ -52,7 +52,8 @@ uwq_trywork(void)
   return false;
 }
 
-long
+//SYSCALL
+int
 sys_wqwait(void)
 {
   uwq_worker* w = myproc()->worker;

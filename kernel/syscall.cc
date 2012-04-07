@@ -6,13 +6,15 @@
 #include "queue.h"
 #include "proc.hh"
 #include "amd64.h"
-#include "syscall.h"
 #include "cpu.hh"
 #include "kmtrace.hh"
 
 extern "C" int __uaccess_mem(void* dst, const void* src, u64 size);
 extern "C" int __uaccess_str(char* dst, const char* src, u64 size);
 extern "C" int __uaccess_int64(uptr addr, u64* ip);
+
+// XXX(austin) Many of these functions should take userptr<void>
+// instead of regular pointers
 
 int
 fetchmem(void* dst, const void* usrc, u64 size)
@@ -77,6 +79,9 @@ argcheckptr(const void *p, int size)
   return 0;
 }
 
+extern u64 (*syscalls[])(u64, u64, u64, u64, u64);
+extern const int nsyscalls;
+
 u64
 syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
 {
@@ -86,7 +91,7 @@ syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
 #if EXCEPTIONS
     try {
 #endif
-      if(num < SYS_ncount && syscalls[num]) {
+      if(num < nsyscalls && syscalls[num]) {
         mtstart(syscalls[num], myproc());
         mtrec();
         u64 r = syscalls[num](a0, a1, a2, a3, a4);

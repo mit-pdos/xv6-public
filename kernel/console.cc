@@ -183,7 +183,7 @@ kerneltrap(struct trapframe *tf)
   printtrace(tf->rbp);
 
   panicked = 1;
-  sys_halt();
+  halt();
   for(;;)
     ;
 }
@@ -204,7 +204,7 @@ panic(const char *fmt, ...)
   printtrace(rrbp());
 
   panicked = 1;
-  sys_halt();
+  halt();
   for(;;)
     ;
 }
