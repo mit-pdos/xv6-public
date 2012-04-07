@@ -49,7 +49,7 @@ futexkey(const u64* useraddr, vmap* vmap, futexkey_t* key)
 //
 struct futexaddr : public referenced, public rcu_freed
 {
-  futexaddr(u64* kaddr);
+  futexaddr(futexkey_t key);
   virtual void do_gc();
   virtual void onzero() const;
 
@@ -127,14 +127,14 @@ futexwait(futexkey_t key, u64 val, u64 timer)
 }
 
 long
-futexwake(u64* kaddr, u64 nwake)
+futexwake(futexkey_t key, u64 nwake)
 {
   futexaddr* fa;
   u64 nwoke = 0;
   proc* p;
 
   scoped_gc_epoch gc;
-  fa = nsfutex->lookup(kaddr);
+  fa = nsfutex->lookup(key);
   if (fa == nullptr)
     return 0;
   acquire(&fa->lock_);
