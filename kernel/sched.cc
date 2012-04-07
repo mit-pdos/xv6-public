@@ -168,7 +168,7 @@ steal(void)
   pushcli();
 
   for (int nonexec = 0; nonexec < (steal_nonexec ? 2 : 1); nonexec++) { 
-    for (int i = 1; i < ncpu; i++) {
+    for (int i = 0; i < NCPU; i++) {
       steal = schedule_[i].steal(nonexec);
       if (steal != nullptr) {
         acquire(&steal->lock);
