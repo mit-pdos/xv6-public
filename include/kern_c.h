@@ -53,6 +53,7 @@ long sys_script(void *addr, u64 len, u64 chunk);
 long sys_setfs(u64 base);
 long sys_wqwait(void);
 long sys_setaffinity(int cpu);
+long sys_futex(const u64* addr, int op, u64 val, u64 timer);
 extern long (*syscalls[])(u64, u64, u64, u64, u64);
 
 // other exported/imported functions

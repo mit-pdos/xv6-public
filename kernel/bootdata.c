@@ -63,4 +63,5 @@ long (*syscalls[])(u64, u64, u64, u64, u64) = {
   SYSCALL(setfs),
   SYSCALL(wqwait),
   SYSCALL(setaffinity),
+  SYSCALL(futex),
 };

@@ -102,6 +102,12 @@ int             dirlink(struct inode*, const char*, u32);
 void            dir_init(struct inode *dp);
 void	        dir_flush(struct inode *dp);
 
+// futex.cc
+typedef u64* futexkey_t;
+int             futexkey(const u64* useraddr, vmap* vmap, futexkey_t* key);
+long            futexwait(futexkey_t key, u64 val, u64 timer);
+long            futexwake(futexkey_t key, u64 nwake);
+
 // hz.c
 void            microdelay(u64);
 void            inithz(void);

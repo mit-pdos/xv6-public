@@ -35,6 +35,7 @@ int async(int, size_t, off_t, u32, u32);
 int script(void *addr, u64 len, u64 chunk);
 int setfs(u64 base);
 int setaffinity(int cpu);
+long futex(const u64* addr, int op, u64 val, u64 timer);
 
 // ulib.c
 int stat(char*, struct stat*);

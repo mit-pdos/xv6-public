@@ -10,6 +10,7 @@
 #include "vm.hh"
 #include "sperf.hh"
 #include "kmtrace.hh"
+#include "futex.h"
 
 long
 sys_fork(int flags)
@@ -157,4 +158,22 @@ long
 sys_setaffinity(int cpu)
 {
   return myproc()->set_cpu_pin(cpu);
+}
+
+long
+sys_futex(const u64* addr, int op, u64 val, u64 timer)
+{
+  futexkey_t key;
+
+  if (futexkey(addr, myproc()->vmap, &key) < 0)
+    return -1;
+
+  switch(op) {
+  case FUTEX_WAIT:
+    return futexwait(key, val, timer);
+  case FUTEX_WAKE:
+    return futexwake(key, val);
+  default:
+    return -1;
+  }
 }

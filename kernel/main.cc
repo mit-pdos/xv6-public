@@ -38,6 +38,7 @@ void initwq(void);
 void initsperf(void);
 void initidle(void);
 void initcpprt(void);
+void initfutex(void);
 void idleloop(void);
 
 static volatile int bstate;
@@ -119,6 +120,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initdisk();      // disk
   initconsole();
   initwq();
+  initfutex();
   initsamp();
   initlockstat();
   initpci();

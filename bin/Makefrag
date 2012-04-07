@@ -36,7 +36,8 @@ UPROGS= \
 	xdu \
 	wqtest \
 	rm \
-	avar
+	avar \
+        futexbench
 
 ifeq ($(HAVE_LWIP),y)
 UPROGS += \

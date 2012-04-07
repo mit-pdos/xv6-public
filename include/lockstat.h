@@ -47,6 +47,7 @@ struct klockstat;
 #define LOCKSTAT_CONSOLE   1
 #define LOCKSTAT_CRANGE    1
 #define LOCKSTAT_FS        1
+#define LOCKSTAT_FUTEX     1
 #define LOCKSTAT_GC        1
 #define LOCKSTAT_IDLE      1
 #define LOCKSTAT_KALLOC    1
