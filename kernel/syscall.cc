@@ -6,7 +6,6 @@
 #include "queue.h"
 #include "proc.hh"
 #include "amd64.h"
-#include "syscall.h"
 #include "cpu.hh"
 #include "kmtrace.hh"
 

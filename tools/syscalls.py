@@ -20,10 +20,9 @@ def main():
     for fname in args:
         syscalls.extend(parse(file(fname, "r")))
 
-    # Parse syscall numbers
-    nums = dict(re.findall("#define SYS_([^ ]*) +([0-9]+)", file("include/syscall.h").read()))
-    for syscall in syscalls:
-        syscall.num = int(nums[syscall.basename])
+    # Generate syscall numbers
+    for n, syscall in enumerate(syscalls):
+        syscall.num = n + 1
 
     # Output
     if options.kvectors:
@@ -51,6 +50,9 @@ def main():
         print
         for syscall in syscalls:
             print """\
+.globl SYS_%(uname)s
+SYS_%(uname)s = %(num)d
+
 .globl %(uname)s
 %(uname)s:
   movq $%(num)d, %%rax""" % syscall.__dict__
