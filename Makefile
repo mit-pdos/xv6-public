@@ -44,7 +44,8 @@ all:
 define SYSCALLGEN
 	@echo "  GEN    $@"
 	$(Q)mkdir -p $(@D)
-	$(Q)python tools/syscalls.py $(1) kernel/*.cc > $@
+	$(Q)python tools/syscalls.py $(1) kernel/*.cc > $@.tmp
+	$(Q)cmp -s $@.tmp $@ || mv $@.tmp $@
 endef
 
 include net/Makefrag
