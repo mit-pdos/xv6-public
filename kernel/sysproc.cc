@@ -12,6 +12,7 @@
 #include "kmtrace.hh"
 #include "futex.h"
 
+//SYSCALL
 int
 sys_fork(int flags)
 {
@@ -19,6 +20,7 @@ sys_fork(int flags)
   return fork(flags);
 }
 
+//SYSCALL
 int
 sys_exit(void)
 {
@@ -26,6 +28,7 @@ sys_exit(void)
   panic("exit() returned");
 }
 
+//SYSCALL
 int
 sys_wait(void)
 {
@@ -33,18 +36,21 @@ sys_wait(void)
   return wait();
 }
 
+//SYSCALL
 int
 sys_kill(int pid)
 {
   return proc::kill(pid);
 }
 
+//SYSCALL
 int
 sys_getpid(void)
 {
   return myproc()->pid;
 }
 
+//SYSCALL
 char*
 sys_sbrk(int n)
 {
@@ -55,6 +61,7 @@ sys_sbrk(int n)
   return (char*)addr;
 }
 
+//SYSCALL
 int
 sys_nsleep(u64 nsec)
 {
@@ -83,12 +90,14 @@ sys_nsleep(u64 nsec)
 
 // return how many clock tick interrupts have occurred
 // since boot.
+//SYSCALL
 u64
 sys_uptime(void)
 {
   return nsectime();
 }
 
+//SYSCALL
 int
 sys_map(userptr<void> addr, size_t len)
 {
@@ -114,6 +123,7 @@ sys_map(userptr<void> addr, size_t len)
   return r;
 }
 
+//SYSCALL
 int
 sys_unmap(userptr<void> addr, size_t len)
 {
@@ -134,6 +144,7 @@ sys_unmap(userptr<void> addr, size_t len)
   return 0;
 }
 
+//SYSCALL
 int
 sys_halt(void)
 {
@@ -145,6 +156,7 @@ sys_halt(void)
   return 0;
 }
 
+//SYSCALL
 int
 sys_setfs(u64 base)
 {
@@ -154,12 +166,14 @@ sys_setfs(u64 base)
   return 0;
 }
 
+//SYSCALL
 int
 sys_setaffinity(int cpu)
 {
   return myproc()->set_cpu_pin(cpu);
 }
 
+//SYSCALL
 long
 sys_futex(const u64* addr, int op, u64 val, u64 timer)
 {

@@ -52,6 +52,7 @@ uwq_trywork(void)
   return false;
 }
 
+//SYSCALL
 int
 sys_wqwait(void)
 {

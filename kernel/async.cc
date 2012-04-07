@@ -52,6 +52,7 @@ pread_allocwork(struct inode *ip, size_t count, off_t off,
   return w;
 }
 
+//SYSCALL
 int
 sys_async(int fd, size_t count, off_t off,
           int msgid, int pageid)

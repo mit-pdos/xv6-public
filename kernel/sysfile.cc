@@ -28,6 +28,7 @@ fdalloc(file *f)
   return myproc()->ftable->allocfd(f);
 }
 
+//SYSCALL
 int
 sys_dup(int ofd)
 {
@@ -44,6 +45,7 @@ sys_dup(int ofd)
   return fd;
 }
 
+//SYSCALL
 ssize_t
 sys_read(int fd, void *p, size_t n)
 {
@@ -54,6 +56,7 @@ sys_read(int fd, void *p, size_t n)
   return f->read(static_cast<char*>(p), n);
 }
 
+//SYSCALL
 ssize_t
 sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 {
@@ -70,6 +73,7 @@ sys_pread(int fd, void *ubuf, size_t count, off_t offset)
   return f->pread((char*)ubuf, count, offset);
 }
 
+//SYSCALL
 ssize_t
 sys_write(int fd, const void *p, size_t n)
 {
@@ -80,6 +84,7 @@ sys_write(int fd, const void *p, size_t n)
   return f->write(static_cast<const char*>(p), n);
 }
 
+//SYSCALL
 int
 sys_close(int fd)
 {
@@ -91,6 +96,7 @@ sys_close(int fd)
   return 0;
 }
 
+//SYSCALL
 int
 sys_fstat(int fd, struct stat *st)
 {
@@ -102,6 +108,7 @@ sys_fstat(int fd, struct stat *st)
 }
 
 // Create the path new as a link to the same inode as old.
+//SYSCALL
 int
 sys_link(const char *old, const char *newn)
 {
@@ -155,6 +162,7 @@ isdirempty(struct inode *dp)
   return empty;
 }
 
+//SYSCALL
 int
 sys_unlink(const char *path)
 {
@@ -266,6 +274,7 @@ create(inode *cwd, const char *path, short type, short major, short minor)
   return ip;
 }
 
+//SYSCALL
 int
 sys_openat(int dirfd, const char *path, int omode)
 {
@@ -363,6 +372,7 @@ sys_openat(int dirfd, const char *path, int omode)
   return fd;
 }
 
+//SYSCALL
 int
 sys_mkdirat(int dirfd, const char *path)
 {
@@ -388,6 +398,7 @@ sys_mkdirat(int dirfd, const char *path)
   return 0;
 }
 
+//SYSCALL
 int
 sys_mknod(const char *path, int major, int minor)
 {
@@ -401,6 +412,7 @@ sys_mknod(const char *path, int major, int minor)
   return 0;
 }
 
+//SYSCALL
 int
 sys_chdir(const char *path)
 {
@@ -419,6 +431,7 @@ sys_chdir(const char *path)
   return 0;
 }
 
+//SYSCALL
 int
 sys_exec(const char *upath, userptr<userptr<const char> > uargv)
 {
@@ -456,6 +469,7 @@ clean:
   return r;
 }
 
+//SYSCALL
 int
 sys_pipe(int *fd)
 {
@@ -522,6 +536,7 @@ allocsocket(struct file **rf, int *rfd)
   return 0;
 }
 
+//SYSCALL
 int
 sys_socket(int domain, int type, int protocol)
 {
@@ -543,6 +558,7 @@ sys_socket(int domain, int type, int protocol)
   return fd;
 }
 
+//SYSCALL
 int
 sys_bind(int xsock, const struct sockaddr *xaddr, int xaddrlen)
 {
@@ -555,6 +571,7 @@ sys_bind(int xsock, const struct sockaddr *xaddr, int xaddrlen)
   return netbind(f->socket, xaddr, xaddrlen);
 }
 
+//SYSCALL
 int
 sys_listen(int xsock, int backlog)
 {
@@ -567,6 +584,7 @@ sys_listen(int xsock, int backlog)
   return netlisten(f->socket, backlog);
 }
 
+//SYSCALL
 int
 sys_accept(int xsock, struct sockaddr *xaddr, int *xaddrlen)
 {
