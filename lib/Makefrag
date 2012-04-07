@@ -11,5 +11,8 @@ $(O)/lib/sysstubs.S: tools/syscalls.py kernel/*.cc
 $(O)/include/sysstubs.h: tools/syscalls.py kernel/*.cc
 	$(call SYSCALLGEN,--udecls)
 
+# Assume all of the library sources include sysstubs.h
+$(ULIB): $(O)/include/sysstubs.h
+
 .PRECIOUS: $(O)/lib/%.o
 -include $(O)/lib/*.d
