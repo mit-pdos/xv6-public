@@ -586,9 +586,9 @@ sys_listen(int xsock, int backlog)
 
 //SYSCALL
 int
-sys_accept(int xsock, struct sockaddr *xaddr, int *xaddrlen)
+sys_accept(int xsock, struct sockaddr* xaddr, u32* xaddrlen)
 {
-  extern long netaccept(int, struct sockaddr*, int*);
+  extern long netaccept(int, struct sockaddr*, u32*);
   file *cf;
   sref<file> f;
   int cfd;

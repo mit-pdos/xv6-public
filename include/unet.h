@@ -7,7 +7,7 @@ extern int socket(int domain, int type, int protocol);
 extern int bind(int sockfd, const struct sockaddr *addr,
                 int addrlen);
 extern int listen(int sockfd, int backlog);
-extern int accept(int sockfd, struct sockaddr *addr, int *addrlen);
+extern int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 }
 
 static inline const char *

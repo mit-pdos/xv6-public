@@ -273,12 +273,12 @@ netsocket(int domain, int type, int protocol)
 }
 
 long
-netbind(int sock, const sockaddr *xaddr, int xaddrlen)
+netbind(int sock, const sockaddr* xaddr, int xaddrlen)
 {
-  const sockaddr *addr;
+  struct sockaddr* addr;
   long r;
   
-  addr = kmalloc(xaddrlen, "sockaddr");
+  addr = (sockaddr*) kmalloc(xaddrlen, "sockaddr");
   if (addr == nullptr)
     return -1;
 
@@ -304,7 +304,7 @@ netlisten(int sock, int backlog)
 }
 
 long
-netaccept(int sock, struct sockaddr *xaddr, int *xaddrlen)
+netaccept(int sock, struct sockaddr* xaddr, u32* xaddrlen)
 {
   socklen_t len;
   void *addr;
@@ -424,7 +424,7 @@ netlisten(int sock, int backlog)
 }
 
 long
-netaccept(int sock, struct sockaddr *xaddr, int *xaddrlen)
+netaccept(int sock, struct sockaddr* xaddr, u32* xaddrlen)
 {
   return -1;
 }
