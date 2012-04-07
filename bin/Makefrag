@@ -57,6 +57,7 @@ $(O)/bin/%: $(O)/bin/%.unstripped
 	$(Q)mkdir -p $(@D)
 	$(Q)$(STRIP) -o $@ $<
 
+# Assume everything inclues user.h, which includes sysstubs.h
 $(addsuffix .o,$(UPROGS)): $(O)/include/sysstubs.h
 
 .PRECIOUS: $(O)/bin/%.o $(O)/bin/%.unstripped
