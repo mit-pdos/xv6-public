@@ -80,46 +80,8 @@ argcheckptr(const void *p, int size)
   return 0;
 }
 
-#define SYSCALL(name) (long(*)(u64,u64,u64,u64,u64))sys_##name
-
-static long (*syscalls[])(u64, u64, u64, u64, u64) = {
-  nullptr,
-  SYSCALL(fork),
-  SYSCALL(exit),
-  SYSCALL(wait),
-  SYSCALL(pipe),
-  SYSCALL(write),
-  SYSCALL(read),
-  SYSCALL(close),
-  SYSCALL(kill),
-  SYSCALL(exec),
-  SYSCALL(openat),
-  SYSCALL(mknod),
-  SYSCALL(unlink),
-  SYSCALL(fstat),
-  SYSCALL(link),
-  SYSCALL(mkdirat),
-  SYSCALL(chdir),
-  SYSCALL(dup),
-  SYSCALL(getpid),
-  SYSCALL(sbrk),
-  SYSCALL(nsleep),
-  SYSCALL(uptime),
-  SYSCALL(map),
-  SYSCALL(unmap),
-  SYSCALL(halt),
-  SYSCALL(socket),
-  SYSCALL(bind),
-  SYSCALL(listen),
-  SYSCALL(accept),
-  SYSCALL(pread),
-  SYSCALL(async),
-  SYSCALL(script),
-  SYSCALL(setfs),
-  SYSCALL(wqwait),
-  SYSCALL(setaffinity),
-  SYSCALL(futex),
-};
+extern u64 (*syscalls[])(u64, u64, u64, u64, u64);
+extern const int nsyscalls;
 
 u64
 syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
@@ -130,7 +92,7 @@ syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
 #if EXCEPTIONS
     try {
 #endif
-      if(num < SYS_ncount && syscalls[num]) {
+      if(num < nsyscalls && syscalls[num]) {
         mtstart(syscalls[num], myproc());
         mtrec();
         u64 r = syscalls[num](a0, a1, a2, a3, a4);
