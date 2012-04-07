@@ -164,7 +164,7 @@ int             pipewrite(struct pipe*, const char*, int);
 
 // proc.c
 struct proc*    copyproc(struct proc*);
-void            finishproc(struct proc*);
+void            finishproc(struct proc*, bool removepid = true);
 void            exit(void);
 int             fork(int);
 int             growproc(int);

@@ -354,10 +354,10 @@ fork(int flags)
     throw_bad_alloc();
 
   auto proc_cleanup = scoped_cleanup([&np]() {
-      if (!xnspid->remove(np->pid, &np))
-        panic("fork: ns_remove");
-      freeproc(np);
-    });
+    if (!xnspid->remove(np->pid, &np))
+      panic("fork: ns_remove");
+    freeproc(np);
+  });
 
   if(flags & FORK_SHARE_VMAP) {
     np->vmap = myproc()->vmap;
@@ -400,8 +400,10 @@ fork(int flags)
 }
 
 void
-finishproc(struct proc *p)
+finishproc(struct proc *p, bool removepid)
 {
+  if (removepid && !xnspid->remove(p->pid, &p))
+    panic("finishproc: ns_remove");
   if (p->vmap != nullptr)
     p->vmap->decref();
   if (p->uwq != nullptr)
@@ -444,6 +446,7 @@ wait(void)
           assert(w);
           w->rip = (void*) finishproc;
           w->arg0 = p;
+          w->arg1 = 0;
           assert(wqcrit_push(w, p->run_cpuid_) >= 0);
 
 	  return pid;
@@ -481,18 +484,24 @@ threadalloc(void (*fn)(void *), void *arg)
   p = proc::alloc();
   if (p == nullptr)
     return 0;
-  
-  p->vmap = vmap::alloc();
-  if (p->vmap == nullptr) {
+
+  auto proc_cleanup = scoped_cleanup([&p]() {
+    if (!xnspid->remove(p->pid, &p))
+      panic("fork: ns_remove");
     freeproc(p);
+  });
+
+  p->vmap = vmap::alloc();
+  if (p->vmap == nullptr)
     return 0;
-  }
 
   p->context->rip = (u64)threadstub;
   p->context->r12 = (u64)fn;
   p->context->r13 = (u64)arg;
   p->parent = nullptr;
   p->cwd = nullptr;
+
+  proc_cleanup.dismiss();
   return p;
 }
 
