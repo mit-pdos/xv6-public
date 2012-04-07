@@ -148,6 +148,9 @@ void            lapic_tlbflush(hwid_t);
 void            lapic_sampconf(hwid_t);
 void            lapicpc(char mask);
 
+// main.c
+void            halt(void) __attribute__((noreturn));
+
 // mp.c
 extern int      ncpu;
 int             mpbcpu(void);
