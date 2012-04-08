@@ -120,7 +120,7 @@ schedule::steal(bool nonexec)
 void
 schedule::dump(void)
 {
-  cprintf("%lu %lu %lu %lu\n",
+  cprintf("%8lu %8lu %8lu %8lu\n",
           stats_.enqs.load(),
           stats_.deqs.load(),
           stats_.steals.load(),
@@ -204,8 +204,9 @@ steal(void)
 void
 scheddump(void)
 {
+  cprintf("\ncpu    enqs     deqs   steals   misses\n");
   for (int i = 0; i < NCPU; i++) {
-    cprintf("%u ", i);
+    cprintf("%-2u ", i);
     schedule_[i].dump();
   }
 }
