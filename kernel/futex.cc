@@ -113,8 +113,6 @@ struct futexaddr : public referenced, public rcu_freed
 
   futexkey_t key_;
   bool inserted_;
-  struct spinlock lock_;
-
   xns<u32, proc*, proc::hash>* const nspid_;
 
 private:
@@ -148,7 +146,6 @@ futexaddr::alloc(futexkey_t key)
 futexaddr::futexaddr(futexkey_t key, xns<u32, proc*, proc::hash>* nspid)
   : rcu_freed("futexaddr"), key_(key), inserted_(false), nspid_(nspid)
 {
-  initlock(&lock_, "futexaddr::lock_", LOCKSTAT_FUTEX);
 }
 
 void
