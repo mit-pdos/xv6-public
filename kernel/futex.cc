@@ -228,10 +228,12 @@ futexwake(futexkey_t key, u64 nwake)
   if (nwake == 0)
     return -1;
 
-  scoped_gc_epoch gc;
-  fa = nsfutex->lookup(key);
-  if (fa == nullptr || !fa->tryinc())
-    return 0;
+  {
+    scoped_gc_epoch gc;
+    fa = nsfutex->lookup(key);
+    if (fa == nullptr || !fa->tryinc())
+      return 0;
+  }
 
   auto cleanup = scoped_cleanup([&fa](){
     fa->dec();
