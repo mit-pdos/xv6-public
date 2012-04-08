@@ -7,6 +7,7 @@
 #include "atomic.hh"
 
 static volatile std::atomic<u64> waiting;
+static volatile std::atomic<u64> waking;
 static volatile u64 ftx;
 static int iters;
 static int nworkers;
@@ -15,13 +16,17 @@ static
 void* worker(void* x)
 {
   long r;
+  int i;
 
-  for (int i = 0; i < iters; i++) {
+  for (i = 0; i < iters; i++) {
     ++waiting;
     r = futex((u64*)&ftx, FUTEX_WAIT, (u64)i, 0);
     if (r < 0 && r != -EWOULDBLOCK)
       die("FUTEX_WAIT: %d", r);
+    while (waking.load() == 1)
+      nop_pause();
   }
+
   return nullptr;
 }
 
@@ -31,13 +36,14 @@ void master(void)
   long r;
 
   for (int i = 0; i < iters; i++) {
-    while (waiting.load() < nworkers)
+    while (waiting.load() < (i+1)*nworkers)
       nop_pause();
-    waiting.store(0);
-
+    
+    waking.store(1);
     ftx = i+1;
     r = futex((u64*)&ftx, FUTEX_WAKE, nworkers, 0);  
     assert(r == 0);
+    waking.store(0);
   }
 }
 
@@ -48,6 +54,7 @@ main(int ac, char** av)
 
   if (ac < 3)
     die("usage: %s iters nworkers", av[0]);
+  ftx = 0;
   iters = atoi(av[1]);
   nworkers = atoi(av[2]);
   waiting.store(0);
