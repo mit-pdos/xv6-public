@@ -16,7 +16,7 @@
 #include "wq.hh"
 
 u64
-proc_hash(const u32 &p)
+proc::hash(const u32 &p)
 {
   return p;
 }
@@ -27,7 +27,7 @@ mycpuid(void)
   return mycpu()->id;
 }
 
-xns<u32, proc*, proc_hash> *xnspid __mpalign__;
+xns<u32, proc*, proc::hash> *xnspid __mpalign__;
 struct proc *bootproc __mpalign__;
 
 #if MTRACE
@@ -46,6 +46,7 @@ proc::proc(int npid) :
 {
   snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
   initlock(&lock, lockname+3, LOCKSTAT_PROC);
+  initlock(&futex_lock, "proc::futex_lock", LOCKSTAT_PROC);
   initcondvar(&cv, lockname);
 
   memset(&childq, 0, sizeof(childq));
@@ -257,7 +258,7 @@ proc::alloc(void)
 void
 initproc(void)
 {
-  xnspid = new xns<u32, proc*, proc_hash>(false);
+  xnspid = new xns<u32, proc*, proc::hash>(false);
   if (xnspid == 0)
     panic("pinit");
 }

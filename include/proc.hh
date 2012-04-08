@@ -77,7 +77,7 @@ struct proc : public rcu_freed, public sched_link {
   u64 cv_wakeup;               // Wakeup time for this process
   LIST_ENTRY(proc) cv_waiters; // Linked list of processes waiting for oncv
   LIST_ENTRY(proc) cv_sleep;   // Linked list of processes sleeping on a cv
-  LIST_ENTRY(proc) futex_link;
+  struct spinlock futex_lock;
   u64 user_fs_;
   u64 unmap_tlbreq_;
   int exec_cpuid_;
@@ -96,6 +96,8 @@ struct proc : public rcu_freed, public sched_link {
   int          set_cpu_pin(int cpu);
   static int   kill(int pid);
   int          kill();
+
+  static u64   hash(const u32& p);
 
   virtual void do_gc(void) { delete this; }
 
