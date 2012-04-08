@@ -77,3 +77,11 @@
 #define PERF_SEL_INT        (1ULL << 20)
 #define PERF_SEL_ENABLE     (1ULL << 22)
 #define PERF_SEL_INV        (1ULL << 23)
+
+// CPUID function 0x00000001
+#define CPUID_FEATURES      0x00000001
+#define FEATURE_ECX_MWAIT   (1 << 3)
+
+// CPUID function 0x00000005
+#define CPUID_MWAIT         0x00000005
+

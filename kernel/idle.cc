@@ -9,6 +9,7 @@
 #include "wq.hh"
 #include "uwq.hh"
 #include "kmtrace.hh"
+#include "bits.hh"
 
 struct idle {
   struct proc *cur;
@@ -109,7 +110,7 @@ idleloop(void)
           p = proc::alloc();
           if (p == nullptr)
             break;
-          snprintf(p->name, sizeof(p->name), "idleh_%u", mycpu()->id);          
+          snprintf(p->name, sizeof(p->name), "idle_%u", mycpu()->id);          
           p->cpuid = mycpu()->id;
           p->cpu_pin = 1;
           p->context->rip = (u64)idleheir;
@@ -137,6 +138,17 @@ initidle(void)
   if (!p)
     panic("initidle proc::alloc");
 
+  if (myid() == mpbcpu()) {
+    u32 eax, ebx, ecx;
+    cpuid(CPUID_FEATURES, nullptr, nullptr, &ecx, nullptr);
+    if (ecx & FEATURE_ECX_MWAIT) {
+      // Check smallest and largest line sizes
+      cpuid(CPUID_MWAIT, &eax, &ebx, nullptr, nullptr);
+      assert((u16)eax == 0x40);
+      assert((u16)ebx == 0x40);
+    }
+  }
+  
   SLIST_INIT(&idlem[myid()].zombies);
   initlock(&idlem[myid()].lock, "idle_lock", LOCKSTAT_IDLE);
 
