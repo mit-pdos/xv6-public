@@ -178,6 +178,9 @@ sys_futex(const u64* addr, int op, u64 val, u64 timer)
   if (futexkey(addr, myproc()->vmap, &key) < 0)
     return -1;
 
+  mt_ascope ascope("%s(%p,%d,%lu,%lu)", __func__, addr, op, val, timer);
+  mtwriteavar("thread:%x", myproc()->pid);
+
   switch(op) {
   case FUTEX_WAIT:
     return futexwait(key, val, timer);

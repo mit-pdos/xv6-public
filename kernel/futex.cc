@@ -8,6 +8,7 @@
 #include "proc.hh"
 #include "cpu.hh"
 #include "percpu.hh"
+#include "kmtrace.hh"
 
 //
 // futexkey
@@ -171,6 +172,7 @@ futexwait(futexkey_t key, u64 val, u64 timer)
 {
   futexaddr* fa;
 
+  mtreadavar("futex:ns:%lx", key);
   {
     scoped_gc_epoch gc;
   again:
@@ -185,6 +187,7 @@ futexwait(futexkey_t key, u64 val, u64 timer)
         fa->dec();
         goto again;
       }
+      mtwriteavar("futex:ns:%lx", key);
       fa->inserted_ = true;
     } else {
       if (!fa->tryinc()) {
@@ -193,6 +196,7 @@ futexwait(futexkey_t key, u64 val, u64 timer)
     }
   }
   assert(fa->key_ == key);
+  mtwriteavar("futex:%lx.%p", key, fa);
 
   acquire(&myproc()->futex_lock);  
   auto cleanup = scoped_cleanup([&fa](){
@@ -228,6 +232,7 @@ futexwake(futexkey_t key, u64 nwake)
   if (nwake == 0)
     return -1;
 
+  mtreadavar("futex:ns:%lx", key);
   {
     scoped_gc_epoch gc;
     fa = nsfutex->lookup(key);
@@ -238,7 +243,8 @@ futexwake(futexkey_t key, u64 nwake)
   auto cleanup = scoped_cleanup([&fa](){
     fa->dec();
   });
-  
+  mtwriteavar("futex:%lx.%p", key, fa);
+
   fa->nspid_->enumerate([&nwoke, &nwake](u32 pid, proc* p) {
     acquire(&p->futex_lock);
     cv_wakeup(&p->cv);
