@@ -8,12 +8,84 @@
 
 static volatile std::atomic<u64> waiting;
 static volatile std::atomic<u64> waking;
-static volatile u64 ftx;
 static int iters;
 static int nworkers;
 
+static struct {
+  u64 mem;
+  __padout__;
+} ftx[256] __mpalign__;
+
 static
-void* worker(void* x)
+void* worker0(void* x)
+{
+  // Ping pong a futex between a pair of workers
+  u64 id = (u64)x;
+  u64* f = &(ftx[id>>1].mem);
+  long r;
+
+  if (id & 0x1) {
+    for (u64 i = 0; i < iters; i++) {
+      r = futex(f, FUTEX_WAIT, (u64)(i<<1), 0);
+      if (r < 0 && r != -EWOULDBLOCK)
+        die("futex: %d", r);
+      *f = (i<<1)+2;
+      r = futex(f, FUTEX_WAKE, 1, 0);
+      assert(r == 0);
+    }
+  } else {
+    for (u64 i = 0; i < iters; i++) {
+      *f = (i<<1)+1;
+      r = futex(f, FUTEX_WAKE, 1, 0);
+      assert(r == 0);
+      r = futex(f, FUTEX_WAIT, (u64)(i<<1)+1, 0);
+      if (r < 0 && r != -EWOULDBLOCK)
+        die("futex: %d", r);
+    }
+  }
+
+  return nullptr;
+}
+
+static
+void master0(void)
+{
+  for (int i = 0; i < nworkers; i++)
+    wait();
+}
+
+int
+main(int ac, char** av)
+{
+  long r;
+
+  if (ac < 3)
+    die("usage: %s iters nworkers", av[0]);
+
+  iters = atoi(av[1]);
+  nworkers = atoi(av[2]);
+  waiting.store(0);
+
+  for (int i = 0; i < nworkers; i++) {
+    pthread_t th;
+
+    r = pthread_create(&th, nullptr, worker0, (void*)(u64)i);
+    if (r < 0)
+      die("pthread_create");
+  }
+  nsleep(1000*1000);
+
+  u64 t0 = rdtsc();
+  master0();
+  u64 t1 = rdtsc();
+  printf("%lu\n", (t1-t0)/iters);
+}
+
+#if 0
+static volatile u64 ftx;
+
+static
+void* worker0(void* x)
 {
   long r;
   int i;
@@ -31,7 +103,7 @@ void* worker(void* x)
 }
 
 static
-void master(void)
+void master0(void)
 {
   long r;
 
@@ -46,33 +118,4 @@ void master(void)
     waking.store(0);
   }
 }
-
-int
-main(int ac, char** av)
-{
-  long r;
-
-  if (ac < 3)
-    die("usage: %s iters nworkers", av[0]);
-  ftx = 0;
-  iters = atoi(av[1]);
-  nworkers = atoi(av[2]);
-  waiting.store(0);
-
-  for (int i = 0; i < nworkers; i++) {
-    pthread_t th;
-
-    r = pthread_create(&th, nullptr, worker, nullptr);
-    if (r < 0)
-      die("pthread_create");
-  }
-  nsleep(1000*1000);
-
-  u64 t0 = rdtsc();
-  master();
-  u64 t1 = rdtsc();
-  printf("%lu\n", (t1-t0)/iters);
-  
-  for (int i = 0; i < nworkers; i++)
-    wait();
-}
+#endif
