@@ -6,18 +6,20 @@ struct pmc_count {
     perf_start(sel, 0);
   }
 
-  static pmc_count read(unsigned int ctr) {
+  static pmc_count read(unsigned int ctr, bool* map = nullptr) {
     pmc_count n;
 
     // XXX(sbw) we loose our original affinity
     for (int i = 0; i < NCPU; i++) {
-      setaffinity(i);
-      // XXX(sbw) qemu doesn't seem to support CR4_PCE
+      if (map == nullptr || map[i]) {
+        setaffinity(i);
+        // XXX(sbw) qemu doesn't seem to support CR4_PCE
 #if defined(HW_qemu)
-      n.count_[i] = 0;
+        n.count_[i] = 0;
 #else
-      n.count_[i] = rdpmc(ctr);
+        n.count_[i] = rdpmc(ctr);
 #endif
+      }
     }
     setaffinity(-1);
     return n;

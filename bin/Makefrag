@@ -30,7 +30,7 @@ UPROGS= \
 	wqsh \
 	cp \
 	perf \
-        pmc \
+        xtime \
 	asharing \
 	xls \
 	xdu \
