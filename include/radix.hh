@@ -23,12 +23,15 @@ class radix_elem : public rcu_freed {
   void incref() { ref_++; }
 };
 
-struct radix_node {
+struct radix_node : public rcu_freed {
   markptr<void> ptr[1 << bits_per_level];
-  radix_node() {
+  radix_node() : rcu_freed("radix_node") {
     for (int i = 0; i < sizeof(ptr) / sizeof(ptr[0]); i++)
       ptr[i] = 0;
   }
+
+  virtual void do_gc() { delete this; }
+
   NEW_DELETE_OPS(radix_node)
 };
 
@@ -38,6 +41,8 @@ struct radix_range {
   radix* r_;
   u64 start_;
   u64 size_;
+
+  scoped_gc_epoch gc_;
 
   radix_range(radix* r, u64 start, u64 size);
   radix_range(radix_range&&);

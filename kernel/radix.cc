@@ -51,6 +51,7 @@ radix_elem*
 radix::search(u64 key)
 {
   radix_elem *result = 0;
+  scoped_gc_epoch gc;
   descend(key >> shift_, &root_, radix_levels-1, [&result](markptr<void> *v) {
       result = (radix_elem*) v->ptr().load();
     }, false);
