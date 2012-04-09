@@ -56,15 +56,12 @@ main(int ac, const char *av[])
   u64 t0 = rdtsc();
 
   int pid = fork(0);
-  if (pid < 0) {
-    fprintf(1, "pmc: fork failed\n");
-    exit();
-  }
+  if (pid < 0)
+    die("xtime: fork failed");
   
   if (pid == 0) {
     exec(xav[0], xav);
-    fprintf(1, "pmc: exec failed\n");
-    exit();
+    die("xtime: exec failed");
   }
 
   wait();
