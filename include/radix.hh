@@ -30,6 +30,7 @@ struct radix_node : public rcu_freed {
       ptr[i] = 0;
   }
 
+  void delete_tree(u32 level);
   virtual void do_gc() { delete this; }
 
   NEW_DELETE_OPS(radix_node)
@@ -61,6 +62,7 @@ struct radix {
   radix(u32 shift) : root_(0), shift_(shift) {
     root_.ptr() = new radix_node();
   }
+  ~radix();
   radix_elem* search(u64 key);
   radix_range search_lock(u64 start, u64 size);
 

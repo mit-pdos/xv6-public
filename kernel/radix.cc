@@ -47,6 +47,27 @@ descend(u64 key, markptr<void> *n, u32 level, CB cb, bool create)
   }
 }
 
+void
+radix_node::delete_tree(u32 level)
+{
+  for (int i = 0; i < (1<<bits_per_level); i++) {
+    void *child = ptr[i].ptr();
+    if (child != nullptr) {
+      if (level > 1)
+        static_cast<radix_node*>(child)->delete_tree(level-1);
+      else
+        static_cast<radix_elem*>(child)->decref();
+    }
+  }
+  do_gc();
+}
+
+radix::~radix()
+{
+  void *root = root_.ptr();
+  static_cast<radix_node*>(root)->delete_tree(radix_levels);
+}
+
 radix_elem*
 radix::search(u64 key)
 {
