@@ -14,6 +14,16 @@ static const char *app_argv[][MAXARG] = {
 #endif
 };
 
+static struct {
+  const char* name;
+  int major;
+} dev[] = {
+  { "/dev/netif", 2 },
+  { "/dev/sampler", 3 },
+  { "/dev/lockstat", 4 },
+  { "/dev/stat", 5 },
+};
+
 static int
 startone(const char **argv)
 {
@@ -45,13 +55,10 @@ main(void)
   dup(0);  // stderr
 
   mkdir("dev");
-  if (mknod("/dev/netif", 2, 1) < 0)
-      fprintf(2, "init: mknod netif failed\n");
-  if (mknod("/dev/sampler", 3, 1) < 0)
-      fprintf(2, "init: mknod sampler failed\n");
-  if (mknod("/dev/lockstat", 4, 1) < 0)
-      fprintf(2, "init: mknod lockstat failed\n");
-
+  for (int i = 0; i < NELEM(dev); i++)
+    if (mknod(dev[i].name, dev[i].major, 1) < 0)
+      fprintf(2, "init: mknod %s failed\n", dev[i].name);
+  
   for (u32 i = 0; i < NELEM(app_argv); i++)
     startone(app_argv[i]);
 
