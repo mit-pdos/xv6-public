@@ -17,6 +17,8 @@ static struct selector pmc_selector[] = {
   { "not halted",      CMN|0x76 },
   { "remote probes",   CMN|(0x4|0x8)<<8|0xec },
   { "L2 misses",       CMN|(0x2|0x8)<<8|0x7e },
+  { "MAB requests",    CMN|(0x1)<<8|0x68 },
+  { "MAB cycles",      CMN|(0x1)<<8|0x69 },
 };
 
 static const char*
