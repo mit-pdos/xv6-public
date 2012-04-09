@@ -85,3 +85,4 @@ extern struct devsw devsw[];
 #define NETIF    2
 #define SAMPLER  3
 #define DEVLOCKSTAT 4
+#define DEVSTAT  5

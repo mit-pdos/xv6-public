@@ -50,6 +50,7 @@ main(int ac, const char *av[])
     xav = &xav[1];
   }
 
+  sys_stat* s0 = sys_stat::read();
   pmc_count::config(pmc_selector[pmci].sel);
   pmc_count pmc0 = pmc_count::read(0);
   u64 t0 = rdtsc();
@@ -67,11 +68,15 @@ main(int ac, const char *av[])
   }
 
   wait();
+  sys_stat* s1 = sys_stat::read();
   pmc_count pmc1 = pmc_count::read(0);
   u64 t1 = rdtsc();
+
+  sys_stat* s2 = s1->delta(s0);
 
   fprintf(1, "%s cycles\n", valstr(t1-t0));
   fprintf(1, "%s %s\n", valstr(pmc1.delta(pmc0).sum()),
           pmc_selector[pmci].name);
+  fprintf(1, "%lu %lu\n", s2->busy(), s2->idle());
   exit();
 }

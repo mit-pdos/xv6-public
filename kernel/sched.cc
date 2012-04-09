@@ -30,19 +30,14 @@ public:
     assert(nbytes == sizeof(schedule));
     return buf;
   }
+
+  sched_stat stats_;
   
 private:
   struct spinlock lock_;
   sched_link head_;
 
   void sanity(void);
-
-  struct {
-    std::atomic<u64> enqs;
-    std::atomic<u64> deqs;
-    std::atomic<u64> steals;
-    std::atomic<u64> misses;
-  } stats_;
 
   volatile u64 ncansteal_ __mpalign__;
 };
@@ -60,6 +55,9 @@ schedule::schedule(void)
   stats_.deqs = 0;
   stats_.steals = 0;
   stats_.misses = 0;
+  stats_.idle = 0;
+  stats_.busy = 0;
+  stats_.schedstart = 0;
 }
 
 void
@@ -81,6 +79,10 @@ schedule::enq(proc* p)
 proc*
 schedule::deq(void)
 {   
+  if (head_.next == &head_)
+    return nullptr;
+
+  ANON_REGION(__func__, &perfgroup);
   // Remove from head
   scoped_acquire x(&lock_);
   sched_link* entry = head_.next;
@@ -102,6 +104,7 @@ schedule::steal(bool nonexec)
   if (ncansteal_ == 0 || !tryacquire(&lock_))
     return nullptr;
 
+  ANON_REGION(__func__, &perfgroup);
   for (sched_link* ptr = head_.next; ptr != &head_; ptr = ptr->next)
     if (cansteal((proc*)ptr, nonexec)) {
       ptr->next->prev = ptr->prev;
@@ -121,10 +124,10 @@ void
 schedule::dump(void)
 {
   cprintf("%8lu %8lu %8lu %8lu\n",
-          stats_.enqs.load(),
-          stats_.deqs.load(),
-          stats_.steals.load(),
-          stats_.misses.load());
+          stats_.enqs,
+          stats_.deqs,
+          stats_.steals,
+          stats_.misses);
   
   stats_.enqs = 0;
   stats_.deqs = 0;
@@ -214,6 +217,7 @@ scheddump(void)
 void
 addrun(struct proc* p)
 {
+  ANON_REGION(__func__, &perfgroup);
   p->set_state(RUNNABLE);
   schedule_[p->cpuid].enq(p);
 }
@@ -250,6 +254,13 @@ sched(void)
   // Interrupts are disabled
   next = schedule_->deq();
 
+  u64 t = rdtsc();
+  if (myproc() == idleproc())
+    schedule_->stats_.idle += t - schedule_->stats_.schedstart;
+  else
+    schedule_->stats_.busy += t - schedule_->stats_.schedstart;
+  schedule_->stats_.schedstart = t;
+  
   if (next == nullptr) {
     if (myproc()->get_state() != RUNNABLE ||
         // proc changed its CPU pin?
@@ -293,9 +304,29 @@ sched(void)
   post_swtch();
 }
 
+static int
+statread(struct inode *inode, char *dst, u32 off, u32 n)
+{
+  // Sort of like a binary /proc/stat
+  size_t sz = NCPU*sizeof(sched_stat);
+
+  if (n != sz)
+    return -1;
+
+  for (int i = 0; i < NCPU; i++) {
+    memcpy(&dst[i*sizeof(sched_stat)], &schedule_[i].stats_,
+           sizeof(schedule_[i].stats_));
+  }
+  
+  return n;
+}
+
 void
 initsched(void)
 {
   for (int i = 0; i < NCPU; i++)
     new (&schedule_[i]) schedule();
+
+  devsw[DEVSTAT].write = nullptr;
+  devsw[DEVSTAT].read = statread;
 }

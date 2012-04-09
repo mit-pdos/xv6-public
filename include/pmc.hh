@@ -1,3 +1,5 @@
+#include "sched.hh"
+
 struct pmc_count {
 
   static void config(u64 sel) {
@@ -38,4 +40,62 @@ struct pmc_count {
   }
 
   u64 count_[NCPU];
+};
+
+struct sys_stat {
+  static sys_stat* read() {
+    sys_stat* that;
+    int fd;
+    long r;
+
+    that = new sys_stat();
+    assert(that != nullptr);
+    fd = open("/dev/stat", O_RDONLY);
+    assert(fd != -1);
+    r = ::read(fd, that->stats, sizeof(that->stats));
+    assert(r == sizeof(that->stats));
+    
+    return that;
+  }
+
+  sys_stat* delta(const sys_stat* o) const {
+    sys_stat* that;
+
+    that = new sys_stat();    
+    for (int i = 0; i < NCPU; i++) {
+      that->stats[i].enqs = stats[i].enqs - o->stats[i].enqs;
+      that->stats[i].deqs = stats[i].deqs - o->stats[i].deqs;
+      that->stats[i].steals = stats[i].steals - o->stats[i].steals;
+      that->stats[i].misses = stats[i].misses - o->stats[i].misses;
+      that->stats[i].idle = stats[i].idle - o->stats[i].idle;
+      that->stats[i].busy = stats[i].busy - o->stats[i].busy;
+    }
+
+    return that;
+  }
+
+  u64 busy() const {
+    u64 tot = 0;
+    for (int i = 0; i < NCPU; i++)
+      tot += stats[i].busy;
+    return tot;
+  }
+
+  u64 idle() const {
+    u64 tot = 0;
+    for (int i = 0; i < NCPU; i++)
+      tot += stats[i].idle;
+    return tot;
+  }
+
+  static void* operator new(unsigned long nbytes) {
+    assert(nbytes == sizeof(sys_stat));
+    return malloc(nbytes);
+  }
+
+  static void operator delete(void* p) {
+    free(p);
+  }
+
+  sched_stat stats[NCPU];
 };
