@@ -7,7 +7,7 @@
 #include "gc.hh"
 #include "markptr.hh"
 
-enum { bits_per_level = 9 };
+enum { bits_per_level = 6 };
 enum { key_bits = 36 };
 enum { radix_levels = (key_bits + bits_per_level - 1) / bits_per_level };
 
