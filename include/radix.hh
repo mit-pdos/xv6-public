@@ -40,7 +40,8 @@ class radix_node;
  * transition them to 'dead leaf' state. This informs all others
  * attempting to lock the pointer to retry. The radix_node itself is
  * RCU-freed. To avoid restarting writers, set the leaves to the right
- * value too.
+ * value too. Replaced elements are written in locked state, to be
+ * unlocked when the radix_range goes away.
  *
  * Once a pointer is dead, it stays dead until the containing
  * radix_node is deallocated.
