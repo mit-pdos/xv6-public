@@ -436,7 +436,6 @@ int
 sys_exec(const char *upath, userptr<userptr<const char> > uargv)
 {
   ANON_REGION(__func__, &perfgroup);
-  static const int len = 32;
   char *argv[MAXARG];
   char path[DIRSIZ+1];
   long r = -1;
@@ -457,15 +456,15 @@ sys_exec(const char *upath, userptr<userptr<const char> > uargv)
     if(uarg == 0)
       break;
 
-    argv[i] = (char*) kmalloc(len, "execbuf");
-    if (argv[i]==nullptr || fetchstr(argv[i], (char*)uarg, len)<0)
+    argv[i] = (char*) kmalloc(MAXARGLEN, "execbuf");
+    if (argv[i]==nullptr || fetchstr(argv[i], (char*)uarg, MAXARGLEN)<0)
       goto clean;
   }
   argv[i] = 0;
   r = exec(path, argv, &ascope);
 clean:
   for (i=i-i; i >= 0; i--)
-    kmfree(argv[i], len);
+    kmfree(argv[i], MAXARGLEN);
   return r;
 }
 

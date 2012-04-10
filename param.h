@@ -8,6 +8,7 @@
 #define NDEV         10  // maximum major device number
 #define ROOTDEV       1  // device number of file system root disk
 #define MAXARG       32  // max exec arguments
+#define MAXARGLEN    64  // max exec argument length
 #define MAXNAME      16  // max string names
 #define NEPOCH        4
 #define CACHELINE    64  // cache line size
