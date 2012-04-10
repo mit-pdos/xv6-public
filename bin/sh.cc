@@ -142,7 +142,7 @@ getcmd(char *buf, int nbuf)
 }
 
 int
-main(void)
+main(int ac, char** av)
 {
   static char buf[100];
   int fd;
@@ -154,7 +154,30 @@ main(void)
       break;
     }
   }
-  
+
+  // If args, concatenate them parse as a command.
+  if (ac > 1) {
+    char* b = buf;
+    char* e = b+sizeof(buf);
+    for (int i = 1; i < ac; i++) {
+      int n;
+      n = strlen(av[i]);
+      if (b+n+1 > e)
+        die("sh: too long");
+      strcpy(b, av[i]);
+      b += n;
+      if (b+1+1 > e)
+        die("sh: too long");
+      strcpy(b, " ");
+      b++;
+    }
+
+    if(fork1() == 0)
+      runcmd(parsecmd(buf));
+    wait();
+    exit();
+  }
+
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){

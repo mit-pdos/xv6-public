@@ -43,6 +43,30 @@ startone(const char **argv)
   return pid;
 }
 
+static void
+runcmdline(void)
+{
+  const char* argv[3] = { "sh", 0, 0 };
+  char buf[256];
+  char* b;
+  long r;
+  int fd;
+
+  fd = open("/dev/cmdline", O_RDONLY);
+  if (fd < 0)
+    return;
+
+  r = read(fd, buf, sizeof(buf)-1);
+  if (r < 0)
+    return;
+  buf[r] = 0;
+  
+  if ((b = strchr(buf, '$'))) {
+    argv[1] = b+1;
+    startone(argv);
+  }
+}
+
 int
 main(void)
 {
@@ -62,6 +86,8 @@ main(void)
   
   for (u32 i = 0; i < NELEM(app_argv); i++)
     startone(app_argv[i]);
+
+  runcmdline();
 
   for(;;){
     pid = startone(sh_argv);
