@@ -59,7 +59,11 @@ start:
 	movl %eax, %edi
 	movl %ebx, %esi
 
-	# Initialize stack.
+        # Save command line passed to the kernel.  QEMU puts this
+        # in the bss, so we need to save it before we zero bss.
+        call savecmdline
+        
+        # Initialize stack.
 	movl $PADDR(stack+STACK), %esp
 
 	# Zero bss.  QEMU's MultiBoot seems not to.
@@ -162,7 +166,40 @@ pdt:
 	// Filled in below.
 	.space 4096
 
+.global cmdline
+cmdline:
+	.space 256
+        
 .code32        
+savecmdline:
+        pushl %eax
+        pushl %ebx
+        pushl %ecx
+        pushl %edx
+
+        // Check for for cmdline in flags
+        movl (%esi), %eax
+        and $(1<<2), %eax
+        jz 2f
+
+        // Save null-terminated cmdline
+        movl 0x10(%esi), %eax
+        movl $PADDR(cmdline), %ebx
+        movl $255, %ecx
+1:      movb (%eax), %dl
+        movb %dl, (%ebx)
+        cmp $0, %dl
+        je 2f
+        inc %eax
+        inc %ebx
+        loop 1b
+
+2:      popl %eax
+        popl %ebx
+        popl %ecx
+        popl %edx
+        ret
+
 initpagetables:
 	pushl %edi
 	pushl %ecx
