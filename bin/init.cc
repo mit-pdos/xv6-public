@@ -5,6 +5,7 @@
 #include "user.h"
 #include "fcntl.h"
 #include "lib.h"
+#include "major.h"
 
 static const char *sh_argv[] = { "sh", 0 };
 static const char *app_argv[][MAXARG] = {
@@ -18,11 +19,11 @@ static struct {
   const char* name;
   int major;
 } dev[] = {
-  { "/dev/netif", 2 },
-  { "/dev/sampler", 3 },
-  { "/dev/lockstat", 4 },
-  { "/dev/stat", 5 },
-  { "/dev/cmdline", 6},
+  { "/dev/netif",     MAJ_NETIF },
+  { "/dev/sampler",   MAJ_SAMPLER },
+  { "/dev/lockstat",  MAJ_LOCKSTAT },
+  { "/dev/stat",      MAJ_STAT },
+  { "/dev/cmdline",   MAJ_CMDLINE},
 };
 
 static int

@@ -10,6 +10,7 @@
 #include "amd64.h"
 #include "cpu.hh"
 #include "sampler.h"
+#include "major.h"
 
 #define LOGHEADER_SZ (sizeof(struct logheader) + \
                       sizeof(((struct logheader*)0)->cpu[0])*NCPU)
@@ -273,7 +274,7 @@ initsamp(void)
   pmulog[myid()].event = (pmuevent*) p;
   pmulog[myid()].capacity = PERFSIZE / sizeof(struct pmuevent);
 
-  devsw[SAMPLER].write = sampwrite;
-  devsw[SAMPLER].read = sampread;
-  devsw[SAMPLER].stat = sampstat;
+  devsw[MAJ_SAMPLER].write = sampwrite;
+  devsw[MAJ_SAMPLER].read = sampread;
+  devsw[MAJ_SAMPLER].stat = sampstat;
 }

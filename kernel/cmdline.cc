@@ -6,6 +6,7 @@
 #include "condvar.h"
 #include "fs.h"
 #include "file.hh"
+#include "major.h"
 
 extern char cmdline[];
 
@@ -28,6 +29,6 @@ initcmdline(void)
   if (VERBOSE)
     cprintf("cmdline: %s\n", cmdline);
 
-  devsw[DEVCMDLINE].write = nullptr;
-  devsw[DEVCMDLINE].read = cmdlineread;
+  devsw[MAJ_CMDLINE].write = nullptr;
+  devsw[MAJ_CMDLINE].read = cmdlineread;
 }

@@ -7,6 +7,7 @@
 #include "fs.h"
 #include "file.hh"
 #include "net.hh"
+#include "major.h"
 
 #ifdef LWIP
 extern "C" {
@@ -249,8 +250,8 @@ initnet(void)
 {
   struct proc *t;
 
-  devsw[NETIF].write = nullptr;
-  devsw[NETIF].read = netifread;
+  devsw[MAJ_NETIF].write = nullptr;
+  devsw[MAJ_NETIF].read = netifread;
 
   t = threadalloc(initnet_worker, nullptr);
   if (t == nullptr)

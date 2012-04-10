@@ -10,6 +10,7 @@
 #include "condvar.h"
 #include "fs.h"
 #include "file.hh"
+#include "major.h"
 
 #if LOCKSTAT
 static int lockstat_enable;
@@ -241,8 +242,8 @@ lockstat_write(struct inode *ip, const char *buf, u32 off, u32 n)
 void
 initlockstat(void)
 {
-  devsw[DEVLOCKSTAT].write = lockstat_write;
-  devsw[DEVLOCKSTAT].read = lockstat_read;
+  devsw[MAJ_LOCKSTAT].write = lockstat_write;
+  devsw[MAJ_LOCKSTAT].read = lockstat_read;
 }
 #else
 void

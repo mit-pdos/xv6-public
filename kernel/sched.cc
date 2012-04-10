@@ -13,6 +13,7 @@
 #include "wq.hh"
 #include "percpu.hh"
 #include "sperf.hh"
+#include "major.h"
 
 enum { sched_debug = 0 };
 enum { steal_nonexec = 1 };
@@ -327,6 +328,6 @@ initsched(void)
   for (int i = 0; i < NCPU; i++)
     new (&schedule_[i]) schedule();
 
-  devsw[DEVSTAT].write = nullptr;
-  devsw[DEVSTAT].read = statread;
+  devsw[MAJ_STAT].write = nullptr;
+  devsw[MAJ_STAT].read = statread;
 }
