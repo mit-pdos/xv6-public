@@ -44,7 +44,7 @@ class radix_node;
  * unlocked when the radix_range goes away.
  *
  * Once a pointer is dead, it stays dead until the containing
- * radix_node is deallocated.
+ * radix_node is deallocated. Dead pointers do not own references.
  *
  * Races:
  *

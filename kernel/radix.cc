@@ -60,7 +60,9 @@ radix_entry::release()
   if (is_null()) return;
   if (is_node()) {
     node()->do_gc();
-  } else {
+  } else if (state() != entry_dead) {
+    // Only decref live pointers. Dead ones are part of pages which
+    // were RCU-freed and no longer own references.
     elem()->decref();
   }
 }
