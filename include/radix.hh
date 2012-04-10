@@ -25,13 +25,15 @@ class radix_node;
  *
  * A leaf is either a pointer to a radix_elem or null.
  *
- * It is always legal to take an unlocked leaf and replace it with a
- * pointer to a radix_node full of that leaf[*] ("push down"). Before
- * making semantic modifications to a range, the range must be
+ * Before making semantic modifications to a range, the range must be
  * locked. This is done by locking the leaf pointers (be they to
- * radix_entry or null) corresponding to that range. It is legal to
- * push down any nodes necessary to do this, but ideally you'd only
- * push down as necessary to get the endpoints accurate.
+ * radix_entry or null) corresponding to that range. If necessary, a
+ * leaf may be "pushed down" and replaced with a pointer to radix_node
+ * full of the old value to get the endpoints accurate. Locking NEVER
+ * happens higher level than the current set of leaves.
+ *
+ * We assuming that a thread attempting to push down a leaf is doing
+ * so to lock it.
  *
  * When replacing a range, we'd like to possibly retire old
  * radix_nodes when their contents are all set to be the same. Before
@@ -43,11 +45,13 @@ class radix_node;
  *
  * Races:
  *
- * - If a leaf to be locked gets pushed down, lock the new radix_node
- *   at a more granular level.
+ * - If a leaf to be locked (or pushed down) gets pushed down, lock
+ *   the new radix_node at a more granular level.
  *
- * - If a leaf to be locked goes dead, restart everything from the
- *   root. Many values may have gone invalid.
+ * - If a leaf to be locked (or pushed down) goes dead, restart
+ *   everything from the root. Many values may have gone invalid.
+ *
+ * - If a leaf to be locked (or pushed down) gets locked, spin.
  *
  * [*] XXX: Try not to bounce on the radix_elem refcount too much.
  */
