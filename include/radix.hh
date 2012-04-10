@@ -43,6 +43,9 @@ class radix_node;
  * RCU-freed. To avoid restarting writers, set the leaves to the right
  * value too.
  *
+ * Once a pointer is dead, it stays dead until the containing
+ * radix_node is deallocated.
+ *
  * Races:
  *
  * - If a leaf to be locked (or pushed down) gets pushed down, lock
