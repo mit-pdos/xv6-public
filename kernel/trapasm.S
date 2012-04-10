@@ -18,6 +18,22 @@
 #define TRAP(x) _TRAP(x, NOEC)
 #define TRAPCODE(x) _TRAP(x, EC)
 
+/* Calling convention:
+ *
+ * Syscall #:  %rax
+ * Arguments:  %rdi, %rsi, %rdx, %r10 (*), %r8
+ * Return RIP: %rcx (from syscall instruction)
+ * RFLAGS:     %r11 (from syscall instruction)
+ * Clobbers:   %r9, everything above
+ *
+ * None of the above registers are preserved across function calls in
+ * the AMD64 ABI.  This means user space doesn't need to save any
+ * registers across a syscall.
+ *
+ * (*) This argument register differs from the regular AMD64 ABI.
+ * Normally, the fourth argument is in %rcx, but this is clobbered by
+ * syscall.  %r10 is cheap to use because it is caller-save.
+ */
 .code64
 .globl sysentry
 .align 8
@@ -32,9 +48,7 @@ sysentry:
         movq    %ss:PROC_KSTACK_OFFSET(%r9), %r9
         addq    $(KSTACKSIZE-TRAPFRAME_SIZE), %r9
 
-        // syscall number: %rax
-        // function arguments: %rdi, %rsi, %rdx, %rcx, %r8, %r9 (killed)
-
+        // save all registers we're not allowed to clobber
         // skip padding3, ds
         movq    %r15, %ss:0x10(%r9)
         movq    %r14, %ss:0x18(%r9)
