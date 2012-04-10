@@ -5,7 +5,6 @@
  */
 
 #include "gc.hh"
-#include "markptr.hh"
 
 enum { bits_per_level = 6 };
 enum { key_bits = 36 };
@@ -60,10 +59,10 @@ class radix_node;
  */
 
 enum entry_state {
-  entry_node = 0,
-  entry_unlocked = 1,
-  entry_locked = 2,
-  entry_dead = 3,
+  entry_unlocked = 0,
+  entry_locked = 1,
+  entry_dead = 2,
+  entry_node = 3,
 
   entry_mask = 3
 };
@@ -72,8 +71,15 @@ class radix_entry {
 public:
   radix_entry()
     : value_(0 | entry_unlocked) { }
+  explicit radix_entry(uptr value)
+    : value_(value) { }
   explicit radix_entry(radix_node *ptr)
-    : value_(reinterpret_cast<uptr>(ptr) | entry_unlocked) { }
+    : value_(reinterpret_cast<uptr>(ptr) | entry_node) {
+    // XXX: This is kinda wonky. Maybe switch the status to
+    // entry_unlocked is ptr is null, make null pass both is_elem()
+    // and is_node().
+    assert(ptr != nullptr);
+  }
   explicit radix_entry(radix_elem *ptr, entry_state state = entry_unlocked)
     : value_(reinterpret_cast<uptr>(ptr) | state) {
     assert(state != entry_node);
@@ -84,11 +90,21 @@ public:
     assert(state != entry_node);
   }
 
-  uptr state() const { return value_ & entry_mask; }
+  uptr value() const { return value_; }
+  uptr& value() { return value_; }
+  entry_state state() const {
+    return static_cast<entry_state>(value_ & entry_mask);
+  }
   uptr ptr() const { return value_ & ~entry_mask; }
 
   bool is_node() const { return state() == entry_node; }
   bool is_elem() const { return !is_node(); }
+  bool is_null() const { return ptr() == 0; }
+
+  // Convenience function
+  radix_entry with_state(entry_state state) {
+    return radix_entry(elem(), state);
+  }
 
   radix_elem *elem() const {
     assert(is_elem());
@@ -100,6 +116,23 @@ public:
   }
 private:
   uptr value_;
+};
+
+// Our version of std::atomic doesn't work for structs, even if they
+// are integer sized.
+class radix_ptr {
+public:
+  radix_ptr() : ptr_(radix_entry().value()) { }
+  radix_ptr(radix_entry e) : ptr_(e.value()) { }
+  radix_entry load() const { return radix_entry(ptr_.load()); }
+  void store(radix_entry e) { ptr_.store(e.value()); }
+  bool compare_exchange_weak(radix_entry &old, radix_entry val) {
+    return ptr_.compare_exchange_weak(old.value(), val.value());
+  }
+private:
+  static_assert(sizeof(uptr) == sizeof(radix_entry),
+                "radix_entry is a uptr");
+  std::atomic<uptr> ptr_;
 };
 
 class radix_elem : public rcu_freed {
@@ -115,10 +148,8 @@ class radix_elem : public rcu_freed {
 };
 
 struct radix_node : public rcu_freed {
-  markptr<void> ptr[1 << bits_per_level];
+  radix_ptr child[1 << bits_per_level];
   radix_node() : rcu_freed("radix_node") {
-    for (int i = 0; i < sizeof(ptr) / sizeof(ptr[0]); i++)
-      ptr[i] = 0;
   }
 
   void delete_tree(u32 level);
@@ -153,11 +184,10 @@ struct radix_range {
 };
 
 struct radix {
-  markptr<void> root_;
+  radix_ptr root_;
   u32 shift_;
 
-  radix(u32 shift) : root_(0), shift_(shift) {
-    root_.ptr() = new radix_node();
+  radix(u32 shift) : root_(radix_entry(new radix_node())), shift_(shift) {
   }
   ~radix();
   radix_elem* search(u64 key);

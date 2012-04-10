@@ -1,9 +1,9 @@
 #include "crange_arch.hh"
 #include "radix.hh"
 
-enum { crange_debug = 0 };
+enum { radix_debug = 0 };
 
-#define dprintf(...) do { if (crange_debug) cprintf(__VA_ARGS__); } while(0)
+#define dprintf(...) do { if (radix_debug) cprintf(__VA_ARGS__); } while(0)
 
 // Returns the index needed to reach |level| from |level+1|.
 static u32
@@ -17,28 +17,35 @@ index(u64 key, u32 level)
 // Returns the level we stopped at.
 template<class CB>
 u32
-descend(u64 key, markptr<void> *n, u32 level, CB cb, bool create)
+descend(u64 key, radix_ptr *n, u32 level, CB cb, bool create)
 {
   static_assert(key_bits == bits_per_level * radix_levels,
                 "for now, we only support exact multiples of bits_per_level");
   assert(n);
 
-  void *v = n->ptr();
-  if (v == 0 && create) {
+  radix_entry v = n->load();
+  if (v.is_null() && create) {
+    assert(v.state() == entry_unlocked);
     radix_node *new_rn = new radix_node();
-    if (n->ptr().cmpxch_update(&v, (void*) new_rn))
-      v = new_rn;
-    else
-      delete new_rn;
+    radix_entry cur = v;
+    v = radix_entry(new_rn);
+    do {
+      if (!cur.is_null()) {
+        assert(cur.is_node());
+        v = cur;
+        delete new_rn;
+        break;
+      }
+    } while (!n->compare_exchange_weak(cur, v));
   }
   // Node isn't there. Just return.
-  if (v == 0) {
+  if (v.is_null()) {
     return level+1;
   }
 
-  radix_node *rn = (radix_node*) v;
+  radix_node *rn = v.node();
 
-  markptr<void> *vptr = &rn->ptr[index(key, level)];
+  radix_ptr *vptr = &rn->child[index(key, level)];
   if (level == 0) {
     cb(vptr);
     return level;
@@ -50,13 +57,16 @@ descend(u64 key, markptr<void> *n, u32 level, CB cb, bool create)
 void
 radix_node::delete_tree(u32 level)
 {
+  // FIXME: Put this in the destructor and stuff. Maybe even make the
+  // dispatch a method of radix_entry. Could even make radix_entry a
+  // unique_ptr-type of thing, but that's probably a bit much.
   for (int i = 0; i < (1<<bits_per_level); i++) {
-    void *child = ptr[i].ptr();
-    if (child != nullptr) {
-      if (level > 1)
-        static_cast<radix_node*>(child)->delete_tree(level-1);
+    radix_entry entry = child[i].load();
+    if (!entry.is_null()) {
+      if (entry.is_node())
+        entry.node()->delete_tree(level-1);
       else
-        static_cast<radix_elem*>(child)->decref();
+        entry.elem()->decref();
     }
   }
   do_gc();
@@ -64,8 +74,8 @@ radix_node::delete_tree(u32 level)
 
 radix::~radix()
 {
-  void *root = root_.ptr();
-  static_cast<radix_node*>(root)->delete_tree(radix_levels);
+  // FIXME: See above
+  root_.load().node()->delete_tree(radix_levels);
 }
 
 radix_elem*
@@ -73,8 +83,8 @@ radix::search(u64 key)
 {
   radix_elem *result = 0;
   scoped_gc_epoch gc;
-  descend(key >> shift_, &root_, radix_levels-1, [&result](markptr<void> *v) {
-      result = (radix_elem*) v->ptr().load();
+  descend(key >> shift_, &root_, radix_levels-1, [&result](radix_ptr *v) {
+      result = v->load().elem();
     }, false);
   dprintf("%p: search(%lu) -> %p\n", this, key >> shift_, result);
   return result;
@@ -93,8 +103,8 @@ radix::skip_empty(u64 k) const
   while (next_k < (1UL<<key_bits)) {
     // Does next_k exist?
     // FIXME: evil evil const_cast
-    u32 level = descend(next_k, const_cast<markptr<void>*>(&root_),
-                        radix_levels-1, [](markptr<void> *v){}, false);
+    u32 level = descend(next_k, const_cast<radix_ptr*>(&root_),
+                        radix_levels-1, [](radix_ptr *v){}, false);
     if (level == 0) {
       return next_k;
     }
@@ -110,8 +120,10 @@ radix_range::radix_range(radix *r, u64 start, u64 size)
   : r_(r), start_(start), size_(size)
 {
   for (u64 k = start_; k != start_ + size_; k++) {
-    if (descend(k, &r_->root_, radix_levels-1, [](markptr<void> *v) {
-          while (!v->mark().xchg(true))
+    if (descend(k, &r_->root_, radix_levels-1, [](radix_ptr *v) {
+          radix_entry cur = v->load();
+          while (cur.state() == entry_locked ||
+                 !v->compare_exchange_weak(cur, cur.with_state(entry_locked)))
             ; // spin
         }, true) != 0) {
       panic("radix_range");
@@ -125,8 +137,11 @@ radix_range::~radix_range()
     return;
 
   for (u64 k = start_; k != start_ + size_; k++) {
-    if (descend(k, &r_->root_, radix_levels-1, [](markptr<void> *v) {
-          v->mark() = false;
+    if (descend(k, &r_->root_, radix_levels-1, [](radix_ptr *v) {
+          radix_entry cur = v->load();
+          do {
+            assert(cur.state() == entry_locked);
+          } while (!v->compare_exchange_weak(cur, cur.with_state(entry_unlocked)));
         }, true) != 0) {
       panic("~radix_range");
     }
@@ -144,14 +159,15 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
   assert(start + size <= start_ + size_);
 
   for (u64 k = start; k != start + size; k++) {
-    if (descend(k, &r_->root_, radix_levels-1, [val](markptr<void> *v) {
-          void* cur = v->ptr().load();
-          while (!v->ptr().cmpxch_update(&cur, val))
-            ; // spin
+    if (descend(k, &r_->root_, radix_levels-1, [val](radix_ptr *v) {
+          radix_entry cur = v->load();
+          do {
+            assert(cur.state() == entry_locked);
+          } while (!v->compare_exchange_weak(cur, radix_entry(val, entry_locked)));
           if (val)
             val->incref();
-          if (cur)
-            ((radix_elem*) cur)->decref();
+          if (!cur.is_null())
+            cur.elem()->decref();
         }, true)) {
       panic("radix_range::replace");
     }
@@ -162,8 +178,8 @@ radix_elem*
 radix_iterator::operator*()
 {
   radix_elem *result = 0;
-  descend(k_, (markptr<void>*) &r_->root_, radix_levels-1, [&result](markptr<void> *v) {
-      result = (radix_elem*) v->ptr().load();
+  descend(k_, (radix_ptr*) &r_->root_, radix_levels-1, [&result](radix_ptr *v) {
+      result = v->load().elem();
     }, false);
   return result;
 }
@@ -172,7 +188,7 @@ radix_iterator2::radix_iterator2(const radix* r, u64 k)
   : r_(r), k_(k) {
   dprintf("%p: Made iterator with k = %lu\n", r_, k_);
   if (k_ != ~0ULL) {
-    path_[radix_levels] = r_->root_.ptr().load();
+    path_[radix_levels] = (void*)r_->root_.load().ptr();
     if (!find_first_leaf(radix_levels - 1))
       k_ = ~0ULL;
   }
@@ -205,7 +221,7 @@ radix_iterator2::find_first_leaf(u32 level)
 {
   // Find the first non-empty node after k_ on this level.
   for (u32 idx = index(k_, level); idx < (1<<bits_per_level); idx++) {
-    void *next = node(level+1)->ptr[idx].ptr().load();
+    void *next = (void*) node(level+1)->child[idx].load().ptr();
     if (next != nullptr) {
       if (index(k_, level) != idx) {
         // We had to advance; clear everything this level and under
