@@ -188,7 +188,9 @@ radix_iterator2::radix_iterator2(const radix* r, u64 k)
   dprintf("%p: Made iterator with k = %lu\n", r_, k_);
   if (k_ != ~0ULL) {
     path_[radix_levels] = r_->root_.load();
-    if (!find_first_leaf(radix_levels - 1))
+    if (path_[radix_levels].is_elem())
+      leaf_ = radix_levels; // Maybe best to not do this...
+    else if (!find_first_leaf(radix_levels - 1))
       k_ = ~0ULL;
   }
   dprintf("%p: Adjusted: k = %lu\n", r_, k_);
@@ -198,7 +200,7 @@ bool
 radix_iterator2::advance(u32 level)
 {
   // First, see if we can advance a lower level.
-  if (level > 0 && advance(level-1)) {
+  if (level > leaf_ && advance(level-1)) {
     // Nothing more to do.
     return true;
   }
@@ -230,7 +232,12 @@ radix_iterator2::find_first_leaf(u32 level)
       }
       path_[level] = next;
 
-      if (level == 0 || find_first_leaf(level-1))
+      if (next.is_elem()) {
+        // Found a leaf. Stop now.
+        leaf_ = level;
+        return true;
+      } else if (find_first_leaf(level-1))
+        // Keep looking.
         return true;
     }
   }

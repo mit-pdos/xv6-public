@@ -222,6 +222,7 @@ struct radix_iterator2 {
   // leaves are at level 0. Later we'll steal a bit for them. The root
   // is path_[radix_levels].
   radix_entry path_[radix_levels+1];
+  u32 leaf_;
 
   radix_iterator2(const radix* r, u64 k);
 
@@ -230,7 +231,7 @@ struct radix_iterator2 {
     return *this;
   }
   radix_elem* operator*() {
-    return path_[0].elem();
+    return path_[leaf_].elem();
   }
   radix_node* node(u32 level) { return path_[level].node(); }
 
