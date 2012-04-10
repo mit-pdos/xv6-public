@@ -21,14 +21,13 @@
 /* Calling convention:
  *
  * Syscall #:  %rax
- * Arguments:  %rdi, %rsi, %rdx, %r10 (*), %r8
+ * Arguments:  %rdi, %rsi, %rdx, %r10 (*), %r8, %r9
  * Return RIP: %rcx (from syscall instruction)
  * RFLAGS:     %r11 (from syscall instruction)
- * Clobbers:   %r9, everything above
  *
  * None of the above registers are preserved across function calls in
  * the AMD64 ABI.  This means user space doesn't need to save any
- * registers across a syscall.
+ * registers across a syscall and we're free to clobber them.
  *
  * (*) This argument register differs from the regular AMD64 ABI.
  * Normally, the fourth argument is in %rcx, but this is clobbered by
@@ -41,21 +40,21 @@ sysentry:
         // can syscall/sysret be used safely in the presence of NMIs?
         // we are executing with cpl=0 but without a valid stack.
 
-        // blow away %r9: syscalls can take at most 5 args
         swapgs
-        movq    %gs:8, %r9  // myproc()
+        movq    %rax, %gs:24 // save %rax so we can use it
+        movq    %gs:8, %rax  // myproc()
 
-        movq    %ss:PROC_KSTACK_OFFSET(%r9), %r9
-        addq    $(KSTACKSIZE-TRAPFRAME_SIZE), %r9
+        movq    %ss:PROC_KSTACK_OFFSET(%rax), %rax
+        addq    $(KSTACKSIZE-TRAPFRAME_SIZE), %rax
 
         // save all registers we're not allowed to clobber
         // skip padding3, ds
-        movq    %r15, %ss:0x10(%r9)
-        movq    %r14, %ss:0x18(%r9)
-        movq    %r13, %ss:0x20(%r9)
-        movq    %r12, %ss:0x28(%r9)
-        movq    %rbp, %ss:0x30(%r9)
-        movq    %rbx, %ss:0x38(%r9)
+        movq    %r15, %ss:0x10(%rax)
+        movq    %r14, %ss:0x18(%rax)
+        movq    %r13, %ss:0x20(%rax)
+        movq    %r12, %ss:0x28(%rax)
+        movq    %rbp, %ss:0x30(%rax)
+        movq    %rbx, %ss:0x38(%rax)
         // skip r11 (0x40)
         // skip r10 (0x48)
         // skip r9 (0x50)
@@ -67,20 +66,21 @@ sysentry:
         // skip rdi (0x80)
         // skip trapno (0x88)
         // skip err, padding2 (0x90)
-        movq    %rcx, %ss:0x98(%r9)  // rip saved by syscall
+        movq    %rcx, %ss:0x98(%rax)  // rip saved by syscall
         // skip cs, padding (0xa0)
-        movq    %r11, %ss:0xa8(%r9)  // eflags saved by syscall
-        movq    %rsp, %ss:0xb0(%r9)
+        movq    %r11, %ss:0xa8(%rax)  // eflags saved by syscall
+        movq    %rsp, %ss:0xb0(%rax)
 
         movw    $KDSEG, %cx
         movw    %cx, %ds
         movw    %cx, %es
 
-        movq    %r9, %rsp
+        movq    %rax, %rsp
 
         movq    %r10, %rcx  // saved by usys.S
-        movq    %rax, %r9   // syscall# from usys.S
+        pushq   %gs:24      // syscall# saved from %rax
         call    sysentry_c
+        popq    %r11
 
         // return using SYSRET
         cli

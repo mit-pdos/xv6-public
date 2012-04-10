@@ -34,13 +34,13 @@ def main():
                                          ", ".join(syscall.kargs))
         print
 
-        print "u64 (*syscalls[])(u64, u64, u64, u64, u64) = {"
+        print "u64 (*syscalls[])(u64, u64, u64, u64, u64, u64) = {"
         bynum = dict((s.num, s) for s in syscalls)
         for num in range(max(bynum.keys()) + 1):
             if num not in bynum:
                 print "  nullptr,"
             else:
-                print "  (u64(*)(u64,u64,u64,u64,u64))%s," % bynum[num].kname
+                print "  (u64(*)(u64,u64,u64,u64,u64,u64))%s," % bynum[num].kname
         print "};"
         print
         print "extern const int nsyscalls = %d;" % (max(bynum.keys()) + 1)
