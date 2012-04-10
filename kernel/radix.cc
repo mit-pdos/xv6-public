@@ -82,13 +82,13 @@ radix::~radix()
 radix_elem*
 radix::search(u64 key)
 {
-  radix_elem *result = 0;
   scoped_gc_epoch gc;
-  descend(key >> shift_, &root_, radix_levels-1, [&result](radix_ptr *v) {
-      result = v->load().elem();
-    }, false);
-  dprintf("%p: search(%lu) -> %p\n", this, key >> shift_, result);
-  return result;
+  radix_entry cur = root_.load();
+  for (u32 level = radix_levels-1; level >= 0 && !cur.is_elem(); level--) {
+    cur = cur.node()->child[index(key >> shift_, level)].load();
+  }
+  dprintf("%p: search(%lu) -> %p\n", this, key >> shift_, cur.elem());
+  return cur.elem();
 }
 
 radix_range
