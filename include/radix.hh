@@ -11,6 +11,90 @@ enum { bits_per_level = 6 };
 enum { key_bits = 36 };
 enum { radix_levels = (key_bits + bits_per_level - 1) / bits_per_level };
 
+class radix_elem;
+class radix_node;
+
+/*
+ * Each pointer to a radix_elem or radix_node can be in one of four
+ * states:
+ *
+ * - pointer to radix_node
+ * - unlocked leaf
+ * - locked leaf
+ * - dead leaf
+ *
+ * A leaf is either a pointer to a radix_elem or null.
+ *
+ * It is always legal to take an unlocked leaf and replace it with a
+ * pointer to a radix_node full of that leaf[*] ("push down"). Before
+ * making semantic modifications to a range, the range must be
+ * locked. This is done by locking the leaf pointers (be they to
+ * radix_entry or null) corresponding to that range. It is legal to
+ * push down any nodes necessary to do this, but ideally you'd only
+ * push down as necessary to get the endpoints accurate.
+ *
+ * When replacing a range, we'd like to possibly retire old
+ * radix_nodes when their contents are all set to be the same. Before
+ * doing this, all leaves under that radix_node must be locked. We
+ * transition them to 'dead leaf' state. This informs all others
+ * attempting to lock the pointer to retry. The radix_node itself is
+ * RCU-freed. To avoid restarting writers, set the leaves to the right
+ * value too.
+ *
+ * Races:
+ *
+ * - If a leaf to be locked gets pushed down, lock the new radix_node
+ *   at a more granular level.
+ *
+ * - If a leaf to be locked goes dead, restart everything from the
+ *   root. Many values may have gone invalid.
+ *
+ * [*] XXX: Try not to bounce on the radix_elem refcount too much.
+ */
+
+enum entry_state {
+  entry_node = 0,
+  entry_unlocked = 1,
+  entry_locked = 2,
+  entry_dead = 3,
+
+  entry_mask = 3
+};
+
+class radix_entry {
+public:
+  radix_entry()
+    : value_(0 | entry_unlocked) { }
+  explicit radix_entry(radix_node *ptr)
+    : value_(reinterpret_cast<uptr>(ptr) | entry_unlocked) { }
+  explicit radix_entry(radix_elem *ptr, entry_state state = entry_unlocked)
+    : value_(reinterpret_cast<uptr>(ptr) | state) {
+    assert(state != entry_node);
+  }
+  explicit radix_entry(decltype(nullptr) nullp,
+                       entry_state state = entry_unlocked)
+    : value_(0 | state) {
+    assert(state != entry_node);
+  }
+
+  uptr state() const { return value_ & entry_mask; }
+  uptr ptr() const { return value_ & ~entry_mask; }
+
+  bool is_node() const { return state() == entry_node; }
+  bool is_elem() const { return !is_node(); }
+
+  radix_elem *elem() const {
+    assert(is_elem());
+    return reinterpret_cast<radix_elem*>(ptr());
+  }
+  radix_node *node() const {
+    assert(is_node());
+    return reinterpret_cast<radix_node*>(ptr());
+  }
+private:
+  uptr value_;
+};
+
 class radix_elem : public rcu_freed {
  private:
   bool deleted_;
@@ -35,6 +119,12 @@ struct radix_node : public rcu_freed {
 
   NEW_DELETE_OPS(radix_node)
 };
+
+// Assert we have enough spare bits for all flags.
+static_assert(alignof(radix_node) > entry_mask,
+              "radix_node sufficiently aligned");
+static_assert(alignof(radix_elem) > entry_mask,
+              "radix_elem sufficiently aligned");
 
 struct radix;
 
