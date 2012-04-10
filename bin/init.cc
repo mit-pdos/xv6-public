@@ -22,6 +22,7 @@ static struct {
   { "/dev/sampler", 3 },
   { "/dev/lockstat", 4 },
   { "/dev/stat", 5 },
+  { "/dev/cmdline", 6},
 };
 
 static int

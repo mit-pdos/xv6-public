@@ -86,3 +86,4 @@ extern struct devsw devsw[];
 #define SAMPLER  3
 #define DEVLOCKSTAT 4
 #define DEVSTAT  5
+#define DEVCMDLINE 6
