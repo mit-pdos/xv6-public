@@ -114,6 +114,8 @@ public:
     assert(is_node());
     return reinterpret_cast<radix_node*>(ptr());
   }
+
+  void release();
 private:
   uptr value_;
 };
@@ -151,8 +153,8 @@ struct radix_node : public rcu_freed {
   radix_ptr child[1 << bits_per_level];
   radix_node() : rcu_freed("radix_node") {
   }
+  ~radix_node();
 
-  void delete_tree(u32 level);
   virtual void do_gc() { delete this; }
 
   NEW_DELETE_OPS(radix_node)

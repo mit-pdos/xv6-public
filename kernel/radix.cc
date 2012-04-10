@@ -55,27 +55,26 @@ descend(u64 key, radix_ptr *n, u32 level, CB cb, bool create)
 }
 
 void
-radix_node::delete_tree(u32 level)
+radix_entry::release()
 {
-  // FIXME: Put this in the destructor and stuff. Maybe even make the
-  // dispatch a method of radix_entry. Could even make radix_entry a
-  // unique_ptr-type of thing, but that's probably a bit much.
-  for (int i = 0; i < (1<<bits_per_level); i++) {
-    radix_entry entry = child[i].load();
-    if (!entry.is_null()) {
-      if (entry.is_node())
-        entry.node()->delete_tree(level-1);
-      else
-        entry.elem()->decref();
-    }
+  if (is_null()) return;
+  if (is_node()) {
+    node()->do_gc();
+  } else {
+    elem()->decref();
   }
-  do_gc();
+}
+
+radix_node::~radix_node()
+{
+  for (int i = 0; i < (1<<bits_per_level); i++) {
+    child[i].load().release();
+  }
 }
 
 radix::~radix()
 {
-  // FIXME: See above
-  root_.load().node()->delete_tree(radix_levels);
+  root_.load().release();
 }
 
 radix_elem*
