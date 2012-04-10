@@ -187,7 +187,7 @@ radix_iterator2::radix_iterator2(const radix* r, u64 k)
   : r_(r), k_(k) {
   dprintf("%p: Made iterator with k = %lu\n", r_, k_);
   if (k_ != ~0ULL) {
-    path_[radix_levels] = (void*)r_->root_.load().ptr();
+    path_[radix_levels] = r_->root_.load();
     if (!find_first_leaf(radix_levels - 1))
       k_ = ~0ULL;
   }
@@ -220,8 +220,8 @@ radix_iterator2::find_first_leaf(u32 level)
 {
   // Find the first non-empty node after k_ on this level.
   for (u32 idx = index(k_, level); idx < (1<<bits_per_level); idx++) {
-    void *next = (void*) node(level+1)->child[idx].load().ptr();
-    if (next != nullptr) {
+    radix_entry next = node(level+1)->child[idx].load();
+    if (!next.is_null()) {
       if (index(k_, level) != idx) {
         // We had to advance; clear everything this level and under
         // and set this one.

@@ -221,7 +221,7 @@ struct radix_iterator2 {
   // and is radix_elem. The rest are radix_node. For now we assume all
   // leaves are at level 0. Later we'll steal a bit for them. The root
   // is path_[radix_levels].
-  void *path_[radix_levels+1];
+  radix_entry path_[radix_levels+1];
 
   radix_iterator2(const radix* r, u64 k);
 
@@ -230,9 +230,9 @@ struct radix_iterator2 {
     return *this;
   }
   radix_elem* operator*() {
-    return (radix_elem*)path_[0];
+    return path_[0].elem();
   }
-  radix_node* node(u32 level) { return (radix_node*)path_[level]; }
+  radix_node* node(u32 level) { return path_[level].node(); }
 
   // Compare equality on just the key.
   bool operator==(const radix_iterator2 &other) {
