@@ -196,26 +196,10 @@ struct radix {
   radix_elem* search(u64 key);
   radix_range search_lock(u64 start, u64 size);
 
-  // k is shifted value.
-  u64 skip_empty(u64 k) const;
-
   NEW_DELETE_OPS(radix)
 };
 
 struct radix_iterator {
-  const radix* r_;
-  u64 k_;
-
-  radix_iterator(const radix* r, u64 k) : r_(r), k_(r->skip_empty(k)) {}
-  radix_iterator &operator++() { k_++; k_ = r_->skip_empty(k_); return *this; }
-  radix_elem* operator*();
-  bool operator==(const radix_iterator &other) {
-    return r_ == other.r_ && k_ == other.k_; }
-  bool operator!=(const radix_iterator &other) {
-    return r_ != other.r_ || k_ != other.k_; }
-};
-
-struct radix_iterator2 {
   const radix* r_;
   u64 k_;
   // path_[i] is the node at level i. Note that the leaf is at zero
@@ -225,9 +209,9 @@ struct radix_iterator2 {
   radix_entry path_[radix_levels+1];
   u32 leaf_;
 
-  radix_iterator2(const radix* r, u64 k);
+  radix_iterator(const radix* r, u64 k);
 
-  radix_iterator2 &operator++() {
+  radix_iterator &operator++() {
     if (!advance(radix_levels-1)) k_ = ~0ULL;
     return *this;
   }
@@ -237,17 +221,15 @@ struct radix_iterator2 {
   radix_node* node(u32 level) { return path_[level].node(); }
 
   // Compare equality on just the key.
-  bool operator==(const radix_iterator2 &other) {
+  bool operator==(const radix_iterator &other) {
     return r_ == other.r_ && k_ == other.k_; }
-  bool operator!=(const radix_iterator2 &other) {
+  bool operator!=(const radix_iterator &other) {
     return r_ != other.r_ || k_ != other.k_; }
 
 private:
   bool find_first_leaf(u32 level);
   bool advance(u32 level);
 };
-
-#define radix_iterator radix_iterator2
 
 static inline radix_iterator
 begin(const radix &r) { return radix_iterator(&r, 0); }
@@ -261,5 +243,3 @@ begin(const radix_range &rr) { return radix_iterator(rr.r_, rr.start_); }
 
 static inline radix_iterator
 end(const radix_range &rr) { return radix_iterator(rr.r_, rr.start_ + rr.size_); }
-
-#undef radix_iterator

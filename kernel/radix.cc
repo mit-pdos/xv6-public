@@ -97,26 +97,6 @@ radix::search_lock(u64 start, u64 size)
   return radix_range(this, start >> shift_, size >> shift_);
 }
 
-u64
-radix::skip_empty(u64 k) const
-{
-  u64 next_k = k;
-  while (next_k < (1UL<<key_bits)) {
-    // Does next_k exist?
-    // FIXME: evil evil const_cast
-    u32 level = descend(next_k, const_cast<radix_ptr*>(&root_),
-                        radix_levels-1, [](radix_ptr *v){}, false);
-    if (level == 0) {
-      return next_k;
-    }
-    u64 mask = 1UL<<(bits_per_level * level);
-    // Skip past everything we know is missing.
-    next_k = (next_k & ~(mask-1)) + mask;
-  }
-  // Nope, no successor.
-  return ~0ULL;
-}
-
 radix_range::radix_range(radix *r, u64 start, u64 size)
   : r_(r), start_(start), size_(size)
 {
@@ -175,17 +155,7 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
   }
 }
 
-radix_elem*
-radix_iterator::operator*()
-{
-  radix_elem *result = 0;
-  descend(k_, (radix_ptr*) &r_->root_, radix_levels-1, [&result](radix_ptr *v) {
-      result = v->load().elem();
-    }, false);
-  return result;
-}
-
-radix_iterator2::radix_iterator2(const radix* r, u64 k)
+radix_iterator::radix_iterator(const radix* r, u64 k)
   : r_(r), k_(k) {
   dprintf("%p: Made iterator with k = %lu\n", r_, k_);
   if (k_ != ~0ULL) {
@@ -199,7 +169,7 @@ radix_iterator2::radix_iterator2(const radix* r, u64 k)
 }
 
 bool
-radix_iterator2::advance(u32 level)
+radix_iterator::advance(u32 level)
 {
   // First, see if we can advance a lower level.
   if (level > leaf_ && advance(level-1)) {
@@ -220,7 +190,7 @@ radix_iterator2::advance(u32 level)
 }
 
 bool
-radix_iterator2::find_first_leaf(u32 level)
+radix_iterator::find_first_leaf(u32 level)
 {
   // Find the first non-empty node after k_ on this level.
   for (u32 idx = index(k_, level); idx < (1<<bits_per_level); idx++) {
