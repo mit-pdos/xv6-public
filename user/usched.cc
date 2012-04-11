@@ -194,16 +194,19 @@ runit(proc* p)
   spin_delay(500);
 }
 
+#if 1
 static proc*
 stealit(void)
 {
   proc* p;
 
+  int r = stuff_->rnd();
   ANON_REGION("stealit", &perfgroup);
   for (int i = 0; i < NCPU; i++) {
-    if (i == myid_)
+    int k = (r+i)%NCPU;
+    if (k == myid_)
       continue;
-    p = schedule_[i].steal(true);
+    p = schedule_[k].steal(true);
     if (p) {
       return p;
     }
@@ -211,15 +214,40 @@ stealit(void)
   return nullptr;
 }
 
+#else
+
+static proc*
+stealit(void)
+{
+  proc* p;
+
+  ANON_REGION("stealit", &perfgroup);
+  for (int i = 0; i < 2; i++) {
+    int k = i+myid_-(myid_%2);
+    if (k == myid_)
+      continue;
+    p = schedule_[k].steal(true);
+    if (p) {
+      return p;
+    }
+  }
+  return nullptr;
+}
+#endif
+
 static void
 schedit(void)
 {
   uint32_t r;
   proc* p;
 
-  p = schedule_->deq();
-  if (p == nullptr)
-    p = stealit();
+  {
+    ANON_REGION("schedit", &perfgroup);
+    
+    p = schedule_->deq();
+    if (p == nullptr)
+      p = stealit();
+  }
 
   r = stuff_->rnd() % 100;
   if (p) {
