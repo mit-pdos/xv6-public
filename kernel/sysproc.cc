@@ -105,8 +105,8 @@ sys_map(userptr<void> addr, size_t len)
 
 #if MTRACE
   mt_ascope ascope("%s(%p,%lx)", __func__, addr, len);
-  for (uptr i = PGROUNDDOWN(addr); i < PGROUNDUP(addr + len); i += PGSIZE)
-    mtwriteavar("page:%016x", i);
+  for (uptr i = addr / PGSIZE; i < PGROUNDUP(addr + len) / PGSIZE; i++)
+    mtwriteavar("pte:%p.%#lx", myproc()->vmap, i);
 #endif
 
   vmnode *vmn = new vmnode(PGROUNDUP(len) / PGSIZE);
@@ -130,8 +130,8 @@ sys_unmap(userptr<void> addr, size_t len)
 
 #if MTRACE
   mt_ascope ascope("%s(%p,%lx)", __func__, addr, len);
-  for (uptr i = PGROUNDDOWN(addr); i < PGROUNDUP(addr + len); i += PGSIZE)
-    mtwriteavar("page:%016x", i);
+  for (uptr i = addr / PGSIZE; i < PGROUNDUP(addr + len) / PGSIZE; i++)
+    mtwriteavar("pte:%p.%#lx", myproc()->vmap, i);
 #endif
 
   uptr align_addr = PGROUNDDOWN(addr);

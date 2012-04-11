@@ -637,7 +637,7 @@ pagefault(vmap *vmap, uptr va, u32 err)
 {
 #if MTRACE
   mt_ascope ascope("%s(%p)", __func__, va);
-  mtwriteavar("page:%p.%016x", vmap, PGROUNDDOWN(va));
+  mtwriteavar("pte:%p.%#lx", vmap, va / PGSIZE);
 #endif
 
   for (;;) {
@@ -687,7 +687,7 @@ pagelookup(vmap* vmap, uptr va)
 {
 #if MTRACE
   mt_ascope ascope("%s(%p)", __func__, va);
-  mtwriteavar("page:%p.%016x", vmap, PGROUNDDOWN(va));
+  mtwriteavar("pte:%p.%#lx", vmap, va / PGSIZE);
 #endif
 
   for (;;) {
