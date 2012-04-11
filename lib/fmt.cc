@@ -208,6 +208,8 @@ vprintfmt(void (*putch)(int, void*), void *putdat,
     case 'o':
       num = getuint (ap, lflag);
       base = 8;
+      if (altflag && num)
+        putch ('0', putdat);
       goto number;
 
       // pointer
@@ -223,6 +225,10 @@ vprintfmt(void (*putch)(int, void*), void *putdat,
     case 'x':
       num = getuint (ap, lflag);
       base = 16;
+      if (altflag && num) {
+        putch ('0', putdat);
+        putch ('x', putdat);
+      }
     number:
       printnum (putch, putdat, num, base, MAX(width, 0), padc);
       break;

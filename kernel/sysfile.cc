@@ -299,7 +299,6 @@ sys_openat(int dirfd, const char *path, int omode)
   // Reads the dirfd FD, dirfd's inode, the inodes of all files in
   // path; writes the returned FD
   mt_ascope ascope("%s(%d,%s,%d)", __func__, dirfd, path, omode);
-  mtwriteavar("thread:%x", myproc()->pid);
   mtreadavar("inode:%x.%x", cwd->dev, cwd->inum);
 
   if(omode & O_CREATE){

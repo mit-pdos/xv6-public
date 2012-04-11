@@ -4,6 +4,8 @@
 #include "lib.h"
 #include "percpu.hh"
 
+#include <sys/mman.h>
+
 #define WQCHUNKSZ 8192
 #define WQBLOCKSZ 128
 static_assert(WQCHUNKSZ%WQBLOCKSZ == 0, "Bad sizes");
@@ -17,11 +19,11 @@ percpu<wqblock*> block;
 static bool
 refill(void)
 {
-  long r = map(0, WQCHUNKSZ);
-  if (r < 0)
+  void *r = mmap(0, WQCHUNKSZ, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+  if (r == MAP_FAILED)
     return false;
 
-  for (uptr p = r; p < r+WQCHUNKSZ; p += WQBLOCKSZ) {
+  for (char *p = (char*)r; p < (char*)r+WQCHUNKSZ; p += WQBLOCKSZ) {
     wqblock* n = (wqblock*)p;
     n->next = *block;
     *block = n;

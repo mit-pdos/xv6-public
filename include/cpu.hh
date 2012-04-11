@@ -26,6 +26,7 @@ struct cpu {
   struct cpu *cpu;
   struct proc *proc;           // The currently-running process.
   struct kmem *kmem;           // The per-core memory table
+  u64 syscallno;               // Temporary used by sysentry
 } __mpalign__;
 
 extern struct cpu cpus[NCPU];
