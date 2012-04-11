@@ -1,3 +1,5 @@
+// export LD_PRELOAD="/usr/lib/libjemalloc.so.1"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -13,10 +15,12 @@ typedef uint64_t u64;
 #include "sched.hh"
 #include "queue.h"
 
-static int nprocs = 2;
-static int the_time = 2;
+static int nprocs = NCPU;
+static int the_time = 5;
 static uint64_t start;
 static volatile int go;
+
+static __thread unsigned myid_;
 
 percpu<uint64_t> ops;
 
@@ -25,8 +29,6 @@ struct proc : public sched_link
   char x[256];
   LIST_ENTRY(proc) link;
 };
-
-//percpu<proc_list> proc_list;
 
 struct stuff {
   bool     flipper;
@@ -38,24 +40,17 @@ struct stuff {
   }
 
   proc* allocproc() {
-    if (LIST_EMPTY(&proc_list))
-      die("allocproc");
-    proc* p = LIST_FIRST(&proc_list);
-    LIST_REMOVE(p, link);
+    proc* p = (proc*) malloc(sizeof(proc));
     return p;
   }
 
   void freeproc(proc* p) {
-    LIST_INSERT_HEAD(&proc_list, p, link);
+    free(p);
   }
 
   void
   fillproc(void)
   {
-    for (int i = 0; i < 20; i++) {
-      proc* p = new proc();
-      freeproc(p);
-    }
   }
 };
 percpu<stuff> stuff_;
@@ -71,13 +66,13 @@ public:
 
   volatile u64 ncansteal_ __mpalign__;
 
+  sched_stat stats_;
+
 private:
   pthread_spinlock_t lock_;
   sched_link head_;
 };
 percpu<schedule> schedule_;
-
-static __thread unsigned myid_;
 
 int
 mycpuid(void)
@@ -103,7 +98,7 @@ sighandler(int x)
   tot = 0;
   for (int i = 0; i < NCPU; i++) {
     tot += ops[i];
-    printf("  %lu\n", schedule_[i].ncansteal_);
+    printf(" %lu %lu\n", ops[i], schedule_[i].stats_.steals);
   }
 
   printf("%f\n", (stop-start)/(tot/NCPU));
@@ -129,6 +124,7 @@ schedule::enq(proc* p)
   head_.prev = entry;
   if (cansteal((proc*)entry, true))
     ncansteal_++;
+  stats_.enqs++;
   pthread_spin_unlock(&lock_);
 }
 
@@ -150,6 +146,7 @@ schedule::deq(void)
   entry->prev->next = entry->next;
   if (cansteal((proc*)entry, true))
     --ncansteal_;
+  stats_.deqs++;
   pthread_spin_unlock(&lock_);
   return (proc*)entry;
 }
@@ -165,10 +162,12 @@ schedule::steal(bool nonexec)
       ptr->next->prev = ptr->prev;
       ptr->prev->next = ptr->next;
       --ncansteal_;
+      ++stats_.steals;
       pthread_spin_unlock(&lock_);
       return (proc*)ptr;
     }
   pthread_spin_unlock(&lock_);
+  ++stats_.misses;
   return nullptr;
 }
 
@@ -190,7 +189,7 @@ stealit(void)
 
   for (int i = 0; i < NCPU; i++) {
     if (i == myid_)
-      break;
+      continue;
     p = schedule_[i].steal(true);
     if (p) {
       return p;
@@ -214,16 +213,14 @@ schedit(void)
     runit(p);
     (*ops)++;
 
-    if (r < 10 && !stuff_->flipper) {
-      stuff_->flipper = !stuff_->flipper;
+    if (r < 10 && (myid_%2) == 0) {
       stuff_->freeproc(p);
     }
     else
       schedule_->enq(p);
   }
 
-  if (r >= 10 && r < 20 && stuff_->flipper) {
-    stuff_->flipper = !stuff_->flipper;
+  if (r > 90 && (myid_%2) == 1) {
     schedule_->enq(stuff_->allocproc());
   }
 }
@@ -238,7 +235,7 @@ worker(void* x)
 
   if (myid_ == 0) {
     for (int i = 0; i < nprocs; i++)
-      schedule_->enq(new proc());
+      schedule_->enq(stuff_->allocproc());
 
     if (signal(SIGALRM, sighandler) == SIG_ERR)
       edie("signal failed\n");
@@ -270,6 +267,7 @@ main(int ac, char** av)
       edie("pthread_create");
   }
 
+  sleep(1);
   worker((void*)0);
   return 0;
 }

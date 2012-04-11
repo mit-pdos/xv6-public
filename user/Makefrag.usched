@@ -1,11 +1,11 @@
-NCXXFLAGS = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) \
+NCXXFLAGS = -g -static -MD -m64 -O3 -Wall -Werror -DHW_$(HW) \
 	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer \
 	    -fms-extensions -mcx16 -mno-red-zone -std=c++0x \
 	    -Wno-sign-compare -fno-exceptions -fno-rtti -fcheck-new \
 	    -iquote . -iquote include \
 	    -include param.h -include include/compiler.h
 
-NCFLAGS = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) \
+NCFLAGS = -g -static -MD -m64 -O3 -Wall -Werror -DHW_$(HW) \
 	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer \
 	    -fms-extensions -mcx16 -mno-red-zone -std=c99 \
 	    -Wno-sign-compare -fno-exceptions \
@@ -25,7 +25,7 @@ $(O)/user/%.o: user/%.cc
 $(O)/%: $(O)/user/%.o
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
-	$(Q)$(CXX) -o $@ $^ -lpthread
+	$(Q)$(CXX) -o $@ $^ -lpthread -ljemalloc
 
 .PRECIOUS: $(O)/user/%.o
 -include $(O)/user/*.d
