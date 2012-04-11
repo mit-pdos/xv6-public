@@ -64,8 +64,10 @@ static inline void mtresume(struct proc *p)
 #define mtrec() mtrace_call_set(1, ~0ull)
 #define mtign() mtrace_call_set(0, ~0ull)
 
-static inline void mtreadavar(const char *fmt, ...);
-static inline void mtwriteavar(const char *fmt, ...);
+static inline void mtreadavar(const char *fmt, ...)
+  __attribute__((format(printf, 1, 2)));
+static inline void mtwriteavar(const char *fmt, ...)
+  __attribute__((format(printf, 1, 2)));
 
 class mt_ascope
 {
@@ -73,6 +75,7 @@ class mt_ascope
   bool active;
 public:
   explicit mt_ascope(const char *fmt, ...)
+    __attribute__((format(printf, 2, 3)))
   {
     va_list ap;
 
