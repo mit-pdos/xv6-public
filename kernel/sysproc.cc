@@ -190,3 +190,11 @@ sys_futex(const u64* addr, int op, u64 val, u64 timer)
     return -1;
   }
 }
+
+//SYSCALL
+long
+sys_yield(void)
+{
+  yield();
+  return 0;
+}
