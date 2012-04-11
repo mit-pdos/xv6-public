@@ -146,8 +146,13 @@ class radix_elem : public rcu_freed {
  public:
   radix_elem() : rcu_freed("radix_elem"), deleted_(false), ref_(0) {}
   bool deleted() { return deleted_; }
-  void decref() { if (--ref_ == 0) { deleted_ = true; gc_delayed(this); } }
-  void incref() { ref_++; }
+  void decref(u64 delta = 1) {
+    if ((ref_ -= delta) == 0) {
+      deleted_ = true;
+      gc_delayed(this);
+    }
+  }
+  void incref(u64 delta = 1) { ref_ += delta; }
 };
 
 struct radix_node : public rcu_freed {
