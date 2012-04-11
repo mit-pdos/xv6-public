@@ -105,7 +105,6 @@ sys_map(userptr<void> addr, size_t len)
 
 #if MTRACE
   mt_ascope ascope("%s(%p,%lx)", __func__, addr, len);
-  mtwriteavar("thread:%x", myproc()->pid);
   for (uptr i = PGROUNDDOWN(addr); i < PGROUNDUP(addr + len); i += PGSIZE)
     mtwriteavar("page:%016x", i);
 #endif
@@ -131,7 +130,6 @@ sys_unmap(userptr<void> addr, size_t len)
 
 #if MTRACE
   mt_ascope ascope("%s(%p,%lx)", __func__, addr, len);
-  mtwriteavar("thread:%x", myproc()->pid);
   for (uptr i = PGROUNDDOWN(addr); i < PGROUNDUP(addr + len); i += PGSIZE)
     mtwriteavar("page:%016x", i);
 #endif
@@ -179,7 +177,6 @@ sys_futex(const u64* addr, int op, u64 val, u64 timer)
     return -1;
 
   mt_ascope ascope("%s(%p,%d,%lu,%lu)", __func__, addr, op, val, timer);
-  mtwriteavar("thread:%x", myproc()->pid);
 
   switch(op) {
   case FUTEX_WAIT:

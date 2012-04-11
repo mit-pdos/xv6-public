@@ -637,7 +637,6 @@ pagefault(vmap *vmap, uptr va, u32 err)
 {
 #if MTRACE
   mt_ascope ascope("%s(%p)", __func__, va);
-  mtwriteavar("thread:%x", myproc()->pid);
   mtwriteavar("page:%p.%016x", vmap, PGROUNDDOWN(va));
 #endif
 
@@ -688,7 +687,6 @@ pagelookup(vmap* vmap, uptr va)
 {
 #if MTRACE
   mt_ascope ascope("%s(%p)", __func__, va);
-  mtwriteavar("thread:%x", myproc()->pid);
   mtwriteavar("page:%p.%016x", vmap, PGROUNDDOWN(va));
 #endif
 

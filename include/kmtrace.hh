@@ -64,6 +64,9 @@ static inline void mtresume(struct proc *p)
 #define mtrec() mtrace_call_set(1, ~0ull)
 #define mtign() mtrace_call_set(0, ~0ull)
 
+static inline void mtreadavar(const char *fmt, ...);
+static inline void mtwriteavar(const char *fmt, ...);
+
 class mt_ascope
 {
   char name[64];
@@ -96,6 +99,7 @@ public:
   {
     vsnprintf(name, sizeof(name) - 1, fmt, ap);
     mtrace_ascope_register(0, name);
+    mtwriteavar("kstack:%p", myproc()->kstack);
     active = true;
   }
 
