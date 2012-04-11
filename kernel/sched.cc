@@ -14,6 +14,7 @@
 #include "percpu.hh"
 #include "sperf.hh"
 #include "major.h"
+#include "rnd.hh"
 
 enum { sched_debug = 0 };
 enum { steal_nonexec = 1 };
@@ -33,14 +34,14 @@ public:
   }
 
   sched_stat stats_;
+  u64 ncansteal_;
   
 private:
-  struct spinlock lock_;
-  sched_link head_;
-
   void sanity(void);
 
-  volatile u64 ncansteal_ __mpalign__;
+  struct spinlock lock_ __mpalign__;
+  sched_link head_;
+  volatile bool cansteal_ __mpalign__;
 };
 percpu<schedule> schedule_;
 
@@ -72,7 +73,8 @@ schedule::enq(proc* p)
   head_.prev->next = entry;
   head_.prev = entry;
   if (cansteal((proc*)entry, true))
-    ncansteal_++;
+    if (ncansteal_++ == 0)
+      cansteal_ = true;
   sanity();
   stats_.enqs++;
 }
@@ -93,7 +95,8 @@ schedule::deq(void)
   entry->next->prev = entry->prev;
   entry->prev->next = entry->next;
   if (cansteal((proc*)entry, true))
-    --ncansteal_;
+    if (--ncansteal_ == 0)
+      cansteal_ = false;
   sanity();
   stats_.deqs++;
   return (proc*)entry;
@@ -102,7 +105,7 @@ schedule::deq(void)
 proc*
 schedule::steal(bool nonexec)
 {
-  if (ncansteal_ == 0 || !tryacquire(&lock_))
+  if (!cansteal_ || !tryacquire(&lock_))
     return nullptr;
 
   ANON_REGION(__func__, &perfgroup);
@@ -110,7 +113,8 @@ schedule::steal(bool nonexec)
     if (cansteal((proc*)ptr, nonexec)) {
       ptr->next->prev = ptr->prev;
       ptr->prev->next = ptr->next;
-      --ncansteal_;
+      if (--ncansteal_ == 0)
+        cansteal_ = false;
       sanity();
       ++stats_.steals;
       release(&lock_);
@@ -174,12 +178,17 @@ steal(void)
 {
   struct proc *steal;
   int r = 0;
+  u64 s = rnd();
 
   pushcli();
 
   for (int nonexec = 0; nonexec < (steal_nonexec ? 2 : 1); nonexec++) { 
-    for (int i = 0; i < NCPU; i++) {
-      steal = schedule_[i].steal(nonexec);
+    for (u64 i = 0; i < NCPU; i++) {
+      u64 k = (s+i) % NCPU;
+      if (k == myid())
+        continue;
+
+      steal = schedule_[k].steal(nonexec);
       if (steal != nullptr) {
         acquire(&steal->lock);
         if (steal->get_state() == RUNNABLE && !steal->cpu_pin &&
