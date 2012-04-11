@@ -1,0 +1,33 @@
+NCXXFLAGS = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) \
+	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer \
+	    -fms-extensions -mcx16 -mno-red-zone -std=c++0x \
+	    -Wno-sign-compare -fno-exceptions -fno-rtti -fcheck-new \
+	    -iquote . -iquote include \
+	    -include param.h -include include/compiler.h
+
+NCFLAGS = -static -g -MD -m64 -O3 -Wall -Werror -DHW_$(HW) \
+	    -fno-builtin -fno-strict-aliasing -fno-omit-frame-pointer \
+	    -fms-extensions -mcx16 -mno-red-zone -std=c99 \
+	    -Wno-sign-compare -fno-exceptions \
+	    -iquote . -iquote include \
+	    -include param.h -include include/compiler.h
+
+$(O)/user/%.o: user/%.c
+	@echo "  CC     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CC) -DLINUX $(NCFLAGS) -c -o $@ $<
+
+$(O)/user/%.o: user/%.cc
+	@echo "  CXX    $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CXX) -DLINUX $(NCXXFLAGS) -c -o $@ $<
+
+$(O)/%: $(O)/user/%.o $(O)/user/ssnzi-map.o
+	@echo "  LD     $@"
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CXX) -o $@ $^ -lpthread
+
+.PRECIOUS: $(O)/user/%.o
+-include $(O)/user/*.d
+
+ALL := $(O)/usched

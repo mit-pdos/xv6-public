@@ -50,6 +50,10 @@
 #define NCPU          2
 #define MTRACE        0
 #define PERFSIZE      (16<<20ull)
+#elif defined(HW_usched)
+#define NCPU          2
+#define MTRACE        0
+#define PERFSIZE      (16<<20ull)
 #else
 #error "Unknown HW"
 #endif
