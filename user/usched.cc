@@ -14,6 +14,11 @@ typedef uint64_t u64;
 #include "percpu.hh"
 #include "sched.hh"
 #include "queue.h"
+#include "uscopedperf.hh"
+#include "intelctr.hh"
+
+static auto perfgroup = ctrgroup(&intelctr::tsc);
+
 
 static int nprocs = NCPU;
 static int the_time = 5;
@@ -64,13 +69,14 @@ public:
   proc* steal(bool nonexec);
   void dump();
 
-  volatile u64 ncansteal_ __mpalign__;
-
   sched_stat stats_;
+  u64 ncansteal_;
+  
+  volatile bool cansteal_ __mpalign__;
 
 private:
   pthread_spinlock_t lock_;
-  sched_link head_;
+  sched_link head_ __mpalign__;;
 };
 percpu<schedule> schedule_;
 
@@ -109,6 +115,7 @@ schedule::schedule(void)
   head_.next = &head_;
   head_.prev = &head_;
   ncansteal_ = 0;
+  cansteal_ = false;
   pthread_spin_init(&lock_, 0);
 }
 
@@ -123,7 +130,8 @@ schedule::enq(proc* p)
   head_.prev->next = entry;
   head_.prev = entry;
   if (cansteal((proc*)entry, true))
-    ncansteal_++;
+    if (ncansteal_++ == 0)
+      cansteal_ = true;
   stats_.enqs++;
   pthread_spin_unlock(&lock_);
 }
@@ -131,6 +139,8 @@ schedule::enq(proc* p)
 proc*
 schedule::deq(void)
 {   
+  ANON_REGION("deq", &perfgroup);
+
   if (head_.next == &head_)
     return nullptr;
 
@@ -145,7 +155,8 @@ schedule::deq(void)
   entry->next->prev = entry->prev;
   entry->prev->next = entry->next;
   if (cansteal((proc*)entry, true))
-    --ncansteal_;
+    if (--ncansteal_ == 0)
+      cansteal_ = false;
   stats_.deqs++;
   pthread_spin_unlock(&lock_);
   return (proc*)entry;
@@ -154,14 +165,15 @@ schedule::deq(void)
 proc*
 schedule::steal(bool nonexec)
 {
-  if (ncansteal_ == 0 || pthread_spin_trylock(&lock_))
+  if (!cansteal_ || pthread_spin_trylock(&lock_))
     return nullptr;
 
   for (sched_link* ptr = head_.next; ptr != &head_; ptr = ptr->next)
     if (cansteal((proc*)ptr, nonexec)) {
       ptr->next->prev = ptr->prev;
       ptr->prev->next = ptr->next;
-      --ncansteal_;
+      if (--ncansteal_ == 0)
+        cansteal_ = false;
       ++stats_.steals;
       pthread_spin_unlock(&lock_);
       return (proc*)ptr;
@@ -187,6 +199,7 @@ stealit(void)
 {
   proc* p;
 
+  ANON_REGION("stealit", &perfgroup);
   for (int i = 0; i < NCPU; i++) {
     if (i == myid_)
       continue;
@@ -269,5 +282,6 @@ main(int ac, char** av)
 
   sleep(1);
   worker((void*)0);
+  scopedperf::perfsum_base::printall();
   return 0;
 }
