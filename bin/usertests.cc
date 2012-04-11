@@ -1726,14 +1726,14 @@ unmappedtest(void)
                    MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
     if (p == MAP_FAILED)
       die("unmappedtest: map failed");
-    int r = unmap(p, i*4096);
+    int r = munmap(p, i*4096);
     if (r < 0)
       die("unmappedtest: unmap failed");
   }
   
   off = 0x1000;
   for (int i = 1; i <= 8; i++) {
-    int r = unmap((void*)off, i*4096);
+    int r = munmap((void*)off, i*4096);
     if (r < 0)
       die("unmappedtest: unmap failed");
     off += (i*2*4096);

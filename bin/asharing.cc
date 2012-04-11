@@ -32,8 +32,8 @@ vmsharing(void* arg)
   if (mmap((void *) p, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) < 0)
     die("mmap failed");
 
-  if (unmap((void *) p, 4096) < 0)
-    die("unmap failed");
+  if (munmap((void *) p, 4096) < 0)
+    die("munmap failed");
 
   return 0;
 }

@@ -168,14 +168,6 @@ sys_munmap(userptr<void> addr, size_t len)
   return 0;
 }
 
-//SYSCALL
-int
-sys_unmap(userptr<void> addr, size_t len)
-{
-  // XXX Compatibility
-  return sys_munmap(addr, len);
-}
-
 //SYSCALL NORET
 void
 sys_halt(void)

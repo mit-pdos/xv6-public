@@ -76,7 +76,7 @@ main(void)
 
   fprintf(1, "shm ok\n");
 
-  if (unmap((void *) p, 8192) < 0) {
+  if (munmap((void *) p, 8192) < 0) {
     fprintf(1, "unmap failed\n");
     exit();
   }

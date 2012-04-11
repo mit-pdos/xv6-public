@@ -46,7 +46,7 @@ thr(void *arg)
 	p[j] = '\0';
     }
 
-    if (unmap((void *) p, npg * 4096) < 0) {
+    if (munmap((void *) p, npg * 4096) < 0) {
       fprintf(1, "%d: unmap failed\n", tid);
       exit();
     }
