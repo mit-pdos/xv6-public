@@ -22,7 +22,7 @@ $(O)/user/%.o: user/%.cc
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) -DLINUX $(NCXXFLAGS) -c -o $@ $<
 
-$(O)/%: $(O)/user/%.o $(O)/user/ssnzi-map.o
+$(O)/%: $(O)/user/%.o
 	@echo "  LD     $@"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CXX) -o $@ $^ -lpthread
