@@ -12,6 +12,8 @@
 #include "kmtrace.hh"
 #include "futex.h"
 
+#include <uk/mman.h>
+
 //SYSCALL
 int
 sys_fork(int flags)
@@ -98,33 +100,65 @@ sys_uptime(void)
 }
 
 //SYSCALL
-int
-sys_map(userptr<void> addr, size_t len)
+void *
+sys_mmap(userptr<void> addr, size_t len, int prot, int flags, int fd,
+         off_t offset)
 {
   ANON_REGION(__func__, &perfgroup);
 
-#if MTRACE
-  mt_ascope ascope("%s(%p,%#lx)", __func__, addr.unsafe_get(), len);
-  for (uptr i = addr / PGSIZE; i < PGROUNDUP(addr + len) / PGSIZE; i++)
-    mtwriteavar("pte:%p.%#lx", myproc()->vmap, i);
-#endif
+  mt_ascope ascope("%s(%p,%lu,%#x,%#x,%d,%#lx)",
+                   __func__, addr.unsafe_get(), len, prot, flags, fd, offset);
 
-  vmnode *vmn = new vmnode(PGROUNDUP(len) / PGSIZE);
-  if (vmn == 0)
-    return -1;
-
-  long r = myproc()->vmap->insert(vmn, PGROUNDDOWN(addr), 1);
-  if (r < 0) {
-    delete vmn;
-    return -1;
+  if (!(prot & (PROT_READ | PROT_WRITE))) {
+    cprintf("not implemented: !(prot & (PROT_READ | PROT_WRITE))\n");
+    return MAP_FAILED;
+  }
+  if (flags & MAP_SHARED) {
+    cprintf("not implemented: (flags & MAP_SHARED)\n");
+    return MAP_FAILED;
+  }
+  if (!(flags & MAP_ANONYMOUS)) {
+    cprintf("not implemented: !(flags & MAP_ANONYMOUS)\n");
+    return MAP_FAILED;
   }
 
-  return r;
+  uptr start = PGROUNDDOWN(addr);
+  uptr end = PGROUNDUP(addr + len);
+
+  if ((flags & MAP_FIXED) && start != addr)
+    return MAP_FAILED;
+
+#if MTRACE
+  if (addr != 0) {
+    for (uptr i = start / PGSIZE; i < end / PGSIZE; i++)
+      mtwriteavar("pte:%p.%#lx", myproc()->vmap, i);
+  }
+#endif
+
+  vmnode *vmn = new vmnode((end - start) / PGSIZE);
+  if (vmn == 0)
+    return MAP_FAILED;
+
+  uptr r = myproc()->vmap->insert(vmn, start, 1);
+  if (r < 0) {
+    delete vmn;
+    return MAP_FAILED;
+  }
+
+  return (void*)r;
+}
+
+//SYSCALL
+uptr
+sys_map(userptr<void> addr, size_t len)
+{
+  // XXX Compatibility
+  return (uptr)sys_mmap(addr, len, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
 }
 
 //SYSCALL
 int
-sys_unmap(userptr<void> addr, size_t len)
+sys_munmap(userptr<void> addr, size_t len)
 {
   ANON_REGION(__func__, &perfgroup);
 
@@ -140,6 +174,14 @@ sys_unmap(userptr<void> addr, size_t len)
     return -1;
 
   return 0;
+}
+
+//SYSCALL
+int
+sys_unmap(userptr<void> addr, size_t len)
+{
+  // XXX Compatibility
+  return sys_munmap(addr, len);
 }
 
 //SYSCALL NORET
