@@ -149,14 +149,6 @@ sys_mmap(userptr<void> addr, size_t len, int prot, int flags, int fd,
 }
 
 //SYSCALL
-uptr
-sys_map(userptr<void> addr, size_t len)
-{
-  // XXX Compatibility
-  return (uptr)sys_mmap(addr, len, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
-}
-
-//SYSCALL
 int
 sys_munmap(userptr<void> addr, size_t len)
 {

@@ -6,6 +6,8 @@
 #include "mtrace.h"
 #include "pthread.h"
 
+#include <sys/mman.h>
+
 enum { readaccess = 1 };
 enum { verbose = 0 };
 enum { npg = 1 };
@@ -33,7 +35,8 @@ thr(void *arg)
       fprintf(1, "%d: %d ops\n", tid, i);
 
     volatile char *p = (char*) (0x100000000UL + tid * npg * 0x100000);
-    if (map((void *) p, npg * 4096) < 0) {
+    if (mmap((void *) p, npg * 4096, PROT_READ|PROT_WRITE,
+             MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) == MAP_FAILED) {
       fprintf(1, "%d: map failed\n", tid);
       exit();
     }

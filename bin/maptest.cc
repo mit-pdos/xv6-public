@@ -6,6 +6,8 @@
 #include "uspinlock.h"
 #include "pthread.h"
 
+#include <sys/mman.h>
+
 static volatile char *p;
 static struct uspinlock l;
 static volatile int state;
@@ -50,7 +52,8 @@ int
 main(void)
 {
   p = (char *) 0x80000;
-  if (map((void *) p, 8192) < 0) {
+  if (mmap((void *) p, 8192, PROT_READ|PROT_WRITE,
+           MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) < 0) {
     fprintf(1, "map failed\n");
     exit();
   }

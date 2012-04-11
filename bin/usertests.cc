@@ -6,6 +6,8 @@
 #include "traps.h"
 #include "pthread.h"
 
+#include <sys/mman.h>
+
 char buf[2048];
 char name[3];
 const char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
@@ -1712,17 +1714,19 @@ unmappedtest(void)
 
   printf("unmappedtest\n");
   for (int i = 1; i <= 8; i++) {
-    int r = map((void*)off, i*4096);
-    if (r < 0)
+    void *p = mmap((void*)off, i*4096, PROT_READ|PROT_WRITE,
+                   MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0);
+    if (p == MAP_FAILED)
       die("unmappedtest: map failed");
     off += (i*2*4096);
   }
 
   for (int i = 8; i >= 1; i--) {
-    long r = map(0, i*4096);
-    if (r < 0)
+    void *p = mmap(0, i*4096, PROT_READ|PROT_WRITE,
+                   MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    if (p == MAP_FAILED)
       die("unmappedtest: map failed");
-    r = unmap((void*)r, i*4096);
+    int r = unmap(p, i*4096);
     if (r < 0)
       die("unmappedtest: unmap failed");
   }
