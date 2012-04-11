@@ -130,7 +130,7 @@ vmnode::loadpg(off_t off)
 {
 #ifdef MTRACE 
   mtreadavar("inode:%x.%x", ip->dev, ip->inum);
-  mtwriteavar("vmnode:%016x", this);
+  mtwriteavar("vmnode:%p", this);
 #endif
 
   assert(off <= sz);
@@ -627,7 +627,7 @@ vmap::pagefault(uptr va, u32 err)
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
 
-  mtreadavar("vmnode:%016x", m->n);
+  mtreadavar("vmnode:%p", m->n);
 
   return 1;
 }
@@ -636,7 +636,7 @@ int
 pagefault(vmap *vmap, uptr va, u32 err)
 {
 #if MTRACE
-  mt_ascope ascope("%s(%p)", __func__, va);
+  mt_ascope ascope("%s(%#lx)", __func__, va);
   mtwriteavar("pte:%p.%#lx", vmap, va / PGSIZE);
 #endif
 
@@ -678,7 +678,7 @@ vmap::pagelookup(uptr va)
       throw_bad_alloc();
 
   char* kptr = (char*)(m->n->page[npg]);
-  mtreadavar("vmnode:%016x", m->n);
+  mtreadavar("vmnode:%p", m->n);
   return &kptr[va & (PGSIZE-1)];
 }
 
@@ -686,7 +686,7 @@ void*
 pagelookup(vmap* vmap, uptr va)
 {
 #if MTRACE
-  mt_ascope ascope("%s(%p)", __func__, va);
+  mt_ascope ascope("%s(%#lx)", __func__, va);
   mtwriteavar("pte:%p.%#lx", vmap, va / PGSIZE);
 #endif
 

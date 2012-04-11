@@ -104,7 +104,7 @@ sys_map(userptr<void> addr, size_t len)
   ANON_REGION(__func__, &perfgroup);
 
 #if MTRACE
-  mt_ascope ascope("%s(%p,%#lx)", __func__, addr, len);
+  mt_ascope ascope("%s(%p,%#lx)", __func__, addr.unsafe_get(), len);
   for (uptr i = addr / PGSIZE; i < PGROUNDUP(addr + len) / PGSIZE; i++)
     mtwriteavar("pte:%p.%#lx", myproc()->vmap, i);
 #endif
@@ -129,7 +129,7 @@ sys_unmap(userptr<void> addr, size_t len)
   ANON_REGION(__func__, &perfgroup);
 
 #if MTRACE
-  mt_ascope ascope("%s(%p,%#lx)", __func__, addr, len);
+  mt_ascope ascope("%s(%p,%#lx)", __func__, addr.unsafe_get(), len);
   for (uptr i = addr / PGSIZE; i < PGROUNDUP(addr + len) / PGSIZE; i++)
     mtwriteavar("pte:%p.%#lx", myproc()->vmap, i);
 #endif
