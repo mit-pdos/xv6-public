@@ -85,8 +85,6 @@ extern const int nsyscalls;
 u64
 syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 num)
 {
-  mt_ascope ascope("syscall(%lx,%lx,%lx,%lx,%lx,%lx)", num, a0, a1, a2, a3, a4);
-
   for (;;) {
 #if EXCEPTIONS
     try {
