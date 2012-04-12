@@ -11,6 +11,7 @@
 #include "vm.hh"
 #include "kalloc.hh"
 #include "bits.hh"
+#include "rnd.hh"
 extern "C" {
 #include "kern_c.h"
 }
@@ -23,7 +24,7 @@ uwq_trywork(void)
   u64 i, k;
 
   // A "random" victim CPU
-  k = rdtsc();
+  k = rnd();
   for (i = 0; i < NCPU; i++) {
     u64 j = (i+k) % NCPU;
 
