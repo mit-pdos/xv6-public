@@ -19,36 +19,6 @@
 #define BRK (USERTOP >> 1)
 
 static int
-donotes(struct inode *ip, uwq *uwq, u64 off)
-{
-  struct proghdr ph;
-  struct elfnote note;
-
-  if (readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
-    return -1;
-  
-  if (readi(ip, (char*)&note, ph.offset, sizeof(note)) != sizeof(note))
-    return -1;
-
-  if (note.type == ELF_NOTE_XV6_ADDR) {
-    struct xv6_addrdesc desc;
-
-    if (note.descsz != sizeof(desc))
-      return -1;
-    if (readi(ip, (char*)&desc,
-              ph.offset+__offsetof(struct xv6_addrnote, desc),
-              sizeof(desc)) != sizeof(desc))
-      return -1;
-
-    if (desc.id == XV6_ADDR_ID_WQ) {
-      uwq->setuentry(desc.vaddr);
-      return 0;
-    }
-  }
-  return -1;
-}
-
-static int
 dosegment(inode* ip, vmap* vmp, u64 off)
 {
   struct proghdr ph;
@@ -177,7 +147,6 @@ exec(const char *path, char **argv, void *ascopev)
   ANON_REGION(__func__, &perfgroup);
   struct inode *ip = nullptr;
   struct vmap *vmp = nullptr;
-  uwq* newuwq = nullptr;
   const char *s, *last;
   struct elfhdr elf;
   struct proghdr ph;
@@ -218,9 +187,6 @@ exec(const char *path, char **argv, void *ascopev)
   if((vmp = vmap::alloc()) == 0)
     goto bad;
 
-  if((newuwq = uwq::alloc(vmp, myproc()->ftable)) == 0)
-    goto bad;
-
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     Elf64_Word type;
     if(readi(ip, (char*)&type, 
@@ -229,10 +195,6 @@ exec(const char *path, char **argv, void *ascopev)
       goto bad;
 
     switch (type) {
-    case ELF_PROG_NOTE:
-      if (donotes(ip, newuwq, off) < 0)
-        goto bad;
-      break;
     case ELF_PROG_LOAD:
       if (dosegment(ip, vmp, off) < 0)
         goto bad;
@@ -254,7 +216,6 @@ exec(const char *path, char **argv, void *ascopev)
   oldvmap = myproc()->vmap;
   olduwq = myproc()->uwq;
   myproc()->vmap = vmp;
-  myproc()->uwq = newuwq;
   myproc()->tf->rip = elf.entry;
   myproc()->tf->rsp = sp;
 
@@ -279,8 +240,6 @@ exec(const char *path, char **argv, void *ascopev)
   cprintf("exec failed\n");
   if(vmp)
     vmp->decref();
-  if(newuwq)
-    newuwq->dec();
   gc_end_epoch();
   return 0;
 }

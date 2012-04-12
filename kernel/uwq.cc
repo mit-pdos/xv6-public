@@ -54,6 +54,23 @@ uwq_trywork(void)
 
 //SYSCALL
 int
+sys_wqinit(uptr uentry)
+{
+  uwq* uwq;
+
+  if (myproc()->uwq != nullptr)
+    return -1;
+
+  uwq = uwq::alloc(myproc()->vmap, myproc()->ftable, uentry);
+  if (uwq == nullptr)
+    return -1;
+
+  myproc()->uwq = uwq;
+  return 0;
+}
+
+//SYSCALL
+int
 sys_wqwait(void)
 {
   uwq_worker* w = myproc()->worker;
@@ -103,7 +120,7 @@ uwq_worker::wait(void)
 // uwq
 //
 uwq*
-uwq::alloc(vmap* vmap, filetable *ftable)
+uwq::alloc(vmap* vmap, filetable *ftable, uptr uentry)
 {
   uwq_ipcbuf* ipc;
   uwq* u;
@@ -115,7 +132,7 @@ uwq::alloc(vmap* vmap, filetable *ftable)
   ftable->incref();
   vmap->incref();
 
-  u = new uwq(vmap, ftable, ipc);
+  u = new uwq(vmap, ftable, ipc, uentry);
   if (u == nullptr) {
     ftable->decref();
     vmap->decref();
@@ -131,10 +148,10 @@ uwq::alloc(vmap* vmap, filetable *ftable)
   return u;
 }
 
-uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc) 
+uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc, uptr uentry) 
   : rcu_freed("uwq"),
     vmap_(vmap), ftable_(ftable), ipc_(ipc),
-    uentry_(0), ustack_(UWQSTACK), uref_(0)
+    uentry_(uentry), ustack_(UWQSTACK), uref_(0)
 {
   for (int i = 0; i < NELEM(ipc_->len); i++)
     ipc_->len[i].v_ = 0;
@@ -252,12 +269,6 @@ uwq::onzero() const
 {
   uwq *u = (uwq*)this;
   u->finish();
-}
-
-void
-uwq::setuentry(uptr uentry)
-{
-  uentry_ = uentry;
 }
 
 proc*

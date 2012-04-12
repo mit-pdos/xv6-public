@@ -2,11 +2,11 @@
 #include "uspinlock.h"
 #include "amd64.h"
 #include "user.h"
-#include "memlayout.h"
 #include "uwq.hh"
 #include "wqtypes.hh"
 
 int mycpuid(void);
+uwq_ipcbuf* allocipc(void);
 
 static inline void*
 allocwq(unsigned long nbytes)
@@ -18,18 +18,6 @@ static inline void
 freewq(void* p)
 {
   free(p);
-}
-
-static inline uwq_ipcbuf*
-allocipc(void)
-{
-  static bool alloced;
-  if (alloced)
-    die("allocklen: allocing more than once");
-  if (sizeof(uwq_ipcbuf) > USERWQSIZE)
-    die("allocipc: too large");
-  alloced = true;
-  return (uwq_ipcbuf*)USERWQ;
 }
 
 static inline void
