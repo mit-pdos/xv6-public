@@ -7,6 +7,8 @@ using std::atomic;
 
 extern atomic<u64> tlbflush_req;
 
+class uwq;
+
 // Per-CPU state
 struct cpu {
   cpuid_t id;                  // Index into cpus[] below
@@ -20,6 +22,7 @@ struct cpu {
   atomic<u64> tlbflush_done;   // last tlb flush req done on this cpu
   struct proc *prev;           // The previously-running process
 
+  uwq* uwq __mpalign__;        // Current userspace wq (might be nullptr)
   hwid_t hwid __mpalign__;     // Local APIC ID, accessed by other CPUs
 
   // Cpu-local storage variables; see below

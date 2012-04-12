@@ -31,14 +31,11 @@ uwq_trywork(void)
       continue;
     struct cpu *c = &cpus[j];
     
-    // The gc_epoch is for p and uwq
+    // The gc_epoch is for uwq
     scoped_gc_epoch xgc();
     barrier();
 
-    struct proc *p = c->proc;
-    if (p == nullptr)
-      continue;
-    uwq* uwq = p->uwq;
+    uwq* uwq = c->uwq;
     if (uwq == nullptr)
       continue;
 
