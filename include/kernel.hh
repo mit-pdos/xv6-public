@@ -175,6 +175,7 @@ int             pipewrite(struct pipe*, const char*, int);
 // proc.c
 struct proc*    copyproc(struct proc*);
 void            finishproc(struct proc*, bool removepid = true);
+void            execswitch(proc* p);
 void            exit(void);
 int             fork(int);
 int             growproc(int);
@@ -218,6 +219,10 @@ int             fetchstr(char*, const char*, u64);
 int             fetchmem(void*, const void*, u64);
 int             putmem(void*, const void*, u64);
 u64             syscall(u64 a0, u64 a1, u64 a2, u64 a3, u64 a4, u64 a5, u64 num);
+
+// sysfile.cc
+int             doexec(const char* upath,
+                       userptr<userptr<const char> > uargv);
 
 // string.c
 extern  "C" int  memcmp(const void*, const void*, size_t);

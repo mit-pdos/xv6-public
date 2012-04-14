@@ -24,7 +24,7 @@
 #define USERWQSIZE    (1 << 14)
 #define USTACKPAGES   8
 #define WQSHIFT       7
-#define CILKENABLE    0
+#define EXECSWITCH    1
 #if defined(HW_qemu)
 #define NCPU          8   // maximum number of CPUs
 #define MTRACE        0

@@ -227,7 +227,9 @@ scheddump(void)
 void
 addrun(struct proc* p)
 {
-  ANON_REGION(__func__, &perfgroup);
+  if (p->upath)
+    execswitch(p);
+
   p->set_state(RUNNABLE);
   schedule_[p->cpuid].enq(p);
 }

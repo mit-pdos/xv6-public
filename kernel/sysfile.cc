@@ -430,9 +430,8 @@ sys_chdir(const char *path)
   return 0;
 }
 
-//SYSCALL
 int
-sys_exec(const char *upath, userptr<userptr<const char> > uargv)
+doexec(const char* upath, userptr<userptr<const char> > uargv)
 {
   ANON_REGION(__func__, &perfgroup);
   char *argv[MAXARG];
@@ -459,12 +458,29 @@ sys_exec(const char *upath, userptr<userptr<const char> > uargv)
     if (argv[i]==nullptr || fetchstr(argv[i], (char*)uarg, MAXARGLEN)<0)
       goto clean;
   }
+
   argv[i] = 0;
   r = exec(path, argv, &ascope);
 clean:
-  for (i=i-i; i >= 0; i--)
+  for (i=i-1; i >= 0; i--)
     kmfree(argv[i], MAXARGLEN);
   return r;
+}
+
+//SYSCALL
+int
+sys_exec(const char *upath, userptr<userptr<const char> > uargv)
+{
+#if EXECSWITCH
+  myproc()->exec_cpuid_ = mycpuid();
+  myproc()->uargv = uargv;
+  barrier();
+  // upath serves as a flag to the scheduler
+  myproc()->upath = upath;
+  yield();
+  myproc()->upath = nullptr;
+#endif
+  return doexec(upath, uargv);
 }
 
 //SYSCALL

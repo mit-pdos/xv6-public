@@ -42,6 +42,7 @@ proc::proc(int npid) :
   ftable(0), cwd(0), tsc(0), curcycles(0), cpuid(0), epoch(0),
   cpu_pin(0), oncv(0), cv_wakeup(0),
   user_fs_(0), unmap_tlbreq_(0), in_exec_(0), uaccess_(0),
+  upath(0), uargv(userptr<const char>(nullptr)),
   exception_inuse(0), magic(PROC_MAGIC), state_(EMBRYO)
 {
   snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
@@ -202,6 +203,85 @@ static void
 freeproc(struct proc *p)
 {
   gc_delayed(p);
+}
+
+void
+execstub(void)
+{
+  userptr<userptr<const char> > uargv;
+  const char* upath;
+
+  upath = myproc()->upath;
+  uargv = myproc()->uargv;
+  barrier();
+  myproc()->upath = nullptr;
+
+  post_swtch();
+
+  myproc()->run_cpuid_ = mycpuid();
+
+  long r = doexec(upath, uargv);
+  myproc()->tf->rax = r;
+
+  // This stuff would have been called in syscall and syscall_c
+  // if we returned from the the previous kstack
+
+  mtstop(myproc());
+  mtign();
+
+  if (myproc()->killed) {
+    mtstart(trap, myproc());
+    exit();
+  } 
+}
+
+static void
+kstackfree(void* kstack)
+{
+  ksfree(slab_stack, kstack);
+}
+
+void
+execswitch(proc* p)
+{
+  // Alloc a new kernel stack, set it up, and free the old one
+  context* cntxt;
+  trapframe* tf;
+  char* kstack;
+  char* sp;
+
+  if ((kstack = (char*) ksalloc(slab_stack)) == 0)
+    panic("execswitch: ksalloc");
+  
+  sp = kstack + KSTACKSIZE;
+  sp -= sizeof(*p->tf);
+  tf = (trapframe*)sp;
+  // XXX(sbw) we only need the whole tf if exec fails
+  *tf = *p->tf;
+
+  sp -= 8;
+  // XXX(sbw) we could use the sysret return path
+  *(u64*)sp = (u64)trapret;
+  sp -= sizeof(*p->context);
+  cntxt = (context*)sp;
+  memset(cntxt, 0, sizeof(*cntxt));
+  cntxt->rip = (uptr)execstub;
+
+  cwork* w = new cwork();
+  if (w != nullptr) {
+    w->rip = (void*) kstackfree;
+    w->arg0 = p->kstack;
+    if (wqcrit_push(w, myproc()->exec_cpuid_) < 0) {
+      ksfree(slab_stack, p->kstack);
+      delete w;
+    }
+  } else {
+    ksfree(slab_stack, p->kstack);
+  }
+
+  p->kstack = kstack;
+  p->context = cntxt;
+  p->tf = tf;
 }
 
 proc*
