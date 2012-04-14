@@ -6,6 +6,7 @@ UPROGS= \
 	cat \
         du \
 	echo \
+        exechack \
 	init \
 	forkexectree \
 	forkexecbench \
