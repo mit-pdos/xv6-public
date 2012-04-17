@@ -443,6 +443,9 @@ typedef u8 pci_revision_t;
 #define	PCI_VPD_DATAREG(ofs)	((ofs) + 4)
 #define	PCI_VPD_OPFLAG		0x80000000
 
+#define PCI_MSI_MCR_MMC(cr)     (((cr) >> 17) & 0x7)
+#define PCI_MSI_MCR_64BIT       0x00800000
+
 /*
  * Power Management Capability; access via capability pointer.
  */
