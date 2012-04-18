@@ -85,3 +85,8 @@
 
 // CPUID function 0x00000005
 #define CPUID_MWAIT         0x00000005
+
+// APIC Base Address Register MSR
+#define MSR_APIC_BAR        0x0000001b
+#define APIC_BAR_XAPIC_EN   (1 << 11)
+#define APIC_BAR_X2APIC_EN  (1 << 10)
