@@ -81,7 +81,7 @@
 // CPUID function 0x00000001
 #define CPUID_FEATURES      0x00000001
 #define FEATURE_ECX_MWAIT   (1 << 3)
+#define FEATURE_EBX_APIC(x) (((x) >> 24) & 0xff)
 
 // CPUID function 0x00000005
 #define CPUID_MWAIT         0x00000005
-
