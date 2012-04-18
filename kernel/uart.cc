@@ -51,10 +51,15 @@ inituart(void)
     // Try COM2 (aka ttyS1) first, because it usually does SOL for IPMI.
     { COM2, IRQ_COM2 },
     // Still try COM1 (aka ttyS0), because it is what QEMU emulates.
-    { COM1, IRQ_COM1 }
+    { COM1, IRQ_COM1 },
   };
 
   int i;
+#if defined(HW_ben)
+  int baud = 115200;
+#else
+  int baud = 19200;
+#endif
   for (i = 0; i < 2; i++) {
     com = conf[i].com;
     irq_com = conf[i].irq;
@@ -63,7 +68,7 @@ inituart(void)
     outb(com+2, 0);
     // 19200 baud
     outb(com+3, 0x80);    // Unlock divisor
-    outb(com+0, 115200/19200);
+    outb(com+0, 115200/baud);
     outb(com+1, 0);
     // 8 bits, one stop bit, no parity
     outb(com+3, 0x03);    // Lock divisor, 8 data bits.
