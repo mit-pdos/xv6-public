@@ -471,6 +471,7 @@ clean:
 int
 sys_exec(const char *upath, userptr<userptr<const char> > uargv)
 {
+  myproc()->exec_cpuid_ = myid();
 #if EXECSWITCH
   myproc()->exec_cpuid_ = mycpuid();
   myproc()->uargv = uargv;

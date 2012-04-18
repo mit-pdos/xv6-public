@@ -218,8 +218,6 @@ execstub(void)
 
   post_swtch();
 
-  myproc()->run_cpuid_ = mycpuid();
-
   long r = doexec(upath, uargv);
   myproc()->tf->rax = r;
 

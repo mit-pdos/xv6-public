@@ -207,6 +207,7 @@ exec(const char *path, char **argv, void *ascopev)
   myproc()->vmap = vmp;
   myproc()->tf->rip = elf.entry;
   myproc()->tf->rsp = sp;
+  myproc()->run_cpuid_ = myid();
 
   for(last=s=path; *s; s++)
     if(*s == '/')
