@@ -309,8 +309,12 @@ e1000attach(struct pci_func *pcif)
   e1000.pcidevid = PCI_PRODUCT(pcif->dev_id);
   e1000irq = pcif->irq_line;
 
+#if defined(HW_ben) || defined(HW_tom)
+  // XXX(sbw) do something..
+#else
   picenable(e1000irq);
   ioapicenable(e1000irq, 0);
+#endif
 
   e1000reset();
 
