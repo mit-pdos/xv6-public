@@ -27,8 +27,11 @@ wq::wq(void)
 {
   int i;
 
-  for (i = 0; i < NCPU; i++)
+  for (i = 0; i < NCPU; i++) {
+    q_[i].head = 0;
+    q_[i].tail = 0;
     wqlock_init(&q_[i].lock);
+  }
 
 #if defined(XV6_USER)
   ipc_ = allocipc();
