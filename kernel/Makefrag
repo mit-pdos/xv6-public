@@ -1,4 +1,5 @@
 OBJS = \
+	acpi.o \
 	async.o \
 	bio.o \
 	bootdata.o \
