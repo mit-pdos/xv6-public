@@ -94,13 +94,16 @@ update_range(radix_entry cur, radix_ptr *ptr, CB cb,
   }
 
   if (cur.is_node()) {
-    // Descend.
+    // Find the place to start.
+    if (start < cur_start)
+      start = cur_start;
+    assert(level > 0);
+    int i = index(start, level - 1);
     u64 child_size = (cur_end - cur_start) >> bits_per_level;
-    u64 child_start = cur_start;
-    for (int i = 0; i < (1<<bits_per_level); i++, child_start += child_size) {
+    u64 child_start = cur_start + i * child_size;
+    for (; (i < (1<<bits_per_level)) && (child_start < cur_end);
+         i++, child_start += child_size) {
       radix_ptr *child = &cur.node()->child[i];
-      // FIXME: This results in loading every child. We shouldn't even
-      // touch pointers with no intersection with ours.
       u64 ret = update_range(child->load(), child, cb,
                              child_start, child_start + child_size,
                              start, end, level - 1);
