@@ -80,23 +80,6 @@ void
 initxapic(void)
 {
   u64 count;
-  u64 apicbar;
-
-  // See Intel Arch. Manual Vol 3a, the APIC section
-  // Check if x2APIC is enabled, disable it if so..
-  apicbar = readmsr(MSR_APIC_BAR);
-  if (apicbar & APIC_BAR_X2APIC_EN) {
-    // Disable x2APIC and the xAPIC
-    apicbar &= ~(APIC_BAR_XAPIC_EN | APIC_BAR_X2APIC_EN);
-    writemsr(MSR_APIC_BAR, apicbar);
-    // Re-enable the xAPIC
-    apicbar |= APIC_BAR_XAPIC_EN;
-    writemsr(MSR_APIC_BAR, apicbar);
-    // Sanity-check..
-    u32 ebx;
-    cpuid(CPUID_FEATURES, 0, &ebx, 0, 0);
-    assert(xapic[ID]>>24 == FEATURE_EBX_APIC(ebx));
-  }
 
   // Enable local APIC; set spurious interrupt vector.
   xapicw(SVR, ENABLE | (T_IRQ0 + IRQ_SPURIOUS));
@@ -165,19 +148,9 @@ xapicid(void)
       __builtin_return_address(0));
   }
 
-  // To be safe, read the APIC ID from the CPUID register
-  u32 ebx;
-  cpuid(CPUID_FEATURES, 0, &ebx, 0, 0);
-  return HWID(FEATURE_EBX_APIC(ebx));
-
-#if 0
-  // It should be safe to read from the APIC's MMIO anytime,
-  // but it's not.  The BIOS might have enabled the x2APIC,
-  // in which case the value of xapic[ID]>>24 is undefined.
   if (xapic == nullptr)
     panic("xapicid");
   return HWID(xapic[ID]>>24);
-#endif
 }
 
 // Acknowledge interrupt.
