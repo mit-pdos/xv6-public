@@ -17,6 +17,13 @@ index(u64 key, u32 level)
   return idx;
 }
 
+// Returns the size of a subtree for a node at |level|.
+static u64
+level_size(u32 level)
+{
+  return 1L << (bits_per_level * level);
+}
+
 static radix_entry
 push_down(radix_entry cur, radix_ptr *ptr)
 {
@@ -69,8 +76,9 @@ template <class CB>
 u64
 update_range(radix_entry cur, radix_ptr *ptr, CB cb,
              u64 cur_start, u64 cur_end,
-             u64 start, u64 end)
+             u64 start, u64 end, u32 level = radix_levels)
 {
+  assert(level_size(level) == cur_end - cur_start);
   // If ranges are disjoint, do nothing. We manage to process everyone
   // for free.
   if (cur_start >= end || start >= cur_end)
@@ -95,7 +103,7 @@ update_range(radix_entry cur, radix_ptr *ptr, CB cb,
       // touch pointers with no intersection with ours.
       u64 ret = update_range(child->load(), child, cb,
                              child_start, child_start + child_size,
-                             start, end);
+                             start, end, level - 1);
       if (ret != child_start + child_size) return ret;
     }
     return cur_end;
@@ -104,7 +112,7 @@ update_range(radix_entry cur, radix_ptr *ptr, CB cb,
     // element.
     assert(start <= cur_start && cur_end <= end);
     // Callback returns how far it processed.
-    return cb(cur, ptr, cur_start, cur_end);
+    return cb(cur, ptr, cur_start, cur_end, level);
   }
 }
 
@@ -158,7 +166,7 @@ struct entry_locker {
   u64 end_;
 
   entry_locker(u64 start, u64 end) : start_(start), end_(end) { }
-  u64 operator()(radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end) const {
+  u64 operator()(radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) const {
     while (cur.state() != entry_dead && cur.state() != entry_node) {
       // Locked -> spin and try again.
       if (cur.state() == entry_locked) {
@@ -177,7 +185,7 @@ struct entry_locker {
       return cur_start;
     // Someone pushed down. Recurse some more.
     if (cur.state() == entry_node)
-      return update_range(cur, ptr, *this, cur_start, cur_end, start_, end_);
+      return update_range(cur, ptr, *this, cur_start, cur_end, start_, end_, level-1);
     // We managed to lock!
     assert(cur.state() == entry_locked);
     return cur_end;
@@ -203,7 +211,7 @@ radix_range::~radix_range()
   if (!r_)
     return;
 
-  u64 ret = update_range(r_->root_.load(), &r_->root_, [](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end) -> u64 {
+  u64 ret = update_range(r_->root_.load(), &r_->root_, [](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) -> u64 {
       do {
         // It had better still be locked.
         assert(cur.state() == entry_locked);
@@ -225,7 +233,7 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
   assert(start >= start_);
   assert(start + size <= start_ + size_);
 
-  u64 ret = update_range(r_->root_.load(), &r_->root_, [val](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end) -> u64 {
+  u64 ret = update_range(r_->root_.load(), &r_->root_, [val](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) -> u64 {
       dprintf(" -> [%lx, %lx); size = %lx\n", cur_start, cur_end, cur_end - cur_start);
       do {
         assert(cur.state() == entry_locked);
