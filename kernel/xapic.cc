@@ -25,8 +25,6 @@
   #define DEASSERT   0x00000000
   #define LEVEL      0x00008000   // Level triggered
   #define BCAST      0x00080000   // Send to all APICs, including self.
-// XXX(sbw) BUSY and DELIVS?
-  #define BUSY       0x00001000
   #define FIXED      0x00000000
 #define ICRHI   (0x0310/4)   // Interrupt Command [63:32]
 #define TIMER   (0x0320/4)   // Local Vector Table 0 (TIMER)
@@ -65,7 +63,7 @@ static int
 xapicwait()
 {
   int i = 100000;
-  while ((xapicr(ICRLO) & BUSY) != 0) {
+  while ((xapicr(ICRLO) & DELIVS) != 0) {
     nop_pause();
     i--;
     if (i == 0) {
@@ -205,12 +203,10 @@ xapicstartap(hwid hwid, u32 addr)
   
 
   xapicw(ICRHI, hwid.num<<24);
-  // XXX(sbw) why hwid.num in ICRLO?
-  xapicw(ICRLO, hwid.num | INIT | LEVEL | ASSERT);
+  xapicw(ICRLO, INIT | LEVEL | ASSERT);
   xapicwait();
   microdelay(10000);
-  // XXX(sbw) why hwid.num in ICRLO?
-  xapicw(ICRLO, hwid.num |INIT | LEVEL);
+  xapicw(ICRLO, INIT | LEVEL);
   xapicwait();
   microdelay(10000);    // should be 10ms, but too slow in Bochs!
   
