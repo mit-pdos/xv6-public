@@ -18,6 +18,7 @@
 #include "fmt.hh"
 #include "sperf.hh"
 #include "wq.hh"
+#include "major.h"
 
 #define BACKSPACE 0x100
 
@@ -341,8 +342,8 @@ initconsole(void)
   initlock(&cons.lock, "console", LOCKSTAT_CONSOLE);
   cons.locking = 1;
 
-  devsw[CONSOLE].write = consolewrite;
-  devsw[CONSOLE].read = consoleread;
+  devsw[MAJ_CONSOLE].write = consolewrite;
+  devsw[MAJ_CONSOLE].read = consoleread;
 
   picenable(IRQ_KBD);
   ioapicenable(IRQ_KBD, 0);

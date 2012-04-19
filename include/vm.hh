@@ -72,11 +72,11 @@ struct vma
 // The elements of e[] are not ordered by address.
 struct vmap {
 #if VM_CRANGE
-  struct crange cr;
+  struct crange vmas;
 #endif
 
 #if VM_RADIX
-  struct radix rx;
+  struct radix vmas;
 #endif
 
   static vmap* alloc();

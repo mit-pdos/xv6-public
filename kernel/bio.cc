@@ -32,7 +32,7 @@
 u64
 bio_hash(const pair<u32, u64> &p)
 {
-  return p._a ^ p._b;
+  return p.first ^ p.second;
 }
 
 static xns<pair<u32, u64>, buf*, bio_hash> *bufns;
@@ -51,7 +51,7 @@ bget(u32 dev, u64 sector, int *writer)
  loop:
   // Try for cached block.
   // XXX ignore dev
-  b = bufns->lookup(mkpair(dev, sector));
+  b = bufns->lookup(make_pair(dev, sector));
   if (b) {
     if (b->dev != dev || b->sector != sector)
       panic("block mismatch");
@@ -76,7 +76,7 @@ bget(u32 dev, u64 sector, int *writer)
   b = new buf(dev, sector);
   b->flags = B_BUSY;
   *writer = 1;
-  if (bufns->insert(mkpair(b->dev, b->sector), b) < 0) {
+  if (bufns->insert(make_pair(b->dev, b->sector), b) < 0) {
     gc_delayed(b);
     goto loop;
   }

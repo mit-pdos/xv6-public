@@ -7,6 +7,7 @@
 #include "traps.h"
 #include "bits.hh"
 #include "cpu.hh"
+#include "apic.hh"
 
 // Local APIC registers, divided by 4 for use as uint[] indices.
 #define ID      (0x0020/4)   // ID
@@ -24,7 +25,6 @@
   #define DEASSERT   0x00000000
   #define LEVEL      0x00008000   // Level triggered
   #define BCAST      0x00080000   // Send to all APICs, including self.
-  #define BUSY       0x00001000
   #define FIXED      0x00000000
 #define ICRHI   (0x0310/4)   // Interrupt Command [63:32]
 #define TIMER   (0x0320/4)   // Local Vector Table 0 (TIMER)
@@ -43,31 +43,31 @@
 
 #define IO_RTC  0x70
 
-static volatile u32 *lapic = (u32 *)(KBASE + 0xfee00000);
-static u64 lapichz;
+static volatile u32 *xapic = (u32 *)(KBASE + 0xfee00000);
+static u64 xapichz;
 
 static void
-lapicw(int index, int value)
+xapicw(int index, int value)
 {
-  lapic[index] = value;
-  lapic[ID];  // wait for write to finish, by reading
+  xapic[index] = value;
+  xapic[ID];  // wait for write to finish, by reading
 }
 
 static u32
-lapicr(u32 off)
+xapicr(u32 off)
 {
-  return lapic[off];
+  return xapic[off];
 }
 
 static int
-lapicwait()
+xapicwait()
 {
   int i = 100000;
-  while ((lapicr(ICRLO) & BUSY) != 0) {
+  while ((xapicr(ICRLO) & DELIVS) != 0) {
     nop_pause();
     i--;
     if (i == 0) {
-      cprintf("lapicwait: wedged?\n");
+      cprintf("xapicwait: wedged?\n");
       return -1;
     }
   }
@@ -75,70 +75,70 @@ lapicwait()
 }
 
 void
-initlapic(void)
+initxapic(void)
 {
   u64 count;
 
   // Enable local APIC; set spurious interrupt vector.
-  lapicw(SVR, ENABLE | (T_IRQ0 + IRQ_SPURIOUS));
+  xapicw(SVR, ENABLE | (T_IRQ0 + IRQ_SPURIOUS));
 
-  if (lapichz == 0) {
+  if (xapichz == 0) {
     // Measure the TICR frequency
-    lapicw(TDCR, X1);    
-    lapicw(TICR, 0xffffffff); 
-    u64 ccr0 = lapicr(TCCR);
+    xapicw(TDCR, X1);    
+    xapicw(TICR, 0xffffffff); 
+    u64 ccr0 = xapicr(TCCR);
     microdelay(10 * 1000);    // 1/100th of a second
-    u64 ccr1 = lapicr(TCCR);
-    lapichz = 100 * (ccr0 - ccr1);
+    u64 ccr1 = xapicr(TCCR);
+    xapichz = 100 * (ccr0 - ccr1);
   }
 
-  count = (QUANTUM*lapichz) / 1000;
+  count = (QUANTUM*xapichz) / 1000;
   if (count > 0xffffffff)
-    panic("initlapic: QUANTUM too large");
+    panic("initxapic: QUANTUM too large");
 
   // The timer repeatedly counts down at bus frequency
-  // from lapic[TICR] and then issues an interrupt.  
-  lapicw(TDCR, X1);
-  lapicw(TIMER, PERIODIC | (T_IRQ0 + IRQ_TIMER));
-  lapicw(TICR, count); 
+  // from xapic[TICR] and then issues an interrupt.  
+  xapicw(TDCR, X1);
+  xapicw(TIMER, PERIODIC | (T_IRQ0 + IRQ_TIMER));
+  xapicw(TICR, count); 
 
   // Disable logical interrupt lines.
-  lapicw(LINT0, MASKED);
-  lapicw(LINT1, MASKED);
+  xapicw(LINT0, MASKED);
+  xapicw(LINT1, MASKED);
 
   // Disable performance counter overflow interrupts
   // on machines that provide that interrupt entry.
-  if(((lapic[VER]>>16) & 0xFF) >= 4)
-    lapicpc(0);
+  if(((xapic[VER]>>16) & 0xFF) >= 4)
+    xapicpc(0);
 
   // Map error interrupt to IRQ_ERROR.
-  lapicw(ERROR, T_IRQ0 + IRQ_ERROR);
+  xapicw(ERROR, T_IRQ0 + IRQ_ERROR);
 
   // Clear error status register (requires back-to-back writes).
-  lapicw(ESR, 0);
-  lapicw(ESR, 0);
+  xapicw(ESR, 0);
+  xapicw(ESR, 0);
 
   // Ack any outstanding interrupts.
-  lapicw(EOI, 0);
+  xapicw(EOI, 0);
 
   // Send an Init Level De-Assert to synchronise arbitration ID's.
-  lapicw(ICRHI, 0);
-  lapicw(ICRLO, BCAST | INIT | LEVEL);
-  while(lapic[ICRLO] & DELIVS)
+  xapicw(ICRHI, 0);
+  xapicw(ICRLO, BCAST | INIT | LEVEL);
+  while(xapic[ICRLO] & DELIVS)
     ;
 
   // Enable interrupts on the APIC (but not on the processor).
-  lapicw(TPR, 0);
+  xapicw(TPR, 0);
 }
 
 void
-lapicpc(char mask)
+xapicpc(char mask)
 {
-  lapicw(PCINT, mask ? MASKED : MT_NMI);
+  xapicw(PCINT, mask ? MASKED : MT_NMI);
 }
 
 hwid_t
-lapicid(void)
+xapicid(void)
 {
   if (readrflags() & FL_IF) {
     cli();
@@ -146,46 +146,45 @@ lapicid(void)
       __builtin_return_address(0));
   }
 
-  if (lapic == nullptr)
-    panic("lapicid");
-
-  return HWID(lapic[ID]>>24);
+  if (xapic == nullptr)
+    panic("xapicid");
+  return HWID(xapic[ID]>>24);
 }
 
 // Acknowledge interrupt.
 void
-lapiceoi(void)
+xapiceoi(void)
 {
-  if(lapic)
-    lapicw(EOI, 0);
+  if(xapic)
+    xapicw(EOI, 0);
 }
 
 // Send IPI
 void
-lapic_ipi(hwid_t hwid, int ino)
+xapic_ipi(hwid_t hwid, int ino)
 {
-  lapicw(ICRHI, hwid.num << 24);
-  lapicw(ICRLO, FIXED | DEASSERT | ino);
-  if (lapicwait() < 0)
-    panic("lapic_ipi: lapicwait failure");
+  xapicw(ICRHI, hwid.num << 24);
+  xapicw(ICRLO, FIXED | DEASSERT | ino);
+  if (xapicwait() < 0)
+    panic("xapic_ipi: xapicwait failure");
 }
 
 void
-lapic_tlbflush(hwid_t hwid)
+xapic_tlbflush(hwid_t hwid)
 {
-  lapic_ipi(hwid, T_TLBFLUSH);
+  xapic_ipi(hwid, T_TLBFLUSH);
 }
 
 void
-lapic_sampconf(hwid_t hwid)
+xapic_sampconf(hwid_t hwid)
 {
-  lapic_ipi(hwid, T_SAMPCONF);
+  xapic_ipi(hwid, T_SAMPCONF);
 }
 
 // Start additional processor running bootstrap code at addr.
 // See Appendix B of MultiProcessor Specification.
 void
-lapicstartap(hwid hwid, u32 addr)
+xapicstartap(hwid hwid, u32 addr)
 {
   int i;
   volatile u16 *wrv;
@@ -201,12 +200,14 @@ lapicstartap(hwid hwid, u32 addr)
 
   // "Universal startup algorithm."
   // Send INIT (level-triggered) interrupt to reset other CPU.
-  lapicw(ICRHI, hwid.num<<24);
-  lapicw(ICRLO, hwid.num | INIT | LEVEL | ASSERT);
-  lapicwait();
+  
+
+  xapicw(ICRHI, hwid.num<<24);
+  xapicw(ICRLO, INIT | LEVEL | ASSERT);
+  xapicwait();
   microdelay(10000);
-  lapicw(ICRLO, hwid.num |INIT | LEVEL);
-  lapicwait();
+  xapicw(ICRLO, INIT | LEVEL);
+  xapicwait();
   microdelay(10000);    // should be 10ms, but too slow in Bochs!
   
   // Send startup IPI (twice!) to enter bootstrap code.
@@ -215,8 +216,8 @@ lapicstartap(hwid hwid, u32 addr)
   // should be ignored, but it is part of the official Intel algorithm.
   // Bochs complains about the second one.  Too bad for Bochs.
   for(i = 0; i < 2; i++){
-    lapicw(ICRHI, hwid.num<<24);
-    lapicw(ICRLO, STARTUP | (addr>>12));
+    xapicw(ICRHI, hwid.num<<24);
+    xapicw(ICRLO, STARTUP | (addr>>12));
     microdelay(200);
   }
 }

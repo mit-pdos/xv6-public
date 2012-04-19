@@ -6,6 +6,8 @@
 #include "traps.h"
 #include "pthread.h"
 
+#include <sys/mman.h>
+
 char buf[2048];
 char name[3];
 const char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
@@ -1712,29 +1714,49 @@ unmappedtest(void)
 
   printf("unmappedtest\n");
   for (int i = 1; i <= 8; i++) {
-    int r = map((void*)off, i*4096);
-    if (r < 0)
+    void *p = mmap((void*)off, i*4096, PROT_READ|PROT_WRITE,
+                   MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0);
+    if (p == MAP_FAILED)
       die("unmappedtest: map failed");
     off += (i*2*4096);
   }
 
   for (int i = 8; i >= 1; i--) {
-    long r = map(0, i*4096);
-    if (r < 0)
+    void *p = mmap(0, i*4096, PROT_READ|PROT_WRITE,
+                   MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    if (p == MAP_FAILED)
       die("unmappedtest: map failed");
-    r = unmap((void*)r, i*4096);
+    int r = munmap(p, i*4096);
     if (r < 0)
       die("unmappedtest: unmap failed");
   }
   
   off = 0x1000;
   for (int i = 1; i <= 8; i++) {
-    int r = unmap((void*)off, i*4096);
+    int r = munmap((void*)off, i*4096);
     if (r < 0)
       die("unmappedtest: unmap failed");
     off += (i*2*4096);
   }
   printf("unmappedtest ok\n");
+}
+
+static int nenabled;
+static char **enabled;
+
+void
+run_test(const char *name, void (*test)())
+{
+  if (!nenabled) {
+    test();
+  } else {
+    for (int i = 0; i < nenabled; i++) {
+      if (strcmp(name, enabled[i]) == 0) {
+        test();
+        break;
+      }
+    }
+  }
 }
 
 int
@@ -1748,47 +1770,52 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREATE));
 
-  unopentest();
-  bigargtest();
-  bsstest();
-  sbrktest();
+  nenabled = argc - 1;
+  enabled = argv + 1;
+
+#define TEST(name) run_test(#name, name)
+
+  TEST(unopentest);
+  TEST(bigargtest);
+  TEST(bsstest);
+  TEST(sbrktest);
   // we should be able to grow a user process to consume all phys mem
 
-  unmappedtest();
+  TEST(unmappedtest);
 
-  validatetest();
+  TEST(validatetest);
 
-  opentest();
-  writetest();
-  writetest1();
-  createtest();
-  preads();
+  TEST(opentest);
+  TEST(writetest);
+  TEST(writetest1);
+  TEST(createtest);
+  TEST(preads);
 
-  // mem();
-  pipe1();
-  preempt();
-  exitwait();
+  // TEST(mem);
+  TEST(pipe1);
+  TEST(preempt);
+  TEST(exitwait);
 
-  rmdot();
-  thirteen();
-  longname();
-  bigfile();
-  subdir();
-  concreate();
-  linktest();
-  unlinkread();
-  createdelete();
-  twofiles();
-  sharedfd();
-  dirfile();
-  iref();
-  forktest();
-  bigdir(); // slow
-  tls_test();
-  thrtest();
-  ftabletest();
+  TEST(rmdot);
+  TEST(thirteen);
+  TEST(longname);
+  TEST(bigfile);
+  TEST(subdir);
+  TEST(concreate);
+  TEST(linktest);
+  TEST(unlinkread);
+  TEST(createdelete);
+  TEST(twofiles);
+  TEST(sharedfd);
+  TEST(dirfile);
+  TEST(iref);
+  TEST(forktest);
+  TEST(bigdir); // slow
+  TEST(tls_test);
+  TEST(thrtest);
+  TEST(ftabletest);
 
-  exectest();
+  TEST(exectest);
 
   exit();
 }

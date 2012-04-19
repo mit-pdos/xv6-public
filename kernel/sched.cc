@@ -13,6 +13,8 @@
 #include "wq.hh"
 #include "percpu.hh"
 #include "sperf.hh"
+#include "major.h"
+#include "rnd.hh"
 
 enum { sched_debug = 0 };
 enum { steal_nonexec = 1 };
@@ -30,21 +32,16 @@ public:
     assert(nbytes == sizeof(schedule));
     return buf;
   }
+
+  sched_stat stats_;
+  u64 ncansteal_;
   
 private:
-  struct spinlock lock_;
-  sched_link head_;
-
   void sanity(void);
 
-  struct {
-    std::atomic<u64> enqs;
-    std::atomic<u64> deqs;
-    std::atomic<u64> steals;
-    std::atomic<u64> misses;
-  } stats_;
-
-  volatile u64 ncansteal_ __mpalign__;
+  struct spinlock lock_ __mpalign__;
+  sched_link head_;
+  volatile bool cansteal_ __mpalign__;
 };
 percpu<schedule> schedule_;
 
@@ -60,6 +57,9 @@ schedule::schedule(void)
   stats_.deqs = 0;
   stats_.steals = 0;
   stats_.misses = 0;
+  stats_.idle = 0;
+  stats_.busy = 0;
+  stats_.schedstart = 0;
 }
 
 void
@@ -73,7 +73,8 @@ schedule::enq(proc* p)
   head_.prev->next = entry;
   head_.prev = entry;
   if (cansteal((proc*)entry, true))
-    ncansteal_++;
+    if (ncansteal_++ == 0)
+      cansteal_ = true;
   sanity();
   stats_.enqs++;
 }
@@ -81,6 +82,10 @@ schedule::enq(proc* p)
 proc*
 schedule::deq(void)
 {   
+  if (head_.next == &head_)
+    return nullptr;
+
+  ANON_REGION(__func__, &perfgroup);
   // Remove from head
   scoped_acquire x(&lock_);
   sched_link* entry = head_.next;
@@ -90,7 +95,8 @@ schedule::deq(void)
   entry->next->prev = entry->prev;
   entry->prev->next = entry->next;
   if (cansteal((proc*)entry, true))
-    --ncansteal_;
+    if (--ncansteal_ == 0)
+      cansteal_ = false;
   sanity();
   stats_.deqs++;
   return (proc*)entry;
@@ -99,14 +105,16 @@ schedule::deq(void)
 proc*
 schedule::steal(bool nonexec)
 {
-  if (ncansteal_ == 0 || !tryacquire(&lock_))
+  if (!cansteal_ || !tryacquire(&lock_))
     return nullptr;
 
+  ANON_REGION(__func__, &perfgroup);
   for (sched_link* ptr = head_.next; ptr != &head_; ptr = ptr->next)
     if (cansteal((proc*)ptr, nonexec)) {
       ptr->next->prev = ptr->prev;
       ptr->prev->next = ptr->next;
-      --ncansteal_;
+      if (--ncansteal_ == 0)
+        cansteal_ = false;
       sanity();
       ++stats_.steals;
       release(&lock_);
@@ -121,10 +129,10 @@ void
 schedule::dump(void)
 {
   cprintf("%8lu %8lu %8lu %8lu\n",
-          stats_.enqs.load(),
-          stats_.deqs.load(),
-          stats_.steals.load(),
-          stats_.misses.load());
+          stats_.enqs,
+          stats_.deqs,
+          stats_.steals,
+          stats_.misses);
   
   stats_.enqs = 0;
   stats_.deqs = 0;
@@ -170,12 +178,17 @@ steal(void)
 {
   struct proc *steal;
   int r = 0;
+  u64 s = rnd();
 
   pushcli();
 
   for (int nonexec = 0; nonexec < (steal_nonexec ? 2 : 1); nonexec++) { 
-    for (int i = 0; i < NCPU; i++) {
-      steal = schedule_[i].steal(nonexec);
+    for (u64 i = 0; i < NCPU; i++) {
+      u64 k = (s+i) % NCPU;
+      if (k == myid())
+        continue;
+
+      steal = schedule_[k].steal(nonexec);
       if (steal != nullptr) {
         acquire(&steal->lock);
         if (steal->get_state() == RUNNABLE && !steal->cpu_pin &&
@@ -214,6 +227,9 @@ scheddump(void)
 void
 addrun(struct proc* p)
 {
+  if (p->upath)
+    execswitch(p);
+
   p->set_state(RUNNABLE);
   schedule_[p->cpuid].enq(p);
 }
@@ -250,6 +266,13 @@ sched(void)
   // Interrupts are disabled
   next = schedule_->deq();
 
+  u64 t = rdtsc();
+  if (myproc() == idleproc())
+    schedule_->stats_.idle += t - schedule_->stats_.schedstart;
+  else
+    schedule_->stats_.busy += t - schedule_->stats_.schedstart;
+  schedule_->stats_.schedstart = t;
+  
   if (next == nullptr) {
     if (myproc()->get_state() != RUNNABLE ||
         // proc changed its CPU pin?
@@ -269,6 +292,9 @@ sched(void)
   prev = myproc();
   mycpu()->proc = next;
   mycpu()->prev = prev;
+
+  if (mycpu()->uwq != nullptr || next->uwq != nullptr)
+    mycpu()->uwq = next->uwq;
 
   if (prev->get_state() == ZOMBIE)
     mtstop(prev);
@@ -293,9 +319,29 @@ sched(void)
   post_swtch();
 }
 
+static int
+statread(struct inode *inode, char *dst, u32 off, u32 n)
+{
+  // Sort of like a binary /proc/stat
+  size_t sz = NCPU*sizeof(sched_stat);
+
+  if (n != sz)
+    return -1;
+
+  for (int i = 0; i < NCPU; i++) {
+    memcpy(&dst[i*sizeof(sched_stat)], &schedule_[i].stats_,
+           sizeof(schedule_[i].stats_));
+  }
+  
+  return n;
+}
+
 void
 initsched(void)
 {
   for (int i = 0; i < NCPU; i++)
     new (&schedule_[i]) schedule();
+
+  devsw[MAJ_STAT].write = nullptr;
+  devsw[MAJ_STAT].read = statread;
 }

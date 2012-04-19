@@ -299,7 +299,6 @@ sys_openat(int dirfd, const char *path, int omode)
   // Reads the dirfd FD, dirfd's inode, the inodes of all files in
   // path; writes the returned FD
   mt_ascope ascope("%s(%d,%s,%d)", __func__, dirfd, path, omode);
-  mtwriteavar("thread:%x", myproc()->pid);
   mtreadavar("inode:%x.%x", cwd->dev, cwd->inum);
 
   if(omode & O_CREATE){
@@ -431,12 +430,10 @@ sys_chdir(const char *path)
   return 0;
 }
 
-//SYSCALL
 int
-sys_exec(const char *upath, userptr<userptr<const char> > uargv)
+doexec(const char* upath, userptr<userptr<const char> > uargv)
 {
   ANON_REGION(__func__, &perfgroup);
-  static const int len = 32;
   char *argv[MAXARG];
   char path[DIRSIZ+1];
   long r = -1;
@@ -457,16 +454,34 @@ sys_exec(const char *upath, userptr<userptr<const char> > uargv)
     if(uarg == 0)
       break;
 
-    argv[i] = (char*) kmalloc(len, "execbuf");
-    if (argv[i]==nullptr || fetchstr(argv[i], (char*)uarg, len)<0)
+    argv[i] = (char*) kmalloc(MAXARGLEN, "execbuf");
+    if (argv[i]==nullptr || fetchstr(argv[i], (char*)uarg, MAXARGLEN)<0)
       goto clean;
   }
+
   argv[i] = 0;
   r = exec(path, argv, &ascope);
 clean:
-  for (i=i-i; i >= 0; i--)
-    kmfree(argv[i], len);
+  for (i=i-1; i >= 0; i--)
+    kmfree(argv[i], MAXARGLEN);
   return r;
+}
+
+//SYSCALL
+int
+sys_exec(const char *upath, userptr<userptr<const char> > uargv)
+{
+  myproc()->exec_cpuid_ = myid();
+#if EXECSWITCH
+  myproc()->exec_cpuid_ = mycpuid();
+  myproc()->uargv = uargv;
+  barrier();
+  // upath serves as a flag to the scheduler
+  myproc()->upath = upath;
+  yield();
+  myproc()->upath = nullptr;
+#endif
+  return doexec(upath, uargv);
 }
 
 //SYSCALL

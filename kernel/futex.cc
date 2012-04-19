@@ -9,6 +9,7 @@
 #include "cpu.hh"
 #include "percpu.hh"
 #include "kmtrace.hh"
+#include "sperf.hh"
 
 //
 // futexkey
@@ -170,9 +171,11 @@ futexaddr::onzero(void) const
 long
 futexwait(futexkey_t key, u64 val, u64 timer)
 {
+  ANON_REGION(__func__, &perfgroup);
+
   futexaddr* fa;
 
-  mtreadavar("futex:ns:%lx", key);
+  mtreadavar("futex:ns:%p", key);
   {
     scoped_gc_epoch gc;
   again:
@@ -187,7 +190,7 @@ futexwait(futexkey_t key, u64 val, u64 timer)
         fa->dec();
         goto again;
       }
-      mtwriteavar("futex:ns:%lx", key);
+      mtwriteavar("futex:ns:%p", key);
       fa->inserted_ = true;
     } else {
       if (!fa->tryinc()) {
@@ -196,7 +199,7 @@ futexwait(futexkey_t key, u64 val, u64 timer)
     }
   }
   assert(fa->key_ == key);
-  mtwriteavar("futex:%lx.%p", key, fa);
+  mtwriteavar("futex:%p.%p", key, fa);
 
   acquire(&myproc()->futex_lock);  
   auto cleanup = scoped_cleanup([&fa](){
@@ -226,13 +229,15 @@ futexwait(futexkey_t key, u64 val, u64 timer)
 long
 futexwake(futexkey_t key, u64 nwake)
 {
+  ANON_REGION(__func__, &perfgroup);
+
   futexaddr* fa;
   u64 nwoke = 0;
 
   if (nwake == 0)
     return -1;
 
-  mtreadavar("futex:ns:%lx", key);
+  mtreadavar("futex:ns:%p", key);
   {
     scoped_gc_epoch gc;
     fa = nsfutex->lookup(key);
@@ -243,7 +248,7 @@ futexwake(futexkey_t key, u64 nwake)
   auto cleanup = scoped_cleanup([&fa](){
     fa->dec();
   });
-  mtwriteavar("futex:%lx.%p", key, fa);
+  mtwriteavar("futex:%p.%p", key, fa);
 
   fa->nspid_->enumerate([&nwoke, &nwake](u32 pid, proc* p) {
     acquire(&p->futex_lock);

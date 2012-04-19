@@ -1,0 +1,39 @@
+// -*- c++ -*-
+
+#pragma once
+
+#include <type_traits>
+
+namespace std {
+  template<class T>
+  typename remove_reference<T>::type&&
+  move(T&& a)
+  {
+    return static_cast<typename remove_reference<T>::type&&>(a);
+  }
+
+  template<class A, class B>
+  struct pair {
+    typedef A first_type;
+    typedef B second_type;
+
+    A first;
+    B second;
+
+    pair(const pair&) = default;
+    pair(pair&&) = default;
+    constexpr pair() : first(), second() {}
+    pair(const A &a, const B &b) : first(a), second(b) {}
+
+    bool operator==(const pair<A, B> &other) {
+      return first == other.first && second == other.second;
+    }
+  };
+
+  template<class A, class B>
+  pair<A, B>
+  make_pair(const A &a, const B &b)
+  {
+    return pair<A, B>(a, b);
+  }
+}

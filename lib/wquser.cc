@@ -5,7 +5,7 @@
 #include "wq.hh"
 #include "atomic.hh"
 #include "pthread.h"
-#include "elf.hh"
+#include "memlayout.h"
 
 u64 wq_maxworkers = NWORKERS;
 
@@ -28,7 +28,20 @@ initworker(void)
       assert(wqwait() == 0);
   }
 }
-DEFINE_XV6_ADDRNOTE(xnote, XV6_ADDR_ID_WQ, &initworker);
+
+uwq_ipcbuf*
+allocipc(void)
+{
+  static bool alloced;
+  if (alloced)
+    die("allocklen: allocing more than once");
+  if (sizeof(uwq_ipcbuf) > USERWQSIZE)
+    die("allocipc: too large");
+  if (wqinit((uptr)initworker) < 0)
+    die("wqinit: failed");
+  alloced = true;
+  return (uwq_ipcbuf*)USERWQ;
+}
 
 int
 mycpuid(void)

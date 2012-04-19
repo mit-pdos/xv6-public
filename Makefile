@@ -8,6 +8,7 @@ QEMUSRC    ?= ../mtrace
 MTRACE	   ?= $(QEMU)
 HW	   ?= qemu
 EXCEPTIONS ?= y
+RUN	   ?= $(empty)
 O  	   = o.$(HW)
 
 ifdef USE_CLANG
@@ -97,7 +98,8 @@ $(O)/fs.img: $(O)/tools/mkfs README $(UPROGS)
 ##
 QEMUOPTS = -smp $(QEMUSMP) -m 512 -serial mon:stdio -nographic \
 	-net user -net nic,model=e1000 \
-	-redir tcp:2323::23 -redir tcp:8080::80
+	-redir tcp:2323::23 -redir tcp:8080::80 \
+	$(if $(RUN),-append "\$$ $(RUN)",)
 
 qemu: $(KERN)
 	$(QEMU) $(QEMUOPTS) -kernel $(KERN)

@@ -8,6 +8,7 @@
 #define NDEV         10  // maximum major device number
 #define ROOTDEV       1  // device number of file system root disk
 #define MAXARG       32  // max exec arguments
+#define MAXARGLEN    64  // max exec argument length
 #define MAXNAME      16  // max string names
 #define NEPOCH        4
 #define CACHELINE    64  // cache line size
@@ -23,7 +24,7 @@
 #define USERWQSIZE    (1 << 14)
 #define USTACKPAGES   8
 #define WQSHIFT       7
-#define CILKENABLE    0
+#define EXECSWITCH    1
 #if defined(HW_qemu)
 #define NCPU          8   // maximum number of CPUs
 #define MTRACE        0
@@ -38,7 +39,13 @@
 #define MTRACE        0
 #define PERFSIZE      (512<<20ull)
 #elif defined(HW_tom)
+#define DEBUG         0
 #define NCPU          48  // maximum number of CPUs
+#define MTRACE        0
+#define PERFSIZE      (1<<20ull)
+#elif defined(HW_ben)
+#define DEBUG         0
+#define NCPU          80  // maximum number of CPUs
 #define MTRACE        0
 #define PERFSIZE      (1<<20ull)
 #elif defined(HW_user)
@@ -46,6 +53,10 @@
 #define MTRACE        0
 #define PERFSIZE      (16<<20ull)
 #elif defined(HW_wq)
+#define NCPU          2
+#define MTRACE        0
+#define PERFSIZE      (16<<20ull)
+#elif defined(HW_usched)
 #define NCPU          2
 #define MTRACE        0
 #define PERFSIZE      (16<<20ull)

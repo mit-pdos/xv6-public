@@ -39,3 +39,38 @@ setaffinity(int c)
   if (sched_setaffinity(0, sizeof(cpuset), &cpuset) < 0)
     edie("setaffinity, sched_setaffinity failed");
 }
+
+static inline uint64_t
+read_tsc(void)
+{
+  uint64_t a, d;
+  __asm __volatile("rdtsc" : "=a" (a), "=d" (d));
+  return ((uint64_t) a) | (((uint64_t) d) << 32);
+}
+
+static inline void
+rep_nop(void)
+{
+  __asm __volatile("rep; nop" ::: "memory");
+}
+
+static inline void
+cpu_relax(void)
+{
+  rep_nop();
+}
+
+static inline void
+spin_delay(uint64_t cycles)
+{
+  uint64_t s = read_tsc();
+  while ((read_tsc() - s ) < cycles)
+    cpu_relax();
+}
+
+static inline uint32_t
+rnd(uint32_t *seed)
+{
+  *seed = *seed * 1103515245 + 12345;
+  return *seed & 0x7fffffff;
+}

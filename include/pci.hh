@@ -15,6 +15,7 @@ struct pci_func {
   u32 reg_base[6];
   u32 reg_size[6];
   u8 irq_line;
+  u8 msi_capreg;
 };
 
 struct pci_bus {
@@ -24,3 +25,4 @@ struct pci_bus {
 
 int  pci_init(void);
 void pci_func_enable(struct pci_func *f);
+void pci_msi_enable(struct pci_func *f, u8 irqnum);

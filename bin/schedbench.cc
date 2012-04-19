@@ -5,11 +5,13 @@
 #include "futex.h"
 #include "errno.h"
 #include "atomic.hh"
+#include "mtrace.h"
 
 static volatile std::atomic<u64> waiting;
 static volatile std::atomic<u64> waking;
 static int iters;
 static int nworkers;
+static volatile int go;
 
 static struct {
   u64 mem;
@@ -23,6 +25,11 @@ void* worker0(void* x)
   u64 id = (u64)x;
   u64* f = &(ftx[id>>1].mem);
   long r;
+
+  setaffinity(id);
+
+  while (go == 0)
+    yield();
 
   if (id & 0x1) {
     for (u64 i = 0; i < iters; i++) {
@@ -50,6 +57,7 @@ void* worker0(void* x)
 static
 void master0(void)
 {
+  go = 1;
   for (int i = 0; i < nworkers; i++)
     wait();
 }
@@ -75,9 +83,11 @@ main(int ac, char** av)
   }
   nsleep(1000*1000);
 
+  mtenable("xv6-schedbench");
   u64 t0 = rdtsc();
   master0();
   u64 t1 = rdtsc();
+  mtdisable("xv6-schedbench");
   printf("%lu\n", (t1-t0)/iters);
 }
 

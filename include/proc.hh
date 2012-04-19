@@ -84,6 +84,9 @@ struct proc : public rcu_freed, public sched_link {
   int run_cpuid_;
   int in_exec_;
   int uaccess_;
+  const char *upath;
+  userptr<userptr<const char> > uargv;
+
   u8 __cxa_eh_global[16];
 
   std::atomic<int> exception_inuse;

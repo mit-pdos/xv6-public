@@ -11,6 +11,7 @@
 #include "vm.hh"
 #include "kalloc.hh"
 #include "bits.hh"
+#include "rnd.hh"
 extern "C" {
 #include "kern_c.h"
 }
@@ -23,7 +24,7 @@ uwq_trywork(void)
   u64 i, k;
 
   // A "random" victim CPU
-  k = rdtsc();
+  k = rnd();
   for (i = 0; i < NCPU; i++) {
     u64 j = (i+k) % NCPU;
 
@@ -31,14 +32,11 @@ uwq_trywork(void)
       continue;
     struct cpu *c = &cpus[j];
     
-    // The gc_epoch is for p and uwq
+    // The gc_epoch is for uwq
     scoped_gc_epoch xgc();
     barrier();
 
-    struct proc *p = c->proc;
-    if (p == nullptr)
-      continue;
-    uwq* uwq = p->uwq;
+    uwq* uwq = c->uwq;
     if (uwq == nullptr)
       continue;
 
@@ -50,6 +48,23 @@ uwq_trywork(void)
   }
 
   return false;
+}
+
+//SYSCALL
+int
+sys_wqinit(uptr uentry)
+{
+  uwq* uwq;
+
+  if (myproc()->uwq != nullptr)
+    return -1;
+
+  uwq = uwq::alloc(myproc()->vmap, myproc()->ftable, uentry);
+  if (uwq == nullptr)
+    return -1;
+
+  myproc()->uwq = uwq;
+  return 0;
 }
 
 //SYSCALL
@@ -103,7 +118,7 @@ uwq_worker::wait(void)
 // uwq
 //
 uwq*
-uwq::alloc(vmap* vmap, filetable *ftable)
+uwq::alloc(vmap* vmap, filetable *ftable, uptr uentry)
 {
   uwq_ipcbuf* ipc;
   uwq* u;
@@ -115,7 +130,7 @@ uwq::alloc(vmap* vmap, filetable *ftable)
   ftable->incref();
   vmap->incref();
 
-  u = new uwq(vmap, ftable, ipc);
+  u = new uwq(vmap, ftable, ipc, uentry);
   if (u == nullptr) {
     ftable->decref();
     vmap->decref();
@@ -131,10 +146,10 @@ uwq::alloc(vmap* vmap, filetable *ftable)
   return u;
 }
 
-uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc) 
+uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc, uptr uentry) 
   : rcu_freed("uwq"),
     vmap_(vmap), ftable_(ftable), ipc_(ipc),
-    uentry_(0), ustack_(UWQSTACK), uref_(0)
+    uentry_(uentry), ustack_(UWQSTACK), uref_(0)
 {
   for (int i = 0; i < NELEM(ipc_->len); i++)
     ipc_->len[i].v_ = 0;
@@ -252,12 +267,6 @@ uwq::onzero() const
 {
   uwq *u = (uwq*)this;
   u->finish();
-}
-
-void
-uwq::setuentry(uptr uentry)
-{
-  uentry_ = uentry;
 }
 
 proc*

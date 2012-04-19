@@ -1,8 +1,10 @@
 OBJS = \
+	acpi.o \
 	async.o \
 	bio.o \
 	bootdata.o \
 	cga.o \
+	cmdline.o \
 	condvar.o \
 	console.o \
 	cpprt.o \
@@ -15,7 +17,6 @@ OBJS = \
         futex.o \
         idle.o \
 	ioapic.o \
-	lapic.o \
 	hwvm.o \
 	hz.o \
 	kalloc.o \
@@ -51,6 +52,8 @@ OBJS = \
         wqkern.o \
 	wqlib.o \
 	script.o \
+	xapic.o \
+	x2apic.o \
         zalloc.o \
 	incbin.o \
 	sysvectors.o \

@@ -3,6 +3,7 @@
 #include "kernel.hh"
 #include "pci.hh"
 #include "pcireg.hh"
+#include "traps.h"
 
 extern int e1000attach(struct pci_func *pcif);
 extern int e1000eattach(struct pci_func *pcif);
@@ -134,6 +135,69 @@ pci_attach(struct pci_func *f)
                      &pci_attach_vendor[0], f);
 }
 
+static void
+pci_scan_caplist(struct pci_func* f)
+{
+  u32 cap_ptr = PCI_CAPLIST_PTR(pci_conf_read(f, PCI_CAPLISTPTR_REG));
+  for (int i = 0; i < 10 && cap_ptr != 0; i++) {
+    u32 cap_entry = pci_conf_read(f, cap_ptr);
+    switch (PCI_CAPLIST_CAP(cap_entry)) {
+    case PCI_CAP_MSI:
+      f->msi_capreg = cap_ptr;
+      break;
+    default:
+      break;
+    }
+    cap_ptr = PCI_CAPLIST_NEXT(cap_entry);
+  }
+}
+
+void
+pci_msi_enable(struct pci_func *f, u8 irqnum)
+{
+  // PCI System Architecture, Fourth Edition
+
+  assert(f->msi_capreg != 0);
+  u32 cap_entry = pci_conf_read(f, f->msi_capreg);  
+
+  if (!(cap_entry & PCI_MSI_MCR_64BIT))
+    panic("pci_msi_enable only handles 64-bit address capable devices");
+  if (PCI_MSI_MCR_MMC(cap_entry) != 0)
+    panic("pci_msi_enable only handles 1 requested message");
+
+  // [PCI SA pg 253]
+  // Step 4. Assign a dword-aligned memory address to the device's
+  // Message Address Register.
+  // (The Message Address Register format is mandated by the x86
+  // architecture.  See 9.11.1 in the Vol. 3 of the Intel architecture
+  // manual.)
+  pci_conf_write(f, f->msi_capreg + 4*1,
+                 (0x0fee << 20) |   // magic constant for northbridge
+                 (0 << 12) |        // destination ID
+                 (1 << 3) |         // redirection hint
+                 (0 << 2));         // destination mode
+  pci_conf_write(f, f->msi_capreg + 4*2, 0);
+  
+  // Step 5 and 6. Allocate messages for the device.  Since we
+  // support only one message and that is the default value in
+  // the message control register, we do nothing.
+
+  // Step 7. Write base message data pattern into the device's
+  // Message Data Register.
+  // (The Message Data Register format is mandated by the x86
+  // architecture.  See 9.11.2 in the Vol. 3 of the Intel architecture
+  // manual.
+  pci_conf_write(f, f->msi_capreg + 4*3,
+                 (0 << 15) |        // trigger mode (edge)
+                 //(0 << 14) |      // level for trigger mode (don't care)
+                 (0 << 8) |         // delivery mode (fixed)
+                 (irqnum+T_IRQ0));  // vector
+
+  // Step 8. Set the MSI enable bit in the device's Message
+  // control register.
+  pci_conf_write(f, f->msi_capreg, cap_entry | (1 << 16));
+}
+
 static int
 pci_scan_bus(struct pci_bus *bus)
 {
@@ -160,7 +224,11 @@ pci_scan_bus(struct pci_bus *bus)
       
       u32 intr = pci_conf_read(&af, PCI_INTERRUPT_REG);
       af.irq_line = PCI_INTERRUPT_LINE(intr);
-      
+
+      u32 cmd_status = pci_conf_read(&af, PCI_COMMAND_STATUS_REG);
+      if (cmd_status & PCI_STATUS_CAPLIST_SUPPORT)
+        pci_scan_caplist(&af);
+
       af.dev_class = pci_conf_read(&af, PCI_CLASS_REG);
       if (pci_show_devs)
         pci_print_func(&af);

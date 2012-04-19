@@ -251,6 +251,18 @@ rcr2(void)
   return val;
 }
 
+static inline void
+prefetchw(void *a)
+{
+  __asm volatile("prefetchw (%0)" : : "r" (a));
+}
+
+static inline void
+prefetch(void *a)
+{
+  __asm volatile("prefetch (%0)" : : "r" (a));
+}
+
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
 // Also used by sysentry (but sparsely populated).

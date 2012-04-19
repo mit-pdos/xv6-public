@@ -81,7 +81,12 @@
 // CPUID function 0x00000001
 #define CPUID_FEATURES      0x00000001
 #define FEATURE_ECX_MWAIT   (1 << 3)
+#define FEATURE_EBX_APIC(x) (((x) >> 24) & 0xff)
 
 // CPUID function 0x00000005
 #define CPUID_MWAIT         0x00000005
 
+// APIC Base Address Register MSR
+#define MSR_APIC_BAR        0x0000001b
+#define APIC_BAR_XAPIC_EN   (1 << 11)
+#define APIC_BAR_X2APIC_EN  (1 << 10)
