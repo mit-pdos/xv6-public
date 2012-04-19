@@ -25,6 +25,7 @@
   #define DEASSERT   0x00000000
   #define LEVEL      0x00008000   // Level triggered
   #define BCAST      0x00080000   // Send to all APICs, including self.
+// XXX(sbw) BUSY and DELIVS?
   #define BUSY       0x00001000
   #define FIXED      0x00000000
 #define ICRHI   (0x0310/4)   // Interrupt Command [63:32]
@@ -228,10 +229,14 @@ xapicstartap(hwid hwid, u32 addr)
 
   // "Universal startup algorithm."
   // Send INIT (level-triggered) interrupt to reset other CPU.
+  
+
   xapicw(ICRHI, hwid.num<<24);
+  // XXX(sbw) why hwid.num in ICRLO?
   xapicw(ICRLO, hwid.num | INIT | LEVEL | ASSERT);
   xapicwait();
   microdelay(10000);
+  // XXX(sbw) why hwid.num in ICRLO?
   xapicw(ICRLO, hwid.num |INIT | LEVEL);
   xapicwait();
   microdelay(10000);    // should be 10ms, but too slow in Bochs!
