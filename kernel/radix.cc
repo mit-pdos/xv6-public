@@ -146,7 +146,6 @@ radix::~radix()
 radix_elem*
 radix::search(u64 key)
 {
-  scoped_gc_epoch gc;
   radix_entry cur = root_.load();
   for (u32 level = radix_levels-1; level >= 0 && !cur.is_elem(); level--) {
     cur = cur.node()->child[index(key >> shift_, level)].load();

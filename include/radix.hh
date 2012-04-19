@@ -182,8 +182,6 @@ struct radix_range {
   u64 start_;
   u64 size_;
 
-  scoped_gc_epoch gc_;
-
   radix_range(radix* r, u64 start, u64 size);
   radix_range(radix_range&&);
   ~radix_range();
