@@ -18,6 +18,7 @@ void initconsole(void);
 void initpg(void);
 void initmp(void);
 void inittls(void);
+void initacpi(void);
 void initnmi(void);
 void inittrap(void);
 void initseg(void);
@@ -105,6 +106,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initcga();
   initmp();
   inittls();       // thread local storage
+  initacpi();
 
   initseg();
   initsperf();
