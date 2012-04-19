@@ -168,7 +168,7 @@ vmnode::loadall()
 
 vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn) :
 #if VM_CRANGE
-    range(&vmap->cr, start, end-start),
+    range(&vmap->vmas, start, end-start),
 #endif
     vma_start(start), vma_end(end), va_type(vtype), n(vmn)
 {
@@ -194,10 +194,10 @@ vmap::alloc(void)
 
 vmap::vmap() : 
 #if VM_CRANGE
-  cr(10),
+  vmas(10),
 #endif
 #if VM_RADIX
-  rx(PGSHIFT),
+  vmas(PGSHIFT),
 #endif
   ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
   brk_(0)
@@ -253,12 +253,7 @@ vmap::incref()
 bool
 vmap::replace_vma(vma *a, vma *b)
 {
-#if VM_CRANGE
-  auto span = cr.search_lock(a->vma_start, a->vma_end - a->vma_start);
-#endif
-#if VM_RADIX
-  auto span = rx.search_lock(a->vma_start, a->vma_end - a->vma_start);
-#endif
+  auto span = vmas.search_lock(a->vma_start, a->vma_end - a->vma_start);
   if (a->deleted())
     return false;
   for (auto e: span)
@@ -279,12 +274,11 @@ vmap::copy(int share)
 {
   vmap *nm = new vmap();
 
-#if VM_CRANGE
-  for (auto r: cr) {
-#endif
 #if VM_RADIX
   void *last = 0;
-  for (auto r: rx) {
+#endif
+  for (auto r: vmas) {
+#if VM_RADIX
     if (!r || r == last)
       continue;
     last = r;
@@ -318,12 +312,7 @@ vmap::copy(int share)
       ne = new vma(nm, e->vma_start, e->vma_end, PRIVATE, e->n->copy());
     }
 
-#if VM_CRANGE
-    auto span = nm->cr.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
-#endif
-#if VM_RADIX
-    auto span = nm->rx.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
-#endif
+    auto span = nm->vmas.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
     for (auto x: span) {
 #if VM_RADIX
       if (!x)
@@ -367,11 +356,11 @@ vmap::lookup(uptr start, uptr len)
     panic("vmap::lookup bad len");
 
 #if VM_CRANGE
-  auto r = cr.search(start, len);
+  auto r = vmas.search(start, len);
 #endif
 #if VM_RADIX
   assert(len <= PGSIZE);
-  auto r = rx.search(start);
+  auto r = vmas.search(start);
 #endif
   if (r != 0) {
     vma *e = (vma *) r;
@@ -405,12 +394,7 @@ again:
   {
     // new scope to release the search lock before tlbflush
     u64 len = n->npages * PGSIZE;
-#if VM_CRANGE
-    auto span = cr.search_lock(vma_start, len);
-#endif
-#if VM_RADIX
-    auto span = rx.search_lock(vma_start, len);
-#endif
+    auto span = vmas.search_lock(vma_start, len);
     for (auto r: span) {
 #if VM_RADIX
       if (!r)
@@ -474,12 +458,7 @@ vmap::remove(uptr vma_start, uptr len)
     // new scope to release the search lock before tlbflush
     uptr vma_end = vma_start + len;
 
-#if VM_CRANGE
-    auto span = cr.search_lock(vma_start, len);
-#endif
-#if VM_RADIX
-    auto span = rx.search_lock(vma_start, len);
-#endif
+    auto span = vmas.search_lock(vma_start, len);
     for (auto r: span) {
       vma *rvma = (vma*) r;
       if (rvma->vma_start < vma_start || rvma->vma_end > vma_end) {
@@ -756,17 +735,13 @@ vmap::sbrk(ssize_t n, uptr *addr)
   s64 newn = PGROUNDUP(n + curbrk - newstart);
 #if VM_CRANGE
   range *prev = 0;
-  auto span = cr.search_lock(newstart, newn + PGSIZE);
-#endif
-#if VM_RADIX
-  auto span = rx.search_lock(newstart, newn + PGSIZE);
-#endif
-#if VM_CRANGE
-  for (auto r: span) {
 #endif
 #if VM_RADIX
   void *last = 0;
+#endif
+  auto span = vmas.search_lock(newstart, newn + PGSIZE);
   for (auto r: span) {
+#if VM_RADIX
     if (!r || r == last)
       continue;
     last = r;
@@ -824,7 +799,7 @@ vmap::unmapped_area(size_t npages)
 
   while (addr < USERTOP) {
 #if VM_CRANGE
-    auto x = cr.search(addr, n);
+    auto x = vmas.search(addr, n);
     if (x == nullptr)
       return addr;
     vma* a = (vma*) x;
@@ -834,7 +809,7 @@ vmap::unmapped_area(size_t npages)
 #if VM_RADIX
     bool overlap = false;
     for (uptr ax = addr; ax < addr+n; ax += PGSIZE) {
-      auto x = rx.search(ax);
+      auto x = vmas.search(ax);
       if (x != nullptr) {
         overlap = true;
         vma* a = (vma*) x;

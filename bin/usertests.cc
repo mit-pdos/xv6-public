@@ -1741,6 +1741,24 @@ unmappedtest(void)
   printf("unmappedtest ok\n");
 }
 
+static int nenabled;
+static char **enabled;
+
+void
+run_test(const char *name, void (*test)())
+{
+  if (!nenabled) {
+    test();
+  } else {
+    for (int i = 0; i < nenabled; i++) {
+      if (strcmp(name, enabled[i]) == 0) {
+        test();
+        break;
+      }
+    }
+  }
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1752,47 +1770,52 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREATE));
 
-  unopentest();
-  bigargtest();
-  bsstest();
-  sbrktest();
+  nenabled = argc - 1;
+  enabled = argv + 1;
+
+#define TEST(name) run_test(#name, name)
+
+  TEST(unopentest);
+  TEST(bigargtest);
+  TEST(bsstest);
+  TEST(sbrktest);
   // we should be able to grow a user process to consume all phys mem
 
-  unmappedtest();
+  TEST(unmappedtest);
 
-  validatetest();
+  TEST(validatetest);
 
-  opentest();
-  writetest();
-  writetest1();
-  createtest();
-  preads();
+  TEST(opentest);
+  TEST(writetest);
+  TEST(writetest1);
+  TEST(createtest);
+  TEST(preads);
 
-  // mem();
-  pipe1();
-  preempt();
-  exitwait();
+  // TEST(mem);
+  TEST(pipe1);
+  TEST(preempt);
+  TEST(exitwait);
 
-  rmdot();
-  thirteen();
-  longname();
-  bigfile();
-  subdir();
-  concreate();
-  linktest();
-  unlinkread();
-  createdelete();
-  twofiles();
-  sharedfd();
-  dirfile();
-  iref();
-  forktest();
-  bigdir(); // slow
-  tls_test();
-  thrtest();
-  ftabletest();
+  TEST(rmdot);
+  TEST(thirteen);
+  TEST(longname);
+  TEST(bigfile);
+  TEST(subdir);
+  TEST(concreate);
+  TEST(linktest);
+  TEST(unlinkread);
+  TEST(createdelete);
+  TEST(twofiles);
+  TEST(sharedfd);
+  TEST(dirfile);
+  TEST(iref);
+  TEST(forktest);
+  TEST(bigdir); // slow
+  TEST(tls_test);
+  TEST(thrtest);
+  TEST(ftabletest);
 
-  exectest();
+  TEST(exectest);
 
   exit();
 }

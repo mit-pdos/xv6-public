@@ -1,17 +1,10 @@
 #pragma once
 
-template<class A, class B>
-class pair {
- public:
-  A _a;
-  B _b;
+#include <type_traits>
+#include <utility>
 
-  pair(const A &a, const B &b) : _a(a), _b(b) {}
-
-  bool operator==(const pair<A, B> &other) {
-    return _a == other._a && _b == other._b;
-  }
-};
+using std::pair;
+using std::make_pair;
 
 template<int N>
 class strbuf {
@@ -27,13 +20,6 @@ class strbuf {
   }
 };
 
-template<class A, class B>
-pair<A, B>
-mkpair(const A &a, const B &b)
-{
-  return pair<A, B>(a, b);
-}
-
 class scoped_acquire {
  private:
   spinlock *_l;
@@ -48,25 +34,6 @@ class scoped_acquire {
 class retryable {};
 
 namespace std {
-  template<class T>
-  struct remove_reference
-  { typedef T type; };
-
-  template<class T>
-  struct remove_reference<T&>
-  { typedef T type; };
-
-  template<class T>
-  struct remove_reference<T&&>
-  { typedef T type; };
-
-  template<class T>
-  typename remove_reference<T>::type&&
-  move(T&& a)
-  {
-    return static_cast<typename remove_reference<T>::type&&>(a);
-  }
-
   struct ostream { int next_width; };
   extern ostream cout;
 

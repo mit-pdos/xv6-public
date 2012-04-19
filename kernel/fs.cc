@@ -152,7 +152,7 @@ bfree(int dev, u64 x)
 u64
 ino_hash(const pair<u32, u32> &p)
 {
-  return p._a ^ p._b;
+  return p.first ^ p.second;
 }
 
 static xns<pair<u32, u32>, inode*, ino_hash> *ins;
@@ -268,7 +268,7 @@ igetnoref(u32 dev, u32 inum)
   // Try for cached inode.
   {
     scoped_gc_epoch e;
-    struct inode *ip = ins->lookup(mkpair(dev, inum));
+    struct inode *ip = ins->lookup(make_pair(dev, inum));
     if (ip) {
       if (!(ip->flags & I_VALID)) {
         acquire(&ip->lock);
@@ -290,7 +290,7 @@ igetnoref(u32 dev, u32 inum)
   snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
   initlock(&ip->lock, ip->lockname+3, LOCKSTAT_FS);
   initcondvar(&ip->cv, ip->lockname);
-  if (ins->insert(mkpair(ip->dev, ip->inum), ip) < 0) {
+  if (ins->insert(make_pair(ip->dev, ip->inum), ip) < 0) {
     gc_delayed(ip);
     goto retry;
   }
@@ -399,7 +399,7 @@ iput(struct inode *ip)
       ip->gen += 1;
       iupdate(ip);
 
-      ins->remove(mkpair(ip->dev, ip->inum), &ip);
+      ins->remove(make_pair(ip->dev, ip->inum), &ip);
       gc_delayed(ip);
       icache_free[mycpu()->id].x++;
       return;
