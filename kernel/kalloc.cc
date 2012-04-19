@@ -87,7 +87,7 @@ initmem(u64 mbaddr)
   while (p < ep) {
     mbmem = (Mbmem *)(p+4);
     p += 4 + *(u32*)p;
-    if (mbmem->type == 1) {
+    if (mbmem->type == 1 && mbmem->base >= 0x100000) {
       membytes += mbmem->length;
       mem[nmem] = *mbmem;
       nmem++;
