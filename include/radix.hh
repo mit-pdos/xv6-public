@@ -46,6 +46,12 @@ class radix_node;
  * Once a pointer is dead, it stays dead until the containing
  * radix_node is deallocated. Dead pointers do not own references.
  *
+ * For now we do not implement the dead state. It is only necessary
+ * when collapsing an already-expanded node. It's unclear this
+ * optimization is very useful as it requires RCU-freeing radix_nodes,
+ * which makes them just over a power of 2 and inefficient to
+ * allocate.
+ *
  * Races:
  *
  * - If a leaf to be locked (or pushed down) gets pushed down, lock
@@ -62,8 +68,8 @@ class radix_node;
 enum entry_state {
   entry_unlocked = 0,
   entry_locked = 1,
-  entry_dead = 2,
-  entry_node = 3,
+//  entry_dead = 2,
+  entry_node = 2,
 
   entry_mask = 3
 };
@@ -155,13 +161,10 @@ class radix_elem : public rcu_freed {
   void incref(u64 delta = 1) { ref_ += delta; }
 };
 
-struct radix_node : public rcu_freed {
+struct radix_node {
   radix_ptr child[1 << bits_per_level];
-  radix_node() : rcu_freed("radix_node") {
-  }
+  radix_node() { }
   ~radix_node();
-
-  virtual void do_gc() { delete this; }
 
   NEW_DELETE_OPS(radix_node)
 };

@@ -27,7 +27,7 @@ level_size(u32 level)
 static radix_entry
 push_down(radix_entry cur, radix_ptr *ptr)
 {
-  while (cur.state() != entry_dead && cur.state() != entry_node) {
+  while (cur.state() != entry_node) {
     // If we're locked, just spin and try again.
     if (cur.state() == entry_locked) {
       cur = ptr->load();
@@ -63,34 +63,29 @@ push_down(radix_entry cur, radix_ptr *ptr)
         elem->decref(1<<bits_per_level);
       }
 
-      new_rn->do_gc();
+      delete new_rn;
     }
   }
   return cur;
 }
 
-// Returns the next node to be processed, whether or not it falls in
-// the range. Success is to return cur_start + cur_size. Otherwise we
-// stopped early and bubble up the error.
+// Runs CB of a set of leaves whose disjoint union is the range
+// [start, end)
 template <class CB>
-u64
+void
 update_range(radix_entry cur, radix_ptr *ptr, CB cb,
              u64 cur_start, u64 cur_end,
              u64 start, u64 end, u32 level = radix_levels)
 {
   assert(level_size(level) == cur_end - cur_start);
-  // If ranges are disjoint, do nothing. We manage to process everyone
-  // for free.
+  // If ranges are disjoint, do nothing.
   if (cur_start >= end || start >= cur_end)
-    return cur_end;
+    return;
 
   // If our range is not strictly contained in the target, ensure we
   // are at a node.
   if (start > cur_start || end < cur_end) {
     cur = push_down(cur, ptr);
-    // Failed. Next time resume at cur_start.
-    if (cur.state() == entry_dead)
-      return cur_start;
   }
 
   if (cur.is_node()) {
@@ -104,18 +99,15 @@ update_range(radix_entry cur, radix_ptr *ptr, CB cb,
     for (; (i < (1<<bits_per_level)) && (child_start < cur_end);
          i++, child_start += child_size) {
       radix_ptr *child = &cur.node()->child[i];
-      u64 ret = update_range(child->load(), child, cb,
-                             child_start, child_start + child_size,
-                             start, end, level - 1);
-      if (ret != child_start + child_size) return ret;
+      update_range(child->load(), child, cb,
+                   child_start, child_start + child_size,
+                   start, end, level - 1);
     }
-    return cur_end;
   } else {
     // If we're here, the target range must completely contain this
     // element.
     assert(start <= cur_start && cur_end <= end);
-    // Callback returns how far it processed.
-    return cb(cur, ptr, cur_start, cur_end, level);
+    cb(cur, ptr, cur_start, cur_end, level);
   }
 }
 
@@ -124,10 +116,8 @@ radix_entry::release()
 {
   if (is_null()) return;
   if (is_node()) {
-    node()->do_gc();
-  } else if (state() != entry_dead) {
-    // Only decref live pointers. Dead ones are part of pages which
-    // were RCU-freed and no longer own references.
+    delete node();
+  } else {
     elem()->decref();
   }
 }
@@ -169,8 +159,8 @@ struct entry_locker {
   u64 end_;
 
   entry_locker(u64 start, u64 end) : start_(start), end_(end) { }
-  u64 operator()(radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) const {
-    while (cur.state() != entry_dead && cur.state() != entry_node) {
+  void operator()(radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) const {
+    while (cur.state() != entry_node) {
       // Locked -> spin and try again.
       if (cur.state() == entry_locked) {
         cur = ptr->load();
@@ -183,30 +173,24 @@ struct entry_locker {
         break;
       }
     }
-    // Someone deleted this leaf. Abort this iteration.
-    if (cur.state() == entry_dead)
-      return cur_start;
     // Someone pushed down. Recurse some more.
-    if (cur.state() == entry_node)
-      return update_range(cur, ptr, *this, cur_start, cur_end, start_, end_, level-1);
-    // We managed to lock!
-    assert(cur.state() == entry_locked);
-    return cur_end;
+    if (cur.state() == entry_node) {
+      update_range(cur, ptr, *this, cur_start, cur_end, start_, end_, level-1);
+    } else {
+      // We managed to lock!
+      assert(cur.state() == entry_locked);
+    }
   }
 };
 
 radix_range::radix_range(radix *r, u64 start, u64 size)
   : r_(r), start_(start), size_(size)
 {
-  u64 next_start = start_;
   u64 end = start_ + size_;
-  // Lock the range from left to right. If we hid a dead element re-load the root.
-  while (next_start < end) {
-    const entry_locker& cb = entry_locker(next_start, end);
-    next_start = update_range(r_->root_.load(), &r_->root_, cb,
-                              0, 1L << key_bits, next_start, end);
-    assert(next_start >= start_);
-  }
+  // Lock the range from left to right.
+  const entry_locker& cb = entry_locker(start_, end);
+  update_range(r_->root_.load(), &r_->root_, cb,
+               0, 1L << key_bits, start_, end);
 }
 
 radix_range::~radix_range()
@@ -214,16 +198,12 @@ radix_range::~radix_range()
   if (!r_)
     return;
 
-  u64 ret = update_range(r_->root_.load(), &r_->root_, [](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) -> u64 {
+  update_range(r_->root_.load(), &r_->root_, [](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) {
       do {
         // It had better still be locked.
         assert(cur.state() == entry_locked);
       } while (!ptr->compare_exchange_weak(cur, cur.with_state(entry_unlocked)));
-      return cur_end;
     }, 0, 1L << key_bits, start_, start_ + size_);
-  // Impossible to hit entry_dead. We own the lock.
-  if (ret != 1L << key_bits)
-    panic("~radix_range");
 }
 
 void
@@ -236,7 +216,7 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
   assert(start >= start_);
   assert(start + size <= start_ + size_);
 
-  u64 ret = update_range(r_->root_.load(), &r_->root_, [val](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) -> u64 {
+  update_range(r_->root_.load(), &r_->root_, [val](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) {
       dprintf(" -> [%lx, %lx); size = %lx\n", cur_start, cur_end, cur_end - cur_start);
       do {
         assert(cur.state() == entry_locked);
@@ -245,14 +225,7 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
         val->incref();
       if (!cur.is_null())
         cur.elem()->decref();
-      return cur_end;
     }, 0, 1L << key_bits, start, start + size);
-  // Impossible to hit entry_dead. We own the lock.
-  if (ret != 1L << key_bits)
-    panic("radix_range::replace");
-
-  // TODO: If we can, collapse some intermediate nodes, RCU-freeing
-  // them.
 }
 
 radix_iterator::radix_iterator(const radix* r, u64 k)
