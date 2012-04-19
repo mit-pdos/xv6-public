@@ -69,8 +69,11 @@ push_down(radix_entry cur, radix_ptr *ptr)
   return cur;
 }
 
-// Runs CB of a set of leaves whose disjoint union is the range
-// [start, end)
+// Runs |cb| of a set of leaves whose disjoint union is the range
+// [start, end). Callback returns the last known state of the
+// radix_ptr. It is assumed |cb| does not convert the leaf into a
+// node. If |cb| returns an entry_node, we recurse into the node and
+// call |cb| on the new subtree.
 template <class CB>
 void
 update_range(radix_entry cur, radix_ptr *ptr, CB cb,
@@ -88,6 +91,15 @@ update_range(radix_entry cur, radix_ptr *ptr, CB cb,
     cur = push_down(cur, ptr);
   }
 
+  if (cur.is_elem()) {
+    // If we're here, the target range must completely contain this
+    // element.
+    assert(start <= cur_start && cur_end <= end);
+    dprintf(" -> [%lx, %lx); size = %lx\n", cur_start, cur_end, cur_end - cur_start);
+    cur = cb(cur, ptr);
+  }
+
+  // Recurse if we became a node or we already one.
   if (cur.is_node()) {
     // Find the place to start.
     if (start < cur_start)
@@ -103,11 +115,6 @@ update_range(radix_entry cur, radix_ptr *ptr, CB cb,
                    child_start, child_start + child_size,
                    start, end, level - 1);
     }
-  } else {
-    // If we're here, the target range must completely contain this
-    // element.
-    assert(start <= cur_start && cur_end <= end);
-    cb(cur, ptr, cur_start, cur_end, level);
   }
 }
 
@@ -152,45 +159,30 @@ radix::search_lock(u64 start, u64 size)
   return radix_range(this, start >> shift_, size >> shift_);
 }
 
-// This should be a lambda, but it's awkward for a lambda to call
-// itself.
-struct entry_locker {
-  u64 start_;
-  u64 end_;
-
-  entry_locker(u64 start, u64 end) : start_(start), end_(end) { }
-  void operator()(radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) const {
-    while (cur.state() != entry_node) {
-      // Locked -> spin and try again.
-      if (cur.state() == entry_locked) {
-        cur = ptr->load();
-        continue;
-      }
-      // Otherwise it's unlocked. Try to load it.
-      if (ptr->compare_exchange_weak(cur, cur.with_state(entry_locked))) {
-        // Success. Remember the current value and break out.
-        cur = cur.with_state(entry_locked);
-        break;
-      }
-    }
-    // Someone pushed down. Recurse some more.
-    if (cur.state() == entry_node) {
-      update_range(cur, ptr, *this, cur_start, cur_end, start_, end_, level-1);
-    } else {
-      // We managed to lock!
-      assert(cur.state() == entry_locked);
-    }
-  }
-};
-
 radix_range::radix_range(radix *r, u64 start, u64 size)
   : r_(r), start_(start), size_(size)
 {
   u64 end = start_ + size_;
   // Lock the range from left to right.
-  const entry_locker& cb = entry_locker(start_, end);
-  update_range(r_->root_.load(), &r_->root_, cb,
-               0, 1L << key_bits, start_, end);
+  dprintf("%p: lock [%lx, %lx)\n", r_, start, start + size);
+  update_range(r_->root_.load(), &r_->root_, [](radix_entry cur, radix_ptr *ptr) -> radix_entry {
+      while (cur.state() != entry_node) {
+        // Locked -> spin and try again.
+        if (cur.state() == entry_locked) {
+          cur = ptr->load();
+          continue;
+        }
+        // Otherwise it's unlocked. Try to load it.
+        if (ptr->compare_exchange_weak(cur, cur.with_state(entry_locked))) {
+          // Success. Remember the current value and break out.
+          cur = cur.with_state(entry_locked);
+          break;
+        }
+      }
+      // We either managed a lock or someone turned us into a node.
+      assert(cur.state() == entry_node || cur.state() == entry_locked);
+      return cur;
+    }, 0, 1L << key_bits, start_, end);
 }
 
 radix_range::~radix_range()
@@ -198,11 +190,14 @@ radix_range::~radix_range()
   if (!r_)
     return;
 
-  update_range(r_->root_.load(), &r_->root_, [](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) {
+  dprintf("%p: unlock [%lx, %lx)\n", r_, start_, start_ + size_);
+  update_range(r_->root_.load(), &r_->root_, [](radix_entry cur, radix_ptr *ptr) -> radix_entry {
       do {
         // It had better still be locked.
         assert(cur.state() == entry_locked);
       } while (!ptr->compare_exchange_weak(cur, cur.with_state(entry_unlocked)));
+      // Not a node, but let's return what it wants anyway.
+      return cur.with_state(entry_unlocked);
     }, 0, 1L << key_bits, start_, start_ + size_);
 }
 
@@ -211,20 +206,22 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
 {
   start = start >> r_->shift_;
   size = size >> r_->shift_;
-  dprintf("%p: replace: [%lx, %lx) with %p\n", r_, start, start + size, val);
 
   assert(start >= start_);
   assert(start + size <= start_ + size_);
 
-  update_range(r_->root_.load(), &r_->root_, [val](radix_entry cur, radix_ptr *ptr, u64 cur_start, u64 cur_end, u32 level) {
-      dprintf(" -> [%lx, %lx); size = %lx\n", cur_start, cur_end, cur_end - cur_start);
+  dprintf("%p: replace: [%lx, %lx) with %p\n", r_, start, start + size, val);
+  update_range(r_->root_.load(), &r_->root_, [val](radix_entry cur, radix_ptr *ptr) -> radix_entry {
       do {
         assert(cur.state() == entry_locked);
       } while (!ptr->compare_exchange_weak(cur, radix_entry(val, entry_locked)));
       if (val)
         val->incref();
+      // cur is now the old value.
       if (!cur.is_null())
         cur.elem()->decref();
+      // Not a node, but let's return what it wants anyway.
+      return radix_entry(val, entry_locked);
     }, 0, 1L << key_bits, start, start + size);
 }
 
