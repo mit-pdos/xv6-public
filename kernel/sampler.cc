@@ -11,6 +11,7 @@
 #include "cpu.hh"
 #include "sampler.h"
 #include "major.h"
+#include "apic.hh"
 
 #define LOGHEADER_SZ (sizeof(struct logheader) + \
                       sizeof(((struct logheader*)0)->cpu[0])*NCPU)

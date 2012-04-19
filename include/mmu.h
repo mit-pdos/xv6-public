@@ -121,10 +121,10 @@ struct taskstate
 } __attribute__ ((packed, aligned(16)));
 
 typedef struct hwid { 
-  u8 num;
+  u32 num;
 } hwid_t;
 
-#define HWID(xnum) (struct hwid){ num: (u8)(xnum) }
+#define HWID(xnum) (struct hwid){ num: (u32)(xnum) }
 #endif
 
 #define INT_P      (1<<7)      /* interrupt descriptor present */

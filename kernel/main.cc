@@ -8,6 +8,7 @@
 #include "hwvm.hh"
 #include "condvar.h"
 #include "proc.hh"
+#include "apic.hh"
 
 void initpic(void);
 void initioapic(void);
@@ -16,7 +17,6 @@ void initcga(void);
 void initconsole(void);
 void initpg(void);
 void initmp(void);
-void initlapic(void);
 void inittls(void);
 void initnmi(void);
 void inittrap(void);

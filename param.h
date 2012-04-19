@@ -39,7 +39,13 @@
 #define MTRACE        0
 #define PERFSIZE      (512<<20ull)
 #elif defined(HW_tom)
+#define DEBUG         0
 #define NCPU          48  // maximum number of CPUs
+#define MTRACE        0
+#define PERFSIZE      (1<<20ull)
+#elif defined(HW_ben)
+#define DEBUG         0
+#define NCPU          80  // maximum number of CPUs
 #define MTRACE        0
 #define PERFSIZE      (1<<20ull)
 #elif defined(HW_user)

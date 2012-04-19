@@ -141,13 +141,6 @@ void            kmemprint(void);
 // kbd.c
 void            kbdintr(void);
 
-// lapic.c
-void            lapicstartap(hwid_t, u32 addr);
-void            lapiceoi(void);
-void            lapic_tlbflush(hwid_t);
-void            lapic_sampconf(hwid_t);
-void            lapicpc(char mask);
-
 // main.c
 void            halt(void) __attribute__((noreturn));
 

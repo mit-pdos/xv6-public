@@ -11,6 +11,7 @@
 #include "kmtrace.hh"
 #include "bits.hh"
 #include "kalloc.hh"
+#include "apic.hh"
 
 extern "C" void __uaccess_end(void);
 
