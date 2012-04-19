@@ -37,6 +37,8 @@ push_down(radix_entry cur, radix_ptr *ptr)
     // Make a new node.
     assert(cur.state() == entry_unlocked);
     radix_elem *elem = cur.elem();
+    // FIXME: This might throw. Might need to unlock the things you've
+    // already hit.
     radix_node *new_rn = new radix_node();
     if (elem != nullptr) {
       for (int i = 0; i < (1<<bits_per_level); i++) {
