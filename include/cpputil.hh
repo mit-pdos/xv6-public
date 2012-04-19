@@ -3,13 +3,19 @@
 template<class A, class B>
 class pair {
  public:
-  A _a;
-  B _b;
+  typedef A first_type;
+  typedef B second_type;
 
-  pair(const A &a, const B &b) : _a(a), _b(b) {}
+  A first;
+  B second;
+
+  pair(const pair&) = default;
+  pair(pair&&) = default;
+  constexpr pair() : first(), second() {}
+  pair(const A &a, const B &b) : first(a), second(b) {}
 
   bool operator==(const pair<A, B> &other) {
-    return _a == other._a && _b == other._b;
+    return first == other.first && second == other.second;
   }
 };
 
@@ -29,7 +35,7 @@ class strbuf {
 
 template<class A, class B>
 pair<A, B>
-mkpair(const A &a, const B &b)
+make_pair(const A &a, const B &b)
 {
   return pair<A, B>(a, b);
 }
