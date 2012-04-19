@@ -78,9 +78,9 @@ update_range(radix_entry cur, radix_ptr *ptr, CB cb,
              u64 start, u64 end, u32 level = radix_levels)
 {
   assert(level_size(level) == cur_end - cur_start);
-  // If ranges are disjoint, do nothing.
-  if (cur_start >= end || start >= cur_end)
-    return;
+  // Assert that our ranges intersect; if this fails, we got the loop
+  // below wrong.
+  assert(cur_start < end && start < cur_end)
 
   // If our range is not strictly contained in the target, ensure we
   // are at a node.
@@ -96,7 +96,7 @@ update_range(radix_entry cur, radix_ptr *ptr, CB cb,
     int i = index(start, level - 1);
     u64 child_size = (cur_end - cur_start) >> bits_per_level;
     u64 child_start = cur_start + i * child_size;
-    for (; (i < (1<<bits_per_level)) && (child_start < cur_end);
+    for (; (i < (1<<bits_per_level)) && (child_start < end);
          i++, child_start += child_size) {
       radix_ptr *child = &cur.node()->child[i];
       update_range(child->load(), child, cb,
