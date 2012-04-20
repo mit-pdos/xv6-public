@@ -321,5 +321,5 @@ kfree(void *v)
 void
 ksfree(int slab, void *v)
 {
-  kfree_pool(slabmem[slab], (char*) v);
+  kfree_pool(&slabmem[slab][mycpuid()], (char*) v);
 }
