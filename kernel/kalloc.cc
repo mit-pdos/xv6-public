@@ -228,7 +228,7 @@ kalloc(const char *name)
 void *
 ksalloc(int slab)
 {
-  return kalloc_pool(slabmem[slab], slabmem[slab]->name);
+  return kalloc_pool(slabmem[slab], slabmem[slab][mycpuid()].name);
 }
 
 void
