@@ -4,31 +4,38 @@ extern int mycpuid(void);
 
 template <typename T>
 struct percpu {
-  const T* operator->() const {
+  percpu() = default;
+
+  percpu(const percpu &o) = delete;
+  percpu(percpu &&o) = delete;
+  percpu &operator=(const percpu &o) = delete;
+
+  T* get() const {
     return cpu(mycpuid());
   }
 
-  T* operator->() {
+  T* operator->() const {
     return cpu(mycpuid());
   }
 
-  T& operator*() {
+  T& operator*() const {
     return *cpu(mycpuid());
   }
 
-  T& operator[](int id) { 
+  T& operator[](int id) const {
     return *cpu(id);
   }
 
-  const T& operator[](int id) const { 
-    return *cpu(id);
-  }
-
-  T* cpu(int id) {
+private:
+  T* cpu(int id) const {
     return &pad_[id].v_;
   }
 
-  struct {
+  // percpu acts like a T* const, but since it's actually storing the
+  // data directly, we have to strip the const-ness away from the data
+  // being stored.  This lets const members return non-const pointers
+  // to this data, just like a T* const.
+  mutable struct {
     T v_ __mpalign__;
     __padout__;
   } pad_[NCPU];
