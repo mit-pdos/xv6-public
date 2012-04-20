@@ -1,3 +1,5 @@
+// http://www.acpi.info/spec.htm
+
 #include "types.h"
 #include "amd64.h"
 #include "kernel.hh"
