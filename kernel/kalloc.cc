@@ -16,8 +16,8 @@
 static struct Mbmem mem[128];
 static u64 nmem;
 static u64 membytes;
-struct kmem kmems[NCPU];
-struct kmem slabmem[slab_type_max][NCPU];
+percpu<kmem> kmems;
+percpu<kmem> slabmem[slab_type_max];
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
@@ -170,7 +170,7 @@ kfree_pool(struct kmem *m, char *v)
 }
 
 static void
-kmemprint_pool(struct kmem *km)
+kmemprint_pool(const percpu<kmem> &km)
 {
   cprintf("pool %s: [ ", &km[0].name[1]);
   for (u32 i = 0; i < NCPU; i++)
@@ -191,7 +191,7 @@ kmemprint()
 
 
 static char*
-kalloc_pool(struct kmem *km, const char *name)
+kalloc_pool(const percpu<kmem> &km, const char *name)
 {
   struct run *r = 0;
   struct kmem *m;
@@ -228,7 +228,7 @@ kalloc(const char *name)
 void *
 ksalloc(int slab)
 {
-  return kalloc_pool(slabmem[slab], slabmem[slab][mycpuid()].name);
+  return kalloc_pool(slabmem[slab], slabmem[slab]->name);
 }
 
 void
@@ -321,5 +321,5 @@ kfree(void *v)
 void
 ksfree(int slab, void *v)
 {
-  kfree_pool(&slabmem[slab][mycpuid()], (char*) v);
+  kfree_pool(slabmem[slab].get(), (char*) v);
 }

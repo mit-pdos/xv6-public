@@ -1,4 +1,5 @@
 #include "atomic.hh"
+#include "percpu.hh"
 
 template<class T>
 struct vptr64 {
@@ -59,7 +60,7 @@ struct kmem {
 
   run* alloc(const char* name);
   void free(run* r);
-} __mpalign__;
+};
 
 enum {
   slab_stack,
@@ -70,5 +71,5 @@ enum {
   slab_type_max
 };
 
-extern struct kmem kmems[NCPU];
-extern struct kmem slabmem[slab_type_max][NCPU];
+extern percpu<kmem> kmems;
+extern percpu<kmem> slabmem[slab_type_max];
