@@ -39,7 +39,7 @@ push_down(radix_entry cur, radix_ptr *ptr)
     radix_elem *elem = cur.elem();
     // FIXME: This might throw. Might need to unlock the things you've
     // already hit.
-    radix_node *new_rn = new radix_node();
+    radix_node *new_rn = radix_node::create();
     if (elem != nullptr) {
       for (int i = 0; i < (1<<bits_per_level); i++) {
         new_rn->child[i].store(radix_entry(elem));
@@ -58,14 +58,20 @@ push_down(radix_entry cur, radix_ptr *ptr)
       // reallocating new_rn if elem doesn't change.
 
       // Avoid bouncing on the refcount 1<<bits_per_level times.
-      if (elem != nullptr) {
-        for (int i = 0; i < (1<<bits_per_level); i++) {
-          new_rn->child[i].store(radix_entry(nullptr));
-        }
+      if (elem != nullptr)
         elem->decref(1<<bits_per_level);
-      }
 
-      delete new_rn;
+      // XXX(austin) This happens for nearly 50% of radix_node
+      // allocations.  Is the compare exchange actually right?
+      if (elem == nullptr)
+        // We know the page is still zeroed
+        zfree(new_rn);
+      else
+        // We already did a batch decref above.  We could zero all of
+        // the entries and call the destructor (which will scan the
+        // node again).  Instead, we skip the whole thing and free
+        // directly.
+        kfree(new_rn);
     }
   }
   return cur;
@@ -131,11 +137,25 @@ radix_entry::release()
   }
 }
 
+radix_node*
+radix_node::create()
+{
+  static_assert(sizeof(radix_node) == PGSIZE,
+    "radix_node must be exactly one page");
+  return (radix_node*)zalloc("radix_node");
+}
+
 radix_node::~radix_node()
 {
   for (int i = 0; i < (1<<bits_per_level); i++) {
     child[i].load().release();
   }
+}
+
+void
+radix_node::operator delete(void *p)
+{
+  kfree(p);
 }
 
 radix::~radix()

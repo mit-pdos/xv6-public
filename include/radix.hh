@@ -163,10 +163,18 @@ class radix_elem : public rcu_freed {
 
 struct radix_node {
   radix_ptr child[1 << bits_per_level];
-  radix_node() { }
+  // We need to customize not only allocation but initialization, so
+  // radix_node has no constructors.  Instead, use create.
+  radix_node() = delete;
+  radix_node(const radix_node &o) = delete;
+  static radix_node *create();
   ~radix_node();
 
-  NEW_DELETE_OPS(radix_node)
+  // Since we use custom allocation for radix_node's, we must also
+  // custom delete them.  Note that callers may alternatively use
+  // zfree when freeing a radix_node that's known to be empty (for
+  // example, after failed optimistic concurrency).
+  static void operator delete(void *p);
 };
 
 // Assert we have enough spare bits for all flags.
@@ -196,7 +204,7 @@ struct radix {
   radix_ptr root_;
   u32 shift_;
 
-  radix(u32 shift) : root_(radix_entry(new radix_node())), shift_(shift) {
+  radix(u32 shift) : root_(radix_entry(radix_node::create())), shift_(shift) {
   }
   ~radix();
   radix_elem* search(u64 key);
