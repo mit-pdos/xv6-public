@@ -30,12 +30,14 @@ wq_size(void)
 int
 wq_push(work *w)
 {
+  assert(wq_);
   return wq_->push(w, mycpuid());
 }
 
 void
 wqcrit_trywork(void)
 {
+  assert(wqcrit_);
   while (wqcrit_->trywork(false))
     ;
 }
@@ -43,19 +45,22 @@ wqcrit_trywork(void)
 int
 wqcrit_push(work *w, int c)
 {
+  assert(wqcrit_);
   return wqcrit_->push(w, c);
 }
 
 int
 wq_trywork(void)
 {
+  assert(wq_ && wqcrit_);
   return wqcrit_->trywork(false) || wq_->trywork(true);
 }
 
 void
 wq_dump(void)
 {
-  return wq_->dump();
+  if (wq_)
+    return wq_->dump();
 }
 
 void
