@@ -12,7 +12,6 @@ extern "C" void zrun_nc(run*);
 static const bool prezero = true;
 
 struct zallocator {
-  run*   run;
   kmem   kmem;
   wframe frame;
 
