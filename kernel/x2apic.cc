@@ -26,6 +26,7 @@
 #define LINT1   0x836   // Local Vector Table 2 (LINT1)
 #define ERROR   0x837   // Local Vector Table 3 (ERROR)
   #define MASKED     0x00010000   // Interrupt masked
+  #define MT_EXTINT  0x00000500
   #define MT_NMI     0x00000400   // NMI message type
   #define MT_FIX     0x00000000   // Fixed message type
 #define TICR    0x838   // Timer Initial Count
@@ -36,6 +37,30 @@
 
 static u64 x2apichz;
 
+static int
+x2apicmaxlvt(void)
+{
+  unsigned int v;
+
+  v = readmsr(VER);
+  return (((v) >> 16) & 0xFFu);
+}
+
+void
+x2apiceoi(void)
+{
+  writemsr(EOI, 0);
+}
+
+static int
+x2apicwait(void)
+{
+  // Do nothing on x2apic
+  return 0;
+}
+
+// Code closely follows native_cpu_up, do_boot_cpu,
+// and wakeup_secondary_cpu_via_init in Linux v3.3
 void
 x2apicstartap(hwid_t id, u32 addr)
 {
@@ -51,36 +76,52 @@ x2apicstartap(hwid_t id, u32 addr)
   wrv[0] = 0;
   wrv[1] = addr >> 4;
 
+  // Be paranoid about clearing APIC errors
+  writemsr(ESR, 0);
+  readmsr(ESR);
+
+  unsigned long accept_status;
+  int maxlvt = x2apicmaxlvt();
+ 
+  if (maxlvt > 3)
+    writemsr(ESR, 0);
+  readmsr(ESR);
+
   // "Universal startup algorithm."
   // Send INIT (level-triggered) interrupt to reset other CPU.
 
-
+  // Asserting INIT
   writemsr(ICR, (((u64)id.num)<<32) | INIT | LEVEL | ASSERT);
-
-  //xapicwait();
   microdelay(10000);
+  // Deasserting INIT
   writemsr(ICR, (((u64)id.num)<<32) | INIT | LEVEL);
-  //xapicw(ICRLO, hwid.num |INIT | LEVEL);
-  //xapicwait();
-  microdelay(10000);    // should be 10ms, but too slow in Bochs!
-  
+  x2apicwait();
+
   // Send startup IPI (twice!) to enter bootstrap code.
   // Regular hardware is supposed to only accept a STARTUP
   // when it is in the halted state due to an INIT.  So the second
   // should be ignored, but it is part of the official Intel algorithm.
   // Bochs complains about the second one.  Too bad for Bochs.
   for(i = 0; i < 2; i++){
-    //xapicw(ICRHI, hwid.num<<24);
-    //xapicw(ICRLO, STARTUP | (addr>>12));
-    writemsr(ICR, (((u64)id.num)<<32) | STARTUP | (addr>>12));
-    microdelay(200);
-  }
-}
+    if (maxlvt > 3)
+      writemsr(ESR, 0);
+    readmsr(ESR);
 
-void
-x2apiceoi(void)
-{
-  writemsr(EOI, 0);
+    // Kick the target chip
+    writemsr(ICR, (((u64)id.num)<<32) | STARTUP | (addr>>12));
+    // Linux gives 300 usecs to accept the IPI..
+    microdelay(300);
+    x2apicwait();
+    // ..then it gives some more time
+    microdelay(200);
+
+    if (maxlvt > 3)
+      writemsr(ESR, 0);
+
+    accept_status = (readmsr(ESR) & 0xEF);
+    if (accept_status)
+      panic("x2apicstartap: accept status %lx", accept_status);
+  }
 }
 
 void
@@ -128,7 +169,7 @@ initx2apic(void)
 
   count = (QUANTUM*x2apichz) / 1000;
   if (count > 0xffffffff)
-    panic("initxapic: QUANTUM too large");
+    panic("initx2apic: QUANTUM too large");
 
   // The timer repeatedly counts down at bus frequency
   // from xapic[TICR] and then issues an interrupt.  
@@ -140,8 +181,7 @@ initx2apic(void)
   writemsr(LINT0, MASKED);
   writemsr(LINT1, MASKED);
 
-  // Disable performance counter overflow interrupts
-  // on machines that provide that interrupt entry.
+  // Enable performance counter overflow interrupts for sampler.cc
   if (((readmsr(VER)>>16) & 0xFF) >= 4)
     x2apicpc(0);
 
@@ -157,10 +197,6 @@ initx2apic(void)
 
   // Send an Init Level De-Assert to synchronise arbitration ID's.
   writemsr(ICR, BCAST | INIT | LEVEL);
-#if 0  // XXX(sbw) now need to poll anymore
-  while (readmsr(ICR) & DELIVS)
-    ;
-#endif
 
   // Enable interrupts on the APIC (but not on the processor).
   writemsr(TPR, 0);
