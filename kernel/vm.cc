@@ -172,6 +172,8 @@ vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn) :
 #endif
     vma_start(start), vma_end(end), va_type(vtype), n(vmn)
 {
+  assert(PGOFFSET(start) == 0);
+  assert(PGOFFSET(end) == 0);
   if (n)
     n->incref();
 }
