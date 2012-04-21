@@ -62,6 +62,7 @@ u64             nsectime(void);
 
 // console.c
 void            cprintf(const char*, ...) __attribute__((format(printf, 1, 2)));
+void            __cprintf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void            vcprintf(const char *fmt, va_list ap);
 void            panic(const char*, ...) 
                   __noret__ __attribute__((format(printf, 1, 2)));
@@ -187,6 +188,7 @@ int             sampintr(struct trapframe*);
 void            sampdump(void);
 void            sampconf(void);
 void            sampidle(bool);
+void            wdpoke(void);
 
 // sched.cc
 void            addrun(struct proc *);

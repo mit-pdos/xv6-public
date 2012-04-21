@@ -96,7 +96,7 @@ snprintf(char *buf, u32 n, const char *fmt, ...)
   va_end(ap);
 }
 
-static void
+void
 __cprintf(const char *fmt, ...)
 {
   va_list ap;
@@ -156,7 +156,7 @@ printtrace(u64 rbp)
 
   getcallerpcs((void*)rbp, pc, NELEM(pc));
   for (int i = 0; i < NELEM(pc) && pc[i] != 0; i++)
-    __cprintf("  %p\n", pc[i]);
+    __cprintf("  %016lx\n", pc[i]);
 }
 
 void __noret__
@@ -175,8 +175,8 @@ kerneltrap(struct trapframe *tf)
     pid = myproc()->pid;
     kstack = myproc()->kstack;
   }
-  __cprintf("kernel trap %u cpu %u\n"
-          "  tf: rip %p rsp %p rbp %p cr2 %p cs %p\n"
+  __cprintf("kernel trap %lu cpu %u\n"
+          "  tf: rip %016lx rsp %016lx rbp %016lx cr2 %016lx cs %x\n"
           "  proc: name %s pid %u kstack %p\n",
           tf->trapno, mycpu()->id, 
           tf->rip, tf->rsp, tf->rbp, rcr2(), tf->cs,

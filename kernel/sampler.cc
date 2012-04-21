@@ -12,6 +12,7 @@
 #include "sampler.h"
 #include "major.h"
 #include "apic.hh"
+#include "percpu.hh"
 
 #define LOGHEADER_SZ (sizeof(struct logheader) + \
                       sizeof(((struct logheader*)0)->cpu[0])*NCPU)
@@ -19,6 +20,25 @@
 static volatile u64 selector;
 static volatile u64 period;
 
+static const u64 wd_period = 24000000000ul;
+#if defined(HW_josmp)
+static const u64 wd_selector =
+    0UL << 32 |
+    1 << 24 | 
+    1 << 22 | 
+    1 << 20 |
+    1 << 17 | 
+    1 << 16 | 
+    0x00 << 8 | 
+    0x76;
+#else
+static const u64 wd_selector = 0;
+#endif
+static percpu<bool> wd_flag;
+
+
+// XXX(sbw) max period should be (1 << (cntval_bits - 1)) - 1
+// XXX(sbw) should mask out higher order bits from period (e.g. the top 16 on amd)
 struct pmu {
   void (*config)(u64 ctr, u64 sel, u64 val);  
   u64 cntval_bits;
@@ -114,9 +134,33 @@ samplog(struct trapframe *tf)
   return 1;
 }
 
+static void
+wdcheck(struct trapframe* tf)
+{
+  if (! *wd_flag) {
+    // uartputc guarantees some output
+    uartputc('W');
+    uartputc('D');
+    uartputc('\n');
+    __cprintf("cpu%u: wdcheck\n", myid());
+    __cprintf("  %016lx\n", tf->rip);
+    printtrace(tf->rbp);
+  }
+  *wd_flag = false;
+}
+
+void
+wdpoke(void)
+{
+  *wd_flag = true;
+}
+
 int
 sampintr(struct trapframe *tf)
 {
+  int r = 0;
+  u64 cnt;
+
   // Acquire locks that we only acquire during NMI.
   // NMIs are disabled until the next iret.
 
@@ -124,14 +168,22 @@ sampintr(struct trapframe *tf)
   lapicpc(0);
   // Only level-triggered interrupts require an lapiceoi.
 
-  u64 cnt = rdpmc(0);
-  if (cnt & (1ULL << (pmu.cntval_bits - 1)))
-    return 0;
+  cnt = rdpmc(0);
+  if ((cnt & (1ULL << (pmu.cntval_bits - 1))) == 0) {
+    // We've overflowed
+    r = 1;
+    if (samplog(tf))
+      pmu.config(0, selector, -period);
+  }
 
-  if (samplog(tf))
-    pmu.config(0, selector, -period);
+  cnt = rdpmc(1);
+  if ((cnt & (1ULL << (pmu.cntval_bits - 1))) == 0) {
+    r = 1;
+    wdcheck(tf);
+    pmu.config(1, wd_selector, -wd_period);
+  }
 
-  return 1;
+  return r;
 }
 
 static int
@@ -244,6 +296,17 @@ sampwrite(struct inode *ip, const char *buf, u32 off, u32 n)
   }
 
   return n;
+}
+
+void
+initwd(void)
+{
+  wdpoke();
+  pushcli();
+#if defined(HW_josmp)
+  pmu.config(1, wd_selector, -wd_period);
+#endif  
+  popcli();
 }
 
 void
