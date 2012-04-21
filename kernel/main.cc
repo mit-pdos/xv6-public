@@ -43,6 +43,8 @@ void initfutex(void);
 void initcmdline(void);
 void idleloop(void);
 
+#define IO_RTC  0x70
+
 static volatile int bstate;
 
 void
@@ -56,6 +58,34 @@ mpboot(void)
   initnmi();
   bstate = 1;
   idleloop();
+}
+
+static void
+warmreset(u32 addr)
+{
+  volatile u16 *wrv;
+
+  // "The BSP must initialize CMOS shutdown code to 0AH
+  // and the warm reset vector (DWORD based at 40:67) to point at
+  // the AP startup code prior to the [universal startup algorithm]."
+  outb(IO_RTC, 0xF);  // offset 0xF is shutdown code
+  outb(IO_RTC+1, 0x0A);
+  wrv = (u16*)(0x40<<4 | 0x67);  // Warm reset vector
+  wrv[0] = 0;
+  wrv[1] = addr >> 4;
+}
+
+static void
+rstrreset(void)
+{
+  volatile u16 *wrv;
+  
+  // Paranoid: set warm reset code and vector back to defaults
+  outb(IO_RTC, 0xF);
+  outb(IO_RTC+1, 0);
+  wrv = (u16*)(0x40<<4 | 0x67);
+  wrv[0] = 0;
+  wrv[1] = 0;
 }
 
 static void
@@ -78,6 +108,8 @@ bootothers(void)
     if(c == cpus+myid())  // We've started already.
       continue;
 
+    warmreset(v2p(code));
+
     // Tell bootother.S what stack to use and the address of apstart;
     // it expects to find these two addresses stored just before
     // its first instruction.
@@ -92,6 +124,7 @@ bootothers(void)
     // Wait for cpu to finish mpmain()
     while(bstate == 0)
       ;
+    rstrreset();
   }
 }
 

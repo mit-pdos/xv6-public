@@ -33,8 +33,6 @@
 #define TCCR    0x839   // Timer Current Count
 #define TDCR    0x83e   // Timer Divide Configuration
 
-#define IO_RTC  0x70
-
 static u64 x2apichz;
 
 static int
@@ -65,16 +63,6 @@ void
 x2apicstartap(hwid_t id, u32 addr)
 {
   int i;
-  volatile u16 *wrv;
-
-  // "The BSP must initialize CMOS shutdown code to 0AH
-  // and the warm reset vector (DWORD based at 40:67) to point at
-  // the AP startup code prior to the [universal startup algorithm]."
-  outb(IO_RTC, 0xF);  // offset 0xF is shutdown code
-  outb(IO_RTC+1, 0x0A);
-  wrv = (u16*)(0x40<<4 | 0x67);  // Warm reset vector
-  wrv[0] = 0;
-  wrv[1] = addr >> 4;
 
   // Be paranoid about clearing APIC errors
   writemsr(ESR, 0);

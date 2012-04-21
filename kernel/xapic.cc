@@ -187,16 +187,6 @@ void
 xapicstartap(hwid hwid, u32 addr)
 {
   int i;
-  volatile u16 *wrv;
-
-  // "The BSP must initialize CMOS shutdown code to 0AH
-  // and the warm reset vector (DWORD based at 40:67) to point at
-  // the AP startup code prior to the [universal startup algorithm]."
-  outb(IO_RTC, 0xF);  // offset 0xF is shutdown code
-  outb(IO_RTC+1, 0x0A);
-  wrv = (u16*)(0x40<<4 | 0x67);  // Warm reset vector
-  wrv[0] = 0;
-  wrv[1] = addr >> 4;
 
   // "Universal startup algorithm."
   // Send INIT (level-triggered) interrupt to reset other CPU.
