@@ -464,7 +464,8 @@ vmap::remove(uptr vma_start, uptr len)
     for (auto r: span) {
       vma *rvma = (vma*) r;
       if (rvma->vma_start < vma_start || rvma->vma_end > vma_end) {
-        cprintf("vmap::remove: partial unmap not supported\n");
+        cprintf("vmap::remove: partial unmap not supported; unmapping [%#lx,%#lx) from [%#lx,%#lx)\n",
+                vma_start, vma_start+len, rvma->vma_start, rvma->vma_end);
         return -1;
       }
     }
