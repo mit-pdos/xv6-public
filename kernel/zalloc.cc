@@ -17,7 +17,7 @@ struct zallocator {
 
   void  init(int);
   char* alloc(const char*);
-  void  free(char*);
+  void  free(void*);
   void  tryrefill();
 };
 percpu<zallocator> z_;
@@ -88,11 +88,11 @@ zallocator::alloc(const char* name)
 }
 
 void
-zallocator::free(char* p)
+zallocator::free(void* p)
 {
   if (0) 
     for (int i = 0; i < 4096; i++)
-      assert(p[i] == 0);
+      assert(((char*)p)[i] == 0);
 
   kmem.free((struct run*)p);
 }
@@ -104,7 +104,7 @@ zalloc(const char* name)
 }
 
 void
-zfree(char* p)
+zfree(void* p)
 {
   z_->free(p);
 }

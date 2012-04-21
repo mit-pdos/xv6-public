@@ -248,7 +248,7 @@ void*           pagelookup(struct vmap*, uptr);
 
 // zalloc.cc
 char*           zalloc(const char* name);
-void            zfree(char* p);
+void            zfree(void* p);
 
 // other exported/imported functions
 void cmain(u64 mbmagic, u64 mbaddr);
