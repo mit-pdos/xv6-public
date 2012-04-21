@@ -82,6 +82,9 @@ zallocator::alloc(const char* name)
   } else {
     // Zero the run header used by kmem
     memset(p, 0, sizeof(struct run));
+    if (0)
+      for (int i = 0; i < PGSIZE; i++)
+        assert(p[i] == 0);
   }
   tryrefill();
   return p;
