@@ -29,8 +29,15 @@
 .code16           
 .globl start
 start:
-        cli
-        cld
+	cli
+	wbinvd
+	mov $0, %ax
+	mov %ax, %ds
+	cld
+
+	# Announce we made it this far.
+	# Useful for debugging in bootothers.
+	movl $0x0a55face, start - 64
         
 	lgdt gdtdesc
 	movl %cr0, %eax

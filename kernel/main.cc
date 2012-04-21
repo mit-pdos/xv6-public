@@ -84,6 +84,8 @@ bootothers(void)
     stack = (char*) ksalloc(slab_stack);
     *(u32*)(code-4) = (u32)v2p(&apstart);
     *(u64*)(code-12) = (u64)stack + KSTACKSIZE;
+    // bootother.S sets this to 0x0a55face early on
+    *(u32*)(code-64) = 0;
 
     bstate = 0;
     lapicstartap(c->hwid, v2p(code));
