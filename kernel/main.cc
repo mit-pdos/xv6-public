@@ -116,7 +116,8 @@ cmain(u64 mbmagic, u64 mbaddr)
   initlapic();
   initcmdline();
   initkalloc(mbaddr);
-  initz();
+  initwq();        // (after kalloc)
+  initz();         // (after wq)
   initproc();      // process table
   initsched();     // scheduler run queues
   initidle();
@@ -125,7 +126,6 @@ cmain(u64 mbmagic, u64 mbaddr)
   initinode();     // inode cache
   initdisk();      // disk
   initconsole();
-  initwq();
   initfutex();
   initsamp();
   initlockstat();

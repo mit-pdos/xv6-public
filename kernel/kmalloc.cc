@@ -37,7 +37,7 @@ kminit(void)
 static int
 morecore(int c, int b)
 {
-  char *p = kalloc(nullptr);
+  char *p = kalloc("kmalloc");
   if(p == 0)
     return -1;
 

@@ -12,13 +12,12 @@ extern "C" void zrun_nc(run*);
 static const bool prezero = true;
 
 struct zallocator {
-  run*   run;
   kmem   kmem;
   wframe frame;
 
   void  init(int);
   char* alloc(const char*);
-  void  free(char*);
+  void  free(void*);
   void  tryrefill();
 };
 percpu<zallocator> z_;
@@ -83,29 +82,35 @@ zallocator::alloc(const char* name)
   } else {
     // Zero the run header used by kmem
     memset(p, 0, sizeof(struct run));
+    if (0)
+      for (int i = 0; i < PGSIZE; i++)
+        assert(p[i] == 0);
   }
   tryrefill();
   return p;
 }
 
 void
-zallocator::free(char* p)
+zallocator::free(void* p)
 {
   if (0) 
     for (int i = 0; i < 4096; i++)
-      assert(p[i] == 0);
+      assert(((char*)p)[i] == 0);
 
   kmem.free((struct run*)p);
 }
 
+// Allocate a zeroed page.  This page can be freed with kfree or, if
+// it is known to be zeroed when it is freed, zfree.
 char*
 zalloc(const char* name)
 {
   return z_->alloc(name);
 }
 
+// Free a page that is known to be zero
 void
-zfree(char* p)
+zfree(void* p)
 {
   z_->free(p);
 }
