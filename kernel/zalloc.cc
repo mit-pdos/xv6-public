@@ -100,12 +100,15 @@ zallocator::free(void* p)
   kmem.free((struct run*)p);
 }
 
+// Allocate a zeroed page.  This page can be freed with kfree or, if
+// it is known to be zeroed when it is freed, zfree.
 char*
 zalloc(const char* name)
 {
   return z_->alloc(name);
 }
 
+// Free a page that is known to be zero
 void
 zfree(void* p)
 {
