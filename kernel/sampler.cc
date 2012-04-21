@@ -21,27 +21,34 @@ static volatile u64 selector;
 static volatile u64 period;
 
 static const u64 wd_period = 24000000000ul;
-#if defined(HW_josmp)
+
+#if defined(HW_josmp) || defined(HW_tom)
 static const u64 wd_selector =
-    0UL << 32 |
-    1 << 24 | 
-    1 << 22 | 
-    1 << 20 |
-    1 << 17 | 
-    1 << 16 | 
-    0x00 << 8 | 
-    0x76;
+  1 << 24 | 
+  1 << 22 |
+  1 << 20 |
+  1 << 17 | 
+  1 << 16 | 
+  0x76;
+#elif defined(HW_ben)
+static const u64 wd_selector =
+  1 << 24 | 
+  1 << 22 |
+  1 << 20 |
+  1 << 17 | 
+  1 << 16 | 
+  0x3c;
 #else
 static const u64 wd_selector = 0;
 #endif
+
 static percpu<bool> wd_flag;
+static void wdcheck(struct trapframe*);
 
-
-// XXX(sbw) max period should be (1 << (cntval_bits - 1)) - 1
-// XXX(sbw) should mask out higher order bits from period (e.g. the top 16 on amd)
 struct pmu {
   void (*config)(u64 ctr, u64 sel, u64 val);  
   u64 cntval_bits;
+  u64 max_period;
 };
 struct pmu pmu;
 
@@ -60,12 +67,12 @@ struct pmulog pmulog[NCPU] __mpalign__;
 static void
 amdconfig(u64 ctr, u64 sel, u64 val)
 {
-  writemsr(MSR_AMD_PERF_SEL0 | ctr, 0);
-  writemsr(MSR_AMD_PERF_CNT0 | ctr, val);
-  writemsr(MSR_AMD_PERF_SEL0 | ctr, sel);
+  writemsr(MSR_AMD_PERF_SEL0 + ctr, 0);
+  writemsr(MSR_AMD_PERF_CNT0 + ctr, val);
+  writemsr(MSR_AMD_PERF_SEL0 + ctr, sel);
 }
 
-struct pmu amdpmu = { amdconfig, 48 };
+struct pmu amdpmu = { amdconfig, 48, (1ull << 47) - 1 };
 
 //
 // Intel stuff
@@ -73,13 +80,25 @@ struct pmu amdpmu = { amdconfig, 48 };
 static void
 intelconfig(u64 ctr, u64 sel, u64 val)
 {
-  writemsr(MSR_INTEL_PERF_SEL0 | ctr, 0);
-  writemsr(MSR_INTEL_PERF_CNT0 | ctr, val);
-  writemsr(MSR_INTEL_PERF_SEL0 | ctr, sel);
+  writemsr(MSR_INTEL_PERF_SEL0 + ctr, 0);
+  writemsr(MSR_INTEL_PERF_CNT0 + ctr, val);
+  writemsr(MSR_INTEL_PERF_SEL0 + ctr, sel);
 }
 
-// XXX
-struct pmu intelpmu = { intelconfig, 48 };
+// We fill in cntval_bits at boot.
+// From Intel Arch. Vol 3b:
+//   "On write operations, the lower 32-bits of the MSR may be written
+//   with any value, and the high-order bits are sign-extended from
+//   the value of bit 31."
+struct pmu intelpmu = { intelconfig, 0, (1ull << 31) - 1 };
+
+static void
+pmuconfig(u64 ctr, u64 sel, u64 val)
+{
+  if (val > pmu.max_period)
+    val = pmu.max_period;
+  pmu.config(ctr, sel, -val);
+}
 
 void
 sampdump(void)
@@ -98,7 +117,7 @@ sampconf(void)
   pushcli();
   if (selector & PERF_SEL_INT)
     pmulog[myid()].count = 0;
-  pmu.config(0, selector, -period);
+  pmuconfig(0, selector, period);
   popcli();
 }
 
@@ -134,27 +153,6 @@ samplog(struct trapframe *tf)
   return 1;
 }
 
-static void
-wdcheck(struct trapframe* tf)
-{
-  if (! *wd_flag) {
-    // uartputc guarantees some output
-    uartputc('W');
-    uartputc('D');
-    uartputc('\n');
-    __cprintf("cpu%u: wdcheck\n", myid());
-    __cprintf("  %016lx\n", tf->rip);
-    printtrace(tf->rbp);
-  }
-  *wd_flag = false;
-}
-
-void
-wdpoke(void)
-{
-  *wd_flag = true;
-}
-
 int
 sampintr(struct trapframe *tf)
 {
@@ -173,14 +171,14 @@ sampintr(struct trapframe *tf)
     // We've overflowed
     r = 1;
     if (samplog(tf))
-      pmu.config(0, selector, -period);
+      pmuconfig(0, selector, period);
   }
 
   cnt = rdpmc(1);
   if ((cnt & (1ULL << (pmu.cntval_bits - 1))) == 0) {
     r = 1;
     wdcheck(tf);
-    pmu.config(1, wd_selector, -wd_period);
+    pmuconfig(1, wd_selector, wd_period);
   }
 
   return r;
@@ -299,17 +297,6 @@ sampwrite(struct inode *ip, const char *buf, u32 off, u32 n)
 }
 
 void
-initwd(void)
-{
-  wdpoke();
-  pushcli();
-#if defined(HW_josmp)
-  pmu.config(1, wd_selector, -wd_period);
-#endif  
-  popcli();
-}
-
-void
 initsamp(void)
 {
   if (myid() == mpbcpu()) {
@@ -322,9 +309,12 @@ initsamp(void)
       cprintf("%s\n", s);
     if (!strcmp(s, "AuthenticAMD"))
       pmu = amdpmu;
-    else if (!strcmp(s, "GenuineIntel"))
+    else if (!strcmp(s, "GenuineIntel")) {
+      u32 eax;
+      cpuid(10, &eax, 0, 0, 0);
       pmu = intelpmu;
-    else
+      pmu.cntval_bits = (0xff & (eax >> 16));
+    } else
       panic("Unknown Manufacturer");
   }
 
@@ -341,4 +331,39 @@ initsamp(void)
   devsw[MAJ_SAMPLER].write = sampwrite;
   devsw[MAJ_SAMPLER].read = sampread;
   devsw[MAJ_SAMPLER].stat = sampstat;
+}
+
+//
+// watchdog
+//
+static void
+wdcheck(struct trapframe* tf)
+{
+  if (! *wd_flag) {
+    // uartputc guarantees some output
+    uartputc('W');
+    uartputc('D');
+    uartputc('\n');
+    __cprintf("cpu%u: wdcheck\n", myid());
+    __cprintf("  %016lx\n", tf->rip);
+    printtrace(tf->rbp);
+  }
+  *wd_flag = false;
+}
+
+void
+wdpoke(void)
+{
+  *wd_flag = true;
+}
+
+void
+initwd(void)
+{
+  wdpoke();
+  pushcli();
+#if defined(HW_josmp) || defined(HW_ben) || defined(HW_tom)
+  pmuconfig(1, wd_selector, wd_period);
+#endif  
+  popcli();
 }
