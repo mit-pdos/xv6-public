@@ -246,65 +246,55 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
     }, 0, 1L << key_bits, start, start + size);
 }
 
-radix_iterator::radix_iterator(const radix* r, u64 k)
-  : r_(r), k_(k) {
+radix_iterator::radix_iterator(const radix* r, u64 k, u64 limit)
+  : r_(r), k_(k), key_limit_(limit) {
   dprintf("%p: Made iterator with k = %lx\n", r_, k_);
-  if (k_ != ~0ULL) {
-    path_[radix_levels] = r_->root_.load();
-    if (path_[radix_levels].is_elem())
-      leaf_ = radix_levels; // Maybe best to not do this...
-    else if (!find_first_leaf(radix_levels - 1))
-      k_ = ~0ULL;
+  if (k_ == key_limit_)
+    return;
+
+  // Load the initial path
+  level_ = radix_levels;
+  const radix_ptr *node = &r_->root_;
+  radix_entry entry;
+  while ((entry = node->load()).is_node()) {
+    level_--;
+    path_[level_] = &entry.node()->child[index(k_, level_)];
+    node = path_[level_];
   }
   dprintf("%p: Adjusted: k = %lx\n", r_, k_);
 }
 
-bool
-radix_iterator::advance(u32 level)
+void
+radix_iterator::advance()
 {
-  // First, see if we can advance a lower level.
-  if (level > leaf_ && advance(level-1)) {
-    // Nothing more to do.
-    return true;
-  }
+  while (true) {
+    // As long as we haven't reached our limit or an element, advance
+    // to the next key.
+    k_ += (u64)1 << (level_ * bits_per_level);
+    if (k_ == key_limit_)
+      return;
 
-  // Try to advance this level, if we can.
-  u32 start_idx = index(k_, level)+1;
-  if (start_idx < (1<<bits_per_level)) {
-    // Find the first leaf starting at our sibling node.
-    k_ &= ~((1ULL<<((level+1) * bits_per_level)) - 1);
-    k_ |= (u64(start_idx) << (level * bits_per_level));
-    return find_first_leaf(level);
-  } else {
-    return false;
-  }
-}
-
-bool
-radix_iterator::find_first_leaf(u32 level)
-{
-  // Find the first non-empty node after k_ on this level.
-  for (u32 idx = index(k_, level); idx < (1<<bits_per_level); idx++) {
-    radix_entry next = node(level+1)->child[idx].load();
-    if (!next.is_null()) {
-      if (index(k_, level) != idx) {
-        // We had to advance; clear everything this level and under
-        // and set this one.
-        k_ &= ~((1ULL<<((level+1) * bits_per_level)) - 1);
-        k_ |= (u64(idx) << (level * bits_per_level));
-      }
-      path_[level] = next;
-
-      if (next.is_elem()) {
-        // Found a leaf. Stop now.
-        leaf_ = level;
-        return true;
-      } else if (find_first_leaf(level-1))
-        // Keep looking.
-        return true;
+    // If we've reached the end of this node, move up the tree until
+    // we find a node that has more entries.  (Note that we don't have
+    // to worry about going off the top because our key_limit_
+    // prevents that.)
+    while (index(k_, level_) == 0) {
+      level_++;
     }
-  }
+    assert(level_ <= radix_levels);
 
-  // Failed to find a leaf. Abort.
-  return false;
+    // Update our path pointer at the level we've moved over on
+    path_[level_]++;
+
+    // Move down the tree as much as we can
+    radix_entry entry;
+    while ((entry = path_[level_]->load()).is_node()) {
+      path_[level_ - 1] = &entry.node()->child[0];
+      level_--;
+    }
+
+    // Did we reach a non-null leaf?
+    if (!entry.is_null())
+      return;
+  }
 }

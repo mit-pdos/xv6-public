@@ -216,23 +216,23 @@ struct radix {
 struct radix_iterator {
   const radix* r_;
   u64 k_;
-  // path_[i] is the node at level i. Note that the leaf is at zero
-  // and is radix_elem. The rest are radix_node. For now we assume all
-  // leaves are at level 0. Later we'll steal a bit for them. The root
-  // is path_[radix_levels].
-  radix_entry path_[radix_levels+1];
-  u32 leaf_;
+  // The key value just past the end of the range being iterator over.
+  u64 key_limit_;
+  // path_[i] points into the child array of the node at level i.
+  const radix_ptr *path_[radix_levels];
+  // The level of the current element.
+  u32 level_;
 
-  radix_iterator(const radix* r, u64 k);
+  radix_iterator(const radix* r, u64 k, u64 limit);
 
   radix_iterator &operator++() {
-    if (!advance(radix_levels-1)) k_ = ~0ULL;
+    assert(k_ < key_limit_);
+    advance();
     return *this;
   }
   radix_elem* operator*() {
-    return path_[leaf_].elem();
+    return path_[level_]->load().elem();
   }
-  radix_node* node(u32 level) { return path_[level].node(); }
 
   // Compare equality on just the key.
   bool operator==(const radix_iterator &other) {
@@ -241,19 +241,27 @@ struct radix_iterator {
     return r_ != other.r_ || k_ != other.k_; }
 
 private:
-  bool find_first_leaf(u32 level);
-  bool advance(u32 level);
+  // Advance to the next non-null leaf.  This assumes that
+  // k_ < key_limit_.
+  void advance();
 };
 
 static inline radix_iterator
-begin(const radix &r) { return radix_iterator(&r, 0); }
+begin(const radix &r) {
+  return radix_iterator(&r, 0, (u64)1 << key_bits);
+}
 
 static inline radix_iterator
-end(const radix &r) { return radix_iterator(&r, ~0ULL); }
-// What we really need is one-past-the-last...
+end(const radix &r) {
+  return radix_iterator(&r, (u64)1 << key_bits, (u64)1 << key_bits);
+}
 
 static inline radix_iterator
-begin(const radix_range &rr) { return radix_iterator(rr.r_, rr.start_); }
+begin(const radix_range &rr) {
+  return radix_iterator(rr.r_, rr.start_, rr.start_ + rr.size_);
+}
 
 static inline radix_iterator
-end(const radix_range &rr) { return radix_iterator(rr.r_, rr.start_ + rr.size_); }
+end(const radix_range &rr) {
+  return radix_iterator(rr.r_, rr.start_ + rr.size_, rr.start_ + rr.size_);
+}
