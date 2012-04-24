@@ -261,15 +261,18 @@ vmap::replace_vma(vma *a, vma *b)
   auto span = vmas.search_lock(a->vma_start, a->vma_end - a->vma_start);
   if (a->deleted())
     return false;
+#if VM_CRANGE
   for (auto e: span)
     assert(a == e);
-#if VM_CRANGE
   span.replace(b);
 #endif
 #if VM_RADIX
-  span.replace(a->vma_start, b->vma_start-a->vma_start, 0);
-  span.replace(b->vma_start, b->vma_end-b->vma_start, b);
-  span.replace(b->vma_end, a->vma_end-b->vma_end, 0);
+  for (auto it = span.begin(); it != span.end(); ++it) {
+    if (static_cast<vma*>(*it) == a)
+      // XXX(austin) replace should take iterators to represent the
+      // span so we don't have to find the keys all over again.
+      span.replace(it.key(), it.span(), b);
+  }
 #endif
   return true;
 }
@@ -280,28 +283,40 @@ vmap::copy(int share)
   vmap *nm = new vmap();
 
 #if VM_RADIX
-  void *last = 0;
+  radix::iterator next_it;
+  for (auto it = vmas.begin(); it != vmas.end(); it = next_it, it.skip_nulls()) {
+    next_it = it.next_change();
+    u64 range_start = it.key();
+    u64 range_end = next_it.key();
+    vma *e = static_cast<vma*>(*it);
 #endif
+#if 0
+  }  // Ugh.  Un-confuse IDE indentation.
+#endif
+#if VM_CRANGE
   for (auto r: vmas) {
-#if VM_RADIX
-    if (!r || r == last)
-      continue;
-    last = r;
+    vma *e = static_cast<vma *>(r);
+    u64 range_start = e->vma_start;
+    u64 range_end = e->vma_end;
 #endif
-    vma *e = (vma *) r;
+    u64 range_size = range_end - range_start;
 
     struct vma *ne;
     if (share) {
+      // Because of the pages array, the new vma needs to have the
+      // same start and end, even if that's not where it ends up in
+      // the index.
       ne = new vma(nm, e->vma_start, e->vma_end, COW, e->n);
 
       // if the original vma wasn't COW, replace it with a COW vma
       if (e->va_type != COW) {
         vma *repl = new vma(this, e->vma_start, e->vma_end, COW, e->n);
-        replace_vma(e, repl);
 #if VM_RADIX
-        last = repl;
+        vmas.search_lock(range_start, range_size).replace(range_start, range_size, repl);
+#elif VM_CRANGE
+        replace_vma(e, repl);
 #endif
-        updatepages(pml4, e->vma_start, e->vma_end, [](atomic<pme_t>* p) {
+        updatepages(pml4, range_start, range_end, [](atomic<pme_t>* p) {
             for (;;) {
               pme_t v = p->load();
               if (v & PTE_LOCK)
@@ -317,7 +332,7 @@ vmap::copy(int share)
       ne = new vma(nm, e->vma_start, e->vma_end, PRIVATE, e->n->copy());
     }
 
-    auto span = nm->vmas.search_lock(ne->vma_start, ne->vma_end - ne->vma_start);
+    auto span = nm->vmas.search_lock(range_start, range_size);
     for (auto x: span) {
 #if VM_RADIX
       if (!x)
@@ -331,7 +346,7 @@ vmap::copy(int share)
     span.replace(ne);
 #endif
 #if VM_RADIX
-    span.replace(ne->vma_start, ne->vma_end-ne->vma_start, ne);
+    span.replace(range_start, range_size, ne);
 #endif
   }
 
@@ -521,8 +536,20 @@ vmap::pagefault_wcow(vma *m)
 
   vma *repl = new vma(this, m->vma_start, m->vma_end, PRIVATE, nodecopy);
 
+  // XXX(austin) This will cause sharing on parts of this range that
+  // have since been unmapped or replaced.  But in our current design
+  // where we need a new vmnode we have to replace all instances of it
+  // at once or we'll end up with a complete vmnode copy for each page
+  // we fault on.  If we replace it all at once, this will waste time
+  // and space copying pages that are no longer mapped, but will only
+  // do that once.  Fixing this requires getting rid of the vmnode.
   replace_vma(m, repl);
   updatepages(pml4, m->vma_start, m->vma_end, [](atomic<pme_t> *p) {
+      // XXX(austin) In radix, this may clear PTEs belonging to other
+      // VMAs that have replaced sub-ranges of the faulting VMA.
+      // That's unfortunate but okay because we'll just bring them
+      // back from the pages array.  Yet another consequence of having
+      // to do a vmnode at a time.
       for (;;) {
         pme_t v = p->load();
         if (v & PTE_LOCK)
