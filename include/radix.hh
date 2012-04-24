@@ -6,6 +6,8 @@
 
 #include "gc.hh"
 
+#include <iterator>
+
 enum { bits_per_level = 9 };
 enum { key_bits = 36 };
 enum { radix_levels = (key_bits + bits_per_level - 1) / bits_per_level };
@@ -184,6 +186,7 @@ static_assert(alignof(radix_elem) > entry_mask,
               "radix_elem sufficiently aligned");
 
 struct radix;
+struct radix_iterator;
 
 struct radix_range {
   radix* r_;
@@ -196,11 +199,16 @@ struct radix_range {
 
   void replace(u64 start, u64 size, radix_elem* val);
 
+  radix_iterator begin() const;
+  radix_iterator end() const;
+
   radix_range(const radix_range&) = delete;
   void operator=(const radix_range&) = delete;
 };
 
 struct radix {
+  typedef radix_iterator iterator;
+
   radix_ptr root_;
   u32 shift_;
 
@@ -210,29 +218,36 @@ struct radix {
   radix_elem* search(u64 key);
   radix_range search_lock(u64 start, u64 size);
 
+  radix_iterator begin() const;
+  radix_iterator end() const;
+
   NEW_DELETE_OPS(radix)
 };
 
 struct radix_iterator {
-  const radix* r_;
-  u64 k_;
-  // path_[i] is the node at level i. Note that the leaf is at zero
-  // and is radix_elem. The rest are radix_node. For now we assume all
-  // leaves are at level 0. Later we'll steal a bit for them. The root
-  // is path_[radix_levels].
-  radix_entry path_[radix_levels+1];
-  u32 leaf_;
-
-  radix_iterator(const radix* r, u64 k);
+  radix_iterator(const radix* r, u64 k, u64 limit)
+    : r_(r), k_(k), key_limit_(limit)
+  {
+    if (k_ != key_limit_)
+      prime_path();
+  }
 
   radix_iterator &operator++() {
-    if (!advance(radix_levels-1)) k_ = ~0ULL;
+    assert(k_ < key_limit_);
+    advance();
     return *this;
   }
   radix_elem* operator*() {
-    return path_[leaf_].elem();
+    return path_[level_]->load().elem();
   }
-  radix_node* node(u32 level) { return path_[level].node(); }
+
+  // Advance the iterator until it points at a non-null entry or end.
+  // If the current element is non-null, does nothing.
+  void skip_nulls()
+  {
+    if (path_[level_]->load().is_null())
+      ++(*this);
+  }
 
   // Compare equality on just the key.
   bool operator==(const radix_iterator &other) {
@@ -241,19 +256,38 @@ struct radix_iterator {
     return r_ != other.r_ || k_ != other.k_; }
 
 private:
-  bool find_first_leaf(u32 level);
-  bool advance(u32 level);
+  const radix* r_;
+  u64 k_;
+  // The key value just past the end of the range being iterator over.
+  u64 key_limit_;
+  // path_[i] points into the child array of the node at level i.
+  const radix_ptr *path_[radix_levels];
+  // The level of the current element.
+  u32 level_;
+
+  // Prepare the initial path_ and level_ based on k_.
+  void prime_path();
+  // Advance to the next non-null leaf.  This assumes that
+  // k_ < key_limit_.
+  void advance();
 };
 
-static inline radix_iterator
-begin(const radix &r) { return radix_iterator(&r, 0); }
+inline radix_iterator
+radix_range::begin() const {
+  return radix_iterator(r_, start_, start_ + size_);
+}
 
-static inline radix_iterator
-end(const radix &r) { return radix_iterator(&r, ~0ULL); }
-// What we really need is one-past-the-last...
+inline radix_iterator
+radix_range::end() const {
+  return radix_iterator(r_, start_ + size_, start_ + size_);
+}
 
-static inline radix_iterator
-begin(const radix_range &rr) { return radix_iterator(rr.r_, rr.start_); }
+inline radix_iterator
+radix::begin() const {
+  return radix_iterator(this, 0, (u64)1 << key_bits);
+}
 
-static inline radix_iterator
-end(const radix_range &rr) { return radix_iterator(rr.r_, rr.start_ + rr.size_); }
+inline radix_iterator
+radix::end() const {
+  return radix_iterator(this, (u64)1 << key_bits, (u64)1 << key_bits);
+}
