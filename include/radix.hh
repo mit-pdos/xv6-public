@@ -6,6 +6,8 @@
 
 #include "gc.hh"
 
+#include <iterator>
+
 enum { bits_per_level = 9 };
 enum { key_bits = 36 };
 enum { radix_levels = (key_bits + bits_per_level - 1) / bits_per_level };
@@ -184,6 +186,7 @@ static_assert(alignof(radix_elem) > entry_mask,
               "radix_elem sufficiently aligned");
 
 struct radix;
+struct radix_iterator;
 
 struct radix_range {
   radix* r_;
@@ -196,11 +199,16 @@ struct radix_range {
 
   void replace(u64 start, u64 size, radix_elem* val);
 
+  radix_iterator begin() const;
+  radix_iterator end() const;
+
   radix_range(const radix_range&) = delete;
   void operator=(const radix_range&) = delete;
 };
 
 struct radix {
+  typedef radix_iterator iterator;
+
   radix_ptr root_;
   u32 shift_;
 
@@ -209,6 +217,9 @@ struct radix {
   ~radix();
   radix_elem* search(u64 key);
   radix_range search_lock(u64 start, u64 size);
+
+  radix_iterator begin() const;
+  radix_iterator end() const;
 
   NEW_DELETE_OPS(radix)
 };
@@ -246,22 +257,22 @@ private:
   void advance();
 };
 
-static inline radix_iterator
-begin(const radix &r) {
-  return radix_iterator(&r, 0, (u64)1 << key_bits);
+inline radix_iterator
+radix_range::begin() const {
+  return radix_iterator(r_, start_, start_ + size_);
 }
 
-static inline radix_iterator
-end(const radix &r) {
-  return radix_iterator(&r, (u64)1 << key_bits, (u64)1 << key_bits);
+inline radix_iterator
+radix_range::end() const {
+  return radix_iterator(r_, start_ + size_, start_ + size_);
 }
 
-static inline radix_iterator
-begin(const radix_range &rr) {
-  return radix_iterator(rr.r_, rr.start_, rr.start_ + rr.size_);
+inline radix_iterator
+radix::begin() const {
+  return radix_iterator(this, 0, (u64)1 << key_bits);
 }
 
-static inline radix_iterator
-end(const radix_range &rr) {
-  return radix_iterator(rr.r_, rr.start_ + rr.size_, rr.start_ + rr.size_);
+inline radix_iterator
+radix::end() const {
+  return radix_iterator(this, (u64)1 << key_bits, (u64)1 << key_bits);
 }
