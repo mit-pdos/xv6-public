@@ -174,6 +174,7 @@ vma::vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn) :
 {
   assert(PGOFFSET(start) == 0);
   assert(PGOFFSET(end) == 0);
+  assert(!vmn || end - start == vmn->npages << PGSHIFT);
   if (n)
     n->incref();
 }
@@ -255,6 +256,8 @@ vmap::incref()
 bool
 vmap::replace_vma(vma *a, vma *b)
 {
+  assert(a->vma_start == b->vma_start);
+  assert(a->vma_end == b->vma_end);
   auto span = vmas.search_lock(a->vma_start, a->vma_end - a->vma_start);
   if (a->deleted())
     return false;
