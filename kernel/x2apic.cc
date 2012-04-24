@@ -3,6 +3,7 @@
 #include "bits.hh"
 #include "kernel.hh"
 #include "traps.h"
+#include "cpu.hh"
 
 #define ID      0x802   // ID
 #define VER     0x803   // Version
@@ -10,13 +11,15 @@
 #define EOI     0x80b   // EOI
 #define SVR     0x80f   // Spurious Interrupt Vector
   #define ENABLE     0x00000100   // Unit Enable
-#define ESR     0x828   // Error Status
-#define ICR     0x830   // Interrupt Command
-  #define INIT       0x00000500   // INIT/RESET
+#define IRR     0x820
+#define ISR     0x810
+  #define ISR_NR     0x8
+#define ESR     0x828ull   // Error Status
+#define ICR     0x830ull   // Interrupt Command
+  #define INIT       0x00000500ull   // INIT/RESET
   #define STARTUP    0x00000600   // Startup IPI
   #define BCAST      0x00080000   // Send to all APICs, including self.
-  #define LEVEL      0x00008000   // Level triggered
-//  #define DELIVS     0x00001000   // Delivery status
+  #define LEVEL      0x00008000ull   // Level triggered
   #define ASSERT     0x00004000   // Assert interrupt (vs deassert)
 #define TIMER   0x832   // Local Vector Table 0 (TIMER)
   #define X1         0x0000000B   // divide counts by 1
@@ -67,7 +70,7 @@ x2apicstartap(hwid_t id, u32 addr)
   // Be paranoid about clearing APIC errors
   writemsr(ESR, 0);
   readmsr(ESR);
-
+  
   unsigned long accept_status;
   int maxlvt = x2apicmaxlvt();
  
@@ -77,7 +80,6 @@ x2apicstartap(hwid_t id, u32 addr)
 
   // "Universal startup algorithm."
   // Send INIT (level-triggered) interrupt to reset other CPU.
-
   // Asserting INIT
   writemsr(ICR, (((u64)id.num)<<32) | INIT | LEVEL | ASSERT);
   microdelay(10000);
@@ -89,10 +91,8 @@ x2apicstartap(hwid_t id, u32 addr)
   // Regular hardware is supposed to only accept a STARTUP
   // when it is in the halted state due to an INIT.  So the second
   // should be ignored, but it is part of the official Intel algorithm.
-  // Bochs complains about the second one.  Too bad for Bochs.
   for(i = 0; i < 2; i++){
-    if (maxlvt > 3)
-      writemsr(ESR, 0);
+    writemsr(ESR, 0);
     readmsr(ESR);
 
     // Kick the target chip
@@ -137,13 +137,92 @@ x2apicid(void)
   return HWID((u32)id);
 }
 
+static void
+clearintr(void)
+{
+  // Clear any pending interrupts.  Linux does this.
+  unsigned int value, queued;
+  int i, j, acked = 0;
+  unsigned long long tsc = 0, ntsc;
+  long long max_loops = 2400000;
+
+  tsc = rdtsc();
+  do {
+    queued = 0;
+    for (i = ISR_NR - 1; i >= 0; i--)
+      queued |= readmsr(IRR + i*0x1);
+    
+    for (i = ISR_NR - 1; i >= 0; i--) {
+      value = readmsr(ISR + i*0x1);
+      for (j = 31; j >= 0; j--) {
+        if (value & (1<<j)) {
+          x2apiceoi();
+          acked++;
+        }
+      }
+    }
+    if (acked > 256) {
+      cprintf("x2apic pending interrupts after %d EOI\n",
+              acked);
+      break;
+    }
+    ntsc = rdtsc();
+    max_loops = (2400000 << 10) - (ntsc - tsc);
+  } while (queued && max_loops > 0);
+}
+
+// Code closely follows setup_local_APIC in Linux v3.3
 void
 initx2apic(void)
 {
   u64 count;
+  u32 value;
+  int maxlvt;
+
+  // BIOS sanity checking
+  if (!(readmsr(MSR_APIC_BAR) & APIC_BAR_X2APIC_EN) ||
+      !(readmsr(MSR_APIC_BAR) & APIC_BAR_XAPIC_EN))
+  {
+    panic("initx2apic: not enabled");
+  }
+
+  // Enable performance counter overflow interrupts for sampler.cc
+  x2apicpc(0);
+
+  // Enable interrupts on the APIC (but not on the processor).
+  value = readmsr(TPR);
+  value &= ~0xffU;
+  writemsr(TPR, value);
+
+  clearintr();
 
   // Enable local APIC; set spurious interrupt vector.
-  writemsr(SVR, ENABLE | (T_IRQ0 + IRQ_SPURIOUS));
+  value = readmsr(SVR);
+  value &= ~0x000FF;
+  value |= ENABLE;
+  value |= T_IRQ0 + IRQ_SPURIOUS;
+  writemsr(SVR, value);
+
+  writemsr(LINT0, MT_EXTINT | MASKED);
+  if (readmsr(ID) == 0)
+    writemsr(LINT1, MT_NMI);
+  else
+    writemsr(LINT1, MT_NMI | MASKED);
+
+  maxlvt = x2apicmaxlvt();
+  if (maxlvt > 3)
+    writemsr(ESR, 0);
+
+  // enables sending errors
+  value = T_IRQ0 + IRQ_ERROR;
+  writemsr(ERROR, value);
+
+  if (maxlvt > 3)
+    writemsr(ESR, 0);
+  readmsr(ESR);
+
+  // Send an Init Level De-Assert to synchronise arbitration ID's.
+  writemsr(ICR, BCAST | INIT | LEVEL);
 
   if (x2apichz == 0) {
     // Measure the TICR frequency
@@ -165,17 +244,6 @@ initx2apic(void)
   writemsr(TIMER, PERIODIC | (T_IRQ0 + IRQ_TIMER));
   writemsr(TICR, count); 
 
-  // Disable logical interrupt lines.
-  writemsr(LINT0, MASKED);
-  writemsr(LINT1, MASKED);
-
-  // Enable performance counter overflow interrupts for sampler.cc
-  if (((readmsr(VER)>>16) & 0xFF) >= 4)
-    x2apicpc(0);
-
-  // Map error interrupt to IRQ_ERROR.
-  writemsr(ERROR, T_IRQ0 + IRQ_ERROR);
-
   // Clear error status register (requires back-to-back writes).
   writemsr(ESR, 0);
   writemsr(ESR, 0);
@@ -183,9 +251,5 @@ initx2apic(void)
   // Ack any outstanding interrupts.
   writemsr(EOI, 0);
 
-  // Send an Init Level De-Assert to synchronise arbitration ID's.
-  writemsr(ICR, BCAST | INIT | LEVEL);
-
-  // Enable interrupts on the APIC (but not on the processor).
-  writemsr(TPR, 0);
+  return;
 }
