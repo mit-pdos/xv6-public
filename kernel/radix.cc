@@ -261,6 +261,9 @@ radix_iterator::prime_path()
     node = path_[level_];
   }
 
+  // Find a real element
+  skip_nulls();
+
   dprintf("%p: Adjusted: k = %lx\n", r_, k_);
 }
 

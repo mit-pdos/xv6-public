@@ -241,6 +241,14 @@ struct radix_iterator {
     return path_[level_]->load().elem();
   }
 
+  // Advance the iterator until it points at a non-null entry or end.
+  // If the current element is non-null, does nothing.
+  void skip_nulls()
+  {
+    if (path_[level_]->load().is_null())
+      ++(*this);
+  }
+
   // Compare equality on just the key.
   bool operator==(const radix_iterator &other) {
     return r_ == other.r_ && k_ == other.k_; }
