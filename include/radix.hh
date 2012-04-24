@@ -225,15 +225,6 @@ struct radix {
 };
 
 struct radix_iterator {
-  const radix* r_;
-  u64 k_;
-  // The key value just past the end of the range being iterator over.
-  u64 key_limit_;
-  // path_[i] points into the child array of the node at level i.
-  const radix_ptr *path_[radix_levels];
-  // The level of the current element.
-  u32 level_;
-
   radix_iterator(const radix* r, u64 k, u64 limit)
     : r_(r), k_(k), key_limit_(limit)
   {
@@ -257,6 +248,15 @@ struct radix_iterator {
     return r_ != other.r_ || k_ != other.k_; }
 
 private:
+  const radix* r_;
+  u64 k_;
+  // The key value just past the end of the range being iterator over.
+  u64 key_limit_;
+  // path_[i] points into the child array of the node at level i.
+  const radix_ptr *path_[radix_levels];
+  // The level of the current element.
+  u32 level_;
+
   // Prepare the initial path_ and level_ based on k_.
   void prime_path();
   // Advance to the next non-null leaf.  This assumes that
