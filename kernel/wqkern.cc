@@ -46,6 +46,8 @@ int
 wqcrit_push(work *w, int c)
 {
   assert(wqcrit_);
+  if (c >= NCPU || c < 0)
+    panic("Weird CPU %d", c);
   return wqcrit_->push(w, c);
 }
 

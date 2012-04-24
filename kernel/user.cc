@@ -43,6 +43,7 @@ inituser(void)
   p->tf->rflags = FL_IF;
   p->tf->rsp = PGSIZE;
   p->tf->rip = INIT_START;  // beginning of initcode.S
+  p->data_cpuid = myid();
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = 0; // forkret will fix in the process's context

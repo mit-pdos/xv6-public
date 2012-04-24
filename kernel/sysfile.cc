@@ -471,9 +471,8 @@ clean:
 int
 sys_exec(const char *upath, userptr<userptr<const char> > uargv)
 {
-  myproc()->exec_cpuid_ = myid();
+  myproc()->data_cpuid = myid();
 #if EXECSWITCH
-  myproc()->exec_cpuid_ = mycpuid();
   myproc()->uargv = uargv;
   barrier();
   // upath serves as a flag to the scheduler
