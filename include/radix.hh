@@ -234,7 +234,12 @@ struct radix_iterator {
   // The level of the current element.
   u32 level_;
 
-  radix_iterator(const radix* r, u64 k, u64 limit);
+  radix_iterator(const radix* r, u64 k, u64 limit)
+    : r_(r), k_(k), key_limit_(limit)
+  {
+    if (k_ != key_limit_)
+      prime_path();
+  }
 
   radix_iterator &operator++() {
     assert(k_ < key_limit_);
@@ -252,6 +257,8 @@ struct radix_iterator {
     return r_ != other.r_ || k_ != other.k_; }
 
 private:
+  // Prepare the initial path_ and level_ based on k_.
+  void prime_path();
   // Advance to the next non-null leaf.  This assumes that
   // k_ < key_limit_.
   void advance();

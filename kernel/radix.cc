@@ -246,11 +246,10 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
     }, 0, 1L << key_bits, start, start + size);
 }
 
-radix_iterator::radix_iterator(const radix* r, u64 k, u64 limit)
-  : r_(r), k_(k), key_limit_(limit) {
+void
+radix_iterator::prime_path()
+{
   dprintf("%p: Made iterator with k = %lx\n", r_, k_);
-  if (k_ == key_limit_)
-    return;
 
   // Load the initial path
   level_ = radix_levels;
@@ -261,6 +260,7 @@ radix_iterator::radix_iterator(const radix* r, u64 k, u64 limit)
     path_[level_] = &entry.node()->child[index(k_, level_)];
     node = path_[level_];
   }
+
   dprintf("%p: Adjusted: k = %lx\n", r_, k_);
 }
 
