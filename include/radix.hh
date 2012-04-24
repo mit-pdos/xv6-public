@@ -231,13 +231,18 @@ struct radix_iterator {
     if (k_ != key_limit_)
       prime_path();
   }
+  radix_iterator() = default;
+  radix_iterator(const radix_iterator &o) = default;
+  radix_iterator(radix_iterator &&o) = default;
 
+  // Move to the next non-null entry in the collection, or end.
   radix_iterator &operator++() {
     assert(k_ < key_limit_);
     advance();
     return *this;
   }
-  radix_elem* operator*() {
+
+  radix_elem* operator*() const {
     return path_[level_]->load().elem();
   }
 
@@ -245,9 +250,27 @@ struct radix_iterator {
   // If the current element is non-null, does nothing.
   void skip_nulls()
   {
-    if (path_[level_]->load().is_null())
+    if (!**this)
       ++(*this);
   }
+
+  // Return the key of the iterator's current element.
+  u64 key() const
+  {
+    return k_ << r_->shift_;
+  }
+
+  // Return the span of the key space occupied by the iterator's
+  // current element.
+  u64 span() const
+  {
+    return (u64)1 << (bits_per_level * level_ + r_->shift_);
+  }
+
+  // Return an iterator that points to the next element that is not
+  // equal to the current element.  If no such element exists, returns
+  // end.  Note that this element may be null.
+  radix_iterator next_change() const;
 
   // Compare equality on just the key.
   bool operator==(const radix_iterator &other) {
@@ -267,9 +290,9 @@ private:
 
   // Prepare the initial path_ and level_ based on k_.
   void prime_path();
-  // Advance to the next non-null leaf.  This assumes that
-  // k_ < key_limit_.
-  void advance();
+  // Advance to the next leaf.  If skip_nulls is true, advances to the
+  // next non-null leaf.  This assumes that k_ < key_limit_.
+  void advance(bool skip_nulls = true);
 };
 
 inline radix_iterator
