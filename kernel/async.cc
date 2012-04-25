@@ -78,7 +78,7 @@ sys_async(int fd, size_t count, off_t off,
   if (f->type != file::FD_INODE)
     return -1;
 
-  f->ip->ref++;
+  f->ip->inc();
   w = pread_allocwork(f->ip, count, off, msg, ubuf);
   if (w == nullptr) {
     iput(f->ip);

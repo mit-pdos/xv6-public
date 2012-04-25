@@ -269,8 +269,8 @@ iget(u32 dev, u32 inum)
         release(&ip->lock);
       }
       
-      idup(ip);
-      return ip;
+      if (ip->tryinc())
+        return ip;
     }
   }
   
@@ -301,7 +301,6 @@ inode::alloc(u32 dev, u32 inum)
     return nullptr;
   ip->dev = dev;
   ip->inum = inum;
-  ip->ref = 1;
   snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
   initlock(&ip->lock, ip->lockname+3, LOCKSTAT_FS);
   initcondvar(&ip->cv, ip->lockname);
@@ -342,8 +341,8 @@ inode::unlink(void)
 {
   // Must hold ilock if inode is accessible by multiple threads
   if (--nlink_ == 0) {
-    if (--ref == 0)
-      panic("inode::unlink last ref");
+    // This should never be the last reference..
+    iput(this);
   }
 }
 
@@ -354,12 +353,55 @@ inode::nlink(void)
   return nlink_;
 }
 
+void
+inode::onzero(void) const
+{
+  inode* ip = (inode*)this;
+
+  acquire(&ip->lock);
+  if (ip->nlink())
+      panic("iput: nlink %u\n", ip->nlink());
+
+  // inode is no longer used: truncate and free inode.
+  if(ip->flags & (I_BUSYR | I_BUSYW)) {
+    // race with iget
+    panic("iput busy");
+  }
+  if(ip->flags & I_FREE) {
+    // race with evict
+    panic("iput free");
+  }
+  if((ip->flags & I_VALID) == 0)
+    panic("iput not valid");
+  
+  ip->flags |= I_FREE;
+
+  ip->flags |= (I_BUSYR | I_BUSYW);
+  ip->readbusy++;
+
+  // XXX: use gc_delayed() to truncate the inode later.
+  // flag it as a victim in the meantime.
+  
+  release(&ip->lock);
+      
+  itrunc(ip);
+  ip->type = 0;
+  ip->major = 0;
+  ip->minor = 0;
+  ip->gen += 1;
+  iupdate(ip);
+  
+  ins->remove(make_pair(ip->dev, ip->inum), &ip);
+  gc_delayed(ip);
+  return;
+}
+
 // Increment reference count for ip.
 // Returns ip to enable ip = idup(ip1) idiom.
 struct inode*
 idup(struct inode *ip)
 {
-  ip->ref++;
+  ip->inc();
   return ip;
 }
 
@@ -370,7 +412,7 @@ idup(struct inode *ip)
 void
 ilock(struct inode *ip, int writer)
 {
-  if(ip == 0 || ip->ref < 1)
+  if(ip == 0 || !ip->valid())
     panic("ilock");
 
   acquire(&ip->lock);
@@ -402,51 +444,7 @@ iunlock(struct inode *ip)
 void
 iput(struct inode *ip)
 {
-  if(--ip->ref == 0) {
-    acquire(&ip->lock);
-    if (ip->nlink())
-      panic("iput: nlink %u\n", ip->nlink());
-    if (ip->ref == 0) {
-      // inode is no longer used: truncate and free inode.
-      if(ip->flags & (I_BUSYR | I_BUSYW)) {
-	// race with iget
-	panic("iput busy");
-      }
-      if(ip->flags & I_FREE) {
-	// race with evict
-	panic("iput free");
-      }
-      if((ip->flags & I_VALID) == 0)
-	panic("iput not valid");
-
-      ip->flags |= I_FREE;
-      if (ip->ref > 0) {
-	ip->flags &= ~(I_FREE);
-	release(&ip->lock);
-	return;
-      }
-
-      ip->flags |= (I_BUSYR | I_BUSYW);
-      ip->readbusy++;
-
-      // XXX: use gc_delayed() to truncate the inode later.
-      // flag it as a victim in the meantime.
-
-      release(&ip->lock);
-
-      itrunc(ip);
-      ip->type = 0;
-      ip->major = 0;
-      ip->minor = 0;
-      ip->gen += 1;
-      iupdate(ip);
-
-      ins->remove(make_pair(ip->dev, ip->inum), &ip);
-      gc_delayed(ip);
-      return;
-    }
-    release(&ip->lock);
-  }
+  ip->dec();
 }
 
 // Common idiom: unlock, then put.

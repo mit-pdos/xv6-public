@@ -39,7 +39,7 @@ protected:
 };
 
 // in-core file system types
-struct inode : public rcu_freed
+struct inode : public referenced, public rcu_freed
 {
   static inode* alloc(u32 dev, u32 inum);
   virtual void do_gc() { delete this; }
@@ -55,7 +55,6 @@ struct inode : public rcu_freed
   u32 dev;           // Device number
   u32 inum;          // Inode number
   u32 gen;           // Generation number
-  std::atomic<int> ref; // Reference count
   int flags;         // I_BUSY, I_VALID
   std::atomic<int> readbusy;
   struct condvar cv;
@@ -75,6 +74,9 @@ private:
   NEW_DELETE_OPS(inode)
 
   short nlink_;
+
+protected:
+  virtual void onzero() const;
 };
 
 #define I_BUSYR 0x1
