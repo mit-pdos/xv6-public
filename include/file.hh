@@ -40,7 +40,15 @@ protected:
 
 // in-core file system types
 
-struct inode : public rcu_freed {
+struct inode : public rcu_freed
+{
+  static inode* alloc(u32 dev, u32 inum);
+  virtual void do_gc() { delete this; }
+  void init();
+
+  inode& operator=(const inode&) = delete;
+  inode(const inode& x) = delete;
+  
   u32 dev;           // Device number
   u32 inum;          // Inode number
   u32 gen;           // Generation number
@@ -59,11 +67,9 @@ struct inode : public rcu_freed {
   u32 size;
   u32 addrs[NDIRECT+1];
 
-  static inode* alloc(u32 dev, u32 inum);
-  void init();
+private:
   inode();
   ~inode();
-  virtual void do_gc() { delete this; }
   NEW_DELETE_OPS(inode)
 };
 
