@@ -133,6 +133,11 @@ cmain(u64 mbmagic, u64 mbaddr)
 {
   extern u64 cpuhz;
 
+  // Call global constructors
+  extern const uptr sctors[], ectors[];
+  for (const uptr *ctorva = ectors; ctorva > sctors; )
+    ((void(*)()) *--ctorva)();
+
   initpg();
   inithz();        // CPU Hz, microdelay
   initpic();       // interrupt controller
