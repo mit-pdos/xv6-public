@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "types.h"              // For size_t
 #include <type_traits>
 
 namespace std {
