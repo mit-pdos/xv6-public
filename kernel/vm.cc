@@ -27,8 +27,11 @@ enum { tlb_lazy = 1 };
 
 vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
   : npages(npg), empty(true), type(ntype),
-    ip(i), offset(off), sz(s), ref_(0)
+    offset(off), sz(s), ref_(0), ip(i)
 {
+  if (ip != nullptr)
+    ip->inc();
+
   if (npg > NELEM(page))
     panic("vmnode too big\n");
   // XXX Maybe vmnode should take just a byte size
@@ -46,7 +49,7 @@ vmnode::~vmnode()
   for(u64 i = 0; i < npages; i++)
     if (page[i])
       kfree(page[i]);
-  if (ip)
+  if (ip != nullptr)
     iput(ip);
 }
 

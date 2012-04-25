@@ -159,6 +159,9 @@ exec(const char *path, char **argv, void *ascopev)
 
   if((ip = namei(myproc()->cwd, path)) == 0)
     return -1;
+  auto cleanup = scoped_cleanup([&ip](){
+    iput(ip);
+  });
 
   if(myproc()->worker != nullptr)
     return -1;

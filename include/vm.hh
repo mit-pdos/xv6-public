@@ -22,7 +22,6 @@ struct vmnode {
   atomic<bool> empty;
   atomic<char*> page[128];
   const enum vmntype type;
-  struct inode *const ip;
   const u64 offset;
   const u64 sz;
 
@@ -42,6 +41,7 @@ struct vmnode {
   NEW_DELETE_OPS(vmnode);
 private:
   atomic<u64> ref_;
+  struct inode *const ip;
 };
 
 // A mapping of a chunk of an address space to
