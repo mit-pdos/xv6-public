@@ -124,7 +124,7 @@ sys_link(const char *old, const char *newn)
     iunlockput(ip);
     return -1;
   }
-  ip->nlink++;
+  ip->link();
   iupdate(ip);
   iunlock(ip);
 
@@ -139,7 +139,7 @@ sys_link(const char *old, const char *newn)
 
 bad:
   ilock(ip, 1);
-  ip->nlink--;
+  ip->unlink();
   iupdate(ip);
   iunlockput(ip);
   return -1;
@@ -189,7 +189,7 @@ sys_unlink(const char *path)
   }
   ilock(ip, 1);
 
-  if(ip->nlink < 1)
+  if(ip->nlink() < 1)
     panic("unlink: nlink < 1");
   if(ip->type == T_DIR && !isdirempty(ip)){
     iunlockput(ip);
@@ -205,7 +205,7 @@ sys_unlink(const char *path)
 
   if(ip->type == T_DIR){
     ilock(dp, 1);
-    dp->nlink--;
+    dp->unlink();
     iupdate(dp);
     iunlock(dp);
   }
@@ -213,7 +213,7 @@ sys_unlink(const char *path)
   //nc_invalidate(dp, name);
   iput(dp);
 
-  ip->nlink--;
+  ip->unlink();
   iupdate(ip);
   iunlockput(ip);
   return 0;
@@ -248,13 +248,13 @@ create(inode *cwd, const char *path, short type, short major, short minor)
 
   ip->major = major;
   ip->minor = minor;
-  ip->nlink = 1;
+  ip->link();
   iupdate(ip);
 
   mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
 
   if(type == T_DIR){  // Create . and .. entries.
-    dp->nlink++;  // for ".."
+    dp->link(); // for ".."
     iupdate(dp);
     // No ip->nlink++ for ".": avoid cyclic ref count.
     if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
@@ -263,7 +263,7 @@ create(inode *cwd, const char *path, short type, short major, short minor)
 
   if(dirlink(dp, name, ip->inum) < 0) {
     // create race
-    ip->nlink--;
+    ip->unlink();
     iunlockput(ip);
     iput(dp);
     goto retry;

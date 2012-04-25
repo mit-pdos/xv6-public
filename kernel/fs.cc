@@ -193,7 +193,7 @@ ialloc(u32 dev, short type)
       if(ip->type == 0){
         ip->type = type;
         ip->gen += 1;
-        if(ip->nlink || ip->size || ip->addrs[0])
+        if(ip->nlink() || ip->size || ip->addrs[0])
           panic("ialloc not zeroed");
         iupdate(ip);
         return ip;
@@ -218,7 +218,7 @@ iupdate(struct inode *ip)
   dip->type = ip->type;
   dip->major = ip->major;
   dip->minor = ip->minor;
-  dip->nlink = ip->nlink;
+  dip->nlink = ip->nlink();
   dip->size = ip->size;
   dip->gen = ip->gen;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
@@ -317,7 +317,7 @@ inode::init(void)
   type = dip->type;
   major = dip->major;
   minor = dip->minor;
-  nlink = dip->nlink;
+  nlink_ = dip->nlink;
   size = dip->size;
   gen = dip->gen;
   memmove(addrs, dip->addrs, sizeof(addrs));
@@ -325,6 +325,32 @@ inode::init(void)
   flags |= I_VALID;
 }
 
+void
+inode::link(void)
+{
+  // Must hold ilock if inode is accessible by multiple threads
+  if (++nlink_ == 1) {
+    // A non-zero nlink_ holds a reference to the inode
+    idup(this);
+  }
+}
+
+void
+inode::unlink(void)
+{
+  // Must hold ilock if inode is accessible by multiple threads
+  if (--nlink_ == 0) {
+    if (--ref == 0)
+      panic("inode::unlink last ref");
+  }
+}
+
+short
+inode::nlink(void)
+{
+  // Must hold ilock if inode is accessible by multiple threads
+  return nlink_;
+}
 
 // Increment reference count for ip.
 // Returns ip to enable ip = idup(ip1) idiom.
@@ -375,10 +401,10 @@ void
 iput(struct inode *ip)
 {
   if(--ip->ref == 0) {
-    if (ip->nlink)
-      return;
     acquire(&ip->lock);
-    if (ip->ref == 0 && ip->nlink == 0) {
+    if (ip->nlink())
+      panic("iput: nlink %u\n", ip->nlink());
+    if (ip->ref == 0) {
       // inode is no longer used: truncate and free inode.
       if(ip->flags & (I_BUSYR | I_BUSYW)) {
 	// race with iget
@@ -547,7 +573,7 @@ stati(struct inode *ip, struct stat *st)
   st->dev = ip->dev;
   st->ino = ip->inum;
   st->type = ip->type;
-  st->nlink = ip->nlink;
+  st->nlink = ip->nlink();
   st->size = ip->size;
 }
 

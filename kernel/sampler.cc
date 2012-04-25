@@ -225,7 +225,7 @@ sampstat(struct inode *ip, struct stat *st)
   st->dev = ip->dev;
   st->ino = ip->inum;
   st->type = ip->type;
-  st->nlink = ip->nlink;
+  st->nlink = ip->nlink();
   st->size = sz;
 }
 

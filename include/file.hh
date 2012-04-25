@@ -39,13 +39,16 @@ protected:
 };
 
 // in-core file system types
-
 struct inode : public rcu_freed
 {
   static inode* alloc(u32 dev, u32 inum);
   virtual void do_gc() { delete this; }
   void init();
 
+  void link();
+  void unlink();
+  short nlink();
+  
   inode& operator=(const inode&) = delete;
   inode(const inode& x) = delete;
   
@@ -63,7 +66,6 @@ struct inode : public rcu_freed
   short type;         // copy of disk inode
   short major;
   short minor;
-  short nlink;
   u32 size;
   u32 addrs[NDIRECT+1];
 
@@ -71,6 +73,8 @@ private:
   inode();
   ~inode();
   NEW_DELETE_OPS(inode)
+
+  short nlink_;
 };
 
 #define I_BUSYR 0x1
