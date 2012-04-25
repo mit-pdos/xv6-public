@@ -318,6 +318,8 @@ inode::init(void)
   major = dip->major;
   minor = dip->minor;
   nlink_ = dip->nlink;
+  if (nlink_ > 0)
+    idup(this);
   size = dip->size;
   gen = dip->gen;
   memmove(addrs, dip->addrs, sizeof(addrs));
