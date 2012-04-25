@@ -36,7 +36,6 @@ void initnet(void);
 void initsched(void);
 void initlockstat(void);
 void initwq(void);
-void initsperf(void);
 void initidle(void);
 void initcpprt(void);
 void initfutex(void);
@@ -149,7 +148,6 @@ cmain(u64 mbmagic, u64 mbaddr)
   initacpi();
 
   initseg();
-  initsperf();
   inittrap();
   initlapic();
   initcmdline();
