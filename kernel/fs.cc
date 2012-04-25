@@ -256,9 +256,40 @@ inode::~inode()
 struct inode*
 iget(u32 dev, u32 inum)
 {
-  struct inode *ip = igetnoref(dev, inum);
-  if (ip)
-    idup(ip);
+ retry:
+  // Try for cached inode.
+  {
+    scoped_gc_epoch e;
+    struct inode *ip = ins->lookup(make_pair(dev, inum));
+    if (ip) {
+      if (!(ip->flags & I_VALID)) {
+        acquire(&ip->lock);
+        while((ip->flags & I_VALID) == 0)
+	  cv_sleep(&ip->cv, &ip->lock);
+        release(&ip->lock);
+      }
+      
+      idup(ip);
+      return ip;
+    }
+  }
+  
+  // Allocate fresh inode cache slot.
+  struct inode *ip = inode::alloc(dev, inum);
+  if (ip == nullptr)
+    panic("igetnoref: should throw_bad_alloc()");
+  
+  // Lock the inode
+  ip->flags = I_BUSYR | I_BUSYW;
+  ip->readbusy = 1;
+
+  if (ins->insert(make_pair(ip->dev, ip->inum), ip) < 0) {
+    gc_delayed(ip);
+    goto retry;
+  }
+  ip->init();
+
+  iunlock(ip);
   return ip;
 }
 
@@ -270,8 +301,7 @@ inode::alloc(u32 dev, u32 inum)
     return nullptr;
   ip->dev = dev;
   ip->inum = inum;
-  // XXX(sbw)
-  ip->ref = 0;
+  ip->ref = 1;
   snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
   initlock(&ip->lock, ip->lockname+3, LOCKSTAT_FS);
   initcondvar(&ip->cv, ip->lockname);
@@ -295,43 +325,6 @@ inode::init(void)
   flags |= I_VALID;
 }
 
-struct inode*
-igetnoref(u32 dev, u32 inum)
-{
- retry:
-  // Try for cached inode.
-  {
-    scoped_gc_epoch e;
-    struct inode *ip = ins->lookup(make_pair(dev, inum));
-    if (ip) {
-      if (!(ip->flags & I_VALID)) {
-        acquire(&ip->lock);
-        while((ip->flags & I_VALID) == 0)
-	  cv_sleep(&ip->cv, &ip->lock);
-        release(&ip->lock);
-      }
-    return ip;
-    }
-  }
-
-  // Allocate fresh inode cache slot.
-  struct inode *ip = inode::alloc(dev, inum);
-  if (ip == nullptr)
-    panic("igetnoref: should throw_bad_alloc()");
-
-  // Lock the inode
-  ip->flags = I_BUSYR | I_BUSYW;
-  ip->readbusy = 1;
-
-  if (ins->insert(make_pair(ip->dev, ip->inum), ip) < 0) {
-    gc_delayed(ip);
-    goto retry;
-  }
-  ip->init();
-
-  iunlock(ip);
-  return ip;
-}
 
 // Increment reference count for ip.
 // Returns ip to enable ip = idup(ip1) idiom.

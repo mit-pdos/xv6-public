@@ -90,7 +90,6 @@ struct inode*   ialloc(u32, short);
 struct inode*   namei(inode *cwd, const char*);
 void            iput(struct inode*);
 struct inode*   iget(u32 dev, u32 inum);
-struct inode*   igetnoref(u32 dev, u32 inum);
 void            ilock(struct inode*, int writer);
 void            iunlockput(struct inode*);
 void            iupdate(struct inode*);
