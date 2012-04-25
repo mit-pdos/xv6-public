@@ -746,13 +746,15 @@ static struct inode*
 namex(inode *cwd, const char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
+  bool drop_ref;
   int r;
-  scoped_gc_epoch e;
 
+  scoped_gc_epoch e;
   if(*path == '/') 
     ip = igetnoref(ROOTDEV, ROOTINO);
   else
     ip = cwd;
+  drop_ref = false;
 
   while((r = skipelem(&path, name)) == 1){
     // XXX Doing this here requires some annoying reasoning about all
@@ -765,20 +767,23 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
     // the caller declare the variables?  Would it help for the caller
     // to pass in an abstract scope?
     mtreadavar("inode:%x.%x", ip->dev, ip->inum);
-    next = 0;
-    if(next == 0){
-      if(ip->type == 0)
-        panic("namex");
-      if(ip->type != T_DIR)
-        return 0;
-      if(nameiparent && *path == '\0'){
-        // Stop one level early.
+    if(ip->type == 0)
+      panic("namex");
+    if(ip->type != T_DIR)
+      return 0;
+    if(nameiparent && *path == '\0'){
+      // Stop one level early.
+      if (!drop_ref)
         idup(ip);
-        return ip;
-      }
-      if((next = dirlookup(ip, name)) == 0)
-        return 0;
+      return ip;
     }
+
+    if((next = dirlookup(ip, name)) == 0)
+      return 0;
+    if (drop_ref)
+      iput(ip);
+
+    drop_ref = true;
     ip = next;
   }
 
@@ -792,7 +797,8 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
   // mtreadavar("inode:%x.%x", ip->dev, ip->inum);
   mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
 
-  idup(ip);
+  if (!drop_ref)
+    idup(ip);
   return ip;
 }
 
