@@ -155,9 +155,9 @@ cmain(u64 mbmagic, u64 mbaddr)
   initsched();     // scheduler run queues
   initidle();
   initgc();        // gc epochs and threads
+  initdisk();      // disk
   initbio();       // buffer cache
   initinode();     // inode cache
-  initdisk();      // disk
   initconsole();
   initfutex();
   initsamp();
