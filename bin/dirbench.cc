@@ -59,8 +59,7 @@ main(int ac, char** av)
 
   nthread = atoi(av[1]);
 
-  if (mkdir("/dbx") < 0)
-    fprintf(1, "mkdir failed\n");
+  mkdir("/dbx");
 
   u64 t0 = rdtsc();
   for(u32 i = 0; i < nthread; i++) {
