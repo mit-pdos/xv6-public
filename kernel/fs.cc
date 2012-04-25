@@ -189,6 +189,7 @@ ialloc(u32 dev, short type)
       // maybe this inode is free. look at it via the
       // inode cache to make sure.
       struct inode *ip = iget(dev, inum);
+      assert(ip->valid());
       ilock(ip, 1);
       if(ip->type == 0){
         ip->type = type;
@@ -263,15 +264,15 @@ iget(u32 dev, u32 inum)
     scoped_gc_epoch e;
     struct inode *ip = ins->lookup(make_pair(dev, inum));
     if (ip) {
-      if (!(ip->flags & I_VALID)) {
-        acquire(&ip->lock);
-        while((ip->flags & I_VALID) == 0)
-	  cv_sleep(&ip->cv, &ip->lock);
-        release(&ip->lock);
-      }
-      
-      if (ip->tryinc())
+      if (ip->tryinc()) {
+        if (!(ip->flags & I_VALID)) {
+          acquire(&ip->lock);
+          while((ip->flags & I_VALID) == 0)
+            cv_sleep(&ip->cv, &ip->lock);
+          release(&ip->lock);
+        }
         return ip;
+      }
     }
   }
   
