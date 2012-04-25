@@ -2,7 +2,8 @@ $(O)/lib/%.o: CFLAGS:=$(CFLAGS) -DXV6_USER
 $(O)/lib/%.o: CXXFLAGS:=$(CXXFLAGS) -DXV6_USER -fno-exceptions -fno-rtti
 
 ULIB = ulib.o printf.o umalloc.o uthread.o fmt.o stream.o ipc.o \
-       threads.o crt.o wqlib.o wquser.o perf.o wqalloc.o sysstubs.o
+       threads.o crt.o wqlib.o wquser.o perf.o wqalloc.o sysstubs.o \
+       pstream.o
 ULIB := $(addprefix $(O)/lib/, $(ULIB))
 
 $(O)/lib/sysstubs.S: tools/syscalls.py kernel/*.cc
