@@ -231,6 +231,9 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
   assert(start >= start_);
   assert(start + size <= start_ + size_);
 
+  // XXX(austin) We will deadlock with ourselves if we try to replace
+  // a range and the replaced range is on a different level than the
+  // locked range (because this update_range will try to push_down).
   dprintf("%p: replace: [%lx, %lx) with %p\n", r_, start, start + size, val);
   update_range(r_->root_.load(), &r_->root_, [val](radix_entry cur, radix_ptr *ptr) -> radix_entry {
       do {
@@ -244,6 +247,17 @@ radix_range::replace(u64 start, u64 size, radix_elem *val)
       // Not a node, but let's return what it wants anyway.
       return radix_entry(val, entry_locked);
     }, 0, 1L << key_bits, start, start + size);
+}
+
+radix_iterator
+radix_iterator::next_change() const
+{
+  radix_elem *cur = **this;
+  radix_iterator next(*this);
+  do {
+    next.advance(false);
+  } while (next.k_ < next.key_limit_ && *next == cur);
+  return next;
 }
 
 void
@@ -268,7 +282,7 @@ radix_iterator::prime_path()
 }
 
 void
-radix_iterator::advance()
+radix_iterator::advance(bool skip_nulls)
 {
   while (true) {
     // As long as we haven't reached our limit or an element, advance
@@ -296,8 +310,8 @@ radix_iterator::advance()
       level_--;
     }
 
-    // Did we reach a non-null leaf?
-    if (!entry.is_null())
+    // Did we reach a non-null leaf?  (Or do we not care?)
+    if (!skip_nulls || !entry.is_null())
       return;
   }
 }

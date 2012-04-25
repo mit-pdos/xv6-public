@@ -8,10 +8,22 @@
 
 #include <sys/mman.h>
 
+#include <utility>
+
 char buf[2048];
 char name[3];
 const char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
 int stdout = 1;
+
+// Random number generator for randomized tests
+static u64 rseed;
+
+u64
+rnd(void)
+{
+  rseed = rseed * 6364136223846793005 + 1442695040888963407;
+  return rseed;
+}
 
 // simple file system tests
 
@@ -1741,6 +1753,91 @@ unmappedtest(void)
   printf("unmappedtest ok\n");
 }
 
+bool
+test_fault(char *p)
+{
+  int fds[2], pid;
+  char buf = 0;
+
+  if (pipe(fds) != 0)
+    die("test_fault: pipe failed");
+  if ((pid = fork(0)) < 0)
+    die("test_fault: fork failed");
+
+  if (pid == 0) {
+    close(fds[0]);
+    *p = 0x42;
+    if (write(fds[1], &buf, 1) != 1)
+      die("test_fault: write failed");
+    exit();
+  }
+
+  close(fds[1]);
+  bool faulted = (read(fds[0], &buf, 1) < 1);
+  wait();
+  close(fds[0]);
+  return faulted;
+}
+
+void
+vmoverlap(void)
+{
+  printf("vmoverlap\n");
+
+  char *base = (char*)0x1000;
+  char map[10] = {};
+  int mapn = 1;
+  rseed = 0;
+  for (int i = 0; i < 100; i++) {
+    int op = i % 20 >= 10;
+    int lo = rnd() % 10, hi = rnd() % 10;
+    if (lo > hi)
+      std::swap(lo, hi);
+    if (lo == hi)
+      continue;
+
+    if (op == 0) {
+      // Map
+      void *res = mmap(base + lo * 4096, (hi-lo) * 4096, PROT_READ|PROT_WRITE,
+                       MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0);
+      if (res == MAP_FAILED)
+        die("vmoverlap: mmap failed");
+    } else {
+      // Unmap
+      int res = munmap(base + lo * 4096, (hi-lo) * 4096);
+      if (res < 0)
+        die("vmoverlap: munmap failed");
+    }
+
+    for (int i = lo; i < hi; i++) {
+      if (op == 0) {
+        // Check that it zeroed the range
+        if (base[i*4096] != 0)
+          die("did not zero mapped-over region");
+        // Fill it in
+        base[i*4096] = mapn;
+        // Update the expected mapping
+        map[i] = mapn;
+      } else {
+        // Update the expected mapping
+        map[i] = 0;
+      }
+    }
+
+    // Check entire mapping
+    for (int i = 0; i < sizeof(map)/sizeof(map[0]); i++) {
+      if (map[i] && base[i*4096] != map[i])
+        die("page outside of mapped-over region changed");
+      else if (!map[i] && !test_fault(&base[i*4096]))
+        die("expected fault");
+    }
+  }
+
+  munmap(base, 10 * 4096);
+
+  printf("vmoverlap ok\n");
+}
+
 static int nenabled;
 static char **enabled;
 
@@ -1782,6 +1879,7 @@ main(int argc, char *argv[])
   // we should be able to grow a user process to consume all phys mem
 
   TEST(unmappedtest);
+  TEST(vmoverlap);
 
   TEST(validatetest);
 

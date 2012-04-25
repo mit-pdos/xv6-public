@@ -12,6 +12,23 @@ namespace std {
     return static_cast<typename remove_reference<T>::type&&>(a);
   }
 
+  template<class T>
+  void
+  swap(T& a, T& b)
+  {
+    T tmp = move(a);
+    a = move(b);
+    b = move(tmp);
+  }
+
+  template<class T, size_t N>
+  void
+  swap(T (&a)[N], T (&b)[N])
+  {
+    for (size_t n = 0; n < N; n++)
+      swap(a[n], b[n]);
+  }
+
   template<class A, class B>
   struct pair {
     typedef A first_type;
