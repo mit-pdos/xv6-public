@@ -234,7 +234,8 @@ iupdate(struct inode *ip)
 // Though unlocked, all fields will be present,
 // so looking a ip->inum and ip->gen are OK even w/o lock.
 inode::inode()
-  : rcu_freed("inode")
+  : rcu_freed("inode"),
+    flags(0), readbusy(0)
 {
   dir = 0;
 }
