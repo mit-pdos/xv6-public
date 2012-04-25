@@ -285,6 +285,8 @@ iget(u32 dev, u32 inum)
   ip->readbusy = 1;
 
   if (ins->insert(make_pair(ip->dev, ip->inum), ip) < 0) {
+    // We haven't touched anything on disk, so we can
+    // gc_delayed, instead of ip->onzero() (via ip->dec())
     gc_delayed(ip);
     goto retry;
   }
