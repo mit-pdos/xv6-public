@@ -16,6 +16,7 @@
 #include "sperf.hh"
 #include "uwq.hh"
 #include "kmtrace.hh"
+#include "kstream.hh"
 
 enum { vm_debug = 0 };
 enum { tlb_shootdown = 1 };
@@ -186,6 +187,13 @@ vma::~vma()
 {
   if (n)
     n->decref();
+}
+
+void
+to_stream(print_stream *s, vma *v)
+{
+  s->print("vma@[", shex(v->vma_start), ',', shex(v->vma_end), ')',
+           v->va_type == COW ? "/COW" : "");
 }
 
 /*
@@ -425,8 +433,7 @@ again:
         goto again;
 
       vma *rvma = (vma*) r;
-      cprintf("vmap::insert: overlap with %p: 0x%lx--0x%lx\n",
-              rvma, rvma->vma_start, rvma->vma_end);
+      uerr.println("vmap::insert: overlap with ", rvma);
       return -1;
     }
 #endif
@@ -509,8 +516,9 @@ vmap::remove(uptr vma_start, uptr len)
     for (auto r: span) {
       vma *rvma = (vma*) r;
       if (rvma->vma_start < vma_start || rvma->vma_end > vma_end) {
-        cprintf("vmap::remove: partial unmap not supported; unmapping [%#lx,%#lx) from [%#lx,%#lx)\n",
-                vma_start, vma_start+len, rvma->vma_start, rvma->vma_end);
+        uerr.println("vmap::remove: partial unmap not supported; "
+                     "unmapping [", shex(vma_start),",",shex(vma_start+len), ")"
+                     " from ", rvma);
         return -1;
       }
     }
@@ -821,8 +829,8 @@ vmap::sbrk(ssize_t n, uptr *addr)
       prev = e;
 #endif
     } else {
-      cprintf("growproc: overlap with existing mapping; brk %lx n %ld\n",
-              curbrk, n);
+      uerr.println("growproc: overlap with existing mapping; "
+                   "brk ", shex(curbrk), " n ", n);
       return -1;
     }
   }

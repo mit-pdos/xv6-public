@@ -68,6 +68,9 @@ struct vma
   NEW_DELETE_OPS(vma)
 };
 
+class print_stream;
+void to_stream(print_stream *s, vma *v);
+
 // An address space: a set of vmas plus h/w page table.
 // The elements of e[] are not ordered by address.
 struct vmap {

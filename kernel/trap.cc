@@ -12,6 +12,7 @@
 #include "bits.hh"
 #include "kalloc.hh"
 #include "apic.hh"
+#include "kstream.hh"
 
 extern "C" void __uaccess_end(void);
 
@@ -73,7 +74,7 @@ do_pagefault(struct trapframe *tf)
 #endif
         return 0;
       }
-      cprintf("pagefault: failed in user\n");
+      uerr.println("pagefault: failed in user");
       cli();
   }
   return -1;
@@ -171,10 +172,11 @@ trap(struct trapframe *tf)
       kerneltrap(tf);
 
     // In user space, assume process misbehaved.
-    cprintf("pid %d %s: trap %lu err %d on cpu %d "
-            "rip 0x%lx rsp 0x%lx addr 0x%lx--kill proc\n",
-            myproc()->pid, myproc()->name, tf->trapno, tf->err,
-            mycpu()->id, tf->rip, tf->rsp, rcr2());
+    uerr.println("pid ", myproc()->pid, ' ', myproc()->name,
+                 ": trap ", (u64)tf->trapno, " err ", (u32)tf->err,
+                 " on cpu ", mycpuid(), " rip ", shex(tf->rip),
+                 " rsp ", shex(tf->rsp), " addr ", shex(rcr2()),
+                 "--kill proc");
     myproc()->killed = 1;
   }
 
