@@ -59,6 +59,8 @@ struct inode : public rcu_freed {
   u32 size;
   u32 addrs[NDIRECT+1];
 
+  static inode* alloc(u32 dev, u32 inum);
+  void init();
   inode();
   ~inode();
   virtual void do_gc() { delete this; }

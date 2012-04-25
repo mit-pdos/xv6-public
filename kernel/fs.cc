@@ -42,6 +42,7 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
+static inode* the_root;
 
 // Read the super block.
 static void
@@ -157,14 +158,14 @@ ino_hash(const pair<u32, u32> &p)
 
 static xns<pair<u32, u32>, inode*, ino_hash> *ins;
 
-static struct { atomic<u32> x __mpalign__; } icache_free[NCPU];
-
 void
 initinode(void)
 {
   ins = new xns<pair<u32, u32>, inode*, ino_hash>(false);
-  for (int i = 0; i < NCPU; i++)
-    icache_free[i].x = NINODE;
+  the_root = inode::alloc(ROOTDEV, ROOTINO);
+  if (ins->insert(make_pair(the_root->dev, the_root->inum), the_root) < 0)
+    panic("initinode: insert the_root failed");
+  the_root->init();
 }
 
 //PAGEBREAK!
@@ -261,6 +262,39 @@ iget(u32 dev, u32 inum)
   return ip;
 }
 
+inode*
+inode::alloc(u32 dev, u32 inum)
+{
+  inode* ip = new inode();
+  if (ip == nullptr)
+    return nullptr;
+  ip->dev = dev;
+  ip->inum = inum;
+  // XXX(sbw)
+  ip->ref = 0;
+  snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
+  initlock(&ip->lock, ip->lockname+3, LOCKSTAT_FS);
+  initcondvar(&ip->cv, ip->lockname);
+  
+  return ip;
+}
+
+void
+inode::init(void)
+{
+  struct buf *bp = bread(dev, IBLOCK(inum), 0);
+  struct dinode *dip = (struct dinode*)bp->data + inum%IPB;
+  type = dip->type;
+  major = dip->major;
+  minor = dip->minor;
+  nlink = dip->nlink;
+  size = dip->size;
+  gen = dip->gen;
+  memmove(addrs, dip->addrs, sizeof(addrs));
+  brelse(bp, 0);
+  flags |= I_VALID;
+}
+
 struct inode*
 igetnoref(u32 dev, u32 inum)
 {
@@ -281,34 +315,21 @@ igetnoref(u32 dev, u32 inum)
   }
 
   // Allocate fresh inode cache slot.
-  struct inode *ip = new inode();
-  ip->dev = dev;
-  ip->inum = inum;
-  ip->ref = 0;
+  struct inode *ip = inode::alloc(dev, inum);
+  if (ip == nullptr)
+    panic("igetnoref: should throw_bad_alloc()");
+
+  // Lock the inode
   ip->flags = I_BUSYR | I_BUSYW;
   ip->readbusy = 1;
-  snprintf(ip->lockname, sizeof(ip->lockname), "cv:ino:%d", ip->inum);
-  initlock(&ip->lock, ip->lockname+3, LOCKSTAT_FS);
-  initcondvar(&ip->cv, ip->lockname);
+
   if (ins->insert(make_pair(ip->dev, ip->inum), ip) < 0) {
     gc_delayed(ip);
     goto retry;
   }
-  
-  struct buf *bp = bread(ip->dev, IBLOCK(ip->inum), 0);
-  struct dinode *dip = (struct dinode*)bp->data + ip->inum%IPB;
-  ip->type = dip->type;
-  ip->major = dip->major;
-  ip->minor = dip->minor;
-  ip->nlink = dip->nlink;
-  ip->size = dip->size;
-  ip->gen = dip->gen;
-  memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
-  brelse(bp, 0);
-  ip->flags |= I_VALID;
+  ip->init();
 
   iunlock(ip);
-
   return ip;
 }
 
@@ -401,7 +422,6 @@ iput(struct inode *ip)
 
       ins->remove(make_pair(ip->dev, ip->inum), &ip);
       gc_delayed(ip);
-      icache_free[mycpu()->id].x++;
       return;
     }
     release(&ip->lock);
@@ -751,7 +771,7 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
 
   scoped_gc_epoch e;
   if(*path == '/') 
-    ip = igetnoref(ROOTDEV, ROOTINO);
+    ip = the_root;
   else
     ip = cwd;
   drop_ref = false;
