@@ -415,11 +415,9 @@ again:
     // new scope to release the search lock before tlbflush
     u64 len = n->npages * PGSIZE;
     auto span = vmas.search_lock(vma_start, len);
+#if VM_CRANGE
+    // XXX handle overlaps, set replaced=true
     for (auto r: span) {
-#if VM_RADIX
-      if (!r)
-        continue;
-#endif
       if (!fixed)
         goto again;
 
@@ -428,8 +426,27 @@ again:
               rvma, rvma->vma_start, rvma->vma_end);
       return -1;
     }
-
-    // XXX handle overlaps, set replaced=true
+#endif
+#if VM_RADIX
+    // XXX(austin) span.replace also has to do this scan.  It would be
+    // nice if we could do just one scan.
+    for (auto r: span) {
+      if (!r)
+        continue;
+      if (!fixed)
+        goto again;
+      else {
+        // XXX(austin) I don't think anything prevents a page fault
+        // from reading the old VMA now and installing the new page
+        // for the old VMA after the updatepages.  Certainly not
+        // PTE_LOCK, since we don't take that here.  Why not just use
+        // the lock in the radix tree?  (We can't do that with crange,
+        // though, since it can only lock complete ranges.)
+        replaced = true;
+        break;
+      }
+    }
+#endif
 
     e = new vma(this, vma_start, vma_start+len, PRIVATE, n);
     if (e == 0) {
@@ -450,6 +467,11 @@ again:
     updatepages(pml4, e->vma_start, e->vma_end, [&needtlb](atomic<pme_t> *p) {
         for (;;) {
           pme_t v = p->load();
+          // XXX(austin) Huh?  Why is it okay to skip it if it's
+          // locked?  The page fault could be faulting in a page from
+          // the old VMA, in which case we need to shoot it down
+          // (though if it's already faulting a page from the new VMA,
+          // we need to *not* shoot it down).
           if (v & PTE_LOCK)
             continue;
           if (!(v & PTE_P))
@@ -476,9 +498,11 @@ vmap::remove(uptr vma_start, uptr len)
 {
   {
     // new scope to release the search lock before tlbflush
-    uptr vma_end = vma_start + len;
 
     auto span = vmas.search_lock(vma_start, len);
+#if VM_CRANGE
+    // XXX handle partial unmap
+    uptr vma_end = vma_start + len;
     for (auto r: span) {
       vma *rvma = (vma*) r;
       if (rvma->vma_start < vma_start || rvma->vma_end > vma_end) {
@@ -487,13 +511,14 @@ vmap::remove(uptr vma_start, uptr len)
         return -1;
       }
     }
-
-    // XXX handle partial unmap
+#endif
 
 #if VM_CRANGE
     span.replace(0);
 #endif
 #if VM_RADIX
+    // XXX(austin) If this could tell us that nothing was replaced, we
+    // could skip the updatepages.
     span.replace(vma_start, len, 0);
 #endif
   }
