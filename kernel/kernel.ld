@@ -18,6 +18,14 @@ SECTIONS
 		*(.prof)
 	}
 	PROVIDE(eprof = .);
+
+	PROVIDE(sctors = .);
+	.ctors : {
+		KEEP(*(SORT(.ctors.*)));
+		KEEP(*(.ctors));
+	}
+	PROVIDE(ectors = .);
+
 	. = ALIGN(0x1000);
 	.data : {
 		*(.data .data.* .gnu.linkonce.d.*)

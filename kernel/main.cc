@@ -36,7 +36,6 @@ void initnet(void);
 void initsched(void);
 void initlockstat(void);
 void initwq(void);
-void initsperf(void);
 void initidle(void);
 void initcpprt(void);
 void initfutex(void);
@@ -133,6 +132,11 @@ cmain(u64 mbmagic, u64 mbaddr)
 {
   extern u64 cpuhz;
 
+  // Call global constructors
+  extern const uptr sctors[], ectors[];
+  for (const uptr *ctorva = ectors; ctorva > sctors; )
+    ((void(*)()) *--ctorva)();
+
   initpg();
   inithz();        // CPU Hz, microdelay
   initpic();       // interrupt controller
@@ -144,7 +148,6 @@ cmain(u64 mbmagic, u64 mbaddr)
   initacpi();
 
   initseg();
-  initsperf();
   inittrap();
   initlapic();
   initcmdline();
