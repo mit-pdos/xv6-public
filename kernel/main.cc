@@ -141,8 +141,8 @@ cmain(u64 mbmagic, u64 mbaddr)
   initmp();
   inittls();       // thread local storage
 
-  // Call global constructors require mycpu()->id, which
-  // we setup in inittls
+  // Some global constructors require mycpu()->id (via mycpuid())
+  // which we setup in inittls
   extern const uptr sctors[], ectors[];
   for (const uptr *ctorva = ectors; ctorva > sctors; ) {
     ((void(*)()) *--ctorva)();
