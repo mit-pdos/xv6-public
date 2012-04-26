@@ -152,6 +152,7 @@ class radix_elem : public rcu_freed {
 
  public:
   radix_elem() : rcu_freed("radix_elem"), ref_(0) {}
+  virtual ~radix_elem() {}
   void decref(u64 delta = 1) {
     if ((ref_ -= delta) == 0) {
       gc_delayed(this);
