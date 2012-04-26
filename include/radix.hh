@@ -218,6 +218,8 @@ struct radix {
   radix_elem* search(u64 key);
   radix_range search_lock(u64 start, u64 size);
 
+  iterator find(u64 key);
+
   radix_iterator begin() const;
   radix_iterator end() const;
 
@@ -225,11 +227,11 @@ struct radix {
 };
 
 struct radix_iterator {
-  radix_iterator(const radix* r, u64 k, u64 limit)
+  radix_iterator(const radix* r, u64 k, u64 limit, bool skip_nulls)
     : r_(r), k_(k), key_limit_(limit)
   {
     if (k_ != key_limit_)
-      prime_path();
+      prime_path(skip_nulls);
   }
   radix_iterator() = default;
   radix_iterator(const radix_iterator &o) = default;
@@ -250,10 +252,11 @@ struct radix_iterator {
 
   // Advance the iterator until it points at a non-null entry or end.
   // If the current element is non-null, does nothing.
-  void skip_nulls()
+  radix_iterator &skip_nulls()
   {
     if (!**this)
       ++(*this);
+    return *this;
   }
 
   // Return the key of the iterator's current element.
@@ -291,7 +294,7 @@ private:
   u32 level_;
 
   // Prepare the initial path_ and level_ based on k_.
-  void prime_path();
+  void prime_path(bool skip_nulls);
   // Advance to the next leaf.  If skip_nulls is true, advances to the
   // next non-null leaf.  This assumes that k_ < key_limit_.
   void advance(bool skip_nulls = true);
@@ -299,20 +302,20 @@ private:
 
 inline radix_iterator
 radix_range::begin() const {
-  return radix_iterator(r_, start_, start_ + size_);
+  return radix_iterator(r_, start_, start_ + size_, true);
 }
 
 inline radix_iterator
 radix_range::end() const {
-  return radix_iterator(r_, start_ + size_, start_ + size_);
+  return radix_iterator(r_, start_ + size_, start_ + size_, true);
 }
 
 inline radix_iterator
 radix::begin() const {
-  return radix_iterator(this, 0, (u64)1 << key_bits);
+  return radix_iterator(this, 0, (u64)1 << key_bits, true);
 }
 
 inline radix_iterator
 radix::end() const {
-  return radix_iterator(this, (u64)1 << key_bits, (u64)1 << key_bits);
+  return radix_iterator(this, (u64)1 << key_bits, (u64)1 << key_bits, true);
 }

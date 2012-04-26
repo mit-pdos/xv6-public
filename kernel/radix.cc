@@ -180,6 +180,12 @@ radix::search_lock(u64 start, u64 size)
   return radix_range(this, start >> shift_, size >> shift_);
 }
 
+radix::iterator
+radix::find(u64 key)
+{
+  return radix::iterator(this, key >> shift_, (u64)1 << key_bits, false);
+}
+
 radix_range::radix_range(radix *r, u64 start, u64 size)
   : r_(r), start_(start), size_(size)
 {
@@ -261,8 +267,13 @@ radix_iterator::next_change() const
 }
 
 void
-radix_iterator::prime_path()
+radix_iterator::prime_path(bool skip_nulls)
 {
+  // XXX(amdragon) Do this lazily in operator*.  Then we don't need
+  // special-casing for the end iterator and callers can jump around
+  // the keyspace however they want (including, say, starting with the
+  // begin iterator of the whole radix tree and jumping to a
+  // particular key.)
   dprintf("%p: Made iterator with k = %lx\n", r_, k_);
 
   // Load the initial path
@@ -276,7 +287,8 @@ radix_iterator::prime_path()
   }
 
   // Find a real element
-  skip_nulls();
+  if (skip_nulls)
+    this->skip_nulls();
 
   dprintf("%p: Adjusted: k = %lx\n", r_, k_);
 }
