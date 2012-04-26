@@ -243,6 +243,8 @@ struct radix_iterator {
   }
 
   radix_elem* operator*() const {
+    // XXX(austin) If we don't hold a lock on this element, it's
+    // possible it will morph into a node under us.
     return path_[level_]->load().elem();
   }
 
