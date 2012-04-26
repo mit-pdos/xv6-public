@@ -477,11 +477,6 @@ again:
     updatepages(pml4, e->vma_start, e->vma_end, [&needtlb](atomic<pme_t> *p) {
         for (;;) {
           pme_t v = p->load();
-          // XXX(austin) Huh?  Why is it okay to skip it if it's
-          // locked?  The page fault could be faulting in a page from
-          // the old VMA, in which case we need to shoot it down
-          // (though if it's already faulting a page from the new VMA,
-          // we need to *not* shoot it down).
           if (v & PTE_LOCK)
             continue;
           if (!(v & PTE_P))
