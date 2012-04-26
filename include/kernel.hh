@@ -102,6 +102,9 @@ struct inode*   nameiparent(inode *cwd, const char*, char*);
 int             dirlink(struct inode*, const char*, u32);
 void            dir_init(struct inode *dp);
 void	        dir_flush(struct inode *dp);
+inode*          __nameiparent(inode *cwd, const char *path,
+                              char *name, bool* haveref);
+inode*          __namei(inode *cwd, const char *path, bool* haveref);
 
 // futex.cc
 typedef u64* futexkey_t;
