@@ -172,6 +172,8 @@ sys_unlink(const char *path)
 
   if(argcheckstr(path) < 0)
     return -1;
+
+  scoped_gc_epoch e;
   if((dp = __nameiparent(myproc()->cwd, path, name, &haveref)) == 0)
     return -1;
   if(dp->type != T_DIR)
