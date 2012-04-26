@@ -224,53 +224,65 @@ create(inode *cwd, const char *path, short type, short major, short minor)
 {
   struct inode *ip, *dp;
   char name[DIRSIZ];
+  bool haveref = false;
+
   mt_ascope ascope("%s(%d.%d,%s,%d,%d,%d)",
                    __func__, cwd->dev, cwd->inum,
                    path, type, major, minor);
 
  retry:
-  if((dp = nameiparent(cwd, path, name)) == 0)
-    return 0;
-  if(dp->type != T_DIR)
-    panic("create");
+  {
+    scoped_gc_epoch e;
+    if((dp = __nameiparent(cwd, path, name, &haveref)) == 0)
+      return 0;
 
-  if((ip = dirlookup(dp, name)) != 0){
-    iput(dp);
-    ilock(ip, 1);
-    if(type == T_FILE && ip->type == T_FILE)
-      return ip;
-    iunlockput(ip);
-    return nullptr;
-  }
+    if(dp->type != T_DIR)
+      panic("create");
 
-  if((ip = ialloc(dp->dev, type)) == nullptr)
-    return nullptr;
+    if((ip = dirlookup(dp, name)) != 0){
+      iput(dp, haveref);
+      ilock(ip, 1);
+      if(type == T_FILE && ip->type == T_FILE)
+        return ip;
+      iunlockput(ip);
+      return nullptr;
+    }
+    
+    if((ip = ialloc(dp->dev, type)) == nullptr)
+      return nullptr;
+    
+    ip->major = major;
+    ip->minor = minor;
+    ip->link();
+    iupdate(ip);
+    
+    mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
+    
+    if(type == T_DIR){  // Create . and .. entries.
+      dp->link(); // for ".."
+      iupdate(dp);
+      // No ip->nlink++ for ".": avoid cyclic ref count.
+      if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
+        panic("create dots");
+    }
+    
+    if(dirlink(dp, name, ip->inum) < 0) {
+      // create race
+      ip->unlink();
+      iunlockput(ip);
+      iput(dp, haveref);
+      goto retry;
+    }
 
-  ip->major = major;
-  ip->minor = minor;
-  ip->link();
-  iupdate(ip);
-
-  mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
-
-  if(type == T_DIR){  // Create . and .. entries.
-    dp->link(); // for ".."
-    iupdate(dp);
-    // No ip->nlink++ for ".": avoid cyclic ref count.
-    if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
-      panic("create dots");
-  }
-
-  if(dirlink(dp, name, ip->inum) < 0) {
-    // create race
-    ip->unlink();
-    iunlockput(ip);
-    iput(dp);
-    goto retry;
+    if (!dp->valid()) {
+      // XXX(sbw) we need to undo everything we just did
+      // (at least all the modifications to dp) and retry.
+      panic("create: race");
+    }
   }
 
   //nc_insert(dp, name, ip);
-  iput(dp);
+  iput(dp, haveref);
   return ip;
 }
 

@@ -476,6 +476,13 @@ iunlock(struct inode *ip)
   release(&ip->lock);
 }
 
+void
+iput(inode* ip, bool haveref)
+{
+  if (haveref)
+    iput(ip);
+}
+
 // Caller holds reference to unlocked ip.  Drop reference.
 void
 iput(struct inode *ip)
