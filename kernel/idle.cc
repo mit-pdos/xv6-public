@@ -127,6 +127,7 @@ idleloop(void)
           exit();
       } while(worked);
       sti();
+      nop_pause();
     }
   }
 }

@@ -301,8 +301,10 @@ acquire(struct spinlock *lk)
   locking(lk);
 
   retries = 0;
-  while(xchg32(&lk->locked, 1) != 0)
+  while(xchg32(&lk->locked, 1) != 0) {
     retries++;
+    nop_pause();
+  }
   locked(lk, retries);
 }
 

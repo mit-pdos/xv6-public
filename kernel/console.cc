@@ -19,6 +19,7 @@
 #include "sperf.hh"
 #include "wq.hh"
 #include "major.h"
+#include "kstream.hh"
 
 #define BACKSPACE 0x100
 
@@ -335,6 +336,24 @@ consoleread(struct inode *ip, char *dst, u32 off, u32 n)
 
   return target - n;
 }
+
+// Console stream support
+
+void
+console_stream::write(char c)
+{
+  consputc(c);
+}
+
+void
+console_stream::write(sbuf buf)
+{
+  for (size_t i = 0; i < buf.len; i++)
+    consputc(buf.base[i]);
+}
+
+console_stream console;
+console_stream uerr(false);
 
 void
 initconsole(void)

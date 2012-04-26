@@ -57,6 +57,7 @@ OBJS = \
         zalloc.o \
 	incbin.o \
 	sysvectors.o \
+	pstream.o
 
 ifeq ($(EXCEPTIONS),y)
 OBJS += \
