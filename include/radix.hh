@@ -148,15 +148,12 @@ private:
 
 class radix_elem : public rcu_freed {
  private:
-  bool deleted_;
   std::atomic<u64> ref_;
 
  public:
-  radix_elem() : rcu_freed("radix_elem"), deleted_(false), ref_(0) {}
-  bool deleted() { return deleted_; }
+  radix_elem() : rcu_freed("radix_elem"), ref_(0) {}
   void decref(u64 delta = 1) {
     if ((ref_ -= delta) == 0) {
-      deleted_ = true;
       gc_delayed(this);
     }
   }
