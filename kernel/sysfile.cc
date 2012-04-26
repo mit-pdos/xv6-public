@@ -168,23 +168,24 @@ sys_unlink(const char *path)
 {
   struct inode *ip, *dp;
   char name[DIRSIZ];
+  bool haveref = false;
 
   if(argcheckstr(path) < 0)
     return -1;
-  if((dp = nameiparent(myproc()->cwd, path, name)) == 0)
+  if((dp = __nameiparent(myproc()->cwd, path, name, &haveref)) == 0)
     return -1;
   if(dp->type != T_DIR)
     panic("sys_unlink");
 
   // Cannot unlink "." or "..".
   if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0){
-    iput(dp);
+    iput(dp, haveref);
     return -1;
   }
 
  retry:
   if((ip = dirlookup(dp, name)) == 0){
-    iput(dp);
+    iput(dp, haveref);
     return -1;
   }
   ilock(ip, 1);
@@ -193,7 +194,7 @@ sys_unlink(const char *path)
     panic("unlink: nlink < 1");
   if(ip->type == T_DIR && !isdirempty(ip)){
     iunlockput(ip);
-    iput(dp);
+    iput(dp, haveref);
     return -1;
   }
 
@@ -210,8 +211,7 @@ sys_unlink(const char *path)
     iunlock(dp);
   }
 
-  //nc_invalidate(dp, name);
-  iput(dp);
+  iput(dp, haveref);
 
   ip->unlink();
   iupdate(ip);
@@ -276,7 +276,8 @@ create(inode *cwd, const char *path, short type, short major, short minor)
 
     if (!dp->valid()) {
       // XXX(sbw) we need to undo everything we just did
-      // (at least all the modifications to dp) and retry.
+      // (at least all the modifications to dp) and retry
+      // (or return an error).
       panic("create: race");
     }
   }
