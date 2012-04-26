@@ -7,7 +7,12 @@
 
 static const bool pinit = true;
 
+#ifdef HW_qemu
 enum { nloop = 100 };
+#else
+enum { nloop = 1000 };
+#endif
+
 enum { nfile = 10 };
 enum { nlookup = 100 };
 
