@@ -8,8 +8,10 @@
 
 #include <sys/mman.h>
 
+#include "atomic.hh"
+
 static int cpu;
-static pthread_barrier_t bar;
+std::atomic<int> barrier;
 enum { ncore = 8 };
 
 void
@@ -23,10 +25,25 @@ next()
   cpu++;
 }
 
+void
+ready(void)
+{
+  int slot = --barrier;
+  if (slot == 1) {
+    mtenable_type(mtrace_record_ascope, "xv6-asharing");
+    --barrier;
+  } else {
+    while (barrier)
+      asm volatile("pause");
+  }
+}
+
 void*
 vmsharing(void* arg)
 {
   u64 i = (u64) arg;
+
+  ready();
 
   volatile char *p = (char*)(0x40000UL + i * 4096);
   if (mmap((void *) p, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) < 0)
@@ -52,7 +69,7 @@ fssharing(void* arg)
 
   open(filename, O_CREATE|O_RDWR);
 
-  pthread_barrier_wait(&bar);
+  ready();
 
   for (u64 j = 0; j < ncore; j++) {
     snprintf(filename, sizeof(filename), "f%d", j);
@@ -73,8 +90,7 @@ main(int ac, char **av)
     fprintf(1, "usage: %s vm|fs\n", av[0]);
 
   if (op) {
-    mtenable_type(mtrace_record_ascope, "xv6-asharing");
-    pthread_barrier_init(&bar, 0, ncore);
+    barrier = ncore + 1;
     for (u64 i = 0; i < ncore; i++) {
       next();
       pthread_t tid;
@@ -83,6 +99,8 @@ main(int ac, char **av)
 
     for (u64 i = 0; i < ncore; i++)
       wait();
+    if (barrier)
+      die("forgot to call ready()");
     mtdisable("xv6-asharing");
   }
 }
