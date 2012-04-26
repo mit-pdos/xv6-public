@@ -94,7 +94,10 @@ bread(u32 dev, u64 sector, int writer)
   if(!(b->flags & B_VALID))
     iderw(b);
   if (writer && !origwriter) {
+    // Lock to seriaize check-and-sleep in bget with clearing B_BUSY
+    acquire(&b->lock);
     b->flags &= ~B_BUSY;
+    release(&b->lock);
     cv_wakeup(&b->cv);
   }
   return b;
@@ -118,7 +121,10 @@ brelse(struct buf *b, int writer)
   if (writer) {
     if((b->flags & B_BUSY) == 0)
       panic("brelse");
+    // Lock to seriaize check-and-sleep in bget with clearing B_BUSY
+    acquire(&b->lock);
     b->flags &= ~B_BUSY;
+    release(&b->lock);
     cv_wakeup(&b->cv);
   }
 }
