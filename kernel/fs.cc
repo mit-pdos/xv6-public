@@ -166,6 +166,17 @@ initinode(void)
   if (ins->insert(make_pair(the_root->dev, the_root->inum), the_root) < 0)
     panic("initinode: insert the_root failed");
   the_root->init();
+
+  if (VERBOSE) {
+    struct superblock sb;
+    u64 blocks;
+
+    readsb(ROOTDEV, &sb);
+    blocks = sb.ninodes/IPB;
+    cprintf("initinode: %lu inode blocks (%lu / core)\n",
+            blocks, blocks/NCPU);
+  }
+
 }
 
 //PAGEBREAK!
@@ -174,33 +185,36 @@ initinode(void)
 struct inode*
 ialloc(u32 dev, short type)
 {
-  int inum;
   struct buf *bp;
   struct dinode *dip;
   struct superblock sb;
 
   readsb(dev, &sb);
-  for(inum = 1; inum < sb.ninodes; inum++){  // loop over inode blocks
-    bp = bread(dev, IBLOCK(inum), 0);
-    dip = (struct dinode*)bp->data + inum%IPB;
-    int seemsfree = (dip->type == 0);
-    brelse(bp, 0);
-    if(seemsfree){
-      // maybe this inode is free. look at it via the
-      // inode cache to make sure.
-      struct inode *ip = iget(dev, inum);
-      assert(ip->valid());
-      ilock(ip, 1);
-      if(ip->type == 0){
-        ip->type = type;
-        ip->gen += 1;
-        if(ip->nlink() || ip->size || ip->addrs[0])
-          panic("ialloc not zeroed");
-        iupdate(ip);
-        return ip;
+  for (int k = mycpuid()*IPB; k < sb.ninodes; k += (NCPU*IPB)) {
+    for(int inum = k; inum < k+IPB && inum < sb.ninodes; inum++){
+      if (inum == 0)
+        continue;
+      bp = bread(dev, IBLOCK(inum), 0);
+      dip = (struct dinode*)bp->data + inum%IPB;
+      int seemsfree = (dip->type == 0);
+      brelse(bp, 0);
+      if(seemsfree){
+        // maybe this inode is free. look at it via the
+        // inode cache to make sure.
+        struct inode *ip = iget(dev, inum);
+        assert(ip->valid());
+        ilock(ip, 1);
+        if(ip->type == 0){
+          ip->type = type;
+          ip->gen += 1;
+          if(ip->nlink() || ip->size || ip->addrs[0])
+            panic("ialloc not zeroed");
+          iupdate(ip);
+          return ip;
+        }
+        iunlockput(ip);
+        //cprintf("ialloc oops %d\n", inum); // XXX harmless
       }
-      iunlockput(ip);
-      //cprintf("ialloc oops %d\n", inum); // XXX harmless
     }
   }
   cprintf("ialloc: 0/%u inodes\n", sb.ninodes);
