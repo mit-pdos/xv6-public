@@ -270,9 +270,9 @@ vmap::replace_vma(vma *a, vma *b)
   assert(a->vma_start == b->vma_start);
   assert(a->vma_end == b->vma_end);
   auto span = vmas.search_lock(a->vma_start, a->vma_end - a->vma_start);
+#if VM_CRANGE
   if (a->deleted())
     return false;
-#if VM_CRANGE
   for (auto e: span)
     assert(a == e);
   span.replace(b);
