@@ -269,29 +269,29 @@ inode::~inode()
   destroycondvar(&cv);
 }
 
-struct inode*
-iget(u32 dev, u32 inum)
+static inode*
+__iget(u32 dev, u32 inum, bool* haveref)
 {
+  inode* ip;
+
+  // Assumes caller is holding a gc_epoch
+
  retry:
   // Try for cached inode.
-  {
-    scoped_gc_epoch e;
-    struct inode *ip = ins->lookup(make_pair(dev, inum));
-    if (ip) {
-      if (ip->tryinc()) {
-        if (!(ip->flags & I_VALID)) {
-          acquire(&ip->lock);
-          while((ip->flags & I_VALID) == 0)
-            cv_sleep(&ip->cv, &ip->lock);
-          release(&ip->lock);
-        }
-        return ip;
-      }
+  ip = ins->lookup(make_pair(dev, inum));
+  if (ip) {
+    if (!(ip->flags & I_VALID)) {
+      acquire(&ip->lock);
+      while((ip->flags & I_VALID) == 0)
+        cv_sleep(&ip->cv, &ip->lock);
+      release(&ip->lock);
     }
+    *haveref = false;
+    return ip;
   }
   
   // Allocate fresh inode cache slot.
-  struct inode *ip = inode::alloc(dev, inum);
+  ip = inode::alloc(dev, inum);
   if (ip == nullptr)
     panic("igetnoref: should throw_bad_alloc()");
   
@@ -308,6 +308,22 @@ iget(u32 dev, u32 inum)
   ip->init();
 
   iunlock(ip);
+  *haveref = true;
+  return ip;
+}
+
+inode*
+iget(u32 dev, u32 inum)
+{
+  bool haveref;
+  inode* ip;
+
+  scoped_gc_epoch e;
+retry:
+  ip = __iget(dev, inum, &haveref);
+  if (!haveref)
+    if (!ip->tryinc())
+      goto retry;
   return ip;
 }
 
@@ -728,6 +744,20 @@ dir_flush(struct inode *dp)
 }
 
 // Look for a directory entry in a directory.
+static inode*
+__dirlookup(struct inode *dp, char *name, bool* haveref)
+{
+  // Assumes caller is holding a gc_epoch
+
+  dir_init(dp);
+
+  u32 inum = dp->dir.load()->lookup(strbuf<DIRSIZ>(name));
+  if (inum == 0)
+    return 0;
+  return __iget(dp->dev, inum, haveref);
+}
+
+// Look for a directory entry in a directory.
 struct inode*
 dirlookup(struct inode *dp, char *name)
 {
@@ -735,10 +765,8 @@ dirlookup(struct inode *dp, char *name)
 
   u32 inum = dp->dir.load()->lookup(strbuf<DIRSIZ>(name));
 
-  //cprintf("dirlookup: %x (%d): %s -> %d\n", dp, dp->inum, name, inum);
   if (inum == 0)
     return 0;
-
   return iget(dp->dev, inum);
 }
 
@@ -803,7 +831,7 @@ static struct inode*
 namex(inode *cwd, const char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
-  bool drop_ref;
+  bool haveref;
   int r;
 
   scoped_gc_epoch e;
@@ -811,7 +839,7 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
     ip = the_root;
   else
     ip = cwd;
-  drop_ref = false;
+  haveref = false;
 
   while((r = skipelem(&path, name)) == 1){
     // XXX Doing this here requires some annoying reasoning about all
@@ -830,17 +858,18 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
       return 0;
     if(nameiparent && *path == '\0'){
       // Stop one level early.
-      if (!drop_ref)
+      if (!haveref)
         idup(ip);
       return ip;
     }
 
-    if((next = dirlookup(ip, name)) == 0)
+    bool nextref;
+    if((next = __dirlookup(ip, name, &nextref)) == 0)
       return 0;
-    if (drop_ref)
+    if (haveref)
       iput(ip);
 
-    drop_ref = true;
+    haveref = nextref;
     ip = next;
   }
 
@@ -854,7 +883,7 @@ namex(inode *cwd, const char *path, int nameiparent, char *name)
   // mtreadavar("inode:%x.%x", ip->dev, ip->inum);
   mtwriteavar("inode:%x.%x", ip->dev, ip->inum);
 
-  if (!drop_ref)
+  if (!haveref)
     idup(ip);
   return ip;
 }
