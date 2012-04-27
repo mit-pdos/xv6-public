@@ -39,6 +39,7 @@
 #include "file.hh"
 #include "cpu.hh"
 #include "kmtrace.hh"
+#include "dirns.hh"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
@@ -708,7 +709,7 @@ dir_init(struct inode *dp)
   if (dp->type != T_DIR)
     panic("dir_init not DIR");
 
-  auto dir = new xns<strbuf<DIRSIZ>, u32, namehash>(false);
+  auto dir = new dirns();
   for (u32 off = 0; off < dp->size; off += BSIZE) {
     struct buf *bp = bread(dp->dev, bmap(dp, off / BSIZE), 0);
     for (struct dirent *de = (struct dirent *) bp->data;

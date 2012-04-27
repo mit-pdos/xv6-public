@@ -6,6 +6,8 @@
 #include "atomic.hh"
 #include "ref.hh"
 
+class dirns;
+
 u64 namehash(const strbuf<DIRSIZ>&);
 
 struct file : public referenced, public rcu_freed {
@@ -60,9 +62,9 @@ struct inode : public referenced, public rcu_freed
   struct condvar cv;
   struct spinlock lock;
   char lockname[16];
-  std::atomic<xns<strbuf<DIRSIZ>, u32, namehash>*> dir;
+  std::atomic<dirns*> dir;
 
-  short type;         // copy of disk inode
+  short type;        // copy of disk inode
   short major;
   short minor;
   u32 size;
