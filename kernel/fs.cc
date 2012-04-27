@@ -696,8 +696,14 @@ u64
 namehash(const strbuf<DIRSIZ> &n)
 {
   u64 h = 0;
-  for (int i = 0; i < DIRSIZ && n._buf[i]; i++)
-    h = ((h << 8) ^ n._buf[i]) % 0xdeadbeef;
+  for (int i = 0; i < DIRSIZ && n._buf[i]; i++) {
+    u64 c = n._buf[i];
+    // Lifted from dcache.h in Linux v3.3
+    h = (h + (c << 4) + (c >> 4)) * 11;
+    // XXX(sbw) this doesn't seem to do well with the names
+    // in dirbench (the low-order bits get clumped).
+    // h = ((h << 8) ^ c) % 0xdeadbeef;
+  }
   return h;
 }
 
