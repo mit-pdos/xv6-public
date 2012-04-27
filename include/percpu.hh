@@ -1,6 +1,6 @@
 #pragma once
 
-extern int mycpuid(void);
+#include "cpu.hh"
 
 template <typename T>
 struct percpu {
@@ -11,15 +11,15 @@ struct percpu {
   percpu &operator=(const percpu &o) = delete;
 
   T* get() const {
-    return cpu(mycpuid());
+    return cpu(myid());
   }
 
   T* operator->() const {
-    return cpu(mycpuid());
+    return cpu(myid());
   }
 
   T& operator*() const {
-    return *cpu(mycpuid());
+    return *cpu(myid());
   }
 
   T& operator[](int id) const {

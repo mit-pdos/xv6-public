@@ -5,7 +5,6 @@
 #include "uwq.hh"
 #include "wqtypes.hh"
 
-int mycpuid(void);
 uwq_ipcbuf* allocipc(void);
 
 static inline void*

@@ -191,7 +191,7 @@ ialloc(u32 dev, short type)
   struct superblock sb;
 
   readsb(dev, &sb);
-  for (int k = mycpuid()*IPB; k < sb.ninodes; k += (NCPU*IPB)) {
+  for (int k = myid()*IPB; k < sb.ninodes; k += (NCPU*IPB)) {
     for(int inum = k; inum < k+IPB && inum < sb.ninodes; inum++){
       if (inum == 0)
         continue;

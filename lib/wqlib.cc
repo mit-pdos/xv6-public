@@ -158,7 +158,7 @@ wq::trywork(bool dosteal)
   // A "random" victim CPU
   k = rdtsc();
 
-  w = pop(mycpuid());
+  w = pop(myid());
   if (w != nullptr) {
     w->run();
     return 1;
@@ -170,7 +170,7 @@ wq::trywork(bool dosteal)
   for (i = 0; i < NCPU; i++) {
     u64 j = (i+k) % NCPU;
 
-    if (j == mycpuid())
+    if (j == myid())
         continue;
     
     w = steal(j);

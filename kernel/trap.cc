@@ -174,7 +174,7 @@ trap(struct trapframe *tf)
     // In user space, assume process misbehaved.
     uerr.println("pid ", myproc()->pid, ' ', myproc()->name,
                  ": trap ", (u64)tf->trapno, " err ", (u32)tf->err,
-                 " on cpu ", mycpuid(), " rip ", shex(tf->rip),
+                 " on cpu ", myid(), " rip ", shex(tf->rip),
                  " rsp ", shex(tf->rsp), " addr ", shex(rcr2()),
                  "--kill proc");
     myproc()->killed = 1;

@@ -21,12 +21,6 @@ proc::hash(const u32 &p)
   return p;
 }
 
-int
-mycpuid(void)
-{
-  return mycpu()->id;
-}
-
 xns<u32, proc*, proc::hash> *xnspid __mpalign__;
 struct proc *bootproc __mpalign__;
 
