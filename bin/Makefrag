@@ -38,7 +38,8 @@ UPROGS= \
 	wqtest \
 	rm \
 	avar \
-	schedbench
+	schedbench \
+        filebench
 
 ifeq ($(HAVE_LWIP),y)
 UPROGS += \
