@@ -177,6 +177,14 @@ sys_halt(void)
 }
 
 //SYSCALL
+long
+sys_cpuhz(void)
+{
+  extern u64 cpuhz;
+  return cpuhz;
+}
+
+//SYSCALL
 int
 sys_setfs(u64 base)
 {
