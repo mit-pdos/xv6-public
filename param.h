@@ -25,6 +25,7 @@
 #define USTACKPAGES   8
 #define WQSHIFT       7
 #define EXECSWITCH    1
+#define GCINTERVAL    1000 // max. time between GC runs (in msec)
 #if defined(HW_qemu)
 #define NCPU          8   // maximum number of CPUs
 #define MTRACE        0

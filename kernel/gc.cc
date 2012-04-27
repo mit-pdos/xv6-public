@@ -225,7 +225,8 @@ gc_worker(void *x)
   for (;;) {
     u64 i;
     acquire(&wl);
-    cv_sleepto(&gc_state[mycpu()->id].cv, &wl, nsectime() + 1000000000);
+    cv_sleepto(&gc_state[mycpu()->id].cv, &wl,
+               nsectime() + ((u64)GCINTERVAL)*1000000ull);
     release(&wl);
     gc_state[mycpu()->id].nrun++;
     u64 global = global_epoch;
