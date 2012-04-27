@@ -6,6 +6,7 @@
 #define O_CREATE O_CREAT
 #define xfork() fork()
 #define xexit() exit(EXIT_SUCCESS)
+#define xcreat(name) open((name), O_CREATE|O_WRONLY, S_IRUSR|S_IWUSR)
 typedef uint64_t u64;
 #else
 #include "types.h"
@@ -14,6 +15,7 @@ typedef uint64_t u64;
 #include "amd64.h"
 #define xfork() fork(0)
 #define xexit() exit()
+#define xcreat(name) open((name), O_CREATE|O_WRONLY)
 #endif
 
 #define CHUNKSZ 512
@@ -29,7 +31,7 @@ bench(int tid, int nloop)
   if (pinit)
     setaffinity(tid);
 
-  int fd = open("filebenchx", O_RDONLY);
+  int fd = open("filebenchx", O_RDWR);
   if (fd < 0)
     die("open");
 
@@ -65,7 +67,8 @@ main(int ac, char **av)
     nloop = atoi(av[2]);
 
   // Setup shared file
-  int fd = open("filebenchx", O_CREATE|O_WRONLY);
+  unlink("filebenchx");
+  int fd = xcreat("filebenchx");
   if (fd < 0)
     die("open O_CREAT failed");
   for (int i = 0; i < FILESZ; i += CHUNKSZ) {
