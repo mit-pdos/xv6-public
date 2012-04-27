@@ -91,6 +91,9 @@ idleloop(void)
   // mtrace_call_set(1, cpu->id);
   mtstart(idleloop, myproc());
 
+  // The scheduler ensures that each idle loop always runs on the same CPU
+  struct idle *myidle = idlem.get_unchecked();
+
   sti();
   for (;;) {
     acquire(&myproc()->lock);
@@ -105,7 +108,7 @@ idleloop(void)
         assert(mycpu()->ncli == 0);
 
         // If we don't have an heir, try to allocate one
-        if (idlem->heir == nullptr) {
+        if (myidle->heir == nullptr) {
           struct proc *p;
           p = proc::alloc();
           if (p == nullptr)
@@ -115,7 +118,7 @@ idleloop(void)
           p->cpu_pin = 1;
           p->context->rip = (u64)idleheir;
           p->cwd = nullptr;
-          idlem->heir = p;
+          myidle->heir = p;
         }
 
         if (uwq_trywork())
@@ -123,7 +126,7 @@ idleloop(void)
 
         worked = wq_trywork();
         // If we are no longer the idle thread, exit
-        if (worked && idlem->cur != myproc())
+        if (worked && myidle->cur != myproc())
           exit();
       } while(worked);
       sti();

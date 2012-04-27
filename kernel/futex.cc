@@ -63,7 +63,9 @@ struct nscache {
   NEW_DELETE_OPS(nscache);
 };
 
-percpu<nscache> nscache_;
+// XXX(austin) If we used percpu_safety::cli here, would nscache no
+// longer need the lock?
+percpu<nscache, percpu_safety::internal> nscache_;
 
 nscache::nscache(void)
 {

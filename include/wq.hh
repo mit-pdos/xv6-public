@@ -73,8 +73,8 @@ private:
     u64 steal;
   };
 
-  percpu<wqueue> q_;
-  percpu<stat> stat_;
+  percpu<wqueue, percpu_safety::internal> q_;
+  percpu<stat, percpu_safety::internal> stat_;
 
 #if defined(XV6_USER)
   uwq_ipcbuf* ipc_;

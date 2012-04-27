@@ -16,8 +16,8 @@
 static struct Mbmem mem[128];
 static u64 nmem;
 static u64 membytes;
-percpu<kmem> kmems;
-percpu<kmem> slabmem[slab_type_max];
+percpu<kmem, percpu_safety::internal> kmems;
+percpu<kmem, percpu_safety::internal> slabmem[slab_type_max];
 
 extern char end[]; // first address after kernel loaded from ELF file
 char *newend;
@@ -128,6 +128,8 @@ kmem::alloc(const char* name)
         panic("kmem:alloc: aba race %p %p %p\n",
               r, r->next, nxt);
       nfree--;
+      if (!name)
+        name = this->name;
       mtlabel(mtrace_label_block, r, size, name, strlen(name));
       return r;
     }
@@ -169,7 +171,7 @@ kfree_pool(struct kmem *m, char *v)
 }
 
 static void
-kmemprint_pool(const percpu<kmem> &km)
+kmemprint_pool(const percpu<kmem, percpu_safety::internal> &km)
 {
   cprintf("pool %s: [ ", &km[0].name[1]);
   for (u32 i = 0; i < NCPU; i++)
@@ -190,7 +192,7 @@ kmemprint()
 
 
 static char*
-kalloc_pool(const percpu<kmem> &km, const char *name)
+kalloc_pool(const percpu<kmem, percpu_safety::internal> &km, const char *name)
 {
   struct run *r = 0;
   struct kmem *m;
@@ -203,7 +205,7 @@ kalloc_pool(const percpu<kmem> &km, const char *name)
   }
 
   if (r == 0) {
-    cprintf("kalloc: out of memory in pool %s\n", km->name);
+    cprintf("kalloc: out of memory in pool %s\n", km.get_unchecked()->name);
     // kmemprint();
     return 0;
   }
@@ -227,7 +229,7 @@ kalloc(const char *name)
 void *
 ksalloc(int slab)
 {
-  return kalloc_pool(slabmem[slab], slabmem[slab]->name);
+  return kalloc_pool(slabmem[slab], nullptr);
 }
 
 void
@@ -320,5 +322,5 @@ kfree(void *v)
 void
 ksfree(int slab, void *v)
 {
-  kfree_pool(slabmem[slab].get(), (char*) v);
+  kfree_pool(&*slabmem[slab], (char*) v);
 }

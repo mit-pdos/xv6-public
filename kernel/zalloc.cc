@@ -20,7 +20,7 @@ struct zallocator {
   void  free(void*);
   void  tryrefill();
 };
-percpu<zallocator> z_;
+percpu<zallocator, percpu_safety::internal> z_;
 
 struct zwork : public work {
   zwork(wframe* frame, zallocator* zer)
