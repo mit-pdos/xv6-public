@@ -157,12 +157,12 @@ ino_hash(const pair<u32, u32> &p)
   return p.first ^ p.second;
 }
 
-static xns<pair<u32, u32>, inode*, ino_hash> *ins;
+static nstbl<pair<u32, u32>, inode*, ino_hash> *ins;
 
 void
 initinode(void)
 {
-  ins = new xns<pair<u32, u32>, inode*, ino_hash>(false);
+  ins = new nstbl<pair<u32, u32>, inode*, ino_hash>();
   the_root = inode::alloc(ROOTDEV, ROOTINO);
   if (ins->insert(make_pair(the_root->dev, the_root->inum), the_root) < 0)
     panic("initinode: insert the_root failed");
