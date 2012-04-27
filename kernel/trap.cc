@@ -291,7 +291,8 @@ getcallerpcs(void *v, uptr pcs[], int n)
     if(rbp == 0 || rbp < (uptr*)KBASE || rbp == (uptr*)(~0UL) ||
        (rbp >= (uptr*)KBASEEND && rbp < (uptr*)KCODE))
       break;
-    pcs[i] = rbp[1];     // saved %rip
+    pcs[i] = rbp[1] - 1; // saved %rip; - 1 so it points to the call
+                         // instruction
     rbp = (uptr*)rbp[0]; // saved %rbp
   }
   for(; i < n; i++)
