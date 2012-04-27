@@ -174,7 +174,7 @@ trap(struct trapframe *tf)
     // In user space, assume process misbehaved.
     uerr.println("pid ", myproc()->pid, ' ', myproc()->name,
                  ": trap ", (u64)tf->trapno, " err ", (u32)tf->err,
-                 " on cpu ", mycpuid(), " rip ", shex(tf->rip),
+                 " on cpu ", myid(), " rip ", shex(tf->rip),
                  " rsp ", shex(tf->rsp), " addr ", shex(rcr2()),
                  "--kill proc");
     myproc()->killed = 1;
@@ -291,7 +291,8 @@ getcallerpcs(void *v, uptr pcs[], int n)
     if(rbp == 0 || rbp < (uptr*)KBASE || rbp == (uptr*)(~0UL) ||
        (rbp >= (uptr*)KBASEEND && rbp < (uptr*)KCODE))
       break;
-    pcs[i] = rbp[1];     // saved %rip
+    pcs[i] = rbp[1] - 1; // saved %rip; - 1 so it points to the call
+                         // instruction
     rbp = (uptr*)rbp[0]; // saved %rbp
   }
   for(; i < n; i++)

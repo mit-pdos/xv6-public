@@ -102,7 +102,7 @@ class xns : public rcu_freed {
 
       e->next = root.load();
       if (cmpxch(&table[i].chain, e->next.load(), e)) {
-        int c = mycpuid();
+        int c = myid();
         acquire(&percore_lock[c]);
         e->percore_c = c;
         e->percore_next = percore[c].load();
@@ -180,7 +180,7 @@ class xns : public rcu_freed {
   template<class CB>
   void enumerate(CB cb) {
     scoped_gc_epoch gc;
-    int cpuoffset = mycpuid();
+    int cpuoffset = myid();
     for (int i = 0; i < NCPU; i++) {
       auto e = percore[(i + cpuoffset) % NCPU].load();
       while (e) {

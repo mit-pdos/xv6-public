@@ -31,7 +31,7 @@ int
 wq_push(work *w)
 {
   assert(wq_);
-  return wq_->push(w, mycpuid());
+  return wq_->push(w, myid());
 }
 
 void

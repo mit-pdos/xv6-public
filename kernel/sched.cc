@@ -339,9 +339,6 @@ statread(struct inode *inode, char *dst, u32 off, u32 n)
 void
 initsched(void)
 {
-  for (int i = 0; i < NCPU; i++)
-    new (&schedule_[i]) schedule();
-
   devsw[MAJ_STAT].write = nullptr;
   devsw[MAJ_STAT].read = statread;
 }

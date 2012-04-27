@@ -269,7 +269,4 @@ initfutex(void)
   nsfutex = new xns<futexkey_t, futexaddr*, futexkey_hash>(false);
   if (nsfutex == 0)
     panic("initfutex");
-
-  for (int i = 0; i < NCPU; i++)
-    new (&nscache_[i]) nscache();
 }

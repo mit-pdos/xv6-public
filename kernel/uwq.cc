@@ -28,7 +28,7 @@ uwq_trywork(void)
   for (i = 0; i < NCPU; i++) {
     u64 j = (i+k) % NCPU;
 
-    if (j == mycpuid())
+    if (j == myid())
       continue;
     struct cpu *c = &cpus[j];
     
@@ -199,7 +199,7 @@ uwq::tryworker(void)
       proc* p = w->proc_;
 
       acquire(&p->lock);
-      p->cpuid = mycpuid();
+      p->cpuid = myid();
       release(&p->lock);
 
       w->running_ = true;
@@ -226,7 +226,7 @@ again:
       w->running_ = true;
 
       acquire(&p->lock);
-      p->cpuid = mycpuid();
+      p->cpuid = myid();
       addrun(p);
       release(&p->lock);
 

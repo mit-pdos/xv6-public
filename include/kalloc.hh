@@ -72,4 +72,3 @@ enum {
 };
 
 extern percpu<kmem> kmems;
-extern percpu<kmem> slabmem[slab_type_max];

@@ -270,9 +270,9 @@ vmap::replace_vma(vma *a, vma *b)
   assert(a->vma_start == b->vma_start);
   assert(a->vma_end == b->vma_end);
   auto span = vmas.search_lock(a->vma_start, a->vma_end - a->vma_start);
+#if VM_CRANGE
   if (a->deleted())
     return false;
-#if VM_CRANGE
   for (auto e: span)
     assert(a == e);
   span.replace(b);
@@ -477,11 +477,6 @@ again:
     updatepages(pml4, e->vma_start, e->vma_end, [&needtlb](atomic<pme_t> *p) {
         for (;;) {
           pme_t v = p->load();
-          // XXX(austin) Huh?  Why is it okay to skip it if it's
-          // locked?  The page fault could be faulting in a page from
-          // the old VMA, in which case we need to shoot it down
-          // (though if it's already faulting a page from the new VMA,
-          // we need to *not* shoot it down).
           if (v & PTE_LOCK)
             continue;
           if (!(v & PTE_P))
@@ -623,7 +618,12 @@ vmap::pagefault(uptr va, u32 err)
   }
 
   scoped_gc_epoch gc;
+#if VM_CRANGE
   vma *m = lookup(va, 1);
+#elif VM_RADIX
+  auto vma_it = vmas.find(va);
+  vma *m = static_cast<vma*>(*vma_it);
+#endif
   if (m == 0)
     return -1;
 
@@ -664,10 +664,20 @@ vmap::pagefault(uptr va, u32 err)
   if (!cmpxch(pte, ptev, ptev | PTE_LOCK))
     goto retry;
 
+#if VM_CRANGE
   if (m->deleted()) {
     *pte = ptev;
     goto retry;
   }
+#elif VM_RADIX
+  // The radix tree is the source of truth about where the VMA is
+  // mapped.  It might have been unmapped from this va but still be
+  // around, so we can't just test if it's deleted.
+  if (*vma_it != m) {
+    *pte = ptev;
+    goto retry;
+  }
+#endif
 
   if (m->va_type == COW) {
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_COW;

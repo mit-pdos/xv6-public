@@ -149,9 +149,9 @@ initidle(void)
       assert((u16)ebx == 0x40);
     }
   }
-  
-  SLIST_INIT(&idlem[myid()].zombies);
-  initlock(&idlem[myid()].lock, "idle_lock", LOCKSTAT_IDLE);
+
+  SLIST_INIT(&idlem->zombies);
+  initlock(&idlem->lock, "idle_lock", LOCKSTAT_IDLE);
 
   snprintf(p->name, sizeof(p->name), "idle_%u", myid());
   mycpu()->proc = p;
