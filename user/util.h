@@ -43,11 +43,17 @@ setaffinity(int c)
 }
 
 static inline uint64_t
-read_tsc(void)
+rdtsc(void)
 {
   uint64_t a, d;
   __asm __volatile("rdtsc" : "=a" (a), "=d" (d));
   return ((uint64_t) a) | (((uint64_t) d) << 32);
+}
+
+static inline uint64_t
+read_tsc(void)
+{
+  return rdtsc();
 }
 
 static inline void

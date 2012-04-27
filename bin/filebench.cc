@@ -6,10 +6,12 @@
 #define O_CREATE O_CREAT
 #define xfork() fork()
 #define xexit() exit(EXIT_SUCCESS)
+typedef uint64_t u64;
 #else
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
+#include "amd64.h"
 #define xfork() fork(0)
 #define xexit() exit()
 #endif
@@ -73,6 +75,7 @@ main(int ac, char **av)
   }
   close(fd);
 
+  u64 t0 = rdtsc();
   for (int i = 0; i < nthread; i++) {
     int pid = xfork();
     if (pid == 0)
@@ -81,5 +84,10 @@ main(int ac, char **av)
       die("fork");
   }
 
+  for (int i = 0; i < nthread; i++)
+    wait();
+  u64 t1 = rdtsc();
+
+  printf("filebench: %lu\n", t1-t0);
   return 0;
 }

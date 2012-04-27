@@ -61,6 +61,10 @@
 #define NCPU          2
 #define MTRACE        0
 #define PERFSIZE      (16<<20ull)
+#elif defined(HW_bench)
+#define NCPU          48
+#define MTRACE        0
+#define PERFSIZE      (16<<20ull)
 #else
 #error "Unknown HW"
 #endif
