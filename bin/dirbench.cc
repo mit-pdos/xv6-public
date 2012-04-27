@@ -7,17 +7,11 @@
 
 static const bool pinit = true;
 
-#ifdef HW_qemu
-enum { nloop = 50 };
-#else
-enum { nloop = 1000 };
-#endif
-
 enum { nfile = 10 };
 enum { nlookup = 100 };
 
 void
-bench(u32 tid)
+bench(u32 tid, int nloop)
 {
   char pn[MAXNAME];
 
@@ -58,11 +52,20 @@ int
 main(int ac, char** av)
 {
   int nthread;
+  int nloop;
+  
+#ifdef HW_qemu
+  nloop = 50;
+#else
+  nloop = 1000;
+#endif
 
   if (ac < 2)
-    die("usage: %s nthreads", av[0]);
+    die("usage: %s nthreads [nloop]", av[0]);
 
   nthread = atoi(av[1]);
+  if (ac > 2)
+    nloop = atoi(av[2]);
 
   mkdir("/dbx");
 
@@ -71,7 +74,7 @@ main(int ac, char** av)
   for(u32 i = 0; i < nthread; i++) {
     int pid = fork(0);
     if (pid == 0)
-      bench(i);
+      bench(i, nloop);
     else if (pid < 0)
       die("fork");
   }
