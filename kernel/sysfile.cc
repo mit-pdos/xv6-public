@@ -13,6 +13,7 @@
 #include "net.hh"
 #include "kmtrace.hh"
 #include "sperf.hh"
+#include "dirns.hh"
 
 static bool
 getfile(int fd, sref<file> *f)
