@@ -62,6 +62,47 @@ struct TimedExec : public Bench
   NEW_OPERATOR(TimedExec)
 };
 
+struct Dirbench : public Bench
+{
+  Dirbench() : Bench() {}
+
+  virtual void run(void) {
+#ifdef HW_qemu
+    int nloop = 50;
+#else
+    int nloop = 1000;
+#endif
+    char nloopstr[16];
+    snprintf(nloopstr, sizeof(nloopstr), "%u", nloop); 
+
+    const char *argv[] = { "/dirbench", 0, nloopstr, 0 };
+    char *res = result_;
+    char *q = res + sizeof(result_);
+
+    snprintf(res, q-res, "#cores usecs loops/core\n");
+    res += strlen(res);
+
+    for (int i = 6; i <= NCPU; i += 6) {
+      char cores[16];
+      snprintf(cores, sizeof(cores), "%u", i);
+      argv[1] = cores;
+      u64 r = time_this(argv);      
+      // r in usecs
+      r = (r*(1000*1000)) / cpuhz();
+      snprintf(res, q-res, "%u %lu %lu\n", i, r, nloop);
+      res += strlen(res);
+    }
+  }
+
+  virtual char* result(void) {
+    return result_;
+  }
+
+  char result_[1024];
+
+  NEW_OPERATOR(Dirbench)
+};
+
 #define CMD(...) new TimedExec((const char *[]){__VA_ARGS__, 0})
 #define STR_1(x...) #x
 #define STR(x...)   STR_1(x)
@@ -72,14 +113,16 @@ main(int ac, char **av)
   static Bench* the_bench[128];
   int n = 0;
 
-  the_bench[n++] = CMD("forkexecbench");
-  the_bench[n++] = CMD("mktree", STR(NCPU), "tree.xdu", "4", "4");
-  the_bench[n++] = CMD("xdu", "8");
-  the_bench[n++] = CMD("xdu", "4");
-  the_bench[n++] = CMD("xdu", "1");
-  the_bench[n++] = CMD("xls", "8");
-  the_bench[n++] = CMD("xls", "4");
-  the_bench[n++] = CMD("xls", "1");
+  the_bench[n++] = new Dirbench();
+
+  //the_bench[n++] = CMD("forkexecbench");
+  //the_bench[n++] = CMD("mktree", STR(NCPU), "tree.xdu", "4", "4");
+  //the_bench[n++] = CMD("xdu", "8");
+  //the_bench[n++] = CMD("xdu", "4");
+  //the_bench[n++] = CMD("xdu", "1");
+  //the_bench[n++] = CMD("xls", "8");
+  //the_bench[n++] = CMD("xls", "4");
+  //the_bench[n++] = CMD("xls", "1");
 
   //the_bench[n++] = CMD("mapbench", "1");
   //the_bench[n++] = CMD("mapbench", "2");
