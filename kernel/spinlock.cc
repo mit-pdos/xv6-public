@@ -13,7 +13,13 @@
 #include "major.h"
 
 #if LOCKSTAT
+// The klockstat structure pointed to by spinlocks that want lockstat,
+// but have never been acquired.
+struct klockstat klockstat_lazy("<lazy>");
+
 static int lockstat_enable;
+
+void lockstat_init(struct spinlock *lk, bool lazy);
 
 static inline struct cpulockstat *
 mylockstat(struct spinlock *lk)
@@ -49,8 +55,11 @@ locking(struct spinlock *lk)
 #endif
 
 #if LOCKSTAT
-  if (lockstat_enable && lk->stat != nullptr)
+  if (lockstat_enable && lk->stat != nullptr) {
+    if (lk->stat == &klockstat_lazy)
+      lockstat_init(lk, true);
     mylockstat(lk)->locking_ts = rdtsc();
+  }
 #endif
 
   mtlock(lk);
@@ -128,11 +137,20 @@ klockstat::klockstat(const char *name) :
 };
 
 void
-lockstat_init(struct spinlock *lk)
+lockstat_init(struct spinlock *lk, bool lazy)
 {
-  lk->stat = new klockstat(lk->name);
-  if (lk->stat == 0)
+  klockstat *ls = new klockstat(lk->name);
+  if (!ls)
     return;
+
+  if (lazy) {
+    if (!__sync_bool_compare_and_swap(&lk->stat, &klockstat_lazy, ls)) {
+      delete ls;
+      return;
+    }
+  } else {
+    lk->stat = ls;
+  }
 
   acquire(&lockstat_lock);
   LIST_INSERT_HEAD(&lockstat_list, lk->stat, link);
@@ -256,7 +274,7 @@ initlock(struct spinlock *lk, const char *name, int lockstat)
 #if LOCKSTAT
   lk->stat = (struct klockstat*) nullptr;
   if (lockstat)
-    lockstat_init(lk);
+    lockstat_init(lk, false);
 #endif
   lk->locked = 0;
 }

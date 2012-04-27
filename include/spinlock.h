@@ -1,6 +1,10 @@
 #pragma once
 #include "lockstat.h"
 
+#if LOCKSTAT
+extern klockstat klockstat_lazy;
+#endif
+
 // Mutual exclusion lock.
 struct spinlock {
   u32 locked;       // Is the lock held?
@@ -29,16 +33,15 @@ struct spinlock {
 #endif
   { }
 
-  // Create a spinlock without lockstat tracking.  This is constexpr,
-  // so it can be used for global spinlocks without incurring a static
-  // constructor.
-  constexpr spinlock(const char *name)
+  // Create a spinlock.  This is constexpr, so it can be used for
+  // global spinlocks without incurring a static constructor.
+  constexpr spinlock(const char *name, bool lockstat = false)
     : locked(0)
 #if SPINLOCK_DEBUG
     , name(name), cpu(nullptr), pcs{}
 #endif
 #if LOCKSTAT
-    , stat(nullptr)
+    , stat(lockstat ? nullptr : &klockstat_lazy)
 #endif
   { }
 };
