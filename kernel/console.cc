@@ -25,9 +25,12 @@
 
 static int panicked = 0;
 
-static struct {
+static struct cons {
   struct spinlock lock;
   int locking;
+
+  constexpr cons()
+    : lock("console", LOCKSTAT_CONSOLE), locking(0) { }
 } cons;
 
 static void
@@ -358,7 +361,6 @@ console_stream uerr(false);
 void
 initconsole(void)
 {
-  initlock(&cons.lock, "console", LOCKSTAT_CONSOLE);
   cons.locking = 1;
 
   devsw[MAJ_CONSOLE].write = consolewrite;
