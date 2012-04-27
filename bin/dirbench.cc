@@ -8,7 +8,7 @@
 static const bool pinit = true;
 
 #ifdef HW_qemu
-enum { nloop = 100 };
+enum { nloop = 50 };
 #else
 enum { nloop = 1000 };
 #endif
@@ -66,6 +66,7 @@ main(int ac, char** av)
 
   mkdir("/dbx");
 
+  mtenable("xv6-schedbench");
   u64 t0 = rdtsc();
   for(u32 i = 0; i < nthread; i++) {
     int pid = fork(0);
@@ -78,6 +79,7 @@ main(int ac, char** av)
   for (u32 i = 0; i < nthread; i++)
     wait();
   u64 t1 = rdtsc();
+  mtdisable("xv6-schedbench");
 
   printf("dirbench: %lu\n", t1-t0);
   return 0;
