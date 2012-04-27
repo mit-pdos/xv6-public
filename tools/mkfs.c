@@ -11,8 +11,8 @@
 #include "include/stat.h"
 
 int nblocks = 4067;
-int ninodes = 800;
-int size = 4172;
+int ninodes = 2400;
+int size = 4372;
 
 int fsfd;
 struct superblock sb;
