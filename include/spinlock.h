@@ -16,6 +16,31 @@ struct spinlock {
 #if LOCKSTAT
   struct klockstat *stat;
 #endif
+
+  // Create a spinlock that will later be initialized by initlock.
+  // XXX(austin) Remove this and initlock in favor of the other ctor.
+  constexpr spinlock()
+    : locked(0)
+#if SPINLOCK_DEBUG
+    , name(nullptr), cpu(nullptr), pcs{}
+#endif
+#if LOCKSTAT
+    , stat(nullptr)
+#endif
+  { }
+
+  // Create a spinlock without lockstat tracking.  This is constexpr,
+  // so it can be used for global spinlocks without incurring a static
+  // constructor.
+  constexpr spinlock(const char *name)
+    : locked(0)
+#if SPINLOCK_DEBUG
+    , name(name), cpu(nullptr), pcs{}
+#endif
+#if LOCKSTAT
+    , stat(nullptr)
+#endif
+  { }
 };
 
 #if SPINLOCK_DEBUG

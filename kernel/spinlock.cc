@@ -117,13 +117,7 @@ holding(struct spinlock *lock)
 #if LOCKSTAT
 LIST_HEAD(lockstat_list, klockstat);
 static struct lockstat_list lockstat_list = { (struct klockstat*) nullptr };
-static struct spinlock lockstat_lock = { 
- locked: 0,
-#if SPINLOCK_DEBUG
- name: "lockstat",
- cpu: (struct cpu*) nullptr,
-#endif
-};
+static struct spinlock lockstat_lock("lockstat");
 
 klockstat::klockstat(const char *name) : 
   rcu_freed("klockstat")
