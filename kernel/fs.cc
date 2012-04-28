@@ -45,6 +45,8 @@
 static void itrunc(struct inode*);
 static inode* the_root;
 
+#define IADDRSSZ (sizeof(u32)*NINDIRECT)
+
 // Read the super block.
 static void
 readsb(int dev, struct superblock *sb)
@@ -240,6 +242,14 @@ iupdate(struct inode *ip)
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   bwrite(bp);
   brelse(bp, 1);
+
+  if (ip->addrs[NDIRECT] != 0) {
+    assert(ip->iaddrs.load() != nullptr);
+    bp = bread(ip->dev, ip->addrs[NDIRECT], 1);
+    memmove(bp->data, (void*)ip->iaddrs.load(), IADDRSSZ);
+    bwrite(bp);
+    brelse(bp, 1);
+  }
 }
 
 // Find the inode with number inum on device dev
@@ -253,7 +263,8 @@ inode::inode()
   : rcu_freed("inode"),
     flags(0), readbusy(0)
 {
-  dir = 0;
+  dir.store(nullptr);
+  iaddrs.store(nullptr);
 }
 
 inode::~inode()
@@ -264,6 +275,10 @@ inode::~inode()
     d->remove(strbuf<DIRSIZ>(".."));
     gc_delayed(d);
     assert(cmpxch(&dir, d, (decltype(d)) 0));
+  }
+  if (iaddrs.load() != nullptr) {
+    kmfree((void*)iaddrs.load(), IADDRSSZ);
+    iaddrs.store(nullptr);
   }
 
   destroylock(&lock);
@@ -512,8 +527,8 @@ iunlockput(struct inode *ip)
 static u32
 bmap(struct inode *ip, u32 bn)
 {
-  u32 addr, *a;
   struct buf *bp;
+  u32 addr;
 
   if(bn < NDIRECT){
   retry0:
@@ -528,9 +543,11 @@ bmap(struct inode *ip, u32 bn)
   }
   bn -= NDIRECT;
 
-  if(bn < NINDIRECT){
-    // Load indirect block, allocating if necessary.
-  retry1:
+  if (bn >= NINDIRECT)
+    panic("bmap: out of range");    
+
+retry1:
+  if (ip->iaddrs == nullptr) {
     if((addr = ip->addrs[NDIRECT]) == 0) {
       addr = balloc(ip->dev);
       if (!cmpxch(&ip->addrs[NDIRECT], (u32)0, addr)) {
@@ -539,26 +556,27 @@ bmap(struct inode *ip, u32 bn)
       }
     }
 
-    int writerflag = 0;
-    bp = bread(ip->dev, addr, writerflag);
-    a = (u32*)bp->data;
-    if((addr = a[bn]) == 0){
-      brelse(bp, writerflag);
-
-      writerflag = 1;
-      bp = bread(ip->dev, addr, writerflag);
-      a = (u32*)bp->data;
-      addr = a[bn];
-      if (addr == 0) {
-        a[bn] = addr = balloc(ip->dev);
-        bwrite(bp);
-      }
+    volatile u32* iaddrs = (u32*)kmalloc(IADDRSSZ, "iaddrs");
+    bp = bread(ip->dev, addr, 0);
+    memmove((void*)iaddrs, bp->data, IADDRSSZ);
+    brelse(bp, 0);
+    if (!cmpxch(&ip->iaddrs, (volatile u32*)nullptr, iaddrs)) {
+      bfree(ip->dev, addr);
+      kmfree((void*)iaddrs, IADDRSSZ);
+      goto retry1;
     }
-    brelse(bp, writerflag);
-    return addr;
   }
 
-  panic("bmap: out of range");
+retry2:
+  if ((addr = ip->iaddrs[bn]) == 0) {
+    addr = balloc(ip->dev);
+    if (!__sync_bool_compare_and_swap(&ip->iaddrs[bn], (u32)0, addr)) {
+      bfree(ip->dev, addr);
+      goto retry2;
+    }
+  }
+
+  return addr;
 }
 
 // Truncate inode (discard contents).
