@@ -7,12 +7,15 @@
 #define xfork() fork()
 #define xexit() exit(EXIT_SUCCESS)
 #define xcreat(name) open((name), O_CREATE|O_WRONLY, S_IRUSR|S_IWUSR)
+#define mtenable(x) do { } while(0)
+#define mtdisable(x) do { } while(0)
 typedef uint64_t u64;
 #else
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
 #include "amd64.h"
+#include "mtrace.h"
 #define xfork() fork(0)
 #define xexit() exit()
 #define xcreat(name) open((name), O_CREATE|O_WRONLY)
@@ -78,6 +81,7 @@ main(int ac, char **av)
   }
   close(fd);
 
+  mtenable("xv6-filebench");
   u64 t0 = rdtsc();
   for (int i = 0; i < nthread; i++) {
     int pid = xfork();
@@ -90,6 +94,7 @@ main(int ac, char **av)
   for (int i = 0; i < nthread; i++)
     wait();
   u64 t1 = rdtsc();
+  mtdisable("xv6-filebench");
 
   printf("filebench: %lu\n", t1-t0);
   return 0;

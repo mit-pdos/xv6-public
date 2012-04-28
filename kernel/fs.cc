@@ -516,16 +516,28 @@ bmap(struct inode *ip, u32 bn)
   struct buf *bp;
 
   if(bn < NDIRECT){
-    if((addr = ip->addrs[bn]) == 0)
-      ip->addrs[bn] = addr = balloc(ip->dev);
+  retry0:
+    if((addr = ip->addrs[bn]) == 0) {
+      addr = balloc(ip->dev);
+      if (!cmpxch(&ip->addrs[bn], (u32)0, addr)) {
+        bfree(ip->dev, addr);
+        goto retry0;
+      }
+    }
     return addr;
   }
   bn -= NDIRECT;
 
   if(bn < NINDIRECT){
     // Load indirect block, allocating if necessary.
-    if((addr = ip->addrs[NDIRECT]) == 0)
-      ip->addrs[NDIRECT] = addr = balloc(ip->dev);
+  retry1:
+    if((addr = ip->addrs[NDIRECT]) == 0) {
+      addr = balloc(ip->dev);
+      if (!cmpxch(&ip->addrs[NDIRECT], (u32)0, addr)) {
+        bfree(ip->dev, addr);
+        goto retry1;
+      }
+    }
 
     int writerflag = 0;
     bp = bread(ip->dev, addr, writerflag);
