@@ -126,12 +126,23 @@ ssize_t
 file::pwrite(const char *addr, size_t n, off_t off)
 {
   if(type == file::FD_INODE){
+    bool unlock;
     int r;
-    ilock(ip, 1);
+
     if(ip->type == 0 || ip->type == T_DIR)
       panic("filewrite but 0 or T_DIR");
+
+    unlock = false;
+    if (n+off > ip->size) {
+      ilock(ip, 1);
+      unlock = true;
+    }
+
     r = writei(ip, addr, off, n);
-    iunlock(ip);
+
+    if (unlock)
+      iunlock(ip);
+
     return r;
   }
   return -1;
