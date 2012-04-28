@@ -97,6 +97,33 @@ sys_write(int fd, const void *p, size_t n)
 }
 
 //SYSCALL
+ssize_t
+sys_pwrite(int fd, const void *ubuf, size_t count, off_t offset)
+{
+  sref<file> f;
+  if (!getfile(fd, &f))
+    return -1;
+
+  if (count < PGSIZE) {
+    ssize_t r;
+    char* b;
+    b = kalloc("pwritebuf");
+    fetchmem(b, ubuf, count);
+    r = f->pwrite(b, count, offset);
+    kfree(b);
+    return r;
+  } else {
+    // XXX(sbw) pagefaulting doesn't guarantee ubuf is mapped 
+    // while pread executes
+    uptr i = (uptr)ubuf;
+    for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
+      if(pagefault(myproc()->vmap, va, 0) < 0)
+        return -1;
+    return f->pwrite((char*)ubuf, count, offset);
+  }
+}
+
+//SYSCALL
 int
 sys_close(int fd)
 {
