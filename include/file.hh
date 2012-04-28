@@ -16,6 +16,7 @@ struct file : public referenced, public rcu_freed {
   int          stat(struct stat*);
   int          read(char *addr, int n);
   ssize_t      pread(char *addr, size_t n, off_t offset);
+  ssize_t      pwrite(const char *addr, size_t n, off_t offset);
   int          write(const char *addr, int n);
 
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_SOCKET } type;  
