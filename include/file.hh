@@ -69,6 +69,7 @@ struct inode : public referenced, public rcu_freed
   short minor;
   u32 size;
   std::atomic<u32> addrs[NDIRECT+1];
+  std::atomic<volatile u32*> iaddrs;
 
 private:
   inode();
