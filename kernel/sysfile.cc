@@ -62,16 +62,27 @@ ssize_t
 sys_pread(int fd, void *ubuf, size_t count, off_t offset)
 {
   sref<file> f;
-  uptr i = (uptr)ubuf;
-
   if (!getfile(fd, &f))
     return -1;
 
-  for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
-    if(pagefault(myproc()->vmap, va, 0) < 0)
-      return -1;
-
-  return f->pread((char*)ubuf, count, offset);
+  if (count < PGSIZE) {
+    ssize_t r;
+    char* b;
+    b = kalloc("preadbuf");
+    r = f->pread(b, count, offset);
+    if (r > 0)
+      putmem(ubuf, b, r);
+    kfree(b);
+    return r;
+  } else {
+    // XXX(sbw) pagefaulting doesn't guarantee ubuf is mapped 
+    // while pread executes
+    uptr i = (uptr)ubuf;
+    for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
+      if(pagefault(myproc()->vmap, va, 0) < 0)
+        return -1;
+    return f->pread((char*)ubuf, count, offset);
+  }
 }
 
 //SYSCALL
