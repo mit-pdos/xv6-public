@@ -131,8 +131,11 @@ mscan.sorted: mscan.out $(QEMUSRC)/mtrace-tools/sersec-sort
 rsync: $(KERN)
 	rsync -avP $(KERN) amsterdam.csail.mit.edu:/tftpboot/$(HW)/kernel.xv6
 
+ifneq ($(HW),tom)
+IPMIOPTS = -A MD5 -U ADMIN
+endif
 reboot:
-	ipmitool -I lanplus -A MD5 -H $(HW)adm.csail.mit.edu -U ADMIN -f .passwd.$(HW) power reset
+	ipmitool -I lanplus -H $(HW)adm.csail.mit.edu $(IPMIOPTS) -f.passwd.$(HW) power cycle
 
 bench:
 	/bin/echo -ne "xv6\\nbench\\nexit\\n" | nc $(HW).csail.mit.edu 23
