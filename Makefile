@@ -135,7 +135,7 @@ ifneq ($(HW),tom)
 IPMIOPTS = -A MD5 -U ADMIN
 endif
 reboot:
-	ipmitool -I lanplus -H $(HW)adm.csail.mit.edu $(IPMIOPTS) -f.passwd.$(HW) power cycle
+	ipmitool -I lanplus $(IPMIOPTS) -H $(HW)adm.csail.mit.edu -f.passwd.$(HW) power reset
 
 bench:
 	/bin/echo -ne "xv6\\nbench\\nexit\\n" | nc $(HW).csail.mit.edu 23
