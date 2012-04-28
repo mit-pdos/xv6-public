@@ -44,6 +44,10 @@ bench(int tid, int nloop)
     r = pread(fd, chunkbuf, CHUNKSZ, CHUNKSZ*tid);
     if (r != CHUNKSZ)
       die("pread");
+
+    r = pwrite(fd, chunkbuf, CHUNKSZ, CHUNKSZ*tid);
+    if (r != CHUNKSZ)
+      die("pwrite");
   }
 
   close(fd);
