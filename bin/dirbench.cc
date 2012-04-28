@@ -69,7 +69,7 @@ main(int ac, char** av)
 
   mkdir("/dbx");
 
-  mtenable("xv6-schedbench");
+  mtenable("xv6-dirbench");
   u64 t0 = rdtsc();
   for(u32 i = 0; i < nthread; i++) {
     int pid = fork(0);
@@ -82,7 +82,7 @@ main(int ac, char** av)
   for (u32 i = 0; i < nthread; i++)
     wait();
   u64 t1 = rdtsc();
-  mtdisable("xv6-schedbench");
+  mtdisable("xv6-dirbench");
 
   printf("dirbench: %lu\n", t1-t0);
   return 0;
