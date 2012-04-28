@@ -147,18 +147,11 @@ private:
 };
 
 class radix_elem : public rcu_freed {
- private:
-  std::atomic<u64> ref_;
-
  public:
-  radix_elem() : rcu_freed("radix_elem"), ref_(0) {}
+  radix_elem() : rcu_freed("radix_elem") {}
   virtual ~radix_elem() {}
-  void decref(u64 delta = 1) {
-    if ((ref_ -= delta) == 0) {
-      gc_delayed(this);
-    }
-  }
-  void incref(u64 delta = 1) { ref_ += delta; }
+  virtual void decref(u64 delta = 1) = 0;
+  virtual void incref(u64 delta = 1) = 0;
 };
 
 struct radix_node {

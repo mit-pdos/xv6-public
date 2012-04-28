@@ -6,6 +6,7 @@
 #include "cpputil.hh"
 #include "hwvm.hh"
 #include "uwq.hh"
+#include "distref.hh"
 
 #define VM_CRANGE 0
 #define VM_RADIX  1
@@ -53,7 +54,7 @@ struct vma
   : public range
 #endif
 #if VM_RADIX
-  : public radix_elem
+  : public radix_elem, public distributed_refcnt
 #endif
 {
   const uptr vma_start;        // start of mapping
@@ -64,8 +65,27 @@ struct vma
   vma(vmap *vmap, uptr start, uptr end, enum vmatype vtype, vmnode *vmn);
   ~vma();
 
+  NEW_DELETE_OPS(vma);
+
   virtual void do_gc() { delete this; }
-  NEW_DELETE_OPS(vma)
+
+#if VM_RADIX
+  void decref(u64 delta)
+  {
+    distref_dec(delta);
+  }
+
+  void incref(u64 delta)
+  {
+    distref_inc(delta);
+  }
+
+private:
+  void distref_free()
+  {
+    gc_delayed(this);
+  }
+#endif
 };
 
 class print_stream;
