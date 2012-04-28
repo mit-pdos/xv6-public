@@ -62,34 +62,30 @@ struct TimedExec : public Bench
   NEW_OPERATOR(TimedExec)
 };
 
-struct Dirbench : public Bench
+struct LoopsBench : public Bench
 {
-  Dirbench() : Bench() {}
+  LoopsBench(const char *cmd, int nloops, int cpuinc) :
+    Bench(), cmd_(cmd), nloops_(nloops), cpuinc_(cpuinc) {}
 
   virtual void run(void) {
-#ifdef HW_qemu
-    int nloop = 50;
-#else
-    int nloop = 1000;
-#endif
     char nloopstr[16];
-    snprintf(nloopstr, sizeof(nloopstr), "%u", nloop); 
+    snprintf(nloopstr, sizeof(nloopstr), "%u", nloops_); 
+    const char *argv[] = { cmd_, 0, nloopstr, 0 };
 
-    const char *argv[] = { "/dirbench", 0, nloopstr, 0 };
     char *res = result_;
     char *q = res + sizeof(result_);
 
     snprintf(res, q-res, "#cores usecs loops/core\n");
     res += strlen(res);
 
-    for (int i = 6; i <= NCPU; i += 6) {
+    for (int i = cpuinc_; i <= NCPU; i += cpuinc_) {
       char cores[16];
       snprintf(cores, sizeof(cores), "%u", i);
       argv[1] = cores;
       u64 r = time_this(argv);      
       // r in usecs
       r = (r*(1000*1000)) / cpuhz();
-      snprintf(res, q-res, "%u %lu %lu\n", i, r, nloop);
+      snprintf(res, q-res, "%u %lu %lu\n", i, r, nloops_);
       res += strlen(res);
     }
   }
@@ -98,9 +94,11 @@ struct Dirbench : public Bench
     return result_;
   }
 
+  const char* cmd_;
+  int nloops_;
+  int cpuinc_;
   char result_[1024];
-
-  NEW_OPERATOR(Dirbench)
+  NEW_OPERATOR(LoopsBench)
 };
 
 #define CMD(...) new TimedExec((const char *[]){__VA_ARGS__, 0})
@@ -113,7 +111,11 @@ main(int ac, char **av)
   static Bench* the_bench[128];
   int n = 0;
 
-  the_bench[n++] = new Dirbench();
+  //the_bench[n++] = new LoopsBench("/dirbench", 1000, 6);
+  the_bench[n++] = new LoopsBench("/filebench", 100000, 6);
+
+  //the_bench[n++] = CMD("filebench", "6", "10000");
+  //the_bench[n++] = CMD("filebench", "48", "10000");
 
   //the_bench[n++] = CMD("forkexecbench");
   //the_bench[n++] = CMD("mktree", STR(NCPU), "tree.xdu", "4", "4");
