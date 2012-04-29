@@ -202,7 +202,8 @@ distref_thread(void *x)
 {
   for (;;) {
     acquire(&wake_lock);
-    cv_sleepto(&wake_cv, &wake_lock, nsectime() + 1000000000);
+    cv_sleepto(&wake_cv, &wake_lock,
+               nsectime() + ((u64)GCINTERVAL)*1000000ull);
     release(&wake_lock);
 
     // Phase 1: Reconcile reference counts
