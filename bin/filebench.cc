@@ -4,9 +4,18 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <assert.h>
+#include <sys/wait.h>
 #define O_CREATE O_CREAT
 #define xfork() fork()
 #define xexit() exit(EXIT_SUCCESS)
+static inline void xwait()
+{
+  int status;
+  if (wait(&status) < 0)
+    edie("wait");
+  if (!WIFEXITED(status))
+    die("bad status %u", status);
+}
 #define xcreat(name) open((name), O_CREATE|O_WRONLY, S_IRUSR|S_IWUSR)
 #define mtenable(x) do { } while(0)
 #define mtdisable(x) do { } while(0)
@@ -29,12 +38,12 @@ static const bool pinit = true;
 static char chunkbuf[CHUNKSZ];
 
 static void
-bench(int tid, int nloop)
+bench(int tid, int nloop, const char* path)
 {
   if (pinit)
     setaffinity(tid);
 
-  int fd = open("filebenchx", O_RDWR);
+  int fd = open(path, O_RDWR);
   if (fd < 0)
     die("open");
 
@@ -57,6 +66,7 @@ bench(int tid, int nloop)
 int
 main(int ac, char **av)
 {
+  const char* path;
   int nthread;
   int nloop;
 
@@ -65,17 +75,20 @@ main(int ac, char **av)
 #else
   nloop = 1000;
 #endif
+  path = "fbx";
 
   if (ac < 2)
-    die("usage: %s nthreads [nloop]", av[0]);
+    die("usage: %s nthreads [nloop] [path]", av[0]);
 
   nthread = atoi(av[1]);
   if (ac > 2)
     nloop = atoi(av[2]);
+  if (ac > 3)
+    path = av[3];
 
   // Setup shared file
-  unlink("filebenchx");
-  int fd = xcreat("filebenchx");
+  unlink(path);
+  int fd = xcreat(path);
   if (fd < 0)
     die("open O_CREAT failed");
   for (int i = 0; i < FILESZ; i += CHUNKSZ) {
@@ -90,13 +103,13 @@ main(int ac, char **av)
   for (int i = 0; i < nthread; i++) {
     int pid = xfork();
     if (pid == 0)
-      bench(i, nloop);
+      bench(i, nloop, path);
     else if (pid < 0)
       die("fork");
   }
 
   for (int i = 0; i < nthread; i++)
-    wait();
+    xwait();
   u64 t1 = rdtsc();
   mtdisable("xv6-filebench");
 

@@ -16,7 +16,6 @@ static inline void xwait()
     edie("wait");
   if (!WIFEXITED(status))
     die("bad status %u", status);
-  
 }
 #define xmkdir(pathname) mkdir((pathname), S_IWUSR|S_IRUSR);
 #define xcreat(name) open((name), O_CREATE, S_IRUSR|S_IWUSR)
