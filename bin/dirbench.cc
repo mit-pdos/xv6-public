@@ -5,10 +5,21 @@
 #include <unistd.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #define O_CREATE O_CREAT
 #define xfork() fork()
 #define xexit() exit(EXIT_SUCCESS)
+static inline void xwait()
+{
+  int status;
+  if (wait(&status) < 0)
+    edie("wait");
+  if (!WIFEXITED(status))
+    die("bad status %u", status);
+  
+}
 #define xmkdir(pathname) mkdir((pathname), S_IWUSR|S_IRUSR);
+#define xcreat(name) open((name), O_CREATE, S_IRUSR|S_IWUSR)
 #define mtenable(x) do { } while(0)
 #define mtdisable(x) do { } while(0)
 #else
@@ -21,6 +32,8 @@
 #define xfork() fork(0)
 #define xexit() exit()
 #define xmkdir(pathname) mkdir((pathname))
+#define xcreat(name) open((name), O_CREATE)
+#define xwait() wait()
 #endif
 
 static const bool pinit = true;
@@ -31,7 +44,7 @@ enum { nlookup = 100 };
 void
 bench(u32 tid, int nloop, const char* path)
 {
-  char pn[MAXNAME];
+  char pn[32];
 
   if (pinit)
     setaffinity(tid);
@@ -40,7 +53,7 @@ bench(u32 tid, int nloop, const char* path)
     for (u32 i = 0; i < nfile; i++) {
       snprintf(pn, sizeof(pn), "%s/f:%d:%d", path, tid, i);
 
-      int fd = open(pn, O_CREATE | O_RDWR);
+      int fd = xcreat(pn);
       if (fd < 0)
 	die("create failed\n");
 
@@ -51,7 +64,7 @@ bench(u32 tid, int nloop, const char* path)
       snprintf(pn, sizeof(pn), "%s/f:%d:%d", path, tid, (i % nfile));
       int fd = open(pn, O_RDWR);
       if (fd < 0)
-        die("open failed\n");
+        die("open failed %s", pn);
 
       close(fd);
     }
@@ -102,7 +115,7 @@ main(int ac, char** av)
   }
 
   for (u32 i = 0; i < nthread; i++)
-    wait();
+    xwait();
   u64 t1 = rdtsc();
   mtdisable("xv6-dirbench");
 
