@@ -5,29 +5,14 @@
 #include <unistd.h>
 #include <assert.h>
 #include <sys/wait.h>
-#define O_CREATE O_CREAT
-#define xfork() fork()
-#define xexit() exit(EXIT_SUCCESS)
-static inline void xwait()
-{
-  int status;
-  if (wait(&status) < 0)
-    edie("wait");
-  if (!WIFEXITED(status))
-    die("bad status %u", status);
-}
-#define xcreat(name) open((name), O_CREATE|O_WRONLY, S_IRUSR|S_IWUSR)
-#define mtenable(x) do { } while(0)
-#define mtdisable(x) do { } while(0)
+#include "xsys.h"
 #else
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
 #include "amd64.h"
 #include "mtrace.h"
-#define xfork() fork(0)
-#define xexit() exit()
-#define xcreat(name) open((name), O_CREATE|O_WRONLY)
+#include "xsys.h"
 #endif
 
 #define CHUNKSZ 512

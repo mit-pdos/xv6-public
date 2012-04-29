@@ -6,21 +6,7 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#define O_CREATE O_CREAT
-#define xfork() fork()
-#define xexit() exit(EXIT_SUCCESS)
-static inline void xwait()
-{
-  int status;
-  if (wait(&status) < 0)
-    edie("wait");
-  if (!WIFEXITED(status))
-    die("bad status %u", status);
-}
-#define xmkdir(pathname) mkdir((pathname), S_IWUSR|S_IRUSR);
-#define xcreat(name) open((name), O_CREATE, S_IRUSR|S_IWUSR)
-#define mtenable(x) do { } while(0)
-#define mtdisable(x) do { } while(0)
+#include "xsys.h"
 #else
 #include "types.h"
 #include "stat.h"
@@ -28,11 +14,7 @@ static inline void xwait()
 #include "mtrace.h"
 #include "amd64.h"
 #include "fcntl.h"
-#define xfork() fork(0)
-#define xexit() exit()
-#define xmkdir(pathname) mkdir((pathname))
-#define xcreat(name) open((name), O_CREATE)
-#define xwait() wait()
+#include "xsys.h"
 #endif
 
 static const bool pinit = true;
