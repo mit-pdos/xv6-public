@@ -67,6 +67,17 @@ struct LoopsBench : public Bench
   LoopsBench(const char *cmd, int nloops, int cpuinc) :
     Bench(), cmd_(cmd), nloops_(nloops), cpuinc_(cpuinc) {}
 
+  char* runone(int ncore, const char** argv, char *res, int n) {
+      char cores[16];
+      snprintf(cores, sizeof(cores), "%u", ncore);
+      argv[1] = cores;
+      u64 r = time_this(argv);      
+      // r in usecs
+      r = (r*(1000*1000)) / cpuhz();
+      snprintf(res, n, "%u %lu %lu\n", ncore, r, nloops_);
+      return res + strlen(res);
+  }
+
   virtual void run(void) {
     char nloopstr[16];
     snprintf(nloopstr, sizeof(nloopstr), "%u", nloops_); 
@@ -78,16 +89,9 @@ struct LoopsBench : public Bench
     snprintf(res, q-res, "#cores usecs loops/core\n");
     res += strlen(res);
 
-    for (int i = cpuinc_; i <= NCPU; i += cpuinc_) {
-      char cores[16];
-      snprintf(cores, sizeof(cores), "%u", i);
-      argv[1] = cores;
-      u64 r = time_this(argv);      
-      // r in usecs
-      r = (r*(1000*1000)) / cpuhz();
-      snprintf(res, q-res, "%u %lu %lu\n", i, r, nloops_);
-      res += strlen(res);
-    }
+    res = runone(1, argv, res, q-res);
+    for (int i = cpuinc_; i <= NCPU; i += cpuinc_)
+      res = runone(i, argv, res, q-res);
   }
 
   virtual char* result(void) {
