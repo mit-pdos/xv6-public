@@ -1,5 +1,6 @@
 #if defined(LINUX)
 #include "user/util.h"
+#include "types.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <assert.h>
@@ -9,7 +10,6 @@
 #define xcreat(name) open((name), O_CREATE|O_WRONLY, S_IRUSR|S_IWUSR)
 #define mtenable(x) do { } while(0)
 #define mtdisable(x) do { } while(0)
-typedef uint64_t u64;
 #else
 #include "types.h"
 #include "user.h"

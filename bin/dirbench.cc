@@ -1,9 +1,27 @@
+#if defined(LINUX)
+#include "user/util.h"
+#include "types.h"
+#include <fcntl.h>
+#include <unistd.h>
+#include <assert.h>
+#include <sys/stat.h>
+#define O_CREATE O_CREAT
+#define xfork() fork()
+#define xexit() exit(EXIT_SUCCESS)
+#define xmkdir(pathname) mkdir((pathname), S_IWUSR|S_IRUSR);
+#define mtenable(x) do { } while(0)
+#define mtdisable(x) do { } while(0)
+#else
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "mtrace.h"
 #include "amd64.h"
 #include "fcntl.h"
+#define xfork() fork(0)
+#define xexit() exit()
+#define xmkdir(pathname) mkdir((pathname))
+#endif
 
 static const bool pinit = true;
 
@@ -11,7 +29,7 @@ enum { nfile = 10 };
 enum { nlookup = 100 };
 
 void
-bench(u32 tid, int nloop)
+bench(u32 tid, int nloop, const char* path)
 {
   char pn[MAXNAME];
 
@@ -20,7 +38,7 @@ bench(u32 tid, int nloop)
 
   for (u32 x = 0; x < nloop; x++) {
     for (u32 i = 0; i < nfile; i++) {
-      snprintf(pn, sizeof(pn), "/dbx/f:%d:%d", tid, i);
+      snprintf(pn, sizeof(pn), "%s/f:%d:%d", path, tid, i);
 
       int fd = open(pn, O_CREATE | O_RDWR);
       if (fd < 0)
@@ -30,7 +48,7 @@ bench(u32 tid, int nloop)
     }
 
     for (u32 i = 0; i < nlookup; i++) {
-      snprintf(pn, sizeof(pn), "/dbx/f:%d:%d", tid, (i % nfile));
+      snprintf(pn, sizeof(pn), "%s/f:%d:%d", path, tid, (i % nfile));
       int fd = open(pn, O_RDWR);
       if (fd < 0)
         die("open failed\n");
@@ -39,18 +57,19 @@ bench(u32 tid, int nloop)
     }
 
     for (u32 i = 0; i < nfile; i++) {
-      snprintf(pn, sizeof(pn), "/dbx/f:%d:%d", tid, i);
+      snprintf(pn, sizeof(pn), "%s/f:%d:%d", path, tid, i);
       if (unlink(pn) < 0)
 	die("unlink failed\n");
     }
   }
 
-  exit();
+  xexit();
 }
 
 int
 main(int ac, char** av)
 {
+  const char* path;
   int nthread;
   int nloop;
   
@@ -59,22 +78,25 @@ main(int ac, char** av)
 #else
   nloop = 1000;
 #endif
+  path = "/dbx";
 
   if (ac < 2)
-    die("usage: %s nthreads [nloop]", av[0]);
+    die("usage: %s nthreads [nloop] [path]", av[0]);
 
   nthread = atoi(av[1]);
   if (ac > 2)
     nloop = atoi(av[2]);
+  if (ac > 3)
+    path = av[3];
 
-  mkdir("/dbx");
+  xmkdir(path);
 
   mtenable("xv6-dirbench");
   u64 t0 = rdtsc();
   for(u32 i = 0; i < nthread; i++) {
-    int pid = fork(0);
+    int pid = xfork();
     if (pid == 0)
-      bench(i, nloop);
+      bench(i, nloop, path);
     else if (pid < 0)
       die("fork");
   }
