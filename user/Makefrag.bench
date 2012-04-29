@@ -23,4 +23,4 @@ $(O)/%: $(O)/user/%.o
 .PRECIOUS: $(O)/user/%.o
 -include $(O)/user/*.d
 
-ALL := $(O)/filebench
+ALL := $(O)/filebench $(O)/dirbench
