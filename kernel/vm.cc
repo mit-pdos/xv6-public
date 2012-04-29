@@ -132,10 +132,7 @@ vmnode::copy()
 int
 vmnode::loadpg(off_t off)
 {
-#ifdef MTRACE 
   mtreadavar("inode:%x.%x", ip->dev, ip->inum);
-  mtwriteavar("vmnode:%p", this);
-#endif
 
   assert(off <= sz);
 
@@ -685,8 +682,6 @@ vmap::pagefault(uptr va, u32 err)
     *pte = v2p(m->n->page[npg]) | PTE_P | PTE_U | PTE_W;
   }
 
-  mtreadavar("vmnode:%p", m->n);
-
   return 1;
 }
 
@@ -736,7 +731,6 @@ vmap::pagelookup(uptr va)
       throw_bad_alloc();
 
   char* kptr = (char*)(m->n->page[npg]);
-  mtreadavar("vmnode:%p", m->n);
   return &kptr[va & (PGSIZE-1)];
 }
 
