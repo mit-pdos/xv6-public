@@ -12,7 +12,7 @@ static inline void xwait()
     die("bad status %u", status);
 }
 #define xmkdir(pathname) mkdir((pathname), S_IWUSR|S_IRUSR);
-#define xcreat(name) open((name), O_CREATE, S_IRUSR|S_IWUSR)
+#define xcreat(name) open((name), O_CREATE|O_RDWR, S_IRUSR|S_IWUSR)
 #define mtenable(x) do { } while(0)
 #define mtdisable(x) do { } while(0)
 
