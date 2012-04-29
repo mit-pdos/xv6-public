@@ -95,6 +95,9 @@ vm2sharing(void *arg)
                        MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0);
       if (res == MAP_FAILED)
         die("asharing: mmap failed");
+      // Fault
+      for (int i = lo; i < hi; i++)
+        base[i * 4096] = 42;
     } else {
       // Unmap
       int res = munmap(base + lo * 4096, (hi-lo) * 4096);
