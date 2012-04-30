@@ -21,6 +21,7 @@ struct spinlock {
   struct klockstat *stat;
 #endif
 
+#ifdef __cplusplus
   // Create a spinlock that will later be initialized by initlock.
   // XXX(austin) Remove this and initlock in favor of the other ctor.
   constexpr spinlock()
@@ -44,6 +45,7 @@ struct spinlock {
     , stat(lockstat ? nullptr : &klockstat_lazy)
 #endif
   { }
+#endif // __cplusplus
 };
 
 #if SPINLOCK_DEBUG
