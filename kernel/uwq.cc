@@ -59,7 +59,7 @@ sys_wqinit(uptr uentry)
   if (myproc()->uwq != nullptr)
     return -1;
 
-  uwq = uwq::alloc(myproc()->vmap, myproc()->ftable, uentry);
+  uwq = uwq::alloc(myproc()->pgmap, myproc()->vmap, myproc()->ftable, uentry);
   if (uwq == nullptr)
     return -1;
 
@@ -118,7 +118,7 @@ uwq_worker::wait(void)
 // uwq
 //
 uwq*
-uwq::alloc(vmap* vmap, filetable *ftable, uptr uentry)
+uwq::alloc(proc_pgmap* pgmap, vmap* vmap, filetable *ftable, uptr uentry)
 {
   uwq_ipcbuf* ipc;
   uwq* u;
@@ -129,16 +129,18 @@ uwq::alloc(vmap* vmap, filetable *ftable, uptr uentry)
 
   ftable->incref();
   vmap->incref();
+  pgmap->inc();
 
-  u = new uwq(vmap, ftable, ipc, uentry);
+  u = new uwq(pgmap, vmap, ftable, ipc, uentry);
   if (u == nullptr) {
     ftable->decref();
     vmap->decref();
+    pgmap->dec();
     ksfree(slab_userwq, ipc);
     return nullptr;
   }
 
-  if (mapkva(vmap->pml4, (char*)ipc, USERWQ, USERWQSIZE)) {
+  if (mapkva(pgmap->pml4, (char*)ipc, USERWQ, USERWQSIZE)) {
     u->dec();
     return nullptr;
   }
@@ -146,9 +148,10 @@ uwq::alloc(vmap* vmap, filetable *ftable, uptr uentry)
   return u;
 }
 
-uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc, uptr uentry) 
+uwq::uwq(proc_pgmap* pgmap, vmap* vmap,
+         filetable* ftable, uwq_ipcbuf* ipc, uptr uentry) 
   : rcu_freed("uwq"),
-    vmap_(vmap), ftable_(ftable), ipc_(ipc),
+    pgmap_(pgmap), vmap_(vmap), ftable_(ftable), ipc_(ipc),
     uentry_(uentry), ustack_(UWQSTACK), uref_(0)
 {
   for (int i = 0; i < NELEM(ipc_->len); i++)
@@ -163,6 +166,7 @@ uwq::uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf* ipc, uptr uentry)
 uwq::~uwq(void)
 { 
   ksfree(slab_userwq, ipc_);
+  pgmap_->dec();
   vmap_->decref();
   ftable_->decref();
 }
@@ -298,7 +302,7 @@ uwq::allocworker(void)
   // Include a bumper page
   uptr ustack = ustack_.fetch_add((USTACKPAGES*PGSIZE)+PGSIZE);
   uptr stacktop = ustack + (USTACKPAGES*PGSIZE);
-  if (vmap_->insert(vmn, ustack, 1) < 0) {
+  if (vmap_->insert(vmn, ustack, 1, pgmap_) < 0) {
     delete vmn;
     finishproc(p);
     return nullptr;

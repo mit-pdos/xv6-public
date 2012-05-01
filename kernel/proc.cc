@@ -30,6 +30,26 @@ struct kstack_tag kstack_tag[NCPU];
 
 enum { sched_debug = 0 };
 
+proc_pgmap::proc_pgmap(void)
+  : pml4(setupkvm())
+{
+  if (pml4 == nullptr) {
+    cprintf("proc_pgmap::proc_pgmap: setupkvm out of memory\n");
+    throw_bad_alloc();
+  }
+}
+
+proc_pgmap*
+proc_pgmap::alloc(void)
+{
+  return new proc_pgmap();
+}
+
+proc_pgmap::~proc_pgmap(void)
+{
+  freevm(pml4);
+}
+
 proc::proc(int npid) :
   rcu_freed("proc"), vmap(0), uwq(0), worker(0), kstack(0),
   pid(npid), parent(0), tf(0), context(0), killed(0),
@@ -37,7 +57,7 @@ proc::proc(int npid) :
   cpu_pin(0), oncv(0), cv_wakeup(0),
   user_fs_(0), unmap_tlbreq_(0), data_cpuid(-1), in_exec_(0), 
   uaccess_(0), upath(0), uargv(userptr<const char>(nullptr)),
-  exception_inuse(0), magic(PROC_MAGIC), state_(EMBRYO)
+  exception_inuse(0), magic(PROC_MAGIC), pgmap(0), state_(EMBRYO)
 {
   snprintf(lockname, sizeof(lockname), "cv:proc:%d", pid);
   initlock(&lock, lockname+3, LOCKSTAT_PROC);
@@ -420,7 +440,7 @@ fork(int flags)
   struct proc *np;
   int cow = 1;
 
-  // cprintf("%d: fork\n", myproc()->pid);
+  //cprintf("%d: fork\n", myproc()->pid);
 
   // Allocate process.
   if((np = proc::alloc()) == 0)
@@ -435,9 +455,16 @@ fork(int flags)
   if(flags & FORK_SHARE_VMAP) {
     np->vmap = myproc()->vmap;
     np->vmap->ref++;
+    if (flags & FORK_SEPARATE_PGMAP) {
+      panic("fork: FORK_SEPARATE_PGMAP");
+    } else {
+      np->pgmap = myproc()->pgmap;
+      myproc()->pgmap->inc();
+    }
   } else {
     // Copy process state from p.
-    np->vmap = myproc()->vmap->copy(cow);
+    np->vmap = myproc()->vmap->copy(cow, myproc()->pgmap);
+    np->pgmap = proc_pgmap::alloc();
   }
 
   np->parent = myproc();
@@ -479,6 +506,8 @@ finishproc(struct proc *p, bool removepid)
     panic("finishproc: ns_remove");
   if (p->vmap != nullptr)
     p->vmap->decref();
+  if (p->pgmap != nullptr)
+    p->pgmap->dec();
   if (p->uwq != nullptr)
     p->uwq->dec();
   p->pid = 0;

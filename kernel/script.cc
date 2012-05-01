@@ -22,7 +22,7 @@ script_mmap_work(void *a0, void *a1, void *a2, void *a3)
   if(vmn == 0)
     panic("sys_script: new vmnode");
 
-  if(p->vmap->insert(vmn, PGROUNDDOWN((u64)addr), 0) < 0)
+  if(p->vmap->insert(vmn, PGROUNDDOWN((u64)addr), 0, p->pgmap) < 0)
     panic("sys_script: insert");
 
   *donep += 1;

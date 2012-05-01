@@ -105,7 +105,6 @@ struct vmap {
   static vmap* alloc();
 
   atomic<u64> ref;
-  pgmap *const pml4;           // Page table
   char *const kshared;
 
   bool replace_vma(vma *a, vma *b);
@@ -113,12 +112,12 @@ struct vmap {
   void decref();
   void incref();
 
-  vmap* copy(int share);
+  vmap* copy(int share, proc_pgmap* pgmap);
   vma* lookup(uptr start, uptr len);
-  long insert(vmnode *n, uptr va_start, int dotlb);
-  int remove(uptr start, uptr len);
+  long insert(vmnode *n, uptr va_start, int dotlb, proc_pgmap* pgmap);
+  int remove(uptr start, uptr len, proc_pgmap* pgmap);
 
-  int pagefault(uptr va, u32 err);
+  int pagefault(uptr va, u32 err, proc_pgmap* pgmap);
   void* pagelookup(uptr va);
   int copyout(uptr va, void *p, u64 len);
   int sbrk(ssize_t n, uptr *addr);
@@ -131,7 +130,7 @@ private:
   vmap& operator=(const vmap&);
   ~vmap();
   NEW_DELETE_OPS(vmap)
-  int pagefault_wcow(vma *m);
+  int pagefault_wcow(vma *m, proc_pgmap* pgmap);
   uptr unmapped_area(size_t n);
 
   struct spinlock brklock_;

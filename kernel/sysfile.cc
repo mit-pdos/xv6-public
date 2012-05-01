@@ -79,7 +79,7 @@ sys_pread(int fd, void *ubuf, size_t count, off_t offset)
     // while pread executes
     uptr i = (uptr)ubuf;
     for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
-      if(pagefault(myproc()->vmap, va, 0) < 0)
+      if(pagefault(myproc()->vmap, va, 0, myproc()->pgmap) < 0)
         return -1;
     return f->pread((char*)ubuf, count, offset);
   }
@@ -117,7 +117,7 @@ sys_pwrite(int fd, const void *ubuf, size_t count, off_t offset)
     // while pread executes
     uptr i = (uptr)ubuf;
     for(uptr va = PGROUNDDOWN(i); va < i+count; va = va + PGSIZE)
-      if(pagefault(myproc()->vmap, va, 0) < 0)
+      if(pagefault(myproc()->vmap, va, 0, myproc()->pgmap) < 0)
         return -1;
     return f->pwrite((char*)ubuf, count, offset);
   }

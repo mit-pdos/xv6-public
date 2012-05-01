@@ -35,7 +35,8 @@ struct uwq_worker {
 struct uwq : public referenced, public rcu_freed {
   friend struct uwq_worker;
 
-  static uwq* alloc(vmap* vmap, filetable *ftable, uptr uentry);
+  static uwq* alloc(proc_pgmap* pgmap, vmap* vmap,
+                    filetable *ftable, uptr uentry);
   bool  haswork() const;
   bool  tryworker();
 
@@ -45,7 +46,8 @@ protected:
   virtual void onzero() const;
 
 private:
-  uwq(vmap* vmap, filetable* ftable, uwq_ipcbuf *ipc, uptr uentry);
+  uwq(proc_pgmap* pgmap, vmap* vmap,
+      filetable* ftable, uwq_ipcbuf *ipc, uptr uentry);
   ~uwq();
   uwq& operator=(const uwq&);
   uwq(const uwq& x);
@@ -54,6 +56,7 @@ private:
   NEW_DELETE_OPS(uwq);
 
   struct spinlock lock_;
+  proc_pgmap *pgmap_;
   vmap* vmap_;
   filetable* ftable_;
   uwq_ipcbuf* ipc_;

@@ -28,6 +28,7 @@ static inline void *p2v(uptr a) {
     return (u8 *) a + KBASE;
 }
 
+struct proc_pgmap;
 struct trapframe;
 struct spinlock;
 struct condvar;
@@ -248,7 +249,7 @@ void            uartintr(void);
 
 // vm.c
 void            switchvm(struct proc*);
-int             pagefault(struct vmap*, uptr, u32);
+int             pagefault(struct vmap*, uptr, u32, proc_pgmap* pgmap);
 void*           pagelookup(struct vmap*, uptr);
 
 // zalloc.cc

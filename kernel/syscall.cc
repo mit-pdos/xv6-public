@@ -57,7 +57,7 @@ argcheckstr(const char *addr)
   const char *s = addr;
 
   while(1){
-    if(pagefault(myproc()->vmap, (uptr) s, 0) < 0)
+    if(pagefault(myproc()->vmap, (uptr) s, 0, myproc()->pgmap) < 0)
       return -1;
     if(*s == 0)
       return s - addr;
@@ -74,7 +74,7 @@ argcheckptr(const void *p, int size)
 {
   u64 i = (u64) p;
   for(uptr va = PGROUNDDOWN(i); va < i+size; va = va + PGSIZE)
-    if(pagefault(myproc()->vmap, va, 0) < 0)
+    if(pagefault(myproc()->vmap, va, 0, myproc()->pgmap) < 0)
       return -1;
   return 0;
 }

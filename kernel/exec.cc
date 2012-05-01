@@ -45,7 +45,7 @@ dosegment(inode* ip, vmap* vmp, u64 off)
     if (node == nullptr)
       return -1;
 
-    if (vmp->insert(node, va_start, 1) < 0) {
+    if (vmp->insert(node, va_start, 1, nullptr) < 0) {
       delete node;
       return -1;
     }
@@ -62,7 +62,7 @@ dosegment(inode* ip, vmap* vmp, u64 off)
     if (node == nullptr)
       return -1;
 
-    if (vmp->insert(node, backed_end, 1) < 0) {
+    if (vmp->insert(node, backed_end, 1, nullptr) < 0) {
       delete node;
       return -1;
     }
@@ -90,7 +90,7 @@ dostack(vmap* vmp, char** argv, const char* path)
   // Allocate a one-page stack at the top of the (user) address space
   if((vmn = new vmnode(USTACKPAGES)) == 0)
     return -1;
-  if(vmp->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE), 1) < 0)
+  if(vmp->insert(vmn, USERTOP-(USTACKPAGES*PGSIZE), 1, nullptr) < 0)
     return -1;
 
   for (argc = 0; argv[argc]; argc++)
@@ -126,7 +126,7 @@ doheap(vmap* vmp)
 
   if((vmn = new vmnode(32)) == nullptr)
     return -1;
-  if(vmp->insert(vmn, BRK, 1) < 0)
+  if(vmp->insert(vmn, BRK, 1, nullptr) < 0)
     return -1;
   vmp->brk_ = BRK + 8;  // XXX so that brk-1 points within heap vma..
 
@@ -134,11 +134,12 @@ doheap(vmap* vmp)
 }
 
 static void
-exec_cleanup(vmap *oldvmap, uwq *olduwq)
+exec_cleanup(vmap *oldvmap, uwq *olduwq, proc_pgmap* oldpgmap)
 {
   if (olduwq != nullptr)
     olduwq->dec();
   oldvmap->decref();
+  oldpgmap->dec();
 }
 
 int
@@ -147,11 +148,13 @@ exec(const char *path, char **argv, void *ascopev)
   ANON_REGION(__func__, &perfgroup);
   struct inode *ip = nullptr;
   struct vmap *vmp = nullptr;
+  proc_pgmap *pgmap = nullptr;
   const char *s, *last;
   struct elfhdr elf;
   struct proghdr ph;
   u64 off;
   int i;
+  proc_pgmap* oldpgmap;
   vmap* oldvmap;
   uwq* olduwq;
   cwork* w;
@@ -177,6 +180,8 @@ exec(const char *path, char **argv, void *ascopev)
     goto bad;
 
   if((vmp = vmap::alloc()) == 0)
+    goto bad;
+  if ((pgmap = proc_pgmap::alloc()) == 0)
     goto bad;
 
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
@@ -207,6 +212,9 @@ exec(const char *path, char **argv, void *ascopev)
   // Commit to the user image.
   oldvmap = myproc()->vmap;
   olduwq = myproc()->uwq;
+  oldpgmap = myproc()->pgmap;
+
+  myproc()->pgmap = pgmap;
   myproc()->vmap = vmp;
   myproc()->tf->rip = elf.entry;
   myproc()->tf->rsp = sp;
@@ -224,6 +232,7 @@ exec(const char *path, char **argv, void *ascopev)
   w->rip = (void*) exec_cleanup;
   w->arg0 = oldvmap;
   w->arg1 = olduwq;
+  w->arg2 = oldpgmap;
   assert(wqcrit_push(w, myproc()->data_cpuid) >= 0);
   myproc()->data_cpuid = myid();
 

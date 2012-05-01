@@ -210,22 +210,12 @@ vmap::vmap() :
 #if VM_RADIX
   vmas(PGSHIFT),
 #endif
-  ref(1), pml4(setupkvm()), kshared((char*) ksalloc(slab_kshared)),
-  brk_(0)
+  ref(1), kshared((char*) ksalloc(slab_kshared)), brk_(0)
 {
   initlock(&brklock_, "brk_lock", LOCKSTAT_VM);
-  if (pml4 == 0) {
-    cprintf("vmap_alloc: setupkvm out of memory\n");
-    goto err;
-  }
 
   if (kshared == nullptr) {
     cprintf("vmap::vmap: kshared out of memory\n");
-    goto err;
-  }
-
-  if (mapkva(pml4, kshared, KSHARED, KSHAREDSIZE)) {
-    cprintf("vmap::vmap: mapkva out of memory\n");
     goto err;
   }
 
@@ -234,8 +224,6 @@ vmap::vmap() :
  err:
   if (kshared)
     ksfree(slab_kshared, kshared);
-  if (pml4)
-    freevm(pml4);
   throw_bad_alloc();
 }
 
@@ -243,8 +231,6 @@ vmap::~vmap()
 {
   if (kshared)
     ksfree(slab_kshared, kshared);
-  if (pml4)
-    freevm(pml4);
   destroylock(&brklock_);
 }
 
@@ -286,7 +272,7 @@ vmap::replace_vma(vma *a, vma *b)
 }
 
 vmap*
-vmap::copy(int share)
+vmap::copy(int share, proc_pgmap* pgmap)
 {
   vmap *nm = new vmap();
 
@@ -324,7 +310,7 @@ vmap::copy(int share)
 #elif VM_CRANGE
         replace_vma(e, repl);
 #endif
-        updatepages(pml4, range_start, range_end, [](atomic<pme_t>* p) {
+        updatepages(pgmap->pml4, range_start, range_end, [](atomic<pme_t>* p) {
             for (;;) {
               pme_t v = p->load();
               if (v & PTE_LOCK)
@@ -402,7 +388,7 @@ vmap::lookup(uptr start, uptr len)
 }
 
 long
-vmap::insert(vmnode *n, uptr vma_start, int dotlb)
+vmap::insert(vmnode *n, uptr vma_start, int dotlb, proc_pgmap* pgmap)
 {
   ANON_REGION("vmap::insert", &perfgroup);
 
@@ -471,7 +457,9 @@ again:
 
   bool needtlb = false;
   if (replaced)
-    updatepages(pml4, e->vma_start, e->vma_end, [&needtlb](atomic<pme_t> *p) {
+    updatepages(pgmap->pml4, e->vma_start, e->vma_end,
+                [&needtlb](atomic<pme_t> *p)
+      {
         for (;;) {
           pme_t v = p->load();
           if (v & PTE_LOCK)
@@ -496,7 +484,7 @@ again:
 }
 
 int
-vmap::remove(uptr vma_start, uptr len)
+vmap::remove(uptr vma_start, uptr len, proc_pgmap* pgmap)
 {
   {
     // new scope to release the search lock before tlbflush
@@ -527,7 +515,7 @@ vmap::remove(uptr vma_start, uptr len)
   }
 
   bool needtlb = false;
-  updatepages(pml4, vma_start, vma_start + len, [&needtlb](atomic<pme_t> *p) {
+  updatepages(pgmap->pml4, vma_start, vma_start + len, [&needtlb](atomic<pme_t> *p) {
       for (;;) {
         pme_t v = p->load();
         if (v & PTE_LOCK)
@@ -555,7 +543,7 @@ vmap::remove(uptr vma_start, uptr len)
  */
 
 int
-vmap::pagefault_wcow(vma *m)
+vmap::pagefault_wcow(vma *m, proc_pgmap* pgmap)
 {
   // Always make a copy of n, even if this process has the only ref, 
   // because other processes may change ref count while this process 
@@ -572,7 +560,7 @@ vmap::pagefault_wcow(vma *m)
   // and space copying pages that are no longer mapped, but will only
   // do that once.  Fixing this requires getting rid of the vmnode.
   replace_vma(m, repl);
-  updatepages(pml4, m->vma_start, m->vma_end, [](atomic<pme_t> *p) {
+  updatepages(pgmap->pml4, m->vma_start, m->vma_end, [](atomic<pme_t> *p) {
       // XXX(austin) In radix, this may clear PTEs belonging to other
       // VMAs that have replaced sub-ranges of the faulting VMA.
       // That's unfortunate but okay because we'll just bring them
@@ -591,12 +579,15 @@ vmap::pagefault_wcow(vma *m)
 }
 
 int
-vmap::pagefault(uptr va, u32 err)
+vmap::pagefault(uptr va, u32 err, proc_pgmap* pgmap)
 {
+  if (pgmap == nullptr)
+    panic("vmap::pagefault no pgmap");
+
   if (va >= USERTOP)
     return -1;
 
-  atomic<pme_t> *pte = walkpgdir(pml4, va, 1);
+  atomic<pme_t> *pte = walkpgdir(pgmap->pml4, va, 1);
   if (pte == nullptr)
     throw_bad_alloc();
 
@@ -630,7 +621,7 @@ vmap::pagefault(uptr va, u32 err)
             err, va, m->va_type, m->n->ref(), myproc()->pid);
 
   if (m->va_type == COW && (err & FEC_WR)) {
-    if (pagefault_wcow(m) < 0)
+    if (pagefault_wcow(m, pgmap) < 0)
       return -1;
 
     if (tlb_shootdown) {
@@ -686,7 +677,7 @@ vmap::pagefault(uptr va, u32 err)
 }
 
 int
-pagefault(vmap *vmap, uptr va, u32 err)
+pagefault(vmap *vmap, uptr va, u32 err, proc_pgmap* pgmap)
 {
 #if MTRACE
   mt_ascope ascope("%s(%#lx)", __func__, va);
@@ -697,7 +688,7 @@ pagefault(vmap *vmap, uptr va, u32 err)
 #if EXCEPTIONS
     try {
 #endif
-      return vmap->pagefault(va, err);
+      return vmap->pagefault(va, err, pgmap);
 #if EXCEPTIONS
     } catch (retryable& e) {
       cprintf("%d: pagefault retry\n", myproc()->pid);

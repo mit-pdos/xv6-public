@@ -158,8 +158,8 @@ switchvm(struct proc *p)
   ltr(TSSSEG);
 
   u64 nreq = tlbflush_req.load();
-  if (p->vmap != 0 && p->vmap->pml4 != 0)
-    lcr3(v2p(p->vmap->pml4));  // switch to new address space
+  if (p->pgmap != 0 && p->pgmap->pml4 != 0)
+    lcr3(v2p(p->pgmap->pml4));  // switch to new address space
   else
     switchkvm();
   mycpu()->tlbflush_done = nreq;
