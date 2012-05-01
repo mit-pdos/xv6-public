@@ -456,7 +456,7 @@ fork(int flags)
     np->vmap = myproc()->vmap;
     np->vmap->ref++;
     if (flags & FORK_SEPARATE_PGMAP) {
-      panic("fork: FORK_SEPARATE_PGMAP");
+      np->pgmap = proc_pgmap::alloc();
     } else {
       np->pgmap = myproc()->pgmap;
       myproc()->pgmap->inc();
