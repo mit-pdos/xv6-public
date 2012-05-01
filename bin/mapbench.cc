@@ -14,7 +14,7 @@ enum { npg = 1 };
 
 static pthread_barrier_t bar;
 static pthread_barrier_t bar2;
-#define NITER 1000000
+static int niter = 100;
 
 void*
 thr(void *arg)
@@ -30,7 +30,7 @@ thr(void *arg)
 
   pthread_barrier_wait(&bar2);
 
-  for (int i = 0; i < NITER; i++) {
+  for (int i = 0; i < niter; i++) {
     if (verbose && ((i % 100) == 0))
       fprintf(1, "%d: %d ops\n", tid, i);
 
@@ -57,14 +57,13 @@ thr(void *arg)
 int
 main(int ac, char **av)
 {
-  if (ac != 2) {
-    fprintf(1, "usage: %s nthreads\n", av[0]);
-    exit();
-  }
+  if (ac < 2)
+    die("usage: %s nthreads [nloop]", av[0]);
 
   int nthread = atoi(av[1]);
+  if (ac > 2)
+    niter = atoi(av[2]);
 
-  // fprintf(1, "mapbench[%d]: start esp %x, nthread=%d\n", getpid(), rrsp(), nthread);
   pthread_barrier_init(&bar, 0, nthread);
   pthread_barrier_init(&bar2, 0, nthread);
 
