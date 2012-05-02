@@ -122,6 +122,9 @@ struct vmap {
   int copyout(uptr va, void *p, u64 len);
   int sbrk(ssize_t n, uptr *addr);
 
+  void add_pgmap(proc_pgmap* pgmap);
+  void rem_pgmap(proc_pgmap* pgmap);
+
   uptr brk_;                    // Top of heap
 
 private:
@@ -134,4 +137,11 @@ private:
   uptr unmapped_area(size_t n);
 
   struct spinlock brklock_;
+
+  // XXX(sbw) most likely an awful hash function
+  static u64 proc_pgmap_hash(proc_pgmap* const & p)
+  {
+    return (u64) p;
+  }
+  xns<proc_pgmap*, proc_pgmap*, proc_pgmap_hash> pgmap_list_;
 };

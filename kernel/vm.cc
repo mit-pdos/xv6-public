@@ -197,6 +197,20 @@ to_stream(print_stream *s, vma *v)
  * vmap
  */
 
+void
+vmap::add_pgmap(proc_pgmap* pgmap)
+{
+  if (pgmap_list_.insert(pgmap, pgmap) < 0)
+    panic("vmap::add_pgmap");
+}
+
+void
+vmap::rem_pgmap(proc_pgmap* pgmap)
+{
+  if (!pgmap_list_.remove(pgmap, nullptr))
+    panic("vmap::rem_pgmap");
+}
+
 vmap*
 vmap::alloc(void)
 {
@@ -210,15 +224,14 @@ vmap::vmap() :
 #if VM_RADIX
   vmas(PGSHIFT),
 #endif
-  ref(1), kshared((char*) ksalloc(slab_kshared)), brk_(0)
+  ref(1), kshared((char*) ksalloc(slab_kshared)), brk_(0),
+  pgmap_list_(false)
 {
-  initlock(&brklock_, "brk_lock", LOCKSTAT_VM);
-
   if (kshared == nullptr) {
     cprintf("vmap::vmap: kshared out of memory\n");
     goto err;
   }
-
+  initlock(&brklock_, "brk_lock", LOCKSTAT_VM);
   return;
 
  err:
@@ -395,6 +408,7 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb, proc_pgmap* pgmap)
   vma *e;
   bool replaced = false;
   bool fixed = (vma_start != 0);
+  bool updateall = true;
 
 again:
   if (!fixed) {
@@ -453,25 +467,37 @@ again:
 #if VM_RADIX
     span.replace(e->vma_start, e->vma_end-e->vma_start, e);
 #endif
+    // XXX(sbw) Replace should tell what cores to update
   }
 
   bool needtlb = false;
-  if (replaced)
-    updatepages(pgmap->pml4, e->vma_start, e->vma_end,
-                [&needtlb](atomic<pme_t> *p)
+
+  auto update = [&needtlb, &updateall](atomic<pme_t> *p) {
+    for (;;) {
+      pme_t v = p->load();
+      if (v & PTE_LOCK)
+        continue;
+      if (!(v & PTE_P))
+        break;
+      if (cmpxch(p, v, (pme_t) 0)) {
+        needtlb = true && updateall;
+        break;
+      }
+    }
+  };
+
+  if (replaced) {
+    if (updateall)
+      pgmap_list_.enumerate([&](proc_pgmap* const &p,
+                                proc_pgmap* const &x)->bool
       {
-        for (;;) {
-          pme_t v = p->load();
-          if (v & PTE_LOCK)
-            continue;
-          if (!(v & PTE_P))
-            break;
-          if (cmpxch(p, v, (pme_t) 0)) {
-            needtlb = true;
-            break;
-          }
-        }
+        updatepages(p->pml4, e->vma_start, e->vma_end, update);
+        return false;
       });
+    else
+      updatepages(pgmap->pml4, e->vma_start, e->vma_end, update);      
+  }
+
   if (tlb_shootdown) {
     if (needtlb && dotlb)
       tlbflush();
@@ -486,6 +512,7 @@ again:
 int
 vmap::remove(uptr vma_start, uptr len, proc_pgmap* pgmap)
 {
+  bool updateall = true;
   {
     // new scope to release the search lock before tlbflush
 
@@ -512,22 +539,35 @@ vmap::remove(uptr vma_start, uptr len, proc_pgmap* pgmap)
     // could skip the updatepages.
     span.replace(vma_start, len, 0);
 #endif
+    // XXX(sbw) Replace should tell what cores to update
   }
 
   bool needtlb = false;
-  updatepages(pgmap->pml4, vma_start, vma_start + len, [&needtlb](atomic<pme_t> *p) {
-      for (;;) {
-        pme_t v = p->load();
-        if (v & PTE_LOCK)
-          continue;
-        if (!(v & PTE_P))
-          break;
-        if (cmpxch(p, v, (pme_t) 0)) {
-          needtlb = true;
-          break;
-        }
+
+  auto update = [&needtlb, &updateall](atomic<pme_t> *p) {
+    for (;;) {
+      pme_t v = p->load();
+      if (v & PTE_LOCK)
+        continue;
+      if (!(v & PTE_P))
+        break;
+      if (cmpxch(p, v, (pme_t) 0)) {
+        needtlb = true && updateall;
+        break;
       }
+    }
+  };
+
+  if (updateall)
+    pgmap_list_.enumerate([&](proc_pgmap* const &p,
+                              proc_pgmap* const &x)->bool
+    {
+      updatepages(p->pml4, vma_start, vma_start + len, update);
+      return false;
     });
+  else
+    updatepages(pgmap->pml4, vma_start, vma_start + len, update);    
+
   if (tlb_shootdown && needtlb) {
     if (tlb_lazy) {
       myproc()->unmap_tlbreq_ = tlbflush_req++;

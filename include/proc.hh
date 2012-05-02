@@ -22,13 +22,14 @@ struct pgmap;
 
 struct proc_pgmap : public referenced {
   pgmap* const pml4;
+  vmap* const vmp;
 
-  static proc_pgmap* alloc();
+  static proc_pgmap* alloc(vmap* vmap);
   virtual void onzero() const { delete this; }
   proc_pgmap& operator=(const proc_pgmap&) = delete;
   proc_pgmap(const proc_pgmap& x) = delete;
 private:
-  proc_pgmap();
+  proc_pgmap(vmap* vmap);
   ~proc_pgmap();
   NEW_DELETE_OPS(proc_pgmap)
 };

@@ -30,23 +30,28 @@ struct kstack_tag kstack_tag[NCPU];
 
 enum { sched_debug = 0 };
 
-proc_pgmap::proc_pgmap(void)
-  : pml4(setupkvm())
+proc_pgmap::proc_pgmap(vmap* vmap)
+  : pml4(setupkvm()), vmp(vmap)
 {
   if (pml4 == nullptr) {
     cprintf("proc_pgmap::proc_pgmap: setupkvm out of memory\n");
     throw_bad_alloc();
   }
+
+  vmp->ref++;  
+  vmp->add_pgmap(this);
 }
 
 proc_pgmap*
-proc_pgmap::alloc(void)
+proc_pgmap::alloc(vmap* vmap)
 {
-  return new proc_pgmap();
+  return new proc_pgmap(vmap);
 }
 
 proc_pgmap::~proc_pgmap(void)
 {
+  vmp->rem_pgmap(this);
+  vmp->decref();
   freevm(pml4);
 }
 
@@ -456,7 +461,7 @@ fork(int flags)
     np->vmap = myproc()->vmap;
     np->vmap->ref++;
     if (flags & FORK_SEPARATE_PGMAP) {
-      np->pgmap = proc_pgmap::alloc();
+      np->pgmap = proc_pgmap::alloc(np->vmap);
     } else {
       np->pgmap = myproc()->pgmap;
       myproc()->pgmap->inc();
@@ -464,7 +469,7 @@ fork(int flags)
   } else {
     // Copy process state from p.
     np->vmap = myproc()->vmap->copy(cow, myproc()->pgmap);
-    np->pgmap = proc_pgmap::alloc();
+    np->pgmap = proc_pgmap::alloc(np->vmap);
   }
 
   np->parent = myproc();

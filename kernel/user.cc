@@ -29,7 +29,7 @@ inituser(void)
   bootproc = p;
   if((p->vmap = vmap::alloc()) == 0)
     panic("userinit: out of vmaps?");
-  if ((p->pgmap = proc_pgmap::alloc()) == 0)
+  if ((p->pgmap = proc_pgmap::alloc(p->vmap)) == 0)
     panic("inituser: alloc proc_pgmap");
   vmnode *vmn =  new vmnode(PGROUNDUP(_initcode_size) / PGSIZE);
   if(vmn == 0)

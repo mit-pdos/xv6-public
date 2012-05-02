@@ -181,7 +181,7 @@ exec(const char *path, char **argv, void *ascopev)
 
   if((vmp = vmap::alloc()) == 0)
     goto bad;
-  if ((pgmap = proc_pgmap::alloc()) == 0)
+  if ((pgmap = proc_pgmap::alloc(vmp)) == 0)
     goto bad;
 
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
