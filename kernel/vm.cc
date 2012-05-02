@@ -21,6 +21,8 @@
 enum { vm_debug = 0 };
 enum { tlb_shootdown = 1 };
 enum { tlb_lazy = 1 };
+// XXX(sbw) has the same behavior as tlb_shootdown when pgmaps are shared
+enum { never_updateall = 0 };
 
 /*
  * vmnode
@@ -408,7 +410,7 @@ vmap::insert(vmnode *n, uptr vma_start, int dotlb, proc_pgmap* pgmap)
   vma *e;
   bool replaced = false;
   bool fixed = (vma_start != 0);
-  bool updateall = true;
+  bool updateall = !never_updateall;
 
 again:
   if (!fixed) {
@@ -503,7 +505,7 @@ again:
     if (needtlb && dotlb)
       tlbflush();
     else
-      if (tlb_lazy)
+      if (tlb_lazy && updateall)
         tlbflush(myproc()->unmap_tlbreq_);
   }
 
@@ -513,7 +515,7 @@ again:
 int
 vmap::remove(uptr vma_start, uptr len, proc_pgmap* pgmap)
 {
-  bool updateall = true;
+  bool updateall = !never_updateall;
   {
     // new scope to release the search lock before tlbflush
 
