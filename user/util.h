@@ -32,7 +32,7 @@ edie(const char* errstr, ...)
   exit(EXIT_FAILURE);
 }
 
-static inline void
+static inline int
 setaffinity(int c)
 {
   cpu_set_t cpuset;
@@ -40,6 +40,7 @@ setaffinity(int c)
   CPU_SET(c, &cpuset);
   if (sched_setaffinity(0, sizeof(cpuset), &cpuset) < 0)
     edie("setaffinity, sched_setaffinity failed");
+  return 0;
 }
 
 static inline uint64_t

@@ -1,3 +1,11 @@
+#if defined(LINUX)
+#include <pthread.h>
+#include "user/util.h"
+#include "types.h"
+#include <assert.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#else
 #include "types.h"
 #include "stat.h"
 #include "user.h"
@@ -5,7 +13,8 @@
 #include "uspinlock.h"
 #include "mtrace.h"
 #include "pthread.h"
-
+#endif
+#include "xsys.h"
 #include <sys/mman.h>
 
 enum { readaccess = 1 };
@@ -20,8 +29,9 @@ void*
 thr(void *arg)
 {
   u64 tid = (u64)arg;
+
   if (setaffinity(tid) < 0)
-    fprintf(1, "setaffinity err\n");
+    die("setaffinity err");
 
   pthread_barrier_wait(&bar);
 
@@ -32,13 +42,12 @@ thr(void *arg)
 
   for (int i = 0; i < niter; i++) {
     if (verbose && ((i % 100) == 0))
-      fprintf(1, "%d: %d ops\n", tid, i);
+      printf("%d: %d ops\n", tid, i);
 
     volatile char *p = (char*) (0x100000000UL + tid * npg * 0x100000);
     if (mmap((void *) p, npg * 4096, PROT_READ|PROT_WRITE,
              MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) == MAP_FAILED) {
-      fprintf(1, "%d: map failed\n", tid);
-      exit();
+      die("%d: map failed", tid);
     }
 
     if (readaccess) {
@@ -47,8 +56,7 @@ thr(void *arg)
     }
 
     if (munmap((void *) p, npg * 4096) < 0) {
-      fprintf(1, "%d: unmap failed\n", tid);
-      exit();
+      die("%d: unmap failed\n", tid);
     }
   }
   return 0;
@@ -71,15 +79,15 @@ main(int ac, char **av)
   for(u64 i = 0; i < nthread; i++) {
     pthread_t tid;
     pthread_create(&tid, 0, thr, (void*) i);
-    if (0) fprintf(1, "mapbench[%d]: child %d\n", getpid(), tid);
+    if (0) printf("mapbench[%d]: child %d\n", getpid(), tid);
   }
 
   for(int i = 0; i < nthread; i++)
-    wait();
+    xwait();
 
   mtdisable("xv6-asharing");
 
   // fprintf(1, "mapbench[%d]: done\n", getpid());
   // halt();
-  exit();
+  xexit();
 }

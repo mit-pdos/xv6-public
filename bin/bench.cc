@@ -1,6 +1,7 @@
 #include "types.h"
 #include "user.h"
 #include "amd64.h"
+#include "lib.h"
 
 static u64
 time_this(const char *av[])
@@ -64,17 +65,24 @@ struct TimedExec : public Bench
 
 struct LoopsBench : public Bench
 {
+  static const int runs = 1;
+
   LoopsBench(const char *cmd, int nloops, int cpuinc) :
     Bench(), cmd_(cmd), nloops_(nloops), cpuinc_(cpuinc) {}
 
   char* runone(int ncore, const char** argv, char *res, int n) {
-      char cores[16];
+      u64 min = ~0ull;
+      char cores[16];   
+
       snprintf(cores, sizeof(cores), "%u", ncore);
       argv[1] = cores;
-      u64 r = time_this(argv);      
-      // r in usecs
-      r = (r*(1000*1000)) / cpuhz();
-      snprintf(res, n, "%u %lu %lu\n", ncore, r, nloops_);
+      for (int i = 0; i < runs; i++) {
+        u64 r = time_this(argv);      
+        // r in usecs
+        r = (r*(1000*1000)) / cpuhz();
+        min = MIN(r, min);
+      }
+      snprintf(res, n, "%u %lu %lu\n", ncore, min, nloops_);
       return res + strlen(res);
   }
 
