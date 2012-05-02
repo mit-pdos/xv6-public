@@ -14,7 +14,7 @@ enum { npg = 1 };
 
 static pthread_barrier_t bar;
 static pthread_barrier_t bar2;
-static int niter = 100;
+static int niter;
 
 void*
 thr(void *arg)
@@ -61,6 +61,7 @@ main(int ac, char **av)
     die("usage: %s nthreads [nloop]", av[0]);
 
   int nthread = atoi(av[1]);
+  niter = 100;
   if (ac > 2)
     niter = atoi(av[2]);
 
