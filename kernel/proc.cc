@@ -31,7 +31,7 @@ struct kstack_tag kstack_tag[NCPU];
 enum { sched_debug = 0 };
 
 proc_pgmap::proc_pgmap(vmap* vmap)
-  : pml4(setupkvm()), vmp(vmap)
+  : rcu_freed("proc_pgmap"), pml4(setupkvm()), vmp(vmap)
 {
   if (pml4 == nullptr) {
     cprintf("proc_pgmap::proc_pgmap: setupkvm out of memory\n");
@@ -50,9 +50,16 @@ proc_pgmap::alloc(vmap* vmap)
 
 proc_pgmap::~proc_pgmap(void)
 {
-  vmp->rem_pgmap(this);
-  vmp->decref();
   freevm(pml4);
+}
+
+void
+proc_pgmap::onzero() const
+{
+  proc_pgmap* p = (proc_pgmap*) this;
+  p->vmp->rem_pgmap(p);
+  p->vmp->decref();
+  gc_delayed(p);
 }
 
 proc::proc(int npid) :

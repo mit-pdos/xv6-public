@@ -20,12 +20,13 @@ struct pgmap;
   }
 #endif
 
-struct proc_pgmap : public referenced {
+struct proc_pgmap : public referenced, public rcu_freed {
   pgmap* const pml4;
   vmap* const vmp;
 
   static proc_pgmap* alloc(vmap* vmap);
-  virtual void onzero() const { delete this; }
+  virtual void onzero() const;
+  virtual void do_gc(void) { delete this; }
   proc_pgmap& operator=(const proc_pgmap&) = delete;
   proc_pgmap(const proc_pgmap& x) = delete;
 private:

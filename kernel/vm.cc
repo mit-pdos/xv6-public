@@ -487,14 +487,15 @@ again:
   };
 
   if (replaced) {
-    if (updateall)
+    if (updateall) {
+      scoped_gc_epoch gc;
       pgmap_list_.enumerate([&](proc_pgmap* const &p,
                                 proc_pgmap* const &x)->bool
       {
         updatepages(p->pml4, e->vma_start, e->vma_end, update);
         return false;
       });
-    else
+    } else
       updatepages(pgmap->pml4, e->vma_start, e->vma_end, update);      
   }
 
@@ -558,14 +559,15 @@ vmap::remove(uptr vma_start, uptr len, proc_pgmap* pgmap)
     }
   };
 
-  if (updateall)
+  if (updateall) {
+    scoped_gc_epoch gc;
     pgmap_list_.enumerate([&](proc_pgmap* const &p,
                               proc_pgmap* const &x)->bool
     {
       updatepages(p->pml4, vma_start, vma_start + len, update);
       return false;
     });
-  else
+  } else
     updatepages(pgmap->pml4, vma_start, vma_start + len, update);    
 
   if (tlb_shootdown && needtlb) {
