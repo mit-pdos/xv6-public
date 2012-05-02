@@ -73,17 +73,18 @@ main(int ac, char **av)
   if (ac > 2)
     niter = atoi(av[2]);
 
+  pthread_t* tid = (pthread_t*) malloc(sizeof(*tid)*nthread);
+
   pthread_barrier_init(&bar, 0, nthread);
   pthread_barrier_init(&bar2, 0, nthread);
 
   for(u64 i = 0; i < nthread; i++) {
-    pthread_t tid;
-    pthread_create(&tid, 0, thr, (void*) i);
+    pthread_create(&tid[i], 0, thr, (void*) i);
     if (0) printf("mapbench[%d]: child %d\n", getpid(), tid);
   }
 
   for(int i = 0; i < nthread; i++)
-    xwait();
+    xpthread_join(tid[i]);
 
   mtdisable("xv6-asharing");
 

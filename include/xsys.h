@@ -16,6 +16,7 @@ static inline void xwait()
 #define mtenable(x) do { } while(0)
 #define mtenable_type(x, y) do { } while (0)
 #define mtdisable(x) do { } while(0)
+#define xpthread_join(tid) pthread_join(tid, nullptr);
 
 #else // Must be xv6
 
@@ -24,5 +25,6 @@ static inline void xwait()
 #define xmkdir(pathname) mkdir((pathname))
 #define xcreat(name) open((name), O_CREATE|O_RDWR)
 #define xwait() wait()
+#define xpthread_join(tid) xwait()
 
 #endif
