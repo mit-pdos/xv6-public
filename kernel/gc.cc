@@ -24,7 +24,7 @@ extern xns<u32, proc*, proc_hash> *xnspid;
 
 enum { gc_debug = 0 };
 
-#define NGC 10000
+#define NGC 1000000
 
 struct headinfo {
   atomic<rcu_freed*> head;
