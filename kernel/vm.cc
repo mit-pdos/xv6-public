@@ -629,20 +629,43 @@ vmap::pagefault_wcow(vma *m, proc_pgmap* pgmap)
   // and space copying pages that are no longer mapped, but will only
   // do that once.  Fixing this requires getting rid of the vmnode.
   replace_vma(m, repl);
-  updatepages(pgmap->pml4, m->vma_start, m->vma_end, [](atomic<pme_t> *p) {
-      // XXX(austin) In radix, this may clear PTEs belonging to other
-      // VMAs that have replaced sub-ranges of the faulting VMA.
-      // That's unfortunate but okay because we'll just bring them
-      // back from the pages array.  Yet another consequence of having
-      // to do a vmnode at a time.
+
+  // We have to take down all of our PTEs that point to the old VMA
+  // since it could get garbage collected now.
+
+  bool needtlb = false;
+  updatepages2(pgmap->pml4, m->vma_start, m->vma_end, [&](u64 va, atomic<pme_t> *p) {
+      // XXX(austin) If we didn't have vmnodes, none of this would be
+      // necessary, since we'd just have to modify and invalidate the
+      // page being faulted, which page fault will mostly do for us.
       for (;;) {
         pme_t v = p->load();
         if (v & PTE_LOCK)
           continue;
-        if (cmpxch(p, v, (pme_t) 0))
+        if (PTE_ADDR(v) != v2p(m->n->page[(va - m->vma_start) / PGSIZE])) {
+          // This page belongs to a different VMA, so don't do
+          // anything to it
           break;
+        }
+        if (cmpxch(p, v, (pme_t) 0)) {
+          if (v & PTE_P)
+            needtlb = true;
+          break;
+        }
       }
     });
+
+  // If we found any pages from the old VMA, we have to shootdown, or
+  // else other cores may continue reading pages from the old VMA.
+  if (needtlb) {
+    // XXX(austin) This never_updateall condition is obviously wrong,
+    // but right now separate pgmaps don't mix with COW fork anyway.
+    if (tlb_shootdown && !never_updateall) {
+      tlbflush();
+    } else {
+      lcr3(rcr3());
+    }
+  }
 
   return 0;
 }
@@ -663,7 +686,7 @@ vmap::pagefault(uptr va, u32 err, proc_pgmap* pgmap)
  retry:
   pme_t ptev = pte->load();
 
-  // optimize checks of args to syscals
+  // optimize checks of args to syscalls.
   if ((ptev & (PTE_P|PTE_U|PTE_W)) == (PTE_P|PTE_U|PTE_W)) {
     // XXX using pagefault() as a security check in syscalls is prone to races
     return 0;
@@ -689,17 +712,23 @@ vmap::pagefault(uptr va, u32 err, proc_pgmap* pgmap)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
             err, va, m->va_type, m->n->ref(), myproc()->pid);
 
-  // Since we zero PTEs when we fork, we can get read faults of COW
-  // pages, but it's okay if we put those in a shared vmnode.
+  // Note that, since a forked address space starts with zeroed page
+  // tables, we can get read faults of COW pages.  For those, it's
+  // okay to put them in the shared vmnode.  For write faults, we need
+  // to make our own copy.
   if (m->va_type == COW && (err & FEC_WR)) {
+    // XXX(austin) I think we need another avar here, since this will
+    // not commute with the original fault of this page before it was
+    // COW (it must read the page to copy it).  But I have no idea
+    // what vmap that was on.
+
     if (pagefault_wcow(m, pgmap) < 0)
       return -1;
 
-    if (tlb_shootdown) {
-      tlbflush();
-    } else {
-      lcr3(rcr3());
-    }
+    // pagefault_wcow only sets up the VMA and zeroes PTEs for us.  We
+    // still need to fault in a physical page (if it wasn't copied
+    // from the old VMA) and we definitely need to set the faulting
+    // PTE.
     goto retry;
   }
 
