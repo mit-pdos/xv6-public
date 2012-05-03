@@ -36,6 +36,7 @@ struct vmnode {
   int allocpg(int idx, bool zero = true);
   int loadall();
   int loadpg(off_t off);
+  int fault(int idx);
 
   vmnode* copy();
 

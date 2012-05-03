@@ -75,6 +75,7 @@ vmnode::ref(void)
   return ref_.load();
 }
 
+// XXX(austin) Replace with fault()
 int
 vmnode::allocpg(int idx, bool zero)
 {
@@ -131,36 +132,60 @@ vmnode::copy()
   return c;
 }
 
+// Fault a page into the vmnode's page array.
+// XXX(austin) This replaces allocpg/loadpg
 int
-vmnode::loadpg(off_t off)
+vmnode::fault(int idx)
 {
-  mtreadavar("inode:%x.%x", ip->dev, ip->inum);
+  if (page[idx])
+    return 0;
 
-  assert(off <= sz);
+  char *p;
 
-  char *p = page[off/PGSIZE];
-  s64 filen = MIN(PGSIZE, sz-off);
-  off_t fileo = offset+off;
+  // XXX No need to zero if this is ONDEMAND and we memset the tail
+  p = zalloc("(vmnode::allocall)");
+  if (p == nullptr)
+    throw_bad_alloc();
 
-  //
-  // Possible race condition with concurrent loadpg() calls,
-  // if the underlying inode's contents change..
-  //
-  if (readi(ip, p, fileo, filen) != filen)
-    return -1;
+  if (type == ONDEMAND) {
+    mtreadavar("inode:%x.%x", ip->dev, ip->inum);
 
-  // XXX(sbw), we should memset the remainder, but sometimes
-  // we loadpg on a pg that already has content.
-  //memset(&p[filen], 0, PGSIZE-filen);
+    size_t off = idx * PGSIZE;
+    assert(off <= sz);
+
+    s64 filen = MIN(PGSIZE, sz-off);
+    off_t fileo = offset+off;
+
+    //
+    // Possible race condition with concurrent loadpg() calls,
+    // if the underlying inode's contents change..
+    //
+    if (readi(ip, p, fileo, filen) != filen)
+      return -1;
+
+    // XXX(sbw), we should memset the remainder, but sometimes
+    // we loadpg on a pg that already has content.
+    //memset(&p[filen], 0, PGSIZE-filen);
+  }
+
+  if (!cmpxch(&page[idx], (char*)nullptr, p)) {
+    // Someone beat us to it.  Roll back.
+    if (type == ONDEMAND)
+      kfree(p);
+    else
+      zfree(p);
+  } else {
+    empty = false;
+  }
+
   return 0;
 }
-
 
 int
 vmnode::loadall()
 {
-  for (off_t o = 0; o < sz; o += PGSIZE)
-    if (loadpg(o) < 0)
+  for (off_t o = 0; o < sz / PGSIZE; o++)
+    if (fault(o) < 0)
       return -1;
   return 0;
 }
@@ -664,6 +689,8 @@ vmap::pagefault(uptr va, u32 err, proc_pgmap* pgmap)
     cprintf("pagefault: err 0x%x va 0x%lx type %d ref %lu pid %d\n",
             err, va, m->va_type, m->n->ref(), myproc()->pid);
 
+  // Since we zero PTEs when we fork, we can get read faults of COW
+  // pages, but it's okay if we put those in a shared vmnode.
   if (m->va_type == COW && (err & FEC_WR)) {
     if (pagefault_wcow(m, pgmap) < 0)
       return -1;
@@ -676,22 +703,10 @@ vmap::pagefault(uptr va, u32 err, proc_pgmap* pgmap)
     goto retry;
   }
 
-  if (m->n && !m->n->page[npg])
-    // XXX(sbw) you might think we don't need to zero if ONDEMAND;
-    // however, our vmnode might include not backed by a file
-    // (e.g. the bss section of an ELF segment)
-    // XXX(austin) Why is this still necessary now that we map zeroed
-    // parts of segments separately?
-    if (m->n->allocpg(npg, true) < 0)
-      throw_bad_alloc();
-
-  // XXX(sbw) If m->n->page[npg] has contents (e.g. was loaded in
-  // a parent before fork) we shouldn't call loadpg
-  if (m->n && m->n->type == ONDEMAND)
-    if (m->n->loadpg(npg*PGSIZE) < 0) {
-      cprintf("pagefault: couldn't load\n");
-      return -1;
-    }
+  if (m->n->fault(npg) < 0) {
+    cprintf("pagefault: couldn't load\n");
+    return -1;
+  }
 
   if (!cmpxch(pte, ptev, ptev | PTE_LOCK))
     goto retry;
@@ -724,7 +739,7 @@ int
 pagefault(vmap *vmap, uptr va, u32 err, proc_pgmap* pgmap)
 {
 #if MTRACE
-  mt_ascope ascope("%s(%#lx)", __func__, va);
+  mt_ascope ascope("%s(%p,%#lx)", __func__, vmap, va);
   mtwriteavar("pte:%p.%#lx", vmap, va / PGSIZE);
 #endif
 
