@@ -19,8 +19,8 @@
 
 static const bool pinit = true;
 
-enum { nfile = 10 };
-enum { nlookup = 100 };
+enum { nfile = MTRACE ? 2 : 10 };
+enum { nlookup = MTRACE ? 2 : 100 };
 
 void
 bench(u32 tid, int nloop, const char* path)
@@ -85,15 +85,28 @@ main(int ac, char** av)
 
   xmkdir(path);
 
-  mtenable("xv6-dirbench");
+  int start[2];
+  if (pipe(start) < 0)
+    die("pipe");
+
   u64 t0 = rdtsc();
   for(u32 i = 0; i < nthread; i++) {
     int pid = xfork();
-    if (pid == 0)
+    if (pid == 0) {
+      close(start[1]);
+      char token;
+      if (read(start[0], &token, 1) < 1)
+        die("read");
       bench(i, nloop, path);
-    else if (pid < 0)
+    } else if (pid < 0)
       die("fork");
   }
+
+  mtenable_type(mtrace_record_ascope, "xv6-dirbench");
+
+  const char wakeup[256] = {};
+  if (write(start[1], wakeup, nthread) < nthread)
+    die("write");
 
   for (u32 i = 0; i < nthread; i++)
     xwait();
