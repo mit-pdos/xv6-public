@@ -86,8 +86,6 @@ proc::proc(int npid) :
 proc::~proc(void)
 {
   magic = 0;
-  if (kstack)
-    ksfree(slab_stack, kstack);
   destroylock(&lock);
   destroycondvar(&cv);
 }
@@ -316,7 +314,7 @@ proc::alloc(void)
 
   p = new proc(xnspid->allockey());
   if (p == nullptr)
-    return nullptr;
+    throw_bad_alloc();
 
   p->cpuid = mycpu()->id;
   initprocgc(p);
@@ -456,7 +454,7 @@ fork(int flags)
 
   // Allocate process.
   if((np = proc::alloc()) == 0)
-    throw_bad_alloc();
+    return -1;
 
   auto proc_cleanup = scoped_cleanup([&np]() {
     if (!xnspid->remove(np->pid, &np))
@@ -522,6 +520,9 @@ finishproc(struct proc *p, bool removepid)
     p->pgmap->dec();
   if (p->uwq != nullptr)
     p->uwq->dec();
+  if (p->kstack)
+    ksfree(slab_stack, p->kstack);
+
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
@@ -561,8 +562,10 @@ wait(void)
           w->rip = (void*) finishproc;
           w->arg0 = p;
           w->arg1 = 0;
-          assert(wqcrit_push(w, p->run_cpuid_) >= 0);
-
+          if (wqcrit_push(w, p->run_cpuid_) < 0) {
+            delete w;
+            finishproc(p, 0);
+          }
 	  return pid;
 	}
 	release(&p->lock);
