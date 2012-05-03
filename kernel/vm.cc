@@ -42,7 +42,6 @@ vmnode::vmnode(u64 npg, vmntype ntype, inode *i, u64 off, u64 s)
     panic("vmnode bad size %lu for npages %lu", sz, npages);
   memset(page, 0, npg * sizeof(page[0]));
   if (type == EAGER && ip) {
-    allocall(false);
     assert(loadall() == 0);
   }
 }
@@ -122,11 +121,12 @@ vmnode::copy()
     return c;
 
   auto cleanup = scoped_cleanup([&c]() { delete c; });
-  c->allocall(false);
 
   for(u64 i = 0; i < npages; i++)
-    if (page[i])
+    if (page[i]) {
+      c->allocpg(i, false);
       memmove(c->page[i], page[i], PGSIZE);
+    }
 
   cleanup.dismiss();
   return c;
