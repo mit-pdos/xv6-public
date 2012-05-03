@@ -40,6 +40,7 @@ void initidle(void);
 void initcpprt(void);
 void initfutex(void);
 void initcmdline(void);
+void initdistref(void);
 void idleloop(void);
 
 #define IO_RTC  0x70
@@ -161,6 +162,7 @@ cmain(u64 mbmagic, u64 mbaddr)
   initsched();     // scheduler run queues
   initidle();
   initgc();        // gc epochs and threads
+  initdistref();   // distref collector thread
   initdisk();      // disk
   initbio();       // buffer cache
   initinode();     // inode cache

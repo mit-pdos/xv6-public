@@ -241,23 +241,17 @@ distref_wakeup()
 void
 distref_check(distributed_refcnt *dr)
 {
-  static bool initialized;
-  static spinlock initlock("distref initlock");
-
-  if (!initialized) {
-    acquire(&initlock);
-    if (!initialized) {
-      struct proc *t = threadalloc(distref_thread, nullptr);
-      acquire(&t->lock);
-      safestrcpy(t->name, "distref_thread", sizeof(t->name));
-      addrun(t);
-      release(&t->lock);
-      initialized = true;
-    }
-    release(&initlock);
-  }
-
   // Add it to the maybe-free list
   if (workers.load()->enqueue(dr))
     distref_wakeup();
+}
+
+void
+initdistref()
+{
+  struct proc *t = threadalloc(distref_thread, nullptr);
+  acquire(&t->lock);
+  safestrcpy(t->name, "distref_thread", sizeof(t->name));
+  addrun(t);
+  release(&t->lock);
 }
