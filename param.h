@@ -27,8 +27,9 @@
 #define EXECSWITCH    1
 #define GCINTERVAL    10000 // max. time between GC runs (in msec)
 #if defined(HW_qemu)
+#define DEBUG         0
 #define NCPU          8   // maximum number of CPUs
-#define MTRACE        0
+#define MTRACE        1
 #define PERFSIZE      (16<<20ull)
 #elif defined(HW_josmp)
 #define DEBUG         0
