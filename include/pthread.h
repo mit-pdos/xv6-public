@@ -24,3 +24,7 @@ int       pthread_barrier_init(pthread_barrier_t *b,
                                const pthread_barrierattr_t *attr,
                                unsigned count);
 int       pthread_barrier_wait(pthread_barrier_t *b);
+
+// Special xv6 pthread_create, flags is FORK_* bits
+int       xthread_create(pthread_t* tid, int flags,
+                         void* (*start)(void*), void* arg);

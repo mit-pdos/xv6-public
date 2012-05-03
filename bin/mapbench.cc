@@ -13,6 +13,7 @@
 #include "uspinlock.h"
 #include "mtrace.h"
 #include "pthread.h"
+#include "fcntl.h"
 #endif
 #include "xsys.h"
 #include <sys/mman.h>
@@ -20,6 +21,7 @@
 enum { readaccess = 1 };
 enum { verbose = 0 };
 enum { npg = 1 };
+enum { xthread_flags = FORK_SEPARATE_PGMAP };
 
 static pthread_barrier_t bar;
 static pthread_barrier_t bar2;
@@ -79,7 +81,7 @@ main(int ac, char **av)
   pthread_barrier_init(&bar2, 0, nthread);
 
   for(u64 i = 0; i < nthread; i++) {
-    pthread_create(&tid[i], 0, thr, (void*) i);
+    xthread_create(&tid[i], xthread_flags, thr, (void*) i);
     if (0) printf("mapbench[%d]: child %d\n", getpid(), tid);
   }
 

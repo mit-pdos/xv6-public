@@ -31,6 +31,20 @@ pthread_create(pthread_t* tid, const pthread_attr_t* attr,
   return 0;
 }
 
+int
+xthread_create(pthread_t* tid, int flags,
+               void* (*start)(void*), void* arg)
+{
+  char* base = (char*) sbrk(stack_size);
+  int t = forkt(base + stack_size, (void*) start, arg,
+                FORK_SHARE_VMAP | FORK_SHARE_FD | flags);
+  if (t < 0)
+    return t;
+
+  *tid = t;
+  return 0;
+}
+
 pthread_t
 pthread_self()
 {

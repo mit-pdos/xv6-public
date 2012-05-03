@@ -1,6 +1,7 @@
 #if defined(LINUX)
 
 #define O_CREATE O_CREAT
+#define FORK_SEPARATE_PGMAP 0
 #define xfork() fork()
 #define xexit() exit(EXIT_SUCCESS)
 static inline void xwait()
@@ -17,6 +18,8 @@ static inline void xwait()
 #define mtenable_type(x, y) do { } while (0)
 #define mtdisable(x) do { } while(0)
 #define xpthread_join(tid) pthread_join(tid, nullptr);
+#define xthread_create(ptr, x, fn, arg) \
+  pthread_create((ptr), 0, (fn), (arg))
 
 #else // Must be xv6
 
