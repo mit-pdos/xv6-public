@@ -20,7 +20,10 @@
 
 static const bool pinit = true;
 
-static char chunkbuf[CHUNKSZ];
+// XXX(austin) Totally lame.  Align chunkbuf so that we don't have to
+// COW fault on a mapped file page in bench.
+static char chunkbuf[CHUNKSZ]
+__attribute__((aligned(4096)));
 
 static void
 bench(int tid, int nloop, const char* path)
@@ -83,15 +86,30 @@ main(int ac, char **av)
   }
   close(fd);
 
-  mtenable("xv6-filebench");
+  int start[2];
+  if (pipe(start) < 0)
+    die("pipe");
+
+  //mtenable("xv6-filebench");
   u64 t0 = rdtsc();
   for (int i = 0; i < nthread; i++) {
     int pid = xfork();
-    if (pid == 0)
+    if (pid == 0) {
+      close(start[1]);
+      char token;
+      if (read(start[0], &token, 1) < 1)
+        die("read");
       bench(i, nloop, path);
+    }
     else if (pid < 0)
       die("fork");
   }
+
+  mtenable_type(mtrace_record_ascope, "xv6-filebench");
+
+  const char wakeup[256] = {};
+  if (write(start[1], wakeup, nthread) < nthread)
+    die("write");
 
   for (int i = 0; i < nthread; i++)
     xwait();
