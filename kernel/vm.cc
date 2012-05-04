@@ -174,11 +174,11 @@ vmnode::fault(int idx)
       kfree(p);
     else
       zfree(p);
-  } else {
-    empty = false;
+    return 0;
   }
 
-  return 0;
+  empty = false;
+  return 1;
 }
 
 int
@@ -619,6 +619,12 @@ vmap::pagefault_wcow(vma *m, proc_pgmap* pgmap)
   // is handling wcow.
   struct vmnode *nodecopy = m->n->copy();
 
+  // We had to read the physical pages from the old VMA
+  // XXX(austin) What's the non-commutivity that forces this?
+  for (u64 i = 0; i < m->n->npages; i++)
+    if (m->n->page[i])
+      mtreadavar("ppn:%#lx", v2p(m->n->page[i]) >> PGSHIFT);
+
   vma *repl = new vma(this, m->vma_start, m->vma_end, PRIVATE, nodecopy);
 
   // XXX(austin) This will cause sharing on parts of this range that
@@ -732,10 +738,14 @@ vmap::pagefault(uptr va, u32 err, proc_pgmap* pgmap)
     goto retry;
   }
 
-  if (m->n->fault(npg) < 0) {
+  int firstfault;
+  if ((firstfault = m->n->fault(npg)) < 0) {
     cprintf("pagefault: couldn't load\n");
     return -1;
   }
+  // Record that we wrote this physical page
+  if (firstfault)
+    mtwriteavar("ppn:%#lx", va >> PGSHIFT);
 
   if (!cmpxch(pte, ptev, ptev | PTE_LOCK))
     goto retry;
