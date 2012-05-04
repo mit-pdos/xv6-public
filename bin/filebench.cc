@@ -74,6 +74,8 @@ main(int ac, char **av)
   if (ac > 3)
     path = av[3];
 
+  mtenable_type(mtrace_record_ascope, "xv6-filebench");
+
   // Setup shared file
   unlink(path);
   int fd = xcreat(path);
@@ -86,30 +88,16 @@ main(int ac, char **av)
   }
   close(fd);
 
-  int start[2];
-  if (pipe(start) < 0)
-    die("pipe");
-
   //mtenable("xv6-filebench");
   u64 t0 = rdtsc();
   for (int i = 0; i < nthread; i++) {
     int pid = xfork();
     if (pid == 0) {
-      close(start[1]);
-      char token;
-      if (read(start[0], &token, 1) < 1)
-        die("read");
       bench(i, nloop, path);
     }
     else if (pid < 0)
       die("fork");
   }
-
-  mtenable_type(mtrace_record_ascope, "xv6-filebench");
-
-  const char wakeup[256] = {};
-  if (write(start[1], wakeup, nthread) < nthread)
-    die("write");
 
   for (int i = 0; i < nthread; i++)
     xwait();

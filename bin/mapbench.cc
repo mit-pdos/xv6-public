@@ -37,8 +37,8 @@ thr(void *arg)
 
   pthread_barrier_wait(&bar);
 
-  if (tid == 0)
-    mtenable_type(mtrace_record_ascope, "xv6-asharing");
+  // if (tid == 0)
+  //   mtenable_type(mtrace_record_ascope, "xv6-asharing");
 
   pthread_barrier_wait(&bar2);
 
@@ -74,6 +74,8 @@ main(int ac, char **av)
   niter = 100;
   if (ac > 2)
     niter = atoi(av[2]);
+
+  mtenable_type(mtrace_record_ascope, "xv6-asharing");
 
   pthread_t* tid = (pthread_t*) malloc(sizeof(*tid)*nthread);
 

@@ -22,10 +22,15 @@ static const bool pinit = true;
 enum { nfile = MTRACE ? 2 : 10 };
 enum { nlookup = MTRACE ? 2 : 100 };
 
+// XXX(austin) Totally lame.  Put this buffer in the BSS so we don't
+// have to COW fault the stack.
+static char pn[32]
+__attribute__((aligned(4096)));
+
 void
 bench(u32 tid, int nloop, const char* path)
 {
-  char pn[32];
+//  char pn[32];
 
   if (pinit)
     setaffinity(tid);
@@ -85,28 +90,16 @@ main(int ac, char** av)
 
   xmkdir(path);
 
-  int start[2];
-  if (pipe(start) < 0)
-    die("pipe");
+  mtenable_type(mtrace_record_ascope, "xv6-dirbench");
 
   u64 t0 = rdtsc();
   for(u32 i = 0; i < nthread; i++) {
     int pid = xfork();
     if (pid == 0) {
-      close(start[1]);
-      char token;
-      if (read(start[0], &token, 1) < 1)
-        die("read");
       bench(i, nloop, path);
     } else if (pid < 0)
       die("fork");
   }
-
-  mtenable_type(mtrace_record_ascope, "xv6-dirbench");
-
-  const char wakeup[256] = {};
-  if (write(start[1], wakeup, nthread) < nthread)
-    die("write");
 
   for (u32 i = 0; i < nthread; i++)
     xwait();
