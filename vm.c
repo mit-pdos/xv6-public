@@ -126,7 +126,7 @@ static struct kmap {
 
 // Set up kernel part of a page table.
 pde_t*
-setupkvm()
+setupkvm(void)
 {
   pde_t *pgdir;
   struct kmap *k;
