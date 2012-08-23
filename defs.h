@@ -74,7 +74,7 @@ void            kbdintr(void);
 int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
-void            lapicinit(int);
+void            lapicinit(void);
 void            lapicstartap(uchar, uint);
 void            microdelay(int);
 
