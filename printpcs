@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Decode the symbols from a panic stack trace on stdin
+
+if which addr2line
+then
+    p="addr2line"
+else
+    p="i386-jos-elf-addr2line"
+fi
+echo grep '^ ' | $p -e kernel $*
