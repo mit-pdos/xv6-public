@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+# Decode a stack trace from getcallerpcs() to kernel symbols.
+# Peter H. Froehlich <phf@acm.org>, 600.318/418, Spring 2011
+#
+# $ ./depcs 1072fa 1073c4 106d4a 103024 102fdd 0 0 0 0 0
+# 1078010 ['mappages']
+# 1078212 ['setupkvm']
+# 1076554 ['kvmalloc']
+# 1060900 ['mainc']
+# 1060829 ['jmpkstack']
+
+import sys
+
+# read the symbols, mapping each address to all known names
+
+raw = {}
+with open("kernel.sym") as f:
+    for s in f:
+        adr, sym = s.strip().split()
+        adr = int(adr, 16)
+        if adr in raw:
+            raw[adr].append(sym)
+        else:
+            raw[adr] = [sym]
+
+# for a given address, we need to determine what range it
+# lies in; there are fancy data structures or this, which
+# we ignore; let's just sort the keys instead
+
+sort = sorted(raw.keys())
+
+# now we can find the least key greater than an address;
+# if there's none, we use the last address we know; doh!
+
+def least(x):
+    for i in range(len(sort)-1):
+        if sort[i] <= x < sort[i+1]:
+            return sort[i]
+    return sort[-1]
+
+# therefore we can decode a backtrace (ignoring address
+# 0 since it's useless for xv6)
+
+for adr in sys.argv[1:]:
+    adr = int(adr, 16)
+    if adr != 0:
+        print adr, raw[least(adr)]
