@@ -74,7 +74,7 @@ void            kbdintr(void);
 int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
-void            lapicinit(int);
+void            lapicinit(void);
 void            lapicstartap(uchar, uint);
 void            microdelay(int);
 
@@ -164,7 +164,7 @@ void            uartputc(int);
 void            seginit(void);
 void            kvmalloc(void);
 void            vmenable(void);
-pde_t*          setupkvm();
+pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, uint, uint);
 int             deallocuvm(pde_t*, uint, uint);
