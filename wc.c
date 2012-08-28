@@ -44,7 +44,7 @@ main(int argc, char *argv[])
 
   for(i = 1; i < argc; i++){
     if((fd = open(argv[i], 0)) < 0){
-      printf(1, "cat: cannot open %s\n", argv[i]);
+      printf(1, "wc: cannot open %s\n", argv[i]);
       exit();
     }
     wc(fd, argv[i]);
