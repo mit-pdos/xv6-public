@@ -11,6 +11,10 @@
 #include "stat.h"
 #include "param.h"
 
+#ifndef _LP64
+#error "Integers are not 32 bits"
+#endif
+
 int nblocks = 985;
 int nlog = LOGSIZE;
 int ninodes = 200;

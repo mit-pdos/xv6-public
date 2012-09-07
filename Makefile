@@ -146,7 +146,7 @@ _forktest: forktest.o $(ULIB)
 	$(OBJDUMP) -S _forktest > forktest.asm
 
 mkfs: mkfs.c fs.h
-	gcc -m32 -Werror -Wall -o mkfs mkfs.c
+	gcc -Werror -Wall -o mkfs mkfs.c
 
 UPROGS=\
 	_cat\
