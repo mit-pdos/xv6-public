@@ -116,21 +116,25 @@ processors will need it.
 ---
 
 The code in fork needs to read np->pid before
-setting np->state to RUNNABLE.  
+setting np->state to RUNNABLE.  The following
+is not a correct way to do this:
 
 	int
 	fork(void)
 	{
 	  ...
-	  pid = np->pid;
 	  np->state = RUNNABLE;
-	  return pid;
+	  return np->pid; // oops
 	}
 
 After setting np->state to RUNNABLE, some other CPU
 might run the process, it might exit, and then it might
 get reused for a different process (with a new pid), all
-before the return statement.  So it's not safe to just do
-"return np->pid;".
+before the return statement.  So it's not safe to just
+"return np->pid". Even saving a copy of np->pid before
+setting np->state isn't safe, since the compiler is
+allowed to re-order statements.
 
-This works because proc.h marks the pid as volatile.
+The real code saves a copy of np->pid, then acquires a lock
+around the write to np->state. The acquire() prevents the
+compiler from re-ordering.
