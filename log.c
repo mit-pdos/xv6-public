@@ -5,7 +5,7 @@
 #include "fs.h"
 #include "buf.h"
 
-// Simple logging. Each system call that might write the file system
+// Simple logging. Each file system system call
 // should be surrounded with begin_trans() and commit_trans() calls.
 //
 // The log holds at most one transaction at a time. Commit forces
@@ -17,10 +17,6 @@
 // system code doesn't have to worry about the possibility of
 // one transaction reading a block that another one has modified,
 // for example an i-node block.
-//
-// Read-only system calls don't need to use transactions, though
-// this means that they may observe uncommitted data. I-node and
-// buffer locks prevent read-only calls from seeing inconsistent data.
 //
 // The log is a physical re-do log containing disk blocks.
 // The on-disk log format:

@@ -13,6 +13,106 @@ char name[3];
 char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
 int stdout = 1;
 
+// does chdir() call iput(p->cwd) in a transaction?
+void
+iputtest(void)
+{
+  printf(stdout, "iput test\n");
+
+  if(mkdir("iputdir") < 0){
+    printf(stdout, "mkdir failed\n");
+    exit();
+  }
+  if(chdir("iputdir") < 0){
+    printf(stdout, "chdir iputdir failed\n");
+    exit();
+  }
+  if(unlink("../iputdir") < 0){
+    printf(stdout, "unlink ../iputdir failed\n");
+    exit();
+  }
+  if(chdir("/") < 0){
+    printf(stdout, "chdir / failed\n");
+    exit();
+  }
+  printf(stdout, "iput test ok\n");
+}
+
+// does exit() call iput(p->cwd) in a transaction?
+void
+exitiputtest(void)
+{
+  int pid;
+
+  printf(stdout, "exitiput test\n");
+
+  pid = fork();
+  if(pid < 0){
+    printf(stdout, "fork failed\n");
+    exit();
+  }
+  if(pid == 0){
+    if(mkdir("iputdir") < 0){
+      printf(stdout, "mkdir failed\n");
+      exit();
+    }
+    if(chdir("iputdir") < 0){
+      printf(stdout, "child chdir failed\n");
+      exit();
+    }
+    if(unlink("../iputdir") < 0){
+      printf(stdout, "unlink ../iputdir failed\n");
+      exit();
+    }
+    exit();
+  }
+  wait();
+  printf(stdout, "exitiput test ok\n");
+}
+
+// does the error path in open() for attempt to write a
+// directory call iput() in a transaction?
+// needs a hacked kernel that pauses just after the namei()
+// call in sys_open():
+//    if((ip = namei(path)) == 0)
+//      return -1;
+//    {
+//      int i;
+//      for(i = 0; i < 10000; i++)
+//        yield();
+//    }
+void
+openiputtest(void)
+{
+  int pid;
+
+  printf(stdout, "openiput test\n");
+  if(mkdir("oidir") < 0){
+    printf(stdout, "mkdir oidir failed\n");
+    exit();
+  }
+  pid = fork();
+  if(pid < 0){
+    printf(stdout, "fork failed\n");
+    exit();
+  }
+  if(pid == 0){
+    int fd = open("oidir", O_RDWR);
+    if(fd >= 0){
+      printf(stdout, "open directory for write succeeded\n");
+      exit();
+    }
+    exit();
+  }
+  sleep(1);
+  if(unlink("oidir") != 0){
+    printf(stdout, "unlink failed\n");
+    exit();
+  }
+  wait();
+  printf(stdout, "openiput test ok\n");
+}
+
 // simple file system tests
 
 void
@@ -187,7 +287,7 @@ void dirtest(void)
     printf(stdout, "unlink dir0 failed\n");
     exit();
   }
-  printf(stdout, "mkdir test\n");
+  printf(stdout, "mkdir test ok\n");
 }
 
 void
@@ -1627,6 +1727,10 @@ main(int argc, char *argv[])
   writetest();
   writetest1();
   createtest();
+
+  openiputtest();
+  exitiputtest();
+  iputtest();
 
   mem();
   pipe1();
