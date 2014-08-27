@@ -5,18 +5,22 @@
 #include "fs.h"
 #include "buf.h"
 
-// Simple logging. Each file system system call
-// should be surrounded with begin_trans() and commit_trans() calls.
+// Simple logging that allows concurrent FS system calls.
 //
-// The log holds at most one transaction at a time. Commit forces
-// the log (with commit record) to disk, then installs the affected
-// blocks to disk, then erases the log. begin_trans() ensures that
-// only one system call can be in a transaction; others must wait.
-// 
-// Allowing only one transaction at a time means that the file
-// system code doesn't have to worry about the possibility of
-// one transaction reading a block that another one has modified,
-// for example an i-node block.
+// A log transaction contains the updates of *multiple* FS system
+// calls. The logging systems only commits when there are
+// no FS system calls active. Thus there is never
+// any reasoning required about whether a commit might
+// write an uncommitted system call's updates to disk.
+//
+// A system call should call begin_op()/end_op() to mark
+// its start and end. Usually begin_op() just increments
+// the count of in-progress FS system calls and returns.
+// But if it thinks the log is close to running out, it
+// blocks this system call, and causes the system to wait
+// until end_op() indicates there are no executing FS
+// system calls, at which point the last end_op() commits
+// all the system calls' writes.
 //
 // The log is a physical re-do log containing disk blocks.
 // The on-disk log format:
@@ -38,13 +42,15 @@ struct log {
   struct spinlock lock;
   int start;
   int size;
-  int busy; // a transaction is active
+  int outstanding; // how many FS sys calls are executing.
+  int committing;  // in commit(), please wait.
   int dev;
   struct logheader lh;
 };
 struct log log;
 
 static void recover_from_log(void);
+static void commit();
 
 void
 initlog(void)
@@ -117,19 +123,52 @@ recover_from_log(void)
   write_head(); // clear the log
 }
 
+// an FS system call should call begin_op() when it starts.
 void
-begin_trans(void)
+begin_op(void)
 {
   acquire(&log.lock);
-  while (log.busy) {
-    sleep(&log, &log.lock);
+  while(1){
+    if(log.committing){
+      sleep(&log, &log.lock);
+    } else {
+      // XXX wait (for a commit) if log is longish.
+      //     need to reserve to avoid over-commit of log space.
+      log.outstanding += 1;
+      release(&log.lock);
+      break;
+    }
   }
-  log.busy = 1;
-  release(&log.lock);
 }
 
+// an FS system call should call end_op() after it finishes.
+// can't write the disk &c while holding locks, thus do_commit.
 void
-commit_trans(void)
+end_op(void)
+{
+  int do_commit = 0;
+
+  acquire(&log.lock);
+  log.outstanding -= 1;
+  if(log.committing)
+    panic("log.committing");
+  if(log.outstanding == 0){
+    do_commit = 1;
+    log.committing = 1;
+  }
+  release(&log.lock);
+
+  if(do_commit){
+    commit();
+    acquire(&log.lock);
+    log.committing = 0;
+    wakeup(&log);
+    release(&log.lock);
+  }
+}
+
+static void
+commit()
 {
   if (log.lh.n > 0) {
     write_head();    // Write header to disk -- the real commit
@@ -137,11 +176,6 @@ commit_trans(void)
     log.lh.n = 0; 
     write_head();    // Erase the transaction from the log
   }
-  
-  acquire(&log.lock);
-  log.busy = 0;
-  wakeup(&log);
-  release(&log.lock);
 }
 
 // Caller has modified b->data and is done with the buffer.
@@ -159,7 +193,7 @@ log_write(struct buf *b)
 
   if (log.lh.n >= LOGSIZE || log.lh.n >= log.size - 1)
     panic("too big a transaction");
-  if (!log.busy)
+  if (log.outstanding < 1)
     panic("write outside of trans");
 
   for (i = 0; i < log.lh.n; i++) {

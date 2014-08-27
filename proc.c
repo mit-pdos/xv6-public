@@ -186,9 +186,9 @@ exit(void)
     }
   }
 
-  begin_trans();
+  begin_op();
   iput(proc->cwd);
-  commit_trans();
+  end_op();
   proc->cwd = 0;
 
   acquire(&ptable.lock);

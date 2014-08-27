@@ -72,9 +72,9 @@ fileclose(struct file *f)
   if(ff.type == FD_PIPE)
     pipeclose(ff.pipe, ff.writable);
   else if(ff.type == FD_INODE){
-    begin_trans();
+    begin_op();
     iput(ff.ip);
-    commit_trans();
+    end_op();
   }
 }
 
@@ -136,12 +136,12 @@ filewrite(struct file *f, char *addr, int n)
       if(n1 > max)
         n1 = max;
 
-      begin_trans();
+      begin_op();
       ilock(f->ip);
       if ((r = writei(f->ip, addr + i, f->off, n1)) > 0)
         f->off += r;
       iunlock(f->ip);
-      commit_trans();
+      end_op();
 
       if(r < 0)
         break;

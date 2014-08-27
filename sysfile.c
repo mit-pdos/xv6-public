@@ -121,16 +121,16 @@ sys_link(void)
   if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
     return -1;
 
-  begin_trans();
+  begin_op();
   if((ip = namei(old)) == 0){
-    commit_trans();
+    end_op();
     return -1;
   }
 
   ilock(ip);
   if(ip->type == T_DIR){
     iunlockput(ip);
-    commit_trans();
+    end_op();
     return -1;
   }
 
@@ -148,7 +148,7 @@ sys_link(void)
   iunlockput(dp);
   iput(ip);
 
-  commit_trans();
+  end_op();
 
   return 0;
 
@@ -157,7 +157,7 @@ bad:
   ip->nlink--;
   iupdate(ip);
   iunlockput(ip);
-  commit_trans();
+  end_op();
   return -1;
 }
 
@@ -189,9 +189,9 @@ sys_unlink(void)
   if(argstr(0, &path) < 0)
     return -1;
 
-  begin_trans();
+  begin_op();
   if((dp = nameiparent(path, name)) == 0){
-    commit_trans();
+    end_op();
     return -1;
   }
 
@@ -225,13 +225,13 @@ sys_unlink(void)
   iupdate(ip);
   iunlockput(ip);
 
-  commit_trans();
+  end_op();
 
   return 0;
 
 bad:
   iunlockput(dp);
-  commit_trans();
+  end_op();
   return -1;
 }
 
@@ -291,23 +291,23 @@ sys_open(void)
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
 
-  begin_trans();
+  begin_op();
 
   if(omode & O_CREATE){
     ip = create(path, T_FILE, 0, 0);
     if(ip == 0){
-      commit_trans();
+      end_op();
       return -1;
     }
   } else {
     if((ip = namei(path)) == 0){
-      commit_trans();
+      end_op();
       return -1;
     }
     ilock(ip);
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
-      commit_trans();
+      end_op();
       return -1;
     }
   }
@@ -316,11 +316,11 @@ sys_open(void)
     if(f)
       fileclose(f);
     iunlockput(ip);
-    commit_trans();
+    end_op();
     return -1;
   }
   iunlock(ip);
-  commit_trans();
+  end_op();
 
   f->type = FD_INODE;
   f->ip = ip;
@@ -336,13 +336,13 @@ sys_mkdir(void)
   char *path;
   struct inode *ip;
 
-  begin_trans();
+  begin_op();
   if(argstr(0, &path) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0){
-    commit_trans();
+    end_op();
     return -1;
   }
   iunlockput(ip);
-  commit_trans();
+  end_op();
   return 0;
 }
 
@@ -354,16 +354,16 @@ sys_mknod(void)
   int len;
   int major, minor;
   
-  begin_trans();
+  begin_op();
   if((len=argstr(0, &path)) < 0 ||
      argint(1, &major) < 0 ||
      argint(2, &minor) < 0 ||
      (ip = create(path, T_DEV, major, minor)) == 0){
-    commit_trans();
+    end_op();
     return -1;
   }
   iunlockput(ip);
-  commit_trans();
+  end_op();
   return 0;
 }
 
@@ -373,20 +373,20 @@ sys_chdir(void)
   char *path;
   struct inode *ip;
 
-  begin_trans();
+  begin_op();
   if(argstr(0, &path) < 0 || (ip = namei(path)) == 0){
-    commit_trans();
+    end_op();
     return -1;
   }
   ilock(ip);
   if(ip->type != T_DIR){
     iunlockput(ip);
-    commit_trans();
+    end_op();
     return -1;
   }
   iunlock(ip);
   iput(proc->cwd);
-  commit_trans();
+  end_op();
   proc->cwd = ip;
   return 0;
 }
