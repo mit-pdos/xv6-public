@@ -56,7 +56,7 @@ binit(void)
 }
 
 // Look through buffer cache for sector on device dev.
-// If not found, allocate fresh block.
+// If not found, allocate a buffer.
 // In either case, return B_BUSY buffer.
 static struct buf*
 bget(uint dev, uint sector)
