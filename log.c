@@ -7,8 +7,8 @@
 
 // Simple logging that allows concurrent FS system calls.
 //
-// A log transaction contains the updates of *multiple* FS system
-// calls. The logging systems only commits when there are
+// A log transaction contains the updates of multiple FS system
+// calls. The logging system only commits when there are
 // no FS system calls active. Thus there is never
 // any reasoning required about whether a commit might
 // write an uncommitted system call's updates to disk.
@@ -17,10 +17,7 @@
 // its start and end. Usually begin_op() just increments
 // the count of in-progress FS system calls and returns.
 // But if it thinks the log is close to running out, it
-// blocks this system call, and causes the system to wait
-// until end_op() indicates there are no executing FS
-// system calls, at which point the last end_op() commits
-// all the system calls' writes.
+// sleeps until the last outstanding end_op() commits.
 //
 // The log is a physical re-do log containing disk blocks.
 // The on-disk log format:
@@ -51,10 +48,6 @@ struct log log;
 
 static void recover_from_log(void);
 static void commit();
-
-// statistics, delete eventually XXX.
-static int maxsize;
-static int maxoutstanding;
 
 void
 initlog(void)
@@ -127,7 +120,7 @@ recover_from_log(void)
   write_head(); // clear the log
 }
 
-// an FS system call should call begin_op() when it starts.
+// called at the start of each FS system call.
 void
 begin_op(void)
 {
@@ -140,18 +133,14 @@ begin_op(void)
       sleep(&log, &log.lock);
     } else {
       log.outstanding += 1;
-      if(log.outstanding > maxoutstanding){
-        maxoutstanding = log.outstanding;
-        cprintf("%d outstanding\n", log.outstanding);
-      }
       release(&log.lock);
       break;
     }
   }
 }
 
-// an FS system call should call end_op() after it finishes.
-// can't write the disk &c while holding locks, thus do_commit.
+// called at the end of each FS system call.
+// commits if this was the last outstanding operation.
 void
 end_op(void)
 {
@@ -171,6 +160,8 @@ end_op(void)
   release(&log.lock);
 
   if(do_commit){
+    // call commit w/o holding locks, since not allowed
+    // to sleep with locks.
     commit();
     acquire(&log.lock);
     log.committing = 0;
@@ -209,7 +200,7 @@ log_write(struct buf *b)
     panic("write outside of trans");
 
   for (i = 0; i < log.lh.n; i++) {
-    if (log.lh.sector[i] == b->sector)   // log absorbtion?
+    if (log.lh.sector[i] == b->sector)   // log absorbtion
       break;
   }
   log.lh.sector[i] = b->sector;
@@ -219,12 +210,7 @@ log_write(struct buf *b)
   brelse(lbuf);
   if (i == log.lh.n)
     log.lh.n++;
-  b->flags |= B_DIRTY; // XXX prevent eviction
-
-  if(log.lh.n > maxsize){
-    maxsize = log.lh.n;
-    cprintf("log size %d/%d\n", log.lh.n, LOGSIZE);
-  }
+  b->flags |= B_DIRTY; // prevent eviction
 }
 
 //PAGEBREAK!
