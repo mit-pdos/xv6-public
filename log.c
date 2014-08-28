@@ -52,6 +52,10 @@ struct log log;
 static void recover_from_log(void);
 static void commit();
 
+// statistics, delete eventually XXX.
+static int maxsize;
+static int maxoutstanding;
+
 void
 initlog(void)
 {
@@ -131,10 +135,15 @@ begin_op(void)
   while(1){
     if(log.committing){
       sleep(&log, &log.lock);
+    } else if(log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE){
+      // this op might exhaust log space; wait for commit.
+      sleep(&log, &log.lock);
     } else {
-      // XXX wait (for a commit) if log is longish.
-      //     need to reserve to avoid over-commit of log space.
       log.outstanding += 1;
+      if(log.outstanding > maxoutstanding){
+        maxoutstanding = log.outstanding;
+        cprintf("%d outstanding\n", log.outstanding);
+      }
       release(&log.lock);
       break;
     }
@@ -155,6 +164,9 @@ end_op(void)
   if(log.outstanding == 0){
     do_commit = 1;
     log.committing = 1;
+  } else {
+    // begin_op() may be waiting for log space.
+    wakeup(&log);
   }
   release(&log.lock);
 
@@ -208,6 +220,11 @@ log_write(struct buf *b)
   if (i == log.lh.n)
     log.lh.n++;
   b->flags |= B_DIRTY; // XXX prevent eviction
+
+  if(log.lh.n > maxsize){
+    maxsize = log.lh.n;
+    cprintf("log size %d/%d\n", log.lh.n, LOGSIZE);
+  }
 }
 
 //PAGEBREAK!
