@@ -170,10 +170,27 @@ end_op(void)
   }
 }
 
+// Copy modified blocks from cache to log.
+static void 
+write_log(void)
+{
+  int tail;
+
+  for (tail = 0; tail < log.lh.n; tail++) {
+    struct buf *to = bread(log.dev, log.start+tail+1); // log block
+    struct buf *from = bread(log.dev, log.lh.sector[tail]); // cache block
+    memmove(to->data, from->data, BSIZE);
+    bwrite(to);  // write the log
+    brelse(from); 
+    brelse(to);
+  }
+}
+
 static void
 commit()
 {
   if (log.lh.n > 0) {
+    write_log();     // Write modified blocks from cache to log
     write_head();    // Write header to disk -- the real commit
     install_trans(); // Now install writes to home locations
     log.lh.n = 0; 
@@ -182,8 +199,9 @@ commit()
 }
 
 // Caller has modified b->data and is done with the buffer.
-// Append the block to the log and record the block number, 
-// but don't write the log header (which would commit the write).
+// Record the block number and pin in the cache with B_DIRTY.
+// commit()/write_log() will do the disk write.
+//
 // log_write() replaces bwrite(); a typical use is:
 //   bp = bread(...)
 //   modify bp->data[]
@@ -197,17 +215,13 @@ log_write(struct buf *b)
   if (log.lh.n >= LOGSIZE || log.lh.n >= log.size - 1)
     panic("too big a transaction");
   if (log.outstanding < 1)
-    panic("write outside of trans");
+    panic("log_write outside of trans");
 
   for (i = 0; i < log.lh.n; i++) {
     if (log.lh.sector[i] == b->sector)   // log absorbtion
       break;
   }
   log.lh.sector[i] = b->sector;
-  struct buf *lbuf = bread(b->dev, log.start+i+1);
-  memmove(lbuf->data, b->data, BSIZE);
-  bwrite(lbuf);
-  brelse(lbuf);
   if (i == log.lh.n)
     log.lh.n++;
   b->flags |= B_DIRTY; // prevent eviction
