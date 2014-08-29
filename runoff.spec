@@ -1,5 +1,5 @@
 # Is sheet 01 (after the TOC) a left sheet or a right sheet?
-sheet1: right
+sheet1: left
 
 # "left" and "right" specify which page of a two-page spread a file
 # must start on.  "left" means that a file must start on the first of
