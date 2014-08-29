@@ -239,5 +239,5 @@ else
 	cp all.ps allf.ps
 fi
 ps2pdf allf.ps ../xv6.pdf
-cd ..
-pdftops xv6.pdf xv6.ps
+# cd ..
+# pdftops xv6.pdf xv6.ps
