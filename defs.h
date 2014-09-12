@@ -4,6 +4,7 @@ struct file;
 struct inode;
 struct pipe;
 struct proc;
+struct rtcdate;
 struct spinlock;
 struct stat;
 struct superblock;
@@ -71,6 +72,7 @@ void            kinit2(void*, void*);
 void            kbdintr(void);
 
 // lapic.c
+void            cmostime(struct rtcdate *r);
 int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
