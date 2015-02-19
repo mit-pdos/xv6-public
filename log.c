@@ -217,6 +217,7 @@ log_write(struct buf *b)
   if (log.outstanding < 1)
     panic("log_write outside of trans");
 
+  acquire(&log.lock);
   for (i = 0; i < log.lh.n; i++) {
     if (log.lh.sector[i] == b->sector)   // log absorbtion
       break;
@@ -225,5 +226,6 @@ log_write(struct buf *b)
   if (i == log.lh.n)
     log.lh.n++;
   b->flags |= B_DIRTY; // prevent eviction
+  release(&log.lock);
 }
 
