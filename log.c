@@ -21,7 +21,7 @@
 //
 // The log is a physical re-do log containing disk blocks.
 // The on-disk log format:
-//   header block, containing sector #s for block A, B, C, ...
+//   header block, containing block #s for block A, B, C, ...
 //   block A
 //   block B
 //   block C
@@ -29,10 +29,10 @@
 // Log appends are synchronous.
 
 // Contents of the header block, used for both the on-disk header block
-// and to keep track in memory of logged sector #s before commit.
+// and to keep track in memory of logged block# before commit.
 struct logheader {
   int n;   
-  int sector[LOGSIZE];
+  int block[LOGSIZE];
 };
 
 struct log {
@@ -72,7 +72,7 @@ install_trans(void)
 
   for (tail = 0; tail < log.lh.n; tail++) {
     struct buf *lbuf = bread(log.dev, log.start+tail+1); // read log block
-    struct buf *dbuf = bread(log.dev, log.lh.sector[tail]); // read dst
+    struct buf *dbuf = bread(log.dev, log.lh.block[tail]); // read dst
     memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
     bwrite(dbuf);  // write dst to disk
     brelse(lbuf); 
@@ -89,7 +89,7 @@ read_head(void)
   int i;
   log.lh.n = lh->n;
   for (i = 0; i < log.lh.n; i++) {
-    log.lh.sector[i] = lh->sector[i];
+    log.lh.block[i] = lh->block[i];
   }
   brelse(buf);
 }
@@ -105,7 +105,7 @@ write_head(void)
   int i;
   hb->n = log.lh.n;
   for (i = 0; i < log.lh.n; i++) {
-    hb->sector[i] = log.lh.sector[i];
+    hb->block[i] = log.lh.block[i];
   }
   bwrite(buf);
   brelse(buf);
@@ -178,7 +178,7 @@ write_log(void)
 
   for (tail = 0; tail < log.lh.n; tail++) {
     struct buf *to = bread(log.dev, log.start+tail+1); // log block
-    struct buf *from = bread(log.dev, log.lh.sector[tail]); // cache block
+    struct buf *from = bread(log.dev, log.lh.block[tail]); // cache block
     memmove(to->data, from->data, BSIZE);
     bwrite(to);  // write the log
     brelse(from); 
@@ -219,10 +219,10 @@ log_write(struct buf *b)
 
   acquire(&log.lock);
   for (i = 0; i < log.lh.n; i++) {
-    if (log.lh.sector[i] == b->sector)   // log absorbtion
+    if (log.lh.block[i] == b->blockno)   // log absorbtion
       break;
   }
-  log.lh.sector[i] = b->sector;
+  log.lh.block[i] = b->blockno;
   if (i == log.lh.n)
     log.lh.n++;
   b->flags |= B_DIRTY; // prevent eviction

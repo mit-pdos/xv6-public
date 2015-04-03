@@ -9,8 +9,10 @@
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
+#include "fs.h"
 #include "buf.h"
 
+#define SECTOR_SIZE   512
 #define IDE_BSY       0x80
 #define IDE_DRDY      0x40
 #define IDE_DF        0x20
@@ -71,17 +73,21 @@ idestart(struct buf *b)
 {
   if(b == 0)
     panic("idestart");
+  int sector_per_block =  BSIZE/SECTOR_SIZE;
+  int sector = b->blockno * sector_per_block;
 
+  if (sector_per_block > 7) panic("idestart");
+  
   idewait(0);
   outb(0x3f6, 0);  // generate interrupt
-  outb(0x1f2, 1);  // number of sectors
-  outb(0x1f3, b->sector & 0xff);
-  outb(0x1f4, (b->sector >> 8) & 0xff);
-  outb(0x1f5, (b->sector >> 16) & 0xff);
-  outb(0x1f6, 0xe0 | ((b->dev&1)<<4) | ((b->sector>>24)&0x0f));
+  outb(0x1f2, sector_per_block);  // number of sectors
+  outb(0x1f3, sector & 0xff);
+  outb(0x1f4, (sector >> 8) & 0xff);
+  outb(0x1f5, (sector >> 16) & 0xff);
+  outb(0x1f6, 0xe0 | ((b->dev&1)<<4) | ((sector>>24)&0x0f));
   if(b->flags & B_DIRTY){
     outb(0x1f7, IDE_CMD_WRITE);
-    outsl(0x1f0, b->data, 512/4);
+    outsl(0x1f0, b->data, BSIZE/4);
   } else {
     outb(0x1f7, IDE_CMD_READ);
   }
@@ -104,7 +110,7 @@ ideintr(void)
 
   // Read data if needed.
   if(!(b->flags & B_DIRTY) && idewait(1) >= 0)
-    insl(0x1f0, b->data, 512/4);
+    insl(0x1f0, b->data, BSIZE/4);
   
   // Wake process waiting for this buf.
   b->flags |= B_VALID;
