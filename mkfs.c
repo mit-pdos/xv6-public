@@ -13,13 +13,12 @@
 
 #define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
 
-#define SIZE 1000
 #define NINODES 200
 
 // Disk layout:
 // [ boot block | sb block | inode blocks | bit map | data blocks | log ]
 
-int nbitmap = SIZE/(BSIZE*8) + 1;
+int nbitmap = FSSIZE/(BSIZE*8) + 1;
 int ninodeblocks = NINODES / IPB + 1;
 int nlog = LOGSIZE;  
 int nmeta;    // Number of meta blocks (inode, bitmap, and 2 extra)
@@ -90,18 +89,18 @@ main(int argc, char *argv[])
   }
 
   nmeta = 2 + ninodeblocks + nbitmap;
-  nblocks = SIZE - nlog - nmeta;
+  nblocks = FSSIZE - nlog - nmeta;
 
-  sb.size = xint(SIZE);
+  sb.size = xint(FSSIZE);
   sb.nblocks = xint(nblocks); // so whole disk is size sectors
   sb.ninodes = xint(NINODES);
   sb.nlog = xint(nlog);
 
-  printf("nmeta %d (boot, super, inode blocks %u, bitmap blocks %u) blocks %d log %u total %d\n", nmeta, ninodeblocks, nbitmap, nblocks, nlog, SIZE);
+  printf("nmeta %d (boot, super, inode blocks %u, bitmap blocks %u) blocks %d log %u total %d\n", nmeta, ninodeblocks, nbitmap, nblocks, nlog, FSSIZE);
 
   freeblock = nmeta;     // the first free block that we can allocate
 
-  for(i = 0; i < SIZE; i++)
+  for(i = 0; i < FSSIZE; i++)
     wsect(i, zeroes);
 
   memset(buf, 0, sizeof(buf));
@@ -164,7 +163,6 @@ main(int argc, char *argv[])
 void
 wsect(uint sec, void *buf)
 {
-  printf("seek to %d\n", sec * BSIZE);
   if(lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE){
     perror("lseek");
     exit(1);
@@ -183,7 +181,6 @@ winode(uint inum, struct dinode *ip)
   struct dinode *dip;
 
   bn = IBLOCK(inum);
-  printf("winode %d\n", bn);
   rsect(bn, buf);
   dip = ((struct dinode*)buf) + (inum % IPB);
   *dip = *ip;
