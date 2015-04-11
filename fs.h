@@ -9,7 +9,7 @@
 // Then sb.nlog log blocks.
 
 #define ROOTINO 1  // root i-number
-#define BSIZE 1024  // block size
+#define BSIZE 512  // block size
 
 // File system super block
 struct superblock {
