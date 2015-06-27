@@ -16,12 +16,12 @@
 #define NINODES 200
 
 // Disk layout:
-// [ boot block | sb block | inode blocks | bit map | data blocks | log ]
+// [ boot block | sb block | log | inode blocks | free bit map | data blocks ]
 
 int nbitmap = FSSIZE/(BSIZE*8) + 1;
 int ninodeblocks = NINODES / IPB + 1;
 int nlog = LOGSIZE;  
-int nmeta;    // Number of meta blocks (inode, bitmap, and 2 extra)
+int nmeta;    // Number of meta blocks (boot, sb, nlog, inode, bitmap)
 int nblocks;  // Number of data blocks
 
 int fsfd;
@@ -88,15 +88,20 @@ main(int argc, char *argv[])
     exit(1);
   }
 
-  nmeta = 2 + ninodeblocks + nbitmap;
-  nblocks = FSSIZE - nlog - nmeta;
+  // 1 fs block = 1 disk sector
+  nmeta = 2 + nlog + ninodeblocks + nbitmap;
+  nblocks = FSSIZE - nmeta;
 
   sb.size = xint(FSSIZE);
-  sb.nblocks = xint(nblocks); // so whole disk is size sectors
+  sb.nblocks = xint(nblocks);
   sb.ninodes = xint(NINODES);
   sb.nlog = xint(nlog);
+  sb.logstart = xint(2);
+  sb.inodestart = xint(2+nlog);
+  sb.bmapstart = xint(2+nlog+ninodeblocks);
 
-  printf("nmeta %d (boot, super, inode blocks %u, bitmap blocks %u) blocks %d log %u total %d\n", nmeta, ninodeblocks, nbitmap, nblocks, nlog, FSSIZE);
+  printf("nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks %u) blocks %d total %d\n",
+         nmeta, nlog, ninodeblocks, nbitmap, nblocks, FSSIZE);
 
   freeblock = nmeta;     // the first free block that we can allocate
 
@@ -180,7 +185,7 @@ winode(uint inum, struct dinode *ip)
   uint bn;
   struct dinode *dip;
 
-  bn = IBLOCK(inum);
+  bn = IBLOCK(inum, sb);
   rsect(bn, buf);
   dip = ((struct dinode*)buf) + (inum % IPB);
   *dip = *ip;
@@ -194,7 +199,7 @@ rinode(uint inum, struct dinode *ip)
   uint bn;
   struct dinode *dip;
 
-  bn = IBLOCK(inum);
+  bn = IBLOCK(inum, sb);
   rsect(bn, buf);
   dip = ((struct dinode*)buf) + (inum % IPB);
   *ip = *dip;
@@ -239,8 +244,8 @@ balloc(int used)
   for(i = 0; i < used; i++){
     buf[i/8] = buf[i/8] | (0x1 << (i%8));
   }
-  printf("balloc: write bitmap block at sector %d\n", ninodeblocks+2);
-  wsect(ninodeblocks+2, buf);
+  printf("balloc: write bitmap block at sector %d\n", sb.bmapstart);
+  wsect(sb.bmapstart, buf);
 }
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -256,8 +261,8 @@ iappend(uint inum, void *xp, int n)
   uint x;
 
   rinode(inum, &din);
-
   off = xint(din.size);
+  // printf("append inum %d at off %d sz %d\n", inum, off, n);
   while(n > 0){
     fbn = off / BSIZE;
     assert(fbn < MAXFILE);
@@ -268,10 +273,8 @@ iappend(uint inum, void *xp, int n)
       x = xint(din.addrs[fbn]);
     } else {
       if(xint(din.addrs[NDIRECT]) == 0){
-        // printf("allocate indirect block\n");
         din.addrs[NDIRECT] = xint(freeblock++);
       }
-      // printf("read indirect block\n");
       rsect(xint(din.addrs[NDIRECT]), (char*)indirect);
       if(indirect[fbn - NDIRECT] == 0){
         indirect[fbn - NDIRECT] = xint(freeblock++);

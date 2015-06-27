@@ -50,17 +50,17 @@ static void recover_from_log(void);
 static void commit();
 
 void
-initlog(void)
+initlog(int dev)
 {
   if (sizeof(struct logheader) >= BSIZE)
     panic("initlog: too big logheader");
 
   struct superblock sb;
   initlock(&log.lock, "log");
-  readsb(ROOTDEV, &sb);
-  log.start = sb.size - sb.nlog;
+  readsb(dev, &sb);
+  log.start = sb.logstart;
   log.size = sb.nlog;
-  log.dev = ROOTDEV;
+  log.dev = dev;
   recover_from_log();
 }
 

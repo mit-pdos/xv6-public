@@ -339,7 +339,8 @@ forkret(void)
     // of a regular process (e.g., they call sleep), and thus cannot 
     // be run from main().
     first = 0;
-    initlog();
+    iinit(ROOTDEV);
+    initlog(ROOTDEV);
   }
   
   // Return to "caller", actually trapret (see allocproc).
