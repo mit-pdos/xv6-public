@@ -31,7 +31,7 @@ printint(int xx, int base, int sign)
   int i;
   uint x;
 
-  if(sign && (sign = xx < 0))
+  if(sign && (sign = (xx < 0)))
     x = -xx;
   else
     x = xx;
