@@ -47,7 +47,7 @@ ideinit(void)
   idewait(0);
 
   // Check if disk 1 is present
-  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, 0xe0 | (1<<4));
+  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, IDE_DISK_LBA | (1<<4));
   for(i=0; i<1000; i++){
     if(inb(IDE_DATA_PRIMARY+IDE_REG_STATUS) != 0){
       havedisk1 = 1;
@@ -56,7 +56,7 @@ ideinit(void)
   }
 
   // Switch back to disk 0.
-  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, 0xe0 | (0<<4));
+  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, IDE_DISK_LBA | (0<<4));
 }
 
 // Start the request for b.  Caller must hold idelock.
@@ -78,7 +78,7 @@ idestart(struct buf *b)
   outb(IDE_DATA_PRIMARY+IDE_REG_LBA0, sector & 0xff);
   outb(IDE_DATA_PRIMARY+IDE_REG_LBA1, (sector >> 8) & 0xff);
   outb(IDE_DATA_PRIMARY+IDE_REG_LBA2, (sector >> 16) & 0xff);
-  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, 0xe0 | ((b->dev&1)<<4) | ((sector>>24)&0x0f));
+  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, IDE_DISK_LBA | ((b->dev&1)<<4) | ((sector>>24)&0x0f));
   if(b->flags & B_DIRTY){
     outb(IDE_DATA_PRIMARY+IDE_REG_COMMAND, IDE_CMD_WRITE);
     outsl(IDE_DATA_PRIMARY+IDE_REG_DATA, b->data, BSIZE/4);

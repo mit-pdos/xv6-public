@@ -50,7 +50,7 @@ void
 waitdisk(void)
 {
   // Wait for disk ready.
-  while((inb(IDE_DATA_PRIMARY+IDE_REG_STATUS) & 0xC0) != 0x40)
+  while((inb(IDE_DATA_PRIMARY+IDE_REG_STATUS) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY)
     ;
 }
 
@@ -60,12 +60,12 @@ readsect(void *dst, uint offset)
 {
   // Issue command.
   waitdisk();
-  outb(IDE_DATA_PRIMARY+IDE_REG_SECTORS, 1);   // count = 1
-  outb(IDE_DATA_PRIMARY+IDE_REG_LBA0, offset);
-  outb(IDE_DATA_PRIMARY+IDE_REG_LBA1, offset >> 8);
-  outb(IDE_DATA_PRIMARY+IDE_REG_LBA2, offset >> 16);
-  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, (offset >> 24) | 0xE0);
-  outb(IDE_DATA_PRIMARY+IDE_REG_COMMAND, IDE_CMD_READ);  // cmd 0x20 - read sectors
+  outb(IDE_DATA_PRIMARY+IDE_REG_SECTORS, 1);
+  outb(IDE_DATA_PRIMARY+IDE_REG_LBA0, offset & 0xff);
+  outb(IDE_DATA_PRIMARY+IDE_REG_LBA1, (offset >> 8) & 0xff);
+  outb(IDE_DATA_PRIMARY+IDE_REG_LBA2, (offset >> 16) & 0xff);
+  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, ((offset >> 24) & 0x0f) | IDE_DISK_LBA);
+  outb(IDE_DATA_PRIMARY+IDE_REG_COMMAND, IDE_CMD_READ);
 
   // Read data.
   waitdisk();
