@@ -22,7 +22,7 @@ kbdgetc(void)
     return 0;
   } else if(data & 0x80){
     // Key released
-    data = (shift & E0ESC ? data : data & 0x7F);
+    data = ((shift & E0ESC) ? data : data & 0x7F);
     shift &= ~(shiftcode[data] | E0ESC);
     return 0;
   } else if(shift & E0ESC){
