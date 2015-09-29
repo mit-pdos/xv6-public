@@ -31,7 +31,7 @@ ideintr(void)
   // no-op
 }
 
-// Sync buf with disk. 
+// Sync buf with disk.
 // If B_DIRTY is set, write buf to disk, clear B_DIRTY, set B_VALID.
 // Else if B_VALID is not set, read buf from disk, set B_VALID.
 void
@@ -49,7 +49,7 @@ iderw(struct buf *b)
     panic("iderw: block out of range");
 
   p = memdisk + b->blockno*BSIZE;
-  
+
   if(b->flags & B_DIRTY){
     b->flags &= ~B_DIRTY;
     memmove(p, b->data, BSIZE);

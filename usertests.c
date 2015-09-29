@@ -539,7 +539,7 @@ fourfiles(void)
         printf(1, "create failed\n");
         exit();
       }
-      
+
       memset(buf, '0'+pi, 512);
       for(i = 0; i < 12; i++){
         if((n = write(fd, buf, 500)) != 500){
@@ -882,7 +882,7 @@ linkunlink()
 
   if(pid)
     wait();
-  else 
+  else
     exit();
 
   printf(1, "linkunlink ok\n");
@@ -951,7 +951,7 @@ subdir(void)
   }
   write(fd, "ff", 2);
   close(fd);
-  
+
   if(unlink("dd") >= 0){
     printf(1, "unlink dd (non-empty dir) succeeded!\n");
     exit();
@@ -1390,24 +1390,24 @@ forktest(void)
     if(pid == 0)
       exit();
   }
-  
+
   if(n == 1000){
     printf(1, "fork claimed to work 1000 times!\n");
     exit();
   }
-  
+
   for(; n > 0; n--){
     if(wait() < 0){
       printf(1, "wait stopped early\n");
       exit();
     }
   }
-  
+
   if(wait() != -1){
     printf(1, "wait got too many\n");
     exit();
   }
-  
+
   printf(1, "fork test OK\n");
 }
 
@@ -1424,7 +1424,7 @@ sbrktest(void)
   // can one sbrk() less than a page?
   a = sbrk(0);
   int i;
-  for(i = 0; i < 5000; i++){ 
+  for(i = 0; i < 5000; i++){
     b = sbrk(1);
     if(b != a){
       printf(stdout, "sbrk test failed %d %x %x\n", i, a, b);
@@ -1453,7 +1453,7 @@ sbrktest(void)
   a = sbrk(0);
   amt = (BIG) - (uint)a;
   p = sbrk(amt);
-  if (p != a) { 
+  if (p != a) {
     printf(stdout, "sbrk test failed to grow big address space; enough phys mem?\n");
     exit();
   }
@@ -1492,7 +1492,7 @@ sbrktest(void)
     printf(stdout, "sbrk downsize failed, a %x c %x\n", a, c);
     exit();
   }
-  
+
   // can we read the kernel's memory?
   for(a = (char*)(KERNBASE); a < (char*) (KERNBASE+2000000); a += 50000){
     ppid = getpid();
