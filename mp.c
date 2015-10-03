@@ -106,6 +106,12 @@ mpinit(void)
     switch(*p){
     case MPPROC:
       proc = (struct mpproc*)p;
+      if (ncpu >= NCPU) {
+        cprintf("mpinit: more than %d cpus, ignoring cpu%d\n",
+          NCPU, proc->apicid);
+        p += sizeof(struct mpproc);
+        continue;
+      }
       if(ncpu != proc->apicid){
         cprintf("mpinit: ncpu=%d apicid=%d\n", ncpu, proc->apicid);
         ismp = 0;
