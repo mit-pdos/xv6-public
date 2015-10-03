@@ -43,6 +43,18 @@ uartinit(void)
     uartputc(*p);
 }
 
+static int
+cantransmit(void)
+{
+  return inb(COM1+UART_LINE_STATUS) & UART_TRANSMIT_READY;
+}
+
+static int
+hasreceived(void)
+{
+  return inb(COM1+UART_LINE_STATUS) & UART_RECEIVE_READY;
+}
+
 void
 uartputc(int c)
 {
@@ -50,7 +62,7 @@ uartputc(int c)
 
   if(!uart)
     return;
-  for(i = 0; i < 128 && !(inb(COM1+UART_LINE_STATUS) & UART_TRANSMIT_READY); i++)
+  for(i = 0; i < 128 && !cantransmit(); i++)
     microdelay(10);
   outb(COM1+UART_TRANSMIT_BUFFER, c);
 }
@@ -60,7 +72,7 @@ uartgetc(void)
 {
   if(!uart)
     return -1;
-  if(!(inb(COM1+UART_LINE_STATUS) & UART_RECEIVE_READY))
+  if(!hasreceived())
     return -1;
   return inb(COM1+UART_RECEIVE_BUFFER);
 }

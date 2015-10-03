@@ -46,11 +46,18 @@ bootmain(void)
   entry();
 }
 
+static int
+diskready(void)
+{
+  uchar status = inb(IDE_DATA_PRIMARY+IDE_REG_STATUS);
+  return (status & (IDE_BSY|IDE_DRDY)) == IDE_DRDY;
+}
+
 void
 waitdisk(void)
 {
   // Wait for disk ready.
-  while((inb(IDE_DATA_PRIMARY+IDE_REG_STATUS) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY)
+  while(!diskready())
     ;
 }
 
@@ -64,7 +71,8 @@ readsect(void *dst, uint offset)
   outb(IDE_DATA_PRIMARY+IDE_REG_LBA0, offset & 0xff);
   outb(IDE_DATA_PRIMARY+IDE_REG_LBA1, (offset >> 8) & 0xff);
   outb(IDE_DATA_PRIMARY+IDE_REG_LBA2, (offset >> 16) & 0xff);
-  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, ((offset >> 24) & 0x0f) | IDE_DISK_LBA);
+  outb(IDE_DATA_PRIMARY+IDE_REG_DISK,
+    ((offset >> 24) & 0x0f) | IDE_DISK_LBA);
   outb(IDE_DATA_PRIMARY+IDE_REG_COMMAND, IDE_CMD_READ);
 
   // Read data.

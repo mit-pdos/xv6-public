@@ -23,13 +23,20 @@ static struct buf *idequeue;
 static int havedisk1;
 static void idestart(struct buf*);
 
+static int
+diskready(int *status)
+{
+  *status = inb(IDE_DATA_PRIMARY+IDE_REG_STATUS);
+  return (*status & (IDE_BSY|IDE_DRDY)) == IDE_DRDY;
+}
+
 // Wait for IDE disk to become ready.
 static int
 idewait(int checkerr)
 {
   int r;
 
-  while(((r = inb(IDE_DATA_PRIMARY+IDE_REG_STATUS)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY)
+  while(!diskready(&r))
     ;
   if(checkerr && (r & (IDE_DF|IDE_ERR)) != 0)
     return -1;
@@ -74,11 +81,12 @@ idestart(struct buf *b)
 
   idewait(0);
   outb(IDE_CTRL_PRIMARY+IDE_REG_CTRL, 0);  // generate interrupt
-  outb(IDE_DATA_PRIMARY+IDE_REG_SECTORS, sector_per_block);  // number of sectors
+  outb(IDE_DATA_PRIMARY+IDE_REG_SECTORS, sector_per_block);
   outb(IDE_DATA_PRIMARY+IDE_REG_LBA0, sector & 0xff);
   outb(IDE_DATA_PRIMARY+IDE_REG_LBA1, (sector >> 8) & 0xff);
   outb(IDE_DATA_PRIMARY+IDE_REG_LBA2, (sector >> 16) & 0xff);
-  outb(IDE_DATA_PRIMARY+IDE_REG_DISK, IDE_DISK_LBA | ((b->dev&1)<<4) | ((sector>>24)&0x0f));
+  outb(IDE_DATA_PRIMARY+IDE_REG_DISK,
+    IDE_DISK_LBA | ((b->dev&1)<<4) | ((sector>>24)&0x0f));
   if(b->flags & B_DIRTY){
     outb(IDE_DATA_PRIMARY+IDE_REG_COMMAND, IDE_CMD_WRITE);
     outsl(IDE_DATA_PRIMARY+IDE_REG_DATA, b->data, BSIZE/4);
