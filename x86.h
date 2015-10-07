@@ -123,6 +123,13 @@ hlt(void)
   asm volatile("hlt");
 }
 
+static inline unsigned long long rdtsc(void)
+{
+    unsigned long long ret;
+    asm volatile ( "rdtsc" : "=A"(ret) );
+    return ret;
+}
+
 static inline uint
 xchg(volatile uint *addr, uint newval)
 {

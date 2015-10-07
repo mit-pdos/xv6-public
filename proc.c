@@ -273,7 +273,6 @@ scheduler(void)
     sti();
 
     if (!foundproc) hlt();
-
     foundproc = 0;
 
     // Loop over process table looking for process to run.

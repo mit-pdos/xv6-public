@@ -89,3 +89,12 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_gettime(void) {
+    unsigned long long *n;
+    if (argptr(0, (char **)&n, 8) < 0)
+        return -1;
+    *n = rdtsc();
+    return 0;
+}

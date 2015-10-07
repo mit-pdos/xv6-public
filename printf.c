@@ -35,7 +35,19 @@ printint(int fd, int xx, int base, int sgn)
     putc(fd, buf[i]);
 }
 
+static void
+printlong(int fd, unsigned long long xx, int base, int sgn)
+{
+    // Force hexadecimal
+    uint upper, lower;
+    upper = xx >> 32;
+    lower = xx & 0xffffffff;
+    if(upper) printint(fd, upper, 16, 0);
+    printint(fd, lower, 16, 0);
+}
+
 // Print to the given fd. Only understands %d, %x, %p, %s.
+// bdg 10/05/2015: Add %l
 void
 printf(int fd, char *fmt, ...)
 {
@@ -56,6 +68,11 @@ printf(int fd, char *fmt, ...)
     } else if(state == '%'){
       if(c == 'd'){
         printint(fd, *ap, 10, 1);
+        ap++;
+      } else if(c == 'l') {
+        printlong(fd, *(unsigned long long *)ap, 10, 0);
+        // long longs take up 2 argument slots
+        ap++;
         ap++;
       } else if(c == 'x' || c == 'p'){
         printint(fd, *ap, 16, 0);
