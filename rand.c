@@ -42,7 +42,7 @@
 #define TEMPERING_SHIFT_T(y)  (y << 15)
 #define TEMPERING_SHIFT_L(y)  (y >> 18)
 
-#define RAND_MAX 0xffffffff
+#define RAND_MAX 0x7fffffff
 
 static unsigned long mt[N]; /* the array for the state vector  */
 static int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
@@ -60,7 +60,7 @@ sgenrand(unsigned long seed)
         mt[mti] = (69069 * mt[mti-1]) & 0xffffffff;
 }
 
-unsigned long /* for integer generation */
+long /* for integer generation */
 genrand()
 {
     unsigned long y;
@@ -93,7 +93,9 @@ genrand()
     y ^= TEMPERING_SHIFT_T(y) & TEMPERING_MASK_C;
     y ^= TEMPERING_SHIFT_L(y);
 
-    return y; /* for integer generation */
+    // Strip off uppermost bit because we want a long,
+    // not an unsigned long
+    return y & RAND_MAX;
 }
 
 // Assumes 0 <= max <= RAND_MAX
