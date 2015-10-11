@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "rand.h"
 
 struct {
   struct spinlock lock;
@@ -24,6 +25,8 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+  // Seed RNG with current time
+  sgenrand(unixtime());
 }
 
 //PAGEBREAK: 32
