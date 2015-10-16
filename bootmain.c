@@ -8,7 +8,6 @@
 #include "types.h"
 #include "elf.h"
 #include "x86.h"
-#include "memlayout.h"
 #include "ide.h"
 
 void readseg(uchar*, uint, uint);

@@ -8,7 +8,6 @@
 
 static void startothers(void);
 static void mpmain(void)  __attribute__((noreturn));
-extern pde_t *kpgdir;
 extern char end[]; // first address after kernel loaded from ELF file
 
 // Bootstrap processor starts running C code here.
@@ -45,7 +44,7 @@ main(void)
 static void
 mpenter(void)
 {
-  switchkvm(); 
+  switchkvm();
   seginit();
   lapicinit();
   mpmain();
@@ -75,22 +74,22 @@ startothers(void)
   // Write entry code to unused memory at 0x7000.
   // The linker has placed the image of entryother.S in
   // _binary_entryother_start.
-  code = p2v(0x7000);
+  code = P2V(0x7000);
   memmove(code, _binary_entryother_start, (uint)_binary_entryother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
     if(c == cpus+cpunum())  // We've started already.
       continue;
 
-    // Tell entryother.S what stack to use, where to enter, and what 
+    // Tell entryother.S what stack to use, where to enter, and what
     // pgdir to use. We cannot use kpgdir yet, because the AP processor
     // is running in low  memory, so we use entrypgdir for the APs too.
     stack = kalloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpenter;
-    *(int**)(code-12) = (void *) v2p(entrypgdir);
+    *(int**)(code-12) = (void *) V2P(entrypgdir);
 
-    lapicstartap(c->id, v2p(code));
+    lapicstartap(c->id, V2P(code));
 
     // wait for cpu to finish mpmain()
     while(c->started == 0)
@@ -100,7 +99,7 @@ startothers(void)
 
 // Boot page table used in entry.S and entryother.S.
 // Page directories (and page tables), must start on a page boundary,
-// hence the "__aligned__" attribute.  
+// hence the "__aligned__" attribute.
 // Use PTE_PS in page directory entry to enable 4Mbyte pages.
 __attribute__((__aligned__(PGSIZE)))
 pde_t entrypgdir[NPDENTRIES] = {
