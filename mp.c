@@ -122,6 +122,13 @@ mpinit(void)
         p += sizeof(struct mpproc);
         continue;
       }
+      // TODO: The following is dubious at best. We enforce a rule that the
+      // APIC ids have to be consecutive, but the MP specification explicitly
+      // says that they DON'T have to be. As long as QEMU is used to simulate
+      // multiple SOCKETS everything seems fine, but as soon as we add CORES
+      // the code here breaks (and fails to identify them). The confusion
+      // between the id we assign here and the actual APIC id continues in
+      // ioapic.c for example. A rewrite is in order.
       if(ncpu != proc->apicid){
         cprintf("mpinit: ncpu=%d apicid=%d\n", ncpu, proc->apicid);
         ismp = 0;
