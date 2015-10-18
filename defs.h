@@ -8,6 +8,7 @@ struct rtcdate;
 struct spinlock;
 struct stat;
 struct superblock;
+struct ioapic;
 
 // bio.c
 void            binit(void);
@@ -60,6 +61,7 @@ void            iderw(struct buf*);
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
 extern uchar    ioapicid;
+extern volatile struct ioapic* ioapic;
 void            ioapicinit(void);
 
 // kalloc.c

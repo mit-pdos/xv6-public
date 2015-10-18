@@ -96,7 +96,7 @@ mpinit(void)
   struct mp *mp;
   struct mpconf *conf;
   struct mpproc *proc;
-  struct mpioapic *ioapic;
+  struct mpioapic *mioapic;
 
   if((conf = mpconfig(&mp)) == 0)
     return;
@@ -131,13 +131,18 @@ mpinit(void)
       p += sizeof(struct mpproc);
       continue;
     case MPIOAPIC:
-      ioapic = (struct mpioapic*)p;
-      if(!(ioapic->flags & MP_APIC_ENABLED)){
-        cprintf("mpinit: ioapic %d disabled, ignored\n", ioapic->apicid);
+      mioapic = (struct mpioapic*)p;
+      if(!(mioapic->flags & MP_APIC_ENABLED)){
+        cprintf("mpinit: ioapic %d disabled, ignored\n", mioapic->apicid);
         p += sizeof(struct mpioapic);
         continue;
       }
-      ioapicid = ioapic->apicid;
+      if(ioapic == 0){
+        ioapic = (volatile struct ioapic*)mioapic->addr;
+        ioapicid = mioapic->apicid;
+      } else {
+        cprintf("mpinit: ignored extra ioapic %d\n", mioapic->apicid);
+      }
       p += sizeof(struct mpioapic);
       continue;
     case MPBUS:
@@ -154,6 +159,7 @@ mpinit(void)
     // Didn't like what we found; fall back to no MP.
     ncpu = 1;
     lapic = 0;
+    ioapic = 0;
     ioapicid = 0;
     return;
   }
