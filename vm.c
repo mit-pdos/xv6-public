@@ -133,8 +133,8 @@ setupkvm(void)
   if((pgdir = (pde_t*)kalloc()) == 0)
     return 0;
   memset(pgdir, 0, PGSIZE);
-  if (P2V(PHYSTOP) > (void*)DEVSPACE)
-    panic("PHYSTOP too high");
+  if(P2V(PHYSTOP) > (void*)DEVSPACE)
+    panic("setupkvm: PHYSTOP too high");
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
                 (uint)k->phys_start, k->perm) < 0)
@@ -148,6 +148,8 @@ void
 kvmalloc(void)
 {
   kpgdir = setupkvm();
+  if(kpgdir == 0)
+    panic("kvmalloc: could not create kernel page table");
   switchkvm();
 }
 
