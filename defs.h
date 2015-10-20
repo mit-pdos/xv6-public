@@ -22,6 +22,10 @@ void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 
+// debug.c
+void            debuginit(void);
+void            debugf(char*, ...);
+
 // exec.c
 int             exec(char*, char**);
 
