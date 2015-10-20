@@ -4,8 +4,7 @@
 //
 // We want to allow debug output as early as possible and from anywhere,
 // including the spinlock code. This requires a custom lock to make sure
-// output is complete and consistent. Our custom lock cannot possibly be
-// acquired from an interrupt context so it doesn't disable interrupts.
+// output is complete and consistent.
 
 #include "types.h"
 #include "defs.h"
@@ -18,6 +17,7 @@ static volatile uint locked;  // custom lock
 static void
 lock(void)
 {
+  pushcli();
   while(xchg(&locked, 1) != 0)
     ;
 }
@@ -26,6 +26,7 @@ static void
 unlock(void)
 {
   xchg(&locked, 0);
+  popcli();
 }
 
 static int
