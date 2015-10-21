@@ -2,22 +2,40 @@
 // Requires that QEMU was started with a second serial port, otherwise
 // debug output is suppressed.
 //
-// We want to allow debug output as early as possible and from anywhere,
-// including the spinlock code. This requires a custom lock to make sure
-// output is complete and consistent.
+// We want to allow debug output as early as possible and from anywhere.
+// This requires custom locking code to ensure our output is consistent,
+// the existing spinlocks as well as pushcli/popcli cannot be used until
+// after seginit() has set up "cpu" correctly.
 
 #include "types.h"
 #include "defs.h"
 #include "x86.h"
+#include "mmu.h"
 #include "uart.h"
 
 static int uart;  // do we have a second uart?
 static volatile uint locked;  // custom lock
+static volatile uint intena;  // custom xcli/xsti
+
+static void
+xcli(void)
+{
+  intena = readeflags() & FL_IF;
+  // possible race, see TRICKS though
+  cli();
+}
+
+static void
+xsti(void)
+{
+  if(intena)
+    sti();
+}
 
 static void
 lock(void)
 {
-  pushcli();
+  xcli();
   while(xchg(&locked, 1) != 0)
     ;
 }
@@ -26,7 +44,7 @@ static void
 unlock(void)
 {
   xchg(&locked, 0);
-  popcli();
+  xsti();
 }
 
 static int
