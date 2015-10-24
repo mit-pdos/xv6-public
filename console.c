@@ -113,7 +113,7 @@ panic(char *s)
   cprintf("cpu%d: panic: ", cpu->id);
   cprintf(s);
   cprintf("\n");
-  getcallerpcs(&s, pcs);
+  getcallerpcs(&s, NELEM(pcs), pcs);
   for(i=0; i<10; i++)
     cprintf(" %p", pcs[i]);
   panicked = 1; // freeze other CPU
