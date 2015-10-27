@@ -32,6 +32,13 @@ idtinit(void)
 }
 
 //PAGEBREAK: 41
+// This is here so you can break on it in gdb
+static void
+trap_exit()
+{
+  sti();
+  exit();
+}
 void
 trap(struct trapframe *tf)
 {
@@ -97,7 +104,7 @@ trap(struct trapframe *tf)
   // (If it is still executing in the kernel, let it keep running
   // until it gets to the regular system call return.)
   if(proc && proc->killed && (tf->cs&3) == DPL_USER)
-    exit();
+    trap_exit();
 
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
@@ -106,5 +113,5 @@ trap(struct trapframe *tf)
 
   // Check if the process has been killed since we yielded
   if(proc && proc->killed && (tf->cs&3) == DPL_USER)
-    exit();
+    trap_exit();
 }
