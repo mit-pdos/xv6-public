@@ -47,17 +47,17 @@ void cmostime(struct rtcdate *r)
   bcd = (sb & CMOS_BINARY_BIT) == 0;
 
   // make sure CMOS doesn't modify time while we read it
-  for (;;) {
+  for(;;){
     fill_rtcdate(&t1);
-    if (cmosread(CMOS_STATA) & CMOS_UIP_BIT)
-        continue;
+    if(cmosread(CMOS_STATA) & CMOS_UIP_BIT)
+      continue;
     fill_rtcdate(&t2);
-    if (memcmp(&t1, &t2, sizeof(t1)) == 0)
+    if(memcmp(&t1, &t2, sizeof(t1)) == 0)
       break;
   }
 
   // convert
-  if (bcd) {
+  if(bcd){
 #define    CONV(x)     (t1.x = ((t1.x >> 4) * 10) + (t1.x & 0xf))
     CONV(second);
     CONV(minute);
