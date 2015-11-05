@@ -16,6 +16,11 @@ struct buf*     bread(uint, uint);
 void            brelse(struct buf*);
 void            bwrite(struct buf*);
 
+// cmos.c
+uint            cmosread(uint reg);
+void            cmoswrite(uint reg, uint data);
+void            cmostime(struct rtcdate *r);
+
 // console.c
 void            consoleinit(void);
 void            cprintf(char*, ...);
@@ -78,7 +83,6 @@ void            kinit2(void*, void*);
 void            kbdintr(void);
 
 // lapic.c
-void            cmostime(struct rtcdate *r);
 int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);

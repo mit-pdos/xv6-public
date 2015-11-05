@@ -1,5 +1,6 @@
 OBJS = \
 	bio.o\
+	cmos.o\
 	console.o\
 	debug.o\
 	exec.o\
