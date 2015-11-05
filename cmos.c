@@ -40,11 +40,12 @@ static void fill_rtcdate(struct rtcdate *r)
 void cmostime(struct rtcdate *r)
 {
   struct rtcdate t1, t2;
-  int sb, bcd;
+  int sb, bcd, tf;
 
   sb = cmosread(CMOS_STATB);
 
   bcd = (sb & CMOS_BINARY_BIT) == 0;
+  tf = (sb & CMOS_24H_BIT) != 0;
 
   // make sure CMOS doesn't modify time while we read it
   for(;;){
@@ -56,7 +57,10 @@ void cmostime(struct rtcdate *r)
       break;
   }
 
-  // convert
+  // backup raw values since BCD conversion removes PM bit from hour
+  t2 = t1;
+
+  // convert t1 from BCD
   if(bcd){
 #define    CONV(x)     (t1.x = ((t1.x >> 4) * 10) + (t1.x & 0xf))
     CONV(second);
@@ -66,6 +70,13 @@ void cmostime(struct rtcdate *r)
     CONV(month );
     CONV(year  );
 #undef     CONV
+  }
+
+  // convert 12 hour format to 24 hour format
+  if(!tf){
+    if(t2.hour & CMOS_PM_BIT){
+      t1.hour = (t1.hour + 12) % 24;
+    }
   }
 
   *r = t1;

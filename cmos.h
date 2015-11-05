@@ -14,6 +14,7 @@
 #define CMOS_SECS    0x00
 #define CMOS_MINS    0x02
 #define CMOS_HOURS   0x04
+  #define CMOS_PM_BIT     (1 << 7)  // RTC PM
 #define CMOS_DAY     0x07
 #define CMOS_MONTH   0x08
 #define CMOS_YEAR    0x09
