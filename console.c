@@ -144,8 +144,8 @@ cgaputc(int c)
   } else
     crt[pos++] = (c&0xff) | 0x0700;  // black on white
 
-  if(pos > 25*80)
-    panic("pos overflow");
+  if(pos < 0 || pos > 25*80)
+    panic("pos under/overflow");
   
   if((pos/80) >= 24){  // Scroll up.
     memmove(crt, crt+80, sizeof(crt[0])*23*80);
@@ -189,13 +189,13 @@ struct {
 void
 consoleintr(int (*getc)(void))
 {
-  int c, dopd = 0;
+  int c, doprocdump = 0;
 
   acquire(&cons.lock);
   while((c = getc()) >= 0){
     switch(c){
     case C('P'):  // Process listing.
-      dopd = 1;
+      doprocdump = 1;   // procdump() locks cons.lock indirectly; invoke later
       break;
     case C('U'):  // Kill line.
       while(input.e != input.w &&
@@ -224,10 +224,8 @@ consoleintr(int (*getc)(void))
     }
   }
   release(&cons.lock);
-  // Have to do this without the console lock held.
-  if(dopd) {
-    dopd = 0;
-    procdump();
+  if(doprocdump) {
+    procdump();  // now call procdump() wo. cons.lock held
   }
 }
 
