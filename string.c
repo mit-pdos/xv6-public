@@ -16,7 +16,7 @@ int
 memcmp(const void *v1, const void *v2, uint n)
 {
   const uchar *s1, *s2;
-  
+
   s1 = v1;
   s2 = v2;
   while(n-- > 0){
@@ -69,7 +69,7 @@ char*
 strncpy(char *s, const char *t, int n)
 {
   char *os;
-  
+
   os = s;
   while(n-- > 0 && (*s++ = *t++) != 0)
     ;
@@ -83,7 +83,7 @@ char*
 safestrcpy(char *s, const char *t, int n)
 {
   char *os;
-  
+
   os = s;
   if(n <= 0)
     return os;
