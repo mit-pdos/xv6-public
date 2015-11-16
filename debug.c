@@ -5,7 +5,7 @@
 // We want to allow debug output as early as possible and from anywhere.
 // This requires custom locking code to ensure our output is consistent,
 // the existing spinlocks as well as pushcli/popcli cannot be used until
-// after seginit() has set up "cpu" correctly.
+// seginit() has set up "cpu" correctly.
 
 #include "types.h"
 #include "defs.h"
@@ -15,36 +15,31 @@
 
 static int uart;  // do we have a second uart?
 static volatile uint locked;  // custom lock
-static volatile uint intena;  // custom xcli/xsti
+
+// We use the intena parameter to remember if interrupts were enabled (or not)
+// before we disabled them as part of taking the lock. The actual variable for
+// this is in debugf() below. Because it lives on the stack of whoever called
+// debugf(), we don't have to worry about which CPU we're on. The spinlocks in
+// xv6 presumably pay that prize to make their interface simpler?
 
 static void
-xcli(void)
+lock(int *intena)
 {
-  intena = readeflags() & FL_IF;
-  // possible race, see TRICKS though
+  *intena = readeflags() & FL_IF;
+  // Migration is possible *right here*, but if so, FL_IF was asserted when
+  // we sampled it and is still asserted now. That holds true up until the
+  // CLI instruction itself. (Also see TRICKS.)
   cli();
-}
-
-static void
-xsti(void)
-{
-  if(intena)
-    sti();
-}
-
-static void
-lock(void)
-{
-  xcli();
   while(xchg(&locked, 1) != 0)
     ;
 }
 
 static void
-unlock(void)
+unlock(int intena)
 {
   xchg(&locked, 0);
-  xsti();
+  if(intena)
+    sti();
 }
 
 static int
@@ -124,13 +119,14 @@ debugf(char *fmt, ...)
   int i, c;
   uint *argp;
   char *s;
+  int intena;
 
   if(fmt == 0){
     debugf("debugf: null fmt\n");  // no panic(), no console.c dependency
     return;
   }
 
-  lock();
+  lock(&intena);
 
   argp = (uint*)(void*)(&fmt + 1);
   for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
@@ -166,5 +162,5 @@ debugf(char *fmt, ...)
     }
   }
 
-  unlock();
+  unlock(intena);
 }
