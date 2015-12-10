@@ -31,7 +31,7 @@ printint(int xx, int base, int sign)
   int i;
   uint x;
 
-  if(sign && (sign = xx < 0))
+  if(sign && (sign = (xx < 0)))
     x = -xx;
   else
     x = xx;
@@ -113,7 +113,7 @@ panic(char *s)
   cprintf("cpu%d: panic: ", cpu->id);
   cprintf(s);
   cprintf("\n");
-  getcallerpcs(&s, pcs);
+  getcallerpcs(&s, NELEM(pcs), pcs);
   for(i=0; i<10; i++)
     cprintf(" %p", pcs[i]);
   panicked = 1; // freeze other CPU

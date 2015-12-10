@@ -1,5 +1,5 @@
 // Boot loader.
-// 
+//
 // Part of the boot block, along with bootasm.S, which calls bootmain().
 // bootasm.S has put the processor into protected 32-bit mode.
 // bootmain() loads an ELF kernel image from the disk starting at
@@ -8,9 +8,7 @@
 #include "types.h"
 #include "elf.h"
 #include "x86.h"
-#include "memlayout.h"
-
-#define SECTSIZE  512
+#include "ide.h"
 
 void readseg(uchar*, uint, uint);
 
@@ -47,11 +45,18 @@ bootmain(void)
   entry();
 }
 
+static int
+diskready(void)
+{
+  uchar status = inb(IDE_DATA_PRIMARY+IDE_REG_STATUS);
+  return (status & (IDE_BSY|IDE_DRDY)) == IDE_DRDY;
+}
+
 void
 waitdisk(void)
 {
   // Wait for disk ready.
-  while((inb(0x1F7) & 0xC0) != 0x40)
+  while(!diskready())
     ;
 }
 
@@ -61,16 +66,17 @@ readsect(void *dst, uint offset)
 {
   // Issue command.
   waitdisk();
-  outb(0x1F2, 1);   // count = 1
-  outb(0x1F3, offset);
-  outb(0x1F4, offset >> 8);
-  outb(0x1F5, offset >> 16);
-  outb(0x1F6, (offset >> 24) | 0xE0);
-  outb(0x1F7, 0x20);  // cmd 0x20 - read sectors
+  outb(IDE_DATA_PRIMARY+IDE_REG_SECTORS, 1);
+  outb(IDE_DATA_PRIMARY+IDE_REG_LBA0, offset & 0xff);
+  outb(IDE_DATA_PRIMARY+IDE_REG_LBA1, (offset >> 8) & 0xff);
+  outb(IDE_DATA_PRIMARY+IDE_REG_LBA2, (offset >> 16) & 0xff);
+  outb(IDE_DATA_PRIMARY+IDE_REG_DISK,
+    ((offset >> 24) & 0x0f) | IDE_DISK_LBA);
+  outb(IDE_DATA_PRIMARY+IDE_REG_COMMAND, IDE_CMD_READ);
 
   // Read data.
   waitdisk();
-  insl(0x1F0, dst, SECTSIZE/4);
+  insl(IDE_DATA_PRIMARY+IDE_REG_DATA, dst, SECTOR_SIZE/4);
 }
 
 // Read 'count' bytes at 'offset' from kernel into physical address 'pa'.
@@ -83,14 +89,14 @@ readseg(uchar* pa, uint count, uint offset)
   epa = pa + count;
 
   // Round down to sector boundary.
-  pa -= offset % SECTSIZE;
+  pa -= offset % SECTOR_SIZE;
 
   // Translate from bytes to sectors; kernel starts at sector 1.
-  offset = (offset / SECTSIZE) + 1;
+  offset = (offset / SECTOR_SIZE) + 1;
 
   // If this is too slow, we could read lots of sectors at a time.
   // We'd write more to memory than asked, but it doesn't matter --
   // we load in increasing order.
-  for(; pa < epa; pa += SECTSIZE, offset++)
+  for(; pa < epa; pa += SECTOR_SIZE, offset++)
     readsect(pa, offset);
 }

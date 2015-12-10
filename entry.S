@@ -52,13 +52,13 @@ entry:
   movl    %eax, %cr0
 
   # Set up the stack pointer.
-  movl $(stack + KSTACKSIZE), %esp
+  movl    $(stack + KSTACKSIZE), %esp
 
-  # Jump to main(), and switch to executing at
-  # high addresses. The indirect call is needed because
-  # the assembler produces a PC-relative instruction
-  # for a direct jump.
-  mov $main, %eax
-  jmp *%eax
+  # Jump to main() and switch to executing at high addresses.
+  # Need an explicit long jump (indirect jump would work as
+  # well, as would a push/ret trick to save 1 byte) because
+  # the assembler produces a PC-relative instruction for a
+  # direct jump.
+  ljmp    $(SEG_KCODE<<3), $main
 
 .comm stack, KSTACKSIZE

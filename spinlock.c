@@ -36,7 +36,7 @@ acquire(struct spinlock *lk)
 
   // Record info about lock acquisition for debugging.
   lk->cpu = cpu;
-  getcallerpcs(&lk, lk->pcs);
+  getcallerpcs(&lk, NELEM(lk->pcs), lk->pcs);
 }
 
 // Release the lock.
@@ -65,19 +65,19 @@ release(struct spinlock *lk)
 
 // Record the current call stack in pcs[] by following the %ebp chain.
 void
-getcallerpcs(void *v, uint pcs[])
+getcallerpcs(void *v, uint n, uint pcs[])
 {
   uint *ebp;
   int i;
   
   ebp = (uint*)v - 2;
-  for(i = 0; i < 10; i++){
+  for(i = 0; i < n; i++){
     if(ebp == 0 || ebp < (uint*)KERNBASE || ebp == (uint*)0xffffffff)
       break;
     pcs[i] = ebp[1];     // saved %eip
     ebp = (uint*)ebp[0]; // saved %ebp
   }
-  for(; i < 10; i++)
+  for(; i < n; i++)
     pcs[i] = 0;
 }
 

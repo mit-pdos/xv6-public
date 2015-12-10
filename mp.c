@@ -12,22 +12,15 @@
 #include "proc.h"
 
 struct cpu cpus[NCPU];
-static struct cpu *bcpu;
 int ismp;
 int ncpu;
 uchar ioapicid;
-
-int
-mpbcpu(void)
-{
-  return bcpu-cpus;
-}
 
 static uchar
 sum(uchar *addr, int len)
 {
   int i, sum;
-  
+
   sum = 0;
   for(i=0; i<len; i++)
     sum += addr[i];
@@ -40,7 +33,7 @@ mpsearch1(uint a, int len)
 {
   uchar *e, *p, *addr;
 
-  addr = p2v(a);
+  addr = P2V(a);
   e = addr+len;
   for(p = addr; p < e; p += sizeof(struct mp))
     if(memcmp(p, "_MP_", 4) == 0 && sum(p, sizeof(struct mp)) == 0)
@@ -52,7 +45,7 @@ mpsearch1(uint a, int len)
 // spec is in one of the following three locations:
 // 1) in the first KB of the EBDA;
 // 2) in the last KB of system base memory;
-// 3) in the BIOS ROM between 0xE0000 and 0xFFFFF.
+// 3) in the BIOS ROM between 0xF0000 and 0xFFFFF.
 static struct mp*
 mpsearch(void)
 {
@@ -85,10 +78,10 @@ mpconfig(struct mp **pmp)
 
   if((mp = mpsearch()) == 0 || mp->physaddr == 0)
     return 0;
-  conf = (struct mpconf*) p2v((uint) mp->physaddr);
+  conf = (struct mpconf*) P2V((uint) mp->physaddr);
   if(memcmp(conf, "PCMP", 4) != 0)
     return 0;
-  if(conf->version != 1 && conf->version != 4)
+  if(conf->specrev != 1 && conf->specrev != 4)
     return 0;
   if(sum((uchar*)conf, conf->length) != 0)
     return 0;
@@ -103,9 +96,8 @@ mpinit(void)
   struct mp *mp;
   struct mpconf *conf;
   struct mpproc *proc;
-  struct mpioapic *ioapic;
+  struct mpioapic *mioapic;
 
-  bcpu = &cpus[0];
   if((conf = mpconfig(&mp)) == 0)
     return;
   ismp = 1;
@@ -114,19 +106,50 @@ mpinit(void)
     switch(*p){
     case MPPROC:
       proc = (struct mpproc*)p;
+      if(!(proc->flags & MP_PROC_ENABLED)){
+        cprintf("mpinit: ignoring cpu %d, not enabled\n", proc->apicid);
+        p += sizeof(struct mpproc);
+        continue;
+      }
+      if(!(proc->feature & MP_PROC_APIC)){
+        cprintf("mpinit: cpu %d has no working APIC, ignored\n", proc->apicid);
+        p += sizeof(struct mpproc);
+        continue;
+      }
+      if(ncpu >= NCPU){
+        cprintf("mpinit: more than %d cpus, ignoring cpu%d\n",
+          NCPU, proc->apicid);
+        p += sizeof(struct mpproc);
+        continue;
+      }
+      // TODO: The following is dubious at best. We enforce a rule that the
+      // APIC ids have to be consecutive, but the MP specification explicitly
+      // says that they DON'T have to be. As long as QEMU is used to simulate
+      // multiple SOCKETS everything seems fine, but as soon as we add CORES
+      // the code here breaks (and fails to identify them). The confusion
+      // between the id we assign here and the actual APIC id continues in
+      // ioapic.c for example. A rewrite is in order.
       if(ncpu != proc->apicid){
         cprintf("mpinit: ncpu=%d apicid=%d\n", ncpu, proc->apicid);
         ismp = 0;
       }
-      if(proc->flags & MPBOOT)
-        bcpu = &cpus[ncpu];
       cpus[ncpu].id = ncpu;
       ncpu++;
       p += sizeof(struct mpproc);
       continue;
     case MPIOAPIC:
-      ioapic = (struct mpioapic*)p;
-      ioapicid = ioapic->apicno;
+      mioapic = (struct mpioapic*)p;
+      if(!(mioapic->flags & MP_APIC_ENABLED)){
+        cprintf("mpinit: ioapic %d disabled, ignored\n", mioapic->apicid);
+        p += sizeof(struct mpioapic);
+        continue;
+      }
+      if(ioapic == 0){
+        ioapic = (volatile struct ioapic*)mioapic->addr;
+        ioapicid = mioapic->apicid;
+      } else {
+        cprintf("mpinit: ignored extra ioapic %d\n", mioapic->apicid);
+      }
       p += sizeof(struct mpioapic);
       continue;
     case MPBUS:
@@ -143,6 +166,7 @@ mpinit(void)
     // Didn't like what we found; fall back to no MP.
     ncpu = 1;
     lapic = 0;
+    ioapic = 0;
     ioapicid = 0;
     return;
   }

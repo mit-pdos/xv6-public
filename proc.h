@@ -27,6 +27,14 @@ extern int ncpu;
 // holding those two variables in the local cpu's struct cpu.
 // This is similar to how thread-local variables are implemented
 // in thread libraries such as Linux pthreads.
+//
+// One must be very careful with cpu as we might migrate; that is, in
+// general, it is only safe to access this variable and *do* anything with
+// it while local preemption is disabled.
+//
+// proc is *observably constant* from a particular proc's perspective, on
+// the other hand (the scheduler always restores its value) and so is in
+// general safe to access without holding any locks.
 extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
 extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
 

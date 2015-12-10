@@ -8,6 +8,7 @@ struct rtcdate;
 struct spinlock;
 struct stat;
 struct superblock;
+struct ioapic;
 
 // bio.c
 void            binit(void);
@@ -15,11 +16,20 @@ struct buf*     bread(uint, uint);
 void            brelse(struct buf*);
 void            bwrite(struct buf*);
 
+// cmos.c
+uint            cmosread(uint reg);
+void            cmoswrite(uint reg, uint data);
+void            cmostime(struct rtcdate *r);
+
 // console.c
 void            consoleinit(void);
 void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
+
+// debug.c
+void            debuginit(void);
+void            debugf(char*, ...);
 
 // exec.c
 int             exec(char*, char**);
@@ -60,6 +70,7 @@ void            iderw(struct buf*);
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
 extern uchar    ioapicid;
+extern volatile struct ioapic* ioapic;
 void            ioapicinit(void);
 
 // kalloc.c
@@ -72,7 +83,6 @@ void            kinit2(void*, void*);
 void            kbdintr(void);
 
 // lapic.c
-void            cmostime(struct rtcdate *r);
 int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
@@ -88,9 +98,7 @@ void            end_op();
 
 // mp.c
 extern int      ismp;
-int             mpbcpu(void);
 void            mpinit(void);
-void            mpstartthem(void);
 
 // picirq.c
 void            picenable(int);
@@ -104,7 +112,6 @@ int             pipewrite(struct pipe*, char*, int);
 
 //PAGEBREAK: 16
 // proc.c
-struct proc*    copyproc(struct proc*);
 void            exit(void);
 int             fork(void);
 int             growproc(int);
@@ -124,7 +131,7 @@ void            swtch(struct context**, struct context*);
 
 // spinlock.c
 void            acquire(struct spinlock*);
-void            getcallerpcs(void*, uint*);
+void            getcallerpcs(void*, uint, uint*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
@@ -165,7 +172,6 @@ void            uartputc(int);
 // vm.c
 void            seginit(void);
 void            kvmalloc(void);
-void            vmenable(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, uint, uint);

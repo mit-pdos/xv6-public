@@ -1,15 +1,15 @@
-// On-disk file system format. 
+// On-disk file system format.
 // Both the kernel and user programs use this header file.
-
 
 #define ROOTINO 1  // root i-number
 #define BSIZE 512  // block size
 
 // Disk layout:
-// [ boot block | super block | log | inode blocks | free bit map | data blocks ]
+// [ boot block | super block | log | inode blocks | free bit map
+//   | data blocks ]
 //
-// mkfs computes the super block and builds an initial file system. The super describes
-// the disk layout:
+// mkfs computes the super block and builds an initial file system.
+// The super describes the disk layout:
 struct superblock {
   uint size;         // Size of file system image (blocks)
   uint nblocks;      // Number of data blocks
