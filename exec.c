@@ -94,6 +94,8 @@ exec(char *path, char **argv)
   proc->tf->esp = sp;
   switchuvm(proc);
   freevm(oldpgdir);
+
+ yield();
   return 0;
 
  bad:
