@@ -95,7 +95,7 @@ exec(char *path, char **argv)
   switchuvm(proc);
   freevm(oldpgdir);
 
- yield();
+  yield();
   return 0;
 
  bad:
