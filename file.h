@@ -21,7 +21,7 @@ struct inode {
   short minor;
   short nlink;
   uint size;
-  uint addrs[NDIRECT+1];
+  uint dirCluster;
 };
 #define I_BUSY 0x1
 #define I_VALID 0x2

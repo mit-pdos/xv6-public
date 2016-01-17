@@ -1157,7 +1157,7 @@ bigfile(void)
     printf(1, "cannot create bigfile");
     exit();
   }
-  for(i = 0; i < 20; i++){
+  for(i = 0; i < 250; i++){
     memset(buf, i, 600);
     if(write(fd, buf, 600) != 600){
       printf(1, "write bigfile failed\n");
@@ -1191,11 +1191,11 @@ bigfile(void)
     total += cc;
   }
   close(fd);
-  if(total != 20*600){
-    printf(1, "read bigfile wrong total\n");
+  if(total != 250*600){
+    printf(1, "%d read bigfile wrong total\n", total);
     exit();
   }
-  unlink("bigfile");
+ // unlink("bigfile");
 
   printf(1, "bigfile test ok\n");
 }
@@ -1714,44 +1714,44 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREATE));
 
-  createdelete();
-  linkunlink();
-  concreate();
-  fourfiles();
-  sharedfd();
+  // createdelete();
+  // linkunlink();
+  // concreate();
+  // fourfiles();
+  // sharedfd();
 
-  bigargtest();
-  bigwrite();
-  bigargtest();
-  bsstest();
-  sbrktest();
-  validatetest();
+  // bigargtest();
+  // bigwrite();
+  // bigargtest();
+  // bsstest();
+  // sbrktest();
+  // validatetest();
 
-  opentest();
-  writetest();
-  writetest1();
-  createtest();
+  // opentest();
+  // writetest();
+  // writetest1();
+  // createtest();
 
-  openiputtest();
-  exitiputtest();
-  iputtest();
+  // openiputtest();
+  // exitiputtest();
+  // iputtest();
 
-  mem();
-  pipe1();
-  preempt();
-  exitwait();
+  // mem();
+  // pipe1();
+  // preempt();
+  // exitwait();
 
-  rmdot();
-  fourteen();
+  // rmdot();
+  // fourteen();
   bigfile();
-  subdir();
-  linktest();
-  unlinkread();
-  dirfile();
-  iref();
-  forktest();
-  bigdir(); // slow
-  exectest();
+  // subdir();
+  // linktest();
+  // unlinkread();
+  // dirfile();
+  // iref();
+  // forktest();
+  // bigdir(); // slow
+  // exectest();
 
   exit();
 }

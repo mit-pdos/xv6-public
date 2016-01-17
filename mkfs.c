@@ -260,7 +260,7 @@ iappend(uint inum, void *xp, int n)
   struct dinode din;
   char buf[BSIZE];
   uint indirect[NINDIRECT];
-  uint x;
+  uint x, addr;
 
   rinode(inum, &din);
   off = xint(din.size);
@@ -273,7 +273,7 @@ iappend(uint inum, void *xp, int n)
         din.addrs[fbn] = xint(freeblock++);
       }
       x = xint(din.addrs[fbn]);
-    } else {
+    } else if (fbn < NDIRECT + NINDIRECT){
       if(xint(din.addrs[NDIRECT]) == 0){
         din.addrs[NDIRECT] = xint(freeblock++);
       }
@@ -284,6 +284,22 @@ iappend(uint inum, void *xp, int n)
       }
       x = xint(indirect[fbn-NDIRECT]);
     }
+    else{
+        if(xint(din.addrs[NDIRECT + 1]) == 0){
+          din.addrs[NDIRECT + 1] = xint(freeblock++);
+        }
+        rsect(xint(din.addrs[NDIRECT + 1]), (char*)indirect);
+        if((addr = indirect[(fbn - NDIRECT - NINDIRECT) / NINDIRECT]) == 0){
+          indirect[(fbn - NDIRECT - NINDIRECT) / NINDIRECT] = addr = xint(freeblock++);
+          wsect(xint(din.addrs[NDIRECT + 1]), (char*)indirect);
+        }
+        rsect(xint(addr), (char*)indirect);
+        if(indirect[(fbn - NDIRECT - NINDIRECT) % NINDIRECT] == 0){
+          indirect[(fbn - NDIRECT - NINDIRECT) % NINDIRECT] = xint(freeblock++);
+          wsect(xint(addr), (char*)indirect);
+        }
+        x = xint(indirect[(fbn - NDIRECT - NINDIRECT) % NINDIRECT]);
+      }
     n1 = min(n, (fbn + 1) * BSIZE - off);
     rsect(x, buf);
     bcopy(p, buf + off - (fbn * BSIZE), n1);

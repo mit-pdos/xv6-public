@@ -129,6 +129,7 @@ lapiceoi(void)
 void
 microdelay(int us)
 {
+
 }
 
 #define CMOS_PORT    0x70
