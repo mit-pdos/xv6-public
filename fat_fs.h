@@ -63,5 +63,6 @@ struct finode {
   short minor;          // Minor device number (T_DEV only)
   short nlink;          // Number of links to inode in file system
   uint size;            // Size of file (bytes)
-  uint addrs[NDIRECT+2];   // Data block addresses
 };
+
+#define LAST_FAT_VALUE 0xffffff0f
