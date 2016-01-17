@@ -16,7 +16,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "spinlock.h"
-#include "fs.h"
+#include "fat_fs.h"
 #include "buf.h"
 #include "file.h"
 
@@ -29,7 +29,7 @@ void
 readDbr(int dev, struct FAT32_DBR *dbr)
 {
   struct buf *bp;
-  bp = bread(dev, 1);
+  bp = bread(dev, 0);
   memmove(dbr, bp->data, sizeof(*dbr));
   brelse(bp);
 }
@@ -41,19 +41,98 @@ bzero(int dev, int bno)
 }
 
 // Blocks. 
+uint getFATStart(uint cnum, uint *offset)
+{
+  uint ret;
+  *offset = (cnum * 4);
+  ret = dbr.RsvdSecCnt + (*offset / dbr.BytesPerSec)
+  *offset %= dbr.BytesPerSec;
+  return ret;
+}
 
-// Allocate a zeroed disk block.
+void updateFATs(struct buf* sp){
+  struct buf *tp;
+  int i, offset;
+  for (i = 1, offset = dbr.FATSz32; i < dbr.NumFATs; i++, offset += dbr.FATSz32) {
+    tp = bread(sp->dev, sp->sector + offset);
+    memmove(tp->data, sp->data, 512);
+    bwrite(tp);
+    brelse(tp);
+  }
+}
+
+uint getFirstSector(uint cnum)
+{
+  return (cnum - 2) * dbr->SecPerClus + dbr->RsvdSecCnt + dbr->NumFATs * dbr->FATSz32;
+}
+// Allocate a zeroed disk cluster.
 static uint
 fat32_balloc(uint dev)
 {
+  uint cnum, nowSec, lastSec;
+  struct buf *bp, *bfsi;
+  struct FSInfo *fsi;
   readDbr(dev, &dbr);
-  
+  bfsi = bread(dev, dbr.FSInfo);
+  fsi = (struct FSInfo*)bfsi->data;
+  lastSec = 0;
+  for (cnum = fsi->Nxt_Free + 1; cnum < dbr.TotSec32 / dbr.SecPerClus; cnum++){
+    uint offset;
+    nowSec = getFATStart(cnum, &offset);
+    if (nowSec != lastSec){
+      if (bp)
+        brelse(bp);
+      bp = bread(dev, nowSec);
+      lastSec = nowSec;
+    }
+    if (!*(uint *)(bp->data + offset)){
+      *(uint *)(bp->data + offset) = LAST_FAT_VALUE;
+      fsi->Nxt_Free++;
+      fsi->Free_Count--;
+      updateFATs(bp);
+      bwrite(bp);
+      brelse(bp);
+      bwrite(bfsi);
+      brelse(bfsi);
+      return cnum;
+    }
+  }
+  for (cnum = 2; cnum <= fsi->Nxt_Free; cnum++){
+    uint offset;
+    nowSec = getFATStart(cnum, &offset);
+    if (nowSec != lastSec){
+      if (bp)
+        brelse(bp);
+      bp = bread(dev, nowSec);
+      lastSec = nowSec;
+    }
+    if (!*(uint *)(bp->data + offset)){
+      *(uint *)(bp->data + offset) = LAST_FAT_VALUE;
+      fsi->Nxt_Free = cnum;
+      fsi->Free_Count--;
+      updateFATs(bp);
+      bwrite(bp);
+      brelse(bp);
+      bwrite(bfsi);
+      brelse(bfsi);
+      return cnum;
+    }
+  }
+  panic("balloc: out of clusters");
 }
 
-// Free a disk block.
+// Free a disk cluster.
 static void
-bfree(int dev, uint b)
+bfree(int dev, uint cnum)
 {
+    struct buf *bp;
+    uint offset, nowSec;
+    readDbr(dev, &dbr);
+    nowSec = getFATStart(cnum, &offset);
+    bp = bread(dev, nowSec);
+    *(uint *)(bp->data + offset) = 0;
+    bwrite(bp);
+    brelse(bp);
 }
 
 
@@ -65,6 +144,9 @@ struct {
 void
 iinit(int dev)
 {
+    initlock(&icache.lock, "icache");
+    readDbr(dev, &dbr);
+    cprintf("dbr: BytesPerSec: %d   SecPerClus: %d   NumFATs: %d   TotSec32:   %d", dbr.BytesPerSec, dbr.SecPerClus, dbr.NumFATs, dbr.TotSec32);
 }
 
 static struct inode* iget(uint dev, uint inum);
@@ -80,24 +162,92 @@ iupdate(struct inode *ip)
 }
 
 static struct inode*
-iget(uint dev, uint inum)
+iget(uint dev, uint inum, uint dirCluster)
 {
+  struct inode *ip, *empty;
+  acquire(&icache.lock);
+
+  // Is the inode already cached?
+  empty = 0;
+  for(ip = &icache.inode[0]; ip < &icache.inode[NINODE]; ip++){
+    if(ip->ref > 0 && ip->dev == dev && ip->inum == inum){
+      ip->ref++;
+      release(&icache.lock);
+      return ip;
+    }
+    if(empty == 0 && ip->ref == 0)    // Remember empty slot.
+      empty = ip;
+  }
+
+  // Recycle an inode cache entry.
+  if(empty == 0)
+    panic("iget: no inodes");
+
+  ip = empty;
+  ip->dev = dev;
+  ip->inum = inum;
+  ip->ref = 1;
+  ip->flags = 0;
+  ip->dirCluster = dirCluster;
+  release(&icache.lock);
+
+  return ip;
 }
 
 struct inode*
 idup(struct inode *ip)
 {
+  acquire(&icache.lock);
+  ip->ref++;
+  release(&icache.lock);
+  return ip;
 }
 
 void
 ilock(struct inode *ip)
 {
+  struct buf *bp;
+  struct direntry *dip;
+  uint dirCluster = ip->dirCluster;
+
+  if(ip == 0 || ip->ref < 1)
+    panic("ilock");
+
+  acquire(&icache.lock);
+  while(ip->flags & I_BUSY)
+    sleep(ip, &icache.lock);
+  ip->flags |= I_BUSY;
+  release(&icache.lock);
+
+  if(!(ip->flags & I_VALID)){
+    
+    bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+    dip = (struct dinode*)bp->data + ip->inum%IPB;
+    ip->type = dip->type;
+    ip->major = dip->major;
+    ip->minor = dip->minor;
+    ip->nlink = dip->nlink;
+    ip->size = dip->size;
+    memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+    brelse(bp);
+    ip->flags |= I_VALID;
+    if(ip->type == 0)
+      panic("ilock: no type");
+  }
+
 }
 
 // Unlock the given inode.
 void
 iunlock(struct inode *ip)
 {
+  if(ip == 0 || !(ip->flags & I_BUSY) || ip->ref < 1)
+    panic("iunlock");
+
+  acquire(&icache.lock);
+  ip->flags &= ~I_BUSY;
+  wakeup(ip);
+  release(&icache.lock);
 }
 
 void
@@ -109,6 +259,8 @@ iput(struct inode *ip)
 void
 iunlockput(struct inode *ip)
 {
+  iunlock(ip);
+  iput(ip);
 }
 
 static uint
