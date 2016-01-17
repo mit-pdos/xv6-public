@@ -1,3 +1,10 @@
+#ifndef FAT_FS_H
+#define FAT_FS_H
+
+#define SECSIZE    512  // sector size (bytes) 单个扇区字节数
+#define SECPERCLUS   8  // number of sector per cluster 每簇扇区数
+#define RETAINSEC    2  // number of retain sectors 保留扇区个数
+
 struct FAT32_DBR
 {
   uchar jmpBoot[3];    //跳转指令            offset:0
