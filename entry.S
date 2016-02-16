@@ -1,11 +1,11 @@
 # Multiboot header, for multiboot boot loaders like GNU Grub.
 # http://www.gnu.org/software/grub/manual/multiboot/multiboot.html
 #
-# Using GRUB 2, you can boot xv6 from a file stored in a
+# Using GRUB 2, you can boot tmsv6 from a file stored in a
 # Linux file system by copying kernel or kernelmemfs to /boot
 # and then adding this menu entry:
 #
-# menuentry "xv6" {
+# menuentry "tmsv6" {
 # 	insmod ext2
 # 	set root='(hd0,msdos1)'
 # 	set kernel='/boot/kernel'
@@ -36,7 +36,7 @@ multiboot_header:
 .globl _start
 _start = V2P_WO(entry)
 
-# Entering xv6 on boot processor, with paging off.
+# Entering tmsv6 on boot processor, with paging off.
 .globl entry
 entry:
   # Turn on page size extension for 4Mbyte pages

@@ -8,7 +8,7 @@ asm.h
 mmu.h
 elf.h
 
-# entering xv6
+# entering tmsv6
 entry.S
 entryother.S
 main.c

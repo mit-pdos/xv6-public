@@ -108,7 +108,7 @@ define outputsta
   end
 end
 
-# xv6-specific
+# tmsv6-specific
 set $SEG_KCODE = 1
 set $SEG_KDATA = 2
 set $SEG_KCPU  = 3

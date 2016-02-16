@@ -81,15 +81,15 @@ ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
 # FreeBSD ld wants ``elf_i386_fbsd''
 LDFLAGS += -m $(shell $(LD) -V | grep elf_i386 2>/dev/null)
 
-xv6.img: bootblock kernel fs.img
-	dd if=/dev/zero of=xv6.img count=100000
-	dd if=bootblock of=xv6.img conv=notrunc
-	dd if=kernel of=xv6.img seek=1 conv=notrunc
+tmsv6.img: bootblock kernel fs.img
+	dd if=/dev/zero of=tmsv6.img count=100000
+	dd if=bootblock of=tmsv6.img conv=notrunc
+	dd if=kernel of=tmsv6.img seek=1 conv=notrunc
 
-xv6memfs.img: bootblock kernelmemfs
-	dd if=/dev/zero of=xv6memfs.img count=100000
-	dd if=bootblock of=xv6memfs.img conv=notrunc
-	dd if=kernelmemfs of=xv6memfs.img seek=1 conv=notrunc
+tmsv6memfs.img: bootblock kernelmemfs
+	dd if=/dev/zero of=tmsv6memfs.img count=100000
+	dd if=bootblock of=tmsv6memfs.img conv=notrunc
+	dd if=kernelmemfs of=tmsv6memfs.img seek=1 conv=notrunc
 
 bootblock: bootasm.S bootmain.c
 	$(CC) $(CFLAGS) -fno-pic -O -nostdinc -I. -c bootmain.c
@@ -181,7 +181,7 @@ fs.img: mkfs README $(UPROGS)
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm *.sym vectors.S bootblock entryother \
-	initcode initcode.out kernel xv6.img fs.img kernelmemfs mkfs \
+	initcode initcode.out kernel tmsv6.img fs.img kernelmemfs mkfs \
 	.gdbinit \
 	$(UPROGS)
 
@@ -189,15 +189,15 @@ clean:
 FILES = $(shell grep -v '^\#' runoff.list)
 PRINT = runoff.list runoff.spec README toc.hdr toc.ftr $(FILES)
 
-xv6.pdf: $(PRINT)
+tmsv6.pdf: $(PRINT)
 	./runoff
-	ls -l xv6.pdf
+	ls -l tmsv6.pdf
 
-print: xv6.pdf
+print: tmsv6.pdf
 
 # run in emulators
 
-bochs : fs.img xv6.img
+bochs : fs.img tmsv6.img
 	if [ ! -e .bochsrc ]; then ln -s dot-bochsrc .bochsrc; fi
 	bochs -q
 
@@ -210,27 +210,32 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 ifndef CPUS
 CPUS := 2
 endif
-QEMUOPTS = -hdb fs.img xv6.img -smp $(CPUS) -m 256 $(QEMUEXTRA)
+QEMUOPTS = -hdb fs.img tmsv6.img -smp $(CPUS) -m 256 $(QEMUEXTRA)
 
-qemu: fs.img xv6.img
+qemu: fs.img tmsv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)
 
-qemu-memfs: xv6memfs.img
-	$(QEMU) xv6memfs.img -smp $(CPUS) -m 256
+qemu-memfs: tmsv6memfs.img
+	$(QEMU) tmsv6memfs.img -smp $(CPUS) -m 256
 
-qemu-nox: fs.img xv6.img
+qemu-nox: fs.img tmsv6.img
 	$(QEMU) -nographic $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl
 	sed "s/localhost:1234/localhost:$(GDBPORT)/" < $^ > $@
 
-qemu-gdb: fs.img xv6.img .gdbinit
+qemu-gdb: fs.img tmsv6.img .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
 	$(QEMU) -serial mon:stdio $(QEMUOPTS) -S $(QEMUGDB)
 
-qemu-nox-gdb: fs.img xv6.img .gdbinit
+qemu-nox-gdb: fs.img tmsv6.img .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
 	$(QEMU) -nographic $(QEMUOPTS) -S $(QEMUGDB)
+
+virtualbox: tmsv6.img fs.img
+	VBoxManage convertfromraw --format vdi tmsv6.img tmsv6.vdi
+	VBoxManage convertfromraw --format vdi fs.img fs.vdi
+	@echo "Run a VirtualBox VM with tmsv6.vdi and fs.vdi as hard drives."
 
 # CUT HERE
 # prepare dist for students
@@ -269,9 +274,9 @@ dist-test:
 # update this rule (change rev#) when it is time to
 # make a new revision.
 tar:
-	rm -rf /tmp/xv6
-	mkdir -p /tmp/xv6
-	cp dist/* dist/.gdbinit.tmpl /tmp/xv6
-	(cd /tmp; tar cf - xv6) | gzip >xv6-rev9.tar.gz  # the next one will be 9 (6/27/15)
+	rm -rf /tmp/tmsv6
+	mkdir -p /tmp/tmsv6
+	cp dist/* dist/.gdbinit.tmpl /tmp/tmsv6
+	(cd /tmp; tar cf - tmsv6) | gzip >tmsv6-rev10.tar.gz  # the next one will be 9 (6/27/15)
 
 .PHONY: dist-test dist
