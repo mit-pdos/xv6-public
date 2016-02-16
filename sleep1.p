@@ -1,5 +1,5 @@
 /*
-This file defines a Promela model for xv6's
+This file defines a Promela model for tmsv6's
 acquire, release, sleep, and wakeup, along with
 a model of a simple producer/consumer queue.
 

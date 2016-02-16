@@ -217,7 +217,7 @@ awk '
 	# pr.pl -h "cross-references" -2 refs | pad 
 	for i in $files
 	do
-		../pr.pl -h "xv6/$i" $i
+		../pr.pl -h "tmsv6/$i" $i
 	done
 ) | mpage -m50t50b -o -bLetter -T -t -2 -FCourier -L60 >all.ps
 grep Pages: all.ps
@@ -238,6 +238,6 @@ else
 	echo ugly font!
 	cp all.ps allf.ps
 fi
-ps2pdf allf.ps ../xv6.pdf
+ps2pdf allf.ps ../tmsv6.pdf
 # cd ..
-# pdftops xv6.pdf xv6.ps
+# pdftops tmsv6.pdf tmsv6.ps
