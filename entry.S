@@ -58,7 +58,7 @@ entry:
   # high addresses. The indirect call is needed because
   # the assembler produces a PC-relative instruction
   # for a direct jump.
-  mov $main, %eax
+  movl $main, %eax
   jmp *%eax
 
 .comm stack, KSTACKSIZE
