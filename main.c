@@ -98,10 +98,11 @@ startothers(void)
   }
 }
 
-// Boot page table used in entry.S and entryother.S.
-// Page directories (and page tables), must start on a page boundary,
-// hence the "__aligned__" attribute.  
-// Use PTE_PS in page directory entry to enable 4Mbyte pages.
+// The boot page table used in entry.S and entryother.S.
+// Page directories (and page tables) must start on page boundaries,
+// hence the __aligned__ attribute.  
+// PTE_PS in a page directory entry enables 4Mbyte pages.
+
 __attribute__((__aligned__(PGSIZE)))
 pde_t entrypgdir[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
