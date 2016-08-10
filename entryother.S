@@ -53,7 +53,7 @@ start32:
   movl    %cr4, %eax
   orl     $(CR4_PSE), %eax
   movl    %eax, %cr4
-  # Use enterpgdir as our initial page table
+  # Use entrypgdir as our initial page table
   movl    (start-12), %eax
   movl    %eax, %cr3
   # Turn on paging.
