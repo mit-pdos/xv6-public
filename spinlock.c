@@ -29,10 +29,13 @@ acquire(struct spinlock *lk)
     panic("acquire");
 
   // The xchg is atomic.
-  // It also serializes, so that reads after acquire are not
-  // reordered before it. 
   while(xchg(&lk->locked, 1) != 0)
     ;
+
+  // Tell the C compiler and the processor to not move loads or stores
+  // past this point, to ensure that the critical section's memory
+  // references happen after the lock is acquired.
+  __sync_synchronize();
 
   // Record info about lock acquisition for debugging.
   lk->cpu = cpu;
@@ -49,16 +52,15 @@ release(struct spinlock *lk)
   lk->pcs[0] = 0;
   lk->cpu = 0;
 
-  // The xchg serializes, so that reads before release are 
-  // not reordered after it.  The 1996 PentiumPro manual (Volume 3,
-  // 7.2) says reads can be carried out speculatively and in
-  // any order, which implies we need to serialize here.
-  // But the 2007 Intel 64 Architecture Memory Ordering White
-  // Paper says that Intel 64 and IA-32 will not move a load
-  // after a store. So lock->locked = 0 would work here.
-  // The xchg being asm volatile ensures gcc emits it after
-  // the above assignments (and after the critical section).
-  xchg(&lk->locked, 0);
+  // Tell the C compiler and the processor to not move loads or stores
+  // past this point, to ensure that all the stores in the critical
+  // section are visible to other cores before the lock is released.
+  // Both the C compiler and the hardware may re-order loads and
+  // stores; __sync_synchronize() tells them both to not re-order.
+  __sync_synchronize();
+
+  // Release the lock.
+  lk->locked = 0;
 
   popcli();
 }
