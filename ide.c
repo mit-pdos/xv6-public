@@ -20,6 +20,8 @@
 
 #define IDE_CMD_READ  0x20
 #define IDE_CMD_WRITE 0x30
+#define IDE_CMD_RDMUL 0xc4
+#define IDE_CMD_WRMUL 0xc5
 
 // idequeue points to the buf now being read/written to the disk.
 // idequeue->qnext points to the next buf to be processed.
@@ -77,7 +79,9 @@ idestart(struct buf *b)
     panic("incorrect blockno");
   int sector_per_block =  BSIZE/SECTOR_SIZE;
   int sector = b->blockno * sector_per_block;
-
+  int read_cmd = (sector_per_block == 1) ? IDE_CMD_READ :  IDE_CMD_RDMUL;
+  int write_cmd = (sector_per_block == 1) ? IDE_CMD_WRITE : IDE_CMD_WRMUL;
+ 
   if (sector_per_block > 7) panic("idestart");
   
   idewait(0);
@@ -88,10 +92,10 @@ idestart(struct buf *b)
   outb(0x1f5, (sector >> 16) & 0xff);
   outb(0x1f6, 0xe0 | ((b->dev&1)<<4) | ((sector>>24)&0x0f));
   if(b->flags & B_DIRTY){
-    outb(0x1f7, IDE_CMD_WRITE);
+    outb(0x1f7, write_cmd);
     outsl(0x1f0, b->data, BSIZE/4);
   } else {
-    outb(0x1f7, IDE_CMD_READ);
+    outb(0x1f7, read_cmd);
   }
 }
 
