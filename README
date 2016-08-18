@@ -23,9 +23,12 @@ The following people have made contributions:
     Austin Clements
 
 In addition, we are grateful for the bug reports and patches contributed by
-Silas Boyd-Wickizer, Peter Froehlich, Shivam Handa, Anders Kaseorg, Eddie
-Kohler, Yandong Mao, Hitoshi Mitake, Carmi Merimovich, Joel Nider, Greg Price,
-Eldar Sehayek, Yongming Shen, Warren Toomey, Stephen Tu, and Zouchangwei.
+Silas Boyd-Wickizer, Nelson Elhage, Nathaniel Filardo, Peter Froehlich, Yakir
+Goaran, Shivam Handa, Bryan Henry, Jim Huang, Anders Kaseorg, kehao95, Eddie
+Kohler, Imbar Marinescu, Yandong Mao, Hitoshi Mitake, Carmi Merimovich, Joel
+Nider, Greg Price, Ayan Shafqat, Eldar Sehayek, Yongming Shen, Cam Tenny, Rafael
+Ubal, Warren Toomey, Stephen Tu, Keiichi Watanabe, Jindong Zhang, and
+and Zou Chang Wei.
 
 The code in the files that constitute xv6 is
 Copyright 2006-2014 Frans Kaashoek, Robert Morris, and Russ Cox.
