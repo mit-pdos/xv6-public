@@ -6,7 +6,7 @@ ACKNOWLEDGMENTS
 
 xv6 is inspired by John Lions's Commentary on UNIX 6th Edition (Peer
 to Peer Communications; ISBN: 1-57398-013-7; 1st edition (June 14,
-2000)). See also http://pdos.csail.mit.edu/6.828/2014/xv6.html, which
+2000)). See also http://pdos.csail.mit.edu/6.828/2016/xv6.html, which
 provides pointers to on-line resources for v6.
 
 xv6 borrows code from the following sources:
@@ -31,7 +31,7 @@ Ubal, Warren Toomey, Stephen Tu, Keiichi Watanabe, Jindong Zhang, and
 and Zou Chang Wei.
 
 The code in the files that constitute xv6 is
-Copyright 2006-2014 Frans Kaashoek, Robert Morris, and Russ Cox.
+Copyright 2006-2016 Frans Kaashoek, Robert Morris, and Russ Cox.
 
 ERROR REPORTS
 
