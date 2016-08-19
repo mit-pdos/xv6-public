@@ -25,7 +25,7 @@
   #define DEASSERT   0x00000000
   #define LEVEL      0x00008000   // Level triggered
   #define BCAST      0x00080000   // Send to all APICs, including self.
-  #define BUSY       0x00001000
+ /#define BUSY       0x00001000
   #define FIXED      0x00000000
 #define ICRHI   (0x0310/4)   // Interrupt Command [63:32]
 #define TIMER   (0x0320/4)   // Local Vector Table 0 (TIMER)
@@ -211,17 +211,17 @@ void cmostime(struct rtcdate *r)
   bcd = (sb & (1 << 2)) == 0;
 
   // make sure CMOS doesn't modify time while we read it
-  for (;;) {
+  for(;;) {
     fill_rtcdate(&t1);
-    if (cmos_read(CMOS_STATA) & CMOS_UIP)
+    if(cmos_read(CMOS_STATA) & CMOS_UIP)
         continue;
     fill_rtcdate(&t2);
-    if (memcmp(&t1, &t2, sizeof(t1)) == 0)
+    if(memcmp(&t1, &t2, sizeof(t1)) == 0)
       break;
   }
 
   // convert
-  if (bcd) {
+  if(bcd) {
 #define    CONV(x)     (t1.x = ((t1.x >> 4) * 10) + (t1.x & 0xf))
     CONV(second);
     CONV(minute);
