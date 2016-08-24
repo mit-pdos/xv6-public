@@ -74,7 +74,7 @@ startothers(void)
   // Write entry code to unused memory at 0x7000.
   // The linker has placed the image of entryother.S in
   // _binary_entryother_start.
-  code = p2v(0x7000);
+  code = P2V(0x7000);
   memmove(code, _binary_entryother_start, (uint)_binary_entryother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
@@ -87,9 +87,9 @@ startothers(void)
     stack = kalloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpenter;
-    *(int**)(code-12) = (void *) v2p(entrypgdir);
+    *(int**)(code-12) = (void *) V2P(entrypgdir);
 
-    lapicstartap(c->id, v2p(code));
+    lapicstartap(c->id, V2P(code));
 
     // wait for cpu to finish mpmain()
     while(c->started == 0)

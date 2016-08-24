@@ -8,13 +8,6 @@
 #define KERNBASE 0x80000000         // First kernel virtual address
 #define KERNLINK (KERNBASE+EXTMEM)  // Address where kernel is linked
 
-#ifndef __ASSEMBLER__
-
-static inline uint v2p(void *a) { return ((uint) (a))  - KERNBASE; }
-static inline void *p2v(uint a) { return (void *) ((a) + KERNBASE); }
-
-#endif
-
 #define V2P(a) (((uint) (a)) - KERNBASE)
 #define P2V(a) (((void *) (a)) + KERNBASE)
 
