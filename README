@@ -23,7 +23,7 @@ The following people have made contributions:
     Austin Clements
 
 In addition, we are grateful for the bug reports and patches contributed by
-Silas Boyd-Wickizer, Nelson Elhage, Nathaniel Filardo, Peter Froehlich, Yakir
+Silas Boyd-Wickizer, Mike CAT, Nelson Elhage, Nathaniel Filardo, Peter Froehlich, Yakir
 Goaran, Shivam Handa, Bryan Henry, Jim Huang, Anders Kaseorg, kehao95, Eddie
 Kohler, Imbar Marinescu, Yandong Mao, Hitoshi Mitake, Carmi Merimovich, Joel
 Nider, Greg Price, Ayan Shafqat, Eldar Sehayek, Yongming Shen, Cam Tenny, Rafael
@@ -36,7 +36,7 @@ Copyright 2006-2016 Frans Kaashoek, Robert Morris, and Russ Cox.
 ERROR REPORTS
 
 If you spot errors or have suggestions for improvement, please send
-email to Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu). 
+email to Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).
 
 BUILDING AND RUNNING XV6
 
