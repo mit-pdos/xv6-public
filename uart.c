@@ -22,7 +22,7 @@ uartinit(void)
 
   // Turn off the FIFO
   outb(COM1+2, 0);
-  
+
   // 9600 baud, 8 data bits, 1 stop bit, parity off.
   outb(COM1+3, 0x80);    // Unlock divisor
   outb(COM1+0, 115200/9600);
@@ -42,7 +42,7 @@ uartinit(void)
   inb(COM1+0);
   picenable(IRQ_COM1);
   ioapicenable(IRQ_COM1, 0);
-  
+
   // Announce that we're here.
   for(p="xv6...\n"; *p; p++)
     uartputc(*p);

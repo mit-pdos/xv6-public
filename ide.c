@@ -39,7 +39,7 @@ idewait(int checkerr)
 {
   int r;
 
-  while(((r = inb(0x1f7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY) 
+  while(((r = inb(0x1f7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY)
     ;
   if(checkerr && (r & (IDE_DF|IDE_ERR)) != 0)
     return -1;
@@ -50,12 +50,12 @@ void
 ideinit(void)
 {
   int i;
-  
+
   initlock(&idelock, "ide");
   picenable(IRQ_IDE);
   ioapicenable(IRQ_IDE, ncpu - 1);
   idewait(0);
-  
+
   // Check if disk 1 is present
   outb(0x1f6, 0xe0 | (1<<4));
   for(i=0; i<1000; i++){
@@ -64,7 +64,7 @@ ideinit(void)
       break;
     }
   }
-  
+
   // Switch back to disk 0.
   outb(0x1f6, 0xe0 | (0<<4));
 }
@@ -81,9 +81,9 @@ idestart(struct buf *b)
   int sector = b->blockno * sector_per_block;
   int read_cmd = (sector_per_block == 1) ? IDE_CMD_READ :  IDE_CMD_RDMUL;
   int write_cmd = (sector_per_block == 1) ? IDE_CMD_WRITE : IDE_CMD_WRMUL;
- 
+
   if (sector_per_block > 7) panic("idestart");
-  
+
   idewait(0);
   outb(0x3f6, 0);  // generate interrupt
   outb(0x1f2, sector_per_block);  // number of sectors
@@ -117,12 +117,12 @@ ideintr(void)
   // Read data if needed.
   if(!(b->flags & B_DIRTY) && idewait(1) >= 0)
     insl(0x1f0, b->data, BSIZE/4);
-  
+
   // Wake process waiting for this buf.
   b->flags |= B_VALID;
   b->flags &= ~B_DIRTY;
   wakeup(b);
-  
+
   // Start disk on next buf in queue.
   if(idequeue != 0)
     idestart(idequeue);
@@ -131,7 +131,7 @@ ideintr(void)
 }
 
 //PAGEBREAK!
-// Sync buf with disk. 
+// Sync buf with disk.
 // If B_DIRTY is set, write buf to disk, clear B_DIRTY, set B_VALID.
 // Else if B_VALID is not set, read buf from disk, set B_VALID.
 void
@@ -153,11 +153,11 @@ iderw(struct buf *b)
   for(pp=&idequeue; *pp; pp=&(*pp)->qnext)  //DOC:insert-queue
     ;
   *pp = b;
-  
+
   // Start disk if necessary.
   if(idequeue == b)
     idestart(b);
-  
+
   // Wait for request to finish.
   while((b->flags & (B_VALID|B_DIRTY)) != B_VALID){
     sleep(b, &idelock);

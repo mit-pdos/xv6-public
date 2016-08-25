@@ -71,7 +71,7 @@ getcallerpcs(void *v, uint pcs[])
 {
   uint *ebp;
   int i;
-  
+
   ebp = (uint*)v - 2;
   for(i = 0; i < 10; i++){
     if(ebp == 0 || ebp < (uint*)KERNBASE || ebp == (uint*)0xffffffff)
@@ -99,7 +99,7 @@ void
 pushcli(void)
 {
   int eflags;
-  
+
   eflags = readeflags();
   cli();
   if(cpu->ncli++ == 0)
