@@ -1695,6 +1695,35 @@ fsfull()
   printf(1, "fsfull test finished\n");
 }
 
+void
+uio()
+{
+  #define RTC_ADDR 0x70
+  #define RTC_DATA 0x71
+
+  ushort port = 0;
+  uchar val = 0;
+  int pid;
+
+  printf(1, "uio test\n");
+  pid = fork();
+  if(pid == 0){
+    port = RTC_ADDR;
+    val = 0x09;  /* year */
+    /* http://wiki.osdev.org/Inline_Assembly/Examples */
+    asm volatile("outb %0,%1"::"a"(val), "d" (port));
+    port = RTC_DATA;
+    asm volatile("inb %1,%0" : "=a" (val) : "d" (port));
+    printf(1, "uio: uio succeeded; test FAILED\n");
+    exit();
+  } else if(pid < 0){
+    printf (1, "fork failed\n");
+    exit();
+  }
+  wait();
+  printf(1, "uio test done\n");
+}
+
 unsigned long randstate = 1;
 unsigned int
 rand()
@@ -1751,6 +1780,9 @@ main(int argc, char *argv[])
   iref();
   forktest();
   bigdir(); // slow
+
+  uio();
+
   exectest();
 
   exit();
