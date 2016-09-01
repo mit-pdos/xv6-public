@@ -27,7 +27,7 @@ seginit(void)
   c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
   c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
 
-  // Map cpu and curproc -- these are private per cpu.
+  // Map cpu and proc -- these are private per cpu.
   c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 8, 0);
 
   lgdt(c->gdt, sizeof(c->gdt));
