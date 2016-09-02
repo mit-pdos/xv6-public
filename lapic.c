@@ -1,6 +1,7 @@
 // The local APIC manages internal (non-I/O) interrupts.
 // See Chapter 8 & Appendix C of Intel processor manual volume 3.
 
+#include "param.h"
 #include "types.h"
 #include "defs.h"
 #include "date.h"
@@ -8,6 +9,7 @@
 #include "traps.h"
 #include "mmu.h"
 #include "x86.h"
+#include "proc.h"  // ncpu
 
 // Local APIC registers, divided by 4 for use as uint[] indices.
 #define ID      (0x0020/4)   // ID
@@ -99,6 +101,8 @@ lapicinit(void)
 int
 cpunum(void)
 {
+  int apicid, i;
+  
   // Cannot call cpu when interrupts are enabled:
   // result not guaranteed to last long enough to be used!
   // Would prefer to panic but even printing is chancy here:
@@ -111,9 +115,15 @@ cpunum(void)
         __builtin_return_address(0));
   }
 
-  if(lapic)
-    return lapic[ID]>>24;
-  return 0;
+  if (!lapic)
+    return 0;
+
+  apicid = lapic[ID] >> 24;
+  for (i = 0; i < ncpu; ++i) {
+    if (cpus[i].apicid == apicid)
+      return i;
+  }
+  panic("unknown apicid\n");
 }
 
 // Acknowledge interrupt.
