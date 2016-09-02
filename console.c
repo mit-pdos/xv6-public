@@ -195,7 +195,8 @@ consoleintr(int (*getc)(void))
   while((c = getc()) >= 0){
     switch(c){
     case C('P'):  // Process listing.
-      doprocdump = 1;   // procdump() locks cons.lock indirectly; invoke later
+      // procdump() locks cons.lock indirectly; invoke later
+      doprocdump = 1;
       break;
     case C('U'):  // Kill line.
       while(input.e != input.w &&

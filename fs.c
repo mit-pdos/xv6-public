@@ -22,7 +22,9 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
-struct superblock sb;   // there should be one per dev, but we run with one dev
+// there should be one superblock per disk device, but we run with
+// only one device
+struct superblock sb; 
 
 // Read the super block.
 void
@@ -164,8 +166,10 @@ iinit(int dev)
 {
   initlock(&icache.lock, "icache");
   readsb(dev, &sb);
-  cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d inodestart %d bmap start %d\n", sb.size,
-          sb.nblocks, sb.ninodes, sb.nlog, sb.logstart, sb.inodestart, sb.bmapstart);
+  cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
+          inodestart %d bmap start %d\n", sb.size, sb.nblocks,
+          sb.ninodes, sb.nlog, sb.logstart, sb.inodestart,
+          sb.bmapstart);
 }
 
 static struct inode* iget(uint dev, uint inum);
