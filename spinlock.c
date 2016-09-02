@@ -102,8 +102,9 @@ pushcli(void)
 
   eflags = readeflags();
   cli();
-  if(cpu->ncli++ == 0)
+  if(cpu->ncli == 0)
     cpu->intena = eflags & FL_IF;
+  cpu->ncli += 1;
 }
 
 void
