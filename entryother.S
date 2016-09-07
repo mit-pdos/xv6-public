@@ -77,8 +77,7 @@ start32:
   outw    %ax, %dx
   movw    $0x8ae0, %ax
   outw    %ax, %dx
-spin:
-  jmp     spin
+  hlt
 
 .p2align 2
 gdt:

@@ -66,14 +66,13 @@ start32:
   call    bootmain
 
   # If bootmain returns (it shouldn't), trigger a Bochs
-  # breakpoint if running under Bochs, then loop.
+  # breakpoint if running under Bochs, then halt.
   movw    $0x8a00, %ax            # 0x8a00 -> port 0x8a00
   movw    %ax, %dx
   outw    %ax, %dx
   movw    $0x8ae0, %ax            # 0x8ae0 -> port 0x8a00
   outw    %ax, %dx
-spin:
-  jmp     spin
+  hlt
 
 # Bootstrap GDT
 .p2align 2                                # force 4 byte alignment
