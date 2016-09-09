@@ -82,6 +82,12 @@ userinit(void)
   acquire(&ptable.lock);
 
   p = allocproc();
+
+  // release the lock in case namei() sleeps.
+  // the lock isn't needed because no other
+  // thread will look at an EMBRYO proc.
+  release(&ptable.lock);
+  
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -98,6 +104,12 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+
+  // this assignment to p->state lets other cores
+  // run this process. the acquire forces the above
+  // writes to be visible, and the lock is also needed
+  // because the assignment might not be atomic.
+  acquire(&ptable.lock);
 
   p->state = RUNNABLE;
 
@@ -141,6 +153,8 @@ fork(void)
     return -1;
   }
 
+  release(&ptable.lock);
+
   // Copy process state from p.
   if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
     kfree(np->kstack);
@@ -164,6 +178,8 @@ fork(void)
   safestrcpy(np->name, proc->name, sizeof(proc->name));
 
   pid = np->pid;
+
+  acquire(&ptable.lock);
 
   np->state = RUNNABLE;
 
@@ -227,7 +243,7 @@ wait(void)
 
   acquire(&ptable.lock);
   for(;;){
-    // Scan through table looking for zombie children.
+    // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != proc)
