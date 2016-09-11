@@ -16,6 +16,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "fs.h"
 #include "buf.h"
 #include "file.h"
@@ -167,7 +168,7 @@ iinit(int dev)
   initlock(&icache.lock, "icache");
   readsb(dev, &sb);
   cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
-          inodestart %d bmap start %d\n", sb.size, sb.nblocks,
+ inodestart %d bmap start %d\n", sb.size, sb.nblocks,
           sb.ninodes, sb.nlog, sb.logstart, sb.inodestart,
           sb.bmapstart);
 }
@@ -455,6 +456,13 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
     m = min(n - tot, BSIZE - off%BSIZE);
+    /*
+    cprintf("data off %d:\n", off);
+    for (int j = 0; j < min(m, 10); j++) {
+      cprintf("%x ", bp->data[off%BSIZE+j]);
+    }
+    cprintf("\n");
+    */
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
   }
