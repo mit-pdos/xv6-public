@@ -49,7 +49,6 @@ binit(void)
   for(b = bcache.buf; b < bcache.buf+NBUF; b++){
     b->next = bcache.head.next;
     b->prev = &bcache.head;
-    b->dev = -1;
     initsleeplock(&b->lock, "buffer");
     bcache.head.next->prev = b;
     bcache.head.next = b;
@@ -66,33 +65,33 @@ bget(uint dev, uint blockno)
 
   acquire(&bcache.lock);
 
-  //cprintf("bget %d\n", blockno);
- loop:
+  // cprintf("bget %d\n", blockno);
+  
   // Is the block already cached?
   for(b = bcache.head.next; b != &bcache.head; b = b->next){
     if(b->dev == dev && b->blockno == blockno){
-      if(!holdingsleep(&b->lock)) {
-        acquiresleep(&b->lock);
-        //cprintf("return buffer %p for blk %d\n", b - bcache.buf, blockno);
-        release(&bcache.lock);
-        return b;
-      }
-      sleep(b, &bcache.lock);
-      goto loop;
+      //cprintf("bget %d; get sleep lock for buffer %p\n", blockno, b - bcache.buf);
+      b->refcnt++;
+      release(&bcache.lock);
+      acquiresleep(&b->lock);
+      //cprintf("bget: return buffer %p for blk %d\n", b - bcache.buf, blockno);
+      return b;
     }
   }
 
-  // Not cached; recycle some non-locked and clean buffer.
+  // Not cached; recycle some unused buffer and clean buffer
   // "clean" because B_DIRTY and not locked means log.c
   // hasn't yet committed the changes to the buffer.
   for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
-    if(!holdingsleep(&b->lock) && (b->flags & B_DIRTY) == 0){
+    if(b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
+      // cprintf("bget %d; use %p for %d\n", b - bcache.buf, blockno);
       b->dev = dev;
       b->blockno = blockno;
-      b->flags = 0;  // XXX
-      acquiresleep(&b->lock);
-      //cprintf("return buffer %p for blk %d\n", b - bcache.buf, blockno);
+      b->flags = 0;
+      b->refcnt = 1;
       release(&bcache.lock);
+      acquiresleep(&b->lock);
+      // cprintf("bget: return buffer %p for blk %d\n", b - bcache.buf, blockno);
       return b;
     }
   }
@@ -116,7 +115,7 @@ bread(uint dev, uint blockno)
 void
 bwrite(struct buf *b)
 {
-  if(b->lock.locked == 0)
+  if(!holdingsleep(&b->lock))
     panic("bwrite");
   b->flags |= B_DIRTY;
   iderw(b);
@@ -127,20 +126,23 @@ bwrite(struct buf *b)
 void
 brelse(struct buf *b)
 {
-  if(b->lock.locked == 0)
+  if(!holdingsleep(&b->lock))
     panic("brelse");
 
-  acquire(&bcache.lock);
-
-  b->next->prev = b->prev;
-  b->prev->next = b->next;
-  b->next = bcache.head.next;
-  b->prev = &bcache.head;
-  bcache.head.next->prev = b;
-  bcache.head.next = b;
   releasesleep(&b->lock);
-  wakeup(b);
 
+  acquire(&bcache.lock);
+  b->refcnt--;
+  if (b->refcnt == 0) {
+    // no one is waiting for it.
+    b->next->prev = b->prev;
+    b->prev->next = b->next;
+    b->next = bcache.head.next;
+    b->prev = &bcache.head;
+    bcache.head.next->prev = b;
+    bcache.head.next = b;
+  }
+  
   release(&bcache.lock);
 }
 //PAGEBREAK!
