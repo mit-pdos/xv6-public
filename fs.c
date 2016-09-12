@@ -135,9 +135,7 @@ bfree(int dev, uint b)
 //
 // * Locked: file system code may only examine and modify
 //   the information in an inode and its content if it
-//   has first locked the inode. The I_BUSY flag indicates
-//   that the inode is locked. ilock() sets I_BUSY,
-//   while iunlock clears it.
+//   has first locked the inode.
 //
 // Thus a typical sequence is:
 //   ip = iget(dev, inum)
@@ -165,7 +163,13 @@ struct {
 void
 iinit(int dev)
 {
+  int i = 0;
+  
   initlock(&icache.lock, "icache");
+  for(i = 0; i < NINODE; i++) {
+    initsleeplock(&icache.inode[i].lock, "inode");
+  }
+  
   readsb(dev, &sb);
   cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
  inodestart %d bmap start %d\n", sb.size, sb.nblocks,
@@ -277,11 +281,7 @@ ilock(struct inode *ip)
   if(ip == 0 || ip->ref < 1)
     panic("ilock");
 
-  acquire(&icache.lock);
-  while(ip->flags & I_BUSY)
-    sleep(ip, &icache.lock);
-  ip->flags |= I_BUSY;
-  release(&icache.lock);
+  acquiresleep(&ip->lock);
 
   if(!(ip->flags & I_VALID)){
     bp = bread(ip->dev, IBLOCK(ip->inum, sb));
@@ -303,13 +303,10 @@ ilock(struct inode *ip)
 void
 iunlock(struct inode *ip)
 {
-  if(ip == 0 || !(ip->flags & I_BUSY) || ip->ref < 1)
+  if(ip == 0 || !holdingsleep(&ip->lock) || ip->ref < 1)
     panic("iunlock");
 
-  acquire(&icache.lock);
-  ip->flags &= ~I_BUSY;
-  wakeup(ip);
-  release(&icache.lock);
+  releasesleep(&ip->lock);
 }
 
 // Drop a reference to an in-memory inode.
@@ -325,16 +322,12 @@ iput(struct inode *ip)
   acquire(&icache.lock);
   if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0){
     // inode has no links and no other references: truncate and free.
-    if(ip->flags & I_BUSY)
-      panic("iput busy");
-    ip->flags |= I_BUSY;
     release(&icache.lock);
     itrunc(ip);
     ip->type = 0;
     iupdate(ip);
     acquire(&icache.lock);
     ip->flags = 0;
-    wakeup(ip);
   }
   ip->ref--;
   release(&icache.lock);
