@@ -65,16 +65,12 @@ bget(uint dev, uint blockno)
 
   acquire(&bcache.lock);
 
-  // cprintf("bget %d\n", blockno);
-  
   // Is the block already cached?
   for(b = bcache.head.next; b != &bcache.head; b = b->next){
     if(b->dev == dev && b->blockno == blockno){
-      //cprintf("bget %d; get sleep lock for buffer %p\n", blockno, b - bcache.buf);
       b->refcnt++;
       release(&bcache.lock);
       acquiresleep(&b->lock);
-      //cprintf("bget: return buffer %p for blk %d\n", b - bcache.buf, blockno);
       return b;
     }
   }
@@ -84,14 +80,12 @@ bget(uint dev, uint blockno)
   // hasn't yet committed the changes to the buffer.
   for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
     if(b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
-      // cprintf("bget %d; use %p for %d\n", b - bcache.buf, blockno);
       b->dev = dev;
       b->blockno = blockno;
       b->flags = 0;
       b->refcnt = 1;
       release(&bcache.lock);
       acquiresleep(&b->lock);
-      // cprintf("bget: return buffer %p for blk %d\n", b - bcache.buf, blockno);
       return b;
     }
   }
