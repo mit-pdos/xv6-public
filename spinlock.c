@@ -56,7 +56,7 @@ release(struct spinlock *lk)
   // past this point, to ensure that all the stores in the critical
   // section are visible to other cores before the lock is released.
   // Both the C compiler and the hardware may re-order loads and
-  // stores; __sync_synchronize() tells them both to not re-order.
+  // stores; __sync_synchronize() tells them both not to.
   __sync_synchronize();
 
   // Release the lock, equivalent to lk->locked = 0.
