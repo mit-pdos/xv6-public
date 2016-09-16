@@ -35,7 +35,7 @@ ERROR REPORTS
 If you spot errors or have suggestions for improvement, please send email to
 Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).  If you have
 suggestions for improvements, please keep in mind that the main purpose of xv6
-is as a teaching operating systems for MIT's 6.828. For example, we are in
+is as a teaching operating system for MIT's 6.828. For example, we are in
 particular interested in simplifications and clarifications, instead of
 suggestions for new systems calls, more portability, etc.
 
