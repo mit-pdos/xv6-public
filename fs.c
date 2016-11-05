@@ -185,19 +185,23 @@ static struct inode* iget(uint dev, uint inum);
 struct inode*
 ialloc(uint dev, short type)
 {
-  int inum;
+  int inum, i;
   struct buf *bp;
   struct dinode *dip;
 
-  for(inum = 1; inum < sb.ninodes; inum++){
+  for(inum = 0; inum < sb.ninodes; inum += IPB){
     bp = bread(dev, IBLOCK(inum, sb));
-    dip = (struct dinode*)bp->data + inum%IPB;
-    if(dip->type == 0){  // a free inode
-      memset(dip, 0, sizeof(*dip));
-      dip->type = type;
-      log_write(bp);   // mark it allocated on the disk
-      brelse(bp);
-      return iget(dev, inum);
+    for(i = 0; i < IPB && i + inum < sb.ninodes; i++){
+      if(inum + i == 0)
+        continue;
+      dip = (struct dinode*)bp->data + i;
+      if(dip->type == 0){  // a free inode
+        memset(dip, 0, sizeof(*dip));
+        dip->type = type;
+        log_write(bp);   // mark it allocated on the disk
+        brelse(bp);
+        return iget(dev, inum + i);
+      }
     }
     brelse(bp);
   }
