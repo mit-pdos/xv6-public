@@ -15,6 +15,7 @@
 void readseg(uchar*, uint, uint);
 
 void
+__attribute__ ((noinline))
 bootmain(void)
 {
   struct elfhdr *elf;
@@ -48,6 +49,7 @@ bootmain(void)
 }
 
 void
+__attribute__ ((noinline))
 waitdisk(void)
 {
   // Wait for disk ready.
@@ -57,6 +59,7 @@ waitdisk(void)
 
 // Read a single sector at offset into dst.
 void
+__attribute__ ((noinline))
 readsect(void *dst, uint offset)
 {
   // Issue command.
@@ -76,6 +79,7 @@ readsect(void *dst, uint offset)
 // Read 'count' bytes at 'offset' from kernel into physical address 'pa'.
 // Might copy more than asked.
 void
+__attribute__ ((noinline))
 readseg(uchar* pa, uint count, uint offset)
 {
   uchar* epa;

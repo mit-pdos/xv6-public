@@ -34,8 +34,8 @@ seginit(void)
   loadgs(SEG_KCPU << 3);
 
   // Initialize cpu-local storage.
-  cpu = c;
-  proc = 0;
+  set_cpu(c);
+  set_proc(0);
 }
 
 // Return the address of the PTE in page table pgdir
@@ -164,13 +164,13 @@ void
 switchuvm(struct proc *p)
 {
   pushcli();
-  cpu->gdt[SEG_TSS] = SEG16(STS_T32A, &cpu->ts, sizeof(cpu->ts)-1, 0);
-  cpu->gdt[SEG_TSS].s = 0;
-  cpu->ts.ss0 = SEG_KDATA << 3;
-  cpu->ts.esp0 = (uint)proc->kstack + KSTACKSIZE;
+  get_cpu()->gdt[SEG_TSS] = SEG16(STS_T32A, &get_cpu()->ts, sizeof(get_cpu()->ts)-1, 0);
+  get_cpu()->gdt[SEG_TSS].s = 0;
+  get_cpu()->ts.ss0 = SEG_KDATA << 3;
+  get_cpu()->ts.esp0 = (uint)get_proc()->kstack + KSTACKSIZE;
   // setting IOPL=0 in eflags *and* iomb beyond the tss segment limit
   // forbids I/O instructions (e.g., inb and outb) from user space
-  cpu->ts.iomb = (ushort) 0xFFFF;
+  get_cpu()->ts.iomb = (ushort) 0xFFFF;
   ltr(SEG_TSS << 3);
   if(p->pgdir == 0)
     panic("switchuvm: no pgdir");
