@@ -1,3 +1,5 @@
+#include <stdatomic.h>
+
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -56,7 +58,7 @@ mpmain(void)
 {
   cprintf("cpu%d: starting\n", cpunum());
   idtinit();       // load idt register
-  xchg(&get_cpu()->started, 1); // tell startothers() we're up
+  atomic_store_explicit(&get_cpu()->started, 1, memory_order_release); // tell startothers() we're up
   scheduler();     // start running processes
 }
 
@@ -92,9 +94,10 @@ startothers(void)
     lapicstartap(c->apicid, V2P(code));
 
     // wait for cpu to finish mpmain()
-    while(c->started == 0)
+    while(atomic_load_explicit(&c->started, memory_order_relaxed) == 0)
       ;
   }
+  atomic_thread_fence(memory_order_acquire);
 }
 
 // The boot page table used in entry.S and entryother.S.
