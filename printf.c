@@ -1,3 +1,5 @@
+#include <stdarg.h>
+
 #include "types.h"
 #include "stat.h"
 #include "user.h"
@@ -37,14 +39,17 @@ printint(int fd, int xx, int base, int sgn)
 
 // Print to the given fd. Only understands %d, %x, %p, %s.
 void
-printf(int fd, char *fmt, ...)
+printf(int fd, char *start, ...)
 {
+  char *fmt;
   char *s;
   int c, i, state;
-  uint *ap;
+  va_list va;
+
+  fmt = start;
+  va_start(va, start);
 
   state = 0;
-  ap = (uint*)(void*)&fmt + 1;
   for(i = 0; fmt[i]; i++){
     c = fmt[i] & 0xff;
     if(state == 0){
@@ -55,14 +60,11 @@ printf(int fd, char *fmt, ...)
       }
     } else if(state == '%'){
       if(c == 'd'){
-        printint(fd, *ap, 10, 1);
-        ap++;
+        printint(fd, va_arg(va, uint), 10, 1);
       } else if(c == 'x' || c == 'p'){
-        printint(fd, *ap, 16, 0);
-        ap++;
+        printint(fd, va_arg(va, uint), 16, 0);
       } else if(c == 's'){
-        s = (char*)*ap;
-        ap++;
+        s = va_arg(va, char*);
         if(s == 0)
           s = "(null)";
         while(*s != 0){
@@ -70,8 +72,7 @@ printf(int fd, char *fmt, ...)
           s++;
         }
       } else if(c == 'c'){
-        putc(fd, *ap);
-        ap++;
+        putc(fd, va_arg(va, uint));
       } else if(c == '%'){
         putc(fd, c);
       } else {
@@ -82,4 +83,6 @@ printf(int fd, char *fmt, ...)
       state = 0;
     }
   }
+
+  va_end(va);
 }
