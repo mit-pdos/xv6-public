@@ -2,6 +2,8 @@
 // Input is from the keyboard or serial port.
 // Output is written to the screen and serial port.
 
+#include <stdarg.h>
+
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -52,11 +54,15 @@ printint(int xx, int base, int sign)
 
 // Print to the console. only understands %d, %x, %p, %s.
 void
-cprintf(char *fmt, ...)
+cprintf(char *start, ...)
 {
+  char *fmt;
   int i, c, locking;
-  uint *argp;
   char *s;
+  va_list va;
+
+  fmt = start;
+  va_start(va, start);
 
   locking = cons.locking;
   if(locking)
@@ -65,7 +71,6 @@ cprintf(char *fmt, ...)
   if (fmt == 0)
     panic("null fmt");
 
-  argp = (uint*)(void*)(&fmt + 1);
   for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
     if(c != '%'){
       consputc(c);
@@ -76,14 +81,14 @@ cprintf(char *fmt, ...)
       break;
     switch(c){
     case 'd':
-      printint(*argp++, 10, 1);
+      printint(va_arg(va, uint), 10, 1);
       break;
     case 'x':
     case 'p':
-      printint(*argp++, 16, 0);
+      printint(va_arg(va, uint), 16, 0);
       break;
     case 's':
-      if((s = (char*)*argp++) == 0)
+      if((s = va_arg(va, char*)) == 0)
         s = "(null)";
       for(; *s; s++)
         consputc(*s);
@@ -101,6 +106,8 @@ cprintf(char *fmt, ...)
 
   if(locking)
     release(&cons.lock);
+
+  va_end(va);
 }
 
 void
@@ -111,7 +118,7 @@ panic(char *s)
 
   cli();
   cons.locking = 0;
-  cprintf("cpu with apicid %d: panic: ", cpu->apicid);
+  cprintf("cpu with apicid %d: panic: ", get_cpu()->apicid);
   cprintf(s);
   cprintf("\n");
   getcallerpcs(&s, pcs);
@@ -242,7 +249,7 @@ consoleread(struct inode *ip, char *dst, int n)
   acquire(&cons.lock);
   while(n > 0){
     while(input.r == input.w){
-      if(proc->killed){
+      if(get_proc()->killed){
         release(&cons.lock);
         ilock(ip);
         return -1;

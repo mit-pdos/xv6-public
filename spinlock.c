@@ -1,5 +1,8 @@
 // Mutual exclusion spin locks.
 
+#include <stddef.h>
+#include <stdatomic.h>
+
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -13,8 +16,8 @@ void
 initlock(struct spinlock *lk, char *name)
 {
   lk->name = name;
-  lk->locked = 0;
-  lk->cpu = 0;
+  lk->locked = ATOMIC_VAR_INIT(0);
+  lk->cpu = ATOMIC_VAR_INIT(NULL);
 }
 
 // Acquire the lock.
@@ -28,17 +31,17 @@ acquire(struct spinlock *lk)
   if(holding(lk))
     panic("acquire");
 
-  // The xchg is atomic.
-  while(xchg(&lk->locked, 1) != 0)
+  // The atomic_exchange_explicit is atomic.
+  while (atomic_exchange_explicit(&lk->locked, 1, memory_order_relaxed))
     ;
 
   // Tell the C compiler and the processor to not move loads or stores
   // past this point, to ensure that the critical section's memory
   // references happen after the lock is acquired.
-  __sync_synchronize();
+  atomic_thread_fence(memory_order_acquire);
 
   // Record info about lock acquisition for debugging.
-  lk->cpu = cpu;
+  atomic_store_explicit(&lk->cpu, get_cpu(), memory_order_relaxed);
   getcallerpcs(&lk, lk->pcs);
 }
 
@@ -50,19 +53,16 @@ release(struct spinlock *lk)
     panic("release");
 
   lk->pcs[0] = 0;
-  lk->cpu = 0;
+  atomic_store_explicit(&lk->cpu, NULL, memory_order_relaxed);
 
   // Tell the C compiler and the processor to not move loads or stores
   // past this point, to ensure that all the stores in the critical
   // section are visible to other cores before the lock is released.
   // Both the C compiler and the hardware may re-order loads and
-  // stores; __sync_synchronize() tells them both not to.
-  __sync_synchronize();
-
+  // stores; memory_order_release tells them both not to.
+  //
   // Release the lock, equivalent to lk->locked = 0.
-  // This code can't use a C assignment, since it might
-  // not be atomic. A real OS would use C atomics here.
-  asm volatile("movl $0, %0" : "+m" (lk->locked) : );
+  atomic_store_explicit(&lk->locked, 0, memory_order_release);
 
   popcli();
 }
@@ -89,7 +89,9 @@ getcallerpcs(void *v, uint pcs[])
 int
 holding(struct spinlock *lock)
 {
-  return lock->locked && lock->cpu == cpu;
+  return
+    atomic_load_explicit(&lock->locked, memory_order_relaxed) &&
+    atomic_load_explicit(&lock->cpu, memory_order_relaxed) == get_cpu();
 }
 
 
@@ -104,9 +106,9 @@ pushcli(void)
 
   eflags = readeflags();
   cli();
-  if(cpu->ncli == 0)
-    cpu->intena = eflags & FL_IF;
-  cpu->ncli += 1;
+  if(get_cpu()->ncli == 0)
+    get_cpu()->intena = eflags & FL_IF;
+  get_cpu()->ncli += 1;
 }
 
 void
@@ -114,9 +116,9 @@ popcli(void)
 {
   if(readeflags()&FL_IF)
     panic("popcli - interruptible");
-  if(--cpu->ncli < 0)
+  if(--get_cpu()->ncli < 0)
     panic("popcli");
-  if(cpu->ncli == 0 && cpu->intena)
+  if(get_cpu()->ncli == 0 && get_cpu()->intena)
     sti();
 }
 

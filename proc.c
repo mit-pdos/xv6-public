@@ -121,16 +121,16 @@ growproc(int n)
 {
   uint sz;
 
-  sz = proc->sz;
+  sz = get_proc()->sz;
   if(n > 0){
-    if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
+    if((sz = allocuvm(get_proc()->pgdir, sz, sz + n)) == 0)
       return -1;
   } else if(n < 0){
-    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0)
+    if((sz = deallocuvm(get_proc()->pgdir, sz, sz + n)) == 0)
       return -1;
   }
-  proc->sz = sz;
-  switchuvm(proc);
+  get_proc()->sz = sz;
+  switchuvm(get_proc());
   return 0;
 }
 
@@ -149,25 +149,25 @@ fork(void)
   }
 
   // Copy process state from p.
-  if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
+  if((np->pgdir = copyuvm(get_proc()->pgdir, get_proc()->sz)) == 0){
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
     return -1;
   }
-  np->sz = proc->sz;
-  np->parent = proc;
-  *np->tf = *proc->tf;
+  np->sz = get_proc()->sz;
+  np->parent = get_proc();
+  *np->tf = *get_proc()->tf;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
   for(i = 0; i < NOFILE; i++)
-    if(proc->ofile[i])
-      np->ofile[i] = filedup(proc->ofile[i]);
-  np->cwd = idup(proc->cwd);
+    if(get_proc()->ofile[i])
+      np->ofile[i] = filedup(get_proc()->ofile[i]);
+  np->cwd = idup(get_proc()->cwd);
 
-  safestrcpy(np->name, proc->name, sizeof(proc->name));
+  safestrcpy(np->name, get_proc()->name, sizeof(get_proc()->name));
 
   pid = np->pid;
 
@@ -189,30 +189,30 @@ exit(void)
   struct proc *p;
   int fd;
 
-  if(proc == initproc)
+  if(get_proc() == initproc)
     panic("init exiting");
 
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
-    if(proc->ofile[fd]){
-      fileclose(proc->ofile[fd]);
-      proc->ofile[fd] = 0;
+    if(get_proc()->ofile[fd]){
+      fileclose(get_proc()->ofile[fd]);
+      get_proc()->ofile[fd] = 0;
     }
   }
 
   begin_op();
-  iput(proc->cwd);
+  iput(get_proc()->cwd);
   end_op();
-  proc->cwd = 0;
+  get_proc()->cwd = 0;
 
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
-  wakeup1(proc->parent);
+  wakeup1(get_proc()->parent);
 
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == proc){
+    if(p->parent == get_proc()){
       p->parent = initproc;
       if(p->state == ZOMBIE)
         wakeup1(initproc);
@@ -220,7 +220,7 @@ exit(void)
   }
 
   // Jump into the scheduler, never to return.
-  proc->state = ZOMBIE;
+  get_proc()->state = ZOMBIE;
   sched();
   panic("zombie exit");
 }
@@ -238,7 +238,7 @@ wait(void)
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != proc)
+      if(p->parent != get_proc())
         continue;
       havekids = 1;
       if(p->state == ZOMBIE){
@@ -258,13 +258,13 @@ wait(void)
     }
 
     // No point waiting if we don't have any children.
-    if(!havekids || proc->killed){
+    if(!havekids || get_proc()->killed){
       release(&ptable.lock);
       return -1;
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    sleep(proc, &ptable.lock);  //DOC: wait-sleep
+    sleep(get_proc(), &ptable.lock);  //DOC: wait-sleep
   }
 }
 
@@ -294,15 +294,15 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      proc = p;
+      set_proc(p);
       switchuvm(p);
       p->state = RUNNING;
-      swtch(&cpu->scheduler, p->context);
+      swtch(&get_cpu()->scheduler, p->context);
       switchkvm();
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
-      proc = 0;
+      set_proc(0);
     }
     release(&ptable.lock);
 
@@ -310,10 +310,10 @@ scheduler(void)
 }
 
 // Enter scheduler.  Must hold only ptable.lock
-// and have changed proc->state. Saves and restores
+// and have changed get_proc()->state. Saves and restores
 // intena because intena is a property of this
 // kernel thread, not this CPU. It should
-// be proc->intena and proc->ncli, but that would
+// be get_proc()->intena and get_proc()->ncli, but that would
 // break in the few places where a lock is held but
 // there's no process.
 void
@@ -323,15 +323,15 @@ sched(void)
 
   if(!holding(&ptable.lock))
     panic("sched ptable.lock");
-  if(cpu->ncli != 1)
+  if(get_cpu()->ncli != 1)
     panic("sched locks");
-  if(proc->state == RUNNING)
+  if(get_proc()->state == RUNNING)
     panic("sched running");
   if(readeflags()&FL_IF)
     panic("sched interruptible");
-  intena = cpu->intena;
-  swtch(&proc->context, cpu->scheduler);
-  cpu->intena = intena;
+  intena = get_cpu()->intena;
+  swtch(&get_proc()->context, get_cpu()->scheduler);
+  get_cpu()->intena = intena;
 }
 
 // Give up the CPU for one scheduling round.
@@ -339,7 +339,7 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
-  proc->state = RUNNABLE;
+  get_proc()->state = RUNNABLE;
   sched();
   release(&ptable.lock);
 }
@@ -370,7 +370,7 @@ forkret(void)
 void
 sleep(void *chan, struct spinlock *lk)
 {
-  if(proc == 0)
+  if(get_proc() == 0)
     panic("sleep");
 
   if(lk == 0)
@@ -388,12 +388,12 @@ sleep(void *chan, struct spinlock *lk)
   }
 
   // Go to sleep.
-  proc->chan = chan;
-  proc->state = SLEEPING;
+  get_proc()->chan = chan;
+  get_proc()->state = SLEEPING;
   sched();
 
   // Tidy up.
-  proc->chan = 0;
+  get_proc()->chan = 0;
 
   // Reacquire original lock.
   if(lk != &ptable.lock){  //DOC: sleeplock2
