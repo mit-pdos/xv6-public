@@ -1550,10 +1550,10 @@ void
 validateint(int *p)
 {
   int res;
-  asm("mov %%esp, %%ebx\n\t"
-      "mov %3, %%esp\n\t"
+  asm("movl %%esp, %%ebx\n\t"
+      "movl %3, %%esp\n\t"
       "int %2\n\t"
-      "mov %%ebx, %%esp" :
+      "movl %%ebx, %%esp" :
       "=a" (res) :
       "a" (SYS_sleep), "n" (T_SYSCALL), "c" (p) :
       "ebx");

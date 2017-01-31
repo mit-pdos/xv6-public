@@ -11,7 +11,7 @@ forkret1 in trapasm.S is called with a tf argument.
 In order to use it, forkret1 copies the tf pointer into
 %esp and then jumps to trapret, which pops the 
 register state out of the trap frame.  If an interrupt
-came in between the mov tf, %esp and the iret that
+came in between the movl tf, %esp and the iret that
 goes back out to user space, the interrupt stack frame
 would end up scribbling over the tf and whatever memory
 lay under it.
@@ -23,7 +23,7 @@ constructed at the top of cp's kernel stack.  So tf
 *is* a valid %esp that can hold interrupt state.
 
 If other tf's were used in forkret1, we could add
-a cli before the mov tf, %esp.
+a cli before the movl tf, %esp.
 
 ---
 
