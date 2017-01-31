@@ -21,21 +21,19 @@ seginit(void)
   // Cannot share a CODE descriptor for both kernel and user
   // because it would have to have DPL_USR, but the CPU forbids
   // an interrupt from CPL=0 to DPL=3.
-  c = &cpus[cpunum()];
+  c = &cpus[lapiccpunum()];
   c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
   c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
   c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
   c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
-
+  c->cpu = c;
   // Map cpu and proc -- these are private per cpu.
-  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 8, 0);
-
+  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 4, 0);
   lgdt(c->gdt, sizeof(c->gdt));
   loadgs(SEG_KCPU << 3);
-
   // Initialize cpu-local storage.
-  cpu = c;
-  proc = 0;
+  // setcpu(c);
+  setproc(0);
 }
 
 // Return the address of the PTE in page table pgdir
@@ -171,13 +169,13 @@ switchuvm(struct proc *p)
     panic("switchuvm: no pgdir");
 
   pushcli();
-  cpu->gdt[SEG_TSS] = SEG16(STS_T32A, &cpu->ts, sizeof(cpu->ts)-1, 0);
-  cpu->gdt[SEG_TSS].s = 0;
-  cpu->ts.ss0 = SEG_KDATA << 3;
-  cpu->ts.esp0 = (uint)p->kstack + KSTACKSIZE;
+  mycpu()->gdt[SEG_TSS] = SEG16(STS_T32A, &mycpu()->ts, sizeof(mycpu()->ts)-1, 0);
+  mycpu()->gdt[SEG_TSS].s = 0;
+  mycpu()->ts.ss0 = SEG_KDATA << 3;
+  mycpu()->ts.esp0 = (uint)p->kstack + KSTACKSIZE;
   // setting IOPL=0 in eflags *and* iomb beyond the tss segment limit
   // forbids I/O instructions (e.g., inb and outb) from user space
-  cpu->ts.iomb = (ushort) 0xFFFF;
+  mycpu()->ts.iomb = (ushort) 0xFFFF;
   ltr(SEG_TSS << 3);
   lcr3(V2P(p->pgdir));  // switch to process's address space
   popcli();

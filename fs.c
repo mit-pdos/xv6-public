@@ -169,7 +169,7 @@ iinit(int dev)
   for(i = 0; i < NINODE; i++) {
     initsleeplock(&icache.inode[i].lock, "inode");
   }
-  
+
   readsb(dev, &sb);
   cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
  inodestart %d bmap start %d\n", sb.size, sb.nblocks,
@@ -615,7 +615,7 @@ namex(char *path, int nameiparent, char *name)
   if(*path == '/')
     ip = iget(ROOTDEV, ROOTINO);
   else
-    ip = idup(proc->cwd);
+    ip = idup(myproc()->cwd);
 
   while((path = skipelem(path, name)) != 0){
     ilock(ip);

@@ -7,25 +7,36 @@ struct cpu {
   volatile uint started;       // Has the CPU started?
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
-
-  // Cpu-local storage variables; see below
-  struct cpu *cpu;
-  struct proc *proc;           // The currently-running process.
+  // Per-CPU variables, holding pointers to the current cpu and to the current
+  // process (see cpu() and proc() in proc.c)
+  struct cpu *cpu;             // On cpu 0, cpu = &cpus[0]; on cpu 1, cpu=&cpus[1], etc.
+  struct proc *proc;           // The currently-running process on this cpu
 };
 
 extern struct cpu cpus[NCPU];
 extern int ncpu;
 
-// Per-CPU variables, holding pointers to the
-// current cpu and to the current process.
 // The asm suffix tells gcc to use "%gs:0" to refer to cpu
 // and "%gs:4" to refer to proc.  seginit sets up the
 // %gs segment register so that %gs refers to the memory
 // holding those two variables in the local cpu's struct cpu.
 // This is similar to how thread-local variables are implemented
 // in thread libraries such as Linux pthreads.
-extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
-extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
+
+static inline struct cpu*
+mycpu(void) {
+  struct cpu *cpu;
+  asm("movl %%gs:0, %0" : "=r"(cpu));
+  return cpu;
+}
+
+static inline struct proc*
+myproc(void) {
+  struct proc *proc;
+  asm("movl %%gs:4, %0" : "=r"(proc));
+  return proc;
+}
+
 
 //PAGEBREAK: 17
 // Saved registers for kernel context switches.
