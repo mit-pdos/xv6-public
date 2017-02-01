@@ -98,22 +98,12 @@ lapicinit(void)
   lapicw(TPR, 0);
 }
 
+// Should be called with interrupts disabled: the calling thread shouldn't be
+// rescheduled between reading lapic[ID] and checking against cpu array.
 int
 lapiccpunum(void)
 {
   int apicid, i;
-  
-  // Cannot call cpunum when interrupts are enabled:
-  // result not guaranteed to last long enough to be used!
-  // Would prefer to panic but even printing is chancy here:
-  // almost everything, including cprintf and panic, calls cpu,
-  // often indirectly through acquire and release.
-  if(readeflags()&FL_IF){
-    static int n;
-    if(n++ == 0)
-      cprintf("cpunum called from %x with interrupts enabled\n",
-        __builtin_return_address(0));
-  }
 
   if (!lapic)
     return 0;
