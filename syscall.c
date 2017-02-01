@@ -17,7 +17,9 @@
 int
 fetchint(uint addr, int *ip)
 {
-  if(addr >= myproc()->sz || addr+4 > myproc()->sz)
+  struct proc *curproc = myproc();
+
+  if(addr >= curproc->sz || addr+4 > curproc->sz)
     return -1;
   *ip = *(int*)(addr);
   return 0;
@@ -30,11 +32,12 @@ int
 fetchstr(uint addr, char **pp)
 {
   char *s, *ep;
+  struct proc *curproc = myproc();
 
-  if(addr >= myproc()->sz)
+  if(addr >= curproc->sz)
     return -1;
   *pp = (char*)addr;
-  ep = (char*)myproc()->sz;
+  ep = (char*)curproc->sz;
   for(s = *pp; s < ep; s++){
     if(*s == 0)
       return s - *pp;
@@ -56,10 +59,11 @@ int
 argptr(int n, char **pp, int size)
 {
   int i;
-
+  struct proc *curproc = myproc();
+ 
   if(argint(n, &i) < 0)
     return -1;
-  if(size < 0 || (uint)i >= myproc()->sz || (uint)i+size > myproc()->sz)
+  if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
     return -1;
   *pp = (char*)i;
   return 0;
@@ -128,13 +132,14 @@ void
 syscall(void)
 {
   int num;
+  struct proc *curproc = myproc();
 
-  num = myproc()->tf->eax;
+  num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    myproc()->tf->eax = syscalls[num]();
+    curproc->tf->eax = syscalls[num]();
   } else {
     cprintf("%d %s: unknown sys call %d\n",
-            myproc()->pid, myproc()->name, num);
-    myproc()->tf->eax = -1;
+            curproc->pid, curproc->name, num);
+    curproc->tf->eax = -1;
   }
 }

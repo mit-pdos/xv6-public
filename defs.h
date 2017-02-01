@@ -108,6 +108,7 @@ void            exit(void);
 int             fork(void);
 int             growproc(int);
 int             kill(int);
+struct proc*    myproc();
 void            pinit(void);
 void            procdump(void);
 void            scheduler(void) __attribute__((noreturn));

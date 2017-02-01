@@ -27,13 +27,11 @@ seginit(void)
   c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
   c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
   c->cpu = c;
+  c->proc = 0;
   // Map cpu and proc -- these are private per cpu.
   c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 4, 0);
   lgdt(c->gdt, sizeof(c->gdt));
   loadgs(SEG_KCPU << 3);
-  // Initialize cpu-local storage.
-  // setcpu(c);
-  setproc(0);
 }
 
 // Return the address of the PTE in page table pgdir
