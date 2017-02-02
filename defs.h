@@ -74,7 +74,7 @@ void            kbdintr(void);
 
 // lapic.c
 void            cmostime(struct rtcdate *r);
-int             lapiccpunum(void);
+int             lapicid(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
 void            lapicinit(void);

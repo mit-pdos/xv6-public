@@ -9,7 +9,6 @@
 #include "traps.h"
 #include "mmu.h"
 #include "x86.h"
-#include "proc.h"  // ncpu
 
 // Local APIC registers, divided by 4 for use as uint[] indices.
 #define ID      (0x0020/4)   // ID
@@ -98,22 +97,12 @@ lapicinit(void)
   lapicw(TPR, 0);
 }
 
-// Should be called with interrupts disabled: the calling thread shouldn't be
-// rescheduled between reading lapic[ID] and checking against cpu array.
 int
-lapiccpunum(void)
+lapicid(void)
 {
-  int apicid, i;
-
   if (!lapic)
     return 0;
-
-  apicid = lapic[ID] >> 24;
-  for (i = 0; i < ncpu; ++i) {
-    if (cpus[i].apicid == apicid)
-      return i;
-  }
-  panic("unknown apicid\n");
+  return lapic[ID] >> 24;
 }
 
 // Acknowledge interrupt.
