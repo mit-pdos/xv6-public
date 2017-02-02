@@ -162,12 +162,22 @@ fork(void)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
+  safestrcpy(np->name, proc->name, sizeof(proc->name));
+  release(&ptable.lock);
+
+  // It is safe to release ptable.lock here and yet reference both
+  // np-> and proc-> objects because np-> is in state EMBRYO and
+  // therefore not moving until we say so, and proc-> is us, so,
+  // again, not doing anything with its ofile[]s or its cwd until
+  // we let it.
   for(i = 0; i < NOFILE; i++)
     if(proc->ofile[i])
       np->ofile[i] = filedup(proc->ofile[i]);
   np->cwd = idup(proc->cwd);
 
-  safestrcpy(np->name, proc->name, sizeof(proc->name));
+  // This acquire-set-release dance forces the compiler and the CPU
+  // to do and publish all of the above changes before this write
+  acquire(&ptable.lock);
 
   pid = np->pid;
 
