@@ -111,7 +111,8 @@ panic(char *s)
 
   cli();
   cons.locking = 0;
-  cprintf("cpu %d: panic: ", cpuid());
+  // use lapiccpunum so that we can call panic from mycpu()
+  cprintf("cpu %d: panic: ", lapiccpunum());
   cprintf(s);
   cprintf("\n");
   getcallerpcs(&s, pcs);

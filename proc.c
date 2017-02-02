@@ -36,12 +36,8 @@ cpuid() {
 struct cpu*
 mycpu(void)
 {
-  if(readeflags()&FL_IF){
-    // Would prefer to panic but panic calls mycpu().
-    cprintf("mycpu called from %x with interrupts enabled\n",
-        __builtin_return_address(0));
-  }
-
+  if(readeflags()&FL_IF)
+    panic("mycpu called with interrupts enabled\n");
   return &cpus[lapiccpunum()];
 }
 
