@@ -36,13 +36,9 @@ cpuid() {
 struct cpu*
 mycpu(void)
 {
-  // Would prefer to panic but even printing is chancy here: almost everything,
-  // including cprintf and panic, calls mycpu(), often indirectly through
-  // acquire and release.
   if(readeflags()&FL_IF){
-    static int n;
-    if(n++ == 0)
-      cprintf("mycpu called from %x with interrupts enabled\n",
+    // Would prefer to panic but panic calls mycpu().
+    cprintf("mycpu called from %x with interrupts enabled\n",
         __builtin_return_address(0));
   }
 
