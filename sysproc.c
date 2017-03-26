@@ -89,3 +89,21 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_wait2(void)
+{
+  int retime, rutime, stime;
+  argint(0, &retime);
+  argint(1, &rutime);
+  argint(2, &stime);
+  
+  return 0;
+}
+
+int
+sys_yield2(void)
+{
+  yield();
+  return 0;
+}

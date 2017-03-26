@@ -37,3 +37,7 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+
+// a4
+int wait2(int* retime, int* rutime, int* stime);
+int yield2(void);
