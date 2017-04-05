@@ -7,6 +7,17 @@
 #include "proc.h"
 #include "elf.h"
 
+// number of maximum shared pages allowed
+#define MAXSHARES	10
+
+uint[MAXSHARES] shr_table;
+
+// shared table entry
+struct{
+	uint pa;	// physical address of shared page
+	int refct;	// reference count
+} shtable[MAXSHARES];
+
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 
@@ -235,7 +246,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   if(newsz < oldsz)
     return oldsz;
 
-  a = PGROUNDUP(oldsz);
+  a = PGROUNDUP(oldsz);	//PGROUNDUP: mmu.h
   for(; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){
@@ -290,14 +301,26 @@ void
 freevm(pde_t *pgdir)
 {
   uint i;
+  int rem;
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
   deallocuvm(pgdir, KERNBASE, 0);
   for(i = 0; i < NPDENTRIES; i++){
+    rem=1;
     if(pgdir[i] & PTE_P){
       char * v = P2V(PTE_ADDR(pgdir[i]));
-      kfree(v);
+	
+      // look through the shared page table to see if there are shared pages
+      // mapped to this process; if there are, don't free those
+      for (int j=0; j<MAXSHARES; j++){
+      	  if( v == P2V(PTE_ADDR(shtable[j].pa) & shtable[j].refct!=0)){
+		rem=0;
+		break;
+	  }
+      }
+      if (rem==1)
+      	kfree(v);
     }
   }
   kfree((char*)pgdir);
@@ -387,6 +410,103 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
     va = va0 + PGSIZE;
   }
   return 0;
+}
+
+
+
+
+uint get_page()
+{
+	char *mem;
+	uint start;
+	
+	if(proc->sz+PGSIZE >= KERNBASE)
+		return 0;
+
+	start = PGROUNDUP(proc->sz);
+	mem = kalloc();
+	if(mem == 0){
+		printf("unable to get page\n");
+   		return 0;
+ 	}
+ 	memset(mem, 0, PGSIZE);
+ 	if(mappages(proc->pgdir, (char*)start, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+   		cprintf("unable to map virtual memory)\n");
+   		deallocuvm(proc->pgdir, proc->sz+PGSIZE, proc->sz);
+  		kfree(mem);
+       		return 0;
+ 	}
+	return start;
+}
+
+void unlink_page(uint va){
+	uint pa;	
+	int i;
+	pte_t *pte;
+	
+	// remove current process' mapping for the page
+	pte = walkpgdir(proc->pgdir, (char*)va, 0);
+	pa = PTE_ADDR(*pte);
+	char *x = P2V(pa);
+	kfree(x);
+	*pte = 0;
+	
+	//decrement reference count for the shared page
+	pa = V2P(va);
+	for (i=0; i<MAXSHARES; i++){
+		if (shtable[i].pa == pa){
+			shtable[i].refct--;
+			break;
+		}
+	}
+}
+
+uint get_shared_page(int id){
+	uint pa;
+
+	//invalid index for shared page table
+	if (id<0 || id>=MAXSHARES)
+		return 0;
+	
+	//entry doesn't exist in shared page table
+	if (shtable[id].refct == 0)
+		return 0;
+	
+	// no space to map shared page in this process' address space
+	if(proc->sz+PGSIZE >= KERNBASE)
+		return 0;
+	
+	// shared page physical address
+	pa = shtable[id];
+	start = PGROUNDUP(proc->sz);
+	
+	// map physical shared page to virtual space and return the virtual address
+	if (mappages(proc->pgdir, (char*)start, PGSIZE, pa, PTE_W|PTE_U) < 0){
+   		deallocuvm(proc->pgdir, proc->sz+PGSIZE, proc->sz);
+		return 0;
+	}	
+	shtble[id].refct++;
+	return start;
+}
+
+int share_page(uint addr){
+	int i;
+
+	//check if there are open in the shared page table
+	for (i=0; i<MAXSHARES; i++)
+		if (shtable[i].refct == 0)
+			break;
+	if (i==MAXSHARES){
+		printf("no open slots in shared page table!\n")
+		return -1;
+	}
+
+	// store the physical address in the page table so it can be mapped into 
+	// other process' address space
+	shtable[i].pa = V2P(start);
+	shtable[i].refct = 1;
+	
+	return i;
 }
 
 //PAGEBREAK!
