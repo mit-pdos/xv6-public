@@ -1,0 +1,39 @@
+summaries:
+
+umalloc.c:
+* the union header acts as a linked list of free memory chunks. the Align x member ensures that the headers are aligned to the size of a long
+
+* malloc takes as argument the desired number of bytes of memory to be allocated; if a chunk that large is found, its starting address is returned; if not found, more memory is asked by calling morecore; if morecore returns 0, there is no more memory that can be allocated
+
+* morecore takes in the size of memory that is to be added to the process; increases the memory of the process by at least a page, then returns the starting address of that page
+
+* free takes the address of a memory chunk that is to be freed; adds the chunk back to the list of free memory chunks
+
+
+
+
+
+static uint[MAXSHARES] shr_table;
+
+uint get_page(){
+
+	np = get next free page from kalloc()
+	
+	if (np == 0)
+		panic()
+	
+	return np
+}
+
+unlink_page(int id){
+	
+	
+}
+
+share_page(uint addr, int id){
+	
+}
+
+uint get_shared_page(int id){
+	
+}
