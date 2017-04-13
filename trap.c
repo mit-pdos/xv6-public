@@ -77,6 +77,20 @@ trap(struct trapframe *tf)
             cpunum(), tf->cs, tf->eip);
     lapiceoi();
     break;
+  case T_PGFLT:
+    switch (SELECTION)
+    {
+      case NFU:
+        break;
+      case FIFO:
+        break;
+      case NONE:
+        break;
+      default:
+        panic("SELECTION not set to a valid option");
+
+    }
+    break;
 
   //PAGEBREAK: 13
   default:
