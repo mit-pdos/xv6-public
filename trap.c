@@ -32,6 +32,24 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
+pte_t *
+comparenfu(pte_t *a, pte_t *b)
+{
+  return a;
+}
+
+pte_t *
+comparefifo(pte_t *a, pte_t *b)
+{
+  return a;
+}
+
+void
+updatetimenfu()
+{
+
+}
+
 //PAGEBREAK: 41
 void
 trap(struct trapframe *tf)
@@ -51,6 +69,8 @@ trap(struct trapframe *tf)
     if(cpunum() == 0){
       acquire(&tickslock);
       ticks++;
+      if(SELECTION == NFU)
+        updatetimenfu();
       wakeup(&ticks);
       release(&tickslock);
     }
@@ -78,21 +98,39 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_PGFLT:
-    switch (SELECTION)
-    {
-      case NFU:
-        break;
-      case FIFO:
-        break;
-      case NONE:
-        break;
-      default:
-        panic("SELECTION not set to a valid option");
+    if(SELECTION == NONE)
+      goto do_not_handle;
 
+    pte_t *page, *temp;
+    pde_t *dir;
+
+    temp = proc->pgdir;
+    for(dir = proc->pgdir; dir < proc->pgdir + PGSIZE; dir++){
+      for(page = dir; page < dir + PGSIZE; page++){
+        switch (SELECTION){
+          case NFU:
+            temp = comparenfu(page, temp);
+            break;
+          case FIFO:
+            temp = comparefifo(page, temp);
+            break;
+          default:
+            panic("SELECTION not set to a valid option");
+        }
+      }
     }
+
+    // This won't work for a bit
+    // if(numpages == MAX_PSYC_PAGES){
+    //   storepage(temp);
+    //   loadpage(temp);
+    // }
+    // see if this is the correct counter
+    tf->eip--;
     break;
 
   //PAGEBREAK: 13
+do_not_handle:
   default:
     if(proc == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.
