@@ -103,6 +103,7 @@ trap(struct trapframe *tf)
 
     pte_t *page, *temp;
     pde_t *dir;
+    int numpages;
 
     temp = proc->pgdir;
     for(dir = proc->pgdir; dir < proc->pgdir + PGSIZE; dir++){
@@ -121,10 +122,11 @@ trap(struct trapframe *tf)
     }
 
     // This won't work for a bit
-    // if(numpages == MAX_PSYC_PAGES){
-    //   storepage(temp);
-    //   loadpage(temp);
-    // }
+    numpages = 0;
+    if(numpages == MAX_PSYC_PAGES){
+      storepage(proc->pid, temp);
+      loadpage(proc->pid, temp);
+    }
     // see if this is the correct counter
     tf->eip--;
     break;
