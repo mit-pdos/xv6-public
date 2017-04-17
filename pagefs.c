@@ -25,8 +25,6 @@ struct {
   struct pfile pfiles[NPROC];
 } pftable;
 
-// @TODO: reuse existing superblock
-struct superblock sb;
 // @TODO: Properly hard-coded dev
 int dev = 1;
 
