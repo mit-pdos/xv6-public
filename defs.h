@@ -182,5 +182,12 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
+// Assignment 5
+void pfcopy(int, int);
+void storepage(int, void*);
+void loadpage(int, void*);
+void pfdelete(int);
+
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

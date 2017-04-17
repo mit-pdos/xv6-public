@@ -21,6 +21,13 @@ struct superblock {
   uint bmapstart;    // Block number of first free map block
 };
 
+#ifndef SUPERBLOCK
+#define SUPERBLOCK 1
+// there should be one superblock per disk device, but we run with
+// only one device
+struct superblock sb;
+#endif
+
 #define NDIRECT 12
 #define NINDIRECT (BSIZE / sizeof(uint))
 #define MAXFILE (NDIRECT + NINDIRECT)
