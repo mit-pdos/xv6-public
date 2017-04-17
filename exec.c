@@ -38,6 +38,7 @@ exec(char *path, char **argv)
 
   // Load program into memory.
   sz = 0;
+  // @TODO: Load directly to file after MAX_PSYC_PAGES pages
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;

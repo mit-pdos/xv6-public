@@ -1,16 +1,3 @@
-// @TODO: Properly hard-coded dev
-// @TODO: reuse existing superblock
-// @TODO: named files accessible in user mode
-// @TODO: write page to file
-// @TODO: read page from file
-//      - 8 blocks / page
-//      - 12 blocks direct
-//      - 128 blocks indirect
-//      - 8*15 = 120 blocks needed
-// @TODO: Use loaduvm, allocuvm, deallocuvm
-// @TODO: Figure out how to swap data + stack pages
-// @TODO: Load directly to file on exec
-
 #include "types.h"
 #include "defs.h"
 #include "spinlock.h"
@@ -21,7 +8,7 @@
 #include "buf.h"
 #include "file.h"
 
-void bfree(int dev, uint b);
+void bfree(uint b);
 void pffree(struct dinode *dip);
 struct pfile* pfalloc(int pid);
 struct pfile* pfget(int pid);
@@ -36,7 +23,9 @@ struct {
   struct pfile pfiles[NPROC];
 } pftable;
 
+// @TODO: reuse existing superblock
 struct superblock sb;
+// @TODO: Properly hard-coded dev
 int dev = 1;
 
 // --------- Public Methods ------------
@@ -71,16 +60,49 @@ void
 storepage(int pid, void* pgaddr)
 {
   struct pfile *pf;
-  pf = pfget(pid);
+  struct buf *bp;
+  int i, j;
 
+  pf = pfget(pid);
+  acquire(&pftable.lock);
+  for(i = 0; i < NDIRECT; i++){
+    if(!pf->dip->addrs[i]){
+      bp = bread(dev, pf->dip->addrs[NDIRECT]);
+      for(j = 0; j < PGSIZE/BSIZE; j++)
+        // @TODO: get this to compile
+        memmove((int*)bp->data[(i*PGSIZE/BSIZE)+j], pgaddr+(j*BSIZE), BSIZE);
+      brelse(bp);
+      release(&pftable.lock);
+      return;
+    }
+  }
+  release(&pftable.lock);
+  panic("storepage: out of space");
 }
 
 void
 loadpage(int pid, void* pgaddr)
 {
   struct pfile *pf;
-  pf = pfget(pid);
+  struct buf *bp;
+  int i, j;
 
+  pf = pfget(pid);
+  acquire(&pftable.lock);
+  for(i = 0; i < NDIRECT; i++){
+    // @TODO: get this to compile
+    if(pf->dip->addrs[i] == pgaddr){
+      bp = bread(dev, pf->dip->addrs[NDIRECT]);
+      for(j = 0; j < PGSIZE/BSIZE; j++)
+        // @TODO: get this to compile
+        memmove(pgaddr+(j*BSIZE), (int*)bp->data[(i*PGSIZE/BSIZE)+j], BSIZE);
+      brelse(bp);
+      release(&pftable.lock);
+      return;
+    }
+  }
+  release(&pftable.lock);
+  panic("loadpage: page not found");
 }
 
 void
@@ -147,7 +169,7 @@ pffree(struct dinode *dip)
   if(dip->nlink == 0){
     for(i = 0; i < NDIRECT; i++){
       if(dip->addrs[i]){
-        bfree(dev, dip->addrs[i]);
+        bfree(dip->addrs[i]);
         dip->addrs[i] = 0;
       }
     }
@@ -157,10 +179,10 @@ pffree(struct dinode *dip)
       a = (uint*)bp->data;
       for(i = 0; i < NINDIRECT; i++){
         if(a[i])
-          bfree(dev, a[i]);
+          bfree(a[i]);
       }
       brelse(bp);
-      bfree(dev, dip->addrs[NDIRECT]);
+      bfree(dip->addrs[NDIRECT]);
       dip->addrs[NDIRECT] = 0;
     }
 
@@ -170,15 +192,10 @@ pffree(struct dinode *dip)
 }
 
 void
-bfree(int dev, uint b)
+bfree(uint b)
 {
   struct buf *bp;
-  struct buf *bp1;
   int bi, m;
-
-  bp1 = bread(dev, 1);
-  memmove(&sb, bp1->data, sizeof(sb));
-  brelse(bp1);
 
   bp = bread(dev, BBLOCK(b, sb));
   bi = b % BPB;
