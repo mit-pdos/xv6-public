@@ -12,6 +12,8 @@ void bfree(uint b);
 void pffree(struct dinode *dip);
 struct pfile* pfalloc(int pid);
 struct pfile* pfget(int pid);
+void storesegments(struct dinode *dip, int pageindex, void *pgaddr);
+void loadsegments(struct dinode *dip, int pageindex, void *pgaddr);
 
 struct pfile {
   struct dinode * dip;
@@ -57,52 +59,51 @@ pfcopy(int parentpid, int pid)
 }
 
 void
-storepage(int pid, void* pgaddr)
+storepage(int pid, void *pgaddr)
 {
   struct pfile *pf;
   struct buf *bp;
-  int i, j;
+  int i;
 
   pf = pfget(pid);
   acquire(&pftable.lock);
+  bp = bread(dev, pf->dip->addrs[0]);
+
   for(i = 0; i < NDIRECT; i++){
-    if(!pf->dip->addrs[i]){
-      pf->dip->addrs[i] = (uint)pgaddr;
-      bp = bread(dev, pf->dip->addrs[NDIRECT]);
-      for(j = 0; j < PGSIZE/BSIZE; j++)
-        // @TODO: get this to compile
-        memmove((int*)bp->data[(i*PGSIZE/BSIZE)+j], pgaddr+(j*BSIZE), BSIZE);
+    if(!bp->data[i]){
+      bp->data[i] = (uint)pgaddr;
+      storesegments(pf->dip, i, pgaddr);
       brelse(bp);
       release(&pftable.lock);
       return;
     }
   }
+  brelse(bp);
   release(&pftable.lock);
   panic("storepage: out of space");
 }
 
 void
-loadpage(int pid, void* pgaddr)
+loadpage(int pid, void *pgaddr)
 {
   struct pfile *pf;
   struct buf *bp;
-  int i, j;
+  int i;
 
   pf = pfget(pid);
   acquire(&pftable.lock);
+  bp = bread(dev, pf->dip->addrs[0]);
+
   for(i = 0; i < NDIRECT; i++){
-    // @TODO: get this to compile
-    if(pf->dip->addrs[i] == pgaddr){
-      pf->dip->addrs[i] = 0;
-      bp = bread(dev, pf->dip->addrs[NDIRECT]);
-      for(j = 0; j < PGSIZE/BSIZE; j++)
-        // @TODO: get this to compile
-        memmove(pgaddr+(j*BSIZE), (int*)bp->data[(i*PGSIZE/BSIZE)+j], BSIZE);
+    if(bp->data[i] == (uint)pgaddr){
+      bp->data[i] = 0;
+      loadsegments(pf->dip, i, pgaddr);
       brelse(bp);
       release(&pftable.lock);
       return;
     }
   }
+  brelse(bp);
   release(&pftable.lock);
   panic("loadpage: page not found");
 }
@@ -127,6 +128,38 @@ pfdelete(int pid)
 }
 
 // --------- Private Methods ------------
+void
+storesegments(struct dinode *dip, int pageindex, void *pgaddr)
+{
+  void *page_segment_addr, *block_addr;
+  struct buf *bp;
+  int i;
+
+  bp = bread(dev, dip->addrs[NDIRECT]);
+  for(i = 0; i < PGSIZE/BSIZE; i++){
+    page_segment_addr = pgaddr+(i*BSIZE);
+    block_addr = bp->data+(pageindex*PGSIZE/BSIZE)+i;
+    memmove(block_addr, page_segment_addr, BSIZE);
+  }
+  brelse(bp);
+}
+
+void
+loadsegments(struct dinode *dip, int pageindex, void *pgaddr)
+{
+  void *page_segment_addr, *block_addr;
+  struct buf *bp;
+  int i;
+
+  bp = bread(dev, dip->addrs[NDIRECT]);
+  for(i = 0; i < PGSIZE/BSIZE; i++){ 
+    page_segment_addr = pgaddr+(i*BSIZE);
+    block_addr = bp->data+(pageindex*PGSIZE/BSIZE)+i;
+    memmove(page_segment_addr, block_addr, BSIZE);
+  }
+  brelse(bp);
+}
+
 
 struct pfile*
 pfget(int pid)
