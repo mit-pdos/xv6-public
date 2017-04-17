@@ -69,7 +69,7 @@ storepage(int pid, void *pgaddr)
   acquire(&pftable.lock);
   bp = bread(dev, pf->dip->addrs[0]);
 
-  for(i = 0; i < MAX_TOTAL_PAGES - MAX_PSYC_PSGES + 1; i++){
+  for(i = 0; i < MAX_TOTAL_PAGES - MAX_PSYC_PAGES + 1; i++){
     if(!bp->data[i]){
       bp->data[i] = (uint)pgaddr;
       storesegments(pf->dip, i, pgaddr);
@@ -94,7 +94,7 @@ loadpage(int pid, void *pgaddr)
   acquire(&pftable.lock);
   bp = bread(dev, pf->dip->addrs[0]);
 
-  for(i = 0; i < MAX_TOTAL_PAGES - MAX_PSYC_PSGES + 1; i++){
+  for(i = 0; i < MAX_TOTAL_PAGES - MAX_PSYC_PAGES + 1; i++){
     if(bp->data[i] == (uint)pgaddr){
       bp->data[i] = 0;
       loadsegments(pf->dip, i, pgaddr);
