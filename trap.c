@@ -35,7 +35,8 @@ idtinit(void)
 pte_t *
 comparenfu(pte_t *a, pte_t *b)
 {
-  return (1) ? a : b;
+  // Return A by default, unless B has not been recently accessed
+  return (*b & PTE_A) ? a : b;
 }
 
 pte_t *
@@ -124,10 +125,10 @@ trap(struct trapframe *tf)
 
         switch (SELECTION){
           case NFU:
-            temp = comparenfu(page, temp);
+            temp = comparenfu(temp, page);
             break;
           case FIFO:
-            temp = comparefifo(page, temp);
+            temp = comparefifo(temp, page);
             break;
           default:
             panic("SELECTION not set to a valid option");
