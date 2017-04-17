@@ -47,7 +47,7 @@ exec(char *path, char **argv)
       goto bad;
     if(ph.vaddr + ph.memsz < ph.vaddr)
       goto bad;
-    if(i >= MAX_PSYC_PAGES)
+    if(SELECTION != NONE && i >= MAX_PSYC_PAGES)
       storepage(proc->pid, (char *)ph.vaddr);
     if((sz = allocuvm(pgdir, sz, ph.vaddr + ph.memsz)) == 0)
       goto bad;
