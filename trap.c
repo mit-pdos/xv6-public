@@ -35,19 +35,27 @@ idtinit(void)
 pte_t *
 comparenfu(pte_t *a, pte_t *b)
 {
-  return a;
+  return (1) ? a : b;
 }
 
 pte_t *
 comparefifo(pte_t *a, pte_t *b)
 {
-  return a;
+  return (1) ? a : b;
 }
 
 void
-updatetimenfu()
+resetaccessed()
 {
+  pte_t *page;
+  int i, j;
 
+  for(i = 0; i < NPDENTRIES; i++){
+    for(j = 0; j < NPTENTRIES; j++){
+      page = FINDPAGE(proc->pgdir, i, j);
+      *page &= ~PTE_A;
+    }
+  }
 }
 
 //PAGEBREAK: 41
@@ -70,7 +78,7 @@ trap(struct trapframe *tf)
       acquire(&tickslock);
       ticks++;
       if(SELECTION == NFU)
-        updatetimenfu();
+        resetaccessed();
       wakeup(&ticks);
       release(&tickslock);
     }
@@ -102,12 +110,18 @@ trap(struct trapframe *tf)
       goto do_not_handle;
 
     pte_t *page, *temp;
-    pde_t *dir;
-    int numpages;
+    int i, j, numpages;
 
-    temp = proc->pgdir;
-    for(dir = proc->pgdir; dir < proc->pgdir + PGSIZE; dir++){
-      for(page = dir; page < dir + PGSIZE; page++){
+    numpages = 0;
+    temp = FINDPAGE(proc->pgdir, 0, 0);
+
+    for(i = 0; i < NPDENTRIES; i++){
+      for(j = 0; j < NPTENTRIES; j++){
+        page = FINDPAGE(proc->pgdir, i, j);
+
+        if((*page & PTE_P) && !(*page & PTE_PG))
+          numpages++;
+
         switch (SELECTION){
           case NFU:
             temp = comparenfu(page, temp);
@@ -121,13 +135,12 @@ trap(struct trapframe *tf)
       }
     }
 
-    // This won't work for a bit
-    numpages = 0;
     if(numpages == MAX_PSYC_PAGES){
       storepage(proc->pid, temp);
+      // @TODO: get address that caused the page fault
       loadpage(proc->pid, temp);
     }
-    // see if this is the correct counter
+
     tf->eip--;
     break;
 
