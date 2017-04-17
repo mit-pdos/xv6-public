@@ -25,9 +25,6 @@ struct {
   struct pfile pfiles[NPROC];
 } pftable;
 
-// @TODO: Properly hard-coded dev
-int dev = 1;
-
 // --------- Public Methods ------------
 
 void
@@ -39,7 +36,7 @@ pfcopy(int parentpid, int pid)
   struct pfile *pf, *parentpf;
 
   for(inum = 1; inum < sb.ninodes; inum++) {
-    bp = bread(dev, IBLOCK(inum, sb));
+    bp = bread(ROOTDEV, IBLOCK(inum, sb));
     dip = (struct dinode*)bp->data + inum%IPB;
 
     if(dip->type == 0) {
@@ -65,7 +62,7 @@ storepage(int pid, void *pgaddr)
 
   pf = pfget(pid, 0);
   acquire(&pftable.lock);
-  bp = bread(dev, pf->dip->addrs[0]);
+  bp = bread(ROOTDEV, pf->dip->addrs[0]);
 
   for(i = 0; i < MAX_TOTAL_PAGES - MAX_PSYC_PAGES + 1; i++){
     if(!bp->data[i]){
@@ -90,7 +87,7 @@ loadpage(int pid, void *pgaddr)
 
   pf = pfget(pid, 0);
   acquire(&pftable.lock);
-  bp = bread(dev, pf->dip->addrs[0]);
+  bp = bread(ROOTDEV, pf->dip->addrs[0]);
 
   for(i = 0; i < MAX_TOTAL_PAGES - MAX_PSYC_PAGES + 1; i++){
     if(bp->data[i] == (uint)pgaddr){
@@ -133,7 +130,7 @@ storesegments(struct dinode *dip, int pageindex, void *pgaddr)
   struct buf *bp;
   int i;
 
-  bp = bread(dev, dip->addrs[NDIRECT]);
+  bp = bread(ROOTDEV, dip->addrs[NDIRECT]);
   for(i = 0; i < PGSIZE/BSIZE; i++){
     page_segment_addr = pgaddr+(i*BSIZE);
     block_addr = bp->data+(pageindex*PGSIZE/BSIZE)+i;
@@ -149,7 +146,7 @@ loadsegments(struct dinode *dip, int pageindex, void *pgaddr)
   struct buf *bp;
   int i;
 
-  bp = bread(dev, dip->addrs[NDIRECT]);
+  bp = bread(ROOTDEV, dip->addrs[NDIRECT]);
   for(i = 0; i < PGSIZE/BSIZE; i++){ 
     page_segment_addr = pgaddr+(i*BSIZE);
     block_addr = bp->data+(pageindex*PGSIZE/BSIZE)+i;
@@ -212,7 +209,7 @@ pffree(struct dinode *dip)
     }
 
     if(dip->addrs[NDIRECT]){
-      bp = bread(dev, dip->addrs[NDIRECT]);
+      bp = bread(ROOTDEV, dip->addrs[NDIRECT]);
       a = (uint*)bp->data;
       for(i = 0; i < NINDIRECT; i++){
         if(a[i])
@@ -234,7 +231,7 @@ bfree(uint b)
   struct buf *bp;
   int bi, m;
 
-  bp = bread(dev, BBLOCK(b, sb));
+  bp = bread(ROOTDEV, BBLOCK(b, sb));
   bi = b % BPB;
   m = 1 << (bi % 8);
   if((bp->data[bi/8] & m) == 0)
