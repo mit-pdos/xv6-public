@@ -141,7 +141,8 @@ trap(struct trapframe *tf)
     if(numpages == MAX_PSYC_PAGES){
       storepage(proc->pid, temp);
       temp = (pte_t *)PGROUNDDOWN(rcr2());
-      loadpage(proc->pid, temp);
+      temptime = FINDPAGE(proc->pgdirtimes, PDX(temp), PTX(temp));
+      loadpage(proc->pid, temp, temptime);
     }
 
     if(SELECTION == NFU)

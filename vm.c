@@ -201,17 +201,20 @@ inituvm(pde_t *pgdir, char *init, uint sz)
 // Load a program segment into pgdir.  addr must be page-aligned
 // and the pages from addr to addr+sz must already be mapped.
 int
-loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
+loaduvm(pde_t *pgdir, pde_t *pgdirtimes, char *addr, struct inode *ip, uint offset, uint sz)
 {
   uint i, pa, n;
-  pte_t *pte;
+  pte_t *pte, *ptetime;
 
   if((uint) addr % PGSIZE != 0)
     panic("loaduvm: addr must be page aligned");
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, addr+i, 0)) == 0)
       panic("loaduvm: address should exist");
+    if((ptetime = walkpgdir(pgdirtimes, addr+i, 0)) == 0)
+      panic("loaduvm: timestamp should exist");
     pa = PTE_ADDR(*pte);
+    *ptetime = ticks;
     if(sz - i < PGSIZE)
       n = sz - i;
     else

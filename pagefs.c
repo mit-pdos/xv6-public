@@ -79,7 +79,7 @@ storepage(int pid, void *pgaddr)
 }
 
 void
-loadpage(int pid, void *pgaddr)
+loadpage(int pid, void *pgaddr, uint *pgaddtime)
 {
   struct pfile *pf;
   struct buf *bp;
@@ -93,6 +93,7 @@ loadpage(int pid, void *pgaddr)
     if(bp->data[i] == (uint)pgaddr){
       bp->data[i] = 0;
       loadsegments(pf->dip, i, pgaddr);
+      *pgaddtime = ticks;
       brelse(bp);
       release(&pftable.lock);
       return;

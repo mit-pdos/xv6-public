@@ -12,11 +12,11 @@ exec(char *path, char **argv)
 {
   char *s, *last;
   int i, off;
-  uint argc, sz, sp, ustack[3+MAXARG+1];
+  uint argc, sz, szt, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
-  pde_t *pgdir, *oldpgdir;
+  pde_t *pgdir, *pgdirtimes, *oldpgdir;
 
   begin_op();
 
@@ -25,7 +25,7 @@ exec(char *path, char **argv)
     return -1;
   }
   ilock(ip);
-  pgdir = 0;
+  pgdir = pgdirtimes = 0;
 
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
@@ -35,9 +35,11 @@ exec(char *path, char **argv)
 
   if((pgdir = setupkvm()) == 0)
     goto bad;
+  if((pgdirtimes = setupkvm()) == 0)
+    goto bad;
 
   // Load program into memory.
-  sz = 0;
+  sz = szt = 0;
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -51,9 +53,11 @@ exec(char *path, char **argv)
       storepage(proc->pid, (char *)ph.vaddr);
     if((sz = allocuvm(pgdir, sz, ph.vaddr + ph.memsz)) == 0)
       goto bad;
+    if((szt = allocuvm(pgdirtimes, szt, ph.vaddr + ph.memsz)) == 0)
+      goto bad;
     if(ph.vaddr % PGSIZE != 0)
       goto bad;
-    if(loaduvm(pgdir, (char*)ph.vaddr, ip, ph.off, ph.filesz) < 0)
+    if(loaduvm(pgdir, pgdirtimes, (char*)ph.vaddr, ip, ph.off, ph.filesz) < 0)
       goto bad;
   }
   iunlockput(ip);
@@ -106,6 +110,8 @@ exec(char *path, char **argv)
  bad:
   if(pgdir)
     freevm(pgdir);
+  if(pgdirtimes)
+    freevm(pgdirtimes);
   if(ip){
     iunlockput(ip);
     end_op();
