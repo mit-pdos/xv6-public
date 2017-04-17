@@ -46,6 +46,13 @@ resetaccessed()
   }
 }
 
+void
+setaccessed(uint eip)
+{
+  pte_t *page = EIP2PAGE(eip);
+  *page |= PTE_A;
+}
+
 //PAGEBREAK: 41
 void
 trap(struct trapframe *tf)
@@ -66,7 +73,7 @@ trap(struct trapframe *tf)
       acquire(&tickslock);
       ticks++;
       if(SELECTION == NFU)
-        resetaccessed();
+        setaccessed(tf->eip);
       wakeup(&ticks);
       release(&tickslock);
     }
@@ -133,9 +140,12 @@ trap(struct trapframe *tf)
 
     if(numpages == MAX_PSYC_PAGES){
       storepage(proc->pid, temp);
-      // @TODO: get address that caused the page fault
+      temp = EIP2PAGE(tf->eip);
       loadpage(proc->pid, temp);
     }
+
+    if(SELECTION == NFU)
+      resetaccessed();
 
     tf->eip--;
     break;

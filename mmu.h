@@ -146,6 +146,7 @@ struct segdesc {
 #define PTE_PG          0x200   // Paged out of memory into file
 
 #define FINDPAGE(pgdir, a, b) (&((pte_t *)(P2V(PTE_ADDR(pgdir[a]))))[b])
+#define EIP2PAGE(eip) (&eip) // @TODO: This.
 
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)   ((uint)(pte) & ~0xFFF)
