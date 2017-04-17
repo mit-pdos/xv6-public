@@ -11,7 +11,7 @@
 void bfree(uint b);
 void pffree(struct dinode *dip);
 struct pfile* pfalloc(int pid);
-struct pfile* pfget(int pid);
+struct pfile* pfget(int pid, int allocifmiss);
 void storesegments(struct dinode *dip, int pageindex, void *pgaddr);
 void loadsegments(struct dinode *dip, int pageindex, void *pgaddr);
 
@@ -43,7 +43,7 @@ pfcopy(int parentpid, int pid)
     dip = (struct dinode*)bp->data + inum%IPB;
 
     if(dip->type == 0) {
-      parentpf = pfget(parentpid);
+      parentpf = pfget(parentpid, pid);
       memmove(dip, parentpf->dip, sizeof(*dip));
       brelse(bp);
       pf = pfalloc(pid);
@@ -63,7 +63,7 @@ storepage(int pid, void *pgaddr)
   struct buf *bp;
   int i;
 
-  pf = pfget(pid);
+  pf = pfget(pid, 0);
   acquire(&pftable.lock);
   bp = bread(dev, pf->dip->addrs[0]);
 
@@ -88,7 +88,7 @@ loadpage(int pid, void *pgaddr)
   struct buf *bp;
   int i;
 
-  pf = pfget(pid);
+  pf = pfget(pid, 0);
   acquire(&pftable.lock);
   bp = bread(dev, pf->dip->addrs[0]);
 
@@ -160,7 +160,7 @@ loadsegments(struct dinode *dip, int pageindex, void *pgaddr)
 
 
 struct pfile*
-pfget(int pid)
+pfget(int pid, int allocifmiss)
 {
   struct pfile *pf;
 
@@ -172,6 +172,10 @@ pfget(int pid)
     }
   }
   release(&pftable.lock);
+
+  if(allocifmiss)
+    return pfalloc(allocifmiss);
+
   panic("pfget: pfile not found");
 }
 
