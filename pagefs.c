@@ -67,6 +67,7 @@ storepage(int pid, void* pgaddr)
   acquire(&pftable.lock);
   for(i = 0; i < NDIRECT; i++){
     if(!pf->dip->addrs[i]){
+      pf->dip->addrs[i] = (uint)pgaddr;
       bp = bread(dev, pf->dip->addrs[NDIRECT]);
       for(j = 0; j < PGSIZE/BSIZE; j++)
         // @TODO: get this to compile
