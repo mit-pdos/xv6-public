@@ -32,19 +32,6 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
-pte_t *
-comparenfu(pte_t *a, pte_t *b)
-{
-  // Return A by default, unless B has not been recently accessed
-  return (*b & PTE_A) ? a : b;
-}
-
-pte_t *
-comparefifo(pte_t *a, pte_t *b)
-{
-  return (1) ? a : b;
-}
-
 void
 resetaccessed()
 {
@@ -110,25 +97,32 @@ trap(struct trapframe *tf)
     if(SELECTION == NONE)
       goto do_not_handle;
 
-    pte_t *page, *temp;
+    pte_t *page, *temp, *pagetime, *temptime;
     int i, j, numpages;
 
     numpages = 0;
     temp = FINDPAGE(proc->pgdir, 0, 0);
+    temptime = FINDPAGE(proc->pgdirtimes, 0, 0);
 
     for(i = 0; i < NPDENTRIES; i++){
       for(j = 0; j < NPTENTRIES; j++){
         page = FINDPAGE(proc->pgdir, i, j);
+        pagetime = FINDPAGE(proc->pgdirtimes, i, j);
 
         if((*page & PTE_P) && !(*page & PTE_PG)){
           numpages++;
 
           switch (SELECTION){
             case NFU:
-              temp = comparenfu(temp, page);
+              // Keep using temp by default, unless page has not been recently accessed
+              temp = (*page & PTE_A) ? temp : page;
               break;
             case FIFO:
-              temp = comparefifo(temp, page);
+              // Keep using temp by default, unless page was created earlier
+              if(*pagetime < *temptime){
+                temp = page;
+                temptime = pagetime; 
+              }
               break;
             default:
               panic("SELECTION not set to a valid option");
