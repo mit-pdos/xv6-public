@@ -32,22 +32,25 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
-pte_t *
-comparenfu(pte_t *a, pte_t *b)
+void
+resetaccessed()
 {
-  return a;
-}
+  pte_t *page;
+  int i, j;
 
-pte_t *
-comparefifo(pte_t *a, pte_t *b)
-{
-  return a;
+  for(i = 0; i < NPDENTRIES; i++){
+    for(j = 0; j < NPTENTRIES; j++){
+      page = FINDPAGE(proc->pgdir, i, j);
+      *page &= ~PTE_A;
+    }
+  }
 }
 
 void
-updatetimenfu()
+setaccessed(uint eip)
 {
-
+  pte_t *page = (pte_t *)PGROUNDDOWN(rcr2());
+  *page |= PTE_A;
 }
 
 //PAGEBREAK: 41
@@ -70,7 +73,7 @@ trap(struct trapframe *tf)
       acquire(&tickslock);
       ticks++;
       if(SELECTION == NFU)
-        updatetimenfu();
+        setaccessed(tf->eip);
       wakeup(&ticks);
       release(&tickslock);
     }
@@ -101,31 +104,50 @@ trap(struct trapframe *tf)
     if(SELECTION == NONE)
       goto do_not_handle;
 
-    pte_t *page, *temp;
-    pde_t *dir;
+    pte_t *page, *temp, *pagetime, *temptime;
+    int i, j, numpages;
 
-    temp = proc->pgdir;
-    for(dir = proc->pgdir; dir < proc->pgdir + PGSIZE; dir++){
-      for(page = dir; page < dir + PGSIZE; page++){
-        switch (SELECTION){
-          case NFU:
-            temp = comparenfu(page, temp);
-            break;
-          case FIFO:
-            temp = comparefifo(page, temp);
-            break;
-          default:
-            panic("SELECTION not set to a valid option");
+    numpages = 0;
+    temp = FINDPAGE(proc->pgdir, 0, 0);
+    temptime = FINDPAGE(proc->pgdirtimes, 0, 0);
+
+    for(i = 0; i < NPDENTRIES; i++){
+      for(j = 0; j < NPTENTRIES; j++){
+        page = FINDPAGE(proc->pgdir, i, j);
+        pagetime = FINDPAGE(proc->pgdirtimes, i, j);
+
+        if((*page & PTE_P) && !(*page & PTE_PG)){
+          numpages++;
+
+          switch (SELECTION){
+            case NFU:
+              // Keep using temp by default, unless page has not been recently accessed
+              temp = (*page & PTE_A) ? temp : page;
+              break;
+            case FIFO:
+              // Keep using temp by default, unless page was created earlier
+              if(*pagetime < *temptime){
+                temp = page;
+                temptime = pagetime; 
+              }
+              break;
+            default:
+              panic("SELECTION not set to a valid option");
+          }
         }
       }
     }
 
-    // This won't work for a bit
-    // if(numpages == MAX_PSYC_PAGES){
-    //   storepage(temp);
-    //   loadpage(temp);
-    // }
-    // see if this is the correct counter
+    if(numpages == MAX_PSYC_PAGES){
+      storepage(proc->pid, temp);
+      temp = (pte_t *)PGROUNDDOWN(rcr2());
+      temptime = FINDPAGE(proc->pgdirtimes, PDX(temp), PTX(temp));
+      loadpage(proc->pid, temp, temptime);
+    }
+
+    if(SELECTION == NFU)
+      resetaccessed();
+
     tf->eip--;
     break;
 
