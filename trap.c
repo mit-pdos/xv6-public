@@ -120,18 +120,19 @@ trap(struct trapframe *tf)
       for(j = 0; j < NPTENTRIES; j++){
         page = FINDPAGE(proc->pgdir, i, j);
 
-        if((*page & PTE_P) && !(*page & PTE_PG))
+        if((*page & PTE_P) && !(*page & PTE_PG)){
           numpages++;
 
-        switch (SELECTION){
-          case NFU:
-            temp = comparenfu(temp, page);
-            break;
-          case FIFO:
-            temp = comparefifo(temp, page);
-            break;
-          default:
-            panic("SELECTION not set to a valid option");
+          switch (SELECTION){
+            case NFU:
+              temp = comparenfu(temp, page);
+              break;
+            case FIFO:
+              temp = comparefifo(temp, page);
+              break;
+            default:
+              panic("SELECTION not set to a valid option");
+          }
         }
       }
     }
