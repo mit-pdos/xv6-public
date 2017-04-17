@@ -93,6 +93,7 @@ loadpage(int pid, void* pgaddr)
   for(i = 0; i < NDIRECT; i++){
     // @TODO: get this to compile
     if(pf->dip->addrs[i] == pgaddr){
+      pf->dip->addrs[i] = 0;
       bp = bread(dev, pf->dip->addrs[NDIRECT]);
       for(j = 0; j < PGSIZE/BSIZE; j++)
         // @TODO: get this to compile
