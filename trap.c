@@ -49,7 +49,7 @@ resetaccessed()
 void
 setaccessed(uint eip)
 {
-  pte_t *page = EIP2PAGE(eip);
+  pte_t *page = (pte_t *)PGROUNDDOWN(rcr2());
   *page |= PTE_A;
 }
 
@@ -140,7 +140,7 @@ trap(struct trapframe *tf)
 
     if(numpages == MAX_PSYC_PAGES){
       storepage(proc->pid, temp);
-      temp = EIP2PAGE(tf->eip);
+      temp = (pte_t *)PGROUNDDOWN(rcr2());
       loadpage(proc->pid, temp);
     }
 
