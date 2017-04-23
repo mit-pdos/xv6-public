@@ -32,10 +32,33 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
+void
+resetaccessed()
+{
+  pte_t *page;
+  int i, j;
+
+  for(i = 0; i < NPDENTRIES; i++){
+    for(j = 0; j < NPTENTRIES; j++){
+      page = FINDPAGE(proc->pgdir, i, j);
+      *page &= ~PTE_A;
+    }
+  }
+}
+
+void
+setaccessed(uint eip)
+{
+  // @TODO: Find correct current page
+  // pte_t *page = FINDPAGE(PGROUNDDOWN(*eip));
+  // *page |= PTE_A;
+}
+
 //PAGEBREAK: 41
 void
 trap(struct trapframe *tf)
 {
+
   if(tf->trapno == T_SYSCALL){
     if(proc->killed)
       exit();
@@ -51,6 +74,7 @@ trap(struct trapframe *tf)
     if(cpunum() == 0){
       acquire(&tickslock);
       ticks++;
+      setaccessed(tf->eip);
       wakeup(&ticks);
       release(&tickslock);
     }
@@ -77,8 +101,22 @@ trap(struct trapframe *tf)
             cpunum(), tf->cs, tf->eip);
     lapiceoi();
     break;
+  case T_PGFLT:
+    if(SELECTION == NONE)
+      goto do_not_handle;
+
+    if(getpagecount(proc) >= MAX_PSYC_PAGES)
+      storepage(proc, findoldpage(proc));
+
+    // @TODO: find pageaddr
+    // loadpage(proc, pageaddr);
+
+    resetaccessed();
+    tf->eip--;
+    break;
 
   //PAGEBREAK: 13
+do_not_handle:
   default:
     if(proc == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.

@@ -63,6 +63,8 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  uint *pageaddrs[MAX_PSYC_PAGES]; // corresponds to pagetimes
+  uint pagetimes[MAX_PSYC_PAGES]; // timestamp each page was created
 };
 
 // Process memory is laid out contiguously, low addresses first:

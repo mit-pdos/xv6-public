@@ -237,18 +237,26 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 
   a = PGROUNDUP(oldsz);
   for(; a < newsz; a += PGSIZE){
-    mem = kalloc();
-    if(mem == 0){
-      cprintf("allocuvm out of memory\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      return 0;
+    if(getpagecount(proc) < MAX_PSYC_PAGES){
+      mem = kalloc();
+      if(mem == 0){
+        cprintf("allocuvm out of memory\n");
+        deallocuvm(pgdir, newsz, oldsz);
+        return 0;
+      }
+      memset(mem, 0, PGSIZE);
+      if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+        cprintf("allocuvm out of memory (2)\n");
+        deallocuvm(pgdir, newsz, oldsz);
+        kfree(mem);
+        return 0;
+      }
     }
-    memset(mem, 0, PGSIZE);
-    if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-      cprintf("allocuvm out of memory (2)\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      kfree(mem);
-      return 0;
+    else if(getpagecount(proc) < MAX_TOTAL_PAGES){
+      // @TODO: Load directly to file
+    }
+    else{
+      panic("Too many pages");
     }
   }
   return newsz;
@@ -301,6 +309,7 @@ freevm(pde_t *pgdir)
     }
   }
   kfree((char*)pgdir);
+  pfdelete(proc->pid);
 }
 
 // Clear PTE_U on a page. Used to create an inaccessible
@@ -341,6 +350,9 @@ copyuvm(pde_t *pgdir, uint sz)
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
       goto bad;
   }
+
+  pfcopy(proc, proc);
+
   return d;
 
 bad:

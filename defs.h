@@ -182,5 +182,13 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
+// Assignment 5
+void pfcopy(struct proc*, struct proc*);
+void storepage(struct proc*, uint*);
+void loadpage(struct proc*, uint*);
+void pfdelete(int);
+int getpagecount(struct proc*);
+uint* findoldpage(struct proc*);
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

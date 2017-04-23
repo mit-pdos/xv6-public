@@ -1,0 +1,15 @@
+README - A5: Ezra Lazar and Adam Zielonko
+
+To make, one of:
+
+	$ make clean && make qemu # SELECTION=NFU
+	$ make clean && make qemu SELECTION=FIFO
+	$ make clean && make qemu SELECTION=NONE
+
+To run test:
+
+	$ myMemTest
+
+
+
+It seems as though NFU is fundamentally broken, but the others at least mostly work.
