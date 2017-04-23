@@ -175,7 +175,7 @@ int             allocuvm(pde_t*, uint, uint);
 int             deallocuvm(pde_t*, uint, uint);
 void            freevm(pde_t*);
 void            inituvm(pde_t*, char*, uint);
-int             loaduvm(pde_t*, pde_t*, char*, struct inode*, uint, uint);
+int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
 pde_t*          copyuvm(pde_t*, uint);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
@@ -183,11 +183,12 @@ int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
 // Assignment 5
-void pfcopy(int, int);
-void storepage(int, void*);
-void loadpage(int, void*, uint*);
+void pfcopy(struct proc*, struct proc*);
+void storepage(struct proc*, uint*);
+void loadpage(struct proc*, uint*);
 void pfdelete(int);
-
+int getpagecount(struct proc*);
+uint* findoldpage(struct proc*);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

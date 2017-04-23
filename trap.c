@@ -49,14 +49,16 @@ resetaccessed()
 void
 setaccessed(uint eip)
 {
-  pte_t *page = (pte_t *)PGROUNDDOWN(rcr2());
-  *page |= PTE_A;
+  // @TODO: Find correct current page
+  // pte_t *page = FINDPAGE(PGROUNDDOWN(*eip));
+  // *page |= PTE_A;
 }
 
 //PAGEBREAK: 41
 void
 trap(struct trapframe *tf)
 {
+
   if(tf->trapno == T_SYSCALL){
     if(proc->killed)
       exit();
@@ -72,8 +74,7 @@ trap(struct trapframe *tf)
     if(cpunum() == 0){
       acquire(&tickslock);
       ticks++;
-      if(SELECTION == NFU)
-        setaccessed(tf->eip);
+      setaccessed(tf->eip);
       wakeup(&ticks);
       release(&tickslock);
     }
@@ -104,50 +105,13 @@ trap(struct trapframe *tf)
     if(SELECTION == NONE)
       goto do_not_handle;
 
-    pte_t *page, *temp, *pagetime, *temptime;
-    int i, j, numpages;
+    if(getpagecount(proc) >= MAX_PSYC_PAGES)
+      storepage(proc, findoldpage(proc));
 
-    numpages = 0;
-    temp = FINDPAGE(proc->pgdir, 0, 0);
-    temptime = FINDPAGE(proc->pgdirtimes, 0, 0);
+    // @TODO: find pageaddr
+    // loadpage(proc, pageaddr);
 
-    for(i = 0; i < NPDENTRIES; i++){
-      for(j = 0; j < NPTENTRIES; j++){
-        page = FINDPAGE(proc->pgdir, i, j);
-        pagetime = FINDPAGE(proc->pgdirtimes, i, j);
-
-        if((*page & PTE_P) && !(*page & PTE_PG)){
-          numpages++;
-
-          switch (SELECTION){
-            case NFU:
-              // Keep using temp by default, unless page has not been recently accessed
-              temp = (*page & PTE_A) ? temp : page;
-              break;
-            case FIFO:
-              // Keep using temp by default, unless page was created earlier
-              if(*pagetime < *temptime){
-                temp = page;
-                temptime = pagetime; 
-              }
-              break;
-            default:
-              panic("SELECTION not set to a valid option");
-          }
-        }
-      }
-    }
-
-    if(numpages == MAX_PSYC_PAGES){
-      storepage(proc->pid, temp);
-      temp = (pte_t *)PGROUNDDOWN(rcr2());
-      temptime = FINDPAGE(proc->pgdirtimes, PDX(temp), PTX(temp));
-      loadpage(proc->pid, temp, temptime);
-    }
-
-    if(SELECTION == NFU)
-      resetaccessed();
-
+    resetaccessed();
     tf->eip--;
     break;
 

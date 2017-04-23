@@ -201,20 +201,17 @@ inituvm(pde_t *pgdir, char *init, uint sz)
 // Load a program segment into pgdir.  addr must be page-aligned
 // and the pages from addr to addr+sz must already be mapped.
 int
-loaduvm(pde_t *pgdir, pde_t *pgdirtimes, char *addr, struct inode *ip, uint offset, uint sz)
+loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 {
   uint i, pa, n;
-  pte_t *pte, *ptetime;
+  pte_t *pte;
 
   if((uint) addr % PGSIZE != 0)
     panic("loaduvm: addr must be page aligned");
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, addr+i, 0)) == 0)
       panic("loaduvm: address should exist");
-    if((ptetime = walkpgdir(pgdirtimes, addr+i, 0)) == 0)
-      panic("loaduvm: timestamp should exist");
     pa = PTE_ADDR(*pte);
-    *ptetime = ticks;
     if(sz - i < PGSIZE)
       n = sz - i;
     else
@@ -240,18 +237,26 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 
   a = PGROUNDUP(oldsz);
   for(; a < newsz; a += PGSIZE){
-    mem = kalloc();
-    if(mem == 0){
-      cprintf("allocuvm out of memory\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      return 0;
+    if(getpagecount(proc) < MAX_PSYC_PAGES){
+      mem = kalloc();
+      if(mem == 0){
+        cprintf("allocuvm out of memory\n");
+        deallocuvm(pgdir, newsz, oldsz);
+        return 0;
+      }
+      memset(mem, 0, PGSIZE);
+      if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+        cprintf("allocuvm out of memory (2)\n");
+        deallocuvm(pgdir, newsz, oldsz);
+        kfree(mem);
+        return 0;
+      }
     }
-    memset(mem, 0, PGSIZE);
-    if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-      cprintf("allocuvm out of memory (2)\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      kfree(mem);
-      return 0;
+    else if(getpagecount(proc) < MAX_TOTAL_PAGES){
+      // @TODO: Load directly to file
+    }
+    else{
+      panic("Too many pages");
     }
   }
   return newsz;
@@ -304,6 +309,7 @@ freevm(pde_t *pgdir)
     }
   }
   kfree((char*)pgdir);
+  pfdelete(proc->pid);
 }
 
 // Clear PTE_U on a page. Used to create an inaccessible
@@ -344,6 +350,9 @@ copyuvm(pde_t *pgdir, uint sz)
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
       goto bad;
   }
+
+  pfcopy(proc, proc);
+
   return d;
 
 bad:

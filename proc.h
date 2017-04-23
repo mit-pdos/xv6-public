@@ -52,9 +52,6 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   pde_t* pgdir;                // Page table
-  // @TODO: Initialize pgdirtimes
-  // @TODO: set related pgdirtimes entry to ticks when page is loaded
-  pde_t* pgdirtimes;           // timestamps for page table entries
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   int pid;                     // Process ID
@@ -66,6 +63,8 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  uint *pageaddrs[MAX_PSYC_PAGES]; // corresponds to pagetimes
+  uint pagetimes[MAX_PSYC_PAGES]; // timestamp each page was created
 };
 
 // Process memory is laid out contiguously, low addresses first:

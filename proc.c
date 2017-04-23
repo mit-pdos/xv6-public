@@ -177,7 +177,6 @@ fork(void)
 
   release(&ptable.lock);
 
-  pfcopy(proc->pid, np->pid);
   return pid;
 }
 
@@ -192,8 +191,6 @@ exit(void)
 
   if(proc == initproc)
     panic("init exiting");
-
-  pfdelete(proc->pid);
 
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
