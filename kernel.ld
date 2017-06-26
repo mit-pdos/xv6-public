@@ -1,41 +1,29 @@
 /* Simple linker script for the JOS kernel.
    See the GNU ld 'info' manual ("info ld") to learn the syntax. */
 
-OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
-OUTPUT_ARCH(i386)
+/* OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386") */
+OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
+OUTPUT_ARCH(i386:x86-64)
 ENTRY(_start)
+
+mboot_load_addr = 0x00100000;
 
 SECTIONS
 {
 	/* Link the kernel at this address: "." means the current address */
         /* Must be equal to KERNLINK */
-	. = 0x80100000;
+	. = 0xFFFFFFFF80100000; 
 
-	.text : AT(0x100000) {
-		*(.text .stub .text.* .gnu.linkonce.t.*)
+	PROVIDE(begin = .);
+
+	.text : AT(mboot_load_addr) {
+		*(.text .rela.text .stub .text.* .gnu.linkonce.t.*)
 	}
 
 	PROVIDE(etext = .);	/* Define the 'etext' symbol to this value */
 
 	.rodata : {
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
-	}
-
-	/* Include debugging information in kernel memory */
-	.stab : {
-		PROVIDE(__STAB_BEGIN__ = .);
-		*(.stab);
-		PROVIDE(__STAB_END__ = .);
-		BYTE(0)		/* Force the linker to allocate space
-				   for this section */
-	}
-
-	.stabstr : {
-		PROVIDE(__STABSTR_BEGIN__ = .);
-		*(.stabstr);
-		PROVIDE(__STABSTR_END__ = .);
-		BYTE(0)		/* Force the linker to allocate space
-				   for this section */
 	}
 
 	/* Adjust the address for the data segment to the next page */
@@ -54,15 +42,24 @@ SECTIONS
 		*(.data)
 	}
 
+	. = ALIGN(0x1000);
+
 	PROVIDE(edata = .);
 
 	.bss : {
 		*(.bss)
+		*(COMMON)
 	}
+
+	. = ALIGN(0x1000);
 
 	PROVIDE(end = .);
 
 	/DISCARD/ : {
-		*(.eh_frame .note.GNU-stack)
+		*(.eh_frame .rela.eh_frame .note.GNU-stack)
 	}
 }
+
+mboot_load_end = mboot_load_addr + (edata - begin);
+mboot_bss_end = mboot_load_addr + (end - begin);
+mboot_entry_addr = mboot_load_addr + (mboot_entry - begin);

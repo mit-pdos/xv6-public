@@ -69,10 +69,14 @@ release(struct spinlock *lk)
 
 // Record the current call stack in pcs[] by following the %ebp chain.
 void
-getcallerpcs(void *v, uint pcs[])
+getcallerpcs(void *v, addr_t pcs[])
 {
-  uint *ebp;
-  int i;
+  addr_t *ebp;
+
+  asm volatile("mov %%rbp, %0" : "=r" (ebp));
+  getstackpcs(ebp, pcs);
+
+  /*int i;
 
   ebp = (uint*)v - 2;
   for(i = 0; i < 10; i++){
@@ -82,8 +86,29 @@ getcallerpcs(void *v, uint pcs[])
     ebp = (uint*)ebp[0]; // saved %ebp
   }
   for(; i < 10; i++)
+    pcs[i] = 0;*/
+}
+
+void
+getstackpcs(addr_t *ebp, addr_t pcs[])
+{
+  int i;
+  
+  for(i = 0; i < 10; i++){
+    if(ebp == 0 || ebp < (addr_t*)KERNBASE || ebp == (addr_t*)0xffffffff)
+      break;
+    pcs[i] = ebp[1];     // saved %eip
+    ebp = (addr_t*)ebp[0]; // saved %ebp
+  }
+  for(; i < 10; i++)
     pcs[i] = 0;
 }
+
+
+
+
+
+
 
 // Check whether this cpu is holding the lock.
 int

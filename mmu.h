@@ -72,12 +72,12 @@ struct segdesc {
 // Normal segment
 #define SEG(type, base, lim, dpl) (struct segdesc)    \
 { ((lim) >> 12) & 0xffff, (uint)(base) & 0xffff,      \
-  ((uint)(base) >> 16) & 0xff, type, 1, dpl, 1,       \
-  (uint)(lim) >> 28, 0, 0, 1, 1, (uint)(base) >> 24 }
+  ((addr_t)(base) >> 16) & 0xff, type, 1, dpl, 1,       \
+  (addr_t)(lim) >> 28, 0, 0, 1, 1, (addr_t)(base) >> 24 }
 #define SEG16(type, base, lim, dpl) (struct segdesc)  \
 { (lim) & 0xffff, (uint)(base) & 0xffff,              \
-  ((uint)(base) >> 16) & 0xff, type, 1, dpl, 1,       \
-  (uint)(lim) >> 16, 0, 0, 1, 0, (uint)(base) >> 24 }
+  ((addr_t)(base) >> 16) & 0xff, type, 1, dpl, 1,       \
+  (addr_t)(lim) >> 16, 0, 0, 1, 0, (addr_t)(base) >> 24 }
 #endif
 
 #define DPL_USER    0x3     // User DPL
@@ -113,25 +113,27 @@ struct segdesc {
 //  \--- PDX(va) --/ \--- PTX(va) --/
 
 // page directory index
-#define PDX(va)         (((uint)(va) >> PDXSHIFT) & 0x3FF)
+#define PDX(va)         (((addr_t)(va) >> PDXSHIFT) & PXMASK)
 
 // page table index
-#define PTX(va)         (((uint)(va) >> PTXSHIFT) & 0x3FF)
+#define PTX(va)         (((addr_t)(va) >> PTXSHIFT) & PXMASK)
 
 // construct virtual address from indexes and offset
-#define PGADDR(d, t, o) ((uint)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
+#define PGADDR(d, t, o) ((addr_t)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
 // Page directory and page table constants.
-#define NPDENTRIES      1024    // # directory entries per page directory
-#define NPTENTRIES      1024    // # PTEs per page table
+#define NPDENTRIES      512     // # directory entries per page directory
+#define NPTENTRIES      512     // # PTEs per page table
 #define PGSIZE          4096    // bytes mapped by a page
 
 #define PGSHIFT         12      // log2(PGSIZE)
 #define PTXSHIFT        12      // offset of PTX in a linear address
-#define PDXSHIFT        22      // offset of PDX in a linear address
+#define PDXSHIFT        21      // offset of PDX in a linear address
 
-#define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
-#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
+#define PXMASK          0X1FF
+
+#define PGROUNDUP(sz)  (((sz)+((addr_t)PGSIZE-1)) & ~((addr_t)(PGSIZE-1)))
+#define PGROUNDDOWN(a) (((a)) & ~((addr_t)(PGSIZE-1)))
 
 // Page table/directory entry flags.
 #define PTE_P           0x001   // Present
@@ -145,11 +147,11 @@ struct segdesc {
 #define PTE_MBZ         0x180   // Bits must be zero
 
 // Address in page table or page directory entry
-#define PTE_ADDR(pte)   ((uint)(pte) & ~0xFFF)
-#define PTE_FLAGS(pte)  ((uint)(pte) &  0xFFF)
+#define PTE_ADDR(pte)   ((addr_t)(pte) & ~0xFFF)
+#define PTE_FLAGS(pte)  ((addr_t)(pte) &  0xFFF)
 
 #ifndef __ASSEMBLER__
-typedef uint pte_t;
+typedef addr_t pte_t;
 
 // Task state segment format
 struct taskstate {

@@ -62,11 +62,13 @@ struct segdesc;
 static inline void
 lgdt(struct segdesc *p, int size)
 {
-  volatile ushort pd[3];
+  volatile ushort pd[5];
 
   pd[0] = size-1;
-  pd[1] = (uint)p;
-  pd[2] = (uint)p >> 16;
+  pd[1] = (addr_t)p;
+  pd[2] = (addr_t)p >> 16;
+  pd[3] = (addr_t)p >> 32;
+  pd[4] = (addr_t)p >> 48;
 
   asm volatile("lgdt (%0)" : : "r" (pd));
 }
@@ -76,11 +78,13 @@ struct gatedesc;
 static inline void
 lidt(struct gatedesc *p, int size)
 {
-  volatile ushort pd[3];
+  volatile ushort pd[5];
 
   pd[0] = size-1;
-  pd[1] = (uint)p;
-  pd[2] = (uint)p >> 16;
+  pd[1] = (addr_t)p;
+  pd[2] = (addr_t)p >> 16;
+  pd[3] = (addr_t)p >> 32;
+  pd[4] = (addr_t)p >> 48;
 
   asm volatile("lidt (%0)" : : "r" (pd));
 }
@@ -91,11 +95,11 @@ ltr(ushort sel)
   asm volatile("ltr %0" : : "r" (sel));
 }
 
-static inline uint
+static inline addr_t
 readeflags(void)
 {
-  uint eflags;
-  asm volatile("pushfl; popl %0" : "=r" (eflags));
+  addr_t eflags;
+  asm volatile("pushf; pop %0" : "=r" (eflags));
   return eflags;
 }
 
@@ -117,8 +121,14 @@ sti(void)
   asm volatile("sti");
 }
 
+static inline void
+hlt(void)
+{
+  asm volatile("hlt");
+}
+
 static inline uint
-xchg(volatile uint *addr, uint newval)
+xchg(volatile uint *addr, addr_t newval)
 {
   uint result;
 
@@ -130,25 +140,26 @@ xchg(volatile uint *addr, uint newval)
   return result;
 }
 
-static inline uint
+static inline addr_t
 rcr2(void)
 {
-  uint val;
-  asm volatile("movl %%cr2,%0" : "=r" (val));
+  addr_t val;
+  asm volatile("mov %%cr2,%0" : "=r" (val));
   return val;
 }
 
 static inline void
-lcr3(uint val)
+lcr3(addr_t val)
 {
-  asm volatile("movl %0,%%cr3" : : "r" (val));
+  asm volatile("mov %0,%%cr3" : : "r" (val));
 }
+
 
 //PAGEBREAK: 36
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
 struct trapframe {
-  // registers as pushed by pusha
+/*  // registers as pushed by pusha
   uint edi;
   uint esi;
   uint ebp;
@@ -179,5 +190,32 @@ struct trapframe {
   // below here only when crossing rings, such as from user to kernel
   uint esp;
   ushort ss;
-  ushort padding6;
+  ushort padding6;*/
+
+
+
+   uint64 eax;      // rax
+   uint64 rbx;
+   uint64 rcx;
+   uint64 rdx;
+   uint64 rbp;
+   uint64 rsi;
+   uint64 rdi;
+   uint64 r8;
+   uint64 r9;
+   uint64 r10;
+   uint64 r11;
+   uint64 r12;
+   uint64 r13;
+   uint64 r14;
+   uint64 r15;
+ 
+   uint64 trapno;
+   uint64 err;
+ 
+   uint64 eip;     // rip
+   uint64 cs;
+   uint64 eflags;  // rflags
+   uint64 esp;     // rsp
+   uint64 ds;      // ss
 };

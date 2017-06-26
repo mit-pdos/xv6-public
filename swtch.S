@@ -7,22 +7,26 @@
 
 .globl swtch
 swtch:
-  movl 4(%esp), %eax
-  movl 8(%esp), %edx
-
   # Save old callee-save registers
-  pushl %ebp
-  pushl %ebx
-  pushl %esi
-  pushl %edi
+  push %rbp
+  push %rbx
+  push %r11
+  push %r12
+  push %r13
+  push %r14
+  push %r15
 
   # Switch stacks
-  movl %esp, (%eax)
-  movl %edx, %esp
+  mov %rsp, (%rdi)
+  mov %rsi, %rsp
 
   # Load new callee-save registers
-  popl %edi
-  popl %esi
-  popl %ebx
-  popl %ebp
-  ret
+  pop %r15
+  pop %r14
+  pop %r13
+  pop %r12
+  pop %r11
+  pop %rbx
+  pop %rbp
+
+  ret #??

@@ -17,7 +17,7 @@
 static int uart;    // is there a uart?
 
 void
-uartinit(void)
+uartearlyinit(void)
 {
   char *p;
 
@@ -37,6 +37,19 @@ uartinit(void)
     return;
   uart = 1;
 
+
+
+  // Announce that we're here.
+  for(p="xv6...\n"; *p; p++)
+    uartputc(*p);
+}
+
+void
+uartinit(void)
+{
+  if(!uart)
+    return;
+
   // Acknowledge pre-existing interrupt conditions;
   // enable interrupts.
   inb(COM1+2);
@@ -44,11 +57,7 @@ uartinit(void)
   picenable(IRQ_COM1);
   ioapicenable(IRQ_COM1, 0);
 
-  // Announce that we're here.
-  for(p="xv6...\n"; *p; p++)
-    uartputc(*p);
 }
-
 void
 uartputc(int c)
 {

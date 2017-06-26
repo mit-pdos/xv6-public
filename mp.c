@@ -29,7 +29,7 @@ sum(uchar *addr, int len)
 
 // Look for an MP structure in the len bytes at addr.
 static struct mp*
-mpsearch1(uint a, int len)
+mpsearch1(addr_t a, int len)
 {
   uchar *e, *p, *addr;
 
@@ -78,7 +78,7 @@ mpconfig(struct mp **pmp)
 
   if((mp = mpsearch()) == 0 || mp->physaddr == 0)
     return 0;
-  conf = (struct mpconf*) P2V((uint) mp->physaddr);
+  conf = (struct mpconf*) P2V((addr_t) mp->physaddr);
   if(memcmp(conf, "PCMP", 4) != 0)
     return 0;
   if(conf->version != 1 && conf->version != 4)
@@ -101,7 +101,7 @@ mpinit(void)
   if((conf = mpconfig(&mp)) == 0)
     return;
   ismp = 1;
-  lapic = (uint*)conf->lapicaddr;
+  lapic = IO2V((addr_t)conf->lapicaddr);
   for(p=(uchar*)(conf+1), e=(uchar*)conf+conf->length; p<e; ){
     switch(*p){
     case MPPROC:
@@ -134,7 +134,6 @@ mpinit(void)
     ioapicid = 0;
     return;
   }
-
   if(mp->imcrp){
     // Bochs doesn't support IMCR, so this doesn't run on Bochs.
     // But it would on real hardware.

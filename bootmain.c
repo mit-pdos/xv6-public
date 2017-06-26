@@ -1,49 +1,71 @@
 // Boot loader.
-//
-// Part of the boot block, along with bootasm.S, which calls bootmain().
+// 
+// Part of the boot sector, along with bootasm.S, which calls bootmain().
 // bootasm.S has put the processor into protected 32-bit mode.
-// bootmain() loads an ELF kernel image from the disk starting at
+// bootmain() loads a multiboot kernel image from the disk starting at
 // sector 1 and then jumps to the kernel entry routine.
 
 #include "types.h"
-#include "elf.h"
 #include "x86.h"
 #include "memlayout.h"
 
 #define SECTSIZE  512
+
+struct mbheader {
+  uint32 magic;
+  uint32 flags;
+  uint32 checksum;
+  uint32 header_addr;
+  uint32 load_addr;
+  uint32 load_end_addr;
+  uint32 bss_end_addr;
+  uint32 entry_addr;
+};
 
 void readseg(uchar*, uint, uint);
 
 void
 bootmain(void)
 {
-  struct elfhdr *elf;
-  struct proghdr *ph, *eph;
+  struct mbheader *hdr;
   void (*entry)(void);
-  uchar* pa;
+  uint32 *x;
+  uint n;
 
-  elf = (struct elfhdr*)0x10000;  // scratch space
+  x = (uint32*) 0x10000; // scratch space
 
-  // Read 1st page off disk
-  readseg((uchar*)elf, 4096, 0);
+  // multiboot header must be in the first 8192 bytes
+  readseg((uchar*)x, 8192, 0);
 
-  // Is this an ELF executable?
-  if(elf->magic != ELF_MAGIC)
-    return;  // let bootasm.S handle error
+  for (n = 0; n < 8192/4; n++)
+    if (x[n] == 0x1BADB002)
+      if ((x[n] + x[n+1] + x[n+2]) == 0)
+        goto found_it;
 
-  // Load each program segment (ignores ph flags).
-  ph = (struct proghdr*)((uchar*)elf + elf->phoff);
-  eph = ph + elf->phnum;
-  for(; ph < eph; ph++){
-    pa = (uchar*)ph->paddr;
-    readseg(pa, ph->filesz, ph->off);
-    if(ph->memsz > ph->filesz)
-      stosb(pa + ph->filesz, 0, ph->memsz - ph->filesz);
-  }
+  // failure
+  return;
 
-  // Call the entry point from the ELF header.
+found_it:
+  hdr = (struct mbheader *) (x + n);
+
+  if (!(hdr->flags & 0x10000))
+    return; // does not have load_* fields, cannot proceed
+  if (hdr->load_addr > hdr->header_addr)
+    return; // invalid;
+  if (hdr->load_end_addr < hdr->load_addr)
+    return; // no idea how much to load
+
+  readseg((uchar*) hdr->load_addr,
+    (hdr->load_end_addr - hdr->load_addr),
+    (n * 4) - (hdr->header_addr - hdr->load_addr));
+
+  if (hdr->bss_end_addr > hdr->load_end_addr)
+    stosb((void*) hdr->load_end_addr, 0,
+      hdr->bss_end_addr - hdr->load_end_addr);
+
+  // Call the entry point from the multiboot header.
   // Does not return!
-  entry = (void(*)(void))(elf->entry);
+  entry = (void(*)(void))(hdr->entry_addr);
   entry();
 }
 

@@ -10,6 +10,7 @@ static void startothers(void);
 static void mpmain(void)  __attribute__((noreturn));
 extern pde_t *kpgdir;
 extern char end[]; // first address after kernel loaded from ELF file
+//#define test 8888
 
 // Bootstrap processor starts running C code here.
 // Allocate a real stack and switch to it, first
@@ -17,8 +18,13 @@ extern char end[]; // first address after kernel loaded from ELF file
 int
 main(void)
 {
+  //cprintf("\n # of cpus: %d\n\n", ncpu);
+  cprintf("# of cpus: %d, nproc: %d, NCPU: %d, fssize: %d, this pid:  %d\n\n", ncpu, NPROC, NCPU, FSSIZE);
+  
+  uartearlyinit();
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
   kvmalloc();      // kernel page table
+  //if(acpiinit())
   mpinit();        // detect other processors
   lapicinit();     // interrupt controller
   seginit();       // segment descriptors
@@ -41,7 +47,7 @@ main(void)
 }
 
 // Other CPUs jump here from entryother.S.
-static void
+void
 mpenter(void)
 {
   switchkvm();
@@ -60,7 +66,8 @@ mpmain(void)
   scheduler();     // start running processes
 }
 
-pde_t entrypgdir[];  // For entry.S
+pde_t entrypgdir[NPDENTRIES];  // For entry.S
+void entry32mp(void);
 
 // Start the non-boot (AP) processors.
 static void
@@ -75,7 +82,7 @@ startothers(void)
   // The linker has placed the image of entryother.S in
   // _binary_entryother_start.
   code = P2V(0x7000);
-  memmove(code, _binary_entryother_start, (uint)_binary_entryother_size);
+  memmove(code, _binary_entryother_start, (addr_t)_binary_entryother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
     if(c == cpus+cpunum())  // We've started already.
@@ -85,9 +92,11 @@ startothers(void)
     // pgdir to use. We cannot use kpgdir yet, because the AP processor
     // is running in low  memory, so we use entrypgdir for the APs too.
     stack = kalloc();
-    *(void**)(code-4) = stack + KSTACKSIZE;
-    *(void**)(code-8) = mpenter;
-    *(int**)(code-12) = (void *) V2P(entrypgdir);
+    *(uint32*)(code-4) = 0x8000; // just enough stack to get us to entry64mp
+    *(uint32*)(code-8) = v2p(entry32mp);
+    *(uint64*)(code-16) = (uint64) (stack + KSTACKSIZE);
+
+
 
     lapicstartap(c->apicid, V2P(code));
 
@@ -101,15 +110,16 @@ startothers(void)
 // Page directories (and page tables) must start on page boundaries,
 // hence the __aligned__ attribute.
 // PTE_PS in a page directory entry enables 4Mbyte pages.
-
+/*
 __attribute__((__aligned__(PGSIZE)))
 pde_t entrypgdir[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
   [0] = (0) | PTE_P | PTE_W | PTE_PS,
   // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
+  
   [KERNBASE>>PDXSHIFT] = (0) | PTE_P | PTE_W | PTE_PS,
 };
-
+*/
 //PAGEBREAK!
 // Blank page.
 //PAGEBREAK!

@@ -15,7 +15,7 @@
 
 // Fetch the int at addr from the current process.
 int
-fetchint(uint addr, int *ip)
+fetchint(addr_t addr, int *ip)
 {
   if(addr >= proc->sz || addr+4 > proc->sz)
     return -1;
@@ -23,11 +23,22 @@ fetchint(uint addr, int *ip)
   return 0;
 }
 
+
+int
+fetchuintp(addr_t addr, addr_t *ip)
+{
+  if(addr >= proc->sz || addr+sizeof(addr_t) > proc->sz)
+    return -1; 
+  *ip = *(addr_t*)(addr);
+  return 0;
+}
+
+
 // Fetch the nul-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
 int
-fetchstr(uint addr, char **pp)
+fetchstr(addr_t addr, char **pp)
 {
   char *s, *ep;
 
@@ -41,12 +52,36 @@ fetchstr(uint addr, char **pp)
   return -1;
 }
 
-// Fetch the nth 32-bit system call argument.
+// arguments passed in registers on x64
+static addr_t
+fetcharg(int n)
+{
+  switch (n) {
+  case 0: return proc->tf->rdi;
+  case 1: return proc->tf->rsi;
+  case 2: return proc->tf->rdx;
+  case 3: return proc->tf->rcx;
+  case 4: return proc->tf->r8;
+  case 5: return proc->tf->r9;
+  }
+  panic("failed fetch");
+  return -1;
+}
+
 int
 argint(int n, int *ip)
 {
-  return fetchint(proc->tf->esp + 4 + 4*n, ip);
+  *ip = fetcharg(n);
+  return 0;
 }
+
+int
+arguintp(int n, addr_t *ip)
+{
+  *ip = fetcharg(n);
+  return 0;
+}
+
 
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size bytes.  Check that the pointer
@@ -54,9 +89,9 @@ argint(int n, int *ip)
 int
 argptr(int n, char **pp, int size)
 {
-  int i;
+  addr_t i;
 
-  if(argint(n, &i) < 0)
+  if(arguintp(n, &i) < 0)
     return -1;
   if(size < 0 || (uint)i >= proc->sz || (uint)i+size > proc->sz)
     return -1;

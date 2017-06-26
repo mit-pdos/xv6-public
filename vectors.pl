@@ -12,9 +12,9 @@ for(my $i = 0; $i < 256; $i++){
     print ".globl vector$i\n";
     print "vector$i:\n";
     if(!($i == 8 || ($i >= 10 && $i <= 14) || $i == 17)){
-        print "  pushl \$0\n";
+        print "  push \$0\n";
     }
-    print "  pushl \$$i\n";
+    print "  push \$$i\n";
     print "  jmp alltraps\n";
 }
 
@@ -23,25 +23,5 @@ print ".data\n";
 print ".globl vectors\n";
 print "vectors:\n";
 for(my $i = 0; $i < 256; $i++){
-    print "  .long vector$i\n";
+    print "  .quad vector$i\n";
 }
-
-# sample output:
-#   # handlers
-#   .globl alltraps
-#   .globl vector0
-#   vector0:
-#     pushl $0
-#     pushl $0
-#     jmp alltraps
-#   ...
-#   
-#   # vector table
-#   .data
-#   .globl vectors
-#   vectors:
-#     .long vector0
-#     .long vector1
-#     .long vector2
-#   ...
-

@@ -10,6 +10,9 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+// acpi.c
+int		acpiinit(void);
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -122,7 +125,8 @@ void            swtch(struct context**, struct context*);
 
 // spinlock.c
 void            acquire(struct spinlock*);
-void            getcallerpcs(void*, uint*);
+void            getcallerpcs(void*, addr_t*);
+void		getstackpcs(addr_t*, addr_t*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
@@ -148,9 +152,11 @@ char*           strncpy(char*, const char*, int);
 int             argint(int, int*);
 int             argptr(int, char**, int);
 int             argstr(int, char**);
-int             fetchint(uint, int*);
-int             fetchstr(uint, char**);
+int             argaddr_t(int, addr_t*);
+int             fetchaddr_t(addr_t, addr_t*);
+int             fetchstr(addr_t, char**);
 void            syscall(void);
+int		fetchint(addr_t, int*);
 
 // timer.c
 void            timerinit(void);
@@ -162,6 +168,7 @@ void            tvinit(void);
 extern struct spinlock tickslock;
 
 // uart.c
+void		uartearlyinit(void);
 void            uartinit(void);
 void            uartintr(void);
 void            uartputc(int);
@@ -172,7 +179,7 @@ void            kvmalloc(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, uint, uint);
-int             deallocuvm(pde_t*, uint, uint);
+int             deallocuvm(pde_t*, uint64, uint64);
 void            freevm(pde_t*);
 void            inituvm(pde_t*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode*, uint, uint);

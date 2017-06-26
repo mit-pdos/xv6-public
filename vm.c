@@ -10,7 +10,7 @@
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 
-// Set up CPU's kernel segment descriptors.
+/*// Set up CPU's kernel segment descriptors.
 // Run once on entry on each CPU.
 void
 seginit(void)
@@ -36,7 +36,7 @@ seginit(void)
   // Initialize cpu-local storage.
   cpu = c;
   proc = 0;
-}
+}*/
 
 // Return the address of the PTE in page table pgdir
 // that corresponds to virtual address va.  If alloc!=0,
@@ -67,13 +67,13 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
 static int
-mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
+mappages(pde_t *pgdir, void *va, addr_t size, addr_t pa, int perm)
 {
   char *a, *last;
   pte_t *pte;
 
-  a = (char*)PGROUNDDOWN((uint)va);
-  last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
+  a = (char*)PGROUNDDOWN((addr_t)va);
+  last = (char*)PGROUNDDOWN(((addr_t)va) + size - 1);
   for(;;){
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
@@ -111,7 +111,7 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 
 // This table defines the kernel's mappings, which are present in
 // every process's page table.
-static struct kmap {
+/*static struct kmap {
   void *virt;
   uint phys_start;
   uint phys_end;
@@ -183,7 +183,7 @@ switchuvm(struct proc *p)
   ltr(SEG_TSS << 3);
   lcr3(V2P(p->pgdir));  // switch to process's address space
   popcli();
-}
+}*/
 
 // Load the initcode into address 0 of pgdir.
 // sz must be less than a page.
@@ -205,10 +205,11 @@ inituvm(pde_t *pgdir, char *init, uint sz)
 int
 loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 {
-  uint i, pa, n;
+  uint i, n;
+  addr_t pa;
   pte_t *pte;
 
-  if((uint) addr % PGSIZE != 0)
+  if((addr_t) addr % PGSIZE != 0)
     panic("loaduvm: addr must be page aligned");
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, addr+i, 0)) == 0)
@@ -230,7 +231,7 @@ int
 allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
   char *mem;
-  uint a;
+  addr_t a;
 
   if(newsz >= KERNBASE)
     return 0;
@@ -261,10 +262,10 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 // need to be less than oldsz.  oldsz can be larger than the actual
 // process size.  Returns the new process size.
 int
-deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
+deallocuvm(pde_t *pgdir, uint64 oldsz, uint64 newsz)
 {
   pte_t *pte;
-  uint a, pa;
+  addr_t a, pa;
 
   if(newsz >= oldsz)
     return oldsz;
@@ -295,8 +296,10 @@ freevm(pde_t *pgdir)
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
-  deallocuvm(pgdir, KERNBASE, 0);
-  for(i = 0; i < NPDENTRIES; i++){
+  //deallocuvm(pgdir, KERNBASE, 0);
+  deallocuvm(pgdir, 0x3fa00000, 0);
+  //for(i = 0; i < NPDENTRIES; i++){
+  for(i = 0; i < (NPDENTRIES-2); i++){
     if(pgdir[i] & PTE_P){
       char * v = P2V(PTE_ADDR(pgdir[i]));
       kfree(v);
@@ -325,7 +328,7 @@ copyuvm(pde_t *pgdir, uint sz)
 {
   pde_t *d;
   pte_t *pte;
-  uint pa, i, flags;
+  addr_t pa, i, flags;
   char *mem;
 
   if((d = setupkvm()) == 0)
@@ -372,7 +375,7 @@ int
 copyout(pde_t *pgdir, uint va, void *p, uint len)
 {
   char *buf, *pa0;
-  uint n, va0;
+  addr_t n, va0;
 
   buf = (char*)p;
   while(len > 0){

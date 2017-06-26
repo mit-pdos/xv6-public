@@ -20,6 +20,8 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+//#define NPROC 64
+
 void
 pinit(void)
 {
@@ -65,13 +67,13 @@ found:
 
   // Set up new context to start executing at forkret,
   // which returns to trapret.
-  sp -= 4;
-  *(uint*)sp = (uint)trapret;
+  sp -= sizeof(addr_t);
+  *(addr_t*)sp = (addr_t)trapret;
 
   sp -= sizeof *p->context;
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
-  p->context->eip = (uint)forkret;
+  p->context->eip = (addr_t)forkret;
 
   return p;
 }
@@ -81,6 +83,7 @@ found:
 void
 userinit(void)
 {
+
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
@@ -89,13 +92,15 @@ userinit(void)
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
-  inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
+  inituvm(p->pgdir, _binary_initcode_start, (addr_t)_binary_initcode_size);
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
-  p->tf->es = p->tf->ds;
-  p->tf->ss = p->tf->ds;
+
+  //p->tf->es = p->tf->ds;
+  //p->tf->ss = p->tf->ds;
+  
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
@@ -279,12 +284,12 @@ wait(void)
 void
 scheduler(void)
 {
+  int i = 0;
   struct proc *p;
-
   for(;;){
+    ++i;
     // Enable interrupts on this processor.
     sti();
-
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -465,7 +470,7 @@ procdump(void)
   int i;
   struct proc *p;
   char *state;
-  uint pc[10];
+  addr_t pc[10];
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
@@ -476,7 +481,7 @@ procdump(void)
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
     if(p->state == SLEEPING){
-      getcallerpcs((uint*)p->context->ebp+2, pc);
+      getstackpcs((addr_t*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
     }

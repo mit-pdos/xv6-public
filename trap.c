@@ -10,27 +10,9 @@
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
-extern uint vectors[];  // in vectors.S: array of 256 entry pointers
+extern addr_t vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
-
-void
-tvinit(void)
-{
-  int i;
-
-  for(i = 0; i < 256; i++)
-    SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0);
-  SETGATE(idt[T_SYSCALL], 1, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER);
-
-  initlock(&tickslock, "time");
-}
-
-void
-idtinit(void)
-{
-  lidt(idt, sizeof(idt));
-}
 
 //PAGEBREAK: 41
 void
@@ -84,6 +66,7 @@ trap(struct trapframe *tf)
       // In kernel, it must be our mistake.
       cprintf("unexpected trap %d from cpu %d eip %x (cr2=0x%x)\n",
               tf->trapno, cpunum(), tf->eip, rcr2());
+      cprintf("proc id: %d\n", proc->pid);
       panic("trap");
     }
     // In user space, assume process misbehaved.
