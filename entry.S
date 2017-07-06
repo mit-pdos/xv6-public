@@ -25,6 +25,7 @@
 
 #define mboot_magic 0x1badb002
 #define mboot_flags 0x00010000
+#include "mmu.h"
 
 .code32
 .global mboot_header
@@ -45,23 +46,23 @@ mboot_entry:
 # zero 4 pages for our bootstrap page tables
   xor %eax, %eax
   mov $0x1000, %edi
-  mov $0x5000, %ecx
+  mov $0x5000, %ecx  #loop 5000 times
   rep stosb
 
 # P4ML[0] -> 0x2000 (PDPT-A)
-  mov $(0x2000 | 3), %eax
+  mov $(0x2000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1000
 
 # P4ML[511] -> 0x3000 (PDPT-B)
-  mov $(0x3000 | 3), %eax
+  mov $(0x3000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1FF8
 
 # PDPT-A[0] -> 0x4000 (PD)
-  mov $(0x4000 | 3), %eax
+  mov $(0x4000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x2000
 
 # PDPT-B[510] -> 0x4000 (PD)
-  mov $(0x4000 | 3), %eax
+  mov $(0x4000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x3FF0
 
 # PD[0..511] -> 0..1022MB
@@ -102,7 +103,8 @@ entry32mp:
 
 # enable paging
   mov %cr0, %eax
-  bts $31, %eax
+#  bts $31, %eax
+  orl $(CR0_PG|CR0_WP), %eax
   mov %eax, %cr0
 
 # shift to 64bit segment

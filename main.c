@@ -19,7 +19,7 @@ int
 main(void)
 {
   //cprintf("\n # of cpus: %d\n\n", ncpu);
-  cprintf("# of cpus: %d, nproc: %d, NCPU: %d, fssize: %d, this pid:  %d\n\n", ncpu, NPROC, NCPU, FSSIZE);
+  //cprintf("# of cpus: %d, nproc: %d, NCPU: %d, fssize: %d, this pid:  %d\n\n", ncpu, NPROC, NCPU, FSSIZE);
   
   uartearlyinit();
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
@@ -43,6 +43,12 @@ main(void)
   startothers();   // start other processors
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
   userinit();      // first user process
+  /*cprintf("pte addr?: %x, %d, shift:%d\n",KERNBASE, PDXSHIFT, 0x80000000>>PDXSHIFT);
+  cprintf("mask test: %x\n", 0xffffffffffffffff & PML4MASK);
+  cprintf("max int test1: %x\n", 0xaaaaaaaa);
+  cprintf("max int test2: %x\n", 0x00000000bbbbbbbb);
+  cprintf("shift: %x\n", (0xffffffffffffffff >> PML4SHIFT) & PML4MASK);
+  cprintf("max int test3: %x\n", fm);*/
   mpmain();        // finish this processor's setup
 }
 
@@ -66,7 +72,12 @@ mpmain(void)
   scheduler();     // start running processes
 }
 
-pde_t entrypgdir[NPDENTRIES];  // For entry.S
+//pde_t entrypgdir[NPDENTRIES];  // For entry.S
+pde_t PML4T[NPDENTRIES];  // For entry.S
+pde_t PDPT[NPDENTRIES];  // For entry.S
+pde_t PDT[NPDENTRIES];  // For entry.S
+pde_t PT[NPDENTRIES];  // For entry.S
+
 void entry32mp(void);
 
 // Start the non-boot (AP) processors.
@@ -118,8 +129,43 @@ pde_t entrypgdir[NPDENTRIES] = {
   // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
   
   [KERNBASE>>PDXSHIFT] = (0) | PTE_P | PTE_W | PTE_PS,
+};*/
+__attribute__((__aligned__(PGSIZE)))
+pde_t PML4T[NPDENTRIES] = {
+  // Map VA's [0, 4MB) to PA's [0, 4MB)
+  //[0] = (PDPT) | PTE_P | PTE_W,
+  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
+  
+  [511] = (0) | PTE_P | PTE_W,
 };
-*/
+
+__attribute__((__aligned__(PGSIZE)))
+pde_t PDPT[NPDENTRIES] = {
+  // Map VA's [0, 4MB) to PA's [0, 4MB)
+  [0] = (0) | PTE_P | PTE_W,
+  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
+  
+  [1] = (0) | PTE_P | PTE_W,
+};
+
+__attribute__((__aligned__(PGSIZE)))
+pde_t PDT[NPDENTRIES] = {
+  // Map VA's [0, 4MB) to PA's [0, 4MB)
+  [0] = (0) | PTE_P | PTE_W,
+  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
+  
+  [1] = (0) | PTE_P | PTE_W,
+};
+
+__attribute__((__aligned__(PGSIZE)))
+pde_t PT[NPDENTRIES] = {
+  // Map VA's [0, 4MB) to PA's [0, 4MB)
+  [0] = (0) | PTE_P | PTE_W,
+  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
+  
+  [1] = (0) | PTE_P | PTE_W,
+};
+
 //PAGEBREAK!
 // Blank page.
 //PAGEBREAK!

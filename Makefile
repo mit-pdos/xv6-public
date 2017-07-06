@@ -1,6 +1,5 @@
 DEBUG=TRUE
 OBJS = \
-	acpi.o\
 	bio.o\
 	console.o\
 	exec.o\
@@ -30,7 +29,6 @@ OBJS = \
 	uart.o\
 	vectors.o\
 	vm.o\
-	vm64.o\
 
 # Cross-compiling (e.g., on Mac OS X)
 # TOOLPREFIX = i386-jos-elf

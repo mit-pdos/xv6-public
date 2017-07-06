@@ -96,14 +96,14 @@ userinit(void)
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
-  p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
+  p->tf->ss = (SEG_UDATA << 3) | DPL_USER;
 
   //p->tf->es = p->tf->ds;
   //p->tf->ss = p->tf->ds;
   
-  p->tf->eflags = FL_IF;
-  p->tf->esp = PGSIZE;
-  p->tf->eip = 0;  // beginning of initcode.S
+  p->tf->rflags = FL_IF;
+  p->tf->rsp = PGSIZE;
+  p->tf->rip = 0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -164,8 +164,8 @@ fork(void)
   np->parent = proc;
   *np->tf = *proc->tf;
 
-  // Clear %eax so that fork returns 0 in the child.
-  np->tf->eax = 0;
+  // Clear %rax so that fork returns 0 in the child.
+  np->tf->rax = 0;
 
   for(i = 0; i < NOFILE; i++)
     if(proc->ofile[i])
@@ -326,6 +326,7 @@ sched(void)
 {
   int intena;
 
+
   if(!holding(&ptable.lock))
     panic("sched ptable.lock");
   if(cpu->ncli != 1)
@@ -335,6 +336,7 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = cpu->intena;
+
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
 }

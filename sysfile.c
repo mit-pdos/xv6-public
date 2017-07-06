@@ -397,16 +397,16 @@ sys_exec(void)
 {
   char *path, *argv[MAXARG];
   int i;
-  uint uargv, uarg;
+  addr_t uargv, uarg;
 
-  if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0){
+  if(argstr(0, &path) < 0 || argaddr(1, &uargv) < 0){
     return -1;
   }
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv))
       return -1;
-    if(fetchint(uargv+4*i, (int*)&uarg) < 0)
+    if(fetchaddr(uargv+(sizeof(addr_t))*i, (int*)&uarg) < 0)
       return -1;
     if(uarg == 0){
       argv[i] = 0;

@@ -12,7 +12,7 @@ exec(char *path, char **argv)
 {
   char *s, *last;
   int i, off;
-  uint argc, sz, sp, ustack[3+MAXARG+1];
+  addr_t argc, sz, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
@@ -70,7 +70,7 @@ exec(char *path, char **argv)
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
       goto bad;
-    sp = (sp - (strlen(argv[argc]) + 1)) & ~3;
+    sp = (sp - (strlen(argv[argc]) + 1)) & ~(sizeof(addr_t)-1);
     if(copyout(pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
     ustack[3+argc] = sp;
@@ -79,10 +79,14 @@ exec(char *path, char **argv)
 
   ustack[0] = 0xffffffff;  // fake return PC
   ustack[1] = argc;
-  ustack[2] = sp - (argc+1)*4;  // argv pointer
+  ustack[2] = sp - (argc+1)*sizeof(addr_t);  // argv pointer
 
-  sp -= (3+argc+1) * 4;
-  if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
+  proc->tf->rdi = argc;
+  proc->tf->rsi = sp - (argc+1)*sizeof(addr_t);
+
+
+  sp -= (3+argc+1) * sizeof(addr_t);
+  if(copyout(pgdir, sp, ustack, (3+argc+1)*sizeof(addr_t)) < 0)
     goto bad;
 
   // Save program name for debugging.
@@ -95,10 +99,10 @@ exec(char *path, char **argv)
   oldpgdir = proc->pgdir;
   proc->pgdir = pgdir;
   proc->sz = sz;
-  proc->tf->eip = elf.entry;  // main
-  proc->tf->esp = sp;
+  proc->tf->rip = elf.entry;  // main
+  proc->tf->rsp = sp;
   switchuvm(proc);
-  freevm(oldpgdir);
+  freevm(oldpgdir);//caused problems
   return 0;
 
  bad:

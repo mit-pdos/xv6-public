@@ -41,12 +41,12 @@ seginit(void)
 // Return the address of the PTE in page table pgdir
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
-static pte_t *
+/*static pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
   pte_t *pgtab;
-
+//cprintf("the va addr format: %p\n", va);
   pde = &pgdir[PDX(va)];
   if(*pde & PTE_P){
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
@@ -61,7 +61,239 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
     *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
   }
   return &pgtab[PTX(va)];
+}*/
+
+__thread struct cpu *cpu;
+__thread struct proc *proc;
+
+static pde_t *kpml4;
+static pde_t *kpdpt;
+static pde_t *iopgdir;
+static pde_t *kpgdir0;
+static pde_t *kpgdir1;
+
+void wrmsr(uint msr, uint64 val);
+
+void tvinit(void) {}
+void idtinit(void) {}
+
+static void mkgate(uint *idt, uint n, void *kva, uint pl, uint trap) {
+  uint64 addr = (uint64) kva;
+
+  n *= 4;
+  trap = trap ? 0x8F00 : 0x8E00; // TRAP vs INTERRUPT gate;
+  idt[n+0] = (addr & 0xFFFF) | ((SEG_KCODE << 3) << 16);
+  idt[n+1] = (addr & 0xFFFF0000) | trap | ((pl & 3) << 13); // P=1 DPL=pl
+  idt[n+2] = addr >> 32;
+  idt[n+3] = 0;
 }
+
+static void tss_set_rsp(uint *tss, uint n, uint64 rsp) {
+  tss[n*2 + 1] = rsp;
+  tss[n*2 + 2] = rsp >> 32;
+}
+
+/*
+static void tss_set_ist(uint *tss, uint n, uint64 ist) {
+  tss[n*2 + 7] = ist;
+  tss[n*2 + 8] = ist >> 32;
+}
+*/
+
+extern void* vectors[];
+
+// Set up CPU's kernel segment descriptors.
+// Run once on entry on each CPU.
+void
+seginit(void)
+{
+  uint64 *gdt;
+  uint *tss;
+  uint64 addr;
+  void *local;
+  struct cpu *c;
+  uint *idt = (uint*) kalloc();
+  int n;
+  memset(idt, 0, PGSIZE);
+
+  for (n = 0; n < 256; n++)
+    mkgate(idt, n, vectors[n], 0, 0);
+  mkgate(idt, 64, vectors[64], 3, 1);
+
+  lidt((void*) idt, PGSIZE);
+
+  // create a page for cpu local storage 
+  local = kalloc();
+  memset(local, 0, PGSIZE);
+
+  gdt = (uint64*) local;
+  tss = (uint*) (((char*) local) + 1024);
+  tss[16] = 0x00680000; // IO Map Base = End of TSS
+
+  // point FS smack in the middle of our local storage page
+  wrmsr(0xC0000100, ((uint64) local) + (PGSIZE / 2));
+
+  c = &cpus[cpunum()];
+  c->local = local;
+
+  cpu = c;
+  proc = 0;
+
+  addr = (uint64) tss;
+  gdt[0] =         0x0000000000000000;
+  gdt[SEG_KCODE] = 0x0020980000000000;  // Code, DPL=0, R/X
+  gdt[SEG_UCODE] = 0x0020F80000000000;  // Code, DPL=3, R/X
+  gdt[SEG_KDATA] = 0x0000920000000000;  // Data, DPL=0, W
+  gdt[SEG_KCPU]  = 0x0000000000000000;  // unused
+  gdt[SEG_UDATA] = 0x0000F20000000000;  // Data, DPL=3, W
+  gdt[SEG_TSS+0] = (0x0067) | ((addr & 0xFFFFFF) << 16) |
+                   (0x00E9LL << 40) | (((addr >> 24) & 0xFF) << 56);
+  gdt[SEG_TSS+1] = (addr >> 32);
+
+  lgdt((void*) gdt, 8 * sizeof(uint64));
+
+  ltr(SEG_TSS << 3);
+};
+
+// The core xv6 code only knows about two levels of page tables,
+// so we will create all four, but only return the second level.
+// because we need to find the other levels later, we'll stash
+// backpointers to them in the top two entries of the level two
+// table.
+pde_t*
+setupkvm(void)
+{
+  pde_t *pml4 = (pde_t*) kalloc();
+  pde_t *pdpt = (pde_t*) kalloc();
+  pde_t *pgdir = (pde_t*) kalloc();
+
+  memset(pml4, 0, PGSIZE);
+  memset(pdpt, 0, PGSIZE);
+  memset(pgdir, 0, PGSIZE);
+  pml4[511] = v2p(kpdpt) | PTE_P | PTE_W | PTE_U;
+  pml4[0] = v2p(pdpt) | PTE_P | PTE_W | PTE_U;
+  pdpt[0] = v2p(pgdir) | PTE_P | PTE_W | PTE_U; 
+
+  return pml4;
+
+};
+
+// Allocate one page table for the machine for the kernel address
+// space for scheduler processes.
+//
+// linear map the first 4GB of physical memory starting at 0xFFFFFFFF80000000
+void
+kvmalloc(void)
+{
+  int n;
+  kpml4 = (pde_t*) kalloc();
+  kpdpt = (pde_t*) kalloc();
+  kpgdir0 = (pde_t*) kalloc();
+  kpgdir1 = (pde_t*) kalloc();
+  iopgdir = (pde_t*) kalloc();
+  memset(kpml4, 0, PGSIZE);
+  memset(kpdpt, 0, PGSIZE);
+  memset(iopgdir, 0, PGSIZE);
+  kpml4[511] = v2p(kpdpt) | PTE_P | PTE_W;
+  kpdpt[511] = v2p(kpgdir1) | PTE_P | PTE_W;
+  kpdpt[510] = v2p(kpgdir0) | PTE_P | PTE_W;
+  kpdpt[509] = v2p(iopgdir) | PTE_P | PTE_W;
+  for (n = 0; n < NPDENTRIES; n++) {
+    kpgdir0[n] = (n << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;
+    kpgdir1[n] = ((n + 512) << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;
+  }
+  for (n = 0; n < 16; n++)
+    iopgdir[n] = (DEVSPACE + (n << PDXSHIFT)) | PTE_PS | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
+  switchkvm();
+}
+
+void
+switchkvm(void)
+{
+  lcr3(v2p(kpml4));
+}
+
+void
+switchuvm(struct proc *p)
+{
+  uint *tss;
+  pushcli();
+  if(p->pgdir == 0)
+    panic("switchuvm: no pgdir");
+  tss = (uint*) (((char*) cpu->local) + 1024);
+  tss_set_rsp(tss, 0, (addr_t)proc->kstack + KSTACKSIZE);
+  //pml4 = (void*) PTE_ADDR(p->pgdir);
+ // cprintf("pgdir addr: %p\n", p->pgdir);
+  lcr3(v2p(p->pgdir));
+  popcli();
+
+}
+
+// Return the address of the PTE in page table pgdir
+// that corresponds to virtual address va.  If alloc!=0,
+// create any required page table pages.
+static pte_t *
+walkpgdir(pde_t *pml4, const void *va, int alloc)
+{
+  pml4e_t *pml4e;
+  pdpe_t *pdp;
+  pdpe_t *pdpe;
+  pde_t *pde;
+  pde_t *pd;
+  pte_t *pgtab;
+  //cprintf("the va addr format: %p\n", va);
+  
+
+  pml4e = &pml4[PMX(va)];     //retrieve address of page directory pointer struct from pml4
+  if(*pml4e & PTE_P)
+    pdp = (pdpe_t*)P2V(PTE_ADDR(*pml4e));  //we convert the stored phyical address of the pdp to vitrual
+  else {
+    cprintf("pml4 not present\n");
+    if(!alloc || (pdp = (pdpe_t*)kalloc()) == 0)//allocate page table
+      return 0;
+    // zero out newly allocated pdp
+    memset(pdp, 0, PGSIZE);
+    // The permissions for a pdp. Non-user, writable?
+    *pml4e = V2P(pdp) | PTE_P | PTE_W;
+  }
+
+  pdpe = &pdp[PDPX(va)];  //from the PDP, use PDPX to find the index of the desired page directory from the va
+
+  if(*pdpe & PTE_P) //here we check if the entry is present? Might not make much sense
+    pd = (pde_t*)P2V(PTE_ADDR(*pdpe));//convert the pdp entry to the virtual address of the pd
+  else {
+    cprintf("pdp not present\n");
+    if(!alloc || (pd = (pde_t*)kalloc()) == 0)//allocate page table
+      return 0;
+      // zero out newly allocated pdp
+      memset(pd, 0, PGSIZE);
+      // The permissions for a pd. Non-user, writable?
+      *pdpe = V2P(pd) | PTE_P | PTE_W;
+    }
+
+  pde = &pd[PDX(va)]; //pd is a page directory, from the page directory aquire the page table
+  /*cprintf("the pml4  zero: %p\n", pml4[1]);
+  cprintf("the pml4  addr: %p\n", pml4);
+  cprintf("the pml4e addr: %p\n", pml4e);
+  cprintf("the pdp   addr: %p\n", pdp);
+  cprintf("the pd    addr: %p\n", pd);
+  cprintf("already preasent %p, %p %p %p\n", va, *pml4e, *pdpe, *pgtab);
+*/
+  if(*pde & PTE_P)
+    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+  else {
+    if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)//allocate page table
+      return 0;
+    // Make sure all those PTE_P bits are zero.
+    memset(pgtab, 0, PGSIZE);
+    // The permissions here are overly generous, but they can
+    // be further restricted by the permissions in the page table
+    // entries, if necessary.
+    *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
+  }
+  return &pgtab[PTX(va)];
+}
+
 
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
@@ -197,6 +429,7 @@ inituvm(pde_t *pgdir, char *init, uint sz)
   mem = kalloc();
   memset(mem, 0, PGSIZE);
   mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_W|PTE_U);
+
   memmove(mem, init, sz);
 }
 
@@ -290,22 +523,40 @@ deallocuvm(pde_t *pgdir, uint64 oldsz, uint64 newsz)
 // Free a page table and all the physical memory pages
 // in the user part.
 void
-freevm(pde_t *pgdir)
+freevm(pde_t *pml4)
 {
-  uint i;
+  uint i, j, k;
+  pde_t *pdp, *pd;
+//cprintf("kpdpt: %x, pm4l[511]: %x\n", kpdpt, pml4[511]);
 
-  if(pgdir == 0)
+  if(pml4 == 0)
     panic("freevm: no pgdir");
   //deallocuvm(pgdir, KERNBASE, 0);
-  deallocuvm(pgdir, 0x3fa00000, 0);
+  deallocuvm(pml4, 0x3fa00000, 0);//the need to loop through entry in pdp entry for every pml4 index
   //for(i = 0; i < NPDENTRIES; i++){
-  for(i = 0; i < (NPDENTRIES-2); i++){
-    if(pgdir[i] & PTE_P){
-      char * v = P2V(PTE_ADDR(pgdir[i]));
-      kfree(v);
+  for(i = 0; i < (NPDENTRIES); i++){
+    if(pml4[i] & PTE_P){//frees every pgdir entry
+      pdp = (pdpe_t*)P2V(PTE_ADDR(pml4[i]));  //we convert the stored phyical address of the pdp to vitrual
+
+      for(j = 0; j < (NPDENTRIES-3); j++){
+        if(pdp[j] & PTE_P){ //here we check if the entry is present? Might not make much sense
+          pd = (pde_t*)P2V(PTE_ADDR(pdp[j]));//convert the pdp entry to the virtual address of the pd
+
+        //if(j!=509 && j!=510 && j!=511)
+          for(k = 0; k < (NPDENTRIES); k++){
+             // cprintf("one, i: %d, j: %d k: %d\n",i,j, k);
+            if(pd[k] & PTE_P) {
+              char * v = P2V(PTE_ADDR(pd[k]));
+              //cprintf("P2V test: %p %p\n", v, (p2v(pd[k])+KERNBASE));
+              kfree(v);
+            }
+              //cprintf("two\n");
+          }
+        }
+      }
     }
   }
-  kfree((char*)pgdir);
+  kfree((char*)pml4);
 }
 
 // Clear PTE_U on a page. Used to create an inaccessible

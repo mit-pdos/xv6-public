@@ -8,7 +8,7 @@
 #include "syscall.h"
 
 // User code makes a system call with INT T_SYSCALL.
-// System call number in %eax.
+// System call number in %rax.
 // Arguments on the stack, from the user call to the C
 // library system call function. The saved user %esp points
 // to a saved program counter, and then the first argument.
@@ -25,7 +25,7 @@ fetchint(addr_t addr, int *ip)
 
 
 int
-fetchuintp(addr_t addr, addr_t *ip)
+fetchaddr(addr_t addr, addr_t *ip)
 {
   if(addr >= proc->sz || addr+sizeof(addr_t) > proc->sz)
     return -1; 
@@ -76,7 +76,7 @@ argint(int n, int *ip)
 }
 
 int
-arguintp(int n, addr_t *ip)
+argaddr(int n, addr_t *ip)
 {
   *ip = fetcharg(n);
   return 0;
@@ -91,7 +91,7 @@ argptr(int n, char **pp, int size)
 {
   addr_t i;
 
-  if(arguintp(n, &i) < 0)
+  if(argaddr(n, &i) < 0)
     return -1;
   if(size < 0 || (uint)i >= proc->sz || (uint)i+size > proc->sz)
     return -1;
@@ -163,12 +163,12 @@ syscall(void)
 {
   int num;
 
-  num = proc->tf->eax;
+  num = proc->tf->rax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    proc->tf->eax = syscalls[num]();
+    proc->tf->rax = syscalls[num]();
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             proc->pid, proc->name, num);
-    proc->tf->eax = -1;
+    proc->tf->rax = -1;
   }
 }

@@ -38,9 +38,9 @@ printptr(addr_t x) {
 static void
 printint(int xx, int base, int sign)
 {
-  char buf[16];
+  char buf[32];
   int i;
-  uint x;
+  uint64 x;
 
   if(sign && (sign = xx < 0))
     x = -xx;

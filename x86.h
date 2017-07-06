@@ -159,42 +159,7 @@ lcr3(addr_t val)
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
 struct trapframe {
-/*  // registers as pushed by pusha
-  uint edi;
-  uint esi;
-  uint ebp;
-  uint oesp;      // useless & ignored
-  uint ebx;
-  uint edx;
-  uint ecx;
-  uint eax;
-
-  // rest of trap frame
-  ushort gs;
-  ushort padding1;
-  ushort fs;
-  ushort padding2;
-  ushort es;
-  ushort padding3;
-  ushort ds;
-  ushort padding4;
-  uint trapno;
-
-  // below here defined by x86 hardware
-  uint err;
-  uint eip;
-  ushort cs;
-  ushort padding5;
-  uint eflags;
-
-  // below here only when crossing rings, such as from user to kernel
-  uint esp;
-  ushort ss;
-  ushort padding6;*/
-
-
-
-   uint64 eax;      // rax
+   uint64 rax;      
    uint64 rbx;
    uint64 rcx;
    uint64 rdx;
@@ -213,9 +178,9 @@ struct trapframe {
    uint64 trapno;
    uint64 err;
  
-   uint64 eip;     // rip
+   uint64 rip;     
    uint64 cs;
-   uint64 eflags;  // rflags
-   uint64 esp;     // rsp
-   uint64 ds;      // ss
+   uint64 rflags;  
+   uint64 rsp;     
+   uint64 ss;      
 };

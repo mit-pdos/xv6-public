@@ -106,11 +106,18 @@ struct segdesc {
 
 // A virtual address 'la' has a three-part structure as follows:
 //
-// +--------10------+-------10-------+---------12----------+
-// | Page Directory |   Page Table   | Offset within Page  |
-// |      Index     |      Index     |                     |
-// +----------------+----------------+---------------------+
-//  \--- PDX(va) --/ \--- PTX(va) --/
+// +----------16--------+--------9-------+---------9-------+--------9-------+--------9-------+---------12----------+
+// |         Sign       |      PML4      | Page Directory  | Page Directory |   Page Table   | Offset within Page  |
+// |        Extend      |      Index     |  Pointer Index  |      Index     |      Index     |                     |
+// +--------------------+----------------+-----------------+----------------+----------------+---------------------+
+//                       \--- PMX(va) --/ \--- PDPX(va) --/ \--- PDX(va) --/ \--- PTX(va) --/
+
+
+// page map level 4 index
+#define PMX(va)         (((addr_t)(va) >> PML4XSHIFT) & PXMASK)
+
+// page directory pointer index
+#define PDPX(va)         (((addr_t)(va) >> PDPXSHIFT) & PXMASK)
 
 // page directory index
 #define PDX(va)         (((addr_t)(va) >> PDXSHIFT) & PXMASK)
@@ -129,6 +136,8 @@ struct segdesc {
 #define PGSHIFT         12      // log2(PGSIZE)
 #define PTXSHIFT        12      // offset of PTX in a linear address
 #define PDXSHIFT        21      // offset of PDX in a linear address
+#define PDPXSHIFT       30      // offset of PDPX in a linear address
+#define PML4XSHIFT      39      // offset of PML4X in a linear address
 
 #define PXMASK          0X1FF
 
