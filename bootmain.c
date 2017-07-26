@@ -12,14 +12,14 @@
 #define SECTSIZE  512
 
 struct mbheader {
-  uint32 magic;
-  uint32 flags;
-  uint32 checksum;
-  uint32 header_addr;
-  uint32 load_addr;
-  uint32 load_end_addr;
-  uint32 bss_end_addr;
-  uint32 entry_addr;
+  uint64 magic;
+  uint64 flags;
+  uint64 checksum;
+  uint64 header_addr;
+  uint64 load_addr;
+  uint64 load_end_addr;
+  uint64 bss_end_addr;
+  uint64 entry_addr;
 };
 
 void readseg(uchar*, uint, uint);
@@ -63,9 +63,18 @@ found_it:
     stosb((void*) hdr->load_end_addr, 0,
       hdr->bss_end_addr - hdr->load_end_addr);
 
+
   // Call the entry point from the multiboot header.
   // Does not return!
+ // entry = (void(*)(void))(hdr->entry_addr);
+ //  addr_t prop = 0xFFFFFFFF00100020;
+  //  addr_t prop = 0x8000000000100020;
+//  while( hdr->entry_addr == prop );
+
+//while( 0xFFFFFFFF00100020 == 0x8000000000100020 );
+   //prop++;
   entry = (void(*)(void))(hdr->entry_addr);
+ // entry = (void(*)(void))  (0x80000000001000ec);
   entry();
 }
 

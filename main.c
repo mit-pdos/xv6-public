@@ -20,7 +20,6 @@ main(void)
 {
   //cprintf("\n # of cpus: %d\n\n", ncpu);
   //cprintf("# of cpus: %d, nproc: %d, NCPU: %d, fssize: %d, this pid:  %d\n\n", ncpu, NPROC, NCPU, FSSIZE);
-  
   uartearlyinit();
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
   kvmalloc();      // kernel page table
@@ -74,9 +73,10 @@ mpmain(void)
 
 //pde_t entrypgdir[NPDENTRIES];  // For entry.S
 pde_t PML4T[NPDENTRIES];  // For entry.S
-pde_t PDPT[NPDENTRIES];  // For entry.S
+pde_t PDPTA[NPDENTRIES];  // For entry.S
+pde_t PDPTB[NPDENTRIES];  // For entry.S
 pde_t PDT[NPDENTRIES];  // For entry.S
-pde_t PT[NPDENTRIES];  // For entry.S
+//pde_t PT[NPDENTRIES];  // For entry.S
 
 void entry32mp(void);
 
@@ -133,38 +133,50 @@ pde_t entrypgdir[NPDENTRIES] = {
 __attribute__((__aligned__(PGSIZE)))
 pde_t PML4T[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
+//  [0] = (PDPTA) | (pde_t*)PTE_P | (pde_t*)PTE_W,
   //[0] = (PDPT) | PTE_P | PTE_W,
   // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
   
-  [511] = (0) | PTE_P | PTE_W,
+//  [511] = PDPTB | (0) | PTE_P | PTE_W,
+  //[511] = (0) | PTE_P | PTE_W,
 };
 
 __attribute__((__aligned__(PGSIZE)))
-pde_t PDPT[NPDENTRIES] = {
+pde_t PDPTA[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
-  [0] = (0) | PTE_P | PTE_W,
+//  [0] = PDT | (0) | PTE_P | PTE_W,
   // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
   
-  [1] = (0) | PTE_P | PTE_W,
+//  [1] = (0) | PTE_P | PTE_W,
 };
+
+__attribute__((__aligned__(PGSIZE)))
+pde_t PDPTB[NPDENTRIES] = {
+  // Map VA's [0, 4MB) to PA's [0, 4MB)
+  //[0] = (0) | PTE_P | PTE_W,
+  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
+//  [510] = PDT | (0) | PTE_P | PTE_W,
+  //[1] = (0) | PTE_P | PTE_W,
+};
+
 
 __attribute__((__aligned__(PGSIZE)))
 pde_t PDT[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
-  [0] = (0) | PTE_P | PTE_W,
+//  [0] = (0) | PTE_P | PTE_W,
   // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
   
-  [1] = (0) | PTE_P | PTE_W,
+  //[1] = (0) | PTE_P | PTE_W,
 };
 
-__attribute__((__aligned__(PGSIZE)))
+/*__attribute__((__aligned__(PGSIZE)))
 pde_t PT[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
   [0] = (0) | PTE_P | PTE_W,
   // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
   
   [1] = (0) | PTE_P | PTE_W,
-};
+};*/
 
 //PAGEBREAK!
 // Blank page.

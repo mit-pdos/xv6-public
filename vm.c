@@ -222,8 +222,6 @@ switchuvm(struct proc *p)
     panic("switchuvm: no pgdir");
   tss = (uint*) (((char*) cpu->local) + 1024);
   tss_set_rsp(tss, 0, (addr_t)proc->kstack + KSTACKSIZE);
-  //pml4 = (void*) PTE_ADDR(p->pgdir);
- // cprintf("pgdir addr: %p\n", p->pgdir);
   lcr3(v2p(p->pgdir));
   popcli();
 
@@ -241,7 +239,6 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
   pde_t *pde;
   pde_t *pd;
   pte_t *pgtab;
-  //cprintf("the va addr format: %p\n", va);
   
 
   pml4e = &pml4[PMX(va)];     //retrieve address of page directory pointer struct from pml4
@@ -253,7 +250,7 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
       return 0;
     // zero out newly allocated pdp
     memset(pdp, 0, PGSIZE);
-    // The permissions for a pdp. Non-user, writable?
+    // The permissions for a pdp. Non-user, writable
     *pml4e = V2P(pdp) | PTE_P | PTE_W;
   }
 
@@ -267,18 +264,11 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
       return 0;
       // zero out newly allocated pdp
       memset(pd, 0, PGSIZE);
-      // The permissions for a pd. Non-user, writable?
+      // The permissions for a pd. Non-user, writable
       *pdpe = V2P(pd) | PTE_P | PTE_W;
     }
 
   pde = &pd[PDX(va)]; //pd is a page directory, from the page directory aquire the page table
-  /*cprintf("the pml4  zero: %p\n", pml4[1]);
-  cprintf("the pml4  addr: %p\n", pml4);
-  cprintf("the pml4e addr: %p\n", pml4e);
-  cprintf("the pdp   addr: %p\n", pdp);
-  cprintf("the pd    addr: %p\n", pd);
-  cprintf("already preasent %p, %p %p %p\n", va, *pml4e, *pdpe, *pgtab);
-*/
   if(*pde & PTE_P)
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   else {
@@ -527,35 +517,31 @@ freevm(pde_t *pml4)
 {
   uint i, j, k;
   pde_t *pdp, *pd;
-//cprintf("kpdpt: %x, pm4l[511]: %x\n", kpdpt, pml4[511]);
 
   if(pml4 == 0)
     panic("freevm: no pgdir");
-  //deallocuvm(pgdir, KERNBASE, 0);
   deallocuvm(pml4, 0x3fa00000, 0);//the need to loop through entry in pdp entry for every pml4 index
-  //for(i = 0; i < NPDENTRIES; i++){
-  for(i = 0; i < (NPDENTRIES); i++){
+  for(i = 0; i < (NPDENTRIES/2); i++){//half of the pml4 is dedicated to shared kernel data
     if(pml4[i] & PTE_P){//frees every pgdir entry
       pdp = (pdpe_t*)P2V(PTE_ADDR(pml4[i]));  //we convert the stored phyical address of the pdp to vitrual
 
-      for(j = 0; j < (NPDENTRIES-3); j++){
-        if(pdp[j] & PTE_P){ //here we check if the entry is present? Might not make much sense
+      for(j = 0; j < NPDENTRIES; j++){
+        if(pdp[j] & PTE_P){ //here we check if the entry is present
           pd = (pde_t*)P2V(PTE_ADDR(pdp[j]));//convert the pdp entry to the virtual address of the pd
 
-        //if(j!=509 && j!=510 && j!=511)
           for(k = 0; k < (NPDENTRIES); k++){
-             // cprintf("one, i: %d, j: %d k: %d\n",i,j, k);
             if(pd[k] & PTE_P) {
               char * v = P2V(PTE_ADDR(pd[k]));
-              //cprintf("P2V test: %p %p\n", v, (p2v(pd[k])+KERNBASE));
               kfree(v);
             }
-              //cprintf("two\n");
-          }
+          }//page directory
+
         }
-      }
+      }//page directory pointer
+
     }
-  }
+  }//page map level 4
+
   kfree((char*)pml4);
 }
 
