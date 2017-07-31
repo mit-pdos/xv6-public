@@ -186,6 +186,7 @@ void
 kvmalloc(void)
 {
   int n;
+  int i;
   kpml4 = (pde_t*) kalloc();
   kpdpt = (pde_t*) kalloc();
   kpgdir0 = (pde_t*) kalloc();
@@ -194,12 +195,15 @@ kvmalloc(void)
   memset(kpml4, 0, PGSIZE);
   memset(kpdpt, 0, PGSIZE);
   memset(iopgdir, 0, PGSIZE);
-  kpml4[511] = v2p(kpdpt) | PTE_P | PTE_W;
+//  kpml4[511] = v2p(kpdpt) | PTE_P | PTE_W;////////
+  kpml4[256] = v2p(kpdpt)   | PTE_P | PTE_W;
+//for(i=0;i<512;i++)
   kpdpt[511] = v2p(kpgdir1) | PTE_P | PTE_W;
-  kpdpt[510] = v2p(kpgdir0) | PTE_P | PTE_W;
+//  kpdpt[510] = v2p(kpgdir0) | PTE_P | PTE_W;///////////510
+  kpdpt[0] = v2p(kpgdir0) | PTE_P | PTE_W;///////////510
   kpdpt[509] = v2p(iopgdir) | PTE_P | PTE_W;
   for (n = 0; n < NPDENTRIES; n++) {
-    kpgdir0[n] = (n << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;
+    kpgdir0[n] = (n << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;////
     kpgdir1[n] = ((n + 512) << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;
   }
   for (n = 0; n < 16; n++)
@@ -223,6 +227,7 @@ switchuvm(struct proc *p)
   tss = (uint*) (((char*) cpu->local) + 1024);
   tss_set_rsp(tss, 0, (addr_t)proc->kstack + KSTACKSIZE);
   lcr3(v2p(p->pgdir));
+while(1);
   popcli();
 
 }
