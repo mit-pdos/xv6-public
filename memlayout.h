@@ -7,7 +7,7 @@
 // Key addresses for address space layout (see kmap in vm.c for layout)
 //#define KERNBASE 0xFFFFFFFF80000000 // First kernel virtual address
 //#define DEVBASE  0xFFFFFFFF40000000 // First device virtual address
-#define KERNBASE 0x8000000000000000 // First kernel virtual address
+#define KERNBASE 0xFFFF800000000000 // First kernel virtual address
 #define DEVBASE  0x4000000000000000 // First device virtual address
 
 #define KERNLINK (KERNBASE+EXTMEM)  // Address where kernel is linked

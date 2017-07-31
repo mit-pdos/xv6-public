@@ -27,7 +27,7 @@
 #define mboot_flags 0x00010000
 #include "mmu.h"
 
-.code32
+.code64
 .global mboot_header
 .global mboot_entry
 
@@ -41,6 +41,7 @@ mboot_header:
   .long mboot_bss_end
   .long mboot_entry_addr
 
+.code32
 mboot_entry:
 
 # zero 4 pages for our bootstrap page tables
@@ -52,6 +53,10 @@ mboot_entry:
 # P4ML[0] -> 0x2000 (PDPT-A)
   mov $(0x2000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1000
+
+# P4ML[256] -> 0x2000 (PDPT-A) ##################
+  mov $(0x2000 | PTE_P | PTE_W ), %eax
+  mov %eax, 0x1800
 
 # P4ML[511] -> 0x3000 (PDPT-B)
   mov $(0x3000 | PTE_P | PTE_W ), %eax
@@ -128,7 +133,7 @@ gdt64_end:
 .align 16
 .code64
 entry64low:
-  movq $entry64high, %rax
+  movabs $entry64high, %rax
   jmp *%rax
 
 .global _start
@@ -146,9 +151,9 @@ entry64high:
 # check to see if we're booting a secondary core
   test %ebx, %ebx
   jnz entry64mp
-
 # setup initial stack
-  mov $0xFFFFFFFF80010000, %rax
+  movabs $0xFFFF800000010000, %rax
+#  movabs $0xFFFFFFFF80010000, %rax
   mov %rax, %rsp
 
 # enter main()
