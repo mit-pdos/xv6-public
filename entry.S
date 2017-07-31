@@ -58,10 +58,6 @@ mboot_entry:
   mov $(0x2000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1800
 
-# P4ML[511] -> 0x3000 (PDPT-B)
-  mov $(0x3000 | PTE_P | PTE_W ), %eax
-  mov %eax, 0x1FF8
-
 # PDPT-A[0] -> 0x4000 (PD)
   mov $(0x4000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x2000
@@ -153,7 +149,6 @@ entry64high:
   jnz entry64mp
 # setup initial stack
   movabs $0xFFFF800000010000, %rax
-#  movabs $0xFFFFFFFF80010000, %rax
   mov %rax, %rsp
 
 # enter main()
