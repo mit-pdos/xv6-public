@@ -63,18 +63,7 @@ found_it:
     stosb((void*) hdr->load_end_addr, 0,
       hdr->bss_end_addr - hdr->load_end_addr);
 
-
-  // Call the entry point from the multiboot header.
-  // Does not return!
- // entry = (void(*)(void))(hdr->entry_addr);
- //  addr_t prop = 0xFFFFFFFF00100020;
-  //  addr_t prop = 0x8000000000100020;
-//  while( hdr->entry_addr == prop );
-
-//while( 0xFFFFFFFF00100020 == 0x8000000000100020 );
-   //prop++;
   entry = (void(*)(void))(hdr->entry_addr);
- // entry = (void(*)(void))  (0x80000000001000ec);
   entry();
 }
 

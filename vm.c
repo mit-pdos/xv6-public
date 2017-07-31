@@ -10,59 +10,6 @@
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 
-/*// Set up CPU's kernel segment descriptors.
-// Run once on entry on each CPU.
-void
-seginit(void)
-{
-  struct cpu *c;
-
-  // Map "logical" addresses to virtual addresses using identity map.
-  // Cannot share a CODE descriptor for both kernel and user
-  // because it would have to have DPL_USR, but the CPU forbids
-  // an interrupt from CPL=0 to DPL=3.
-  c = &cpus[cpunum()];
-  c->gdt[SEG_KCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, 0);
-  c->gdt[SEG_KDATA] = SEG(STA_W, 0, 0xffffffff, 0);
-  c->gdt[SEG_UCODE] = SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
-  c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
-
-  // Map cpu and proc -- these are private per cpu.
-  c->gdt[SEG_KCPU] = SEG(STA_W, &c->cpu, 8, 0);
-
-  lgdt(c->gdt, sizeof(c->gdt));
-  loadgs(SEG_KCPU << 3);
-
-  // Initialize cpu-local storage.
-  cpu = c;
-  proc = 0;
-}*/
-
-// Return the address of the PTE in page table pgdir
-// that corresponds to virtual address va.  If alloc!=0,
-// create any required page table pages.
-/*static pte_t *
-walkpgdir(pde_t *pgdir, const void *va, int alloc)
-{
-  pde_t *pde;
-  pte_t *pgtab;
-//cprintf("the va addr format: %p\n", va);
-  pde = &pgdir[PDX(va)];
-  if(*pde & PTE_P){
-    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
-  } else {
-    if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
-      return 0;
-    // Make sure all those PTE_P bits are zero.
-    memset(pgtab, 0, PGSIZE);
-    // The permissions here are overly generous, but they can
-    // be further restricted by the permissions in the page table
-    // entries, if necessary.
-    *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
-  }
-  return &pgtab[PTX(va)];
-}*/
-
 __thread struct cpu *cpu;
 __thread struct proc *proc;
 
@@ -93,12 +40,6 @@ static void tss_set_rsp(uint *tss, uint n, uint64 rsp) {
   tss[n*2 + 2] = rsp >> 32;
 }
 
-/*
-static void tss_set_ist(uint *tss, uint n, uint64 ist) {
-  tss[n*2 + 7] = ist;
-  tss[n*2 + 8] = ist >> 32;
-}
-*/
 
 extern void* vectors[];
 
@@ -181,7 +122,7 @@ setupkvm(void)
 // Allocate one page table for the machine for the kernel address
 // space for scheduler processes.
 //
-// linear map the first 4GB of physical memory starting at 0xFFFFFFFF80000000
+// linear map the first 4GB of physical memory starting at 0xFFFF800000000000
 void
 kvmalloc(void)
 {
@@ -195,7 +136,7 @@ kvmalloc(void)
   memset(kpml4, 0, PGSIZE);
   memset(kpdpt, 0, PGSIZE);
   memset(iopgdir, 0, PGSIZE);
-//  kpml4[511] = v2p(kpdpt) | PTE_P | PTE_W;////////
+//the page that contains the kernel mapping
   kpml4[256] = v2p(kpdpt)   | PTE_P | PTE_W;
 //for(i=0;i<512;i++)
   kpdpt[511] = v2p(kpgdir1) | PTE_P | PTE_W;
@@ -227,7 +168,6 @@ switchuvm(struct proc *p)
   tss = (uint*) (((char*) cpu->local) + 1024);
   tss_set_rsp(tss, 0, (addr_t)proc->kstack + KSTACKSIZE);
   lcr3(v2p(p->pgdir));
-while(1);
   popcli();
 
 }
@@ -350,56 +290,6 @@ mappages(pde_t *pgdir, void *va, addr_t size, addr_t pa, int perm)
  { (void*)DEVSPACE, DEVSPACE,      0,         PTE_W}, // more devices
 };
 
-// Set up kernel part of a page table.
-pde_t*
-setupkvm(void)
-{
-  pde_t *pgdir;
-  struct kmap *k;
-
-  if((pgdir = (pde_t*)kalloc()) == 0)
-    return 0;
-  memset(pgdir, 0, PGSIZE);
-  if (P2V(PHYSTOP) > (void*)DEVSPACE)
-    panic("PHYSTOP too high");
-  for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
-    if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
-                (uint)k->phys_start, k->perm) < 0) {
-      freevm(pgdir);
-      return 0;
-    }
-  return pgdir;
-}
-
-// Allocate one page table for the machine for the kernel address
-// space for scheduler processes.
-void
-kvmalloc(void)
-{
-  kpgdir = setupkvm();
-  switchkvm();
-}
-
-// Switch h/w page table register to the kernel-only page table,
-// for when no process is running.
-void
-switchkvm(void)
-{
-  lcr3(V2P(kpgdir));   // switch to the kernel page table
-}
-
-// Switch TSS and h/w page table to correspond to process p.
-void
-switchuvm(struct proc *p)
-{
-  if(p == 0)
-    panic("switchuvm: no process");
-  if(p->kstack == 0)
-    panic("switchuvm: no kstack");
-  if(p->pgdir == 0)
-    panic("switchuvm: no pgdir");
-
-  pushcli();
   cpu->gdt[SEG_TSS] = SEG16(STS_T32A, &cpu->ts, sizeof(cpu->ts)-1, 0);
   cpu->gdt[SEG_TSS].s = 0;
   cpu->ts.ss0 = SEG_KDATA << 3;

@@ -2,7 +2,7 @@ python
 gdb.execute("set architecture i386:x86-64:intel")
 gdb.execute("target remote localhost:26000")
 gdb.execute("symbol-file kernel")
-gdb.execute("break main")
+gdb.execute("break _start")
 try:
   gdb.execute("continue")
 except: 
