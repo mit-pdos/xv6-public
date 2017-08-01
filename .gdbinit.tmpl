@@ -1,13 +1,18 @@
+#if you would like to use gdb in 32bit mode, comment out lines 8 and 15, then uncomment
+#the lines after. Note this will only work properly until 64bit mode is enabled in entry.S
+
 python
 gdb.execute("set architecture i386:x86-64:intel")
 gdb.execute("target remote localhost:26000")
 gdb.execute("symbol-file kernel")
 gdb.execute("break _start")
+#gdb.execute("break *0x7c00")
 try:
   gdb.execute("continue")
 except: 
   pass
 gdb.execute("disconnect")
 gdb.execute("set architecture i386:x86-64")
+#gdb.execute("set architecture i386")
 gdb.execute("target remote localhost:26000")
 gdb.execute("delete break 1")
