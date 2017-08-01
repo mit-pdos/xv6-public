@@ -119,33 +119,20 @@ pde_t entrypgdir[NPDENTRIES] = {
   
   [KERNBASE>>PDXSHIFT] = (0) | PTE_P | PTE_W | PTE_PS,
 };*/
+
+
 __attribute__((__aligned__(PGSIZE)))
 pde_t PML4T[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
 //  [0] = (PDPTA) | (pde_t*)PTE_P | (pde_t*)PTE_W,
-  //[0] = (PDPT) | PTE_P | PTE_W,
-  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
+//  [256] = (PDPTA) | (pde_t*)PTE_P | (pde_t*)PTE_W,
   
-//  [511] = PDPTB | (0) | PTE_P | PTE_W,
-  //[511] = (0) | PTE_P | PTE_W,
 };
 
 __attribute__((__aligned__(PGSIZE)))
-pde_t PDPTA[NPDENTRIES] = {
+pde_t PDPT[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
 //  [0] = PDT | (0) | PTE_P | PTE_W,
-  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
-  
-//  [1] = (0) | PTE_P | PTE_W,
-};
-
-__attribute__((__aligned__(PGSIZE)))
-pde_t PDPTB[NPDENTRIES] = {
-  // Map VA's [0, 4MB) to PA's [0, 4MB)
-  //[0] = (0) | PTE_P | PTE_W,
-  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
-//  [510] = PDT | (0) | PTE_P | PTE_W,
-  //[1] = (0) | PTE_P | PTE_W,
 };
 
 
@@ -159,7 +146,7 @@ pde_t PDT[NPDENTRIES] = {
 };
 
 /*__attribute__((__aligned__(PGSIZE)))
-pde_t PT[NPDENTRIES] = {
+pde_t PT[NPDENTRIES] = {  ///hard code as 0x4000?
   // Map VA's [0, 4MB) to PA's [0, 4MB)
   [0] = (0) | PTE_P | PTE_W,
   // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)

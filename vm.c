@@ -111,7 +111,7 @@ setupkvm(void)
   memset(pml4, 0, PGSIZE);
   memset(pdpt, 0, PGSIZE);
   memset(pgdir, 0, PGSIZE);
-  pml4[511] = v2p(kpdpt) | PTE_P | PTE_W | PTE_U;
+  pml4[256] = v2p(kpdpt) | PTE_P | PTE_W | PTE_U;
   pml4[0] = v2p(pdpt) | PTE_P | PTE_W | PTE_U;
   pdpt[0] = v2p(pgdir) | PTE_P | PTE_W | PTE_U; 
 
@@ -138,13 +138,11 @@ kvmalloc(void)
   memset(iopgdir, 0, PGSIZE);
 //the page that contains the kernel mapping
   kpml4[256] = v2p(kpdpt)   | PTE_P | PTE_W;
-//for(i=0;i<512;i++)
   kpdpt[511] = v2p(kpgdir1) | PTE_P | PTE_W;
-//  kpdpt[510] = v2p(kpgdir0) | PTE_P | PTE_W;///////////510
-  kpdpt[0] = v2p(kpgdir0) | PTE_P | PTE_W;///////////510
+  kpdpt[0] = v2p(kpgdir0) | PTE_P | PTE_W;
   kpdpt[509] = v2p(iopgdir) | PTE_P | PTE_W;
   for (n = 0; n < NPDENTRIES; n++) {
-    kpgdir0[n] = (n << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;////
+    kpgdir0[n] = (n << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;
     kpgdir1[n] = ((n + 512) << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;
   }
   for (n = 0; n < 16; n++)

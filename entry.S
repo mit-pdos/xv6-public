@@ -54,17 +54,13 @@ mboot_entry:
   mov $(0x2000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1000
 
-# P4ML[256] -> 0x2000 (PDPT-A) ##################
+# P4ML[256] -> 0x2000 (PDPT-A) 
   mov $(0x2000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1800
 
 # PDPT-A[0] -> 0x4000 (PD)
   mov $(0x4000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x2000
-
-# PDPT-B[510] -> 0x4000 (PD)
-  mov $(0x4000 | PTE_P | PTE_W ), %eax
-  mov %eax, 0x3FF0
 
 # PD[0..511] -> 0..1022MB
   mov $0x83, %eax
