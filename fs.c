@@ -449,13 +449,6 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
     m = min(n - tot, BSIZE - off%BSIZE);
-    /*
-    cprintf("data off %d:\n", off);
-    for (int j = 0; j < min(m, 10); j++) {
-      cprintf("%x ", bp->data[off%BSIZE+j]);
-    }
-    cprintf("\n");
-    */
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
   }
