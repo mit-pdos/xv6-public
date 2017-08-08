@@ -329,20 +329,22 @@ iunlock(struct inode *ip)
 void
 iput(struct inode *ip)
 {
-  acquire(&icache.lock);
-  if(ip->ref == 1){
-    acquiresleep(&ip->lock);
-    if(ip->valid && ip->nlink == 0){
+  acquiresleep(&ip->lock);
+  if(ip->valid && ip->nlink == 0){
+    acquire(&icache.lock);
+    int r = ip->ref;
+    release(&icache.lock);
+    if(r == 1){
       // inode has no links and no other references: truncate and free.
-      release(&icache.lock);
       itrunc(ip);
       ip->type = 0;
       iupdate(ip);
       ip->valid = 0;
-      acquire(&icache.lock);
     }
-    releasesleep(&ip->lock);
   }
+  releasesleep(&ip->lock);
+
+  acquire(&icache.lock);
   ip->ref--;
   release(&icache.lock);
 }
