@@ -322,12 +322,14 @@ iput(struct inode *ip)
   acquire(&icache.lock);
   if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0){
     // inode has no links and no other references: truncate and free.
+    acquiresleep(&ip->lock);
     release(&icache.lock);
     itrunc(ip);
     ip->type = 0;
     iupdate(ip);
     acquire(&icache.lock);
     ip->flags = 0;
+    releasesleep(&ip->lock);
   }
   ip->ref--;
   release(&icache.lock);
