@@ -110,7 +110,7 @@ bfree(int dev, uint b)
 // to provide a place for synchronizing access
 // to inodes used by multiple processes. The cached
 // inodes include book-keeping information that is
-// not stored on disk: ip->ref and ip->flags.
+// not stored on disk: ip->ref and ip->valid.
 //
 // An inode and its in-memory representation go through a
 // sequence of states before they can be used by the
@@ -128,10 +128,10 @@ bfree(int dev, uint b)
 //   decrements ref.
 //
 // * Valid: the information (type, size, &c) in an inode
-//   cache entry is only correct when the I_VALID bit
-//   is set in ip->flags. ilock() reads the inode from
-//   the disk and sets I_VALID, while iput() clears
-//   I_VALID if ip->ref has fallen to zero.
+//   cache entry is only correct when ip->valid is 1.
+//   ilock() reads the inode from
+//   the disk and sets ip->valid, while iput() clears
+//   ip->valid if ip->ref has fallen to zero.
 //
 // * Locked: file system code may only examine and modify
 //   the information in an inode and its content if it
@@ -253,7 +253,7 @@ iget(uint dev, uint inum)
   ip->dev = dev;
   ip->inum = inum;
   ip->ref = 1;
-  ip->flags = 0;
+  ip->valid = 0;
   release(&icache.lock);
 
   return ip;
@@ -283,7 +283,7 @@ ilock(struct inode *ip)
 
   acquiresleep(&ip->lock);
 
-  if((ip->flags & I_VALID) == 0){
+  if(ip->valid == 0){
     bp = bread(ip->dev, IBLOCK(ip->inum, sb));
     dip = (struct dinode*)bp->data + ip->inum%IPB;
     ip->type = dip->type;
@@ -293,7 +293,7 @@ ilock(struct inode *ip)
     ip->size = dip->size;
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     brelse(bp);
-    ip->flags |= I_VALID;
+    ip->valid = 1;
     if(ip->type == 0)
       panic("ilock: no type");
   }
@@ -320,7 +320,7 @@ void
 iput(struct inode *ip)
 {
   acquire(&icache.lock);
-  if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0){
+  if(ip->ref == 1 && ip->valid && ip->nlink == 0){
     // inode has no links and no other references: truncate and free.
     acquiresleep(&ip->lock);
     release(&icache.lock);
@@ -328,7 +328,7 @@ iput(struct inode *ip)
     ip->type = 0;
     iupdate(ip);
     acquire(&icache.lock);
-    ip->flags = 0;
+    ip->valid = 0;
     releasesleep(&ip->lock);
   }
   ip->ref--;

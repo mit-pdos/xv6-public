@@ -15,7 +15,7 @@ struct inode {
   uint inum;          // Inode number
   int ref;            // Reference count
   struct sleeplock lock;
-  int flags;          // I_VALID
+  int valid;          // remainder has been read from disk?
 
   short type;         // copy of disk inode
   short major;
@@ -24,7 +24,6 @@ struct inode {
   uint size;
   uint addrs[NDIRECT+1];
 };
-#define I_VALID 0x2
 
 // table mapping major device number to
 // device functions
