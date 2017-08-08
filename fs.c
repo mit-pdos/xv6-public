@@ -112,20 +112,20 @@ bfree(int dev, uint b)
 // inodes include book-keeping information that is
 // not stored on disk: ip->ref and ip->flags.
 //
-// An inode and its in-memory represtative go through a
+// An inode and its in-memory representation go through a
 // sequence of states before they can be used by the
 // rest of the file system code.
 //
 // * Allocation: an inode is allocated if its type (on disk)
-//   is non-zero. ialloc() allocates, iput() frees if
-//   the link count has fallen to zero.
+//   is non-zero. ialloc() allocates, and iput() frees if
+//   the reference and link counts have fallen to zero.
 //
 // * Referencing in cache: an entry in the inode cache
 //   is free if ip->ref is zero. Otherwise ip->ref tracks
 //   the number of in-memory pointers to the entry (open
-//   files and current directories). iget() to find or
-//   create a cache entry and increment its ref, iput()
-//   to decrement ref.
+//   files and current directories). iget() finds or
+//   creates a cache entry and increments its ref; iput()
+//   decrements ref.
 //
 // * Valid: the information (type, size, &c) in an inode
 //   cache entry is only correct when the I_VALID bit
@@ -283,7 +283,7 @@ ilock(struct inode *ip)
 
   acquiresleep(&ip->lock);
 
-  if(!(ip->flags & I_VALID)){
+  if((ip->flags & I_VALID) == 0){
     bp = bread(ip->dev, IBLOCK(ip->inum, sb));
     dip = (struct dinode*)bp->data + ip->inum%IPB;
     ip->type = dip->type;
