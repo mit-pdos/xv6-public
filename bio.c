@@ -75,9 +75,9 @@ bget(uint dev, uint blockno)
     }
   }
 
-  // Not cached; recycle some unused buffer and clean buffer
-  // "clean" because B_DIRTY and not locked means log.c
-  // hasn't yet committed the changes to the buffer.
+  // Not cached; recycle an unused buffer.
+  // Even if refcnt==0, B_DIRTY indicates a buffer is in use
+  // because log.c has modified it but not yet committed it.
   for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
     if(b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
       b->dev = dev;

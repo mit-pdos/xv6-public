@@ -155,10 +155,10 @@ bfree(int dev, uint b)
 // have locked the inodes involved; this lets callers create
 // multi-step atomic operations.
 //
-// The icache.lock spin-lock defends ip->ref, ip->dev, and ip->inum.
-// Since ip->ref indicates whether an icache entry is free, the
-// icache.lock defends icache allocation. icache.lock also defends
-// all fields of an unallocated icache entry, during allocation.
+// The icache.lock spin-lock defends the allocation of icache
+// entries. Since ip->ref indicates whether an entry is free,
+// and ip->dev and ip->inum indicate which i-node an entry
+// holds, one must hold icache.lock while using any of those fields.
 //
 // An ip->lock sleep-lock defends all ip-> fields other than ref,
 // dev, and inum.  One must hold ip->lock in order to
@@ -189,8 +189,9 @@ iinit(int dev)
 static struct inode* iget(uint dev, uint inum);
 
 //PAGEBREAK!
-// Allocate a new inode with the given type on device dev.
-// A free inode has a type of zero.
+// Allocate an inode on device dev.
+// Give it type type.
+// Returns an unlocked but allocated and referenced inode.
 struct inode*
 ialloc(uint dev, short type)
 {
@@ -214,6 +215,8 @@ ialloc(uint dev, short type)
 }
 
 // Copy a modified in-memory inode to disk.
+// Must be called after every change to an ip->xxx field
+// that lives on disk, since i-node cache is write-through.
 // Caller must hold ip->lock.
 void
 iupdate(struct inode *ip)
