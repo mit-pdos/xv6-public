@@ -60,11 +60,9 @@ mp.h
 mp.c
 lapic.c
 ioapic.c
-picirq.c
 kbd.h
 kbd.c
 console.c
-timer.c
 uart.c
 
 # user-level

@@ -50,9 +50,6 @@ ioapicinit(void)
 {
   int i, id, maxintr;
 
-  if(!ismp)
-    return;
-
   ioapic = (volatile struct ioapic*)IOAPIC;
   maxintr = (ioapicread(REG_VER) >> 16) & 0xFF;
   id = ioapicread(REG_ID) >> 24;
@@ -70,9 +67,6 @@ ioapicinit(void)
 void
 ioapicenable(int irq, int cpunum)
 {
-  if(!ismp)
-    return;
-
   // Mark interrupt edge-triggered, active high,
   // enabled, and routed to the given cpunum,
   // which happens to be that cpu's APIC ID.
