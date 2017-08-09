@@ -10,7 +10,7 @@ alltraps:
   pushl %gs
   pushal
   
-  # Set up data and per-cpu segments.
+  # Set up data segments.
   movw $(SEG_KDATA<<3), %ax
   movw %ax, %ds
   movw %ax, %es
