@@ -8,7 +8,6 @@
     int $T_SYSCALL; \
     ret
     syscall;	\
-#    sysret
 
 SYSCALL(fork)
 SYSCALL(exit)
