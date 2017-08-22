@@ -47,8 +47,8 @@ trapret:
 
 
   # syscall_entry jumps here
-.globl syscalltrap
-syscalltrap:
+.globl syscall_trap
+syscall_trap:
   # Build trap frame.
   push %r15
   push %r14
@@ -79,8 +79,8 @@ syscalltrap:
   call trap
 
   # Return falls through to trapret...
-.globl syscalltrapret
-syscalltrapret:
+.globl syscall_trapret
+syscall_trapret:
   pop %rax
   pop %rbx
   #pop %rcx

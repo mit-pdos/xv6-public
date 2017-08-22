@@ -141,13 +141,6 @@ entry64high:
   mov %ax, %fs
   mov %ax, %gs
 
-# STAR?
-#  mov $0xc0000081, %ecx
-#  rdmsr
-#  mov $0xffffffff, %eax
-#  wrmsr
-
-
 # check to see if we're booting a secondary core
   test %ebx, %ebx
   jnz entry64mp
@@ -185,7 +178,6 @@ ignore_sysret:
 
 .global syscall_entry
 syscall_entry:
-  #jmp callentry
   push $USER_DS
 #  push %rsp
   push $0
@@ -195,6 +187,4 @@ syscall_entry:
 
   push $0
   push $64
-  #jmp __deadloop
-  #jmp alltraps
-  jmp syscalltrap
+  jmp syscall_trap
