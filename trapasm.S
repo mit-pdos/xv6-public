@@ -70,11 +70,11 @@ syscalltrap:
   
   mov  %rsp, %rdi  # frame in arg1
 
- # mov $0xfffffffffffffff8,%rax
- # mov %fs:(%rax), %rax
- # mov 0x10(%rax), %rax
-
- # mov %rax, %rsp
+  #move proc->kstack to %rsp
+  mov $0xfffffffffffffff8,%rax
+  mov %fs:(%rax), %rax
+  mov 0x10(%rax), %rax
+  mov %rax, %rsp
 
   call trap
 
@@ -83,7 +83,8 @@ syscalltrap:
 syscalltrapret:
   pop %rax
   pop %rbx
-  pop %rcx
+  #pop %rcx
+  add $8, %rsp
   pop %rdx
   pop %rbp
   pop %rsi
@@ -91,7 +92,8 @@ syscalltrapret:
   pop %r8
   pop %r9
   pop %r10
-  pop %r11
+#  pop %r11
+  add $8, %rsp
   pop %r12
   pop %r13
   pop %r14
@@ -99,6 +101,7 @@ syscalltrapret:
 
   # discard trapnum and errorcode
   add $16, %rsp
+
   sysret
 
 
