@@ -65,7 +65,6 @@ exec(char *path, char **argv)
     goto bad;
   clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
   sp = sz;
-
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
@@ -102,7 +101,7 @@ exec(char *path, char **argv)
   proc->tf->rip = elf.entry;  // main
   proc->tf->rsp = sp;
   switchuvm(proc);
-  freevm(oldpgdir);//caused problems
+  freevm(oldpgdir);
   return 0;
 
  bad:

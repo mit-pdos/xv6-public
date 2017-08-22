@@ -39,6 +39,19 @@
 
 #define CR4_PSE         0x00000010      // Page size extension
 
+// Model specific registers
+#define MSR_EFER	0xC0000080	// extended feature enable register
+#define MSR_STAR 	0xC0000081	// stores ring 0's and ring 3's segment bases
+#define MSR_LSTAR	0xC0000082	// stores syscall's entry rip
+#define MSR_CSTAR	0xC0000083	// used for compatiblity mode (not implemented)
+#define MSR_SFMASK	0xC0000084	// syscall flag mask
+
+// The CS values for user and kernel space
+#define USER_CS		35
+#define KERNEL_CS	8
+
+#define USER_DS		0X2B
+
 // various segment selectors.
 #define SEG_KCODE 1  // kernel code
 #define SEG_KDATA 2  // kernel data+stack
@@ -49,6 +62,8 @@
 
 // cpu->gdt[NSEGS] holds the above segments.
 #define NSEGS     7
+
+#define CALL_GATE 8
 
 //PAGEBREAK!
 #ifndef __ASSEMBLER__
@@ -63,17 +78,26 @@ struct segdesc {
   uint p : 1;          // Present
   uint lim_19_16 : 4;  // High bits of segment limit
   uint avl : 1;        // Unused (available for software use)
-  uint rsv1 : 1;       // Reserved
+  uint rsv1 : 1;       // 64-bit segment
   uint db : 1;         // 0 = 16-bit segment, 1 = 32-bit segment
   uint g : 1;          // Granularity: limit scaled by 4K when set
   uint base_31_24 : 8; // High bits of segment base address
 };
 
 // Normal segment
-#define SEG(type, base, lim, dpl) (struct segdesc)    \
+/*#define SEG(type, base, lim, dpl) (struct segdesc)   \
 { ((lim) >> 12) & 0xffff, (uint)(base) & 0xffff,      \
   ((addr_t)(base) >> 16) & 0xff, type, 1, dpl, 1,       \
-  (addr_t)(lim) >> 28, 0, 0, 1, 1, (addr_t)(base) >> 24 }
+  (addr_t)(lim) >> 28, 0, 0, 1, 1, (addr_t)(base) >> 24 }*/
+
+#define SEG(type, lim, base, sys, dpl, rsv) (struct segdesc)   \
+{ (addr_t)(lim) & 0xffff, (uint)(base) & 0xffff,      \
+  ((addr_t)(base) >> 16) & 0xff, type, sys, dpl, 1,       \
+  (addr_t)(lim) >> 60, 0, rsv, 0, 1, (addr_t)(base) >> 24 }
+
+
+
+
 #define SEG16(type, base, lim, dpl) (struct segdesc)  \
 { (lim) & 0xffff, (uint)(base) & 0xffff,              \
   ((addr_t)(base) >> 16) & 0xff, type, 1, dpl, 1,       \
@@ -81,6 +105,7 @@ struct segdesc {
 #endif
 
 #define DPL_USER    0x3     // User DPL
+#define APP_SEG	    0x1
 
 // Application segment type bits
 #define STA_X       0x8     // Executable segment
@@ -98,11 +123,11 @@ struct segdesc {
 #define STS_TG      0x5     // Task Gate / Coum Transmitions
 #define STS_IG16    0x6     // 16-bit Interrupt Gate
 #define STS_TG16    0x7     // 16-bit Trap Gate
-#define STS_T32A    0x9     // Available 32-bit TSS
-#define STS_T32B    0xB     // Busy 32-bit TSS
-#define STS_CG32    0xC     // 32-bit Call Gate
-#define STS_IG32    0xE     // 32-bit Interrupt Gate
-#define STS_TG32    0xF     // 32-bit Trap Gate
+#define STS_T64A    0x9     // Available 64-bit TSS
+#define STS_T64B    0xB     // Busy 64-bit TSS
+#define STS_CG64    0xC     // 64-bit Call Gate
+#define STS_IG64    0xE     // 64-bit Interrupt Gate
+#define STS_TG64    0xF     // 64-bit Trap Gate
 
 // A virtual address 'la' has a three-part structure as follows:
 //
@@ -158,6 +183,8 @@ struct segdesc {
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)   ((addr_t)(pte) & ~0xFFF)
 #define PTE_FLAGS(pte)  ((addr_t)(pte) &  0xFFF)
+
+#define TRAP_GATE	0x100	// trap gate if one, interrupt gate if zero
 
 #ifndef __ASSEMBLER__
 typedef addr_t pte_t;
@@ -215,6 +242,8 @@ struct gatedesc {
   uint dpl : 2;         // descriptor(meaning new) privilege level
   uint p : 1;           // Present
   uint off_31_16 : 16;  // high bits of offset in segment
+  uint32 off_63_32;
+  uint32 rsv2;
 };
 
 // Set up a normal interrupt/trap gate descriptor.
@@ -225,17 +254,34 @@ struct gatedesc {
 // - dpl: Descriptor Privilege Level -
 //        the privilege level required for software to invoke
 //        this interrupt/trap gate explicitly using an int instruction.
-#define SETGATE(gate, istrap, sel, off, d)                \
+/*#define SETGATE(gate, istrap, sel, off, d) (struct gatedesc)  \
 {                                                         \
   (gate).off_15_0 = (uint)(off) & 0xffff;                \
   (gate).cs = (sel);                                      \
   (gate).args = 0;                                        \
   (gate).rsv1 = 0;                                        \
-  (gate).type = (istrap) ? STS_TG32 : STS_IG32;           \
+  (gate).type = (istrap) ? STS_TG64 : STS_IG64;           \
   (gate).s = 0;                                           \
   (gate).dpl = (d);                                       \
   (gate).p = 1;                                           \
   (gate).off_31_16 = (uint)(off) >> 16;                  \
-}
+}*/
+//found https://github.com/manojstonybrook/CSE-506-Operating-System-SBU/blob/master/lab5/inc/mmu.h
+
+#define SETCALLGATE(gate, cs, off, d)   \
+{                                                         \
+  (gate)->off_15_0 = (uint32)(off) & 0xffff;                \
+  (gate)->cs = (cs);                                      \
+  (gate)->args = 0;                                        \
+  (gate)->rsv1 = 0;                                        \
+  (gate)->type = STS_CG64;                                 \
+  (gate)->s = 0;                                           \
+  (gate)->dpl = (d);                                       \
+  (gate)->p = 1;                                           \
+  (gate)->off_31_16 = ((uint)(off) >> 16) & 0xffff;        \
+  (gate)->off_63_32 = ((uint)(off) >> 32) & 0xffffffff;    \
+  (gate)->rsv2 = 0;					  \
+};
+
 
 #endif

@@ -10,12 +10,15 @@ start:
   mov $init, %rdi
   mov $argv, %rsi
   mov $SYS_exec, %rax
+  
+#  syscall
   int $T_SYSCALL
 
 # for(;;) exit();
 exit:
   mov $SYS_exit, %rax
-  int $T_SYSCALL
+  syscall
+#  int $T_SYSCALL
   jmp exit
 
 # char init[] = "/init\0";

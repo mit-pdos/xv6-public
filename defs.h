@@ -10,6 +10,11 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+//entry.S
+void wrmsr(uint msr, uint64 val);
+void syscall_entry(void);
+void ignore_sysret(void);
+
 // acpi.c
 int		acpiinit(void);
 
@@ -149,6 +154,7 @@ int             strncmp(const char*, const char*, uint);
 char*           strncpy(char*, const char*, int);
 
 // syscall.c
+void		syscall(void);
 int             argint(int, int*);
 int             argptr(int, char**, int);
 int             argstr(int, char**);

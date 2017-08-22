@@ -4,9 +4,11 @@
 #define SYSCALL(name) \
   .globl name; \
   name: \
-    movl $SYS_ ## name, %eax; \
+    mov $SYS_ ## name, %rax; \
     int $T_SYSCALL; \
     ret
+    syscall;	\
+#    sysret
 
 SYSCALL(fork)
 SYSCALL(exit)

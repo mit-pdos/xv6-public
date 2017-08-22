@@ -19,55 +19,45 @@ static pde_t *iopgdir;
 static pde_t *kpgdir0;
 static pde_t *kpgdir1;
 
-void wrmsr(uint msr, uint64 val);
 
-void tvinit(void) {}
-void idtinit(void) {}
-
-static void mkgate(uint *idt, uint n, void *kva, uint pl, uint trap) {
-  uint64 addr = (uint64) kva;
-
-  n *= 4;
-  trap = trap ? 0x8F00 : 0x8E00; // TRAP vs INTERRUPT gate;
-  idt[n+0] = (addr & 0xFFFF) | ((SEG_KCODE << 3) << 16);
-  idt[n+1] = (addr & 0xFFFF0000) | trap | ((pl & 3) << 13); // P=1 DPL=pl
-  idt[n+2] = addr >> 32;
-  idt[n+3] = 0;
-}
-
-static void tss_set_rsp(uint *tss, uint n, uint64 rsp) {
+static void 
+tss_set_rsp(uint *tss, uint n, uint64 rsp) {
   tss[n*2 + 1] = rsp;
   tss[n*2 + 2] = rsp >> 32;
 }
 
+void
+syscallinit(void)
+{
+  wrmsr( MSR_STAR, ((uint64)USER_CS) << 48 | ((uint64)KERNEL_CS << 32));
+  wrmsr( MSR_LSTAR, syscall_entry );
+  wrmsr( MSR_CSTAR, ignore_sysret );
+  
+  
+  wrmsr( MSR_SFMASK, (FL_TF | FL_DF | FL_IF | FL_IOPL_3 | FL_AC | FL_NT) );
+}
 
-extern void* vectors[];
+
+//extern void* vectors[];
 
 // Set up CPU's kernel segment descriptors.
 // Run once on entry on each CPU.
 void
 seginit(void)
 {
-  uint64 *gdt;
+  //uint64 *gdt;
+  struct segdesc *gdt;
   uint *tss;
   uint64 addr;
   void *local;
   struct cpu *c;
-  uint *idt = (uint*) kalloc();
-  int n;
-  memset(idt, 0, PGSIZE);
-
-  for (n = 0; n < 256; n++)
-    mkgate(idt, n, vectors[n], 0, 0);
-  mkgate(idt, 64, vectors[64], 3, 1);
-
-  lidt((void*) idt, PGSIZE);
 
   // create a page for cpu local storage 
   local = kalloc();
   memset(local, 0, PGSIZE);
 
-  gdt = (uint64*) local;
+  //gdt = (uint64*) local;
+  gdt = (struct segdesc*) local;
   tss = (uint*) (((char*) local) + 1024);
   tss[16] = 0x00680000; // IO Map Base = End of TSS
 
@@ -81,17 +71,25 @@ seginit(void)
   proc = 0;
 
   addr = (uint64) tss;
-  gdt[0] =         0x0000000000000000;
-  gdt[SEG_KCODE] = 0x0020980000000000;  // Code, DPL=0, R/X
-  gdt[SEG_UCODE] = 0x0020F80000000000;  // Code, DPL=3, R/X
-  gdt[SEG_KDATA] = 0x0000920000000000;  // Data, DPL=0, W
-  gdt[SEG_KCPU]  = 0x0000000000000000;  // unused
-  gdt[SEG_UDATA] = 0x0000F20000000000;  // Data, DPL=3, W
-  gdt[SEG_TSS+0] = (0x0067) | ((addr & 0xFFFFFF) << 16) |
-                   (0x00E9LL << 40) | (((addr >> 24) & 0xFF) << 56);
-  gdt[SEG_TSS+1] = (addr >> 32);
+  gdt[0] =  (struct segdesc) {0};
 
-  lgdt((void*) gdt, 8 * sizeof(uint64));
+  gdt[SEG_KCODE] = SEG((STA_X | STA_R),0, 0, APP_SEG, !DPL_USER, 1);
+
+  gdt[SEG_UCODE] = SEG((STA_X | STA_R),0, 0, APP_SEG, DPL_USER, 1);
+
+  gdt[SEG_KDATA] = SEG(STA_W,0, 0, APP_SEG, !DPL_USER, 0);
+
+  gdt[SEG_KCPU]  = (struct segdesc) {0};
+
+  gdt[SEG_UDATA] = SEG(STA_W,0, 0, APP_SEG, DPL_USER, 0);
+
+  gdt[SEG_TSS+0] = SEG(STS_T64A, 0xb, addr, !APP_SEG, DPL_USER, 0);
+  gdt[SEG_TSS+1] = SEG(0,addr >> 32, addr >> 48, 0, 0, 0);
+
+  struct gatedesc *gdtcg =(struct gatedesc*) &gdt[CALL_GATE];
+//  SETCALLGATE(gdtcg,0,0,1);
+
+  lgdt((void*) gdt, 8 * sizeof(struct segdesc));
 
   ltr(SEG_TSS << 3);
 };
@@ -127,7 +125,6 @@ void
 kvmalloc(void)
 {
   int n;
-  int i;
   kpml4 = (pde_t*) kalloc();
   kpdpt = (pde_t*) kalloc();
   kpgdir0 = (pde_t*) kalloc();

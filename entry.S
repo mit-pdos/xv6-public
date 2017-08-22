@@ -44,27 +44,27 @@ mboot_header:
 .code32
 mboot_entry:
 
-# zero 4 pages for our bootstrap page tables
+# zero ~3 pages for our bootstrap page tables
   xor %eax, %eax
   mov $0x1000, %edi
-  mov $0x5000, %ecx  #loop 5000 times
+  mov $0x4000, %ecx  #loop 5000 times
   rep stosb
 
-# P4ML[0] -> 0x2000 (PDPT-A)
+# P4ML[0] -> 0x2000 (PDPT)
   mov $(0x2000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1000
 
-# P4ML[256] -> 0x2000 (PDPT-A) 
+# P4ML[256] -> 0x2000 (PDPT) 
   mov $(0x2000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1800
 
-# PDPT-A[0] -> 0x4000 (PD)
-  mov $(0x4000 | PTE_P | PTE_W ), %eax
+# PDPT[0] -> 0x3000 (PD)
+  mov $(0x3000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x2000
 
 # PD[0..511] -> 0..1022MB
   mov $0x83, %eax
-  mov $0x4000, %ebx
+  mov $0x3000, %ebx
   mov $512, %ecx
 ptbl_loop:
   mov %eax, (%ebx)
@@ -83,6 +83,7 @@ ptbl_loop:
 entry32mp:
 # CR3 -> 0x1000 (P4ML)
   mov $0x1000, %eax
+#  mov $(PML4T), %eax
   mov %eax, %cr3
 
   lgdt (gdtr64 - mboot_header + mboot_load_addr)
@@ -92,15 +93,15 @@ entry32mp:
   bts $5, %eax
   mov %eax, %cr4
 
-# enable long mode - EFER.LME=1
-  mov $0xc0000080, %ecx
+# access EFER Model specific register
+  mov $MSR_EFER, %ecx
   rdmsr
-  bts $8, %eax
+  bts $0, %eax #enable system call extentions
+  bts $8, %eax #enable long mode
   wrmsr
 
 # enable paging
   mov %cr0, %eax
-#  bts $31, %eax
   orl $(CR0_PG|CR0_WP), %eax
   mov %eax, %cr0
 
@@ -140,6 +141,13 @@ entry64high:
   mov %ax, %fs
   mov %ax, %gs
 
+# STAR?
+#  mov $0xc0000081, %ecx
+#  rdmsr
+#  mov $0xffffffff, %eax
+#  wrmsr
+
+
 # check to see if we're booting a secondary core
   test %ebx, %ebx
   jnz entry64mp
@@ -170,3 +178,23 @@ wrmsr:
   wrmsr
   retq
 
+.global ignore_sysret
+ignore_sysret:
+  mov $-38, %rax #return error code 38, meaning function unimplemented
+  sysret
+
+.global syscall_entry
+syscall_entry:
+  #jmp callentry
+  push $USER_DS
+#  push %rsp
+  push $0
+  push %r11
+  push $USER_CS
+  push %rcx
+
+  push $0
+  push $64
+  #jmp __deadloop
+  #jmp alltraps
+  jmp syscalltrap

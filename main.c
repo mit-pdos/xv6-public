@@ -20,9 +20,9 @@ main(void)
   uartearlyinit();
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
   kvmalloc();      // kernel page table
-  //if(acpiinit())
   mpinit();        // detect other processors
   lapicinit();     // interrupt controller
+  tvinit();        // trap vectors
   seginit();       // segment descriptors
   cprintf("\ncpu%d: starting xv6\n\n", cpunum());
   picinit();       // another interrupt controller
@@ -58,14 +58,13 @@ mpmain(void)
 {
   cprintf("cpu%d: starting\n", cpunum());
   idtinit();       // load idt register
+  syscallinit();   // syscall set up
   xchg(&cpu->started, 1); // tell startothers() we're up
   scheduler();     // start running processes
 }
 
 pde_t PML4T[NPDENTRIES];  // For entry.S
-pde_t PDPTA[NPDENTRIES];  // For entry.S
-pde_t PDPTB[NPDENTRIES];  // For entry.S
-pde_t PDT[NPDENTRIES];  // For entry.S
+pde_t PDPT[NPDENTRIES];  // For entry.S
 
 void entry32mp(void);
 
@@ -124,25 +123,21 @@ pde_t entrypgdir[NPDENTRIES] = {
 __attribute__((__aligned__(PGSIZE)))
 pde_t PML4T[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
-//  [0] = (PDPTA) | (pde_t*)PTE_P | (pde_t*)PTE_W,
-//  [256] = (PDPTA) | (pde_t*)PTE_P | (pde_t*)PTE_W,
+  [0] = (PDPT) + PTE_P + PTE_W,
+  [256] = (PDPT) + PTE_P + PTE_W,
   
 };
 
 __attribute__((__aligned__(PGSIZE)))
 pde_t PDPT[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
-//  [0] = PDT | (0) | PTE_P | PTE_W,
+  [0] = 0x4000 | PTE_P | PTE_W,
 };
 
-
 __attribute__((__aligned__(PGSIZE)))
-pde_t PDT[NPDENTRIES] = {
+pde_t PD[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
-//  [0] = (0) | PTE_P | PTE_W,
-  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
-  
-  //[1] = (0) | PTE_P | PTE_W,
+  [0 ... 511] = 0x83 | PTE_P | PTE_W,
 };
 
 /*__attribute__((__aligned__(PGSIZE)))
