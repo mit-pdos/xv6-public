@@ -32,8 +32,8 @@ cpuid() {
   return mycpu()-cpus;
 }
 
-// Must be called with interrupts disabled to avoid the caller being rescheduled
-// between reading lapicid and running through the loop.
+// Must be called with interrupts disabled to avoid the caller being
+// rescheduled between reading lapicid and running through the loop.
 struct cpu*
 mycpu(void)
 {

@@ -34,22 +34,16 @@ Copyright 2006-2016 Frans Kaashoek, Robert Morris, and Russ Cox.
 
 ERROR REPORTS
 
-If you spot errors or have suggestions for improvement, please send email to
-Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).  If you have
-suggestions for improvements, please keep in mind that the main purpose of xv6
-is as a teaching operating system for MIT's 6.828. For example, we are in
-particular interested in simplifications and clarifications, instead of
-suggestions for new systems calls, more portability, etc.
+Please send errors and suggestions to Frans Kaashoek and Robert Morris
+(kaashoek,rtm@mit.edu). The main purpose of xv6 is as a teaching
+operating system for MIT's 6.828, so we are more interested in
+simplifications and clarifications than new features.
 
 BUILDING AND RUNNING XV6
 
-To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run "make".
-On non-x86 or non-ELF machines (like OS X, even on x86), you will
-need to install a cross-compiler gcc suite capable of producing x86 ELF
-binaries.  See http://pdos.csail.mit.edu/6.828/2016/tools.html.
-Then run "make TOOLPREFIX=i386-jos-elf-".
-
-To run xv6, install the QEMU PC simulators.  To run in QEMU, run "make qemu".
-
-To create a typeset version of the code, run "make xv6.pdf".  This
-requires the "mpage" utility.  See http://www.mesa.nl/pub/mpage/.
+To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run
+"make". On non-x86 or non-ELF machines (like OS X, even on x86), you
+will need to install a cross-compiler gcc suite capable of producing
+x86 ELF binaries. See http://pdos.csail.mit.edu/6.828/2016/tools.html.
+Then run "make TOOLPREFIX=i386-jos-elf-". Now install the QEMU PC
+simulator and run "make qemu".

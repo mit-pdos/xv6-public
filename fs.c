@@ -155,12 +155,12 @@ bfree(int dev, uint b)
 // have locked the inodes involved; this lets callers create
 // multi-step atomic operations.
 //
-// The icache.lock spin-lock defends the allocation of icache
+// The icache.lock spin-lock protects the allocation of icache
 // entries. Since ip->ref indicates whether an entry is free,
 // and ip->dev and ip->inum indicate which i-node an entry
 // holds, one must hold icache.lock while using any of those fields.
 //
-// An ip->lock sleep-lock defends all ip-> fields other than ref,
+// An ip->lock sleep-lock protects all ip-> fields other than ref,
 // dev, and inum.  One must hold ip->lock in order to
 // read or write that inode's ip->valid, ip->size, ip->type, &c.
 
