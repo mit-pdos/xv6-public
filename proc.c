@@ -103,7 +103,8 @@ userinit(void)
   p->tf->rflags = FL_IF;
   p->tf->rsp = PGSIZE;
   p->tf->rip = 0;  // beginning of initcode.S
-
+  p->tf->rcx = 0;
+  
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 

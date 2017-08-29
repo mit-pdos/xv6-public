@@ -60,7 +60,7 @@ fetcharg(int n)
   case 0: return proc->tf->rdi;
   case 1: return proc->tf->rsi;
   case 2: return proc->tf->rdx;
-  case 3: return proc->tf->rcx;
+  case 3: return proc->tf->r10;
   case 4: return proc->tf->r8;
   case 5: return proc->tf->r9;
   }

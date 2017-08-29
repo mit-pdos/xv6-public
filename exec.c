@@ -18,6 +18,8 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
 
+  oldpgdir = proc->pgdir;
+
   begin_op();
 
   if((ip = namei(path)) == 0){
@@ -95,10 +97,10 @@ exec(char *path, char **argv)
   safestrcpy(proc->name, last, sizeof(proc->name));
 
   // Commit to the user image.
-  oldpgdir = proc->pgdir;
   proc->pgdir = pgdir;
   proc->sz = sz;
   proc->tf->rip = elf.entry;  // main
+  proc->tf->rcx = elf.entry;
   proc->tf->rsp = sp;
   switchuvm(proc);
   freevm(oldpgdir);

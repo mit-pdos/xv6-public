@@ -5,7 +5,8 @@
   .globl name; \
   name: \
     mov $SYS_ ## name, %rax; \
-    int $T_SYSCALL; \
+	#   int $T_SYSCALL; \
+	syscall		  ;\
     ret
     syscall;	\
 

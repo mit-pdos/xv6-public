@@ -86,7 +86,7 @@ seginit(void)
   gdt[SEG_TSS+0] = SEG(STS_T64A, 0xb, addr, !APP_SEG, DPL_USER, 0);
   gdt[SEG_TSS+1] = SEG(0,addr >> 32, addr >> 48, 0, 0, 0);
 
-  struct gatedesc *gdtcg =(struct gatedesc*) &gdt[CALL_GATE];
+//  struct gatedesc *gdtcg =(struct gatedesc*) &gdt[CALL_GATE];
 //  SETCALLGATE(gdtcg,0,0,1);
 
   lgdt((void*) gdt, 8 * sizeof(struct segdesc));
@@ -109,7 +109,7 @@ setupkvm(void)
   memset(pml4, 0, PGSIZE);
   memset(pdpt, 0, PGSIZE);
   memset(pgdir, 0, PGSIZE);
-  pml4[256] = v2p(kpdpt) | PTE_P | PTE_W | PTE_U;
+  pml4[256] = v2p(kpdpt) | PTE_P | PTE_W;// | PTE_U;
   pml4[0] = v2p(pdpt) | PTE_P | PTE_W | PTE_U;
   pdpt[0] = v2p(pgdir) | PTE_P | PTE_W | PTE_U; 
 
@@ -410,7 +410,8 @@ freevm(pde_t *pml4)
 
   if(pml4 == 0)
     panic("freevm: no pgdir");
-  deallocuvm(pml4, 0x3fa00000, 0);//the need to loop through entry in pdp entry for every pml4 index
+  // deallocuvm(pml4, 0x3fa00000, 0);//the need to loop through entry in pdp entry for every pml4 index
+
   for(i = 0; i < (NPDENTRIES/2); i++){//half of the pml4 is dedicated to shared kernel data
     if(pml4[i] & PTE_P){//frees every pgdir entry
       pdp = (pdpe_t*)P2V(PTE_ADDR(pml4[i]));  //we convert the stored phyical address of the pdp to vitrual
@@ -422,13 +423,16 @@ freevm(pde_t *pml4)
           for(k = 0; k < (NPDENTRIES); k++){
             if(pd[k] & PTE_P) {
               char * v = P2V(PTE_ADDR(pd[k]));
-              kfree(v);
+              
+              kfree((char*)v);
             }
           }//page directory
 
+          kfree((char*)pd);
         }
       }//page directory pointer
 
+      kfree((char*)pdp);
     }
   }//page map level 4
 

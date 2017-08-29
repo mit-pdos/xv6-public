@@ -48,7 +48,7 @@ void
 trap(struct trapframe *tf)
 {
   if(tf->trapno == T_SYSCALL){
-//cprintf("here's kstack: %x\ntrap f: %x\n", proc->kstack, tf->rflags);
+    // printf("tf: %x %x %x %x %x %x\n",tf->rsp,tf->rip,tf->eax,tf->ebx,tf->ecx);
     if(proc->killed)
       exit();
     proc->tf = tf;
