@@ -67,7 +67,7 @@ syscall_trap:
   push %rax
   
   mov  %rsp, %rdi  # frame in arg1
-
+	
   call trap
 
   # Return falls through to trapret...
@@ -95,6 +95,6 @@ syscall_trapret:
   # restore the user stack
   mov (%rsp),%rsp
 
-  sysret
+  sysretq
 
 

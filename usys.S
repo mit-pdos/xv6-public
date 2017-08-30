@@ -5,10 +5,8 @@
   .globl name; \
   name: \
     mov $SYS_ ## name, %rax; \
-	#   int $T_SYSCALL; \
-	syscall		  ;\
+    syscall		  ;\
     ret
-    syscall;	\
 
 SYSCALL(fork)
 SYSCALL(exit)

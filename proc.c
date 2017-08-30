@@ -16,7 +16,7 @@ static struct proc *initproc;
 
 int nextpid = 1;
 extern void forkret(void);
-extern void trapret(void);
+extern void syscall_trapret(void);
 
 static void wakeup1(void *chan);
 
@@ -68,7 +68,7 @@ found:
   // Set up new context to start executing at forkret,
   // which returns to trapret.
   sp -= sizeof(addr_t);
-  *(addr_t*)sp = (addr_t)trapret;
+  *(addr_t*)sp = (addr_t)syscall_trapret;
 
   sp -= sizeof *p->context;
   p->context = (struct context*)sp;
@@ -368,6 +368,7 @@ forkret(void)
     iinit(ROOTDEV);
     initlog(ROOTDEV);
   }
+  struct proc *p = proc;
 
   // Return to "caller", actually trapret (see allocproc).
 }

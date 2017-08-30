@@ -182,20 +182,22 @@ syscall_entry:
   # store %rsp on the top of proc->kstack, then move proc->kstack+8 to %rsp
   # this takes a little extra doing because the %rax must be preserved
  	
-  push %rax
+  mov %rax,-8(%rsp)
   mov $0xfffffffffffffff8,%rax
   mov %fs:(%rax), %rax
   mov 0x10(%rax), %rax
+  add $0x1000,%rax	
 
   sub $16,%rax
-#  movabs $USER_DS,8(%rax)
+  # store user stack pointer on kernel stack	
   mov %rsp,(%rax)
   # switch to the kernel stack
   mov %rax, %rsp
 
-  # read old rax off the user stack
+  # user stack pointer back into %rax
   mov (%rax),%rax
-  mov (%rax),%rax
+  # old rax value off user stack
+  mov -8(%rax),%rax
 
   push %r11
   push $USER_CS
