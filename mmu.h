@@ -254,19 +254,6 @@ struct gatedesc {
 // - dpl: Descriptor Privilege Level -
 //        the privilege level required for software to invoke
 //        this interrupt/trap gate explicitly using an int instruction.
-/*#define SETGATE(gate, istrap, sel, off, d) (struct gatedesc)  \
-{                                                         \
-  (gate).off_15_0 = (uint)(off) & 0xffff;                \
-  (gate).cs = (sel);                                      \
-  (gate).args = 0;                                        \
-  (gate).rsv1 = 0;                                        \
-  (gate).type = (istrap) ? STS_TG64 : STS_IG64;           \
-  (gate).s = 0;                                           \
-  (gate).dpl = (d);                                       \
-  (gate).p = 1;                                           \
-  (gate).off_31_16 = (uint)(off) >> 16;                  \
-}*/
-//found https://github.com/manojstonybrook/CSE-506-Operating-System-SBU/blob/master/lab5/inc/mmu.h
 
 #define SETCALLGATE(gate, cs, off, d)   \
 {                                                         \

@@ -156,20 +156,6 @@ lcr3(addr_t val)
   asm volatile("mov %0,%%cr3" : : "r" (val));
 }
 
-/*
-static inline void
-wrmsr(addr_t dest, addr_t val)
-{
-  asm volatile("mov %0, %%rcx;"
-	       "rdmsr;"
-	       "mov %1, %%rax;"
-               "wrmsr;" :
-               : "a" (dest), "b" (val)
-               : "%rcx" );
-
-}*/
-
-
 //PAGEBREAK: 36
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
