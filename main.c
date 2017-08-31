@@ -63,8 +63,6 @@ mpmain(void)
   scheduler();     // start running processes
 }
 
-pde_t PML4T[NPDENTRIES];  // For entry.S
-pde_t PDPT[NPDENTRIES];  // For entry.S
 
 void entry32mp(void);
 
@@ -109,15 +107,13 @@ startothers(void)
 // Page directories (and page tables) must start on page boundaries,
 // hence the __aligned__ attribute.
 // PTE_PS in a page directory entry enables 4Mbyte pages.
-/*
+
+
 __attribute__((__aligned__(PGSIZE)))
-pde_t entrypgdir[NPDENTRIES] = {
+pde_t PDPT[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
-  [0] = (0) | PTE_P | PTE_W | PTE_PS,
-  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
-  
-  [KERNBASE>>PDXSHIFT] = (0) | PTE_P | PTE_W | PTE_PS,
-};*/
+  [0] = 0x4000 | PTE_P | PTE_W,
+};
 
 
 __attribute__((__aligned__(PGSIZE)))
@@ -129,25 +125,11 @@ pde_t PML4T[NPDENTRIES] = {
 };
 
 __attribute__((__aligned__(PGSIZE)))
-pde_t PDPT[NPDENTRIES] = {
-  // Map VA's [0, 4MB) to PA's [0, 4MB)
-  [0] = 0x4000 | PTE_P | PTE_W,
-};
-
-__attribute__((__aligned__(PGSIZE)))
 pde_t PD[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
   [0 ... 511] = 0x83 | PTE_P | PTE_W,
 };
 
-/*__attribute__((__aligned__(PGSIZE)))
-pde_t PT[NPDENTRIES] = {  ///hard code as 0x4000?
-  // Map VA's [0, 4MB) to PA's [0, 4MB)
-  [0] = (0) | PTE_P | PTE_W,
-  // Map VA's [KERNBASE, KERNBASE+4MB) to PA's [0, 4MB)
-  
-  [1] = (0) | PTE_P | PTE_W,
-};*/
 
 //PAGEBREAK!
 // Blank page.
