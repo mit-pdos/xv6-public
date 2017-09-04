@@ -32,9 +32,9 @@ static struct mp*
 mpsearch1(addr_t a, int len)
 {
   uchar *e, *p, *addr;
-
   addr = P2V(a);
   e = addr+len;
+  cprintf("trying: %p--%p\n",addr,e);
   for(p = addr; p < e; p += sizeof(struct mp))
     if(memcmp(p, "_MP_", 4) == 0 && sum(p, sizeof(struct mp)) == 0)
       return (struct mp*)p;
@@ -62,7 +62,8 @@ mpsearch(void)
     if((mp = mpsearch1(p-1024, 1024)))
       return mp;
   }
-  return mpsearch1(0xF0000, 0x10000);
+//  return mpsearch1(0xF0000, 0x10000);
+  return mpsearch1(0x0, 0x100000);
 }
 
 // Search for an MP configuration table.  For now,
@@ -76,8 +77,9 @@ mpconfig(struct mp **pmp)
   struct mpconf *conf;
   struct mp *mp;
 
-  if((mp = mpsearch()) == 0 || mp->physaddr == 0)
+  if((mp = mpsearch()) == 0 || mp->physaddr == 0) 
     return 0;
+  cprintf("Found something at %x, length %d, addr %x, specrev %d, checksum %x, type %d\n",mp,mp->length,mp->physaddr,mp->specrev,mp->checksum,mp->type);
   conf = (struct mpconf*) P2V((addr_t) mp->physaddr);
   if(memcmp(conf, "PCMP", 4) != 0)
     return 0;
@@ -98,8 +100,10 @@ mpinit(void)
   struct mpproc *proc;
   struct mpioapic *ioapic;
 
-  if((conf = mpconfig(&mp)) == 0)
+  if((conf = mpconfig(&mp)) == 0) {
+    cprintf("No other CPUs found.\n");
     return;
+  }
   ismp = 1;
   lapic = IO2V((addr_t)conf->lapicaddr);
   for(p=(uchar*)(conf+1), e=(uchar*)conf+conf->length; p<e; ){
@@ -134,6 +138,7 @@ mpinit(void)
     ioapicid = 0;
     return;
   }
+  cprintf("Seems we are SMP, ncpu = %d\n",ncpu);
   if(mp->imcrp){
     // Bochs doesn't support IMCR, so this doesn't run on Bochs.
     // But it would on real hardware.

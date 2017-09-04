@@ -49,7 +49,6 @@
 // The CS values for user and kernel space
 #define USER_CS		35
 #define KERNEL_CS	8
-
 #define USER_DS		0X2B
 
 // various segment selectors.
@@ -62,7 +61,6 @@
 
 // cpu->gdt[NSEGS] holds the above segments.
 #define NSEGS     7
-
 #define CALL_GATE 8
 
 //PAGEBREAK!
@@ -85,18 +83,10 @@ struct segdesc {
 };
 
 // Normal segment
-/*#define SEG(type, base, lim, dpl) (struct segdesc)   \
-{ ((lim) >> 12) & 0xffff, (uint)(base) & 0xffff,      \
-  ((addr_t)(base) >> 16) & 0xff, type, 1, dpl, 1,       \
-  (addr_t)(lim) >> 28, 0, 0, 1, 1, (addr_t)(base) >> 24 }*/
-
 #define SEG(type, lim, base, sys, dpl, rsv) (struct segdesc)   \
 { (addr_t)(lim) & 0xffff, (uint)(base) & 0xffff,      \
   ((addr_t)(base) >> 16) & 0xff, type, sys, dpl, 1,       \
   (addr_t)(lim) >> 60, 0, rsv, 0, 1, (addr_t)(base) >> 24 }
-
-
-
 
 #define SEG16(type, base, lim, dpl) (struct segdesc)  \
 { (lim) & 0xffff, (uint)(base) & 0xffff,              \
@@ -129,14 +119,13 @@ struct segdesc {
 #define STS_IG64    0xE     // 64-bit Interrupt Gate
 #define STS_TG64    0xF     // 64-bit Trap Gate
 
-// A virtual address 'la' has a three-part structure as follows:
+// A virtual address 'la' has a six-part structure as follows:
 //
-// +----------16--------+--------9-------+---------9-------+--------9-------+--------9-------+---------12----------+
-// |         Sign       |      PML4      | Page Directory  | Page Directory |   Page Table   | Offset within Page  |
-// |        Extend      |      Index     |  Pointer Index  |      Index     |      Index     |                     |
-// +--------------------+----------------+-----------------+----------------+----------------+---------------------+
-//                       \--- PMX(va) --/ \--- PDPX(va) --/ \--- PDX(va) --/ \--- PTX(va) --/
-
+// +--16--+---9---+------9-------+-----9----+----9-------+----12-------+
+// | Sign | PML4  |Page Directory| Page Dir |Page Table  | Offset Page |
+// |Extend| Index | Pointer Index|  Index   |  Index     | in Page     |
+// +------+-------+--------------+----------+------------+-------------+
+//       \-PMX(va)-/\-PDPX(va)--/ \-PDX(va)-/ \-PTX(va)-/
 
 // page map level 4 index
 #define PMX(va)         (((addr_t)(va) >> PML4XSHIFT) & PXMASK)
@@ -189,7 +178,9 @@ struct segdesc {
 #ifndef __ASSEMBLER__
 typedef addr_t pte_t;
 
-// Task state segment format
+// Task state segment format.
+// This is only used to specify the new stack address after interrupt
+
 struct taskstate {
   uint link;         // Old ts selector
   uint esp0;         // Stack pointers and segment selectors
@@ -254,7 +245,6 @@ struct gatedesc {
 // - dpl: Descriptor Privilege Level -
 //        the privilege level required for software to invoke
 //        this interrupt/trap gate explicitly using an int instruction.
-
 #define SETCALLGATE(gate, cs, off, d)   \
 {                                                         \
   (gate)->off_15_0 = (uint32)(off) & 0xffff;                \
@@ -269,6 +259,4 @@ struct gatedesc {
   (gate)->off_63_32 = ((uint)(off) >> 32) & 0xffffffff;    \
   (gate)->rsv2 = 0;					  \
 };
-
-
 #endif

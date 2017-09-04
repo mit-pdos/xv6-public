@@ -34,7 +34,7 @@ syscallinit(void)
   wrmsr( MSR_CSTAR, ignore_sysret );
   
   
-  wrmsr( MSR_SFMASK, (FL_TF | FL_DF | FL_IF | FL_IOPL_3 | FL_AC | FL_NT) );
+  wrmsr( MSR_SFMASK, FL_TF|FL_DF|FL_IF|FL_IOPL_3|FL_AC|FL_NT);
 }
 
 
@@ -94,56 +94,71 @@ seginit(void)
   ltr(SEG_TSS << 3);
 };
 
-// The core xv6 code only knows about two levels of page tables,
-// so we will create all four, but only return the second level.
-// because we need to find the other levels later, we'll stash
-// backpointers to them in the top two entries of the level two
-// table.
+// There is one page table per process, plus one that's used when
+// a CPU is not running any process (kpgdir). The kernel uses the
+// current process's page table during system calls and interrupts;
+// page protection bits prevent user code from using the kernel's
+// mappings.
+//
+// setupkvm() and exec() set up every page table like this:
+//
+//   0..KERNBASE: user memory (text+data+stack+heap), mapped to
+//                phys memory allocated by the kernel
+//   KERNBASE..KERNBASE+EXTMEM: mapped to 0..EXTMEM (for I/O space)
+//   KERNBASE+EXTMEM..data: mapped to EXTMEM..V2P(data)
+//                for the kernel's instructions and r/o data
+//   data..KERNBASE+PHYSTOP: mapped to V2P(data)..PHYSTOP,
+//                                  rw data + free physical memory
+//   0xfe000000..0: mapped direct (devices such as ioapic)
+//
+// The kernel allocates physical memory for its heap and for user memory
+// between V2P(end) and the end of physical memory (PHYSTOP)
+// (directly addressable from end..P2V(PHYSTOP)).
+
+
 pde_t*
 setupkvm(void)
 {
   pde_t *pml4 = (pde_t*) kalloc();
-  pde_t *pdpt = (pde_t*) kalloc();
-  pde_t *pgdir = (pde_t*) kalloc();
-
   memset(pml4, 0, PGSIZE);
-  memset(pdpt, 0, PGSIZE);
-  memset(pgdir, 0, PGSIZE);
-  pml4[256] = v2p(kpdpt) | PTE_P | PTE_W;// | PTE_U;
-  pml4[0] = v2p(pdpt) | PTE_P | PTE_W | PTE_U;
-  pdpt[0] = v2p(pgdir) | PTE_P | PTE_W | PTE_U; 
-
+  pml4[256] = v2p(kpdpt) | PTE_P | PTE_W;
   return pml4;
-
 };
 
 // Allocate one page table for the machine for the kernel address
 // space for scheduler processes.
 //
-// linear map the first 4GB of physical memory starting at 0xFFFF800000000000
+// linear map the first 4GB of physical memory starting
+// at 0xFFFF800000000000
 void
 kvmalloc(void)
 {
   int n;
   kpml4 = (pde_t*) kalloc();
-  kpdpt = (pde_t*) kalloc();
-  kpgdir0 = (pde_t*) kalloc();
-  kpgdir1 = (pde_t*) kalloc();
-  iopgdir = (pde_t*) kalloc();
   memset(kpml4, 0, PGSIZE);
+
+  // the kernel memory region starts at KERNBASE and up
+  // allocate one PDPT at the bottom of that range.
+  kpdpt = (pde_t*) kalloc();
   memset(kpdpt, 0, PGSIZE);
+  kpml4[PMX(KERNBASE)] = v2p(kpdpt) | PTE_P | PTE_W;
+
+  // at the bottom of the PDPT, one huge 1GB mapping using the PS bit
+  kpdpt[0] = 0 | PTE_PS | PTE_P | PTE_W;
+  kpdpt[1] = 1<<20 | PTE_PS | PTE_P | PTE_W;
+  kpdpt[2] = 2*(1<<20) | PTE_PS | PTE_P | PTE_W;
+  kpdpt[3] = 3*(1<<20) | PTE_PS | PTE_P | PTE_W;  
+
+  /*
+  // TODO: why is this 509?
+  iopgdir = (pde_t*) kalloc();
   memset(iopgdir, 0, PGSIZE);
-//the page that contains the kernel mapping
-  kpml4[256] = v2p(kpdpt)   | PTE_P | PTE_W;
-  kpdpt[511] = v2p(kpgdir1) | PTE_P | PTE_W;
-  kpdpt[0] = v2p(kpgdir0) | PTE_P | PTE_W;
   kpdpt[509] = v2p(iopgdir) | PTE_P | PTE_W;
-  for (n = 0; n < NPDENTRIES; n++) {
-    kpgdir0[n] = (n << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;
-    kpgdir1[n] = ((n + 512) << PDXSHIFT) | PTE_PS | PTE_P | PTE_W;
-  }
+  
   for (n = 0; n < 16; n++)
-    iopgdir[n] = (DEVSPACE + (n << PDXSHIFT)) | PTE_PS | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
+    iopgdir[n] = (DEVSPACE + (n << PDXSHIFT)) |   \
+      PTE_PS | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
+  */
   switchkvm();
 }
 
@@ -170,6 +185,11 @@ switchuvm(struct proc *p)
 // Return the address of the PTE in page table pgdir
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
+//
+// In 64-bit mode, the page table has four levels: PML4, PDPT, PD and PT
+// For each level, we dereference the correct entry, or allocate and
+// initialize entry if the PTE_P bit is not set
+
 static pte_t *
 walkpgdir(pde_t *pml4, const void *va, int alloc)
 {
@@ -181,46 +201,39 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
   pte_t *pgtab;
   
 
-  pml4e = &pml4[PMX(va)];     //retrieve address of page directory pointer struct from pml4
+  // from the PML4, find or allocate the appropriate PDP table
+  pml4e = &pml4[PMX(va)];
   if(*pml4e & PTE_P)
-    pdp = (pdpe_t*)P2V(PTE_ADDR(*pml4e));  //we convert the stored phyical address of the pdp to vitrual
+    pdp = (pdpe_t*)P2V(PTE_ADDR(*pml4e));  
   else {
-    cprintf("pml4 not present\n");
-    if(!alloc || (pdp = (pdpe_t*)kalloc()) == 0)//allocate page table
+    if(!alloc || (pdp = (pdpe_t*)kalloc()) == 0)
       return 0;
-    // zero out newly allocated pdp
     memset(pdp, 0, PGSIZE);
-    // The permissions for a pdp. Non-user, writable
-    *pml4e = V2P(pdp) | PTE_P | PTE_W;
+    *pml4e = V2P(pdp) | PTE_P | PTE_W | PTE_U;
   }
 
-  pdpe = &pdp[PDPX(va)];  //from the PDP, use PDPX to find the index of the desired page directory from the va
-
-  if(*pdpe & PTE_P) //here we check if the entry is present? Might not make much sense
-    pd = (pde_t*)P2V(PTE_ADDR(*pdpe));//convert the pdp entry to the virtual address of the pd
+  //from the PDP, find or allocate the appropriate PD (page directory)
+  pdpe = &pdp[PDPX(va)];  
+  if(*pdpe & PTE_P) 
+    pd = (pde_t*)P2V(PTE_ADDR(*pdpe));
   else {
-    cprintf("pdp not present\n");
     if(!alloc || (pd = (pde_t*)kalloc()) == 0)//allocate page table
       return 0;
-      // zero out newly allocated pdp
-      memset(pd, 0, PGSIZE);
-      // The permissions for a pd. Non-user, writable
-      *pdpe = V2P(pd) | PTE_P | PTE_W;
-    }
+    memset(pd, 0, PGSIZE);
+    *pdpe = V2P(pd) | PTE_P | PTE_W | PTE_U;
+  }
 
-  pde = &pd[PDX(va)]; //pd is a page directory, from the page directory aquire the page table
+  // from the PD, find or allocate the appropriate page table 
+  pde = &pd[PDX(va)]; 
   if(*pde & PTE_P)
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   else {
     if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)//allocate page table
       return 0;
-    // Make sure all those PTE_P bits are zero.
     memset(pgtab, 0, PGSIZE);
-    // The permissions here are overly generous, but they can
-    // be further restricted by the permissions in the page table
-    // entries, if necessary.
     *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
   }
+  
   return &pgtab[PTX(va)];
 }
 
@@ -249,53 +262,6 @@ mappages(pde_t *pgdir, void *va, addr_t size, addr_t pa, int perm)
   }
   return 0;
 }
-
-// There is one page table per process, plus one that's used when
-// a CPU is not running any process (kpgdir). The kernel uses the
-// current process's page table during system calls and interrupts;
-// page protection bits prevent user code from using the kernel's
-// mappings.
-//
-// setupkvm() and exec() set up every page table like this:
-//
-//   0..KERNBASE: user memory (text+data+stack+heap), mapped to
-//                phys memory allocated by the kernel
-//   KERNBASE..KERNBASE+EXTMEM: mapped to 0..EXTMEM (for I/O space)
-//   KERNBASE+EXTMEM..data: mapped to EXTMEM..V2P(data)
-//                for the kernel's instructions and r/o data
-//   data..KERNBASE+PHYSTOP: mapped to V2P(data)..PHYSTOP,
-//                                  rw data + free physical memory
-//   0xfe000000..0: mapped direct (devices such as ioapic)
-//
-// The kernel allocates physical memory for its heap and for user memory
-// between V2P(end) and the end of physical memory (PHYSTOP)
-// (directly addressable from end..P2V(PHYSTOP)).
-
-// This table defines the kernel's mappings, which are present in
-// every process's page table.
-/*static struct kmap {
-  void *virt;
-  uint phys_start;
-  uint phys_end;
-  int perm;
-} kmap[] = {
- { (void*)KERNBASE, 0,             EXTMEM,    PTE_W}, // I/O space
- { (void*)KERNLINK, V2P(KERNLINK), V2P(data), 0},     // kern text+rodata
- { (void*)data,     V2P(data),     PHYSTOP,   PTE_W}, // kern data+memory
- { (void*)DEVSPACE, DEVSPACE,      0,         PTE_W}, // more devices
-};
-
-  cpu->gdt[SEG_TSS] = SEG16(STS_T32A, &cpu->ts, sizeof(cpu->ts)-1, 0);
-  cpu->gdt[SEG_TSS].s = 0;
-  cpu->ts.ss0 = SEG_KDATA << 3;
-  cpu->ts.esp0 = (uint)p->kstack + KSTACKSIZE;
-  // setting IOPL=0 in eflags *and* iomb beyond the tss segment limit
-  // forbids I/O instructions (e.g., inb and outb) from user space
-  cpu->ts.iomb = (ushort) 0xFFFF;
-  ltr(SEG_TSS << 3);
-  lcr3(V2P(p->pgdir));  // switch to process's address space
-  popcli();
-}*/
 
 // Load the initcode into address 0 of pgdir.
 // sz must be less than a page.
@@ -527,8 +493,5 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 
 //PAGEBREAK!
 // Blank page.
-//PAGEBREAK!
-// Blank page.
-//PAGEBREAK!
-// Blank page.
+
 

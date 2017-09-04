@@ -102,7 +102,7 @@ entry32mp:
 
 # enable paging
   mov %cr0, %eax
-  orl $(CR0_PG|CR0_WP), %eax
+  orl $( CR0_PG | CR0_WP ), %eax
   mov %eax, %cr0
 
 # shift to 64bit segment
