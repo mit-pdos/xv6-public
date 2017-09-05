@@ -1,4 +1,4 @@
-/* entry64.S 
+/* entry.S 
  *
  * Copyright (c) 2013 Brian Swetland
  * 
@@ -70,6 +70,7 @@ mboot_entry:
 .global entry32mp
 entry32mp:
 # CR3 -> 0x1000 (P4ML)
+#  mov $0x1000, %eax
   mov $0x1000, %eax
   mov %eax, %cr3
 

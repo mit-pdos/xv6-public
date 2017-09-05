@@ -51,7 +51,6 @@ freerange(void *vstart, void *vend)
     kfree(p);
 }
 
-//PAGEBREAK: 21
 // Free the page of physical memory pointed at by v,
 // which normally should have been returned by a
 // call to kalloc().  (The exception is when

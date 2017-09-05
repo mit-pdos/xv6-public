@@ -95,6 +95,7 @@ bfree(int dev, uint b)
   brelse(bp);
 }
 
+//PAGEBREAK!
 // Inodes.
 //
 // An inode describes a single unnamed file.
@@ -179,7 +180,7 @@ iinit(int dev)
 
 static struct inode* iget(uint dev, uint inum);
 
-//PAGEBREAK!
+
 // Allocate a new inode with the given type on device dev.
 // A free inode has a type of zero.
 struct inode*

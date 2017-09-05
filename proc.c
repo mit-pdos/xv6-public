@@ -99,9 +99,6 @@ userinit(void)
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ss = (SEG_UDATA << 3) | DPL_USER;
 
-  //p->tf->es = p->tf->ds;
-  //p->tf->ss = p->tf->ds;
-  
   p->tf->rflags = FL_IF;
   p->tf->rsp = PGSIZE;
   p->tf->rip = 0;  // beginning of initcode.S

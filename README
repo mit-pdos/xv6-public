@@ -16,8 +16,8 @@ xv6 borrows code from the following sources:
     NetBSD (console.c)
 
 The following people have made contributions: Russ Cox (context switching,
-locking), Cliff Frey (MP), Xiao Yu (MP), Nickolai Zeldovich, and Austin
-Clements.
+locking), Cliff Frey (MP), Xiao Yu (MP), Nickolai Zeldovich, Austin
+Clements, Anthony Shelton and Jakob Eriksson (64-bit).
 
 The code in the files that constitute xv6 is
 Copyright 2006-2016 Frans Kaashoek, Robert Morris, and Russ Cox.

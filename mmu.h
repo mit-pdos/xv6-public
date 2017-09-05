@@ -132,13 +132,10 @@ struct segdesc {
 
 // page map level 4 index
 #define PMX(va)         (((addr_t)(va) >> PML4XSHIFT) & PXMASK)
-
 // page directory pointer index
 #define PDPX(va)         (((addr_t)(va) >> PDPXSHIFT) & PXMASK)
-
 // page directory index
 #define PDX(va)         (((addr_t)(va) >> PDXSHIFT) & PXMASK)
-
 // page table index
 #define PTX(va)         (((addr_t)(va) >> PTXSHIFT) & PXMASK)
 
@@ -146,13 +143,11 @@ struct segdesc {
 #define NPDENTRIES      512     // # directory entries per page directory
 #define NPTENTRIES      512     // # PTEs per page table
 #define PGSIZE          4096    // bytes mapped by a page
-
 #define PGSHIFT         12      // log2(PGSIZE)
 #define PTXSHIFT        12      // offset of PTX in a linear address
 #define PDXSHIFT        21      // offset of PDX in a linear address
 #define PDPXSHIFT       30      // offset of PDPX in a linear address
 #define PML4XSHIFT      39      // offset of PML4X in a linear address
-
 #define PXMASK          0X1FF
 
 #define PGROUNDUP(sz)  (((sz)+((addr_t)PGSIZE-1)) & ~((addr_t)(PGSIZE-1)))
