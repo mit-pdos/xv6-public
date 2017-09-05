@@ -38,12 +38,15 @@
 #define CR0_PG          0x80000000      // Paging
 
 #define CR4_PSE         0x00000010      // Page size extension
+#define CR4_PAE         0x00000020      // Physical address extensions
+#define CR4_OSXFSR      0x00000200      // OS supports FXSAVE and FXRSTOR
+#define CR4_OSXMMEXCPT  0x00000400      // OS supports SSE exceptions
 
 // Model specific registers
 #define MSR_EFER	0xC0000080	// extended feature enable register
 #define MSR_STAR 	0xC0000081	// stores ring 0's and ring 3's segment bases
 #define MSR_LSTAR	0xC0000082	// stores syscall's entry rip
-#define MSR_CSTAR	0xC0000083	// used for compatiblity mode (not implemented)
+#define MSR_CSTAR	0xC0000083	// for compatiblity mode (not used)
 #define MSR_SFMASK	0xC0000084	// syscall flag mask
 
 // The CS values for user and kernel space
@@ -138,9 +141,6 @@ struct segdesc {
 
 // page table index
 #define PTX(va)         (((addr_t)(va) >> PTXSHIFT) & PXMASK)
-
-// construct virtual address from indexes and offset
-#define PGADDR(d, t, o) ((addr_t)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
 // Page directory and page table constants.
 #define NPDENTRIES      512     // # directory entries per page directory

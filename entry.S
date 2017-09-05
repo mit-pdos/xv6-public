@@ -44,34 +44,22 @@ mboot_header:
 .code32
 mboot_entry:
 
-# zero ~3 pages for our bootstrap page tables
+# zero 2 pages for our bootstrap page tables
   xor %eax, %eax
   mov $0x1000, %edi
-  mov $0x4000, %ecx  #loop 5000 times
+  mov $0x2000, %ecx  
   rep stosb
 
+# map both virtual address 0 and KERNBASE to the same PDPT	
 # P4ML[0] -> 0x2000 (PDPT)
+# P4ML[256] -> 0x2000 (PDPT)
   mov $(0x2000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1000
-
-# P4ML[256] -> 0x2000 (PDPT) 
-  mov $(0x2000 | PTE_P | PTE_W ), %eax
   mov %eax, 0x1800
 
-# PDPT[0] -> 0x3000 (PD)
-  mov $(0x3000 | PTE_P | PTE_W ), %eax
+# PDPT[0] -> 0x0 (1 GB flat map page)
+  mov $(0x0 | PTE_P | PTE_PS | PTE_W ), %eax
   mov %eax, 0x2000
-
-# PD[0..511] -> 0..1022MB
-  mov $0x83, %eax
-  mov $0x3000, %ebx
-  mov $512, %ecx
-ptbl_loop:
-  mov %eax, (%ebx)
-  add $0x200000, %eax
-  add $0x8, %ebx
-  dec %ecx
-  jnz ptbl_loop
 
 # Clear ebx for initial processor boot.
 # When secondary processors boot, they'll call through
@@ -83,14 +71,13 @@ ptbl_loop:
 entry32mp:
 # CR3 -> 0x1000 (P4ML)
   mov $0x1000, %eax
-#  mov $(PML4T), %eax
   mov %eax, %cr3
 
   lgdt (gdtr64 - mboot_header + mboot_load_addr)
 
 # Enable PAE - CR4.PAE=1
   mov %cr4, %eax
-  bts $5, %eax
+  bts $5, %eax	
   mov %eax, %cr4
 
 # access EFER Model specific register
@@ -102,7 +89,7 @@ entry32mp:
 
 # enable paging
   mov %cr0, %eax
-  orl $( CR0_PG | CR0_WP ), %eax
+  orl $( CR0_PG | CR0_WP | CR0_MP ), %eax
   mov %eax, %cr0
 
 # shift to 64bit segment
@@ -141,6 +128,11 @@ entry64high:
   mov %ax, %fs
   mov %ax, %gs
 
+  # this would enable floating point instructions	
+  # mov %cr4, %rax
+  # or $(CR4_PAE | CR4_OSXFSR | CR4_OSXMMEXCPT) , %rax
+  # mov %rax, %cr4
+
 # check to see if we're booting a secondary core
   test %ebx, %ebx
   jnz entry64mp
@@ -178,9 +170,11 @@ ignore_sysret:
 
 .global syscall_entry
 syscall_entry:
- # switch to kernel stack. With the syscall instruction, this is a kernel resposibility
-  # store %rsp on the top of proc->kstack, then move proc->kstack+8 to %rsp
-  # this takes a little extra doing because the %rax must be preserved
+  # switch to kernel stack. With the syscall instruction,
+  # this is a kernel resposibility
+  # store %rsp on the top of proc->kstack,
+  # then move proc->kstack+8 to %rsp this takes a little
+  # extra doing because the %rax must be preserved
  	
   mov %rax,-8(%rsp)
   mov $0xfffffffffffffff8,%rax

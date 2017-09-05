@@ -12,8 +12,12 @@
 
 #ifndef __ASSEMBLER__
 
-static inline addr_t v2p(void *a) { return ((addr_t) (a)) - ((addr_t)KERNBASE); }
-static inline void *p2v(addr_t a) { return (void *) ((a) + ((addr_t)KERNBASE)); }
+static inline addr_t v2p(void *a) {
+  return ((addr_t) (a)) - ((addr_t)KERNBASE);
+}
+static inline void *p2v(addr_t a) {
+  return (void *) ((a) + ((addr_t)KERNBASE));
+}
 
 #endif
 

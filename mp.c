@@ -34,7 +34,6 @@ mpsearch1(addr_t a, int len)
   uchar *e, *p, *addr;
   addr = P2V(a);
   e = addr+len;
-  cprintf("trying: %p--%p\n",addr,e);
   for(p = addr; p < e; p += sizeof(struct mp))
     if(memcmp(p, "_MP_", 4) == 0 && sum(p, sizeof(struct mp)) == 0)
       return (struct mp*)p;
@@ -62,7 +61,6 @@ mpsearch(void)
     if((mp = mpsearch1(p-1024, 1024)))
       return mp;
   }
-//  return mpsearch1(0xF0000, 0x10000);
   return mpsearch1(0x0, 0x100000);
 }
 
@@ -79,7 +77,6 @@ mpconfig(struct mp **pmp)
 
   if((mp = mpsearch()) == 0 || mp->physaddr == 0) 
     return 0;
-  cprintf("Found something at %x, length %d, addr %x, specrev %d, checksum %x, type %d\n",mp,mp->length,mp->physaddr,mp->specrev,mp->checksum,mp->type);
   conf = (struct mpconf*) P2V((addr_t) mp->physaddr);
   if(memcmp(conf, "PCMP", 4) != 0)
     return 0;

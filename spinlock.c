@@ -104,19 +104,12 @@ getstackpcs(addr_t *ebp, addr_t pcs[])
     pcs[i] = 0;
 }
 
-
-
-
-
-
-
 // Check whether this cpu is holding the lock.
 int
 holding(struct spinlock *lock)
 {
   return lock->locked && lock->cpu == cpu;
 }
-
 
 // Pushcli/popcli are like cli/sti except that they are matched:
 // it takes two popcli to undo two pushcli.  Also, if interrupts

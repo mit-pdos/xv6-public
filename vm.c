@@ -15,10 +15,6 @@ __thread struct proc *proc;
 
 static pde_t *kpml4;
 static pde_t *kpdpt;
-static pde_t *iopgdir;
-static pde_t *kpgdir0;
-static pde_t *kpgdir1;
-
 
 static void 
 tss_set_rsp(uint *tss, uint n, uint64 rsp) {
@@ -352,9 +348,7 @@ deallocuvm(pde_t *pgdir, uint64 oldsz, uint64 newsz)
   a = PGROUNDUP(newsz);
   for(; a  < oldsz; a += PGSIZE){
     pte = walkpgdir(pgdir, (char*)a, 0);
-    if(!pte)
-      a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
-    else if((*pte & PTE_P) != 0){
+    if(pte && (*pte & PTE_P) != 0){
       pa = PTE_ADDR(*pte);
       if(pa == 0)
         panic("kfree");
@@ -366,8 +360,8 @@ deallocuvm(pde_t *pgdir, uint64 oldsz, uint64 newsz)
   return newsz;
 }
 
-// Free a page table and all the physical memory pages
-// in the user part.
+// Free all the pages mapped by, and all the memory used for,
+// this page table
 void
 freevm(pde_t *pml4)
 {
@@ -376,32 +370,36 @@ freevm(pde_t *pml4)
 
   if(pml4 == 0)
     panic("freevm: no pgdir");
-  // deallocuvm(pml4, 0x3fa00000, 0);//the need to loop through entry in pdp entry for every pml4 index
+  
+  deallocuvm(pml4, 0x3fa00000, 0);
+  
+  // then need to loop through pml4 entry
+  for(i = 0; i < (NPDENTRIES/2); i++){
+    if(pml4[i] & PTE_P){
+      pdp = (pdpe_t*)P2V(PTE_ADDR(pml4[i])); 
 
-  for(i = 0; i < (NPDENTRIES/2); i++){//half of the pml4 is dedicated to shared kernel data
-    if(pml4[i] & PTE_P){//frees every pgdir entry
-      pdp = (pdpe_t*)P2V(PTE_ADDR(pml4[i]));  //we convert the stored phyical address of the pdp to vitrual
-
+      // and every entry in the corresponding pdpt
       for(j = 0; j < NPDENTRIES; j++){
-        if(pdp[j] & PTE_P){ //here we check if the entry is present
-          pd = (pde_t*)P2V(PTE_ADDR(pdp[j]));//convert the pdp entry to the virtual address of the pd
+        if(pdp[j] & PTE_P){ 
+          pd = (pde_t*)P2V(PTE_ADDR(pdp[j]));
 
+          // and every entry in the corresponding page directory
           for(k = 0; k < (NPDENTRIES); k++){
             if(pd[k] & PTE_P) {
               char * v = P2V(PTE_ADDR(pd[k]));
-              
+              // freeing every page table
               kfree((char*)v);
             }
-          }//page directory
-
+          }
+          // freeing every page directory
           kfree((char*)pd);
         }
-      }//page directory pointer
-
+      }
+      // freeing every page directory pointer table
       kfree((char*)pdp);
     }
-  }//page map level 4
-
+  }
+  // freeing the pml4
   kfree((char*)pml4);
 }
 

@@ -79,7 +79,8 @@ startothers(void)
   // The linker has placed the image of entryother.S in
   // _binary_entryother_start.
   code = P2V(0x7000);
-  memmove(code, _binary_entryother_start, (addr_t)_binary_entryother_size);
+  memmove(code, _binary_entryother_start,
+          (addr_t)_binary_entryother_size);
 
   for(c = cpus; c < cpus+ncpu; c++){
     if(c == cpus+cpunum())  // We've started already.
@@ -89,7 +90,7 @@ startothers(void)
     // pgdir to use. We cannot use kpgdir yet, because the AP processor
     // is running in low  memory, so we use entrypgdir for the APs too.
     stack = kalloc();
-    *(uint32*)(code-4) = 0x8000; // just enough stack to get us to entry64mp
+    *(uint32*)(code-4) = 0x8000; // enough stack to get us to entry64mp
     *(uint32*)(code-8) = v2p(entry32mp);
     *(uint64*)(code-16) = (uint64) (stack + KSTACKSIZE);
 
