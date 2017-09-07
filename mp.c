@@ -51,7 +51,7 @@ mpsearch(void)
   uchar *bda;
   uint p;
   struct mp *mp;
-
+  
   bda = (uchar *) P2V(0x400);
   if((p = ((bda[0x0F]<<8)| bda[0x0E]) << 4)){
     if((mp = mpsearch1(p, 1024)))
@@ -61,7 +61,7 @@ mpsearch(void)
     if((mp = mpsearch1(p-1024, 1024)))
       return mp;
   }
-  return mpsearch1(0x0, 0x100000);
+  return mpsearch1(0xF0000, 0x10000);
 }
 
 // Search for an MP configuration table.  For now,
@@ -102,7 +102,7 @@ mpinit(void)
     return;
   }
   ismp = 1;
-  lapic = IO2V((addr_t)conf->lapicaddr);
+  lapic = P2V((addr_t)conf->lapicaddr_p);
   for(p=(uchar*)(conf+1), e=(uchar*)conf+conf->length; p<e; ){
     switch(*p){
     case MPPROC:

@@ -139,11 +139,11 @@ kvmalloc(void)
   memset(kpdpt, 0, PGSIZE);
   kpml4[PMX(KERNBASE)] = v2p(kpdpt) | PTE_P | PTE_W;
 
-  // at the bottom of the PDPT, one huge 1GB mapping using the PS bit
+  // at the bottom of the PDPT, four huge 1GB mappings using the PS bit
   kpdpt[0] = 0 | PTE_PS | PTE_P | PTE_W;
-  kpdpt[1] = 1<<20 | PTE_PS | PTE_P | PTE_W;
-  kpdpt[2] = 2*(1<<20) | PTE_PS | PTE_P | PTE_W;
-  kpdpt[3] = 3*(1<<20) | PTE_PS | PTE_P | PTE_W;  
+  kpdpt[1] = 0x40000000 | PTE_PS | PTE_P | PTE_W;
+  kpdpt[2] = 0x80000000 | PTE_PS | PTE_P | PTE_W;
+  kpdpt[3] = 0xC0000000 | PTE_PS | PTE_P | PTE_W | PTE_PWT | PTE_PCD;  
 
   /*
   // TODO: why is this 509?

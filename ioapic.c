@@ -5,6 +5,7 @@
 #include "types.h"
 #include "defs.h"
 #include "traps.h"
+#include "memlayout.h"
 
 #define IOAPIC  0xFEC00000   // Default physical address of IO APIC
 
@@ -53,7 +54,7 @@ ioapicinit(void)
   if(!ismp)
     return;
 
-  ioapic = (volatile struct ioapic*)IOAPIC;
+  ioapic = P2V((volatile struct ioapic*)IOAPIC);
   maxintr = (ioapicread(REG_VER) >> 16) & 0xFF;
   id = ioapicread(REG_ID) >> 24;
   if(id != ioapicid)

@@ -2,7 +2,7 @@
 
 struct mp {             // floating pointer
   uchar signature[4];           // "_MP_"
-  void *physaddr;               // phys addr of MP config table
+  uint32 physaddr;               // 32-bit phys addr of MP config table
   uchar length;                 // 1
   uchar specrev;                // [14]
   uchar checksum;               // all bytes must add up to 0
@@ -17,10 +17,10 @@ struct mpconf {         // configuration table header
   uchar version;                // [14]
   uchar checksum;               // all bytes must add up to 0
   uchar product[20];            // product id
-  uint *oemtable;               // OEM table pointer
+  uint32 oemtable_p;               // OEM table pointer
   ushort oemlength;             // OEM table length
   ushort entry;                 // entry count
-  uint *lapicaddr;              // address of local APIC
+  uint32 lapicaddr_p;              // address of local APIC
   ushort xlength;               // extended table length
   uchar xchecksum;              // extended table checksum
   uchar reserved;
@@ -42,7 +42,7 @@ struct mpioapic {       // I/O APIC table entry
   uchar apicno;                 // I/O APIC id
   uchar version;                // I/O APIC version
   uchar flags;                  // I/O APIC flags
-  uint *addr;                  // I/O APIC address
+  uint32 addr_p;                  // I/O APIC address
 };
 
 // Table entry types
