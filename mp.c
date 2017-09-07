@@ -12,7 +12,6 @@
 #include "proc.h"
 
 struct cpu cpus[NCPU];
-int ismp;
 int ncpu;
 uchar ioapicid;
 
@@ -101,7 +100,6 @@ mpinit(void)
     cprintf("No other CPUs found.\n");
     return;
   }
-  ismp = 1;
   lapic = P2V((addr_t)conf->lapicaddr_p);
   for(p=(uchar*)(conf+1), e=(uchar*)conf+conf->length; p<e; ){
     switch(*p){
@@ -124,16 +122,9 @@ mpinit(void)
       p += 8;
       continue;
     default:
-      ismp = 0;
+      panic("Major problem parsing mp config.");
       break;
     }
-  }
-  if(!ismp){
-    // Didn't like what we found; fall back to no MP.
-    ncpu = 1;
-    lapic = 0;
-    ioapicid = 0;
-    return;
   }
   cprintf("Seems we are SMP, ncpu = %d\n",ncpu);
   if(mp->imcrp){

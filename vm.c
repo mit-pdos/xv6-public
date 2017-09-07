@@ -139,22 +139,14 @@ kvmalloc(void)
   memset(kpdpt, 0, PGSIZE);
   kpml4[PMX(KERNBASE)] = v2p(kpdpt) | PTE_P | PTE_W;
 
-  // at the bottom of the PDPT, four huge 1GB mappings using the PS bit
+  // direct map first GB of physical addresses to KERNBASE
   kpdpt[0] = 0 | PTE_PS | PTE_P | PTE_W;
-  kpdpt[1] = 0x40000000 | PTE_PS | PTE_P | PTE_W;
-  kpdpt[2] = 0x80000000 | PTE_PS | PTE_P | PTE_W;
+
+  // direct map 4th GB of physical addresses to KERNBASE+3GB
+  // this is a very lazy way to map IO memory (for lapic and ioapic)
+  // PTE_PWT and PTE_PCD for memory mapped I/O correctness. 
   kpdpt[3] = 0xC0000000 | PTE_PS | PTE_P | PTE_W | PTE_PWT | PTE_PCD;  
 
-  /*
-  // TODO: why is this 509?
-  iopgdir = (pde_t*) kalloc();
-  memset(iopgdir, 0, PGSIZE);
-  kpdpt[509] = v2p(iopgdir) | PTE_P | PTE_W;
-  
-  for (n = 0; n < 16; n++)
-    iopgdir[n] = (DEVSPACE + (n << PDXSHIFT)) |   \
-      PTE_PS | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
-  */
   switchkvm();
 }
 
