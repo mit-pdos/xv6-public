@@ -46,7 +46,7 @@ trapret:
   iretq
 
 
-  # syscall_entry jumps here
+# syscall_entry jumps here after syscall instruction
 .globl syscall_trap
 syscall_trap:
   # Build trap frame.

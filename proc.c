@@ -138,6 +138,7 @@ growproc(int n)
   return 0;
 }
 
+//PAGEBREAK!
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
@@ -184,6 +185,7 @@ fork(void)
   return pid;
 }
 
+//PAGEBREAK!
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
@@ -229,6 +231,7 @@ exit(void)
   panic("zombie exit");
 }
 
+//PAGEBREAK!
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
@@ -372,6 +375,7 @@ forkret(void)
   // Return to "caller", actually trapret (see allocproc).
 }
 
+//PAGEBREAK!
 // Atomically release lock and sleep on chan.
 // Reacquires lock when awakened.
 void
