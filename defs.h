@@ -15,9 +15,6 @@ void wrmsr(uint msr, uint64 val);
 void syscall_entry(void);
 void ignore_sysret(void);
 
-// acpi.c
-int		acpiinit(void);
-
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -99,10 +96,6 @@ void            end_op();
 extern int      ismp;
 void            mpinit(void);
 
-// picirq.c
-void            picenable(int);
-void            picinit(void);
-
 // pipe.c
 int             pipealloc(struct file**, struct file**);
 void            pipeclose(struct pipe*, int);
@@ -163,9 +156,6 @@ int             fetchaddr_t(addr_t, addr_t*);
 int             fetchstr(addr_t, char**);
 void            syscall(void);
 int		fetchint(addr_t, int*);
-
-// timer.c
-void            timerinit(void);
 
 // trap.c
 void            idtinit(void);
