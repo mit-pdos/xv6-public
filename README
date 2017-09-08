@@ -2,6 +2,9 @@ xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
 Version 6 (v6).  xv6 loosely follows the structure and style of v6,
 but is implemented for a modern x86-based multiprocessor using ANSI C.
 
+xv6-64 is a 64-bit port of MIT's xv6, by Anthony Shelton and
+Jakob Eriksson, for use in UIC's Operating Systems curriculum. 
+
 ACKNOWLEDGMENTS
 
 xv6 is inspired by John Lions's Commentary on UNIX 6th Edition (Peer
@@ -19,17 +22,18 @@ The following people have made contributions: Russ Cox (context switching,
 locking), Cliff Frey (MP), Xiao Yu (MP), Nickolai Zeldovich, Austin
 Clements, Anthony Shelton and Jakob Eriksson (64-bit).
 
-The code in the files that constitute xv6 is
-Copyright 2006-2016 Frans Kaashoek, Robert Morris, and Russ Cox.
+The code in the files that constitute xv6 is Copyright 2006-2017
+Frans Kaashoek, Robert Morris, Russ Cox, Anthony Shelton and Jakob Eriksson.
 
 ERROR REPORTS
 
 If you spot errors or have suggestions for improvement, please send email to
-Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).  If you have
-suggestions for improvements, please keep in mind that the main purpose of xv6
-is as a teaching operating system for MIT's 6.828. For example, we are in
-particular interested in simplifications and clarifications, instead of
-suggestions for new systems calls, more portability, etc.
+Jakob Eriksson (jakob@uic.edu), or Frans Kaashoek and Robert Morris
+(kaashoek,rtm@csail.mit.edu).  If you have suggestions for improvements,
+please keep in mind that the main purpose of xv6 is as a teaching operating
+system. For example, we are in particular interested in simplifications and
+clarifications, instead of suggestions for new systems calls, more portability,
+etc.
 
 BUILDING AND RUNNING XV6
 
