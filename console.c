@@ -104,15 +104,6 @@ cprintf(char *fmt, ...)
     case '%':
       consputc('%');
       break;
-/*    case 'l':
-      c = fmt[++i] & 0xff;
-      if( c == 'd' ) { 
-        printint(*argp++, 10, 1); 
-        break; 
-      } else if ( c == 'x' ) { 
-        printint(*argp++, 10, 0); 
-        break;
-      }   */
     default:
       // Print unknown % sequence to draw attention.
       consputc('%');
