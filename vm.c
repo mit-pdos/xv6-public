@@ -25,7 +25,9 @@ tss_set_rsp(uint *tss, uint n, uint64 rsp) {
 void
 syscallinit(void)
 {
-  wrmsr( MSR_STAR, ((uint64)USER_CS) << 48 | ((uint64)KERNEL_CS << 32));
+  // the MSR/SYSRET wants the segment for 32-bit user data
+  // next up is 64-bit user data, then code
+  wrmsr( MSR_STAR, ((((uint64)SEG_UCODE32 << 3) << 48) | ((uint64)KERNEL_CS << 32)));
   wrmsr( MSR_LSTAR, syscall_entry );
   wrmsr( MSR_CSTAR, ignore_sysret );
   
@@ -70,25 +72,21 @@ seginit(void)
   gdt[0] =  (struct segdesc) {0};
 
   gdt[SEG_KCODE] = SEG((STA_X | STA_R),0, 0, APP_SEG, !DPL_USER, 1);
-
   gdt[SEG_UCODE] = SEG((STA_X | STA_R),0, 0, APP_SEG, DPL_USER, 1);
-
   gdt[SEG_KDATA] = SEG(STA_W,0, 0, APP_SEG, !DPL_USER, 0);
-
   gdt[SEG_KCPU]  = (struct segdesc) {0};
-
   gdt[SEG_UDATA] = SEG(STA_W,0, 0, APP_SEG, DPL_USER, 0);
-
   gdt[SEG_TSS+0] = SEG(STS_T64A, 0xb, addr, !APP_SEG, DPL_USER, 0);
   gdt[SEG_TSS+1] = SEG(0,addr >> 32, addr >> 48, 0, 0, 0);
 
 //  struct gatedesc *gdtcg =(struct gatedesc*) &gdt[CALL_GATE];
 //  SETCALLGATE(gdtcg,0,0,1);
 
-  lgdt((void*) gdt, 8 * sizeof(struct segdesc));
+  lgdt((void*) gdt, (NSEGS+1) * sizeof(struct segdesc));
 
   ltr(SEG_TSS << 3);
 };
+
 
 // There is one page table per process, plus one that's used when
 // a CPU is not running any process (kpgdir). The kernel uses the
@@ -229,7 +227,7 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
-static int
+int
 mappages(pde_t *pgdir, void *va, addr_t size, addr_t pa, int perm)
 {
   char *a, *last;
@@ -357,32 +355,39 @@ deallocuvm(pde_t *pgdir, uint64 oldsz, uint64 newsz)
 void
 freevm(pde_t *pml4)
 {
-  uint i, j, k;
-  pde_t *pdp, *pd;
+  uint i, j, k, l;
+  pde_t *pdp, *pd, *pt;
 
   if(pml4 == 0)
     panic("freevm: no pgdir");
-  
-  deallocuvm(pml4, 0x3fa00000, 0);
   
   // then need to loop through pml4 entry
   for(i = 0; i < (NPDENTRIES/2); i++){
     if(pml4[i] & PTE_P){
       pdp = (pdpe_t*)P2V(PTE_ADDR(pml4[i])); 
-
+      
       // and every entry in the corresponding pdpt
       for(j = 0; j < NPDENTRIES; j++){
-        if(pdp[j] & PTE_P){ 
+        if(pdp[j] & PTE_P){
           pd = (pde_t*)P2V(PTE_ADDR(pdp[j]));
 
           // and every entry in the corresponding page directory
           for(k = 0; k < (NPDENTRIES); k++){
             if(pd[k] & PTE_P) {
-              char * v = P2V(PTE_ADDR(pd[k]));
-              // freeing every page table
-              kfree((char*)v);
+              pt = (pde_t*)P2V(PTE_ADDR(pd[k]));
+
+              // and every entry in the corresponding page table
+              for(l = 0; l < (NPDENTRIES); l++){
+                if(pt[l] & PTE_P) {
+                  char * v = P2V(PTE_ADDR(pt[l]));
+              
+                  kfree((char*)v);
+                }
+              }              
+              //freeing every page table
+              kfree((char*)pt);
             }
-          }
+          }          
           // freeing every page directory
           kfree((char*)pd);
         }

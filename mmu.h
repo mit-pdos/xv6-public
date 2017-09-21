@@ -45,26 +45,26 @@
 // Model specific registers
 #define MSR_EFER	0xC0000080	// extended feature enable register
 #define MSR_STAR 	0xC0000081	// stores ring 0's and ring 3's segment bases
-#define MSR_LSTAR	0xC0000082	// stores syscall's entry rip
+#define MSR_LSTAR	0xC0000082	// stores syscall's entry rip 
 #define MSR_CSTAR	0xC0000083	// for compatiblity mode (not used)
 #define MSR_SFMASK	0xC0000084	// syscall flag mask
-
-// The CS values for user and kernel space
-#define USER_CS		35
-#define KERNEL_CS	8
-#define USER_DS		0X2B
 
 // various segment selectors.
 #define SEG_KCODE 1  // kernel code
 #define SEG_KDATA 2  // kernel data+stack
-#define SEG_KCPU  3  // kernel per-cpu data
-#define SEG_UCODE 4  // user code
-#define SEG_UDATA 5  // user data+stack
-#define SEG_TSS   6  // this process's task state
-
+#define SEG_UCODE32 3  // user data+stack
+#define SEG_UDATA 4  // user data+stack
+#define SEG_UCODE 5  // user code
+#define SEG_KCPU  6  // kernel per-cpu data
+#define SEG_TSS   7  // this process's task state
 // cpu->gdt[NSEGS] holds the above segments.
-#define NSEGS     7
-#define CALL_GATE 8
+#define NSEGS     8
+#define CALL_GATE 9
+
+// The CS values for user and kernel space
+#define USER_CS		((SEG_UCODE<<3)|DPL_USER)
+#define USER_DS		((SEG_UDATA<<3)|DPL_USER)
+#define KERNEL_CS	(SEG_KCODE<<3)
 
 //PAGEBREAK!
 #ifndef __ASSEMBLER__

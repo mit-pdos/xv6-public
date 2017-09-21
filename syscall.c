@@ -112,29 +112,29 @@ argstr(int n, char **pp)
   return fetchstr(addr, pp);
 }
 
-extern int sys_chdir(void);
-extern int sys_close(void);
-extern int sys_dup(void);
-extern int sys_exec(void);
-extern int sys_exit(void);
-extern int sys_fork(void);
-extern int sys_fstat(void);
-extern int sys_getpid(void);
-extern int sys_kill(void);
-extern int sys_link(void);
-extern int sys_mkdir(void);
-extern int sys_mknod(void);
-extern int sys_open(void);
-extern int sys_pipe(void);
-extern int sys_read(void);
-extern int sys_sbrk(void);
-extern int sys_sleep(void);
-extern int sys_unlink(void);
-extern int sys_wait(void);
-extern int sys_write(void);
-extern int sys_uptime(void);
+extern addr_t sys_chdir(void);
+extern addr_t sys_close(void);
+extern addr_t sys_dup(void);
+extern addr_t sys_exec(void);
+extern addr_t sys_exit(void);
+extern addr_t sys_fork(void);
+extern addr_t sys_fstat(void);
+extern addr_t sys_getpid(void);
+extern addr_t sys_kill(void);
+extern addr_t sys_link(void);
+extern addr_t sys_mkdir(void);
+extern addr_t sys_mknod(void);
+extern addr_t sys_open(void);
+extern addr_t sys_pipe(void);
+extern addr_t sys_read(void);
+extern addr_t sys_sbrk(void);
+extern addr_t sys_sleep(void);
+extern addr_t sys_unlink(void);
+extern addr_t sys_wait(void);
+extern addr_t sys_write(void);
+extern addr_t sys_uptime(void);
 
-static int (*syscalls[])(void) = {
+static addr_t (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
 [SYS_wait]    sys_wait,
