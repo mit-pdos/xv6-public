@@ -58,8 +58,6 @@ lapicinit(void)
   if(!lapic)
     return;
 
-  *(P2V(0x40000000));
-  
   // Enable local APIC; set spurious interrupt vector.
   lapicw(SVR, ENABLE | (T_IRQ0 + IRQ_SPURIOUS));
 

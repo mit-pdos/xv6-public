@@ -148,11 +148,12 @@ char*           strncpy(char*, const char*, int);
 
 // syscall.c
 void		syscall(void);
+void    syscallinit(void);
 int             argint(int, int*);
 int             argptr(int, char**, int);
 int             argstr(int, char**);
-int             argaddr_t(int, addr_t*);
-int             fetchaddr_t(addr_t, addr_t*);
+int             argaddr(int, addr_t*);
+int             fetchaddr(addr_t, addr_t*);
 int             fetchstr(addr_t, char**);
 void            syscall(void);
 int		fetchint(addr_t, int*);

@@ -406,7 +406,7 @@ sys_exec(void)
   for(i=0;; i++){
     if(i >= NELEM(argv))
       return -1;
-    if(fetchaddr(uargv+(sizeof(addr_t))*i, (int*)&uarg) < 0)
+    if(fetchaddr(uargv+(sizeof(addr_t))*i, (addr_t*)&uarg) < 0)
       return -1;
     if(uarg == 0){
       argv[i] = 0;

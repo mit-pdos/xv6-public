@@ -370,7 +370,6 @@ forkret(void)
     iinit(ROOTDEV);
     initlog(ROOTDEV);
   }
-  struct proc *p = proc;
 
   // Return to "caller", actually trapret (see allocproc).
 }

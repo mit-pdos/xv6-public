@@ -28,8 +28,8 @@ syscallinit(void)
   // the MSR/SYSRET wants the segment for 32-bit user data
   // next up is 64-bit user data, then code
   wrmsr( MSR_STAR, ((((uint64)SEG_UCODE32 << 3) << 48) | ((uint64)KERNEL_CS << 32)));
-  wrmsr( MSR_LSTAR, syscall_entry );
-  wrmsr( MSR_CSTAR, ignore_sysret );
+  wrmsr( MSR_LSTAR, (addr_t)syscall_entry );
+  wrmsr( MSR_CSTAR, (addr_t)ignore_sysret );
   
   
   wrmsr( MSR_SFMASK, FL_TF|FL_DF|FL_IF|FL_IOPL_3|FL_AC|FL_NT);
@@ -127,7 +127,6 @@ setupkvm(void)
 void
 kvmalloc(void)
 {
-  int n;
   kpml4 = (pde_t*) kalloc();
   memset(kpml4, 0, PGSIZE);
 

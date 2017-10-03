@@ -15,7 +15,7 @@ struct spinlock tickslock;
 uint ticks;
 
 static void 
-mkgate(uint *idt, uint n, void *kva, uint pl, uint trap) {
+mkgate(uint *idt, uint n, addr_t kva, uint pl, uint trap) {
   uint64 addr = (uint64) kva;
 
   n *= 4;
@@ -51,7 +51,7 @@ trap(struct trapframe *tf)
     if(proc->killed)
       exit();
     proc->tf = tf;
-    struct proc *p = proc;
+
     syscall();
     if(proc->killed)
       exit();
