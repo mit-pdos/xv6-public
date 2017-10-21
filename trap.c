@@ -63,6 +63,7 @@ trap(struct trapframe *tf)
     if(cpunum() == 0){
       acquire(&tickslock);
       ticks++;
+      if(ticks%10==0) cprintf("10tick\n");
       wakeup(&ticks);
       release(&tickslock);
     }

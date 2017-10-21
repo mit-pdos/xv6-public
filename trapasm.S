@@ -92,6 +92,7 @@ syscall_trapret:
 # discard trapnum, errorcode, rip, cs and rflags
   add $40, %rsp  
 
+  cli
   # restore the user stack
   mov (%rsp),%rsp
 
