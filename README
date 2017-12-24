@@ -6,7 +6,7 @@ ACKNOWLEDGMENTS
 
 xv6 is inspired by John Lions's Commentary on UNIX 6th Edition (Peer
 to Peer Communications; ISBN: 1-57398-013-7; 1st edition (June 14,
-2000)). See also http://pdos.csail.mit.edu/6.828/2016/xv6.html, which
+2000)). See also http://pdos.csail.mit.edu/6.828/2014/xv6.html, which
 provides pointers to on-line resources for v6.
 
 xv6 borrows code from the following sources:
@@ -15,9 +15,12 @@ xv6 borrows code from the following sources:
     FreeBSD (ioapic.c)
     NetBSD (console.c)
 
-The following people have made contributions: Russ Cox (context switching,
-locking), Cliff Frey (MP), Xiao Yu (MP), Nickolai Zeldovich, and Austin
-Clements.
+The following people have made contributions:
+    Russ Cox (context switching, locking)
+    Cliff Frey (MP)
+    Xiao Yu (MP)
+    Nickolai Zeldovich
+    Austin Clements
 
 We are also grateful for the bug reports and patches contributed by Silas
 Boyd-Wickizer, Anton Burtsev, Cody Cutler, Mike CAT, Tej Chajed, Nelson Elhage,

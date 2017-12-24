@@ -6,9 +6,8 @@
 #include "defs.h"
 #include "param.h"
 #include "fs.h"
-#include "spinlock.h"
-#include "sleeplock.h"
 #include "file.h"
+#include "spinlock.h"
 
 struct devsw devsw[NDEV];
 struct {
@@ -69,7 +68,7 @@ fileclose(struct file *f)
   f->ref = 0;
   f->type = FD_NONE;
   release(&ftable.lock);
-
+  
   if(ff.type == FD_PIPE)
     pipeclose(ff.pipe, ff.writable);
   else if(ff.type == FD_INODE){
