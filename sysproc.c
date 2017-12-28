@@ -26,6 +26,22 @@ sys_wait(void)
   return wait();
 }
 
+/*
+  this is the actual function being called from syscall.c
+  @returns - pidof the terminated child process ‐ if successful
+­             -1, upon failure
+*/
+int sys_wait2(void) {
+  int *retime, *rutime, *stime;
+  if (argptr(0, (void*)&retime, sizeof(retime)) < 0)
+    return -1;
+  if (argptr(1, (void*)&rutime, sizeof(retime)) < 0)
+    return -1;
+  if (argptr(2, (void*)&stime, sizeof(stime)) < 0)
+    return -1;
+  return wait2(retime, rutime, stime);
+}
+
 int
 sys_kill(void)
 {
@@ -39,7 +55,7 @@ sys_kill(void)
 int
 sys_getpid(void)
 {
-  return myproc()->pid;
+  return proc->pid;
 }
 
 int
@@ -50,7 +66,7 @@ sys_sbrk(void)
 
   if(argint(0, &n) < 0)
     return -1;
-  addr = myproc()->sz;
+  addr = proc->sz;
   if(growproc(n) < 0)
     return -1;
   return addr;
@@ -67,7 +83,7 @@ sys_sleep(void)
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
-    if(myproc()->killed){
+    if(proc->killed){
       release(&tickslock);
       return -1;
     }
@@ -88,4 +104,28 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+
+/*
+  this is the actual function being called from syscall.c
+  @returns - 0 if suceeded, 1 if no history in the historyId given, 2 if illgal history id
+*/
+int sys_history(void) {
+  char *buffer;
+  int historyId;
+  argptr(0, &buffer, 1);
+  argint(1, &historyId);
+  return history(buffer, historyId);
+}
+
+int sys_set_prio(void) {
+  int priority;
+  argint(0, &priority);
+  return set_prio(priority);
+}
+
+int sys_yield(void) {
+  yield();
+  return 0;
 }

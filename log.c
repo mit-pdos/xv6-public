@@ -2,7 +2,6 @@
 #include "defs.h"
 #include "param.h"
 #include "spinlock.h"
-#include "sleeplock.h"
 #include "fs.h"
 #include "buf.h"
 
@@ -32,7 +31,7 @@
 // Contents of the header block, used for both the on-disk header block
 // and to keep track in memory of logged block# before commit.
 struct logheader {
-  int n;
+  int n;   
   int block[LOGSIZE];
 };
 
@@ -66,7 +65,7 @@ initlog(int dev)
 }
 
 // Copy committed blocks from log to their home location
-static void
+static void 
 install_trans(void)
 {
   int tail;
@@ -76,7 +75,7 @@ install_trans(void)
     struct buf *dbuf = bread(log.dev, log.lh.block[tail]); // read dst
     memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
     bwrite(dbuf);  // write dst to disk
-    brelse(lbuf);
+    brelse(lbuf); 
     brelse(dbuf);
   }
 }
@@ -115,7 +114,7 @@ write_head(void)
 static void
 recover_from_log(void)
 {
-  read_head();
+  read_head();      
   install_trans(); // if committed, copy from log to disk
   log.lh.n = 0;
   write_head(); // clear the log
@@ -155,9 +154,7 @@ end_op(void)
     do_commit = 1;
     log.committing = 1;
   } else {
-    // begin_op() may be waiting for log space,
-    // and decrementing log.outstanding has decreased
-    // the amount of reserved space.
+    // begin_op() may be waiting for log space.
     wakeup(&log);
   }
   release(&log.lock);
@@ -174,7 +171,7 @@ end_op(void)
 }
 
 // Copy modified blocks from cache to log.
-static void
+static void 
 write_log(void)
 {
   int tail;
@@ -184,7 +181,7 @@ write_log(void)
     struct buf *from = bread(log.dev, log.lh.block[tail]); // cache block
     memmove(to->data, from->data, BSIZE);
     bwrite(to);  // write the log
-    brelse(from);
+    brelse(from); 
     brelse(to);
   }
 }
@@ -196,7 +193,7 @@ commit()
     write_log();     // Write modified blocks from cache to log
     write_head();    // Write header to disk -- the real commit
     install_trans(); // Now install writes to home locations
-    log.lh.n = 0;
+    log.lh.n = 0; 
     write_head();    // Erase the transaction from the log
   }
 }

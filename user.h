@@ -23,6 +23,12 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int history(char*, int);
+int wait2(int*, int*, int*);
+#ifdef SML
+int set_prio(int);
+#endif
+int yield(void);
 
 // ulib.c
 int stat(char*, struct stat*);

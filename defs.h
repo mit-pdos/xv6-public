@@ -6,9 +6,10 @@ struct pipe;
 struct proc;
 struct rtcdate;
 struct spinlock;
-struct sleeplock;
 struct stat;
 struct superblock;
+
+
 
 // bio.c
 void            binit(void);
@@ -21,6 +22,7 @@ void            consoleinit(void);
 void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
+int             history(char *, int );
 
 // exec.c
 int             exec(char*, char**);
@@ -74,7 +76,7 @@ void            kbdintr(void);
 
 // lapic.c
 void            cmostime(struct rtcdate *r);
-int             lapicid(void);
+int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
 void            lapicinit(void);
@@ -89,7 +91,9 @@ void            end_op();
 
 // mp.c
 extern int      ismp;
+int             mpbcpu(void);
 void            mpinit(void);
+void            mpstartthem(void);
 
 // picirq.c
 void            picenable(int);
@@ -103,23 +107,22 @@ int             pipewrite(struct pipe*, char*, int);
 
 //PAGEBREAK: 16
 // proc.c
-int             cpuid(void);
+struct proc*    copyproc(struct proc*);
 void            exit(void);
 int             fork(void);
 int             growproc(int);
 int             kill(int);
-struct cpu*     mycpu(void);
-struct proc*    myproc();
 void            pinit(void);
 void            procdump(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
-void            setproc(struct proc*);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
+int             wait2(int*, int*, int*);
 void            wakeup(void*);
 void            yield(void);
+int             set_prio(int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -132,12 +135,6 @@ void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
 void            pushcli(void);
 void            popcli(void);
-
-// sleeplock.c
-void            acquiresleep(struct sleeplock*);
-void            releasesleep(struct sleeplock*);
-int             holdingsleep(struct sleeplock*);
-void            initsleeplock(struct sleeplock*, char*);
 
 // string.c
 int             memcmp(const void*, const void*, uint);
@@ -173,6 +170,7 @@ void            uartputc(int);
 // vm.c
 void            seginit(void);
 void            kvmalloc(void);
+void            vmenable(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, uint, uint);
