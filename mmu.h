@@ -1,4 +1,4 @@
-// This file contains definitions for the
+// This file contains definitions for the 
 // x86 memory management unit (MMU).
 
 // Eflags register
@@ -39,16 +39,14 @@
 
 #define CR4_PSE         0x00000010      // Page size extension
 
-// various segment selectors.
 #define SEG_KCODE 1  // kernel code
 #define SEG_KDATA 2  // kernel data+stack
-#define SEG_UCODE 3  // user code
-#define SEG_UDATA 4  // user data+stack
-#define SEG_TSS   5  // this process's task state
+#define SEG_KCPU  3  // kernel per-cpu data
+#define SEG_UCODE 4  // user code
+#define SEG_UDATA 5  // user data+stack
+#define SEG_TSS   6  // this process's task state
 
-// cpu->gdt[NSEGS] holds the above segments.
-#define NSEGS     6
-
+//PAGEBREAK!
 #ifndef __ASSEMBLER__
 // Segment Descriptor
 struct segdesc {
@@ -108,7 +106,7 @@ struct segdesc {
 // | Page Directory |   Page Table   | Offset within Page  |
 // |      Index     |      Index     |                     |
 // +----------------+----------------+---------------------+
-//  \--- PDX(va) --/ \--- PTX(va) --/
+//  \--- PDX(va) --/ \--- PTX(va) --/ 
 
 // page directory index
 #define PDX(va)         (((uint)(va) >> PDXSHIFT) & 0x3FF)

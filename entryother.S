@@ -17,49 +17,43 @@
 # place to jump to (mpenter) in start-8, and the physical address
 # of entrypgdir in start-12.
 #
-# This code combines elements of bootasm.S and entry.S.
+# This code is identical to bootasm.S except:
+#   - it does not need to enable A20
+#   - it uses the address at start-4, start-8, and start-12
 
 .code16           
 .globl start
 start:
   cli            
 
-  # Zero data segment registers DS, ES, and SS.
   xorw    %ax,%ax
   movw    %ax,%ds
   movw    %ax,%es
   movw    %ax,%ss
 
-  # Switch from real to protected mode.  Use a bootstrap GDT that makes
-  # virtual addresses map directly to physical addresses so that the
-  # effective memory map doesn't change during the transition.
   lgdt    gdtdesc
   movl    %cr0, %eax
   orl     $CR0_PE, %eax
   movl    %eax, %cr0
 
-  # Complete the transition to 32-bit protected mode by using a long jmp
-  # to reload %cs and %eip.  The segment descriptors are set up with no
-  # translation, so that the mapping is still the identity mapping.
+//PAGEBREAK!
   ljmpl    $(SEG_KCODE<<3), $(start32)
 
-//PAGEBREAK!
-.code32  # Tell assembler to generate 32-bit code now.
+.code32
 start32:
-  # Set up the protected-mode data segment registers
-  movw    $(SEG_KDATA<<3), %ax    # Our data segment selector
-  movw    %ax, %ds                # -> DS: Data Segment
-  movw    %ax, %es                # -> ES: Extra Segment
-  movw    %ax, %ss                # -> SS: Stack Segment
-  movw    $0, %ax                 # Zero segments not ready for use
-  movw    %ax, %fs                # -> FS
-  movw    %ax, %gs                # -> GS
+  movw    $(SEG_KDATA<<3), %ax
+  movw    %ax, %ds
+  movw    %ax, %es
+  movw    %ax, %ss
+  movw    $0, %ax
+  movw    %ax, %fs
+  movw    %ax, %gs
 
   # Turn on page size extension for 4Mbyte pages
   movl    %cr4, %eax
   orl     $(CR4_PSE), %eax
   movl    %eax, %cr4
-  # Use entrypgdir as our initial page table
+  # Use enterpgdir as our initial page table
   movl    (start-12), %eax
   movl    %eax, %cr3
   # Turn on paging.

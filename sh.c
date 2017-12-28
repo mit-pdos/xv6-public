@@ -49,9 +49,31 @@ struct backcmd {
   struct cmd *cmd;
 };
 
+
+
+
+
 int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
+
+ char cmdFromHistory[INPUT_BUF];//this is the buffer that will get the current history command from history
+
+/*
+  this the function the calls to the different history indexes
+*/
+void history1() {
+  int i, count = 0;
+  for (i = 0; i < MAX_HISTORY; i++) {
+    if (history(cmdFromHistory, MAX_HISTORY-i-1) == 0) { //this is the sys call
+      count++;
+      if (count < 10)
+        printf(1, " %d: %s\n", count, cmdFromHistory);
+      else
+        printf(1, "%d: %s\n", count, cmdFromHistory);
+    }
+  }
+}
 
 // Execute cmd.  Never returns.
 void
@@ -144,10 +166,27 @@ getcmd(char *buf, int nbuf)
 int
 main(void)
 {
-  static char buf[100];
-  int fd;
+  printf(1, "Selected scheduling policy: ");
+  #ifdef DEFAULT
+    printf(1, "default\n");
+  #else
+  #ifdef FCFS
+    printf(1, "FCFS\n");
+  #else
+  #ifdef SML
+    printf(1, "SML\n");
+  #else
+  #ifdef DML
+    printf(1, "DML\n");
+  #endif
+  #endif
+  #endif
+  #endif
 
-  // Ensure that three file descriptors are open.
+  static char buf[INPUT_BUF];
+  int fd;
+  // int retime, rutime, stime,pid;
+  // Assumes three file descriptors open.
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
       close(fd);
@@ -158,15 +197,30 @@ main(void)
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
-      // Chdir must be called by the parent, not the child.
+      // Clumsy but will have to do for now.
+      // Chdir has no effect on the parent if run in the child.
       buf[strlen(buf)-1] = 0;  // chop \n
       if(chdir(buf+3) < 0)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
-    if(fork1() == 0)
+    if(buf[0] == 'h' && buf[1] == 'i' && buf[2] == 's' && buf[3] == 't'
+        && buf[4] == 'o' && buf[5] == 'r' && buf[6] == 'y' && buf[7] == '\n') {
+      history1();
+      continue;
+    }
+    if (buf[0] == 'g' && buf[1] == 'e' && buf[2] == 't' && buf[3] == 'p'
+        && buf[4] == 'i' && buf[5] == 'd') {
+      printf(1, "Process ID: %d\n", getpid());
+      continue;
+    }
+  if(fork1() == 0)
       runcmd(parsecmd(buf));
+  else {
     wait();
+    // pid = wait2(&retime, &rutime, &stime);
+    // printf(1, "pid:%d retime:%d rutime%d stime:%d\n", pid, retime, rutime, stime);
+  }
   }
   exit();
 }
