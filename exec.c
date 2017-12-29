@@ -1,6 +1,5 @@
 #include "types.h"
 #include "param.h"
-#include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
 #include "defs.h"
@@ -10,36 +9,26 @@
 int
 exec(char *path, char **argv)
 {
-  char *s, *last;
-  int i, off;
-  uint argc, sz, sp, ustack[3+MAXARG+1];
+  char *mem, *s, *last;
+  int i, argc, arglen, len, off;
+  uint sz, sp, argp;
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
-  pde_t *pgdir, *oldpgdir;
-  struct proc *curproc = myproc();
 
-  begin_op();
-
-  if((ip = namei(path)) == 0){
-    end_op();
-    cprintf("exec: fail\n");
+  if((ip = namei(path)) == 0)
     return -1;
-  }
   ilock(ip);
-  pgdir = 0;
 
-  // Check ELF header
-  if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
+  // Compute memory size of new process.
+  mem = 0;
+  sz = 0;
+
+  // Program segments.
+  if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
     goto bad;
   if(elf.magic != ELF_MAGIC)
     goto bad;
-
-  if((pgdir = setupkvm()) == 0)
-    goto bad;
-
-  // Load program into memory.
-  sz = 0;
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -47,68 +36,80 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
-    if(ph.vaddr + ph.memsz < ph.vaddr)
+    sz += ph.memsz;
+  }
+  
+  // Arguments.
+  arglen = 0;
+  for(argc=0; argv[argc]; argc++)
+    arglen += strlen(argv[argc]) + 1;
+  arglen = (arglen+3) & ~3;
+  sz += arglen + 4*(argc+1);
+
+  // Stack.
+  sz += PAGE;
+  
+  // Allocate program memory.
+  sz = (sz+PAGE-1) & ~(PAGE-1);
+  mem = kalloc(sz);
+  if(mem == 0)
+    goto bad;
+  memset(mem, 0, sz);
+
+  // Load program into memory.
+  for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
+    if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
-    if((sz = allocuvm(pgdir, sz, ph.vaddr + ph.memsz)) == 0)
+    if(ph.type != ELF_PROG_LOAD)
+      continue;
+    if(ph.va + ph.memsz < ph.va || ph.va + ph.memsz > sz || ph.memsz < ph.filesz)
       goto bad;
-    if(ph.vaddr % PGSIZE != 0)
+    if(readi(ip, mem + ph.va, ph.offset, ph.filesz) != ph.filesz)
       goto bad;
-    if(loaduvm(pgdir, (char*)ph.vaddr, ip, ph.off, ph.filesz) < 0)
-      goto bad;
+    memset(mem + ph.va + ph.filesz, 0, ph.memsz - ph.filesz);
   }
   iunlockput(ip);
-  end_op();
-  ip = 0;
-
-  // Allocate two pages at the next page boundary.
-  // Make the first inaccessible.  Use the second as the user stack.
-  sz = PGROUNDUP(sz);
-  if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
-    goto bad;
-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
+  
+  // Initialize stack.
   sp = sz;
+  argp = sz - arglen - 4*(argc+1);
 
-  // Push argument strings, prepare rest of stack in ustack.
-  for(argc = 0; argv[argc]; argc++) {
-    if(argc >= MAXARG)
-      goto bad;
-    sp = (sp - (strlen(argv[argc]) + 1)) & ~3;
-    if(copyout(pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
-      goto bad;
-    ustack[3+argc] = sp;
+  // Copy argv strings and pointers to stack.
+  *(uint*)(mem+argp + 4*argc) = 0;  // argv[argc]
+  for(i=argc-1; i>=0; i--){
+    len = strlen(argv[i]) + 1;
+    sp -= len;
+    memmove(mem+sp, argv[i], len);
+    *(uint*)(mem+argp + 4*i) = sp;  // argv[i]
   }
-  ustack[3+argc] = 0;
 
-  ustack[0] = 0xffffffff;  // fake return PC
-  ustack[1] = argc;
-  ustack[2] = sp - (argc+1)*4;  // argv pointer
-
-  sp -= (3+argc+1) * 4;
-  if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
-    goto bad;
+  // Stack frame for main(argc, argv), below arguments.
+  sp = argp;
+  sp -= 4;
+  *(uint*)(mem+sp) = argp;
+  sp -= 4;
+  *(uint*)(mem+sp) = argc;
+  sp -= 4;
+  *(uint*)(mem+sp) = 0xffffffff;   // fake return pc
 
   // Save program name for debugging.
   for(last=s=path; *s; s++)
     if(*s == '/')
       last = s+1;
-  safestrcpy(curproc->name, last, sizeof(curproc->name));
+  safestrcpy(cp->name, last, sizeof(cp->name));
 
-  // Commit to the user image.
-  oldpgdir = curproc->pgdir;
-  curproc->pgdir = pgdir;
-  curproc->sz = sz;
-  curproc->tf->eip = elf.entry;  // main
-  curproc->tf->esp = sp;
-  switchuvm(curproc);
-  freevm(oldpgdir);
+  // Commit to the new image.
+  kfree(cp->mem, cp->sz);
+  cp->mem = mem;
+  cp->sz = sz;
+  cp->tf->eip = elf.entry;  // main
+  cp->tf->esp = sp;
+  usegment();
   return 0;
 
  bad:
-  if(pgdir)
-    freevm(pgdir);
-  if(ip){
-    iunlockput(ip);
-    end_op();
-  }
+  if(mem)
+    kfree(mem, sz);
+  iunlockput(ip);
   return -1;
 }

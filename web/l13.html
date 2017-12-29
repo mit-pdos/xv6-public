@@ -1,0 +1,245 @@
+<title>High-performance File Systems</title>
+<html>
+<head>
+</head>
+<body>
+
+<h1>High-performance File Systems</h1>
+
+<p>Required reading: soft updates.
+
+<h2>Overview</h2>
+
+<p>A key problem in designing file systems is how to obtain
+performance on file system operations while providing consistency.
+With consistency, we mean, that file system invariants are maintained
+is on disk.  These invariants include that if a file is created, it
+appears in its directory, etc.  If the file system data structures are
+consistent, then it is possible to rebuild the file system to a
+correct state after a failure.
+
+<p>To ensure consistency of on-disk file system data structures,
+  modifications to the file system must respect certain rules:
+<ul>
+
+<li>Never point to a structure before it is initialized. An inode must
+be initialized before a directory entry references it.  An block must
+be initialized before an inode references it.
+
+<li>Never reuse a structure before nullifying all pointers to it.  An
+inode pointer to a disk block must be reset before the file system can
+reallocate the disk block.
+
+<li>Never reset the last point to a live structure before a new
+pointer is set.  When renaming a file, the file system should not
+remove the old name for an inode until after the new name has been
+written.
+</ul>
+The paper calls these dependencies update dependencies.  
+
+<p>xv6 ensures these rules by writing every block synchronously, and
+  by ordering the writes appropriately.  With synchronous, we mean
+  that a process waits until the current disk write has been
+  completed before continuing with execution.
+
+<ul>
+
+<li>What happens if power fails after 4776 in mknod1?  Did we lose the
+  inode for ever? No, we have a separate program (called fsck), which
+  can rebuild the disk structures correctly and can mark the inode on
+  the free list.
+
+<li>Does the order of writes in mknod1 matter?  Say, what if we wrote
+  directory entry first and then wrote the allocated inode to disk?
+  This violates the update rules and it is not a good plan. If a
+  failure happens after the directory write, then on recovery we have
+  an directory pointing to an unallocated inode, which now may be
+  allocated by another process for another file!
+
+<li>Can we turn the writes (i.e., the ones invoked by iupdate and
+  wdir) into delayed writes without creating problems?  No, because
+  the cause might write them back to the disk in an incorrect order.
+  It has no information to decide in what order to write them.
+
+</ul>
+
+<p>xv6 is a nice example of the tension between consistency and
+  performance.  To get consistency, xv6 uses synchronous writes,
+  but these writes are slow, because they perform at the rate of a
+  seek instead of the rate of the maximum data transfer rate. The
+  bandwidth to a disk is reasonable high for large transfer (around
+  50Mbyte/s), but latency is low, because of the cost of moving the
+  disk arm(s) (the seek latency is about 10msec).
+
+<p>This tension is an implementation-dependent one.  The Unix API
+  doesn't require that writes are synchronous.  Updates don't have to
+  appear on disk until a sync, fsync, or open with O_SYNC.  Thus, in
+  principle, the UNIX API allows delayed writes, which are good for
+  performance:
+<ul>
+<li>Batch many writes together in a big one, written at the disk data
+  rate.
+<li>Absorp writes to the same block.
+<li>Schedule writes to avoid seeks.
+</ul>
+
+<p>Thus the question: how to delay writes and achieve consistency?
+  The paper provides an answer.
+
+<h2>This paper</h2>
+
+<p>The paper surveys some of the existing techniques and introduces a
+new to achieve the goal of performance and consistency.
+
+<p>
+
+<p>Techniques possible:
+<ul>
+
+<li>Equip system with NVRAM, and put buffer cache in NVRAM.
+
+<li>Logging.  Often used in UNIX file systems for metadata updates.
+LFS is an extreme version of this strategy.
+
+<li>Flusher-enforced ordering.  All writes are delayed. This flusher
+is aware of dependencies between blocks, but doesn't work because
+circular dependencies need to be broken by writing blocks out.
+
+</ul>
+
+<p>Soft updates is the solution explored in this paper.  It doesn't
+require NVRAM, and performs as well as the naive strategy of keep all
+dirty block in main memory.  Compared to logging, it is unclear if
+soft updates is better.  The default BSD file systems uses soft
+  updates, but most Linux file systems use logging.
+
+<p>Soft updates is a sophisticated variant of flusher-enforced
+ordering.  Instead of maintaining dependencies on the block-level, it
+maintains dependencies on file structure level (per inode, per
+directory, etc.), reducing circular dependencies. Furthermore, it
+breaks any remaining circular dependencies by undo changes before
+writing the block and then redoing them to the block after writing.
+
+<p>Pseudocode for create:
+<pre>
+create (f) {
+   allocate inode in block i  (assuming inode is available)
+   add i to directory data block d  (assuming d has space)
+   mark d has dependent on i, and create undo/redo record
+   update directory inode in block di
+   mark di has dependent on d
+}
+</pre>
+
+<p>Pseudocode for the flusher:
+<pre>
+flushblock (b)
+{
+  lock b;
+  for all dependencies that b is relying on
+    "remove" that dependency by undoing the change to b
+    mark the dependency as "unrolled"
+  write b 
+}
+
+write_completed (b) {
+  remove dependencies that depend on b
+  reapply "unrolled" dependencies that b depended on
+  unlock b
+}
+</pre>
+
+<p>Apply flush algorithm to example:
+<ul>
+<li>A list of two dependencies: directory->inode, inode->directory.
+<li>Lets say syncer picks directory first
+<li>Undo directory->inode changes (i.e., unroll <A,#4>)
+<li>Write directory block
+<li>Remove met dependencies (i.e., remove inode->directory dependency)
+<li>Perform redo operation (i.e., redo <A,#4>)
+<li>Select inode block and write it
+<li>Remove met dependencies (i.e., remove directory->inode dependency)
+<li>Select directory block (it is dirty again!)
+<li>Write it.
+</ul>
+
+<p>An file operation that is important for file-system consistency 
+is rename.  Rename conceptually works as follows:
+<pre>
+rename (from, to)
+   unlink (to);
+   link (from, to);
+   unlink (from);
+</pre>
+
+<p>Rename it often used by programs to make a new version of a file
+the current version.  Committing to a new version must happen
+atomically.  Unfortunately, without a transaction-like support
+atomicity is impossible to guarantee, so a typical file systems
+provides weaker semantics for rename: if to already exists, an
+instance of to will always exist, even if the system should crash in
+the middle of the operation.  Does the above implementation of rename
+guarantee this semantics? (Answer: no).
+
+<p>If rename is implemented as unlink, link, unlink, then it is
+difficult to guarantee even the weak semantics. Modern UNIXes provide
+rename as a file system call:
+<pre>
+   update dir block for to point to from's inode // write block
+   update dir block for from to free entry // write block
+</pre>
+<p>fsck may need to correct refcounts in the inode if the file
+system fails during rename.  for example, a crash after the first
+write followed by fsck should set refcount to 2, since both from
+and to are pointing at the inode.
+
+<p>This semantics is sufficient, however, for an application to ensure
+atomicity. Before the call, there is a from and perhaps a to.  If the
+call is successful, following the call there is only a to.  If there
+is a crash, there may be both a from and a to, in which case the
+caller knows the previous attempt failed, and must retry.  The
+subtlety is that if you now follow the two links, the "to" name may
+link to either the old file or the new file.  If it links to the new
+file, that means that there was a crash and you just detected that the
+rename operation was composite.  On the other hand, the retry
+procedure can be the same for either case (do the rename again), so it
+isn't necessary to discover how it failed.  The function follows the
+golden rule of recoverability, and it is idempotent, so it lays all
+the needed groundwork for use as part of a true atomic action.
+
+<p>With soft updates renames becomes:
+<pre>
+rename (from, to) {
+   i = namei(from);
+   add "to" directory data block td a reference to inode i
+   mark td dependent on block i
+   update directory inode "to" tdi
+   mark tdi as dependent on td
+   remove "from" directory data block fd a reference to inode i
+   mark fd as dependent on tdi
+   update directory inode in block fdi
+   mark fdi as dependent on fd
+}
+</pre>
+<p>No synchronous writes!
+
+<p>What needs to be done on recovery?  (Inspect every statement in
+rename and see what inconsistencies could exist on the disk; e.g.,
+refcnt inode could be too high.)  None of these inconsitencies require
+fixing before the file system can operate; they can be fixed by a
+background file system repairer. 
+
+<h2>Paper discussion</h2>
+
+<p>Do soft updates perform any useless writes? (A useless write is a
+write that will be immediately overwritten.)  (Answer: yes.) Fix
+syncer to becareful with what block to start.  Fix cache replacement
+to selecting LRU block with no pendending dependencies.
+
+<p>Can a log-structured file system implement rename better? (Answer:
+yes, since it can get the refcnts right).
+
+<p>Discuss all graphs.
+
+</body>
+

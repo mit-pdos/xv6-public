@@ -1,0 +1,249 @@
+<html>
+<head>
+<title>Plan 9</title>
+</head>
+<body>
+
+<h1>Plan 9</h1>
+
+<p>Required reading: Plan 9 from Bell Labs</p>
+
+<h2>Background</h2>
+
+<p>Had moved away from the ``one computing system'' model of
+Multics and Unix.</p>
+
+<p>Many computers (`workstations'), self-maintained, not a coherent whole.</p>
+
+<p>Pike and Thompson had been batting around ideas about a system glued together 
+by a single protocol as early as 1984.
+Various small experiments involving individual pieces (file server, OS, computer)
+tried throughout 1980s.</p>
+
+<p>Ordered the hardware for the ``real thing'' in beginning of 1989,
+built up WORM file server, kernel, throughout that year.</p>
+
+<p>Some time in early fall 1989, Pike and Thompson were
+trying to figure out a way to fit the window system in.
+On way home from dinner, both independently realized that
+needed to be able to mount a user-space file descriptor,
+not just a network address.</p>
+
+<p>Around Thanksgiving 1989, spent a few days rethinking the whole
+thing, added bind, new mount, flush, and spent a weekend 
+making everything work again.  The protocol at that point was
+essentially identical to the 9P in the paper.</p>
+
+<p>In May 1990, tried to use system as self-hosting.
+File server kept breaking, had to keep rewriting window system.
+Dozen or so users by then, mostly using terminal windows to
+connect to Unix.</p>
+
+<p>Paper written and submitted to UKUUG in July 1990.</p>
+
+<p>Because it was an entirely new system, could take the
+time to fix problems as they arose, <i>in the right place</i>.</p>
+
+
+<h2>Design Principles</h2>
+
+<p>Three design principles:</p>
+
+<p>
+1. Everything is a file.<br>
+2. There is a standard protocol for accessing files.<br>
+3. Private, malleable name spaces (bind, mount).
+</p>
+
+<h3>Everything is a file.</h3>
+
+<p>Everything is a file (more everything than Unix: networks, graphics).</p>
+
+<pre>
+% ls -l /net
+% lp /dev/screen
+% cat /mnt/wsys/1/text
+</pre>
+
+<h3>Standard protocol for accessing files</h3>
+
+<p>9P is the only protocol the kernel knows: other protocols
+(NFS, disk file systems, etc.) are provided by user-level translators.</p>
+
+<p>Only one protocol, so easy to write filters and other
+converters.  <i>Iostats</i> puts itself between the kernel
+and a command.</p>
+
+<pre>
+% iostats -xvdfdf /bin/ls
+</pre>
+
+<h3>Private, malleable name spaces</h3>
+
+<p>Each process has its own private name space that it
+can customize at will.  
+(Full disclosure: can arrange groups of
+processes to run in a shared name space.  Otherwise how do
+you implement <i>mount</i> and <i>bind</i>?)</p>
+
+<p><i>Iostats</i> remounts the root of the name space
+with its own filter service.</p>
+
+<p>The window system mounts a file system that it serves
+on <tt>/mnt/wsys</tt>.</p>
+
+<p>The network is actually a kernel device (no 9P involved)
+but it still serves a file interface that other programs
+use to access the network.
+Easy to move out to user space (or replace) if necessary:
+<i>import</i> network from another machine.</p>
+
+<h3>Implications</h3>
+
+<p>Everything is a file + can share files =&gt; can share everything.</p>
+
+<p>Per-process name spaces help move toward ``each process has its own
+private machine.''</p>
+
+<p>One protocol: easy to build custom filters to add functionality
+(e.g., reestablishing broken network connections).
+
+<h3>File representation for networks, graphics, etc.</h3>
+
+<p>Unix sockets are file descriptors, but you can't use the
+usual file operations on them.  Also far too much detail that
+the user doesn't care about.</p>
+
+<p>In Plan 9: 
+<pre>dial("tcp!plan9.bell-labs.com!http");
+</pre>
+(Protocol-independent!)</p>
+
+<p>Dial more or less does:<br>
+write to /net/cs: tcp!plan9.bell-labs.com!http
+read back: /net/tcp/clone 204.178.31.2!80
+write to /net/tcp/clone: connect 204.178.31.2!80
+read connection number: 4
+open /net/tcp/4/data
+</p>
+
+<p>Details don't really matter.  Two important points:
+protocol-independent, and ordinary file operations
+(open, read, write).</p>
+
+<p>Networks can be shared just like any other files.</p>
+
+<p>Similar story for graphics, other resources.</p>
+
+<h2>Conventions</h2>
+
+<p>Per-process name spaces mean that even full path names are ambiguous
+(<tt>/bin/cat</tt> means different things on different machines,
+or even for different users).</p>
+
+<p><i>Convention</i> binds everything together.  
+On a 386, <tt>bind /386/bin /bin</tt>.
+
+<p>In Plan 9, always know where the resource <i>should</i> be
+(e.g., <tt>/net</tt>, <tt>/dev</tt>, <tt>/proc</tt>, etc.),
+but not which one is there.</p>
+
+<p>Can break conventions: on a 386, <tt>bind /alpha/bin /bin</tt>, just won't
+have usable binaries in <tt>/bin</tt> anymore.</p>
+
+<p>Object-oriented in the sense of having objects (files) that all
+present the same interface and can be substituted for one another
+to arrange the system in different ways.</p>
+
+<p>Very little ``type-checking'': <tt>bind /net /proc; ps</tt>.
+Great benefit (generality) but must be careful (no safety nets).</p>
+
+
+<h2>Other Contributions</h2>
+
+<h3>Portability</h3>
+
+<p>Plan 9 still is the most portable operating system.
+Not much machine-dependent code, no fancy features
+tied to one machine's MMU, multiprocessor from the start (1989).</p>
+
+<p>Many other systems are still struggling with converting to SMPs.</p>
+
+<p>Has run on MIPS, Motorola 68000, Nextstation, Sparc, x86, PowerPC, Alpha, others.</p>
+
+<p>All the world is not an x86.</p>
+
+<h3>Alef</h3>
+
+<p>New programming language: convenient, but difficult to maintain.
+Retired when author (Winterbottom) stopped working on Plan 9.</p>
+
+<p>Good ideas transferred to C library plus conventions.</p>
+
+<p>All the world is not C.</p>
+
+<h3>UTF-8</h3>
+
+<p>Thompson invented UTF-8.  Pike and Thompson
+converted Plan 9 to use it over the first weekend of September 1992,
+in time for X/Open to choose it as the Unicode standard byte format
+at a meeting the next week.</p>
+
+<p>UTF-8 is now the standard character encoding for Unicode on
+all systems and interoperating between systems.</p>
+
+<h3>Simple, easy to modify base for experiments</h3>
+
+<p>Whole system source code is available, simple, easy to 
+understand and change.
+There's a reason it only took a couple days to convert to UTF-8.</p>
+
+<pre>
+  49343  file server kernel
+
+ 181611  main kernel
+  78521    ipaq port (small kernel)
+  20027      TCP/IP stack
+  15365      ipaq-specific code
+  43129      portable code
+
+1326778  total lines of source code
+</pre>
+
+<h3>Dump file system</h3>
+
+<p>Snapshot idea might well have been ``in the air'' at the time.
+(<tt>OldFiles</tt> in AFS appears to be independently derived,
+use of WORM media was common research topic.)</p>
+
+<h3>Generalized Fork</h3>
+
+<p>Picked up by other systems: FreeBSD, Linux.</p>
+
+<h3>Authentication</h3>
+
+<p>No global super-user.
+Newer, more Plan 9-like authentication described in later paper.</p>
+
+<h3>New Compilers</h3>
+
+<p>Much faster than gcc, simpler.</p>
+
+<p>8s to build acme for Linux using gcc; 1s to build acme for Plan 9 using 8c (but running on Linux)</p>
+
+<h3>IL Protocol</h3>
+
+<p>Now retired.  
+For better or worse, TCP has all the installed base.
+IL didn't work very well on asymmetric or high-latency links
+(e.g., cable modems).</p>
+
+<h2>Idea propagation</h2>
+
+<p>Many ideas have propagated out to varying degrees.</p>
+
+<p>Linux even has bind and user-level file servers now (FUSE),
+but still not per-process name spaces.</p>
+
+
+</body>

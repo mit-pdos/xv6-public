@@ -1,0 +1,339 @@
+** Xv6, a simple Unix-like teaching operating system
+Xv6 is a teaching operating system developed
+in the summer of 2006 for MIT's operating systems course, 
+``6.828: Operating Systems Engineering.''
+We used it for 6.828 in Fall 2006 and Fall 2007
+and are using it this semester (Fall 2008).
+We hope that xv6 will be useful in other courses too.
+This page collects resources to aid the use of xv6
+in other courses.
+
+* History and Background
+
+For many years, MIT had no operating systems course.
+In the fall of 2002, Frans Kaashoek, Josh Cates, and Emil Sit
+created a new, experimental course (6.097)
+to teach operating systems engineering.
+In the course lectures, the class worked through Sixth Edition Unix (aka V6)
+using John Lions's famous commentary.
+In the lab assignments, students wrote most of an exokernel operating
+system, eventually named Jos, for the Intel x86.
+Exposing students to multiple systems--V6 and Jos--helped
+develop a sense of the spectrum of operating system designs.
+In the fall of 2003, the experimental 6.097 became the
+official course 6.828; the course has been offered each fall since then.
+
+V6 presented pedagogic challenges from the start.
+Students doubted the relevance of an obsolete 30-year-old operating system
+written in an obsolete programming language (pre-K&R C)
+running on obsolete hardware (the PDP-11).
+Students also struggled to learn the low-level details of two different
+architectures (the PDP-11 and the Intel x86) at the same time.
+By the summer of 2006, we had decided to replace V6
+with a new operating system, xv6, modeled on V6
+but written in ANSI C and running on multiprocessor
+Intel x86 machines.
+Xv6's use of the x86 makes it more relevant to
+students' experience than V6 was
+and unifies the course around a single architecture.
+Adding multiprocessor support requires handling concurrency head on with
+locks and threads (instead of using special-case solutions for
+uniprocessors such as
+enabling/disabling interrupts) and helps relevance.
+Finally, writing a new system allowed us to write cleaner versions
+of the rougher parts of V6, like the scheduler and file system.
+
+6.828 substituted xv6 for V6 in the fall of 2006.
+Based on that experience, we cleaned up rough patches
+of xv6 for the course in the fall of 2007.
+Since then, xv6 has stabilized, so we are making it
+available in the hopes that others will find it useful too.
+
+6.828 uses both xv6 and Jos.  
+Courses taught at UCLA, NYU, Peking University, Stanford, Tsinghua,
+and University Texas (Austin) have used
+Jos without xv6; we believe other courses could use
+xv6 without Jos, though we are not aware of any that have.
+
+
+* Xv6 sources
+
+The latest xv6 is [xv6-rev2.tar.gz].
+We distribute the sources in electronic form but also as 
+a printed booklet with line numbers that keep everyone
+together during lectures.  The booklet is available as
+[xv6-rev2.pdf].
+
+xv6 compiles using the GNU C compiler,
+targeted at the x86 using ELF binaries.
+On BSD and Linux systems, you can use the native compilers;
+On OS X, which doesn't use ELF binaries,
+you must use a cross-compiler.
+Xv6 does boot on real hardware, but typically
+we run it using the Bochs emulator.
+Both the GCC cross compiler and Bochs
+can be found on the [../../2007/tools.html | 6.828 tools page].
+
+
+* Lectures
+
+In 6.828, the lectures in the first half of the course
+introduce the PC hardware, the Intel x86, and then xv6.
+The lectures in the second half consider advanced topics
+using research papers; for some, xv6 serves as a useful
+base for making discussions concrete.
+This section describe a typical 6.828 lecture schedule,
+linking to lecture notes and homework.
+A course using only xv6 (not Jos) will need to adapt
+a few of the lectures, but we hope these are a useful
+starting point.
+
+
+Lecture 1. Operating systems
+
+The first lecture introduces both the general topic of
+operating systems and the specific approach of 6.828.
+After defining ``operating system,'' the lecture
+examines the implementation of a Unix shell
+to look at the details the traditional Unix system call interface.
+This is relevant to both xv6 and Jos: in the final
+Jos labs, students implement a Unix-like interface
+and culminating in a Unix shell.
+
+[l1.html | lecture notes]
+[os-lab-1.pdf | OS abstractions slides]
+
+
+Lecture 2.  PC hardware and x86 programming
+
+This lecture introduces the PC architecture, the 16- and 32-bit x86,
+the stack, and the GCC x86 calling conventions.
+It also introduces the pieces of a typical C tool chain--compiler,
+assembler, linker, loader--and the Bochs emulator.
+
+Reading: PC Assembly Language
+
+Homework: familiarize with Bochs
+
+[l2.html | lecture notes]
+[os-lab-2.pdf | x86 intro slides]
+[x86-intro.html | homework]
+
+
+Lecture 3.  Operating system organization
+
+This lecture continues Lecture 1's discussion of what
+an operating system does.
+An operating system provides a ``virtual computer''
+interface to user space programs.
+At a high level, the main job of the operating system 
+is to implement that interface
+using the physical computer it runs on.
+
+The lecture discusses four approaches to that job:
+monolithic operating systems, microkernels,
+virtual machines, and exokernels.
+Exokernels might not be worth mentioning
+except that the Jos labs are built around one.
+
+Reading: Engler et al., Exokernel: An Operating System Architecture
+for Application-Level Resource Management
+
+[l3.html | lecture notes]
+
+
+Lecture 4.  Address spaces using segmentation
+
+This is the first lecture that uses xv6.
+It introduces the idea of address spaces and the
+details of the x86 segmentation hardware.
+It makes the discussion concrete by reading the xv6
+source code and watching xv6 execute using the Bochs simulator.
+
+Reading: x86 MMU handout,
+xv6: bootasm.S, bootother.S, bootmain.c, main.c, init.c, and setupsegs in proc.c.
+
+Homework: Bochs stack introduction
+
+[l4.html | lecture notes]
+[os-lab-3.pdf | x86 virtual memory slides]
+[xv6-intro.html | homework]
+ 
+
+Lecture 5.  Address spaces using page tables
+
+This lecture continues the discussion of address spaces,
+examining the other x86 virtual memory mechanism: page tables.
+Xv6 does not use page tables, so there is no xv6 here.
+Instead, the lecture uses Jos as a concrete example.
+An xv6-only course might skip or shorten this discussion.
+
+Reading: x86 manual excerpts
+
+Homework: stuff about gdt
+XXX not appropriate; should be in Lecture 4
+
+[l5.html | lecture notes]
+
+
+Lecture 6.  Interrupts and exceptions
+
+How does a user program invoke the operating system kernel?
+How does the kernel return to the user program?
+What happens when a hardware device needs attention?
+This lecture explains the answer to these questions:
+interrupt and exception handling.
+
+It explains the x86 trap setup mechanisms and then
+examines their use in xv6's SETGATE (mmu.h),
+tvinit (trap.c), idtinit (trap.c), vectors.pl, and vectors.S.
+
+It then traces through a call to the system call open:
+init.c, usys.S, vector48 and alltraps (vectors.S), trap (trap.c),
+syscall (syscall.c),
+sys_open (sysfile.c), fetcharg, fetchint, argint, argptr, argstr (syscall.c),
+
+The interrupt controller, briefly:
+pic_init and pic_enable (picirq.c).
+The timer and keyboard, briefly:
+timer_init (timer.c), console_init (console.c).
+Enabling and disabling of interrupts.
+
+Reading: x86 manual excerpts,
+xv6: trapasm.S, trap.c, syscall.c, and usys.S.
+Skim lapic.c, ioapic.c, picirq.c.
+
+Homework: Explain the 35 words on the top of the
+stack at first invocation of <code>syscall</code>.
+
+[l-interrupt.html | lecture notes]
+[x86-intr.html | homework]
+
+
+Lecture 7.  Multiprocessors and locking
+
+This lecture introduces the problems of 
+coordination and synchronization on a 
+multiprocessor
+and then the solution of mutual exclusion locks.
+Atomic instructions, test-and-set locks,
+lock granularity, (the mistake of) recursive locks.
+
+Although xv6 user programs cannot share memory,
+the xv6 kernel itself is a program with multiple threads
+executing concurrently and sharing memory.
+Illustration: the xv6 scheduler's proc_table_lock (proc.c)
+and the spin lock implementation (spinlock.c).
+
+Reading: xv6: spinlock.c.  Skim mp.c.
+
+Homework: Interaction between locking and interrupts.
+Try not disabling interrupts in the disk driver and watch xv6 break.
+
+[l-lock.html | lecture notes]
+[xv6-lock.html | homework]
+
+
+Lecture 8.  Threads, processes and context switching
+
+The last lecture introduced some of the issues 
+in writing threaded programs, using xv6's processes
+as an example.
+This lecture introduces the issues in implementing
+threads, continuing to use xv6 as the example.
+
+The lecture defines a thread of computation as a register
+set and a stack.  A process is an address space plus one 
+or more threads of computation sharing that address space.
+Thus the xv6 kernel can be viewed as a single process
+with many threads (each user process) executing concurrently.
+
+Illustrations: thread switching (swtch.S), scheduler (proc.c), sys_fork (sysproc.c)
+
+Reading: proc.c, swtch.S, sys_fork (sysproc.c)
+
+Homework: trace through stack switching.
+
+[l-threads.html | lecture notes (need to be updated to use swtch)]
+[xv6-sched.html | homework]
+
+
+Lecture 9.  Processes and coordination
+
+This lecture introduces the idea of sequence coordination
+and then examines the particular solution illustrated by
+sleep and wakeup (proc.c).
+It introduces and refines a simple
+producer/consumer queue to illustrate the 
+need for sleep and wakeup
+and then the sleep and wakeup
+implementations themselves.
+
+Reading: proc.c, sys_exec, sys_sbrk, sys_wait, sys_exec, sys_kill (sysproc.c).
+
+Homework: Explain how sleep and wakeup would break
+without proc_table_lock.  Explain how devices would break
+without second lock argument to sleep.
+
+[l-coordination.html | lecture notes]
+[xv6-sleep.html | homework]
+
+
+Lecture 10.  Files and disk I/O
+
+This is the first of three file system lectures.
+This lecture introduces the basic file system interface
+and then considers the on-disk layout of individual files
+and the free block bitmap.
+
+Reading: iread, iwrite, fileread, filewrite, wdir, mknod1, and 
+	code related to these calls in fs.c, bio.c, ide.c, and file.c.
+
+Homework: Add print to bwrite to trace every disk write.
+Explain the disk writes caused by some simple shell commands.
+
+[l-fs.html | lecture notes]
+[xv6-disk.html | homework]
+
+
+Lecture 11.  Naming
+
+The last lecture discussed on-disk file system representation.
+This lecture covers the implementation of
+file system paths (namei in fs.c)
+and also discusses the security problems of a shared /tmp
+and symbolic links.
+
+Understanding exec (exec.c) is left as an exercise.
+
+Reading: namei in fs.c, sysfile.c, file.c.
+
+Homework: Explain how to implement symbolic links in xv6.
+
+[l-name.html | lecture notes]
+[xv6-names.html | homework]
+
+
+Lecture 12.  High-performance file systems
+
+This lecture is the first of the research paper-based lectures.
+It discusses the ``soft updates'' paper,
+using xv6 as a concrete example.
+
+
+* Feedback
+
+If you are interested in using xv6 or have used xv6 in a course,
+we would love to hear from you.
+If there's anything that we can do to make xv6 easier
+to adopt, we'd like to hear about it.
+We'd also be interested to hear what worked well and what didn't.
+
+Russ Cox (rsc@swtch.com)<br>
+Frans Kaashoek (kaashoek@mit.edu)<br>
+Robert Morris (rtm@mit.edu)
+
+You can reach all of us at 6.828-staff@pdos.csail.mit.edu.
+
+xv6 and lecture notes are copyright &copy; 2006-present by Russ Cox,
+Frans Kaashoek, and Robert Morris.

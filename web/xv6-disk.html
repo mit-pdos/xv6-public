@@ -1,0 +1,63 @@
+<html>
+<head>
+<title>Homework: Files and Disk I/O</title>
+</head>
+<body>
+
+<h1>Homework: Files and Disk I/O</h1>
+
+<p>
+<b>Read</b>: bio.c, fd.c, fs.c, and ide.c
+
+<p>
+This homework should be turned in at the beginning of lecture.
+
+<p>
+<b>File and Disk I/O</b>
+
+<p>Insert a print statement in bwrite so that you get a
+print every time a block is written to disk:
+
+<pre>
+  cprintf("bwrite sector %d\n", sector);
+</pre>
+
+<p>Build and boot a new kernel and run these three commands at the shell:
+<pre>
+  echo &gt;a
+  echo &gt;a
+  rm a
+  mkdir d
+</pre>
+
+(You can try <tt>rm d</tt> if you are curious, but it should look
+almost identical to <tt>rm a</tt>.)
+
+<p>You should see a sequence of bwrite prints after running each command.
+Record the list and annotate it with the calling function and
+what block is being written.
+For example, this is the <i>second</i> <tt>echo &gt;a</tt>:
+
+<pre>
+$ echo >a
+bwrite sector 121  # writei  (data block)
+bwrite sector 3    # iupdate (inode block)
+$ 
+</pre>
+
+<p>Hint: the easiest way to get the name of the
+calling function is to add a string argument to bwrite,
+edit all the calls to bwrite to pass the name of the
+calling function, and just print it.
+You should be able to reason about what kind of
+block is being written just from the calling function.
+
+<p>You need not write the following up, but try to
+understand why each write is happening.  This will
+help your understanding of the file system layout
+and the code.
+
+<p>
+<b>This completes the homework.</b>
+
+</body>

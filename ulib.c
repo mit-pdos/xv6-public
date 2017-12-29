@@ -45,7 +45,7 @@ strchr(const char *s, char c)
 {
   for(; *s; s++)
     if(*s == c)
-      return (char*)s;
+      return (char*) s;
   return 0;
 }
 
@@ -96,7 +96,7 @@ void*
 memmove(void *vdst, void *vsrc, int n)
 {
   char *dst, *src;
-
+  
   dst = vdst;
   src = vsrc;
   while(n-- > 0)

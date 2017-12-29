@@ -24,9 +24,9 @@ struct elfhdr {
 // Program section header
 struct proghdr {
   uint type;
-  uint off;
-  uint vaddr;
-  uint paddr;
+  uint offset;
+  uint va;
+  uint pa;
   uint filesz;
   uint memsz;
   uint flags;
@@ -40,3 +40,21 @@ struct proghdr {
 #define ELF_PROG_FLAG_EXEC      1
 #define ELF_PROG_FLAG_WRITE     2
 #define ELF_PROG_FLAG_READ      4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Blank page.

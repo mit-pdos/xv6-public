@@ -1,0 +1,187 @@
+<title>OS Bugs</title>
+<html>
+<head>
+</head>
+<body>
+
+<h1>OS Bugs</h1>
+
+<p>Required reading: Bugs as deviant behavior
+
+<h2>Overview</h2>
+
+<p>Operating systems must obey many rules for correctness and
+performance.  Examples rules:
+<ul>
+<li>Do not call blocking functions with interrupts disabled or spin
+lock held
+<li>check for NULL results
+<li>Do not allocate large stack variables
+<li>Do no re-use already-allocated memory
+<li>Check user pointers before using them in kernel mode
+<li>Release acquired locks
+</ul>
+
+<p>In addition, there are standard software engineering rules, like
+use function results in consistent ways.
+
+<p>These rules are typically not checked by a compiler, even though
+they could be checked by a compiler, in principle.  The goal of the
+meta-level compilation project is to allow system implementors to
+write system-specific compiler extensions that check the source code
+for rule violations.
+
+<p>The results are good: many new bugs found (500-1000) in Linux
+alone.  The paper for today studies these bugs and attempts to draw
+lessons from these bugs.
+
+<p>Are kernel error worse than user-level errors?  That is, if we get
+the kernel correct, then we won't have system crashes?
+
+<h2>Errors in JOS kernel</h2>
+
+<p>What are unstated invariants in the JOS?
+<ul>
+<li>Interrupts are disabled in kernel mode
+<li>Only env 1 has access to disk
+<li>All registers are saved & restored on context switch
+<li>Application code is never executed with CPL 0
+<li>Don't allocate an already-allocated physical page
+<li>Propagate error messages to user applications (e.g., out of
+resources)
+<li>Map pipe before fd
+<li>Unmap fd before pipe
+<li>A spawned program should have open only file descriptors 0, 1, and 2.
+<li>Pass sometimes size in bytes and sometimes in block number to a
+given file system function.
+<li>User pointers should be run through TRUP before used by the kernel
+</ul>
+
+<p>Could these errors have been caught by metacompilation?  Would
+metacompilation have caught the pipe race condition? (Probably not,
+it happens in only one place.)
+
+<p>How confident are you that your code is correct?  For example,
+are you sure interrupts are always disabled in kernel mode?  How would
+you test?
+
+<h2>Metacompilation</h2>
+
+<p>A system programmer writes the rule checkers in a high-level,
+state-machine language (metal).  These checkers are dynamically linked
+into an extensible version of g++, xg++.  Xg++ applies the rule
+checkers to every possible execution path of a function that is being
+compiled.
+
+<p>An example rule from
+the <a
+href="http://www.stanford.edu/~engler/exe-ccs-06.pdf">OSDI
+paper</a>:
+<pre>
+sm check_interrupts {
+   decl { unsigned} flags;
+   pat enable = { sti(); } | {restore_flags(flags);} ;
+   pat disable = { cli(); };
+   
+   is_enabled: disable ==> is_disabled | enable ==> { err("double
+      enable")};
+   ...
+</pre>
+A more complete version found 82 errors in the Linux 2.3.99 kernel.
+
+<p>Common mistake:
+<pre>
+get_free_buffer ( ... ) {
+   ....
+   save_flags (flags);
+   cli ();
+   if ((bh = sh->buffer_pool) == NULL)
+      return NULL;
+   ....
+}
+</pre>
+<p>(Figure 2 also lists a simple metarule.)
+
+<p>Some checkers produce false positives, because of limitations of
+both static analysis and the checkers, which mostly use local
+analysis.
+
+<p>How does the <b>block</b> checker work?  The first pass is a rule
+that marks functions as potentially blocking.  After processing a
+function, the checker emits the function's flow graph to a file
+(including, annotations and functions called). The second pass takes
+the merged flow graph of all function calls, and produces a file with
+all functions that have a path in the control-flow-graph to a blocking
+function call.  For the Linux kernel this results in 3,000 functions
+that potentially could call sleep.  Yet another checker like
+check_interrupts checks if a function calls any of the 3,000 functions
+with interrupts disabled. Etc.
+
+<h2>This paper</h2>
+
+<p>Writing rules is painful. First, you have to write them.  Second,
+how do you decide what to check?  Was it easy to enumerate all
+conventions for JOS?
+
+<p>Insight: infer programmer "beliefs" from code and cross-check
+for contradictions.  If <i>cli</i> is always followed by <i>sti</i>,
+except in one case, perhaps something is wrong.  This simplifies
+life because we can write generic checkers instead of checkers
+that specifically check for <i>sti</i>, and perhaps we get lucky
+and find other temporal ordering conventions.
+
+<p>Do we know which case is wrong?  The 999 times or the 1 time that
+<i>sti</i> is absent?  (No, this method cannot figure what the correct
+sequence is but it can flag that something is weird, which in practice
+useful.)  The method just detects inconsistencies.
+
+<p>Is every inconsistency an error?  No, some inconsistency don't
+indicate an error.  If a call to function <i>f</i> is often followed
+by call to function <i>g</i>, does that imply that f should always be
+followed by g?  (No!)
+
+<p>Solution: MUST beliefs and MAYBE beliefs.  MUST beliefs are
+invariants that must hold; any inconsistency indicates an error.  If a
+pointer is dereferences, then the programmer MUST believe that the
+pointer is pointing to something that can be dereferenced (i.e., the
+pointer is definitely not zero).  MUST beliefs can be checked using
+"internal inconsistencies".
+
+<p>An aside, can zero pointers pointers be detected during runtime?
+(Sure, unmap the page at address zero.)  Why is metacompilation still
+valuable?  (At runtime you will find only the null pointers that your
+test code dereferenced; not all possible dereferences of null
+pointers.)  An even more convincing example for Metacompilation is
+tracking user pointers that the kernel dereferences.  (Is this a MUST
+belief?)
+
+<p>MAYBE beliefs are invariants that are suggested by the code, but
+they maybe coincidences.  MAYBE beliefs are ranked by statistical
+analysis, and perhaps augmented with input about functions names
+(e.g., alloc and free are important).  Is it computationally feasible
+to check every MAYBE belief?  Could there be much noise?
+
+<p>What errors won't this approach catch?
+
+<h2>Paper discussion</h2>
+
+<p>This paper is best discussed by studying every code fragment.  Most
+code fragments are pieces of code from Linux distributions; these
+mistakes are real!
+
+<p>Section 3.1.  what is the error?  how does metacompilation catch
+it?
+
+<p>Figure 1.  what is the error? is there one?
+
+<p>Code fragments from 6.1.  what is the error?  how does metacompilation catch
+it?
+
+<p>Figure 3.  what is the error?  how does metacompilation catch
+it?
+
+<p>Section 8.3.  what is the error?  how does metacompilation catch
+it?
+
+</body>
+
