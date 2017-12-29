@@ -368,7 +368,6 @@ scheduler(void)
 
     int highestPriority=0;
     int nextRunningProcessPid=0;
-	int lowestTicks = 0;
 	nextRunningProcessPid=nextRunningProcessPid;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 	if(p->state == RUNNABLE){	
@@ -376,12 +375,6 @@ scheduler(void)
 		{
 		highestPriority=p->priority;
 		nextRunningProcessPid=p->pid;
-		lowestTicks = p->tickcounts;
-		}
-		else if(p->priority == highestPriority && p->tickcounts < lowestTicks)
-		{
-		nextRunningProcessPid=p->pid;
-		lowestTicks = p->tickcounts;
 		}
 		//p->priority=p->priority+1;
 	}
