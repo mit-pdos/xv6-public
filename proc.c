@@ -385,7 +385,7 @@ scheduler(void)
 
 
     // the differnt options for scheduling policies, chosen during compilation
-    #ifdef DEFAULT
+    #ifdef DEFAULT//default scheduler round robin
     
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
        if(p->state != RUNNABLE)
@@ -413,19 +413,18 @@ scheduler(void)
     }
     
     #else
-    #ifdef FCFS 
-    
+    #ifdef FCFS //Scheduler select FCFS
         struct proc *minP = NULL;
         for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
               
-          if(p->state == RUNNABLE){
-            if (minP!=NULL){
+          if(p->state == RUNNABLE){//check if state is runnable
+            if (minP!=NULL){//not a null process
   
-              if(p->ctime < minP->ctime)
+              if(p->ctime < minP->ctime)//find the earlist createtime process
                 minP = p;
             }
             else
-              minP = p;
+              minP = p;//first time in loop, set to minp
           }
         }
         if (minP!=NULL){
@@ -445,7 +444,7 @@ scheduler(void)
     
     #else
 
-    #ifdef SML
+    #ifdef SML//Scheduler select priority
     uint priority = 3;
     p = findreadyprocess(&index1, &index2, &index3, &priority);
     if (p == 0) {
@@ -466,7 +465,7 @@ scheduler(void)
     for(temp = ptable.proc; temp < &ptable.proc[NPROC]; temp++)
     {
       if(temp->pid != p->pid && temp->priority < 3){
-        temp->priority++;
+        temp->priority++;//add other process's priority
       }
     }
     proc = 0;
