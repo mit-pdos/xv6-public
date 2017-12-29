@@ -20,6 +20,8 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+int priorityDefault=10;
+
 void
 pinit(void)
 {
@@ -88,7 +90,37 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->priority = priorityDefault; //default priority
+  p->lowestPriority=priorityDefault;
+  p->runTimes=0;
+  p->highestPriority=0;
+  p->deadline=50;
+  p->runtimeDeadline=50;
+  p->tickcounts=0;
 
+  int priorityNow = priorityDefault;//priority sort
+  int maxDeadline=0;
+  int tempDeadline=-1;
+  struct proc *a;
+  struct proc *b;
+  for(a =ptable.proc; a< &ptable.proc[NPROC];a++){
+	if(a->state != SLEEPING&&a->state != RUNNING&&a->state != RUNNABLE)
+		continue;
+	for(b =ptable.proc; b< &ptable.proc[NPROC];b++){
+		if(b->state != SLEEPING&&b->state != RUNNING&&b->state != RUNNABLE)
+			continue;
+	if(tempDeadline==-1||tempDeadline > b->runtimeDeadline)
+	{
+	      b->lowestPriority = priorityNow;
+	      b->priority = priorityNow;
+	      if(maxDeadline==0||maxDeadline < b->runtimeDeadline)
+	         maxDeadline = b->deadline;
+	}
+      }
+	tempDeadline=maxDeadline;
+	maxDeadline=0;
+	priorityNow = priorityNow+1;
+  }
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -332,9 +364,79 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+
+    int highestPriority=0;
+    int nextRunningProcessPid=0;
+	int lowestTicks = 0;
+	nextRunningProcessPid=nextRunningProcessPid;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+	if(p->state == RUNNABLE){	
+		if(p->priority>highestPriority)
+		{
+		highestPriority=p->priority;
+		nextRunningProcessPid=p->pid;
+		lowestTicks = p->tickcounts;
+		}
+		else if(p->priority == highestPriority && p->tickcounts < lowestTicks)
+		{
+		nextRunningProcessPid=p->pid;
+		lowestTicks = p->tickcounts;
+		}
+		//p->priority=p->priority+1;
+	}
+    }
+	
+
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
+
+
+      if(p->pid!=nextRunningProcessPid)
+	continue;
+
+	if(p->priority > p->highestPriority){
+	p->highestPriority=p->priority;}
+
+	p->priority=p->lowestPriority;//The process be excute,so reset their priority
+	p->runTimes++;
+
+  struct proc *a;
+int tempp=p->runtimeDeadline-p->deadline;
+  for(a =ptable.proc; a< &ptable.proc[NPROC];a++){
+	if(a->state != SLEEPING&&a->state != RUNNING&&a->state != RUNNABLE)
+		continue;
+	a->runtimeDeadline = a->runtimeDeadline - tempp;
+	if(a->runtimeDeadline <= 0)
+a->runtimeDeadline= a->deadline;
+	}
+		p->runtimeDeadline = p->runtimeDeadline + p->deadline;
+
+
+  int priorityNow = priorityDefault;//priority sort
+  int maxDeadline=0;
+  int tempDeadline=-1;
+
+  struct proc *b;
+  for(a =ptable.proc; a< &ptable.proc[NPROC];a++){
+	if(a->state != SLEEPING&&a->state != RUNNING&&a->state != RUNNABLE)
+		continue;
+	for(b =ptable.proc; b< &ptable.proc[NPROC];b++){
+		if(b->state != SLEEPING&&b->state != RUNNING&&b->state != RUNNABLE)
+			continue;
+	if(tempDeadline==-1||tempDeadline > b->runtimeDeadline)
+	{
+	      b->lowestPriority = priorityNow;
+	      b->priority = priorityNow;
+	      if(maxDeadline==0||maxDeadline < b->runtimeDeadline)
+	         maxDeadline = b->runtimeDeadline;
+	}
+      }
+	tempDeadline=maxDeadline;
+	maxDeadline=0;
+	priorityNow = priorityNow+1;
+  }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -342,7 +444,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
+//      p->lowestPriority=p->lowestPriority+1;
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -532,3 +634,86 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+int
+cps(void)
+{
+  struct proc *p;
+
+  sti();
+  acquire(&ptable.lock);
+  cprintf("*********************************\n");
+  cprintf("name\tpid\tstate\t  priority\tDeadline  Memory   ProcessTime\n");
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == SLEEPING)
+      cprintf("%s\t%d\tSLEEP\t  %d\t\t%d\t  %d\t   %d\n", p->name, p->pid, p->priority,p->deadline,p->sz,p->tickcounts);
+    else if ( p->state == RUNNING )
+      cprintf("%s\t%d\tRUN\t  %d\t\t%d\t  %d\t   %d\n", p->name, p->pid, p->priority,p->deadline,p->sz,p->tickcounts);
+    else if ( p->state == RUNNABLE)
+      cprintf("%s\t%d\tRUNNABLE  %d\t\t%d\t  %d\t   %d\n", p->name, p->pid, p->priority,p->deadline,p->sz,p->tickcounts);
+  }
+  release(&ptable.lock);
+  cprintf("*********************************\n");
+  return 22;
+}
+
+int
+chpr (int pid, int priority)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for(p =ptable.proc; p< &ptable.proc[NPROC];p++){
+    if(p->pid == pid){
+      p->lowestPriority = priority;
+      break;
+    }
+  }
+  release(&ptable.lock);
+
+  return pid;
+}
+
+int
+chdl (int pid, int deadline)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for(p =ptable.proc; p< &ptable.proc[NPROC];p++){
+    if(p->pid == pid){
+	p->deadline = deadline;
+	p->runtimeDeadline = deadline;
+      break;
+    }
+  }
+  
+  int priorityNow = priorityDefault;
+  int maxDeadline=0;
+  int tempDeadline=-1;
+  struct proc *a;
+  for(a =ptable.proc; a< &ptable.proc[NPROC];a++){
+	if(a->state != SLEEPING&&a->state != RUNNING&&a->state != RUNNABLE)
+		continue;
+	for(p =ptable.proc; p< &ptable.proc[NPROC];p++){
+		if(p->state != SLEEPING&&p->state != RUNNING&&p->state != RUNNABLE)
+			continue;
+	if(tempDeadline==-1||tempDeadline > p->runtimeDeadline)
+	{
+	      p->lowestPriority = priorityNow;
+	      p->priority = priorityNow;
+	      if(maxDeadline==0||maxDeadline < p->runtimeDeadline)
+	         maxDeadline = p->deadline;
+	}
+      }
+	tempDeadline=maxDeadline;
+	maxDeadline=0;
+	priorityNow = priorityNow+1;
+  }
+
+  release(&ptable.lock);
+
+  return pid;
+}
+
+
