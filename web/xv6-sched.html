@@ -1,0 +1,96 @@
+<title>Homework: Threads and Context Switching</title>
+<html>
+<head>
+</head>
+<body>
+
+<h1>Homework: Threads and Context Switching</h1>
+
+<p>
+<b>Read</b>: swtch.S and proc.c (focus on the code that switches
+between processes, specifically <code>scheduler</code> and <code>sched</code>).
+
+<p>
+<b>Hand-In Procedure</b>
+<p>
+You are to turn in this homework during lecture. Please
+write up your answers to the exercises below and hand them in to a
+6.828 staff member at the beginning of lecture.
+<p>
+<b>Introduction</b>
+
+<p>
+In this homework you will investigate how the kernel switches between
+two processes. 
+
+<p>
+<b>Assignment</b>:
+<p>
+
+Suppose a process that is running in the kernel
+calls <code>sched()</code>, which ends up jumping
+into <code>scheduler()</code>.
+
+<p>
+<b>Turn in</b>: 
+Where is the stack that <code>sched()</code> executes on?
+
+<p>
+<b>Turn in</b>: 
+Where is the stack that <code>scheduler()</code> executes on?
+
+<p>
+<b>Turn in:</b>
+When <code>sched()</code> calls <code>swtch()</code>,
+does that call to <code>swtch()</code> ever return? If so, when?
+
+<p>
+<b>Turn in:</b>
+Why does <code>swtch()</code> copy %eip from the stack into the
+context structure, only to copy it from the context
+structure to the same place on the stack
+when the process is re-activated?
+What would go wrong if <code>swtch()</code> just left the
+%eip on the stack and didn't store it in the context structure?
+
+<p>
+Surround the call to <code>swtch()</code> in <code>schedule()</code> with calls
+to <code>cons_putc()</code> like this:
+<pre>
+      cons_putc('a');
+      swtch(&cpus[cpu()].context, &p->context);
+      cons_putc('b');
+</pre>
+<p>
+Similarly,
+surround the call to <code>swtch()</code> in <code>sched()</code> with calls
+to <code>cons_putc()</code> like this:
+
+<pre>
+  cons_putc('c');
+  swtch(&cp->context, &cpus[cpu()].context);
+  cons_putc('d');
+</pre>
+<p>
+Rebuild your kernel and boot it on bochs.
+With a few exceptions
+you should see a regular four-character pattern repeated over and over.
+<p>
+<b>Turn in</b>: What is the four-character pattern?
+<p>
+<b>Turn in</b>: The very first characters are <code>ac</code>. Why does
+this happen?
+<p>
+<b>Turn in</b>: Near the start of the last line you should see
+<code>bc</code>. How could this happen?
+
+<p>
+<b>This completes the homework.</b>
+
+</body>
+
+
+
+
+
+

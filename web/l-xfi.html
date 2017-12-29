@@ -1,0 +1,246 @@
+<html>
+<head>
+<title>XFI</title>
+</head>
+<body>
+
+<h1>XFI</h1>
+
+<p>Required reading: XFI: software guards for system address spaces.
+
+<h2>Introduction</h2>
+
+<p>Problem: how to use untrusted code (an "extension") in a trusted
+program?
+<ul>
+<li>Use untrusted jpeg codec in Web browser
+<li>Use an untrusted driver in the kernel
+</ul>
+
+<p>What are the dangers?
+<ul>
+<li>No fault isolations: extension modifies trusted code unintentionally
+<li>No protection: extension causes a security hole
+<ul>
+<li>Extension has a buffer overrun problem
+<li>Extension calls trusted program's functions
+<li>Extensions calls a trusted program's functions that is allowed to
+  call, but supplies "bad" arguments
+<li>Extensions calls privileged hardware instructions (when extending
+  kernel)
+<li>Extensions reads data out of trusted program it shouldn't.
+</ul>
+</ul>
+
+<p>Possible solutions approaches:
+<ul>
+
+<li>Run extension in its own address space with minimal
+  privileges. Rely on hardware and operating system protection
+  mechanism.
+
+<li>Restrict the language in which the extension is written:
+<ul>
+
+<li>Packet filter language.  Language is limited in its capabilities,
+  and it easy to guarantee "safe" execution.
+
+<li>Type-safe language. Language runtime and compiler guarantee "safe"
+execution.
+</ul>
+
+<li>Software-based sandboxing.
+
+</ul>
+
+<h2>Software-based sandboxing</h2>
+
+<p>Sandboxer. A compiler or binary-rewriter sandboxes all unsafe
+  instructions in an extension by inserting additional instructions.
+  For example, every indirect store is preceded by a few instructions
+  that compute and check the target of the store at runtime.
+
+<p>Verifier. When the extension is loaded in the trusted program, the
+  verifier checks if the extension is appropriately sandboxed (e.g.,
+  are all indirect stores sandboxed? does it call any privileged
+  instructions?).  If not, the extension is rejected. If yes, the
+  extension is loaded, and can run.  If the extension runs, the
+  instruction that sandbox unsafe instructions check if the unsafe
+  instruction is used in a safe way.
+
+<p>The verifier must be trusted, but the sandboxer doesn't.  We can do
+  without the verifier, if the trusted program can establish that the
+  extension has been sandboxed by a trusted sandboxer.
+
+<p>The paper refers to this setup as instance of proof-carrying code.
+
+<h2>Software fault isolation</h2>
+
+<p><a href="http://citeseer.ist.psu.edu/wahbe93efficient.html">SFI</a>
+by Wahbe et al. explored out to use sandboxing for fault isolation
+extensions; that is, use sandboxing to control that stores and jump
+stay within a specified memory range (i.e., they don't overwrite and
+jump into addresses in the trusted program unchecked).  They
+implemented SFI for a RISC processor, which simplify things since
+memory can be written only by store instructions (other instructions
+modify registers).  In addition, they assumed that there were plenty
+of registers, so that they can dedicate a few for sandboxing code.
+
+<p>The extension is loaded into a specific range (called a segment)
+  within the trusted application's address space.  The segment is
+  identified by the upper bits of the addresses in the
+  segment. Separate code and data segments are necessary to prevent an
+  extension overwriting its code.
+
+<p>An unsafe instruction on the MIPS is an instruction that jumps or
+  stores to an address that cannot be statically verified to be within
+  the correct segment.  Most control transfer operations, such
+  program-counter relative can be statically verified.  Stores to
+  static variables often use an immediate addressing mode and can be
+  statically verified.  Indirect jumps and indirect stores are unsafe.
+
+<p>To sandbox those instructions the sandboxer could generate the
+  following code for each unsafe instruction:
+<pre>
+  DR0 <- target address
+  R0 <- DR0 >> shift-register;  // load in R0 segment id of target
+  CMP R0, segment-register;     // compare to segment id to segment's ID
+  BNE fault-isolation-error     // if not equal, branch to trusted error code
+  STORE using DR0
+</pre>
+In this code, DR0, shift-register, and segment register
+are <i>dedicated</i>: they cannot be used by the extension code.  The
+verifier must check if the extension doesn't use they registers.  R0
+is a scratch register, but doesn't have to be dedicated.  The
+dedicated registers are necessary, because otherwise extension could
+load DR0 and jump to the STORE instruction directly, skipping the
+check.
+
+<p>This implementation costs 4 registers, and 4 additional instructions
+  for each unsafe instruction. One could do better, however:
+<pre>
+  DR0 <- target address & and-mask-register // mask segment ID from target
+  DR0 <- DR0 | segment register // insert this segment's ID
+  STORE using DR0
+</pre>
+This code just sets the write segment ID bits.  It doesn't catch
+illegal addresses; it just ensures that illegal addresses are within
+the segment, harming the extension but no other code.  Even if the
+extension jumps to the second instruction of this sandbox sequence,
+nothing bad will happen (because DR0 will already contain the correct
+segment ID).
+
+<p>Optimizations include: 
+<ul>
+<li>use guard zones for <i>store value, offset(reg)</i>
+<li>treat SP as dedicated register (sandbox code that initializes it)
+<li>etc.
+</ul>
+
+<h2>XFI</h2>
+
+<p>XFI extends SFI in several ways:
+<ul>
+<li>Handles fault isolation and protection
+<li>Uses control-folow integrity (CFI) to get good performance
+<li>Doesn't use dedicated registers
+<li>Use two stacks (a scoped stack and an allocation stack) and only
+  allocation stack can be corrupted by buffer-overrun attacks. The
+  scoped stack cannot via computed memory references.
+<li>Uses a binary rewriter.
+<li>Works for the x86
+</ul>
+
+<p>x86 is challenging, because limited registers and variable length
+  of instructions. SFI technique won't work with x86 instruction
+  set. For example if the binary contains:
+<pre>
+  25 CD 80 00 00   # AND eax, 0x80CD
+</pre>
+and an adversary can arrange to jump to the second byte, then the
+adversary calls system call on Linux, which has binary the binary
+representation CD 80.  Thus, XFI must control execution flow.
+
+<p>XFI policy goals:
+<ul>
+<li>Memory-access constraints (like SFI)
+<li>Interface restrictions  (extension has fixed entry and exit points)
+<li>Scoped-stack integrity (calling stack is well formed)
+<li>Simplified instructions semantics (remove dangerous instructions)
+<li>System-environment integrity (ensure certain machine model
+  invariants, such as x86 flags register cannot be modified)
+<li>Control-flow integrity: execution must follow a static, expected
+  control-flow graph. (enter at beginning of basic blocks)
+<li>Program-data integrity (certain global variables in extension
+  cannot be accessed via computed memory addresses)
+</ul>
+
+<p>The binary rewriter inserts guards to ensure these properties.  The
+  verifier check if the appropriate guards in place.  The primary
+  mechanisms used are:
+<ul>
+<li>CFI guards on computed control-flow transfers (see figure 2)
+<li>Two stacks
+<li>Guards on computer memory accesses (see figure 3)
+<li>Module header has a section that contain access permissions for
+  region
+<li>Binary rewriter, which performs intra-procedure analysis, and
+  generates guards, code for stack use, and verification hints
+<li>Verifier checks specific conditions per basic block. hints specify
+  the verification state for the entry to each basic block, and at
+  exit of basic block the verifier checks that the final state implies
+  the verification state at entry to all possible successor basic
+  blocks. (see figure 4)
+</ul>
+
+<p>Can XFI protect against the attack discussed in last lecture?
+<pre>
+  unsigned int j;
+  p=(unsigned char *)s->init_buf->data;
+  j= *(p++);
+  s->session->session_id_length=j;
+  memcpy(s->session->session_id,p,j);
+</pre>
+Where will <i>j</i> be located?
+
+<p>How about the following one from the paper <a href="http://research.microsoft.com/users/jpincus/beyond-stack-smashing.pdf"><i>Beyond stack smashing:
+  recent advances in exploiting buffer overruns</i></a>?
+<pre>
+void f2b(void * arg, size_t len) {
+  char buf[100];
+  long val = ..;
+  long *ptr = ..;
+  extern void (*f)();
+  
+  memcopy(buff, arg, len);
+  *ptr = val;
+  f();
+  ...
+  return;
+}
+</pre>
+What code can <i>(*f)()</i> call?  Code that the attacker inserted?
+Code in libc?
+
+<p>How about an attack that use <i>ptr</i> in the above code to
+  overwrite a method's address in a class's dispatch table with an
+  address of support function?
+
+<p>How about <a href="http://research.microsoft.com/~shuochen/papers/usenix05data_attack.pdf">data-only attacks</a>?  For example, attacker
+  overwrites <i>pw_uid</i> in the heap with 0 before the following
+  code executes (when downloading /etc/passwd and then uploading it with a
+  modified entry).
+<pre>
+FILE *getdatasock( ... ) {
+  seteuid(0);
+  setsockeope ( ...);
+  ...
+  seteuid(pw->pw_uid);
+  ...
+}
+</pre>
+
+<p>How much does XFI slow down applications? How many more
+  instructions are executed?  (see Tables 1-4)
+
+</body>

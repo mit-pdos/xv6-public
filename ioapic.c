@@ -13,7 +13,7 @@
 #define REG_TABLE  0x10  // Redirection table base
 
 // The redirection table starts at REG_TABLE and uses
-// two registers to configure each interrupt.
+// two registers to configure each interrupt.  
 // The first (low) register in a pair contains configuration bits.
 // The second (high) register contains a bitmask telling which
 // CPUs can serve that interrupt.
@@ -50,6 +50,9 @@ ioapicinit(void)
 {
   int i, id, maxintr;
 
+  if(!ismp)
+    return;
+
   ioapic = (volatile struct ioapic*)IOAPIC;
   maxintr = (ioapicread(REG_VER) >> 16) & 0xFF;
   id = ioapicread(REG_ID) >> 24;
@@ -59,7 +62,7 @@ ioapicinit(void)
   // Mark all interrupts edge-triggered, active high, disabled,
   // and not routed to any CPUs.
   for(i = 0; i <= maxintr; i++){
-    ioapicwrite(REG_TABLE+2*i, INT_DISABLED | (T_IRQ0 + i));
+    ioapicwrite(REG_TABLE+2*i, INT_DISABLED | (IRQ_OFFSET + i));
     ioapicwrite(REG_TABLE+2*i+1, 0);
   }
 }
@@ -67,9 +70,12 @@ ioapicinit(void)
 void
 ioapicenable(int irq, int cpunum)
 {
+  if(!ismp)
+    return;
+
   // Mark interrupt edge-triggered, active high,
   // enabled, and routed to the given cpunum,
   // which happens to be that cpu's APIC ID.
-  ioapicwrite(REG_TABLE+2*irq, T_IRQ0 + irq);
+  ioapicwrite(REG_TABLE+2*irq, IRQ_OFFSET + irq);
   ioapicwrite(REG_TABLE+2*irq+1, cpunum << 24);
 }

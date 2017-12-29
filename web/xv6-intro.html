@@ -1,0 +1,163 @@
+<title>Homework: intro to xv6</title>
+<html>
+<head>
+</head>
+<body>
+
+<h1>Homework: intro to xv6</h1>
+
+<p>This lecture is the introduction to xv6, our re-implementation of
+  Unix v6.  Read the source code in the assigned files. You won't have
+  to understand the details yet; we will focus on how the first
+  user-level process comes into existence after the computer is turned
+  on.
+<p>
+
+<b>Hand-In Procedure</b>
+<p>
+You are to turn in this homework during lecture. Please
+write up your answers to the exercises below and hand them in to a
+6.828 staff member at the beginning of lecture.
+<p>
+
+<p><b>Assignment</b>: 
+<br>
+Fetch and un-tar the xv6 source:
+
+<pre>
+sh-3.00$ wget http://pdos.csail.mit.edu/6.828/2007/src/xv6-rev1.tar.gz 
+sh-3.00$ tar xzvf xv6-rev1.tar.gz
+xv6/
+xv6/asm.h
+xv6/bio.c
+xv6/bootasm.S
+xv6/bootmain.c
+...
+$
+</pre>
+
+Build xv6:
+<pre>
+$ cd xv6
+$ make
+gcc -O -nostdinc -I. -c bootmain.c
+gcc -nostdinc -I. -c bootasm.S
+ld -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
+objdump -S bootblock.o > bootblock.asm
+objcopy -S -O binary bootblock.o bootblock
+...
+$ 
+</pre>
+
+Find the address of the <code>main</code> function by
+looking in <code>kernel.asm</code>:
+<pre>
+% grep main kernel.asm
+...
+00102454 &lt;mpmain&gt;:
+mpmain(void)
+001024d0 &lt;main&gt;:
+  10250d:       79 f1                   jns    102500 &lt;main+0x30&gt;
+  1025f3:       76 6f                   jbe    102664 &lt;main+0x194&gt;
+  102611:       74 2f                   je     102642 &lt;main+0x172&gt;
+</pre>
+In this case, the address is <code>001024d0</code>.
+<p>
+
+Run the kernel inside Bochs, setting a breakpoint
+at the beginning of <code>main</code> (i.e., the address
+you just found).
+<pre>
+$ make bochs
+if [ ! -e .bochsrc ]; then ln -s dot-bochsrc .bochsrc; fi
+bochs -q
+========================================================================
+                       Bochs x86 Emulator 2.2.6
+                    (6.828 distribution release 1)
+========================================================================
+00000000000i[     ] reading configuration from .bochsrc
+00000000000i[     ] installing x module as the Bochs GUI
+00000000000i[     ] Warning: no rc file specified.
+00000000000i[     ] using log file bochsout.txt
+Next at t=0
+(0) [0xfffffff0] f000:fff0 (unk. ctxt): jmp far f000:e05b         ; ea5be000f0
+(1) [0xfffffff0] f000:fff0 (unk. ctxt): jmp far f000:e05b         ; ea5be000f0
+&lt;bochs&gt; 
+</pre>
+
+Look at the registers and the stack contents:
+
+<pre>
+&lt;bochs&gt; info reg
+...
+&lt;bochs&gt; print-stack
+...
+&lt;bochs&gt;
+</pre>
+
+Which part of the stack printout is actually the stack?
+(Hint: not all of it.)  Identify all the non-zero values
+on the stack.<p>
+
+<b>Turn in:</b> the output of print-stack with 
+the valid part of the stack marked.  Write a short (3-5 word)
+comment next to each non-zero value explaining what it is.
+<p>
+
+Now look at kernel.asm for the instructions in main that read:
+<pre>
+  10251e:       8b 15 00 78 10 00       mov    0x107800,%edx
+  102524:       8d 04 92                lea    (%edx,%edx,4),%eax
+  102527:       8d 04 42                lea    (%edx,%eax,2),%eax
+  10252a:       c1 e0 04                shl    $0x4,%eax
+  10252d:       01 d0                   add    %edx,%eax
+  10252f:       8d 04 85 1c ad 10 00    lea    0x10ad1c(,%eax,4),%eax
+  102536:       89 c4                   mov    %eax,%esp
+</pre>
+(The addresses and constants might be different on your system,
+and the compiler might use <code>imul</code> instead of the <code>lea,lea,shl,add,lea</code> sequence.
+Look for the move into <code>%esp</code>).
+<p>
+
+Which lines in <code>main.c</code> do these instructions correspond to?
+<p>
+
+Set a breakpoint at the first of those instructions
+and let the program run until the breakpoint:
+<pre>
+&lt;bochs&gt; vb 0x8:0x10251e
+&lt;bochs&gt; s
+...
+&lt;bochs&gt; c
+(0) Breakpoint 2, 0x0010251e (0x0008:0x0010251e)
+Next at t=1157430
+(0) [0x0010251e] 0008:0x0010251e (unk. ctxt): mov edx, dword ptr ds:0x107800 ; 8b1500781000
+(1) [0xfffffff0] f000:fff0 (unk. ctxt): jmp far f000:e05b         ; ea5be000f0
+&lt;bochs&gt; 
+</pre>
+(The first <code>s</code> command is necessary
+to single-step past the breakpoint at main, otherwise <code>c</code>
+will not make any progress.)
+<p>
+
+Inspect the registers and stack again
+(<code>info reg</code> and <code>print-stack</code>).
+Then step past those seven instructions
+(<code>s 7</code>)
+and inspect them again.
+Convince yourself that the stack has changed correctly.
+<p>
+
+<b>Turn in:</b> answers to the following questions.
+Look at the assembly for the call to 
+<code>lapic_init</code> that occurs after the
+the stack switch.  Where does the 
+<code>bcpu</code> argument come from?
+What would have happened if <code>main</code>
+stored <code>bcpu</code>
+on the stack before those four assembly instructions?
+Would the code still work?  Why or why not?
+<p>
+
+</body>
+</html>

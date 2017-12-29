@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+
+my @lines = <>;
+my $text = join('', @lines);
+my $title;
+if($text =~ /^\*\* (.*?)\n/m){
+	$title = $1;
+	$text = $` . $';
+}else{
+	$title = "Untitled";
+}
+
+$text =~ s/[ \t]+$//mg;
+$text =~ s/^$/<br><br>/mg;
+$text =~ s!\b([a-z0-9]+\.(c|s|pl|h))\b!<a href="src/$1.html">$1</a>!g;
+$text =~ s!^(Lecture [0-9]+\. .*?)$!<b><i>$1</i></b>!mg;
+$text =~ s!^\* (.*?)$!<h2>$1</h2>!mg;
+$text =~ s!((<br>)+\n)+<h2>!\n<h2>!g;
+$text =~ s!</h2>\n?((<br>)+\n)+!</h2>\n!g;
+$text =~ s!((<br>)+\n)+<b>!\n<br><br><b>!g;
+$text =~ s!\b\s*--\s*\b!\&ndash;!g;
+$text =~ s!\[([^\[\]|]+) \| ([^\[\]]+)\]!<a href="$1">$2</a>!g;
+$text =~ s!\[([^ \t]+)\]!<a href="$1">$1</a>!g;
+
+$text =~ s!``!\&ldquo;!g;
+$text =~ s!''!\&rdquo;!g;
+
+print <<EOF;
+<!-- AUTOMATICALLY GENERATED: EDIT the .txt version, not the .html version -->
+<html>
+<head>
+<title>$title</title>
+<style type="text/css"><!--
+body {
+	background-color: white;
+	color: black;
+	font-size: medium;
+	line-height: 1.2em;
+	margin-left: 0.5in;
+	margin-right: 0.5in;
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+h1 {
+	text-indent: 0in;
+	text-align: left;
+	margin-top: 2em;
+	font-weight: bold;
+	font-size: 1.4em;
+}
+
+h2 {
+	text-indent: 0in;
+	text-align: left;
+	margin-top: 2em;
+	font-weight: bold;
+	font-size: 1.2em;
+}
+--></style>
+</head>
+<body bgcolor=#ffffff>
+<h1>$title</h1>
+<br><br>
+EOF
+print $text;
+print <<EOF;
+</body>
+</html>
+EOF

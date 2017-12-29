@@ -1,0 +1,53 @@
+<title>Homework: xv6 and Interrupts and Exceptions</title>
+<html>
+<head>
+</head>
+<body>
+
+<h1>Homework: xv6 and Interrupts and Exceptions</h1>
+
+<p>
+<b>Read</b>: xv6's trapasm.S, trap.c, syscall.c, vectors.S, and usys.S. Skim
+lapic.c, ioapic.c, and picirq.c
+
+<p>
+<b>Hand-In Procedure</b>
+<p>
+You are to turn in this homework during lecture. Please
+write up your answers to the exercises below and hand them in to a
+6.828 staff member at the beginning of the lecture.
+<p>
+
+<b>Introduction</b>
+
+<p>Try to understand 
+xv6's trapasm.S, trap.c, syscall.c, vectors.S, and usys.S. Skim
+  You will need to consult:
+
+<p>Chapter 5 of <a href="../readings/ia32/IA32-3.pdf">IA-32 Intel
+Architecture Software Developer's Manual, Volume 3: System programming
+guide</a>; you can skip sections 5.7.1, 5.8.2, and 5.12.2. Be aware
+that terms such as exceptions, traps, interrupts, faults and aborts
+have no standard meaning.
+
+<p>Chapter 9 of the 1987 <a href="../readings/i386/toc.htm">i386
+Programmer's Reference Manual</a> also covers exception and interrupt
+handling in IA32 processors.
+
+<p><b>Assignment</b>: 
+
+In xv6, set a breakpoint at the beginning of <code>syscall()</code> to
+catch the very first system call.  What values are on the stack at
+this point?  Turn in the output of <code>print-stack 35</code> at that
+breakpoint with each value labeled as to what it is (e.g.,
+saved <code>%ebp</code> for <code>trap</code>,
+<code>trapframe.eip</code>, etc.).
+<p>
+<b>This completes the homework.</b>
+
+</body>
+
+
+
+
+

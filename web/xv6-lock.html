@@ -1,0 +1,100 @@
+<title>Homework: Locking</title>
+<html>
+<head>
+</head>
+<body>
+
+<h1>Homework: Locking</h1>
+
+
+<p>
+<b>Read</b>: spinlock.c
+
+<p>
+<b>Hand-In Procedure</b>
+<p>
+You are to turn in this homework at the beginning of lecture. Please
+write up your answers to the exercises below and hand them in to a
+6.828 staff member at the beginning of lecture.
+<p>
+
+<b>Assignment</b>:
+In this assignment we will explore some of the interaction
+between interrupts and locking.
+<p>
+
+Make sure you understand what would happen if the kernel executed
+the following code snippet:
+<pre>
+  struct spinlock lk;
+  initlock(&amp;lk, "test lock");
+  acquire(&amp;lk);
+  acquire(&amp;lk);
+</pre>
+(Feel free to use Bochs to find out.  <code>acquire</code> is in <code>spinlock.c</code>.)
+<p>
+
+An <code>acquire</code> ensures interrupts are off
+on the local processor using <code>cli</code>,
+and interrupts remain off until the <code>release</code>
+of the last lock held by that processor
+(at which point they are enabled using <code>sti</code>).
+<p>
+
+Let's see what happens if we turn on interrupts while
+holding the <code>ide</code> lock.
+In <code>ide_rw</code> in <code>ide.c</code>, add a call
+to <code>sti()</code> after the <code>acquire()</code>.
+Rebuild the kernel and boot it in Bochs.
+Chances are the kernel will panic soon after boot; try booting Bochs a few times
+if it doesn't.
+<p>
+
+<b>Turn in</b>: explain in a few sentences why the kernel panicked.
+You may find it useful to look up the stack trace
+(the sequence of <code>%eip</code> values printed by <code>panic</code>)
+in the <code>kernel.asm</code> listing.
+<p>
+
+Remove the <code>sti()</code> you added,
+rebuild the kernel, and make sure it works again.
+<p>
+
+Now let's see what happens if we turn on interrupts
+while holding the <code>kalloc_lock</code>.
+In <code>kalloc()</code> in <code>kalloc.c</code>, add
+a call to <code>sti()</code> after the call to <code>acquire()</code>.
+You will also need to add 
+<code>#include "x86.h"</code> at the top of the file after
+the other <code>#include</code> lines.
+Rebuild the kernel and boot it in Bochs.
+It will not panic.
+<p>
+
+<b>Turn in</b>: explain in a few sentences why the kernel didn't panic.
+What is different about <code>kalloc_lock</code>
+as compared to <code>ide_lock</code>?
+<p>
+You do not need to understand anything about the details of the IDE hardware
+to answer this question, but you may find it helpful to look 
+at which functions acquire each lock, and then at when those
+functions get called.
+<p>
+
+(There is a very small but non-zero chance that the kernel will panic
+with the extra <code>sti()</code> in <code>kalloc</code>.
+If the kernel <i>does</i> panic, make doubly sure that
+you removed the <code>sti()</code> call from 
+<code>ide_rw</code>.  If it continues to panic and the
+only extra <code>sti()</code> is in <code>bio.c</code>,
+then mail <i>6.828-staff&#64;pdos.csail.mit.edu</i>
+and think about buying a lottery ticket.)
+<p>
+
+<b>Turn in</b>: Why does <code>release()</code> clear
+<code>lock-&gt;pcs[0]</code> and <code>lock-&gt;cpu</code>
+<i>before</i> clearing <code>lock-&gt;locked</code>?
+Why not wait until after? 
+
+</body>
+</html>

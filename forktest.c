@@ -5,8 +5,6 @@
 #include "stat.h"
 #include "user.h"
 
-#define N  1000
-
 void
 printf(int fd, char *s, ...)
 {
@@ -20,31 +18,31 @@ forktest(void)
 
   printf(1, "fork test\n");
 
-  for(n=0; n<N; n++){
+  for(n=0; n<1000; n++){
     pid = fork();
     if(pid < 0)
       break;
     if(pid == 0)
       exit();
   }
-
-  if(n == N){
-    printf(1, "fork claimed to work N times!\n", N);
+  
+  if(n == 1000){
+    printf(1, "fork claimed to work 1000 times!\n");
     exit();
   }
-
+  
   for(; n > 0; n--){
     if(wait() < 0){
       printf(1, "wait stopped early\n");
       exit();
     }
   }
-
+  
   if(wait() != -1){
     printf(1, "wait got too many\n");
     exit();
   }
-
+  
   printf(1, "fork test OK\n");
 }
 

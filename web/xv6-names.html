@@ -1,0 +1,78 @@
+<html>
+<head>
+<title>Homework: Naming</title>
+</head>
+<body>
+
+<h1>Homework: Naming</h1>
+
+<p>
+<b>Read</b>: namei in fs.c, fd.c, sysfile.c
+
+<p>
+This homework should be turned in at the beginning of lecture.
+
+<p>
+<b>Symbolic Links</b>
+
+<p>
+As you read namei and explore its varied uses throughout xv6,
+think about what steps would be required to add symbolic links
+to xv6.
+A symbolic link is simply a file with a special type (e.g., T_SYMLINK
+instead of T_FILE or T_DIR) whose contents contain the path being
+linked to.
+
+<p>
+Turn in a short writeup of how you would change xv6 to support 
+symlinks.  List the functions that would have to be added or changed,
+with short descriptions of the new functionality or changes.
+
+<p>
+<b>This completes the homework.</b>
+
+<p>
+The following is <i>not required</i>.  If you want to try implementing
+symbolic links in xv6, here are the files that the course staff
+had to change to implement them:
+
+<pre>
+fs.c: 20 lines added, 4 modified
+syscall.c: 2 lines added
+syscall.h: 1 line added
+sysfile.c: 15 lines added
+user.h: 1 line added
+usys.S: 1 line added
+</pre>
+
+Also, here is an <i>ln</i> program:
+
+<pre>
+#include "types.h"
+#include "user.h"
+
+int
+main(int argc, char *argv[])
+{
+  int (*ln)(char*, char*);
+  
+  ln = link;
+  if(argc &gt; 1 &amp;&amp; strcmp(argv[1], "-s") == 0){
+    ln = symlink;
+    argc--;
+    argv++;
+  }
+  
+  if(argc != 3){
+    printf(2, "usage: ln [-s] old new (%d)\n", argc);
+    exit();
+  }
+  if(ln(argv[1], argv[2]) &lt; 0){
+    printf(2, "%s failed\n", ln == symlink ? "symlink" : "link");
+    exit();
+  }
+  exit();
+}
+</pre>
+
+</body>

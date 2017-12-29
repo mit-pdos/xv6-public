@@ -1,19 +1,13 @@
-// Per-CPU state
-struct cpu {
-  uchar apicid;                // Local APIC ID
-  struct context *scheduler;   // swtch() here to enter scheduler
-  struct taskstate ts;         // Used by x86 to find stack for interrupt
-  struct segdesc gdt[NSEGS];   // x86 global descriptor table
-  volatile uint started;       // Has the CPU started?
-  int ncli;                    // Depth of pushcli nesting.
-  int intena;                  // Were interrupts enabled before pushcli?
-  struct proc *proc;           // The process running on this cpu or null
-};
+// Segments in proc->gdt.
+// Also known to bootasm.S and trapasm.S
+#define SEG_KCODE 1  // kernel code
+#define SEG_KDATA 2  // kernel data+stack
+#define SEG_KCPU  3  // kernel per-cpu data
+#define SEG_UCODE 4
+#define SEG_UDATA 5
+#define SEG_TSS   6  // this process's task state
+#define NSEGS     7
 
-extern struct cpu cpus[NCPU];
-extern int ncpu;
-
-//PAGEBREAK: 17
 // Saved registers for kernel context switches.
 // Don't need to save all the segment registers (%cs, etc),
 // because they are constant across kernel contexts.
@@ -21,9 +15,7 @@ extern int ncpu;
 // x86 convention is that the caller has saved them.
 // Contexts are stored at the bottom of the stack they
 // describe; the stack pointer is the address of the context.
-// The layout of the context matches the layout of the stack in swtch.S
-// at the "Switch stacks" comment. Switch doesn't save eip explicitly,
-// but it is on the stack and allocproc() manipulates it.
+// The layout of the context must match the code in swtch.S.
 struct context {
   uint edi;
   uint esi;
@@ -36,14 +28,14 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
+  char *mem;                   // Start of process memory (kernel address)
   uint sz;                     // Size of process memory (bytes)
-  pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
-  enum procstate state;        // Process state
-  int pid;                     // Process ID
+  enum procstate state;       // Process state
+  volatile int pid;            // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
-  struct context *context;     // swtch() here to run process
+  struct context *context;     // Switch here to run process
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
@@ -56,3 +48,27 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+// Per-CPU state
+struct cpu {
+  uchar apicid;                // Local APIC ID
+  struct context *context;     // Switch here to enter scheduler
+  struct taskstate ts;         // Used by x86 to find stack for interrupt
+  struct segdesc gdt[NSEGS];   // x86 global descriptor table
+  volatile uint booted;        // Has the CPU started?
+  int ncli;                    // Depth of pushcli nesting.
+  int intena;                  // Were interrupts enabled before pushcli?
+  void *tls[2];
+};
+
+extern struct cpu cpus[NCPU];
+extern int ncpu;
+
+// Per-CPU variables, holding pointers to the
+// current cpu and to the current process.
+// The __thread prefix tells gcc to refer to them in the segment
+// pointed at by gs; the name __thread derives from the use
+// of the same mechanism to provide per-thread storage in
+// multithreaded user programs.
+extern __thread struct cpu *c;       // This cpu.
+extern __thread struct proc *cp;     // Current process on this cpu.

@@ -1,4 +1,6 @@
-#include "mmu.h"
+#define SEG_KCODE 1  // kernel code
+#define SEG_KDATA 2  // kernel data+stack
+#define SEG_KCPU  3  // kernel per-cpu data
 
   # vectors.S sends all traps here.
 .globl alltraps
@@ -10,10 +12,13 @@ alltraps:
   pushl %gs
   pushal
   
-  # Set up data segments.
+  # Set up data and per-cpu segments.
   movw $(SEG_KDATA<<3), %ax
   movw %ax, %ds
   movw %ax, %es
+  movw $(SEG_KCPU<<3), %ax
+  movw %ax, %fs
+  movw %ax, %gs
 
   # Call trap(tf), where tf=%esp
   pushl %esp
@@ -30,3 +35,11 @@ trapret:
   popl %ds
   addl $0x8, %esp  # trapno and errcode
   iret
+
+  # A forked process switches to user mode by calling
+  # forkret1(tf), where tf is the trap frame to use.
+.globl forkret1
+forkret1:
+  movl 4(%esp), %esp
+  jmp trapret
+

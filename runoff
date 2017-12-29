@@ -45,7 +45,6 @@ cat toc.ftr >>fmt/toc
 
 # check for bad alignments
 perl -e '
-	$leftwarn = 0;
 	while(<>){
 		chomp;
 		s!#.*!!;
@@ -55,13 +54,6 @@ perl -e '
 		
 		if(/TOC: (\d+) (.*)/){
 			$toc{$2} = $1;
-			next;
-		}
-		
-		if(/sheet1: (left|right)$/){
-			print STDERR "assuming that sheet 1 is a $1 page.  double-check!\n";
-			$left = $1 eq "left" ? "13579" : "02468";
-			$right = $1 eq "left" ? "02468" : "13579";
 			next;
 		}
 		
@@ -83,26 +75,8 @@ perl -e '
 				print STDERR "Have no toc for $file\n";
 				next;
 			}
-			if($toc{$file} !~ /^\d\d5/){
+			if($toc{$file} =~ /^\d\d[^5]/){
 				print STDERR "$file does not start on a second half page.\n";
-			}
-			next;
-		}
-		
-		if(/(left|right): (.*)/){
-			$what = $1;
-			$file = $2;
-			if(!defined($toc{$file})){
-				print STDERR "Have no toc for $file\n";
-				next;
-			}
-			if($what eq "left" && !($toc{$file} =~ /^\d[$left][05]/)){
-				print STDERR "$file does not start on a left page [$toc{$file}]\n";
-			}
-			# why does this not work if I inline $x in the if?
-			$x = ($toc{$file} =~ /^\d[$right][05]/);
-			if($what eq "right" && !$x){
-				print STDERR "$file does not start on a right page [$toc{$file}] [$x]\n";
 			}
 			next;
 		}
@@ -191,9 +165,7 @@ do
 	uses=`egrep -h '([^a-zA-Z_0-9])'$i'($|[^a-zA-Z_0-9])' alltext | awk '{print $1}'`
 	if [ "x$defs" != "x$uses" ]; then
 		echo $i $defs
-		echo $uses |fmt -29 | sed 's/^/    /'
-#	else
-#		echo $i defined but not used >&2
+		echo $uses |fmt -24 | sed 's/^/    /'
 	fi
 done
 ) >refs
@@ -223,21 +195,15 @@ awk '
 grep Pages: all.ps
 
 # if we have the nice font, use it
-nicefont=LucidaSans-Typewriter83
-if [ ! -f ../$nicefont ]
-then
-	if git cat-file blob font:$nicefont > ../$nicefont~; then
-		mv ../$nicefont~ ../$nicefont
-	fi
-fi
-if [ -f ../$nicefont ]
+nicefont=../LucidaSans-Typewriter83
+if [ -f $nicefont ]
 then
 	echo nicefont
-	(sed 1q all.ps; cat ../$nicefont; sed "1d; s/Courier/$nicefont/" all.ps) >allf.ps
+	(sed 1q all.ps; cat $nicefont; sed '1d; s/Courier/LucidaSans-Typewriter83/' all.ps) >allf.ps
 else
 	echo ugly font!
 	cp all.ps allf.ps
 fi
 ps2pdf allf.ps ../xv6.pdf
-# cd ..
-# pdftops xv6.pdf xv6.ps
+cd ..
+pdftops xv6.pdf xv6.ps

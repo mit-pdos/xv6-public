@@ -1,0 +1,518 @@
+<title>L4</title>
+<html>
+<head>
+</head>
+<body>
+
+<h1>Address translation and sharing using segments</h1>
+
+<p>This lecture is about virtual memory, focusing on address
+spaces. It is the first lecture out of series of lectures that uses
+xv6 as a case study.
+
+<h2>Address spaces</h2>
+
+<ul>
+
+<li>OS: kernel program and user-level programs. For fault isolation
+each program runs in a separate address space. The kernel address
+spaces is like user address spaces, expect it runs in kernel mode.
+The program in kernel mode can execute priviledge instructions (e.g.,
+writing the kernel's code segment registers).
+
+<li>One job of kernel is to manage address spaces (creating, growing,
+deleting, and switching between them)
+
+<ul>
+
+<li>Each address space (including kernel) consists of the binary
+    representation for the text of the program, the data part
+    part of the program, and the stack area.
+
+<li>The kernel address space runs the kernel program. In a monolithic
+    organization the kernel manages all hardware and provides an API
+    to user programs.
+
+<li>Each user address space contains a program.  A user progam may ask
+  to shrink or grow its address space.
+
+</ul>
+
+<li>The main operations:
+<ul>
+<li>Creation.  Allocate physical memory to storage program. Load
+program into physical memory. Fill address spaces with references to
+physical memory. 
+<li>Growing. Allocate physical memory and add it to address space.
+<li>Shrinking. Free some of the memory in an address space.
+<li>Deletion. Free all memory in an address space.
+<li>Switching. Switch the processor to use another address space.
+<li>Sharing.  Share a part of an address space with another program.
+</ul>
+</ul>
+
+<p>Two main approaches to implementing address spaces: using segments
+  and using page tables. Often when one uses segments, one also uses
+  page tables.  But not the other way around; i.e., paging without
+  segmentation is common.
+
+<h2>Example support for address spaces: x86</h2>
+
+<p>For an operating system to provide address spaces and address
+translation typically requires support from hardware.  The translation
+and checking of permissions typically must happen on each address used
+by a program, and it would be too slow to check that in software (if
+even possible).  The division of labor is operating system manages
+address spaces, and hardware translates addresses and checks
+permissions.
+
+<p>PC block diagram without virtual memory support:
+<ul>
+<li>physical address
+<li>base, IO hole, extended memory
+<li>Physical address == what is on CPU's address pins
+</ul>
+
+<p>The x86 starts out in real mode and translation is as follows:
+	<ul>
+	<li>segment*16+offset ==> physical address
+        <li>no protection: program can load anything into seg reg
+	</ul>
+
+<p>The operating system can switch the x86 to protected mode, which
+allows the operating system to create address spaces. Translation in
+protected mode is as follows:
+	<ul>
+	<li>selector:offset (logical addr) <br>
+	     ==SEGMENTATION==> 
+	<li>linear address <br>
+	     ==PAGING ==>
+	<li>physical address
+	</ul>
+
+<p>Next lecture covers paging; now we focus on segmentation. 
+
+<p>Protected-mode segmentation works as follows:
+<ul>
+<li>protected-mode segments add 32-bit addresses and protection
+<ul>
+<li>wait: what's the point? the point of segments in real mode was
+  bigger addresses, but 32-bit mode fixes that!
+</ul>
+<li>segment register holds segment selector
+<li>selector indexes into global descriptor table (GDT)
+<li>segment descriptor holds 32-bit base, limit, type, protection
+<li>la = va + base ; assert(va < limit);
+<li>seg register usually implicit in instruction
+	<ul>
+	<li>DS:REG
+		<ul>
+		<li><tt>movl $0x1, _flag</tt>
+		</ul>
+	<li>SS:ESP, SS:EBP
+		<ul>
+		<li><tt>pushl %ecx, pushl $_i</tt>
+		<li><tt>popl %ecx</tt>
+		<li><tt>movl 4(%ebp),%eax</tt>
+		</ul>
+	<li>CS:EIP
+		<ul>
+		<li>instruction fetch
+		</ul>
+	<li>String instructions: read from DS:ESI, write to ES:EDI
+		<ul>
+		<li><tt>rep movsb</tt>
+		</ul>
+	<li>Exception: far addresses
+		<ul>
+		<li><tt>ljmp $selector, $offset</tt>
+		</ul>
+	</ul>
+<li>LGDT instruction loads CPU's GDT register
+<li>you turn on protected mode by setting PE bit in CR0 register
+<li>what happens with the next instruction? CS now has different
+  meaning...
+
+<li>How to transfer from segment to another, perhaps with different
+priveleges.
+<ul>
+<li>Current privilege level (CPL) is in the low 2 bits of CS
+<li>CPL=0 is privileged O/S, CPL=3 is user
+<li>Within in the same privelege level: ljmp.
+<li>Transfer to a segment with more privilege: call gates.
+<ul>
+<li>a way for app to jump into a segment and acquire privs
+<li>CPL must be <= descriptor's DPL in order to read or write segment
+<li>call gates can change privelege <b>and</b> switch CS and SS
+  segment
+<li>call gates are implemented using a special type segment descriptor
+  in the GDT.
+<li>interrupts are conceptually the same as call gates, but their
+  descriptor is stored in the IDT.  We will use interrupts to transfer
+  control between user and kernel mode, both in JOS and xv6.  We will
+  return to this in the lecture about interrupts and exceptions.
+</ul>
+</ul>
+
+<li>What about protection?
+<ul>
+  <li>can o/s limit what memory an application can read or write?
+  <li>app can load any selector into a seg reg...
+  <li>but can only mention indices into GDT
+  <li>app can't change GDT register (requires privilege)
+  <li>why can't app write the descriptors in the GDT?
+  <li>what about system calls? how to they transfer to kernel?
+  <li>app cannot <b>just</b> lower the CPL
+</ul>
+</ul>
+
+<h2>Case study (xv6)</h2>
+
+<p>xv6 is a reimplementation of <a href="../v6.html">Unix 6th edition</a>.
+<ul>
+<li>v6 is a version of the orginal Unix operating system for <a href="http://www.pdp11.org/">DEC PDP11</a>
+<ul>
+       <li>PDP-11 (1972): 
+	 <li>16-bit processor, 18-bit physical (40)
+	 <li>UNIBUS
+	 <li>memory-mapped I/O
+	 <li>performance: less than 1MIPS
+	 <li>register-to-register transfer: 0.9 usec
+	 <li>56k-228k (40)
+	 <li>no paging, but some segmentation support
+	 <li>interrupts, traps
+	 <li>about $10K
+         <li>rk disk with 2MByte of storage
+	 <li>with cabinet 11/40 is 400lbs
+</ul>
+       <li>Unix v6
+<ul>
+         <li><a href="../reference.html">Unix papers</a>.
+         <li>1976; first widely available Unix outside Bell labs
+         <li>Thompson and Ritchie
+         <li>Influenced by Multics but simpler.
+	 <li>complete (used for real work)
+	 <li>Multi-user, time-sharing
+	 <li>small (43 system calls)
+	 <li>modular (composition through pipes; one had to split programs!!)
+	 <li>compactly written (2 programmers, 9,000 lines of code)
+	 <li>advanced UI (shell)
+	 <li>introduced C (derived from B)
+	 <li>distributed with source
+	 <li>V7 was sold by Microsoft for a couple years under the name Xenix
+</ul>
+       <li>Lion's commentary
+<ul>
+         <li>surpressed because of copyright issue
+	 <li>resurfaced in 1996
+</ul>
+
+<li>xv6 written for 6.828:
+<ul>
+         <li>v6 reimplementation for x86
+	 <li>does't include all features of v6 (e.g., xv6 has 20 of 43
+	 system calls).
+	 <li>runs on symmetric multiprocessing PCs (SMPs).
+</ul>
+</ul>
+
+<p>Newer Unixs have inherited many of the conceptual ideas even though
+they added paging, networking, graphics, improve performance, etc.
+
+<p>You will need to read most of the source code multiple times. Your
+goal is to explain every line to yourself.
+
+<h3>Overview of address spaces in xv6</h3>
+
+<p>In today's lecture we see how xv6 creates the kernel address
+ spaces, first user address spaces, and switches to it. To understand
+ how this happens, we need to understand in detail the state on the
+ stack too---this may be surprising, but a thread of control and
+ address space are tightly bundled in xv6, in a concept
+ called <i>process</i>.  The kernel address space is the only address
+ space with multiple threads of control. We will study context
+ switching and process management in detail next weeks; creation of
+ the first user process (init) will get you a first flavor.
+
+<p>xv6 uses only the segmentation hardware on xv6, but in a limited
+  way. (In JOS you will use page-table hardware too, which we cover in
+  next lecture.)  The adddress space layouts are as follows:
+<ul>
+<li>In kernel address space is set up as follows:
+  <pre>
+  the code segment runs from 0 to 2^32 and is mapped X and R
+  the data segment runs from 0 to 2^32 but is mapped W (read and write).
+  </pre>
+<li>For each process, the layout is as follows: 
+<pre>
+  text
+  original data and bss
+  fixed-size stack
+  expandable heap
+</pre>
+The text of a process is stored in its own segment and the rest in a
+data segment.  
+</ul>
+
+<p>xv6 makes minimal use of the segmentation hardware available on the
+x86. What other plans could you envision?
+
+<p>In xv6, each each program has a user and a kernel stack; when the
+user program switches to the kernel, it switches to its kernel stack.
+Its kernel stack is stored in process's proc structure. (This is
+arranged through the descriptors in the IDT, which is covered later.)
+
+<p>xv6 assumes that there is a lot of physical memory. It assumes that
+  segments can be stored contiguously in physical memory and has
+  therefore no need for page tables.
+
+<h3>xv6 kernel address space</h3>
+
+<p>Let's see how xv6 creates the kernel address space by tracing xv6
+  from when it boots, focussing on address space management:
+<ul>
+<li>Where does xv6 start after the PC is power on: start (which is
+  loaded at physical address 0x7c00; see lab 1).
+<li>1025-1033: are we in real mode?
+<ul>
+<li>how big are logical addresses?
+<li>how big are physical addresses?
+<li>how are addresses physical calculated?
+<li>what segment is being used in subsequent code?
+<li>what values are in that segment?
+</ul>
+<li>1068: what values are loaded in the GDT?
+<ul>
+<li>1097: gdtr points to gdt
+<li>1094: entry 0 unused
+<li>1095: entry 1 (X + R, base = 0, limit = 0xffffffff, DPL = 0)
+<li>1096: entry 2 (W, base = 0, limit = 0xffffffff, DPL = 0)
+<li>are we using segments in a sophisticated way? (i.e., controled sharing)
+<li>are P and S set?
+<li>are addresses translated as in protected mode when lgdt completes?
+</ul>
+<li>1071: no, and not even here.
+<li>1075: far jump, load 8 in CS. from now on we use segment-based translation.
+<li>1081-1086: set up other segment registers
+<li>1087: where is the stack which is used for procedure calls?
+<li>1087: cmain in the bootloader (see lab 1), which calls main0
+<li>1222: main0.  
+<ul>
+<li>job of main0 is to set everthing up so that all xv6 convtions works
+<li>where is the stack?  (sp = 0x7bec)
+<li>what is on it?
+<pre>
+   00007bec [00007bec]  7cda  // return address in cmain
+   00007bf0 [00007bf0]  0080  // callee-saved ebx
+   00007bf4 [00007bf4]  7369  // callee-saved esi
+   00007bf8 [00007bf8]  0000  // callee-saved ebp
+   00007bfc [00007bfc]  7c49  // return address for cmain: spin
+   00007c00 [00007c00]  c031fcfa  // the instructions from 7c00 (start)
+</pre>
+</ul>
+<li>1239-1240: switch to cpu stack (important for scheduler)
+<ul>
+<li>why -32?
+<li>what values are in ebp and esp?
+<pre>
+esp: 0x108d30   1084720
+ebp: 0x108d5c   1084764
+</pre>
+<li>what is on the stack?
+<pre>
+   00108d30 [00108d30]  0000
+   00108d34 [00108d34]  0000
+   00108d38 [00108d38]  0000
+   00108d3c [00108d3c]  0000
+   00108d40 [00108d40]  0000
+   00108d44 [00108d44]  0000
+   00108d48 [00108d48]  0000
+   00108d4c [00108d4c]  0000
+   00108d50 [00108d50]  0000
+   00108d54 [00108d54]  0000
+   00108d58 [00108d58]  0000
+   00108d5c [00108d5c]  0000
+   00108d60 [00108d60]  0001
+   00108d64 [00108d64]  0001
+   00108d68 [00108d68]  0000
+   00108d6c [00108d6c]  0000
+</pre>
+
+<li>what is 1 in 0x108d60?  is it on the stack?
+
+</ul>
+
+<li>1242: is it save to reference bcpu?  where is it allocated?
+
+<li>1260-1270: set up proc[0]
+
+<ul>
+<li>each process has its own stack (see struct proc).
+
+<li>where is its stack?  (see the section below on physical memory
+  management below).
+
+<li>what is the jmpbuf?  (will discuss in detail later)
+
+<li>1267: why -4?
+
+</ul>
+
+<li>1270: necessar to be able to take interrupts (will discuss in
+  detail later)
+
+<li>1292: what process do you think scheduler() will run?  we will
+  study later how that happens, but let's assume it runs process0 on
+  process0's stack.
+</ul>
+
+<h3>xv6 user address spaces</h3>
+
+<ul>
+<li>1327: process0  
+<ul>
+<li>process 0 sets up everything to make process conventions work out
+
+<li>which stack is process0 running?  see 1260.
+
+<li>1334: is the convention to release the proc_table_lock after being
+  scheduled? (we will discuss locks later; assume there are no other
+  processors for now.)
+
+<li>1336: cwd is current working directory.
+
+<li>1348: first step in initializing a template tram frame: set
+  everything to zero. we are setting up process 0 as if it just
+  entered the kernel from user space and wants to go back to user
+  space.  (see x86.h to see what field have the value 0.)
+
+<li>1349: why "|3"?  instead of 0?
+
+<li>1351: why set interrupt flag in template trapframe?
+
+<li>1352: where will the user stack be in proc[0]'s address space?
+
+<li>1353: makes a copy of proc0.  fork() calls copyproc() to implement
+  forking a process.  This statement in essense is calling fork inside
+  proc0, making a proc[1] a duplicate of proc[0].  proc[0], however,
+  has not much in its address space of one page (see 1341).
+<ul>
+<li>2221: grab a lock on the proc table so that we are the only one
+  updating it.
+<li>2116: allocate next pid.
+<li>2228: we got our entry; release the  lock. from now we are only
+  modifying our entry.
+<li>2120-2127: copy proc[0]'s memory.  proc[1]'s memory will be identical
+  to proc[0]'s.
+<li>2130-2136: allocate a kernel stack. this stack is different from
+  the stack that proc[1] uses when running in user mode.
+<li>2139-2140: copy the template trapframe that xv6 had set up in
+  proc[0].
+<li>2147: where will proc[1] start running when the scheduler selects
+  it?
+<li>2151-2155: Unix semantics: child inherits open file descriptors
+  from parent.
+<li>2158: same for cwd.
+</ul>
+
+<li>1356: load a program in proc[1]'s address space.  the program
+  loaded is the binary version of init.c (sheet 16).
+
+<li>1374: where will proc[1] start?
+
+<li>1377-1388: copy the binary into proc[1]'s address space.  (you
+  will learn about the ELF format in the labs.)  
+<ul>
+<li>can the binary for init be any size for proc[1] to work correctly?
+
+<li>what is the layout of proc[1]'s address space? is it consistent
+  with the layout described on line 1950-1954?
+
+</ul>
+
+<li>1357: make proc[1] runnable so that the scheduler will select it
+  to run.  everything is set up now for proc[1] to run, "return" to
+  user space, and execute init.
+
+<li>1359: proc[0] gives up the processor, which calls sleep, which
+  calls sched, which setjmps back to scheduler. let's peak a bit in
+  scheduler to see what happens next.  (we will return to the
+  scheduler in more detail later.)
+</ul>
+<li>2219: this test will fail for proc[1]
+<li>2226: setupsegs(p) sets up the segments for proc[1].  this call is
+  more interesting than the previous, so let's see what happens:
+<ul>
+<li>2032-37: this is for traps and interrupts, which we will cover later.
+<li>2039-49: set up new gdt.
+<li>2040: why 0x100000 + 64*1024?
+<li>2045: why 3?  why is base p->mem? is p->mem physical or logical?
+<li>2045-2046: how much the program for proc[1] be compiled if proc[1]
+  will run successfully in user space?
+<li>2052: we are still running in the kernel, but we are loading gdt.
+  is this ok?
+<li>why have so few user-level segments?  why not separate out code,
+  data, stack, bss, etc.?
+</ul>
+<li>2227: record that proc[1] is running on the cpu
+<li>2228: record it is running instead of just runnable
+<li>2229: setjmp to fork_ret.
+<li>2282: which stack is proc[1] running on?
+<li>2284: when scheduled, first release the proc_table_lock.
+<li>2287: back into assembly.
+<li>2782: where is the stack pointer pointing to?
+<pre>
+   0020dfbc [0020dfbc]  0000
+   0020dfc0 [0020dfc0]  0000
+   0020dfc4 [0020dfc4]  0000
+   0020dfc8 [0020dfc8]  0000
+   0020dfcc [0020dfcc]  0000
+   0020dfd0 [0020dfd0]  0000
+   0020dfd4 [0020dfd4]  0000
+   0020dfd8 [0020dfd8]  0000
+   0020dfdc [0020dfdc]  0023
+   0020dfe0 [0020dfe0]  0023
+   0020dfe4 [0020dfe4]  0000
+   0020dfe8 [0020dfe8]  0000
+   0020dfec [0020dfec]  0000
+   0020dff0 [0020dff0]  001b
+   0020dff4 [0020dff4]  0200
+   0020dff8 [0020dff8]  1000
+</pre>
+<li>2783: why jmp instead of call?
+<li>what will iret put in eip?
+<li>what is 0x1b?  what will iret put in cs?
+<li>after iret, what will the processor being executing?
+</ul>
+
+<h3>Managing physical memory</h3>
+
+<p>To create an address space we must allocate physical memory, which
+  will be freed when an address space is deleted (e.g., when a user
+  program terminates).  xv6 implements a first-fit memory allocater
+  (see kalloc.c).  
+
+<p>It maintains a list of ranges of free memory.  The allocator finds
+  the first range that is larger than the amount of requested memory.
+  It splits that range in two: one range of the size requested and one
+  of the remainder.  It returns the first range.  When memory is
+  freed, kfree will merge ranges that are adjacent in memory.
+
+<p>Under what scenarios is a first-fit memory allocator undesirable?
+
+<h3>Growing an address space</h3>
+
+<p>How can a user process grow its address space?  growproc.
+<ul>
+<li>2064: allocate a new segment of old size plus n
+<li>2067: copy the old segment into the new (ouch!)
+<li>2068: and zero the rest.
+<li>2071: free the old physical memory
+</ul>
+<p>We could do a lot better if segments didn't have to contiguous in
+  physical memory. How could we arrange that? Using page tables, which
+  is our next topic.  This is one place where page tables would be
+  useful, but there are others too (e.g., in fork).
+</body>
+
+

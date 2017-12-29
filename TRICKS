@@ -4,9 +4,6 @@ might be worth pointing out in a longer explanation or in class.
 
 ---
 
-[2009/07/12: No longer relevant; forkret1 changed
-and this is now cleaner.]
-
 forkret1 in trapasm.S is called with a tf argument.
 In order to use it, forkret1 copies the tf pointer into
 %esp and then jumps to trapret, which pops the 
@@ -48,21 +45,21 @@ always.
 
 There is a (harmless) race in pushcli, which does
 
-	eflags = readeflags();
+	eflags = read_eflags();
 	cli();
-	if(c->ncli++ == 0)
-		c->intena = eflags & FL_IF;
+	if(cpus[cpu()].ncli++ == 0)
+		cpus[cpu()].intena = eflags & FL_IF;
 
 Consider a bottom-level pushcli.  
 If interrupts are disabled already, then the right thing
 happens: read_eflags finds that FL_IF is not set,
-and intena = 0.  If interrupts are enabled, then
+and intena = 1.  If interrupts are enabled, then
 it is less clear that the right thing happens:
-the readeflags can execute, then the process
+the read_eflags can execute, then the process
 can get preempted and rescheduled on another cpu,
 and then once it starts running, perhaps with 
 interrupts disabled (can happen since the scheduler
-only enables interrupts once per scheduling loop,
+only disables interrupts once per scheduling loop,
 not every time it schedules a process), it will 
 incorrectly record that interrupts *were* enabled.
 This doesn't matter, because if it was safe to be
@@ -115,26 +112,25 @@ processors will need it.
 
 ---
 
-The code in fork needs to read np->pid before
-setting np->state to RUNNABLE.  The following
-is not a correct way to do this:
+The code in sys_fork needs to read np->pid before
+setting np->state to RUNNABLE.  
 
 	int
-	fork(void)
+	sys_fork(void)
 	{
-	  ...
+	  int pid;
+	  struct proc *np;
+	
+	  if((np = copyproc(cp)) == 0)
+	    return -1;
+	  pid = np->pid;
 	  np->state = RUNNABLE;
-	  return np->pid; // oops
+	  return pid;
 	}
 
 After setting np->state to RUNNABLE, some other CPU
 might run the process, it might exit, and then it might
 get reused for a different process (with a new pid), all
-before the return statement.  So it's not safe to just
-"return np->pid". Even saving a copy of np->pid before
-setting np->state isn't safe, since the compiler is
-allowed to re-order statements.
+before the return statement.  So it's not safe to just do
+"return np->pid;".
 
-The real code saves a copy of np->pid, then acquires a lock
-around the write to np->state. The acquire() prevents the
-compiler from re-ordering.

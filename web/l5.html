@@ -1,0 +1,210 @@
+<title>Lecture 5/title>
+<html>
+<head>
+</head>
+<body>
+
+<h2>Address translation and sharing using page tables</h2>
+
+<p> Reading: <a href="../readings/i386/toc.htm">80386</a> chapters 5 and 6<br>
+
+<p> Handout: <b> x86 address translation diagram</b> - 
+<a href="x86_translation.ps">PS</a> -
+<a href="x86_translation.eps">EPS</a> -
+<a href="x86_translation.fig">xfig</a>
+<br>
+
+<p>Why do we care about x86 address translation?
+<ul>
+<li>It can simplify s/w structure by placing data at fixed known addresses.
+<li>It can implement tricks like demand paging and copy-on-write.
+<li>It can isolate programs to contain bugs.
+<li>It can isolate programs to increase security.
+<li>JOS uses paging a lot, and segments more than you might think.
+</ul>
+
+<p>Why aren't protected-mode segments enough?
+<ul>
+<li>Why did the 386 add translation using page tables as well?
+<li>Isn't it enough to give each process its own segments?
+</ul>
+
+<p>Translation using page tables on x86:
+<ul>
+<li>paging hardware maps linear address (la) to physical address (pa)
+<li>(we will often interchange "linear" and "virtual")
+<li>page size is 4096 bytes, so there are 1,048,576 pages in 2^32
+<li>why not just have a big array with each page #'s translation?
+<ul>
+<li>table[20-bit linear page #] => 20-bit phys page #
+</ul>
+<li>386 uses 2-level mapping structure
+<li>one page directory page, with 1024 page directory entries (PDEs)
+<li>up to 1024 page table pages, each with 1024 page table entries (PTEs)
+<li>so la has 10 bits of directory index, 10 bits table index, 12 bits offset
+<li>What's in a PDE or PTE?
+<ul>
+<li>20-bit phys page number, present, read/write, user/supervisor
+</ul>
+<li>cr3 register holds physical address of current page directory
+<li>puzzle: what do PDE read/write and user/supervisor flags mean?
+<li>puzzle: can supervisor read/write user pages?
+
+<li>Here's how the MMU translates an la to a pa:
+
+   <pre>
+   uint
+   translate (uint la, bool user, bool write)
+   {
+     uint pde; 
+     pde = read_mem (%CR3 + 4*(la >> 22));
+     access (pde, user, read);
+     pte = read_mem ( (pde & 0xfffff000) + 4*((la >> 12) & 0x3ff));
+     access (pte, user, read);
+     return (pte & 0xfffff000) + (la & 0xfff);
+   }
+
+   // check protection. pxe is a pte or pde.
+   // user is true if CPL==3
+   void
+   access (uint pxe, bool user, bool write)
+   {
+     if (!(pxe & PG_P)  
+        => page fault -- page not present
+     if (!(pxe & PG_U) && user)
+        => page fault -- not access for user
+   
+     if (write && !(pxe & PG_W))
+       if (user)   
+          => page fault -- not writable
+       else if (!(pxe & PG_U))
+         => page fault -- not writable
+       else if (%CR0 & CR0_WP) 
+         => page fault -- not writable
+   }
+   </pre>
+
+<li>CPU's TLB caches vpn => ppn mappings
+<li>if you change a PDE or PTE, you must flush the TLB!
+<ul>
+  <li>by re-loading cr3
+</ul>
+<li>turn on paging by setting CR0_PE bit of %cr0
+</ul>
+
+Can we use paging to limit what memory an app can read/write?
+<ul>
+<li>user can't modify cr3 (requires privilege)
+<li>is that enough?
+<li>could user modify page tables? after all, they are in memory.
+</ul>
+
+<p>How we will use paging (and segments) in JOS:
+<ul>
+<li>use segments only to switch privilege level into/out of kernel
+<li>use paging to structure process address space
+<li>use paging to limit process memory access to its own address space
+<li>below is the JOS virtual memory map
+<li>why map both kernel and current process? why not 4GB for each?
+<li>why is the kernel at the top?
+<li>why map all of phys mem at the top? i.e. why multiple mappings?
+<li>why map page table a second time at VPT?
+<li>why map page table a third time at UVPT?
+<li>how do we switch mappings for a different process?
+</ul>
+
+<pre>
+    4 Gig -------->  +------------------------------+
+                     |                              | RW/--
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                     :              .               :
+                     :              .               :
+                     :              .               :
+                     |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~| RW/--
+                     |                              | RW/--
+                     |   Remapped Physical Memory   | RW/--
+                     |                              | RW/--
+    KERNBASE ----->  +------------------------------+ 0xf0000000
+                     |  Cur. Page Table (Kern. RW)  | RW/--  PTSIZE
+    VPT,KSTACKTOP--> +------------------------------+ 0xefc00000      --+
+                     |         Kernel Stack         | RW/--  KSTKSIZE   |
+                     | - - - - - - - - - - - - - - -|                 PTSIZE
+                     |      Invalid Memory          | --/--             |
+    ULIM     ------> +------------------------------+ 0xef800000      --+
+                     |  Cur. Page Table (User R-)   | R-/R-  PTSIZE
+    UVPT      ---->  +------------------------------+ 0xef400000
+                     |          RO PAGES            | R-/R-  PTSIZE
+    UPAGES    ---->  +------------------------------+ 0xef000000
+                     |           RO ENVS            | R-/R-  PTSIZE
+ UTOP,UENVS ------>  +------------------------------+ 0xeec00000
+ UXSTACKTOP -/       |     User Exception Stack     | RW/RW  PGSIZE
+                     +------------------------------+ 0xeebff000
+                     |       Empty Memory           | --/--  PGSIZE
+    USTACKTOP  --->  +------------------------------+ 0xeebfe000
+                     |      Normal User Stack       | RW/RW  PGSIZE
+                     +------------------------------+ 0xeebfd000
+                     |                              |
+                     |                              |
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                     .                              .
+                     .                              .
+                     .                              .
+                     |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+                     |     Program Data & Heap      |
+    UTEXT -------->  +------------------------------+ 0x00800000
+    PFTEMP ------->  |       Empty Memory           |        PTSIZE
+                     |                              |
+    UTEMP -------->  +------------------------------+ 0x00400000
+                     |       Empty Memory           |        PTSIZE
+    0 ------------>  +------------------------------+
+</pre>
+
+<h3>The VPT </h3>
+
+<p>Remember how the X86 translates virtual addresses into physical ones:
+
+<p><img src=pagetables.png>
+
+<p>CR3 points at the page directory.  The PDX part of the address
+indexes into the page directory to give you a page table.  The
+PTX part indexes into the page table to give you a page, and then
+you add the low bits in.
+
+<p>But the processor has no concept of page directories, page tables,
+and pages being anything other than plain memory.  So there's nothing
+that says a particular page in memory can't serve as two or three of
+these at once.  The processor just follows pointers:
+
+pd = lcr3();
+pt = *(pd+4*PDX);
+page = *(pt+4*PTX);
+
+<p>Diagramatically, it starts at CR3, follows three arrows, and then stops.
+
+<p>If we put a pointer into the page directory that points back to itself at
+index Z, as in
+
+<p><img src=vpt.png>
+
+<p>then when we try to translate a virtual address with PDX and PTX
+equal to V, following three arrows leaves us at the page directory.
+So that virtual page translates to the page holding the page directory.
+In Jos, V is 0x3BD, so the virtual address of the VPD is
+(0x3BD&lt;&lt;22)|(0x3BD&lt;&lt;12).
+
+
+<p>Now, if we try to translate a virtual address with PDX = V but an
+arbitrary PTX != V, then following three arrows from CR3 ends
+one level up from usual (instead of two as in the last case),
+which is to say in the page tables.  So the set of virtual pages
+with PDX=V form a 4MB region whose page contents, as far
+as the processor is concerned, are the page tables themselves.
+In Jos, V is 0x3BD so the virtual address of the VPT is (0x3BD&lt;&lt;22).
+
+<p>So because of the "no-op" arrow we've cleverly inserted into
+the page directory, we've mapped the pages being used as
+the page directory and page table (which are normally virtually
+invisible) into the virtual address space.
+
+ 
+</body>

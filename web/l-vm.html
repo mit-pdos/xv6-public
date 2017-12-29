@@ -1,0 +1,462 @@
+<html>
+<head>
+<title>Virtual Machines</title>
+</head>
+
+<body>
+
+<h1>Virtual Machines</h1>
+
+<p>Required reading: Disco</p>
+
+<h2>Overview</h2>
+
+<p>What is a virtual machine? IBM definition: a fully protected and
+isolated copy of the underlying machine's hardware.</p>
+
+<p>Another view is that it provides another example of a kernel API.
+In contrast to other kernel APIs (unix, microkernel, and exokernel),
+the virtual machine operating system exports as the kernel API the
+processor API (e.g., the x86 interface).  Thus, each program running
+in user space sees the services offered by a processor, and each
+program sees its own processor.  Of course, we don't want to make a
+system call for each instruction, and in fact one of the main
+challenges in virtual machine operation systems is to design the
+system in such a way that the physical processor executes the virtual
+processor API directly, at processor speed.
+
+<p>
+Virtual machines can be useful for a number of reasons:
+<ol>
+
+<li>Run multiple operating systems on single piece of hardware.  For
+example, in one process, you run Linux, and in another you run
+Windows/XP.  If the kernel API is identical to the x86 (and faithly
+emulates x86 instructions, state, protection levels, page tables),
+then Linux and Windows/XP, the virual machine operationg system can
+run these <i>guest</i> operating systems without modifications.
+
+<ul>
+<li>Run "older" programs on the same hardware (e.g., run one x86
+virtual machine in real mode to execute old DOS apps).
+
+<li>Or run applications that require different operating system.
+</ul>
+
+<li>Fault isolation: like processes on UNIX but more complete, because
+the guest operating systems runs on the virtual machine in user space.
+Thus, faults in the guest OS cannot effect any other software.
+
+<li>Customizing the apparent hardware: virtual machine may have
+different view of hardware than is physically present.
+
+<li>Simplify deployment/development of software for scalable
+processors (e.g., Disco).
+
+</ol>
+</p>
+
+<p>If your operating system isn't a virtual machine operating system,
+what are the alternatives? Processor simulation (e.g., bochs) or
+binary emulation (WINE).  Simulation runs instructions purely in
+software and is slow (e.g., 100x slow down for bochs); virtualization
+gets out of the way whenever possible and can be efficient. 
+
+<p>Simulation gives portability whereas virtualization focuses on
+performance. However, this means that you need to model your hardware
+very carefully in software. Binary emulation focuses on just getting
+system call for a particular operating system's interface. Binary
+emulation can be hard because it is targetted towards a particular
+operating system (and even that can change between revisions).
+</p>
+
+<p>To provide each process with its own virtual processor that exports
+the same API as the physical processor, what features must
+the virtual machine operating system virtualize?
+<ol>
+<li>CPU: instructions -- trap all privileged instructions</li>
+<li>Memory: address spaces -- map "physical" pages managed
+by the guest OS to <i>machine</i>pages, handle translation, etc.</li>
+<li>Devices: any I/O communication needs to be trapped and passed
+    through/handled appropriately.</li>
+</ol>
+</p>
+The software that implements the virtualization is typically called
+the monitor, instead of the virtual machine operating system.
+
+<p>Virtual machine monitors (VMM) can be implemented in two ways:
+<ol>
+<li>Run VMM directly on hardware: like Disco.</li>
+<li>Run VMM as an application (though still running as root, with
+    integration into OS) on top of a <i>host</i> OS: like VMware. Provides
+    additional hardware support at low development cost in
+    VMM. Intercept CPU-level I/O requests and translate them into
+    system calls (e.g. <code>read()</code>).</li>
+</ol>
+</p>
+
+<p>The three primary functions of a virtual machine monitor are:
+<ul>
+<li>virtualize processor (CPU, memory, and devices)
+<li>dispatch events (e.g., forward page fault trap to guest OS).
+<li>allocate resources (e.g., divide real memory in some way between
+the physical memory of each guest OS).
+</ul>
+
+<h2>Virtualization in detail</h2>
+
+<h3>Memory virtualization</h3>
+
+<p>
+Understanding memory virtualization. Let's consider the MIPS example
+from the paper. Ideally, we'd be able to intercept and rewrite all
+memory address references. (e.g., by intercepting virtual memory
+calls). Why can't we do this on the MIPS? (There are addresses that
+don't go through address translation --- but we don't want the virtual
+machine to directly access memory!)  What does Disco do to get around
+this problem?  (Relink the kernel outside this address space.)
+</p>
+
+<p>
+Having gotten around that problem, how do we handle things in general?
+</p>
+<pre>
+// Disco's tlb miss handler.
+// Called when a memory reference for virtual adddress
+// 'VA' is made, but there is not VA->MA (virtual -> machine)
+// mapping in the cpu's TLB.
+void tlb_miss_handler (VA)
+{
+  // see if we have a mapping in our "shadow" tlb (which includes
+  // "main" tlb)
+  tlb_entry *t = tlb_lookup (thiscpu->l2tlb, va);
+  if (t && defined (thiscpu->pmap[t->pa]))   // is there a MA for this PA?
+    tlbwrite (va, thiscpu->pmap[t->pa], t->otherdata);
+  else if (t)
+    // get a machine page, copy physical page into, and tlbwrite
+  else
+    // trap to the virtual CPU/OS's handler
+}
+
+// Disco's procedure which emulates the MIPS
+// instruction which writes to the tlb.
+//
+// VA -- virtual addresss
+// PA -- physical address (NOT MA machine address!)
+// otherdata -- perms and stuff
+void emulate_tlbwrite_instruction (VA, PA, otherdata)
+{
+  tlb_insert (thiscpu->l2tlb, VA, PA, otherdata); // cache
+  if (!defined (thiscpu->pmap[PA])) { // fill in pmap dynamically
+    MA = allocate_machine_page ();
+    thiscpu->pmap[PA] = MA; // See 4.2.2
+    thiscpu->pmapbackmap[MA] = PA;
+    thiscpu->memmap[MA] = VA; // See 4.2.3 (for TLB shootdowns)
+  }
+  tlbwrite (va, thiscpu->pmap[PA], otherdata);
+}
+
+// Disco's procedure which emulates the MIPS
+// instruction which read the tlb.
+tlb_entry *emulate_tlbread_instruction (VA)
+{
+  // Must return a TLB entry that has a "Physical" address;
+  // This is recorded in our secondary TLB cache.
+  // (We don't have to read from the hardware TLB since
+  // all writes to the hardware TLB are mediated by Disco.
+  // Thus we can always keep the l2tlb up to date.)
+  return tlb_lookup (thiscpu->l2tlb, va);
+}
+</pre>
+
+<h3>CPU virtualization</h3>
+
+<p>Requirements:
+<ol>
+<li>Results of executing non-privileged instructions in privileged and
+    user mode must be equivalent. (Why? B/c the virtual "privileged"
+    system will not be running in true "privileged" mode.)
+<li>There must be a way to protect the VM from the real machine. (Some
+    sort of memory protection/address translation. For fault isolation.)</li>
+<li>There must be a way to detect and transfer control to the VMM when
+    the VM tries to execute a sensitive instruction (e.g. a privileged
+    instruction, or one that could expose the "virtualness" of the
+    VM.) It must be possible to emulate these instructions in
+    software. Can be classified into completely virtualizable
+    (i.e. there are protection mechanisms that cause traps for all
+    instructions), partly (insufficient or incomplete trap
+    mechanisms), or not at all (e.g. no MMU).
+</ol>
+</p>
+
+<p>The MIPS didn't quite meet the second criteria, as discussed
+above. But, it does have a supervisor mode that is between user mode and
+kernel mode where any privileged instruction will trap.</p>
+
+<p>What might a the VMM trap handler look like?</p>
+<pre>
+void privilege_trap_handler (addr) {
+  instruction, args = decode_instruction (addr)
+  switch (instruction) {
+  case foo:
+    emulate_foo (thiscpu, args, ...);
+    break;
+  case bar:
+    emulate_bar (thiscpu, args, ...);
+    break;
+  case ...:
+    ...
+  }
+}
+</pre>
+<p>The <code>emulator_foo</code> bits will have to evaluate the
+state of the virtual CPU and compute the appropriate "fake" answer.
+</p>
+
+<p>What sort of state is needed in order to appropriately emulate all
+of these things?
+<pre>
+- all user registers
+- CPU specific regs (e.g. on x86, %crN, debugging, FP...)
+- page tables (or tlb)
+- interrupt tables
+</pre>
+This is needed for each virtual processor.
+</p>
+
+<h3>Device I/O virtualization</h3>
+
+<p>We intercept all communication to the I/O devices: read/writes to
+reserved memory addresses cause page faults into special handlers
+which will emulate or pass through I/O as appropriate.
+</p>
+
+<p>
+In a system like Disco, the sequence would look something like:
+<ol>
+<li>VM executes instruction to access I/O</li>
+<li>Trap generated by CPU (based on memory or privilege protection)
+    transfers control to VMM.</li>
+<li>VMM emulates I/O instruction, saving information about where this
+    came from (for demultiplexing async reply from hardware later) .</li>
+<li>VMM reschedules a VM.</li>
+</ol>
+</p>
+
+<p>
+Interrupts will require some additional work:
+<ol>
+<li>Interrupt occurs on real machine, transfering control to VMM
+    handler.</li>
+<li>VMM determines the VM that ought to receive this interrupt.</li>
+<li>VMM causes a simulated interrupt to occur in the VM, and reschedules a
+    VM.</li>
+<li>VM runs its interrupt handler, which may involve other I/O
+    instructions that need to be trapped.</li>
+</ol>
+</p>
+
+<p>
+The above can be slow! So sometimes you want the guest operating
+system to be aware that it is a guest and allow it to avoid the slow
+path. Special device drivers or changing instructions that would cause
+traps into memory read/write instructions.
+</p>
+
+<h2>Intel x86/vmware</h2>
+
+<p>VMware, unlike Disco, runs as an application on a guest OS and
+cannot modify the guest OS.  Furthermore, it must virtualize the x86
+instead of MIPS processor.  Both of these differences make good design
+challenges.
+
+<p>The first challenge is that the monitor runs in user space, yet it
+must dispatch traps and it must execute privilege instructions, which
+both require kernel privileges.  To address this challenge, the
+monitor downloads a piece of code, a kernel module, into the guest
+OS. Most modern operating systems are constructed as a core kernel,
+extended with downloadable kernel modules.
+Privileged users can insert kernel modules at run-time.
+
+<p>The monitor downloads a kernel module that reads the IDT, copies
+it, and overwrites the hard-wired entries with addresses for stubs in
+the just downloaded kernel module.  When a trap happens, the kernel
+module inspects the PC, and either forwards the trap to the monitor
+running in user space or to the guest OS.  If the trap is caused
+because a guest OS execute a privileged instructions, the monitor can
+emulate that privilege instruction by asking the kernel module to
+perform that instructions (perhaps after modifying the arguments to
+the instruction).
+
+<p>The second challenge is virtualizing the x86
+  instructions. Unfortunately, x86 doesn't meet the 3 requirements for
+  CPU virtualization. the first two requirements above.  If you run
+  the CPU in ring 3, <i>most</i> x86 instructions will be fine,
+  because most privileged instructions will result in a trap, which
+  can then be forwarded to vmware for emulation.  For example,
+  consider a guest OS loading the root of a page table in CR3. This
+  results in trap (the guest OS runs in user space), which is
+  forwarded to the monitor, which can emulate the load to CR3 as
+  follows:
+
+<pre>
+// addr is a physical address
+void emulate_lcr3 (thiscpu, addr)
+{
+  thiscpu->cr3 = addr;
+  Pte *fakepdir = lookup (addr, oldcr3cache);
+  if (!fakepdir) {
+    fakedir = ppage_alloc ();
+    store (oldcr3cache, addr, fakedir);
+    // May wish to scan through supplied page directory to see if
+    // we have to fix up anything in particular.
+    // Exact settings will depend on how we want to handle
+    // problem cases below and our own MM.
+  }
+  asm ("movl fakepdir,%cr3");
+  // Must make sure our page fault handler is in sync with what we do here.
+}
+</pre>
+
+<p>To virtualize the x86, the monitor must intercept any modifications
+to the page table and substitute appropriate responses. And update
+things like the accessed/dirty bits.  The monitor can arrange for this
+to happen by making all page table pages inaccessible so that it can
+emulate loads and stores to page table pages.  This setup allow the
+monitor to virtualize the memory interface of the x86.</p>
+
+<p>Unfortunately, not all instructions that must be virtualized result
+in traps:
+<ul>
+<li><code>pushf/popf</code>: <code>FL_IF</code> is handled different,
+    for example.  In user-mode setting FL_IF is just ignored.</li>
+<li>Anything (<code>push</code>, <code>pop</code>, <code>mov</code>)
+    that reads or writes from <code>%cs</code>, which contains the
+    privilege level.
+<li>Setting the interrupt enable bit in EFLAGS has different
+semantics in user space and kernel space.  In user space, it
+is ignored; in kernel space, the bit is set.
+<li>And some others... (total, 17 instructions).
+</ul>
+These instructions are unpriviliged instructions (i.e., don't cause a
+trap when executed by a guest OS) but expose physical processor state.
+These could reveal details of virtualization that should not be
+revealed.  For example, if guest OS sets the interrupt enable bit for
+its virtual x86, the virtualized EFLAGS should reflect that the bit is
+set, even though the guest OS is running in user space.
+
+<p>How can we virtualize these instructions? An approach is to decode
+the instruction stream that is provided by the user and look for bad
+instructions. When we find them, replace them with an interrupt
+(<code>INT 3</code>) that will allow the VMM to handle it
+correctly. This might look something like:
+</p>
+
+<pre>
+void initcode () {
+  scan_for_nonvirtual (0x7c00);
+}
+
+void scan_for_nonvirtualizable (thiscpu, startaddr) {
+  addr  = startaddr;
+  instr = disassemble (addr);
+  while (instr is not branch or bad) {
+    addr += len (instr);
+    instr = disassemble (addr);
+  }
+  // remember that we wanted to execute this instruction.
+  replace (addr, "int 3");
+  record (thiscpu->rewrites, addr, instr);
+}
+
+void breakpoint_handler (tf) {
+  oldinstr = lookup (thiscpu->rewrites, tf->eip);
+  if (oldinstr is branch) {
+    newcs:neweip = evaluate branch
+    scan_for_nonvirtualizable (thiscpu, newcs:neweip)
+    return;
+  } else { // something non virtualizable
+    // dispatch to appropriate emulation
+  }
+}
+</pre>
+<p>All pages must be scanned in this way. Fortunately, most pages
+probably are okay and don't really need any special handling so after
+scanning them once, we can just remember that the page is okay and let
+it run natively.
+</p>
+
+<p>What if a guest OS generates instructions, writes them to memory,
+and then wants to execute them? We must detect self-modifying code
+(e.g. must simulate buffer overflow attacks correctly.) When a write
+to a physical page that happens to be in code segment happens, must
+trap the write and then rescan the affected portions of the page.</p>
+
+<p>What about self-examining code? Need to protect it some
+how---possibly by playing tricks with instruction/data TLB caches, or
+introducing a private segment for code (%cs) that is different than
+the segment used for reads/writes (%ds).
+</p>
+
+<h2>Some Disco paper notes</h2>
+
+<p>
+Disco has some I/O specific optimizations.
+</p>
+<ul>
+<li>Disk reads only need to happen once and can be shared between
+    virtual machines via copy-on-write virtual memory tricks.</li>
+<li>Network cards do not need to be fully virtualized --- intra
+    VM communication doesn't need a real network card backing it.</li>
+<li>Special handling for NFS so that all VMs "share" a buffer cache.</li>
+</ul>
+
+<p>
+Disco developers clearly had access to IRIX source code.
+</p>
+<ul>
+<li>Need to deal with KSEG0 segment of MIPS memory by relinking kernel
+    at different address space.</li>
+<li>Ensuring page-alignment of network writes (for the purposes of
+    doing memory map tricks.)</li>
+</ul>
+
+<p>Performance?</p>
+<ul>
+<li>Evaluated in simulation.</li>
+<li>Where are the overheads? Where do they come from?</li>
+<li>Does it run better than NUMA IRIX?</li>
+</ul>
+
+<p>Premise.  Are virtual machine the preferred approach to extending
+operating systems?  Have scalable multiprocessors materialized?</p>
+
+<h2>Related papers</h2>
+
+<p>John Scott Robin, Cynthia E. Irvine. <a
+href="http://www.cs.nps.navy.mil/people/faculty/irvine/publications/2000/VMM-usenix00-0611.pdf">Analysis of the
+Intel Pentium's Ability to Support a Secure Virtual Machine
+Monitor</a>.</p>
+
+<p>Jeremy Sugerman,  Ganesh Venkitachalam, Beng-Hong Lim. <a
+href="http://www.vmware.com/resources/techresources/530">Virtualizing
+I/O Devices on VMware Workstation's Hosted Virtual Machine
+Monitor</a>. In Proceedings of the 2001 Usenix Technical Conference.</p>
+
+<p>Kevin Lawton, Drew Northup. <a
+href="http://savannah.nongnu.org/projects/plex86">Plex86 Virtual
+Machine</a>.</p>
+
+<p><a href="http://www.cl.cam.ac.uk/netos/papers/2003-xensosp.pdf">Xen
+and the Art of Virtualization</a>, Paul Barham, Boris
+Dragovic, Keir Fraser, Steven Hand, Tim Harris, Alex Ho, Rolf
+Neugebauer, Ian Pratt, Andrew Warfield, SOSP 2003</p>
+
+<p><a href="http://www.vmware.com/pdf/asplos235_adams.pdf">A comparison of
+software and hardware techniques for x86 virtualizaton</a>Keith Adams
+and Ole Agesen, ASPLOS 2006</p>
+
+</body>
+
+</html>
+

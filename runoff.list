@@ -1,16 +1,16 @@
 # basic headers
 types.h
 param.h
-memlayout.h
 defs.h
 x86.h
 asm.h
 mmu.h
 elf.h
 
-# entering xv6
-entry.S
-entryother.S
+# startup
+bootasm.S
+bootother.S
+bootmain.c
 main.c
 
 # locks
@@ -18,7 +18,6 @@ spinlock.h
 spinlock.c
 
 # processes
-vm.c
 proc.h
 proc.c
 swtch.S
@@ -35,15 +34,14 @@ sysproc.c
 
 # file system
 buf.h
-sleeplock.h
+dev.h
 fcntl.h
 stat.h
-fs.h
 file.h
+fs.h
+fsvar.h
 ide.c
 bio.c
-sleeplock.c
-log.c
 fs.c
 file.c
 sysfile.c
@@ -60,10 +58,11 @@ mp.h
 mp.c
 lapic.c
 ioapic.c
+picirq.c
 kbd.h
 kbd.c
 console.c
-uart.c
+timer.c
 
 # user-level
 initcode.S
@@ -71,7 +70,4 @@ usys.S
 init.c
 sh.c
 
-# bootloader
-bootasm.S
-bootmain.c
 
