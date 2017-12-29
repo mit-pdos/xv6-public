@@ -37,13 +37,15 @@ allocproc(void)
   char *sp;
 
   acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == UNUSED)
-      goto found;
-  release(&ptable.lock);
-  return 0;
-
-found:
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == UNUSED){
+      break;
+    }
+  }
+  if(p->state!=UNUSED){
+    release(&ptable.lock);
+    return 0;
+  }
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->ctime = ticks;
@@ -319,7 +321,7 @@ int wait2(int *retime, int *rutime, int *stime) {
 struct proc* findreadyprocess(int *index1, int *index2, int *index3, uint *priority) {
   int i;
   struct proc* proc2;
-notfound:
+while(1){
   for (i = 0; i < NPROC; i++) {
     switch(*priority) {
       case 1:
@@ -348,8 +350,9 @@ notfound:
   }
   else {
     *priority -= 1; //will try to find a process at a lower priority
-    goto notfound;
+    continue;
   }
+}
   return 0;
 }
 #endif
