@@ -402,16 +402,21 @@ scheduler(void)
 	p->priority=p->lowestPriority;//The process be excute,so reset their priority
 	p->runTimes++;
 
-  struct proc *a;
-int tempp=p->runtimeDeadline-p->deadline;
+	struct proc *a;
+	int tempp=p->runtimeDeadline-p->deadline;
+	int lowestDeadline=-1;
   for(a =ptable.proc; a< &ptable.proc[NPROC];a++){
 	if(a->state != SLEEPING&&a->state != RUNNING&&a->state != RUNNABLE)
 		continue;
 	a->runtimeDeadline = a->runtimeDeadline - tempp;
+	if(lowestDeadline == -1 || lowestDeadline > a->runtimeDeadline)
+		lowestDeadline = a->runtimeDeadline;
 	if(a->runtimeDeadline <= 0)
-a->runtimeDeadline= a->deadline;
+		a->runtimeDeadline= a->deadline;
 	}
+	if(p->runtimeDeadline > lowestDeadline)
 		p->runtimeDeadline = p->runtimeDeadline + p->deadline;
+
 
 
   int priorityNow = priorityDefault;//priority sort

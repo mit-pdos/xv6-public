@@ -55,7 +55,10 @@ trap(struct trapframe *tf)
       release(&tickslock);
     }
 if(myproc() && (tf->cs &3)==3)
+{
   myproc()->tickcounts++;
+  myproc()->runtimeDeadline++;
+}
 
     lapiceoi();
 
