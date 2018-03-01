@@ -92,5 +92,9 @@ sys_uptime(void)
 int 
 sys_dump(void)
 {
-  return dump();
+  int pid;
+  if(argint(0, &pid) < 0){
+    return -1;
+  }
+  return dump(pid);
 }

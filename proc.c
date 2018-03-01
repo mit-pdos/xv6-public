@@ -497,8 +497,16 @@ kill(int pid)
 }
 
 int 
-dump(void){
-  return 1;
+dump(int pid){
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+	if(p->pid == pid){
+ 	  
+          
+	}
+  }
+  return -1;
 }
 
 //PAGEBREAK: 36

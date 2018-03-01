@@ -5,6 +5,11 @@
 
 int
 main(void){
-  printf(1, "this should be one: %d\n", dump());
+  
+  int pid = fork();
+  if(pid != 0){
+    printf(1,"sending pid: %d\n", pid);
+    printf(1, "this should be pid: %d\n", dump(pid));
+  }
   exit();
 }
