@@ -496,6 +496,11 @@ kill(int pid)
   return -1;
 }
 
+int 
+dump(void){
+  return 1;
+}
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
