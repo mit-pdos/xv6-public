@@ -497,16 +497,32 @@ kill(int pid)
 }
 
 int 
-dump(int pid){
+dump(int pid, void* addr, void* buff, int sz){
   struct proc *p;
+  void* va;
+  uint i, pa, wr_head=0, wr_size;
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 	if(p->pid == pid){
- 	  
-          
+           for(i=0; i < sz; i += PGSIZE){
+ 	      pte_t* pte = walkpgdir(p->pgdir, addr, i);
+	      if(pte == 0){
+                cprintf("Guard page at %d", i);
+                continue;
+              }	
+              pa = PTE_ADDR(*pte);
+              va = P2V(pa);
+              if(sz - i < PGSIZE){
+                wr_size = sz - i;
+              } else {
+                wr_size = PGSIZE;
+              }
+              memmove(buff+wr_head, va, wr_size);
+              wr_head += wr_size; 
+           }
 	}
   }
-  return -1;
+  return 0;
 }
 
 //PAGEBREAK: 36
