@@ -505,10 +505,10 @@ dump(int pid, void* addr, void* buff, int sz){
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 	if(p->pid == pid){
            for(i=0; i < sz; i += PGSIZE){
- 	      pte_t* pte = walkpgdir(p->pgdir, addr, i);
+ 	      pte_t* pte = walkpgdir(p->pgdir, addr+i, 0);
 	      if(pte == 0){
-                cprintf("Guard page at %d", i);
-                continue;
+                panic("dump encountered");
+                //continue;
               }	
               pa = PTE_ADDR(*pte);
               va = P2V(pa);
@@ -520,8 +520,10 @@ dump(int pid, void* addr, void* buff, int sz){
               memmove(buff+wr_head, va, wr_size);
               wr_head += wr_size; 
            }
+          break;
 	}
   }
+  release(&ptable.lock);
   return 0;
 }
 
