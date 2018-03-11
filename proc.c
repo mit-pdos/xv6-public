@@ -496,6 +496,49 @@ kill(int pid)
   return -1;
 }
 
+int 
+dump(int pid, void* addr, void* buff, int sz){
+  struct proc *p;
+  pde_t* pgdir=0;
+  pte_t* pte;
+  char* va;
+
+  uint gp=0, off=0, pa;
+  acquire(&ptable.lock);
+  for(p= ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      pgdir = p->pgdir;
+      release(&ptable.lock);
+      break;
+    }
+  }
+
+
+  char* limit = (char*)PGROUNDUP((uint)addr + sz - 1);
+
+  for(va = addr; va <= limit; va += PGSIZE){
+    
+    if((pte = walkpgdir(pgdir, va, 0)) == 0){
+       return -1;
+     }
+
+     if(!(*pte & PTE_U)){
+        buff += PGSIZE;
+        if(gp == 0){
+          gp = off;
+        }
+        continue;
+     }
+
+     pa = PTE_ADDR(*pte);
+     memmove(buff, P2V(pa), PGSIZE);
+     buff += PGSIZE;
+     off += PGSIZE;
+  }
+
+  return gp;
+}
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
