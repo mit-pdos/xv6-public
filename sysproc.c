@@ -93,16 +93,16 @@ int
 sys_dump(void)
 {
   int pid, size;
-  void* addr = 0;
-  void* buff = 0;
+  char* addr = 0;
+  char* buff = 0;
   
   if(argint(0, &pid) < 0){
     return -1;
   }
-  if(argptr(1, addr, sizeof(int)) < 0){
+  if(argptr(1, &addr, sizeof(int)) < 0){
     return -1;
   }
-  if(argptr(2, buff, sizeof(int)) < 0){
+  if(argptr(2, &buff, sizeof(int)) < 0){
     return -1;
   } 
   if(argint(3, &size) < 0){

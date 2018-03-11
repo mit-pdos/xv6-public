@@ -19,9 +19,25 @@ main(void){
   int *data = (int *)buff;
 
   //printf(1, "starting system call\n");
-  dump(pid, 0, buff, pgm_size);
-
+  int gp = dump(pid, 0, buff, pgm_size);
+  int stack = gp + 4096;
+  int heap = stack + 4096;
   for(i=0; i<pgm_size; i=i+sizeof(int)*4){
+    if(i == 0){
+      printf(1, "Text block\n");
+    }
+    if(i == gp){
+      printf(1, "Guard Page:\n");
+    }
+
+    if(i == stack){
+      printf(1, "Stack: \n");
+    }
+
+    if(i == heap){
+      printf(1, "Heap: \n");
+    }
+
     printf(1, "0x%x\t", i);
     for(j=0; j<4; j++){
       printf(1, "0x%x\t", *data);

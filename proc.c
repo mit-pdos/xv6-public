@@ -499,32 +499,44 @@ kill(int pid)
 int 
 dump(int pid, void* addr, void* buff, int sz){
   struct proc *p;
-  void* va;
-  uint i, pa, wr_head=0, wr_size;
+  pde_t* pgdir=0;
+  pte_t* pte;
+  char* va;
+
+  uint gp=0, off=0, pa;
   acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-	if(p->pid == pid){
-           for(i=0; i < sz; i += PGSIZE){
- 	      pte_t* pte = walkpgdir(p->pgdir, addr+i, 0);
-	      if(pte == 0){
-                panic("dump encountered");
-                //continue;
-              }	
-              pa = PTE_ADDR(*pte);
-              va = P2V(pa);
-              if(sz - i < PGSIZE){
-                wr_size = sz - i;
-              } else {
-                wr_size = PGSIZE;
-              }
-              memmove(buff+wr_head, va, wr_size);
-              wr_head += wr_size; 
-           }
-          break;
-	}
+  for(p= ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      pgdir = p->pgdir;
+      release(&ptable.lock);
+      break;
+    }
   }
-  release(&ptable.lock);
-  return 0;
+
+
+  char* limit = (char*)PGROUNDUP((uint)addr + sz - 1);
+
+  for(va = addr; va <= limit; va += PGSIZE){
+    
+    if((pte = walkpgdir(pgdir, va, 0)) == 0){
+       return -1;
+     }
+
+     if(!(*pte & PTE_U)){
+        buff += PGSIZE;
+        if(gp == 0){
+          gp = off;
+        }
+        continue;
+     }
+
+     pa = PTE_ADDR(*pte);
+     memmove(buff, P2V(pa), PGSIZE);
+     buff += PGSIZE;
+     off += PGSIZE;
+  }
+
+  return gp;
 }
 
 //PAGEBREAK: 36
