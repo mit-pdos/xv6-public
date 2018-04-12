@@ -29,7 +29,7 @@ pinit(void)
 // Must be called with interrupts disabled
 int
 cpuid() {
-  return mycpu()-cpus;
+  return mycpu() - cpus;
 }
 
 // Must be called with interrupts disabled to avoid the caller being
