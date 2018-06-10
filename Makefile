@@ -83,7 +83,7 @@ ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
 # FreeBSD ld wants ``elf_i386_fbsd''
 LDFLAGS += -m $(shell $(LD) -V | grep elf_i386 2>/dev/null | head -n 1)
 
-xv6.img: bootblock kernel fs.img
+xv6.img: bootblock kernel
 	dd if=/dev/zero of=xv6.img count=10000
 	dd if=bootblock of=xv6.img conv=notrunc
 	dd if=kernel of=xv6.img seek=1 conv=notrunc
