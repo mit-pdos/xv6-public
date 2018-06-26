@@ -42,6 +42,9 @@ sys_getpid(void)
   return myproc()->pid;
 }
 
+int sys_getprocs(void){
+
+   return getprocs();}        //se define lo que hace la llamada a sistema
 int
 sys_sbrk(void)
 {
