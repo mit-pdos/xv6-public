@@ -7,6 +7,16 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#include "rand.c"
+#include "rand.h"
+
+//TAREA 2: Iplementar lottery scheduler, esto 
+//  se encuenta en la linea 325
+
+//TAREA 3: LLamada de sistema para ver los procesos,
+//   linea 
+
+   
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -319,23 +329,42 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+// LOTTERY SCHEDULER: La implementacion consiste en 
+//   usar la var ticketCounter para asignar 1 ticket a 
+//   cada proceso, contandolos en el primer ciclo for
+//   no infinito. Luegos se selecciona un ticket al
+//   azar (winner) que no este siendo ejecutado para 
+//   llevarlo a la CPU.
+
 void
 scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
+  int cant_ticket_proc = 1;
   c->proc = 0;
-  
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      
+      p->tickcounter = cant_ticket_proc;
+      cant_ticket_proc ++;
+    }
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
-
+   
+   int winner = genrand()%cant_ticket_proc; 
+        
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
+      if (p->tickcounter == winner && p->state != RUNNABLE)
+        continue;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -532,3 +561,24 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+ 
+
+ 
+
+
+
+
+
