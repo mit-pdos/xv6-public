@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+log_file -noappend [lindex $argv 0]
+
+spawn qemu-system-i386 -hdb fs.img xv6.img -smp 2 -m 512 -nographic -serial mon:stdio
+
+expect "xv6 $ "
+send "usertests\n"
+expect "xv6 $ "
+close
