@@ -148,6 +148,11 @@ main(void)
   int fd;
 
   // Ensure that three file descriptors are open.
+  // console指/dev/console
+  // fd文件描述符是非负整数，并且linux是从小到大分配的。其中0,1,2分别指标准输入,标准输出,标准错误
+  // 参考资料
+  // https://unix.stackexchange.com/questions/72000/open-console-for-default-file-descriptors
+  // http://man7.org/linux/man-pages/man2/open.2.html
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
       close(fd);
