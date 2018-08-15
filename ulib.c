@@ -40,6 +40,7 @@ memset(void *dst, int c, uint n)
   return dst;
 }
 
+// 判断字符串c是否在字符串s中
 char*
 strchr(const char *s, char c)
 {
