@@ -92,8 +92,9 @@ syscall_trapret:
   # discard trapnum, errorcode, rip, cs and rflags
   add $40, %rsp  
 
-  # to make sure we don't get any interrupts on the user stack while in supervisor mode
-  # this is actually slightly unsafe still, since some interrupts are nonmaskable
+  # to make sure we don't get any interrupts on the user stack while in
+  # supervisor mode this is actually slightly unsafe still,
+  # since some interrupts are nonmaskable.
   # see the intel manual for SYSRET for more info	
   cli
   # restore the user stack
