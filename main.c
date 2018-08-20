@@ -60,8 +60,6 @@ mpmain(void)
   scheduler();     // start running processes
 }
 
-//PAGEBREAK!
-
 void entry32mp(void);
 
 // Start the non-boot (AP) processors.
@@ -92,8 +90,6 @@ startothers(void)
     *(uint32*)(code-8) = v2p(entry32mp);
     *(uint64*)(code-16) = (uint64) (stack + KSTACKSIZE);
 
-
-
     lapicstartap(c->apicid, V2P(code));
 
     // wait for cpu to finish mpmain()
@@ -101,5 +97,3 @@ startothers(void)
       ;
   }
 }
-
-

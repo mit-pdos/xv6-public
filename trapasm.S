@@ -1,5 +1,4 @@
-
-  # vectors.S sends all traps here.
+# vectors.S sends all traps here.
 .globl alltraps
 alltraps:
   # Build trap frame.
@@ -22,7 +21,7 @@ alltraps:
   mov  %rsp, %rdi  # frame in arg1
   call trap
 
-  # Return falls through to trapret...
+# Return falls through to trapret...
 .globl trapret
 trapret:
   pop %rax
@@ -41,15 +40,13 @@ trapret:
   pop %r14
   pop %r15
 
-  # discard trapnum and errorcode
-  add $16, %rsp
+  add $16, %rsp  # discard trapnum and errorcode
   iretq
-
+#PAGEBREAK!
 
 # syscall_entry jumps here after syscall instruction
 .globl syscall_trap
-syscall_trap:
-  # Build trap frame.
+syscall_trap:  # Build trap frame.
   push %r15
   push %r14
   push %r13
@@ -65,12 +62,13 @@ syscall_trap:
   push %rcx
   push %rbx
   push %rax
-  
-  mov  %rsp, %rdi  # frame in arg1
-	
-  call trap
 
-  # Return falls through to trapret...
+  mov  %rsp, %rdi  # frame in arg1
+
+  call trap
+#PAGEBREAK!
+
+# Return falls through to trapret...
 .globl syscall_trapret
 syscall_trapret:
   pop %rax
@@ -89,17 +87,14 @@ syscall_trapret:
   pop %r14
   pop %r15
 
-  # discard trapnum, errorcode, rip, cs and rflags
-  add $40, %rsp  
+  add $40, %rsp  # discard trapnum, errorcode, rip, cs and rflags
 
   # to make sure we don't get any interrupts on the user stack while in
   # supervisor mode this is actually slightly unsafe still,
   # since some interrupts are nonmaskable.
-  # see the intel manual for SYSRET for more info	
+  # see the intel manual for SYSRET for more info
   cli
-  # restore the user stack
-  mov (%rsp),%rsp
+
+  mov (%rsp),%rsp  # restore the user stack
 
   sysretq
-
-

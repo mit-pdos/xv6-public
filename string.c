@@ -68,9 +68,7 @@ strncmp(const char *p, const char *q, uint n)
 char*
 strncpy(char *s, const char *t, int n)
 {
-  char *os;
-
-  os = s;
+  char *os = s;
   while(n-- > 0 && (*s++ = *t++) != 0)
     ;
   while(n-- > 0)
@@ -82,9 +80,7 @@ strncpy(char *s, const char *t, int n)
 char*
 safestrcpy(char *s, const char *t, int n)
 {
-  char *os;
-
-  os = s;
+  char *os = s;
   if(n <= 0)
     return os;
   while(--n > 0 && (*s++ = *t++) != 0)
@@ -102,4 +98,3 @@ strlen(const char *s)
     ;
   return n;
 }
-

@@ -17,22 +17,20 @@
 int
 fetchint(addr_t addr, int *ip)
 {
-  if(addr >= proc->sz || addr+4 > proc->sz)
+  if(addr >= proc->sz || addr+sizeof(int) > proc->sz)
     return -1;
   *ip = *(int*)(addr);
   return 0;
 }
 
-
 int
 fetchaddr(addr_t addr, addr_t *ip)
 {
   if(addr >= proc->sz || addr+sizeof(addr_t) > proc->sz)
-    return -1; 
+    return -1;
   *ip = *(addr_t*)(addr);
   return 0;
 }
-
 
 // Fetch the nul-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.

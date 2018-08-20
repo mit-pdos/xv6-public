@@ -43,7 +43,6 @@ mboot_header:
 
 .code32
 mboot_entry:
-
 # zero 2 pages for our bootstrap page tables
   xor %eax, %eax
   mov $0x1000, %edi
@@ -176,23 +175,19 @@ syscall_entry:
   # store %rsp on the top of proc->kstack,
   # then move proc->kstack+8 to %rsp this takes a little
   # extra doing because the %rax must be preserved
- 	
+
   mov %rax,-8(%rsp)
   mov $0xfffffffffffffff8,%rax
   mov %fs:(%rax), %rax
   mov 0x10(%rax), %rax
-  add $0x1000,%rax	
+  add $0x1000,%rax
 
   sub $16,%rax
-  # store user stack pointer on kernel stack	
-  mov %rsp,(%rax)
-  # switch to the kernel stack
-  mov %rax, %rsp
+  mov %rsp,(%rax) # store user stack pointer on kernel stack
+  mov %rax, %rsp  # switch to the kernel stack
 
-  # user stack pointer back into %rax
-  mov (%rax),%rax
-  # old rax value off user stack
-  mov -8(%rax),%rax
+  mov (%rax),%rax  # user stack pointer back into %rax
+  mov -8(%rax),%rax  # old rax value off user stack
 
   push %r11
   push $USER_CS

@@ -16,7 +16,7 @@ __thread struct proc *proc;
 static pde_t *kpml4;
 static pde_t *kpdpt;
 
-static void 
+static void
 tss_set_rsp(uint *tss, uint n, uint64 rsp) {
   tss[n*2 + 1] = rsp;
   tss[n*2 + 2] = rsp >> 32;
@@ -31,13 +31,9 @@ syscallinit(void)
     ((((uint64)SEG_UCODE32 << 3) << 48) | ((uint64)KERNEL_CS << 32)));
   wrmsr( MSR_LSTAR, (addr_t)syscall_entry );
   wrmsr( MSR_CSTAR, (addr_t)ignore_sysret );
-  
-  
+
   wrmsr( MSR_SFMASK, FL_TF|FL_DF|FL_IF|FL_IOPL_3|FL_AC|FL_NT);
 }
-
-
-//extern void* vectors[];
 
 // Set up CPU's kernel segment descriptors.
 // Run once on entry on each CPU.
@@ -51,7 +47,7 @@ seginit(void)
   void *local;
   struct cpu *c;
 
-  // create a page for cpu local storage 
+  // create a page for cpu local storage
   local = kalloc();
   memset(local, 0, PGSIZE);
 
@@ -360,12 +356,12 @@ freevm(pde_t *pml4)
 
   if(pml4 == 0)
     panic("freevm: no pgdir");
-  
+
   // then need to loop through pml4 entry
   for(i = 0; i < (NPDENTRIES/2); i++){
     if(pml4[i] & PTE_P){
-      pdp = (pdpe_t*)P2V(PTE_ADDR(pml4[i])); 
-      
+      pdp = (pdpe_t*)P2V(PTE_ADDR(pml4[i]));
+
       // and every entry in the corresponding pdpt
       for(j = 0; j < NPDENTRIES; j++){
         if(pdp[j] & PTE_P){
@@ -380,14 +376,14 @@ freevm(pde_t *pml4)
               for(l = 0; l < (NPDENTRIES); l++){
                 if(pt[l] & PTE_P) {
                   char * v = P2V(PTE_ADDR(pt[l]));
-              
+
                   kfree((char*)v);
                 }
-              }              
+              }
               //freeing every page table
               kfree((char*)pt);
             }
-          }          
+          }
           // freeing every page directory
           kfree((char*)pd);
         }
@@ -485,6 +481,3 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   }
   return 0;
 }
-
-
-

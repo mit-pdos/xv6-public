@@ -625,8 +625,7 @@ namex(char *path, int nameiparent, char *name)
       return 0;
     }
     if(nameiparent && *path == '\0'){
-      // Stop one level early.
-      iunlock(ip);
+      iunlock(ip);  // Stop one level early.
       return ip;
     }
     if((next = dirlookup(ip, name, 0)) == 0){

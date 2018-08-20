@@ -209,6 +209,7 @@ static void fill_rtcdate(struct rtcdate *r)
   r->month  = cmos_read(MONTH);
   r->year   = cmos_read(YEAR);
 }
+//PAGEBREAK!
 
 // qemu seems to use 24-hour GWT and the values are BCD encoded
 void cmostime(struct rtcdate *r)
