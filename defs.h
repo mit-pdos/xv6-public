@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct mount;
 
 // bio.c
 void            binit(void);
@@ -52,6 +53,12 @@ struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
+
+// mount.c
+void mntinit();
+void printmounts();
+int mount(struct inode*, struct inode*);
+int umount(struct inode*);
 
 // ide.c
 void            ideinit(void);

@@ -24,6 +24,10 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 
+int mount(char*, char*);
+int umount(char*);
+int printmounts(void);
+
 // ulib.c
 int stat(char*, struct stat*);
 char* strcpy(char*, char*);
