@@ -171,7 +171,8 @@ lapicstartap(uchar apicid, uint addr)
 #define MONTH   0x08
 #define YEAR    0x09
 
-static uint cmos_read(uint reg)
+static uint
+cmos_read(uint reg)
 {
   outb(CMOS_PORT,  reg);
   microdelay(200);
@@ -179,7 +180,8 @@ static uint cmos_read(uint reg)
   return inb(CMOS_RETURN);
 }
 
-static void fill_rtcdate(struct rtcdate *r)
+static void
+fill_rtcdate(struct rtcdate *r)
 {
   r->second = cmos_read(SECS);
   r->minute = cmos_read(MINS);
@@ -190,7 +192,8 @@ static void fill_rtcdate(struct rtcdate *r)
 }
 
 // qemu seems to use 24-hour GWT and the values are BCD encoded
-void cmostime(struct rtcdate *r)
+void
+cmostime(struct rtcdate *r)
 {
   struct rtcdate t1, t2;
   int sb, bcd;
