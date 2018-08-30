@@ -20,15 +20,15 @@ void mntinit() {
 }
 
 void mntget(struct mount *mnt) {
-    acquiresleep(&mnt->lock);
+    acquiresleep(&mount_holder.mnt_list_lock);
     mnt->ref++;
-    releasesleep(&mnt->lock);
+    releasesleep(&mount_holder.mnt_list_lock);
 }
 
 void mntput(struct mount *mnt) {
-    acquiresleep(&mnt->lock);
+    acquiresleep(&mount_holder.mnt_list_lock);
     mnt->ref--;
-    releasesleep(&mnt->lock);
+    releasesleep(&mount_holder.mnt_list_lock);
 }
 
 // mountpoint and device must be locked.
@@ -57,11 +57,17 @@ int mount(struct inode *mountpoint, struct inode *device) {
         return -1;
     }
 
-    // TODO: aquire loop device
+    int dev = getorcreatedevice(device);
+    if (dev < 0) {
+        releasesleep(&mount_holder.mnt_list_lock);
+        releasesleep(&mount_holder.active_mounts_lock);
+        return -1;
+    }
 
     struct mount *mnt = &mount_holder.mnt_list[i].mnt;
     mnt->mountpoint = mountpoint;
-    mnt->ref = 0;
+    mnt->dev = dev;
+    mnt->ref = 1;
 
     // Add to linked list
     mount_holder.mnt_list[i].next = mount_holder.active_mounts;
@@ -92,9 +98,8 @@ int umount(struct inode *mntpoint) {
         return -1;
     }
 
-    acquiresleep(&current->mnt.lock);
+    acquiresleep(&mount_holder.mnt_list_lock);
     if (current->mnt.ref > 0) {
-        releasesleep(&current->mnt.lock);
         releasesleep(&mount_holder.active_mounts_lock);
         cprintf("current->mnt.ref > 0\n");
         // error - can't unmount as there are references.
@@ -103,16 +108,14 @@ int umount(struct inode *mntpoint) {
 
     if (current->mnt.parent == 0) {
         // error - can't unmount root filesystem
-        releasesleep(&current->mnt.lock);
         releasesleep(&mount_holder.active_mounts_lock);
         cprintf("current->mnt.parent == 0\n");
         return -1;
     }
 
-    acquiresleep(&mount_holder.mnt_list_lock);
-
     current->mnt.mountpoint = 0;
     mntput(current->mnt.parent);
+    deviceput(current->mnt.dev);
     //iput(current->mnt.root);
     iput(current->mnt.mountpoint);
 
@@ -122,7 +125,6 @@ int umount(struct inode *mntpoint) {
     // TODO: release loop device
     
     releasesleep(&mount_holder.mnt_list_lock);
-    releasesleep(&current->mnt.lock);
     releasesleep(&mount_holder.active_mounts_lock);
 
     return 0;

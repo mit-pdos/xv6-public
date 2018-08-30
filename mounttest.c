@@ -13,10 +13,13 @@ main(int argc, char *argv[])
 {
   printf(1, "Mounttests starting\n");
   printmounts();
+  printdevices();
   mkdir("a");
   mount("README", "a");
   printmounts();
+  printdevices();
   umount("a");
   printmounts();
+  printdevices();
   return 0;
 }

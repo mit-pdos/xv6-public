@@ -23,6 +23,11 @@ void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 
+// device.c
+int             getorcreatedevice(struct inode *ip);
+void            deviceput(int dev);
+void            printdevices();
+
 // exec.c
 int             exec(char*, char**);
 

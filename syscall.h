@@ -23,3 +23,4 @@
 #define SYS_mount  22
 #define SYS_umount  23
 #define SYS_printmounts  24
+#define SYS_printdevices  25

@@ -108,3 +108,8 @@ int sys_printmounts() {
     printmounts();
     return 0;
 }
+
+int sys_printdevices() {
+    printdevices();
+    return 0;
+}

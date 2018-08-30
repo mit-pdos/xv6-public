@@ -1,9 +1,8 @@
 struct mount {
     struct mount *parent;
     struct inode *mountpoint;
-    struct sleeplock lock; // protects everything below here
     int ref;
-    struct loop_device *device;
+    int dev;
     struct inode *root;
 };
 

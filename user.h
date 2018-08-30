@@ -27,6 +27,7 @@ int uptime(void);
 int mount(char*, char*);
 int umount(char*);
 int printmounts(void);
+int printdevices(void);
 
 // ulib.c
 int stat(char*, struct stat*);

@@ -106,6 +106,7 @@ extern int sys_uptime(void);
 extern int sys_mount(void);
 extern int sys_umount(void);
 extern int sys_printmounts(void);
+extern int sys_printdevices(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -132,6 +133,7 @@ static int (*syscalls[])(void) = {
 [SYS_mount] sys_mount,
 [SYS_umount] sys_umount,
 [SYS_printmounts] sys_printmounts,
+[SYS_printdevices] sys_printdevices,
 };
 
 void
