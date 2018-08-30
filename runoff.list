@@ -7,6 +7,7 @@ x86.h
 asm.h
 mmu.h
 elf.h
+date.h
 
 # entering xv6
 entry.S
@@ -75,3 +76,5 @@ sh.c
 bootasm.S
 bootmain.c
 
+# link
+kernel.ld
