@@ -18,7 +18,7 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
-
+  //struct proc *curproc;
   begin_op();
 
   if((ip = namei(path)) == 0){
@@ -99,6 +99,7 @@ exec(char *path, char **argv)
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
+  curproc->priority = 3;
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;
