@@ -8,7 +8,7 @@
 #define N  1000
 
 void
-printf(int fd, char *s, ...)
+printf(int fd, const char *s, ...)
 {
   write(fd, s, strlen(s));
 }
