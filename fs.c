@@ -169,7 +169,7 @@ struct {
 } icache;
 
 void
-iinit(int dev)
+iinit(uint dev)
 {
   int i = 0;
   
@@ -178,6 +178,11 @@ iinit(int dev)
     initsleeplock(&icache.inode[i].lock, "inode");
   }
 
+  fsinit(dev);
+}
+
+void fsinit(uint dev)
+{
   struct superblock *sb = getsuperblock(dev);
   readsb(dev, sb);
   cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\

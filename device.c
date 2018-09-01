@@ -45,7 +45,7 @@ int getorcreatedevice(struct inode *ip) {
 
     dev_holder.loopdevs[emptydevice].ref = 1;
     dev_holder.loopdevs[emptydevice].ip = ip;
-    readsb(LOOP_DEVICE_TO_DEV(emptydevice), &dev_holder.loopdevs[emptydevice].sb);
+    fsinit(LOOP_DEVICE_TO_DEV(emptydevice));
     releasesleep(&dev_holder.lock);
     return LOOP_DEVICE_TO_DEV(emptydevice);
 }

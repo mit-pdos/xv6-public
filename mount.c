@@ -5,6 +5,7 @@
 #include "fs.h"
 #include "file.h"
 #include "mount.h"
+#include "param.h"
 
 struct {
     struct sleeplock active_mounts_lock; // protects active_mounts
@@ -13,10 +14,21 @@ struct {
     struct mount_list mnt_list[NMOUNT];
 } mount_holder;
 
+void addmountinternal(struct mount_list *mnt_list, uint dev, struct inode * mountpoint) {
+    mnt_list->mnt.mountpoint = mountpoint;
+    mnt_list->mnt.dev = dev;
+    mnt_list->mnt.ref = 1;
+
+    // Add to linked list
+    mnt_list->next = mount_holder.active_mounts;
+    mount_holder.active_mounts = mnt_list;
+}
+
 void mntinit() {
     initsleeplock(&(mount_holder.active_mounts_lock), "active_mounts");
     initsleeplock(&mount_holder.mnt_list_lock, "mount_list");
-    // TODO: initialize loop devices
+
+    addmountinternal(&mount_holder.mnt_list[0], ROOTDEV, 0);
 }
 
 void mntget(struct mount *mnt) {
@@ -64,14 +76,7 @@ int mount(struct inode *mountpoint, struct inode *device) {
         return -1;
     }
 
-    struct mount *mnt = &mount_holder.mnt_list[i].mnt;
-    mnt->mountpoint = mountpoint;
-    mnt->dev = dev;
-    mnt->ref = 1;
-
-    // Add to linked list
-    mount_holder.mnt_list[i].next = mount_holder.active_mounts;
-    mount_holder.active_mounts = &mount_holder.mnt_list[i];
+    addmountinternal(&mount_holder.mnt_list[i], dev, mountpoint);
 
     releasesleep(&mount_holder.mnt_list_lock);
     releasesleep(&mount_holder.active_mounts_lock);
