@@ -25,9 +25,11 @@ void            panic(char*) __attribute__((noreturn));
 
 // device.c
 int             getorcreatedevice(struct inode *ip);
-void            deviceput(int dev);
+void            deviceput(uint dev);
 void            printdevices();
-struct inode *  getinodefordevice(int dev);
+struct inode *  getinodefordevice(uint dev);
+struct superblock * getsuperblock(uint dev);
+void            devinit();
 
 // exec.c
 int             exec(char*, char**);

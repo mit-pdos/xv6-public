@@ -7,6 +7,7 @@
 #include "device.h"
 
 #define NDEVICES (10)
+#define NIDEDEVS (2)
 
 struct device {
     struct superblock sb;
@@ -17,6 +18,7 @@ struct device {
 struct {
     struct sleeplock lock; // protects mnt_list
     struct device devices[NDEVICES];
+    struct superblock idesb[NIDEDEVS];
 } dev_holder;
 
 void devinit() {
@@ -48,7 +50,7 @@ int getorcreatedevice(struct inode *ip) {
     return LOOP_DEVICE_TO_DEV(emptydevice);
 }
 
-void deviceput(int dev) {
+void deviceput(uint dev) {
     dev = DEV_TO_LOOP_DEVICE(dev);
     acquiresleep(&dev_holder.lock);
     dev_holder.devices[dev].ref--;
@@ -60,7 +62,7 @@ void deviceput(int dev) {
     releasesleep(&dev_holder.lock);
 }
 
-struct inode * getinodefordevice(int dev) {
+struct inode * getinodefordevice(uint dev) {
     if (!IS_LOOP_DEVICE(dev)) {
         return 0;
     }
@@ -84,4 +86,23 @@ void printdevices() {
         }
     }
     releasesleep(&dev_holder.lock);
+}
+
+struct superblock * getsuperblock(uint dev) {
+    if (IS_LOOP_DEVICE(dev)) {
+        dev = LOOP_DEVICE_TO_DEV(dev);
+        if (dev >= NDEVICES) {
+            return 0;
+        }
+        if (dev_holder.devices[dev].ref == 0) {
+            return 0;
+        } else {
+            return &dev_holder.devices[dev].sb;
+        }
+    } else if (dev < NIDEDEVS) {
+        return &dev_holder.idesb[dev];
+    } else {
+        panic("could not find superblock for device");
+        return 0;
+    }
 }

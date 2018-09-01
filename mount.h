@@ -2,7 +2,7 @@ struct mount {
     struct mount *parent;
     struct inode *mountpoint;
     int ref;
-    int dev;
+    uint dev;
     struct inode *root;
 };
 
