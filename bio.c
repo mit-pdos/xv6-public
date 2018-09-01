@@ -25,6 +25,7 @@
 #include "sleeplock.h"
 #include "fs.h"
 #include "buf.h"
+#include "device.h"
 
 struct {
   struct spinlock lock;
@@ -100,7 +101,12 @@ bread(uint dev, uint blockno)
 
   b = bget(dev, blockno);
   if((b->flags & B_VALID) == 0) {
-    iderw(b);
+    struct inode *device;
+    if ((device = getinodefordevice(dev)) != 0) {
+      readi(device, (char *) b->data, BSIZE*blockno, BSIZE);
+    } else {
+      iderw(b);
+    }
   }
   return b;
 }

@@ -100,6 +100,7 @@ int umount(struct inode *mntpoint) {
 
     acquiresleep(&mount_holder.mnt_list_lock);
     if (current->mnt.ref > 0) {
+        releasesleep(&mount_holder.mnt_list_lock);
         releasesleep(&mount_holder.active_mounts_lock);
         cprintf("current->mnt.ref > 0\n");
         // error - can't unmount as there are references.
@@ -108,11 +109,13 @@ int umount(struct inode *mntpoint) {
 
     if (current->mnt.parent == 0) {
         // error - can't unmount root filesystem
+        releasesleep(&mount_holder.mnt_list_lock);
         releasesleep(&mount_holder.active_mounts_lock);
         cprintf("current->mnt.parent == 0\n");
         return -1;
     }
 
+    cprintf("mntput!\n");
     current->mnt.mountpoint = 0;
     mntput(current->mnt.parent);
     deviceput(current->mnt.dev);
@@ -121,9 +124,8 @@ int umount(struct inode *mntpoint) {
 
     // remove from linked list
     *previous = current->next;
-
-    // TODO: release loop device
     
+    cprintf("release locks\n");
     releasesleep(&mount_holder.mnt_list_lock);
     releasesleep(&mount_holder.active_mounts_lock);
 

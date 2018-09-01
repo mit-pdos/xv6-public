@@ -99,7 +99,9 @@ int sys_umount() {
 
     int res = umount(mount_dir);
 
+    cprintf("iunlockput!\n");
     iunlockput(mount_dir);
+    cprintf("iunlockput!\n");
     end_op();
     return res;
 }

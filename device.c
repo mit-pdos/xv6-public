@@ -4,6 +4,7 @@
 #include "sleeplock.h"
 #include "fs.h"
 #include "file.h"
+#include "device.h"
 
 #define NDEVICES (10)
 
@@ -26,7 +27,7 @@ int getorcreatedevice(struct inode *ip) {
     acquiresleep(&dev_holder.lock);
     int emptydevice = -1;
     for (int i = 0; i < NDEVICES; i++) {
-        if (dev_holder.devices[i].ref == 0) {
+        if (dev_holder.devices[i].ref == 0 && emptydevice == -1) {
             emptydevice = i;        
         } else if (dev_holder.devices[i].ip == ip) {
             dev_holder.devices[i].ref++;
@@ -42,19 +43,35 @@ int getorcreatedevice(struct inode *ip) {
 
     dev_holder.devices[emptydevice].ref = 1;
     dev_holder.devices[emptydevice].ip = ip;
-    // TODO: initialize superblock
+    readsb(LOOP_DEVICE_TO_DEV(emptydevice), &dev_holder.devices[emptydevice].sb);
     releasesleep(&dev_holder.lock);
-    return emptydevice;
+    return LOOP_DEVICE_TO_DEV(emptydevice);
 }
 
 void deviceput(int dev) {
+    dev = DEV_TO_LOOP_DEVICE(dev);
     acquiresleep(&dev_holder.lock);
     dev_holder.devices[dev].ref--;
 
     if (dev_holder.devices[dev].ref == 0) {
         iput(dev_holder.devices[dev].ip);
+        dev_holder.devices[dev].ip = 0;
     }
     releasesleep(&dev_holder.lock);
+}
+
+struct inode * getinodefordevice(int dev) {
+    if (!IS_LOOP_DEVICE(dev)) {
+        return 0;
+    }
+
+    dev = DEV_TO_LOOP_DEVICE(dev);
+
+    if (dev_holder.devices[dev].ref == 0) {
+        return 0;
+    }
+
+    return dev_holder.devices[dev].ip;
 }
 
 void printdevices() {

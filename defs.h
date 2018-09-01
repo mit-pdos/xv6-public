@@ -27,6 +27,7 @@ void            panic(char*) __attribute__((noreturn));
 int             getorcreatedevice(struct inode *ip);
 void            deviceput(int dev);
 void            printdevices();
+struct inode *  getinodefordevice(int dev);
 
 // exec.c
 int             exec(char*, char**);
@@ -58,6 +59,7 @@ struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
+void            readsb(int, struct superblock *);
 
 // mount.c
 void mntinit();
