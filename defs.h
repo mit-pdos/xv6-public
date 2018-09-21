@@ -24,11 +24,11 @@ void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 
 // device.c
-int             getorcreatedevice(struct inode *ip);
-void            deviceput(uint dev);
+int             getorcreatedevice(struct inode*);
+void            deviceput(uint);
 void            printdevices();
-struct inode *  getinodefordevice(uint dev);
-struct superblock * getsuperblock(uint dev);
+struct inode*   getinodefordevice(uint);
+struct superblock* getsuperblock(uint);
 void            devinit();
 
 // exec.c
