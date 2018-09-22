@@ -15,7 +15,7 @@ main(int argc, char *argv[])
   printmounts();
   printdevices();
   mkdir("a");
-  int res = mount("README", "a");
+  int res = mount("internal_fs_a", "a");
   printf(1, "Result: mount returned %d\n", res);
   printmounts();
   printdevices();

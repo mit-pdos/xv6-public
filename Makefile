@@ -179,8 +179,17 @@ UPROGS=\
 	_wc\
 	_zombie\
 
-fs.img: mkfs README $(UPROGS)
-	./mkfs fs.img README $(UPROGS)
+INTERNAL_DEV=\
+	internal_fs_a\
+	internal_fs_b\
+	internal_fs_c\
+
+internal_fs_%: mkfs
+	dd if=/dev/zero of=$@ count=80
+	./mkfs $@ 1
+
+fs.img: mkfs README $(UPROGS) $(INTERNAL_DEV)
+	./mkfs fs.img 0 README $(UPROGS) $(INTERNAL_DEV)
 
 -include *.d
 
@@ -189,7 +198,8 @@ clean:
 	*.o *.d *.asm *.sym vectors.S bootblock entryother \
 	initcode initcode.out kernel xv6.img fs.img kernelmemfs mkfs \
 	.gdbinit \
-	$(UPROGS)
+	$(UPROGS) \
+	$(INTERNAL_DEV)
 
 # make a printout
 FILES = $(shell grep -v '^\#' runoff.list)

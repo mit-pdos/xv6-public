@@ -20,7 +20,6 @@
 // Disk layout:
 // [ boot block | sb block | log | inode blocks | free bit map | data blocks ]
 
-int nbitmap = FSSIZE/(BSIZE*8) + 1;
 int ninodeblocks = NINODES / IPB + 1;
 int nlog = LOGSIZE;
 int nmeta;    // Number of meta blocks (boot, sb, nlog, inode, bitmap)
@@ -64,6 +63,11 @@ xint(uint x)
   return y;
 }
 
+void printusageexit() {
+  fprintf(stderr, "Usage: mkfs fs.img <is_internal (0/1)> files...\n");
+  exit(1);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -73,13 +77,20 @@ main(int argc, char *argv[])
   char buf[BSIZE];
   struct dinode din;
 
-
   static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
 
-  if(argc < 2){
-    fprintf(stderr, "Usage: mkfs fs.img files...\n");
-    exit(1);
+  if(argc < 3){
+    printusageexit();
   }
+
+  if (strlen(argv[2]) != 1 || (argv[2][0] != '0' && argv[2][0] != '1')) {
+    printusageexit();
+  }
+
+  int is_internal = argv[2][0] == '1';
+
+  int fssize = is_internal ? INT_FSSIZE : FSSIZE;
+  int nbitmap = fssize/(BSIZE*8) + 1;
 
   assert((BSIZE % sizeof(struct dinode)) == 0);
   assert((BSIZE % sizeof(struct dirent)) == 0);
@@ -92,9 +103,9 @@ main(int argc, char *argv[])
 
   // 1 fs block = 1 disk sector
   nmeta = 2 + nlog + ninodeblocks + nbitmap;
-  nblocks = FSSIZE - nmeta;
+  nblocks = fssize - nmeta;
 
-  sb.size = xint(FSSIZE);
+  sb.size = xint(fssize);
   sb.nblocks = xint(nblocks);
   sb.ninodes = xint(NINODES);
   sb.nlog = xint(nlog);
@@ -103,11 +114,11 @@ main(int argc, char *argv[])
   sb.bmapstart = xint(2+nlog+ninodeblocks);
 
   printf("nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks %u) blocks %d total %d\n",
-         nmeta, nlog, ninodeblocks, nbitmap, nblocks, FSSIZE);
+         nmeta, nlog, ninodeblocks, nbitmap, nblocks, fssize);
 
   freeblock = nmeta;     // the first free block that we can allocate
 
-  for(i = 0; i < FSSIZE; i++)
+  for(i = 0; i < fssize; i++)
     wsect(i, zeroes);
 
   memset(buf, 0, sizeof(buf));
@@ -127,7 +138,7 @@ main(int argc, char *argv[])
   strcpy(de.name, "..");
   iappend(rootino, &de, sizeof(de));
 
-  for(i = 2; i < argc; i++){
+  for(i = 3; i < argc; i++){
     assert(index(argv[i], '/') == 0);
 
     if((fd = open(argv[i], 0)) < 0){
