@@ -668,11 +668,11 @@ namex(char *path, int nameiparent, char *name, struct mount **mnt)
 
     iunlockput(ip);
     if ((nextmount = mntlookup(next, curmount)) != 0) {
-      mntputget(curmount, nextmount);
+      mntput(curmount);
       curmount = nextmount;
       
       iput(next);
-      next = idup(nextmount->root);
+      next = iget(curmount->dev, ROOTINO);
     }
     
     ip = next;
@@ -692,14 +692,24 @@ namei(char *path)
 {
   char name[DIRSIZ];
   struct mount *mnt;
-  return namex(path, 0, name, &mnt);
+  struct inode *ip = namex(path, 0, name, &mnt);
+  if (ip != 0) {
+    mntput(mnt);
+  }
+
+  return ip;
 }
 
 struct inode*
 nameiparent(char *path, char *name)
 {
   struct mount *mnt;
-  return namex(path, 1, name, &mnt);
+  struct inode *ip = namex(path, 1, name, &mnt);
+  if (ip != 0) {
+    mntput(mnt);
+  }
+
+  return ip;
 }
 
 struct inode *

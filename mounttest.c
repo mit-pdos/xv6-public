@@ -8,6 +8,25 @@
 #include "traps.h"
 #include "memlayout.h"
 
+void fstat_file(char *path) {
+  int fd;
+  struct stat st;
+  if((fd = open(path, 0)) < 0){
+    printf(2, "mounttest: cannot open %s\n", path);
+    return;
+  }
+
+  if(fstat(fd, &st) < 0){
+    printf(2, "mounttest: cannot stat %s\n", path);
+    close(fd);
+    return;
+  }
+
+  printf(1, "fstat %s: %d %d %d\n", path, st.type, st.ino, st.size);
+
+  close(fd);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -17,6 +36,7 @@ main(int argc, char *argv[])
   mkdir("a");
   int res = mount("internal_fs_a", "a");
   printf(1, "Result: mount returned %d\n", res);
+  fstat_file("a");
   printmounts();
   printdevices();
   res = umount("a");

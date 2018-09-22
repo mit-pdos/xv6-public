@@ -36,9 +36,19 @@ int sys_mount() {
         end_op();
         return -1;
     }
+
     if ((mount_dir = nameimount(mount_path, &parent)) == 0) {
         cprintf("bad mount_path\n");
         iput(device);
+        end_op();
+        return -1;
+    }
+
+    if (mount_dir->inum == ROOTINO) {
+        cprintf("can't mount root directory of another mount.\n");
+        iput(device);
+        iput(mount_dir);
+        mntput(parent);
         end_op();
         return -1;
     }
@@ -52,6 +62,7 @@ int sys_mount() {
         cprintf("badinodetype\n");
         iunlockput(device);
         iunlockput(mount_dir);
+        mntput(parent);
         end_op();
         return -1;
     }
@@ -65,6 +76,7 @@ int sys_mount() {
     }
 
     iunlockput(device);
+    mntput(parent);
     end_op();
 
     return res;
@@ -73,6 +85,7 @@ int sys_mount() {
 int sys_umount() {
     char *mount_path;
     struct inode *mount_dir;
+    struct mount *mnt;
     if (argstr(0, &mount_path) < 0) {
         cprintf("badargs\n");
         return -1;
@@ -80,26 +93,19 @@ int sys_umount() {
 
     begin_op();
 
-    if ((mount_dir = namei(mount_path)) == 0) {
+    if ((mount_dir = nameimount(mount_path, &mnt)) == 0) {
         cprintf("badinodes\n");
         end_op();
         return -1;
     }
 
-    ilock(mount_dir);
+    iput(mount_dir);
 
-    if (mount_dir->type != T_DIR) {
-        iunlockput(mount_dir);
-        end_op();
-        cprintf("badinodetype %x->%d\n", mount_dir, mount_dir->type);
-        return -1;
+    cprintf("calling!\n");    
+    int res = umount(mnt);
+    if (res != 0) {
+        mntput(mnt);
     }
-
-    cprintf("calling!\n");
-
-    int res = umount(mount_dir);
-
-    iunlockput(mount_dir);
     end_op();
     return res;
 }

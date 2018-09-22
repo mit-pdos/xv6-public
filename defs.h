@@ -69,11 +69,10 @@ void            fsinit(uint);
 void mntinit();
 void printmounts();
 int mount(struct inode*, struct inode*, struct mount*);
-int umount(struct inode*);
+int umount(struct mount*);
 struct mount* getrootmount();
 struct mount* mntdup(struct mount*);
 void mntput(struct mount*);
-void mntputget(struct mount*, struct mount*);
 struct mount* mntlookup(struct inode*, struct mount*);
 
 // ide.c

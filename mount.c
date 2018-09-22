@@ -28,7 +28,6 @@ void addmountinternal(struct mount_list *mnt_list, uint dev, struct inode *mount
     // add to linked list
     mnt_list->next = mount_holder.active_mounts;
     mount_holder.active_mounts = mnt_list;
- 
 }
 
 struct mount * getrootmount() {
@@ -53,13 +52,6 @@ struct mount * mntdup(struct mount *mnt) {
 void mntput(struct mount *mnt) {
     acquire(&mount_holder.mnt_list_lock);
     mnt->ref--;
-    release(&mount_holder.mnt_list_lock);
-}
-
-void mntputget(struct mount *mnttoput, struct mount *mnttoget) {
-    acquire(&mount_holder.mnt_list_lock);
-    mnttoput->ref--;
-    mnttoget->ref++;
     release(&mount_holder.mnt_list_lock);
 }
 
@@ -117,13 +109,14 @@ int mount(struct inode *mountpoint, struct inode *device, struct mount *parent) 
     return 0;
 }
 
-int umount(struct inode *mntpoint) {
+int umount(struct mount *mnt) {
+    // todo: add parent argument and only unmount from that parent mount.
     acquire(&mount_holder.active_mounts_lock);
     struct mount_list *current = mount_holder.active_mounts;
     struct mount_list **previous = &mount_holder.active_mounts;
     while (current != 0) {
-        cprintf("%x==%x\n", current->mnt.mountpoint, mntpoint);
-        if (current->mnt.mountpoint == mntpoint) {
+        cprintf("%x==%x\n", &current->mnt, mnt);
+        if (&current->mnt == mnt) {
             break;
         }
         previous = &current->next;
@@ -146,11 +139,12 @@ int umount(struct inode *mntpoint) {
 
     acquire(&mount_holder.mnt_list_lock);
     
-    if (current->mnt.ref > 1) {
+    // Base ref is 1, +1 for the mount being acquired before entering this method.
+    if (current->mnt.ref > 2) {
         // error - can't unmount as there are references.
         release(&mount_holder.mnt_list_lock);
         release(&mount_holder.active_mounts_lock);
-        cprintf("current->mnt.ref > 0\n");
+        cprintf("current->mnt.ref (%d) > 2\n", current->mnt.ref);
         return -1;
     }
 
@@ -158,15 +152,17 @@ int umount(struct inode *mntpoint) {
     *previous = current->next;
     release(&mount_holder.active_mounts_lock);
 
+    struct inode *oldmountpoint = current->mnt.mountpoint;
+    int olddev = current->mnt.dev;
     current->mnt.mountpoint = 0;
     current->mnt.parent->ref--;
     current->mnt.ref = 0;
+    current->mnt.dev = 0;
     
-    //iput(current->mnt.root);
     release(&mount_holder.mnt_list_lock);
 
-    iput(current->mnt.mountpoint);
-    deviceput(current->mnt.dev);
+    iput(oldmountpoint);
+    deviceput(olddev);
     return 0;
 }
 
@@ -194,7 +190,7 @@ void printmounts() {
     cprintf("Printing mounts:\n");
     while (entry != 0) {
         i++;
-        cprintf("Mount %d attached to inode %x\n", i, entry->mnt.mountpoint);
+        cprintf("Mount %d attached to inode %x with ref %d\n", i, entry->mnt.mountpoint, entry->mnt.ref);
         entry = entry->next;
     }
 
