@@ -20,6 +20,7 @@ int sys_mount() {
     char *device_path;
     char *mount_path;
     struct inode *device, *mount_dir;
+    struct mount *parent;
     cprintf("sys_mount\n");
     if (argstr(0, &device_path) < 0 || argstr(1, &mount_path) < 0) {
         cprintf("badargs\n");
@@ -35,7 +36,7 @@ int sys_mount() {
         end_op();
         return -1;
     }
-    if ((mount_dir = namei(mount_path)) == 0) {
+    if ((mount_dir = nameimount(mount_path, &parent)) == 0) {
         cprintf("bad mount_path\n");
         iput(device);
         end_op();
@@ -56,8 +57,7 @@ int sys_mount() {
     }
 
     cprintf("calling!\n");
-    int res = mount(mount_dir, device);
-    cprintf("unlocking. ips: %x, %x\n", device, mount_dir);
+    int res = mount(mount_dir, device, parent);
 
     iunlock(mount_dir);
     if (res != 0) {
@@ -99,9 +99,7 @@ int sys_umount() {
 
     int res = umount(mount_dir);
 
-    cprintf("iunlockput!\n");
     iunlockput(mount_dir);
-    cprintf("iunlockput!\n");
     end_op();
     return res;
 }

@@ -20,6 +20,7 @@
 #include "fs.h"
 #include "buf.h"
 #include "file.h"
+#include "mount.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
@@ -631,37 +632,58 @@ skipelem(char *path, char *name)
 // path element into name, which must have room for DIRSIZ bytes.
 // Must be called inside a transaction since it calls iput().
 static struct inode*
-namex(char *path, int nameiparent, char *name)
+namex(char *path, int nameiparent, char *name, struct mount **mnt)
 {
   struct inode *ip, *next;
+  struct mount *curmount;
+  struct mount *nextmount;
 
-  if(*path == '/')
+  if(*path == '/') {
+    curmount = mntdup(getrootmount());
     ip = iget(ROOTDEV, ROOTINO);
-  else
+  } else {
+    curmount = mntdup(myproc()->cwdmount);
     ip = idup(myproc()->cwd);
+  }
 
   while((path = skipelem(path, name)) != 0){
     ilock(ip);
     if(ip->type != T_DIR){
       iunlockput(ip);
+      mntput(curmount);
       return 0;
     }
     if(nameiparent && *path == '\0'){
       // Stop one level early.
       iunlock(ip);
+      *mnt = curmount;
       return ip;
     }
+
     if((next = dirlookup(ip, name, 0)) == 0){
       iunlockput(ip);
+      mntput(curmount);
       return 0;
     }
+
     iunlockput(ip);
+    if ((nextmount = mntlookup(next, curmount)) != 0) {
+      mntputget(curmount, nextmount);
+      curmount = nextmount;
+      
+      iput(next);
+      next = idup(nextmount->root);
+    }
+    
     ip = next;
   }
   if(nameiparent){
     iput(ip);
+    mntput(curmount);
     return 0;
   }
+
+  *mnt = curmount;
   return ip;
 }
 
@@ -669,11 +691,20 @@ struct inode*
 namei(char *path)
 {
   char name[DIRSIZ];
-  return namex(path, 0, name);
+  struct mount *mnt;
+  return namex(path, 0, name, &mnt);
 }
 
 struct inode*
 nameiparent(char *path, char *name)
 {
-  return namex(path, 1, name);
+  struct mount *mnt;
+  return namex(path, 1, name, &mnt);
+}
+
+struct inode *
+nameimount(char *path, struct mount **mnt)
+{
+  char name[DIRSIZ];
+  return namex(path, 0, name, mnt);
 }

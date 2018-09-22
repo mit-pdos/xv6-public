@@ -57,6 +57,7 @@ void            iunlockput(struct inode*);
 void            iupdate(struct inode*);
 int             namecmp(const char*, const char*);
 struct inode*   namei(char*);
+struct inode*   nameimount(char*, struct mount**);
 struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
@@ -67,8 +68,13 @@ void            fsinit(uint);
 // mount.c
 void mntinit();
 void printmounts();
-int mount(struct inode*, struct inode*);
+int mount(struct inode*, struct inode*, struct mount*);
 int umount(struct inode*);
+struct mount* getrootmount();
+struct mount* mntdup(struct mount*);
+void mntput(struct mount*);
+void mntputget(struct mount*, struct mount*);
+struct mount* mntlookup(struct inode*, struct mount*);
 
 // ide.c
 void            ideinit(void);

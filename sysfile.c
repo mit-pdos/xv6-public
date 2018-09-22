@@ -375,9 +375,10 @@ sys_chdir(void)
   char *path;
   struct inode *ip;
   struct proc *curproc = myproc();
+  struct mount *mnt;
   
   begin_op();
-  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0){
+  if(argstr(0, &path) < 0 || (ip = nameimount(path, &mnt)) == 0){
     end_op();
     return -1;
   }
@@ -389,7 +390,9 @@ sys_chdir(void)
   }
   iunlock(ip);
   iput(curproc->cwd);
+  mntput(curproc->cwdmount);
   end_op();
+  curproc->cwdmount = mnt;
   curproc->cwd = ip;
   return 0;
 }

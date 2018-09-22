@@ -15,10 +15,12 @@ main(int argc, char *argv[])
   printmounts();
   printdevices();
   mkdir("a");
-  mount("README", "a");
+  int res = mount("README", "a");
+  printf(1, "Result: mount returned %d\n", res);
   printmounts();
   printdevices();
-  umount("a");
+  res = umount("a");
+  printf(1, "Result: umount returned %d\n", res);
   printmounts();
   printdevices();
   return 0;
