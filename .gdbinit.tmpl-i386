@@ -1,0 +1,5 @@
+python
+gdb.execute("target remote localhost:26000")
+gdb.execute("set architecture i386")
+gdb.execute("symbol-file kernel")
+gdb.execute("break *0x7c00")

@@ -4,6 +4,8 @@
 #include "mmu.h"
 #include "proc.h"
 #include "defs.h"
+#include "traps.h"
+#include "msr.h"
 #include "x86.h"
 #include "elf.h"
 
@@ -12,18 +14,18 @@ exec(char *path, char **argv)
 {
   char *s, *last;
   int i, off;
-  uint argc, sz, sp, ustack[3+MAXARG+1];
+  uint64 argc, sz, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
-
+  uint64 oldsz = curproc->sz;
+  
   begin_op();
 
   if((ip = namei(path)) == 0){
     end_op();
-    cprintf("exec: fail\n");
     return -1;
   }
   ilock(ip);
@@ -72,7 +74,7 @@ exec(char *path, char **argv)
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
       goto bad;
-    sp = (sp - (strlen(argv[argc]) + 1)) & ~3;
+    sp = (sp - (strlen(argv[argc]) + 1)) & ~(sizeof(uint64)-1);
     if(copyout(pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
     ustack[3+argc] = sp;
@@ -81,10 +83,13 @@ exec(char *path, char **argv)
 
   ustack[0] = 0xffffffff;  // fake return PC
   ustack[1] = argc;
-  ustack[2] = sp - (argc+1)*4;  // argv pointer
+  ustack[2] = sp - (argc+1)*sizeof(uint64);  // argv pointer
 
-  sp -= (3+argc+1) * 4;
-  if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
+  curproc->tf->rdi = argc;
+  curproc->tf->rsi = sp - (argc+1)*sizeof(uint64);
+
+  sp -= (3+argc+1) * sizeof(uint64);
+  if(copyout(pgdir, sp, ustack, (3+argc+1)*sizeof(uint64)) < 0)
     goto bad;
 
   // Save program name for debugging.
@@ -92,20 +97,21 @@ exec(char *path, char **argv)
     if(*s == '/')
       last = s+1;
   safestrcpy(curproc->name, last, sizeof(curproc->name));
-
+    
   // Commit to the user image.
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
   curproc->sz = sz;
-  curproc->tf->eip = elf.entry;  // main
-  curproc->tf->esp = sp;
+  curproc->tf->rip = elf.entry;  // main
+  curproc->tf->rcx = elf.entry;
+  curproc->tf->rsp = sp;
   switchuvm(curproc);
-  freevm(oldpgdir);
+  freevm(oldpgdir, oldsz);
   return 0;
 
  bad:
   if(pgdir)
-    freevm(pgdir);
+    freevm(pgdir, sz);
   if(ip){
     iunlockput(ip);
     end_op();

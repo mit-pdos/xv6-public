@@ -15,13 +15,13 @@
 
 // Fetch the int at addr from the current process.
 int
-fetchint(uint addr, int *ip)
+fetchint(uint64 addr, int *ip)
 {
   struct proc *curproc = myproc();
 
   if(addr >= curproc->sz || addr+4 > curproc->sz)
     return -1;
-  *ip = *(int*)(addr);
+  *ip = *(uint64*)(addr);
   return 0;
 }
 
@@ -29,7 +29,7 @@ fetchint(uint addr, int *ip)
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
 int
-fetchstr(uint addr, char **pp)
+fetchstr(uint64 addr, char **pp)
 {
   char *s, *ep;
   struct proc *curproc = myproc();
@@ -45,11 +45,51 @@ fetchstr(uint addr, char **pp)
   return -1;
 }
 
+static uint64
+fetcharg(int n)
+{
+  struct proc *curproc = myproc();
+  switch (n) {
+  case 0:
+    return curproc->tf->rdi;
+  case 1:
+    return curproc->tf->rsi;
+  case 2:
+    return curproc->tf->rdx;
+  case 3:
+    return curproc->tf->r10;
+  case 4:
+    return curproc->tf->r8;
+  case 5:
+    return curproc->tf->r9;
+  }
+  panic("fetcharg");
+  return -1;
+}
+
+int
+fetchaddr(uint64 addr, uint64 *ip)
+{
+  struct proc *curproc = myproc();
+  if(addr >= curproc->sz || addr+sizeof(uint64) > curproc->sz)
+    return -1;
+  *ip = *(uint64*)(addr);
+  return 0;
+}
+
 // Fetch the nth 32-bit system call argument.
 int
 argint(int n, int *ip)
 {
-  return fetchint((myproc()->tf->esp) + 4 + 4*n, ip);
+  *ip = fetcharg(n);
+  return 0;
+}
+
+int
+argaddr(int n, uint64 *ip)
+{
+  *ip = fetcharg(n);
+  return 0;
 }
 
 // Fetch the nth word-sized system call argument as a pointer
@@ -58,10 +98,10 @@ argint(int n, int *ip)
 int
 argptr(int n, char **pp, int size)
 {
-  int i;
+  uint64 i;
   struct proc *curproc = myproc();
  
-  if(argint(n, &i) < 0)
+  if(argaddr(n, &i) < 0)
     return -1;
   if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
     return -1;
@@ -134,12 +174,12 @@ syscall(void)
   int num;
   struct proc *curproc = myproc();
 
-  num = curproc->tf->eax;
+  num = curproc->tf->rax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    curproc->tf->eax = syscalls[num]();
+    curproc->tf->rax = syscalls[num]();
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             curproc->pid, curproc->name, num);
-    curproc->tf->eax = -1;
+    curproc->tf->rax = -1;
   }
 }

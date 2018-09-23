@@ -13,11 +13,9 @@
 #
 # Startothers (in main.c) sends the STARTUPs one at a time.
 # It copies this code (start) at 0x7000.  It puts the address of
-# a newly allocated per-core stack in start-4,the address of the
-# place to jump to (mpenter) in start-8, and the physical address
+# a newly allocated per-core stack in start-12,the address of the
+# place to jump to (apstart32) in start-4, and the physical address
 # of entrypgdir in start-12.
-#
-# This code combines elements of bootasm.S and entry.S.
 
 .code16           
 .globl start
@@ -41,53 +39,22 @@ start:
   # Complete the transition to 32-bit protected mode by using a long jmp
   # to reload %cs and %eip.  The segment descriptors are set up with no
   # translation, so that the mapping is still the identity mapping.
-  ljmpl    $(SEG_KCODE<<3), $(start32)
+  ljmpl    $(KCSEG32), $start32
 
-//PAGEBREAK!
-.code32  # Tell assembler to generate 32-bit code now.
+.code32
 start32:
-  # Set up the protected-mode data segment registers
-  movw    $(SEG_KDATA<<3), %ax    # Our data segment selector
-  movw    %ax, %ds                # -> DS: Data Segment
-  movw    %ax, %es                # -> ES: Extra Segment
-  movw    %ax, %ss                # -> SS: Stack Segment
-  movw    $0, %ax                 # Zero segments not ready for use
-  movw    %ax, %fs                # -> FS
-  movw    %ax, %gs                # -> GS
+ movl $start-12, %esp
+ movl start-4, %ecx
+ jmp *%ecx
 
-  # Turn on page size extension for 4Mbyte pages
-  movl    %cr4, %eax
-  orl     $(CR4_PSE), %eax
-  movl    %eax, %cr4
-  # Use entrypgdir as our initial page table
-  movl    (start-12), %eax
-  movl    %eax, %cr3
-  # Turn on paging.
-  movl    %cr0, %eax
-  orl     $(CR0_PE|CR0_PG|CR0_WP), %eax
-  movl    %eax, %cr0
-
-  # Switch to the stack allocated by startothers()
-  movl    (start-4), %esp
-  # Call mpenter()
-  call	 *(start-8)
-
-  movw    $0x8a00, %ax
-  movw    %ax, %dx
-  outw    %ax, %dx
-  movw    $0x8ae0, %ax
-  outw    %ax, %dx
-spin:
-  jmp     spin
-
-.p2align 2
+.align 4
 gdt:
   SEG_NULLASM
-  SEG_ASM(STA_X|STA_R, 0, 0xffffffff)
-  SEG_ASM(STA_W, 0, 0xffffffff)
+  SEG_ASM(0xa, 0, 0xffffffff)
+  SEG_ASM(0x2, 0, 0xffffffff)
 
-
+.align  16
 gdtdesc:
-  .word   (gdtdesc - gdt - 1)
+  .word   0x17 # sizeof(gdt)-1
   .long   gdt
 

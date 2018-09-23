@@ -1,5 +1,7 @@
 // Routines to let C code use special x86 instructions.
 
+#ifndef __ASSEMBLER__
+
 static inline uchar
 inb(ushort port)
 {
@@ -57,32 +59,16 @@ stosl(void *addr, int data, int cnt)
                "memory", "cc");
 }
 
-struct segdesc;
-
 static inline void
-lgdt(struct segdesc *p, int size)
+lgdt(void *p)
 {
-  volatile ushort pd[3];
-
-  pd[0] = size-1;
-  pd[1] = (uint)p;
-  pd[2] = (uint)p >> 16;
-
-  asm volatile("lgdt (%0)" : : "r" (pd));
+  asm volatile("lgdt (%0)" : : "r" (p) : "memory");
 }
 
-struct gatedesc;
-
 static inline void
-lidt(struct gatedesc *p, int size)
+lidt(void *p)
 {
-  volatile ushort pd[3];
-
-  pd[0] = size-1;
-  pd[1] = (uint)p;
-  pd[2] = (uint)p >> 16;
-
-  asm volatile("lidt (%0)" : : "r" (pd));
+  asm volatile("lidt (%0)" : : "r" (p) : "memory");
 }
 
 static inline void
@@ -91,11 +77,11 @@ ltr(ushort sel)
   asm volatile("ltr %0" : : "r" (sel));
 }
 
-static inline uint
+static inline uint64
 readeflags(void)
 {
-  uint eflags;
-  asm volatile("pushfl; popl %0" : "=r" (eflags));
+  uint64 eflags;
+  asm volatile("pushf; pop %0" : "=r" (eflags));
   return eflags;
 }
 
@@ -133,51 +119,53 @@ xchg(volatile uint *addr, uint newval)
 static inline uint
 rcr2(void)
 {
-  uint val;
-  asm volatile("movl %%cr2,%0" : "=r" (val));
+  uint64 val;
+  asm volatile("mov %%cr2,%0" : "=r" (val));
   return val;
 }
 
 static inline void
-lcr3(uint val)
+lcr3(uint64 val)
 {
-  asm volatile("movl %0,%%cr3" : : "r" (val));
+  asm volatile("mov %0,%%cr3" : : "r" (val));
 }
+
+static inline void
+writegs(uint16 v)
+{
+  __asm volatile("movw %0, %%gs" : : "r" (v));
+}
+
 
 //PAGEBREAK: 36
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
 struct trapframe {
-  // registers as pushed by pusha
-  uint edi;
-  uint esi;
-  uint ebp;
-  uint oesp;      // useless & ignored
-  uint ebx;
-  uint edx;
-  uint ecx;
-  uint eax;
+   uint64 rax;      
+   uint64 rbx;
+   uint64 rcx;
+   uint64 rdx;
+   uint64 rbp;
+   uint64 rsi;
+   uint64 rdi;
+   uint64 r8;
+   uint64 r9;
+   uint64 r10;
+   uint64 r11;
+   uint64 r12;
+   uint64 r13;
+   uint64 r14;
+   uint64 r15;
+   uint64 trapno;
+   uint64 err;
+   uint64 rip;     
+   uint16 cs;
+   uint16 padding[3];
+   uint64 rflags;  
+   uint64 rsp;     
+   uint64 ss;      
+}__attribute__((packed));
 
-  // rest of trap frame
-  ushort gs;
-  ushort padding1;
-  ushort fs;
-  ushort padding2;
-  ushort es;
-  ushort padding3;
-  ushort ds;
-  ushort padding4;
-  uint trapno;
+#endif
 
-  // below here defined by x86 hardware
-  uint err;
-  uint eip;
-  ushort cs;
-  ushort padding5;
-  uint eflags;
-
-  // below here only when crossing rings, such as from user to kernel
-  uint esp;
-  ushort ss;
-  ushort padding6;
-};
+#define TF_CS 144 // offset in trapframe for saved cs

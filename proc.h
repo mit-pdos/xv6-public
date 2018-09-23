@@ -1,5 +1,8 @@
 // Per-CPU state
 struct cpu {
+  uint64 syscallno;            // Temporary used by sysentry
+  uint64 usp;                  // Temporary used by sysentry
+  struct proc *proc;           // The process running on this cpu or null
   uchar apicid;                // Local APIC ID
   struct context *scheduler;   // swtch() here to enter scheduler
   struct taskstate ts;         // Used by x86 to find stack for interrupt
@@ -7,7 +10,6 @@ struct cpu {
   volatile uint started;       // Has the CPU started?
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
-  struct proc *proc;           // The process running on this cpu or null
 };
 
 extern struct cpu cpus[NCPU];
@@ -25,20 +27,23 @@ extern int ncpu;
 // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
 struct context {
-  uint edi;
-  uint esi;
-  uint ebx;
-  uint ebp;
-  uint eip;
+  uint64 r15;
+  uint64 r14;
+  uint64 r13;
+  uint64 r12;
+  uint64 r11;
+  uint64 rbx;
+  uint64 ebp; //rbp
+  uint64 eip; //rip;
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
-  uint sz;                     // Size of process memory (bytes)
+  char *kstack;                // Bottom of kernel stack for this process, must be first entry
+  uint64 sz;                   // Size of process memory (bytes)
   pde_t* pgdir;                // Page table
-  char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   int pid;                     // Process ID
   struct proc *parent;         // Parent process

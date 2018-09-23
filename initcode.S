@@ -8,16 +8,15 @@
 # exec(init, argv)
 .globl start
 start:
-  pushl $argv
-  pushl $init
-  pushl $0  // where caller pc would be
-  movl $SYS_exec, %eax
-  int $T_SYSCALL
+  mov $init, %rdi
+  mov $argv, %rsi
+  mov $SYS_exec, %rax  
+  syscall
 
 # for(;;) exit();
 exit:
-  movl $SYS_exit, %eax
-  int $T_SYSCALL
+  mov $SYS_exit, %rax
+  syscall
   jmp exit
 
 # char init[] = "/init\0";
