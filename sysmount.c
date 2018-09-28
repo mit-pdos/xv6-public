@@ -41,7 +41,6 @@ int sys_mount() {
     }
 
     if (mount_dir->inum == ROOTINO) {
-        cprintf("can't mount root directory of another mount.\n");
         iput(device);
         iput(mount_dir);
         mntput(parent);

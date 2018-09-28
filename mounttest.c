@@ -172,6 +172,52 @@ void invalidpathtest() {
   printf(1, "invalidpathtest: SUCCESS\n");
 }
 
+void doublemounttest() {
+  if (mounta() != 0) {
+    return;
+  }
+
+  mkdir("b");
+  int res = mount("internal_fs_a", "b");
+  if (res != 0) {
+    printf(1, "doublemounttest: mount returned %d\n", res);
+    return;
+  }
+
+  if (umounta() != 0) {
+    return;
+  }
+
+  res = umount("b");
+  if (res != 0) {
+    printf(1, "doublemounttest: umount returned %d\n", res);
+    printmounts();
+    printdevices();
+    return;
+  }
+
+
+  printf(1, "doublemounttest: SUCCESS\n");
+}
+
+void samedirectorytest() {
+  if (mounta() != 0) {
+    return;
+  }
+
+  int res = mount("internal_fs_b", "a");
+  if (res != -1) {
+    printf(1, "samedirectorytest: mount did not fail as expected %d\n", res);
+    return;
+  }
+
+  if (umounta() != 0) {
+    return;
+  }
+
+  printf(1, "samedirectorytest: SUCCESS\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -180,6 +226,8 @@ main(int argc, char *argv[])
   statroottest();
   writefiletest();
   invalidpathtest();
+  doublemounttest();
+  samedirectorytest();
 
   unlink("a");
   unlink("b");
