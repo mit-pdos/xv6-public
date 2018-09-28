@@ -30,7 +30,7 @@ void fstat_file(char *path) {
 void testfile(char *path) {
   int fd;
   struct stat st;
-  if((fd = open(path, O_CREATE)) < 0){
+  if((fd = open(path, O_WRONLY|O_CREATE)) < 0){
     printf(2, "testfile: cannot open %s\n", path);
     return;
   }
@@ -77,7 +77,7 @@ void testfile(char *path) {
     return;
   }
 
-  printf(2, "testfile: SUCCESS", buf, path); 
+  printf(2, "testfile: SUCCESS\n", buf, path); 
 }
 
 int
