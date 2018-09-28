@@ -21,15 +21,12 @@ int sys_mount() {
     char *mount_path;
     struct inode *device, *mount_dir;
     struct mount *parent;
-    cprintf("sys_mount\n");
     if (argstr(0, &device_path) < 0 || argstr(1, &mount_path) < 0) {
         cprintf("badargs\n");
         return -1;
     }
 
-    cprintf("begin_op\n");
     begin_op();
-    cprintf("after begin_op\n");
 
     if ((device = namei(device_path)) == 0) {
         cprintf("bad device_path\n");
@@ -53,13 +50,10 @@ int sys_mount() {
         return -1;
     }
 
-    cprintf("locking\n");
     ilock(device);
     ilock(mount_dir);
 
-    cprintf("after locking\n");
     if (mount_dir->type != T_DIR) {
-        cprintf("badinodetype\n");
         iunlockput(device);
         iunlockput(mount_dir);
         mntput(parent);
@@ -67,7 +61,6 @@ int sys_mount() {
         return -1;
     }
 
-    cprintf("calling!\n");
     int res = mount(mount_dir, device, parent);
 
     iunlock(mount_dir);
@@ -101,7 +94,6 @@ int sys_umount() {
 
     iput(mount_dir);
 
-    cprintf("calling!\n");    
     int res = umount(mnt);
     if (res != 0) {
         mntput(mnt);

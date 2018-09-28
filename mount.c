@@ -117,7 +117,6 @@ int umount(struct mount *mnt) {
     struct mount_list *current = mount_holder.active_mounts;
     struct mount_list **previous = &mount_holder.active_mounts;
     while (current != 0) {
-        cprintf("%x==%x\n", &current->mnt, mnt);
         if (&current->mnt == mnt) {
             break;
         }

@@ -88,16 +88,20 @@ main(int argc, char *argv[])
   printdevices();
   mkdir("a");
   int res = mount("internal_fs_a", "a");
-  printf(1, "Result: mount returned %d\n", res);
+  if (res != 0) {
+    printf(1, "Result: mount returned %d\n", res);
+  }
+  
   fstat_file("a");
-
   testfile("a/test1");
 
   printmounts();
   printdevices();
   res = umount("a");
-  printf(1, "Result: umount returned %d\n", res);
-  printmounts();
-  printdevices();
+  if (res != 0) {
+    printf(1, "Result: umount returned %d\n", res);
+    printmounts();
+    printdevices();
+  }
   return 0;
 }
