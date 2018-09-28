@@ -104,6 +104,8 @@ int mount(struct inode *mountpoint, struct inode *device, struct mount *parent) 
         current = current->next;
     }
 
+    mntdup(parent);
+
     addmountinternal(newmountentry, dev, mountpoint, parent);
     release(&mount_holder.active_mounts_lock);
     return 0;
