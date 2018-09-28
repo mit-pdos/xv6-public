@@ -145,7 +145,6 @@ int umount(struct mount *mnt) {
         // error - can't unmount as there are references.
         release(&mount_holder.mnt_list_lock);
         release(&mount_holder.active_mounts_lock);
-        cprintf("current->mnt.ref (%d) > 2\n", current->mnt.ref);
         return -1;
     }
 

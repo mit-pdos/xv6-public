@@ -24,37 +24,37 @@ void fstat_file(char *path, struct stat *st) {
   close(fd);
 }
 
-void testfile(char *path) {
+int testfile(char *path) {
   int fd;
   struct stat st;
   if((fd = open(path, O_WRONLY|O_CREATE)) < 0){
     printf(1, "testfile: cannot open %s\n", path);
-    return;
+    return -1;
   }
 
   if (write(fd, "aaa", 3) < 0) {
     printf(1, "testfile: failed writing\n", path);
     close(fd);
-    return;
+    return -1;
   }
 
   close(fd);
 
   if((fd = open(path, 0)) < 0){
     printf(1, "testfile: cannot open %s\n", path);
-    return;
+    return -1;
   }
 
   if(fstat(fd, &st) < 0){
     printf(1, "testfile: cannot stat %s\n", path);
     close(fd);
-    return;
+    return -1;
   }
 
   if (st.size != 3) {
     printf(1, "testfile: incorrect length (%d) for file %s\n", st.size, path);
     close(fd);
-    return;
+    return -1;
   }
 
   char buf[4];
@@ -62,17 +62,17 @@ void testfile(char *path) {
   if ((res = read(fd, buf, 3)) != 3) {
     printf(1, "testfile: incorrect length read (%d) for file %s\n", res, path);
     close(fd);
-    return;
+    return -1;
   }
   buf[3] = '\0';
   close(fd);
 
   if ((res = strcmp("aaa", buf)) != 0) {
     printf(1, "testfile: incorrect content read (%s) for file %s\n", buf, path); 
-    return;
+    return -1;
   }
 
-  printf(1, "testfile: SUCCESS\n", buf, path); 
+  return 0;
 }
 
 int mounta() {
@@ -90,8 +90,6 @@ int umounta() {
   int res = umount("a");
   if (res != 0) {
     printf(1, "umounta: umount returned %d\n", res);
-    printmounts();
-    printdevices();
     return -1;
   }
 
@@ -134,11 +132,15 @@ void writefiletest() {
     return;
   }
 
-  testfile("a/test1");
+  if (testfile("a/test1") != 0) {
+    return;
+  }
 
   if (umounta() != 0) {
     return;
   }
+
+  printf(1, "writefiletest: SUCCESS\n"); 
 }
 
 void invalidpathtest() {
@@ -191,11 +193,8 @@ void doublemounttest() {
   res = umount("b");
   if (res != 0) {
     printf(1, "doublemounttest: umount returned %d\n", res);
-    printmounts();
-    printdevices();
     return;
   }
-
 
   printf(1, "doublemounttest: SUCCESS\n");
 }
@@ -218,16 +217,78 @@ void samedirectorytest() {
   printf(1, "samedirectorytest: SUCCESS\n");
 }
 
+void directorywithintest() {
+  if (mounta() != 0) {
+    return;
+  }
+
+  mkdir ("a/ttt");
+  if (testfile("a/ttt/test1") != 0) {
+    return;
+  }
+
+  if (umounta() != 0) {
+    return;
+  }
+
+  printf(1, "directorywithintest: SUCCESS\n");
+}
+
+void nestedmounttest() {
+  if (mounta() != 0) {
+    return;
+  }
+
+  mkdir("a/b");
+  int res = mount("internal_fs_b", "a/b");
+  if (res != 0) {
+    printf(1, "nestedmounttest: mount returned %d\n", res);
+    return;
+  }
+
+  if (testfile("a/b/test1") != 0) {
+    return;
+  }
+
+  res = umount("a");
+  if (res != -1) {
+    printf(1, "nestedmounttest: umount did not fail as expected %d\n", res);
+    return;
+  }
+
+  res = umount("a/b");
+  if (res != 0) {
+    printf(1, "nestedmounttest: umount returned %d\n", res);
+    return;
+  }
+
+  if (umounta() != 0) {
+    return;
+  }
+
+  printf(1, "nestedmounttest: SUCCESS\n");
+}
+
+void printheader(char *s) {
+  printf(1, "----------------------------\n");
+  printf(1, "--- %s\n", s);
+  printf(1, "----------------------------\n");
+}
+
 int
 main(int argc, char *argv[])
 {
-  printf(1, "Mounttests starting...\n");
+  printheader("Basic unit tests:");
   mounttest();
   statroottest();
-  writefiletest();
   invalidpathtest();
   doublemounttest();
   samedirectorytest();
+
+  printheader("Scenario tests:");
+  writefiletest();
+  directorywithintest();
+  nestedmounttest();
 
   unlink("a");
   unlink("b");
