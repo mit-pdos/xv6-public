@@ -108,6 +108,7 @@ bread(uint dev, uint blockno)
       } else {
         writei(device, (char *) b->data, BSIZE*blockno, BSIZE);
       }
+      b->flags |= B_VALID;
     } else {
       iderw(b);
     }
