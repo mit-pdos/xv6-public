@@ -35,7 +35,6 @@ int sys_mount() {
     }
 
     if ((mount_dir = nameimount(mount_path, &parent)) == 0) {
-        cprintf("bad mount_path\n");
         iput(device);
         end_op();
         return -1;
@@ -87,7 +86,13 @@ int sys_umount() {
     begin_op();
 
     if ((mount_dir = nameimount(mount_path, &mnt)) == 0) {
-        cprintf("badinodes\n");
+        end_op();
+        return -1;
+    }
+
+    if (mount_dir->inum != ROOTINO) {
+        iput(mount_dir);
+        mntput(mnt);
         end_op();
         return -1;
     }
@@ -98,6 +103,7 @@ int sys_umount() {
     if (res != 0) {
         mntput(mnt);
     }
+
     end_op();
     return res;
 }

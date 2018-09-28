@@ -8,21 +8,18 @@
 #include "traps.h"
 #include "memlayout.h"
 
-void fstat_file(char *path) {
+void fstat_file(char *path, struct stat *st) {
   int fd;
-  struct stat st;
   if((fd = open(path, 0)) < 0){
-    printf(2, "mounttest: cannot open %s\n", path);
+    printf(1, "mounttest: cannot open %s\n", path);
     return;
   }
 
-  if(fstat(fd, &st) < 0){
-    printf(2, "mounttest: cannot stat %s\n", path);
+  if(fstat(fd, st) < 0){
+    printf(1, "mounttest: cannot stat %s\n", path);
     close(fd);
     return;
   }
-
-  printf(1, "fstat %s: %d %d %d\n", path, st.type, st.ino, st.size);
 
   close(fd);
 }
@@ -31,12 +28,12 @@ void testfile(char *path) {
   int fd;
   struct stat st;
   if((fd = open(path, O_WRONLY|O_CREATE)) < 0){
-    printf(2, "testfile: cannot open %s\n", path);
+    printf(1, "testfile: cannot open %s\n", path);
     return;
   }
 
   if (write(fd, "aaa", 3) < 0) {
-    printf(2, "testfile: failed writing\n", path);
+    printf(1, "testfile: failed writing\n", path);
     close(fd);
     return;
   }
@@ -44,20 +41,18 @@ void testfile(char *path) {
   close(fd);
 
   if((fd = open(path, 0)) < 0){
-    printf(2, "testfile: cannot open %s\n", path);
+    printf(1, "testfile: cannot open %s\n", path);
     return;
   }
 
   if(fstat(fd, &st) < 0){
-    printf(2, "testfile: cannot stat %s\n", path);
+    printf(1, "testfile: cannot stat %s\n", path);
     close(fd);
     return;
   }
 
-  printf(1, "testfile %s: %d %d %d\n", path, st.type, st.ino, st.size);
-
   if (st.size != 3) {
-    printf(2, "testfile: incorrect length (%d) for file %s\n", st.size, path);
+    printf(1, "testfile: incorrect length (%d) for file %s\n", st.size, path);
     close(fd);
     return;
   }
@@ -65,7 +60,7 @@ void testfile(char *path) {
   char buf[4];
   int res;
   if ((res = read(fd, buf, 3)) != 3) {
-    printf(2, "testfile: incorrect length read (%d) for file %s\n", res, path);
+    printf(1, "testfile: incorrect length read (%d) for file %s\n", res, path);
     close(fd);
     return;
   }
@@ -73,35 +68,120 @@ void testfile(char *path) {
   close(fd);
 
   if ((res = strcmp("aaa", buf)) != 0) {
-    printf(2, "testfile: incorrect content read (%s) for file %s\n", buf, path); 
+    printf(1, "testfile: incorrect content read (%s) for file %s\n", buf, path); 
     return;
   }
 
-  printf(2, "testfile: SUCCESS\n", buf, path); 
+  printf(1, "testfile: SUCCESS\n", buf, path); 
+}
+
+int mounta() {
+  mkdir("a");
+  int res = mount("internal_fs_a", "a");
+  if (res != 0) {
+    printf(1, "mounta: mount returned %d\n", res);
+    return -1;
+  }
+
+  return 0;
+}
+
+int umounta() {
+  int res = umount("a");
+  if (res != 0) {
+    printf(1, "umounta: umount returned %d\n", res);
+    printmounts();
+    printdevices();
+    return -1;
+  }
+
+  return 0;
+}
+
+void mounttest() {
+  if (mounta() != 0) {
+    return;
+  }
+  
+  if (umounta() != 0) {
+    return;
+  }
+
+  printf(1, "mounttest: SUCCESS\n");
+}
+
+void statroottest() {
+  if (mounta() != 0) {
+    return;
+  }
+
+  struct stat st;
+  fstat_file("a", &st);
+  if (st.type != T_DIR || st.ino != 1 || st.size != BSIZE) {
+    printf(1, "statroottest: FAILED - %d %d %d\n", st.type, st.ino, st.size);
+    return;
+  }
+
+  if (umounta() != 0) {
+    return;
+  }
+
+  printf(1, "statroottest: SUCCESS\n");
+}
+
+void writefiletest() {
+  if (mounta() != 0) {
+    return;
+  }
+
+  testfile("a/test1");
+
+  if (umounta() != 0) {
+    return;
+  }
+}
+
+void invalidpathtest() {
+  int res = mount("internal_fs_a", "AAA");
+  if (res != -1) {
+    printf(1, "invalidpathtest: mount did not fail as expected %d\n", res);
+    return;
+  }
+
+  if (mounta() != 0) {
+    return;
+  }
+
+  res = umount("b");
+  if (res != -1) {
+    printf(1, "invalidpathtest: umount did not fail as expected %d\n", res);
+    return;
+  }
+
+  mkdir("b");
+  res = umount("b");
+  if (res != -1) {
+    printf(1, "invalidpathtest: umount did not fail as expected %d\n", res);
+    return;
+  }
+
+  if (umounta() != 0) {
+    return;
+  }
+
+  printf(1, "invalidpathtest: SUCCESS\n");
 }
 
 int
 main(int argc, char *argv[])
 {
-  printf(1, "Mounttests starting\n");
-  printmounts();
-  printdevices();
-  mkdir("a");
-  int res = mount("internal_fs_a", "a");
-  if (res != 0) {
-    printf(1, "Result: mount returned %d\n", res);
-  }
-  
-  fstat_file("a");
-  testfile("a/test1");
+  printf(1, "Mounttests starting...\n");
+  mounttest();
+  statroottest();
+  writefiletest();
+  invalidpathtest();
 
-  printmounts();
-  printdevices();
-  res = umount("a");
-  if (res != 0) {
-    printf(1, "Result: umount returned %d\n", res);
-    printmounts();
-    printdevices();
-  }
+  unlink("a");
+  unlink("b");
   return 0;
 }
