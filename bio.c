@@ -103,7 +103,11 @@ bread(uint dev, uint blockno)
   if((b->flags & B_VALID) == 0) {
     struct inode *device;
     if ((device = getinodefordevice(dev)) != 0) {
-      readi(device, (char *) b->data, BSIZE*blockno, BSIZE);
+      if ((b->flags & B_DIRTY) == 0) {
+        readi(device, (char *) b->data, BSIZE*blockno, BSIZE);
+      } else {
+        writei(device, (char *) b->data, BSIZE*blockno, BSIZE);
+      }
     } else {
       iderw(b);
     }
