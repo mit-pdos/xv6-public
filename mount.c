@@ -112,7 +112,6 @@ int mount(struct inode *mountpoint, struct inode *device, struct mount *parent) 
 }
 
 int umount(struct mount *mnt) {
-    // todo: add parent argument and only unmount from that parent mount.
     acquire(&mount_holder.active_mounts_lock);
     struct mount_list *current = mount_holder.active_mounts;
     struct mount_list **previous = &mount_holder.active_mounts;
