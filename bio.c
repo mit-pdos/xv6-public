@@ -93,6 +93,24 @@ bget(uint dev, uint blockno)
   panic("bget: no buffers");
 }
 
+void devicerw(struct inode *device, struct buf *b) {
+  if ((b->flags & B_DIRTY) == 0) {
+    readi(device, (char *) b->data, BSIZE*b->blockno, BSIZE);
+  } else {
+    writei(device, (char *) b->data, BSIZE*b->blockno, BSIZE);
+  }
+  b->flags |= B_VALID;
+}
+
+void brw(struct buf *b) {
+  struct inode *device;
+  if ((device = getinodefordevice(b->dev)) != 0) {
+    devicerw(device, b);
+  } else {
+    iderw(b);
+  }
+}
+
 // Return a locked buf with the contents of the indicated block.
 struct buf*
 bread(uint dev, uint blockno)
@@ -101,17 +119,7 @@ bread(uint dev, uint blockno)
 
   b = bget(dev, blockno);
   if((b->flags & B_VALID) == 0) {
-    struct inode *device;
-    if ((device = getinodefordevice(dev)) != 0) {
-      if ((b->flags & B_DIRTY) == 0) {
-        readi(device, (char *) b->data, BSIZE*blockno, BSIZE);
-      } else {
-        writei(device, (char *) b->data, BSIZE*blockno, BSIZE);
-      }
-      b->flags |= B_VALID;
-    } else {
-      iderw(b);
-    }
+    brw(b);
   }
   return b;
 }
@@ -123,7 +131,7 @@ bwrite(struct buf *b)
   if(!holdingsleep(&b->lock))
     panic("bwrite");
   b->flags |= B_DIRTY;
-  iderw(b);
+  brw(b);
 }
 
 // Release a locked buffer.
