@@ -35,7 +35,6 @@ main(void)
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
   userinit();      // first user process
   devinit();       // initialize devices
-  mntinit();       // initialize mounts
   namespaceinit(); // initialize namespaces
   mpmain();        // finish this processor's setup
 }

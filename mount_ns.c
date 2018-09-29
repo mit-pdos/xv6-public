@@ -19,6 +19,9 @@ struct {
 
 void mount_nsinit() {
     initlock(&mountnstable.lock, "mountns");
+    for (int i = 0; i < NNAMESPACE; i++) {
+        initlock(&mountnstable.mount_ns[i].lock, "mount_ns");
+    }
 }
 
 struct mount_ns* mount_nsdup(struct mount_ns* mount_ns) {

@@ -6,6 +6,11 @@
 #include "file.h"
 #include "mount.h"
 #include "param.h"
+#include "stat.h"
+#include "mmu.h"
+#include "proc.h"
+#include "namespace.h"
+#include "mount_ns.h"
 
 struct mount_list {
     struct mount mnt;
@@ -13,11 +18,13 @@ struct mount_list {
 };
 
 struct {
-    struct spinlock active_mounts_lock; // protects active_mounts
-    struct mount_list *active_mounts;
     struct spinlock mnt_list_lock; // protects mnt_list
     struct mount_list mnt_list[NMOUNT];
 } mount_holder;
+
+struct mount_list* getactivemounts() {
+    return myproc()->nsproxy->mount_ns->active_mounts;
+}
 
 // Parent mount (if it exists) must already be ref-incremented.
 void addmountinternal(struct mount_list *mnt_list, uint dev, struct inode *mountpoint, struct mount *parent) {
@@ -26,8 +33,8 @@ void addmountinternal(struct mount_list *mnt_list, uint dev, struct inode *mount
     mnt_list->mnt.parent = parent;
 
     // add to linked list
-    mnt_list->next = mount_holder.active_mounts;
-    mount_holder.active_mounts = mnt_list;
+    mnt_list->next = getactivemounts();
+    myproc()->nsproxy->mount_ns->active_mounts = mnt_list;
 }
 
 struct mount * getrootmount() {
@@ -35,7 +42,6 @@ struct mount * getrootmount() {
 }
 
 void mntinit() {
-    initlock(&(mount_holder.active_mounts_lock), "active_mounts");
     initlock(&mount_holder.mnt_list_lock, "mount_list");
 
     addmountinternal(&mount_holder.mnt_list[0], ROOTDEV, 0, 0);
@@ -83,19 +89,19 @@ int mount(struct inode *mountpoint, struct inode *device, struct mount *parent) 
         return -1;
     }
 
-    acquire(&mount_holder.active_mounts_lock);
-    struct mount_list *current = mount_holder.active_mounts;
+    acquire(&myproc()->nsproxy->mount_ns->lock);
+    struct mount_list *current = getactivemounts();
     while (current != 0) {
         if (current->mnt.parent == parent && current->mnt.mountpoint == mountpoint) {
             // error - mount already exists.
-            release(&mount_holder.active_mounts_lock);
+            release(&myproc()->nsproxy->mount_ns->lock);
             deviceput(dev);
             newmount->ref = 0;
             cprintf("mount already exists at that point.\n");
             return -1;
         } else if (current->mnt.root == mountpoint) {
             // error - mount on the root of another mound.
-            release(&mount_holder.active_mounts_lock);
+            release(&myproc()->nsproxy->mount_ns->lock);
             deviceput(dev);
             newmount->ref = 0;
             cprintf("can't mount to root of another mount\n");
@@ -107,14 +113,14 @@ int mount(struct inode *mountpoint, struct inode *device, struct mount *parent) 
     mntdup(parent);
 
     addmountinternal(newmountentry, dev, mountpoint, parent);
-    release(&mount_holder.active_mounts_lock);
+    release(&myproc()->nsproxy->mount_ns->lock);
     return 0;
 }
 
 int umount(struct mount *mnt) {
-    acquire(&mount_holder.active_mounts_lock);
-    struct mount_list *current = mount_holder.active_mounts;
-    struct mount_list **previous = &mount_holder.active_mounts;
+    acquire(&myproc()->nsproxy->mount_ns->lock);
+    struct mount_list *current = getactivemounts();
+    struct mount_list **previous = &(myproc()->nsproxy->mount_ns->active_mounts);
     while (current != 0) {
         if (&current->mnt == mnt) {
             break;
@@ -125,14 +131,14 @@ int umount(struct mount *mnt) {
 
     if (current == 0) {
         // error - not actually mounted.
-        release(&mount_holder.active_mounts_lock);
+        release(&myproc()->nsproxy->mount_ns->lock);
         cprintf("current=0\n");
         return -1;
     }
 
     if (current->mnt.parent == 0) {
         // error - can't unmount root filesystem
-        release(&mount_holder.active_mounts_lock);
+        release(&myproc()->nsproxy->mount_ns->lock);
         cprintf("current->mnt.parent == 0\n");
         return -1;
     }
@@ -143,13 +149,13 @@ int umount(struct mount *mnt) {
     if (current->mnt.ref > 2) {
         // error - can't unmount as there are references.
         release(&mount_holder.mnt_list_lock);
-        release(&mount_holder.active_mounts_lock);
+        release(&myproc()->nsproxy->mount_ns->lock);
         return -1;
     }
 
     // remove from linked list
     *previous = current->next;
-    release(&mount_holder.active_mounts_lock);
+    release(&myproc()->nsproxy->mount_ns->lock);
 
     struct inode *oldmountpoint = current->mnt.mountpoint;
     int olddev = current->mnt.dev;
@@ -166,25 +172,25 @@ int umount(struct mount *mnt) {
 }
 
 struct mount * mntlookup(struct inode *mountpoint, struct mount *parent) {
-    acquire(&mount_holder.active_mounts_lock);
+    acquire(&myproc()->nsproxy->mount_ns->lock);
 
-    struct mount_list *entry = mount_holder.active_mounts;
+    struct mount_list *entry = getactivemounts();
     while (entry != 0) {
         if (entry->mnt.mountpoint == mountpoint && entry->mnt.parent == parent) {
-            release(&mount_holder.active_mounts_lock);
+            release(&myproc()->nsproxy->mount_ns->lock);
             return mntdup(&entry->mnt);
         }
         entry = entry->next;
     }
 
-    release(&mount_holder.active_mounts_lock);
+    release(&myproc()->nsproxy->mount_ns->lock);
     return 0;
 }
 
 void printmounts() {
-    acquire(&mount_holder.active_mounts_lock);
+    acquire(&myproc()->nsproxy->mount_ns->lock);
 
-    struct mount_list *entry = mount_holder.active_mounts;
+    struct mount_list *entry = getactivemounts();
     int i = 0;
     cprintf("Printing mounts:\n");
     while (entry != 0) {
@@ -193,5 +199,5 @@ void printmounts() {
         entry = entry->next;
     }
 
-    release(&mount_holder.active_mounts_lock);
+    release(&myproc()->nsproxy->mount_ns->lock);
 }

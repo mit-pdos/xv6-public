@@ -415,6 +415,7 @@ forkret(void)
     first = 0;
     iinit(ROOTDEV);
     initlog(ROOTDEV);
+    mntinit(); // initialize mounts
   }
 
   // Return to "caller", actually trapret (see allocproc).
