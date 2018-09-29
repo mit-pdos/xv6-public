@@ -346,6 +346,8 @@ void umountwithopenfiletest() {
   if (umounta() != 0) {
     return;
   }
+
+  printf(1, "umountwithopenfiletest: SUCCESS\n");
 }
 
 void printheader(char *s) {

@@ -712,7 +712,12 @@ nameiparent(char *path, char *name)
   return ip;
 }
 
-struct inode *
+struct inode*
+nameiparentmount(char *path, char *name, struct mount **mnt) {
+  return namex(path, 1, name, mnt);
+}
+
+struct inode*
 nameimount(char *path, struct mount **mnt)
 {
   char name[DIRSIZ];
