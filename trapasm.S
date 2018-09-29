@@ -22,7 +22,7 @@ alltraps:
   push %rbx
   push %rax
 
-  cmpw $KCSEG, 32(%rsp)   # compare to saved cs
+  cmpw $KCSEG, 144(%rsp)   # compare to saved cs
   jz 1f 
   swapgs
   
@@ -33,7 +33,7 @@ alltraps:
 .globl trapret
 trapret:
   cli
-  cmpw $KCSEG, 32(%rsp)  # compare to saved cs
+  cmpw $KCSEG, 144(%rsp)  # compare to saved cs
   jz 1f
   swapgs
 
@@ -72,12 +72,12 @@ sysentry:  # Build trap frame.
   movq  %rax, %rsp
   movq  %gs:0, %rax  // restore rax
 
-  // push usp
-  push $0
+  // push usp to make a valid trapframe
+  push $(UDSEG|0x3)
   push %gs:8
   // safe eflags and eip
   push %r11
-  push $UCSEG
+  push $(UCSEG|0x3)
   push %rcx
   // push errno and trapno to make stack look like a trap
   push $0
@@ -130,6 +130,7 @@ sysexit:
 
   add $(5*8), %rsp  # discard trapnum, errorcode, rip, cs and rflags
   mov (%rsp),%rsp  # switch to the user stack
+  # there are two more values on the stack, but we don't care about them	
   swapgs	
 
   sysretq

@@ -6,7 +6,6 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#include "msr.h"
 
 struct {
   struct spinlock lock;
@@ -17,7 +16,11 @@ static struct proc *initproc;
 
 int nextpid = 1;
 extern void forkret(void);
+
+// we can return two ways out of the kernel and
+// for new processes we can choose either way
 extern void sysexit(void);
+extern void trapret(void);
 
 static void wakeup1(void *chan);
 
@@ -101,6 +104,10 @@ found:
 
   // Leave room for trap frame.
   sp -= sizeof *p->tf;
+
+  if ((uint64) sp % 16)
+    panic("misaligned sp");
+
   p->tf = (struct trapframe*)sp;
 
   // Set up new context to start executing at forkret,
@@ -132,6 +139,8 @@ userinit(void)
   inituvm(p->pgdir, _binary_initcode_start, (uint64)_binary_initcode_size);
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
+  p->tf->cs = UCSEG | 0x3;
+  p->tf->ss = UDSEG | 0x3;
   p->tf->r11 = FL_IF;
   p->tf->rsp = PGSIZE;
   p->tf->rcx = 0;  // beginning of initcode.S
@@ -321,12 +330,12 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
+   
   c->proc = 0;
-  
   for(;;){
     // Enable interrupts on this processor.
     sti();
-
+    
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -336,7 +345,6 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
