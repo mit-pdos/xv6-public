@@ -595,13 +595,13 @@ fourfiles(void)
 void
 createdelete(void)
 {
-  enum { N = 20 };
+  enum { N = 20, NCHILD=4 };
   int pid, i, fd, pi;
   char name[32];
 
   printf(1, "createdelete test\n");
 
-  for(pi = 0; pi < 4; pi++){
+  for(pi = 0; pi < NCHILD; pi++){
     pid = fork();
     if(pid < 0){
       printf(1, "fork failed\n");
@@ -631,13 +631,13 @@ createdelete(void)
     }
   }
 
-  for(pi = 0; pi < 4; pi++){
+  for(pi = 0; pi < NCHILD; pi++){
     wait();
   }
 
   name[0] = name[1] = name[2] = 0;
   for(i = 0; i < N; i++){
-    for(pi = 0; pi < 4; pi++){
+    for(pi = 0; pi < NCHILD; pi++){
       name[0] = 'p' + pi;
       name[1] = '0' + i;
       fd = open(name, 0);
@@ -654,7 +654,7 @@ createdelete(void)
   }
 
   for(i = 0; i < N; i++){
-    for(pi = 0; pi < 4; pi++){
+    for(pi = 0; pi < NCHILD; pi++){
       name[0] = 'p' + i;
       name[1] = '0' + i;
       unlink(name);
