@@ -25,6 +25,7 @@ OBJS = \
 	syscall.o\
 	sysfile.o\
 	sysmount.o\
+	sysnamespace.o\
 	sysproc.o\
 	trapasm.o\
 	trap.o\

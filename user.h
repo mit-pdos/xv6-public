@@ -28,6 +28,7 @@ int mount(char*, char*);
 int umount(char*);
 int printmounts(void);
 int printdevices(void);
+int unshare(int);
 
 // ulib.c
 int stat(char*, struct stat*);

@@ -1,11 +1,14 @@
 #include "types.h"
 #include "defs.h"
+#include "param.h"
+#include "stat.h"
+#include "mmu.h"
+#include "proc.h"
 #include "spinlock.h"
 #include "fs.h"
 #include "sleeplock.h"
 #include "file.h"
 #include "mount.h"
-#include "param.h"
 #include "namespace.h"
 
 struct {
@@ -30,16 +33,34 @@ struct nsproxy* namespacedup(struct nsproxy* nsproxy) {
     return nsproxy;
 }
 
-struct nsproxy* allocnsproxy(void) {
-    acquire(&namespacetable.lock);
+static struct nsproxy* allocnsproxyinternal(void) {
     for (int i = 0; i < NNAMESPACE; i++) {
         if (namespacetable.nsproxy[i].ref == 0) {
             namespacetable.nsproxy[i].ref++;
-            release(&namespacetable.lock);
             return &namespacetable.nsproxy[i];
         }
     }
-    release(&namespacetable.lock);
 
     panic("out of nsproxy objects");
+}
+
+struct nsproxy* allocnsproxy(void) {
+    acquire(&namespacetable.lock);
+    struct nsproxy* result = allocnsproxyinternal();
+    release(&namespacetable.lock);
+
+    return result;
+}
+
+int unshare(int nstype) {
+    acquire(&namespacetable.lock);
+    if (myproc()->nsproxy->ref > 1) {
+        myproc()->nsproxy = allocnsproxyinternal();
+        // copy all nsproxy fields
+    }
+    release(&namespacetable.lock);
+    switch(nstype) {
+        default:
+            return -1;
+    }
 }

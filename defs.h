@@ -120,6 +120,7 @@ void            namespaceinit(void);
 struct nsproxy* allocnsproxy(void);
 struct nsproxy* namespacedup(struct nsproxy*);
 void            namespaceput(struct nsproxy*);
+int             unshare(int nstype);
 
 // picirq.c
 void            picenable(int);
