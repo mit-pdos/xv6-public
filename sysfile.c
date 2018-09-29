@@ -215,6 +215,11 @@ sys_unlink(void)
     goto bad;
   }
 
+  if (doesbackdevice(ip) == 1) {
+    iunlockput(ip);
+    goto bad;
+  }
+
   memset(&de, 0, sizeof(de));
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("unlink: writei");

@@ -106,3 +106,15 @@ struct superblock * getsuperblock(uint dev) {
         return 0;
     }
 }
+
+int doesbackdevice(struct inode* ip) {
+    acquiresleep(&dev_holder.lock);
+    for (int i = 0; i < NLOOPDEVS; i++) {
+        if (dev_holder.loopdevs[i].ip == ip) {
+            releasesleep(&dev_holder.lock);
+            return 1;
+        }
+    }
+    releasesleep(&dev_holder.lock);
+    return 0;
+}

@@ -30,6 +30,7 @@ void            printdevices();
 struct inode*   getinodefordevice(uint);
 struct superblock* getsuperblock(uint);
 void            devinit();
+int             doesbackdevice(struct inode*);
 
 // exec.c
 int             exec(char*, char**);

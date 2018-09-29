@@ -350,6 +350,30 @@ void umountwithopenfiletest() {
   printf(1, "umountwithopenfiletest: SUCCESS\n");
 }
 
+void errorondeletedevicetest() {
+  if (mounta() != 0) {
+    return;
+  }
+
+  int res = unlink("internal_fs_a");
+  if (res != -1) {
+    printf(1, "errorondeletedevicetest: unlink did not fail as expected %d\n", res);
+    return;
+  }
+
+  if (umounta() != 0) {
+    return;
+  }
+
+  res = unlink("internal_fs_a");
+  if (res != 0) {
+    printf(1, "errorondeletedevicetest: unlink returned %d\n", res);
+    return;
+  }
+
+  printf(1, "errorondeletedevicetest: SUCCESS\n");
+}
+
 void printheader(char *s) {
   printf(1, "----------------------------\n");
   printf(1, "--- %s\n", s);
@@ -372,6 +396,7 @@ main(int argc, char *argv[])
   nestedmounttest();
   devicefilestoretest();
   umountwithopenfiletest();
+  errorondeletedevicetest();
 
   unlink("a");
   unlink("b");
