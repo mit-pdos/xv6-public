@@ -324,6 +324,30 @@ void devicefilestoretest() {
   printf(1, "devicefilestoretest: SUCCESS\n");
 }
 
+void umountwithopenfiletest() {
+  if (mounta() != 0) {
+    return;
+  }
+
+  int fd;
+  if((fd = open("a/umountwithopenfiletest", O_WRONLY|O_CREATE)) < 0){
+    printf(1, "umountwithopenfiletest: cannot open file\n");
+    return;
+  }
+
+  int res = umount("a");
+  if (res != -1) {
+    printf(1, "umountwithopenfiletest: umount did not fail as expected %d\n", res);
+    return;
+  }
+
+  close(fd);
+
+  if (umounta() != 0) {
+    return;
+  }
+}
+
 void printheader(char *s) {
   printf(1, "----------------------------\n");
   printf(1, "--- %s\n", s);
@@ -345,6 +369,7 @@ main(int argc, char *argv[])
   directorywithintest();
   nestedmounttest();
   devicefilestoretest();
+  umountwithopenfiletest();
 
   unlink("a");
   unlink("b");
