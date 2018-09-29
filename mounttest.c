@@ -24,51 +24,71 @@ void fstat_file(char *path, struct stat *st) {
   close(fd);
 }
 
-int testfile(char *path) {
+int createfile(char *path, char *contents) {
   int fd;
-  struct stat st;
   if((fd = open(path, O_WRONLY|O_CREATE)) < 0){
-    printf(1, "testfile: cannot open %s\n", path);
+    printf(1, "createfile: cannot open %s\n", path);
     return -1;
   }
 
-  if (write(fd, "aaa", 3) < 0) {
-    printf(1, "testfile: failed writing\n", path);
+  if (write(fd, contents, strlen(contents)) < 0) {
+    printf(1, "createfile: failed writing\n", path);
     close(fd);
     return -1;
   }
 
   close(fd);
 
+  return 0;
+}
+
+int verifyfilecontents(char *path, char *contents) {
+  int fd;
+  struct stat st;
   if((fd = open(path, 0)) < 0){
-    printf(1, "testfile: cannot open %s\n", path);
+    printf(1, "verifyfilecontents: cannot open %s\n", path);
     return -1;
   }
 
   if(fstat(fd, &st) < 0){
-    printf(1, "testfile: cannot stat %s\n", path);
+    printf(1, "verifyfilecontents: cannot stat %s\n", path);
     close(fd);
     return -1;
   }
 
-  if (st.size != 3) {
-    printf(1, "testfile: incorrect length (%d) for file %s\n", st.size, path);
+  int contentlen = strlen(contents);
+
+
+  if (st.size != contentlen) {
+    printf(1, "verifyfilecontents: incorrect length (%d) for file %s\n", st.size, path);
     close(fd);
     return -1;
   }
 
-  char buf[4];
+  char buf[100];
   int res;
-  if ((res = read(fd, buf, 3)) != 3) {
-    printf(1, "testfile: incorrect length read (%d) for file %s\n", res, path);
+  if ((res = read(fd, buf, contentlen)) != contentlen) {
+    printf(1, "verifyfilecontents: incorrect length read (%d) for file %s\n", res, path);
     close(fd);
     return -1;
   }
-  buf[3] = '\0';
+  buf[contentlen] = '\0';
   close(fd);
 
-  if ((res = strcmp("aaa", buf)) != 0) {
-    printf(1, "testfile: incorrect content read (%s) for file %s\n", buf, path); 
+  if ((res = strcmp(contents, buf)) != 0) {
+    printf(1, "verifyfilecontents: incorrect content read (%s) for file %s\n", buf, path); 
+    return -1;
+  }
+
+  return 0;
+}
+
+int testfile(char *path) {
+  if (createfile(path, "aaa") != 0) {
+    return -1;
+  }
+
+  if (verifyfilecontents(path, "aaa") != 0) {
     return -1;
   }
 
@@ -269,6 +289,41 @@ void nestedmounttest() {
   printf(1, "nestedmounttest: SUCCESS\n");
 }
 
+void devicefilestoretest() {
+  if (mounta() != 0) {
+    return;
+  }
+
+  if (createfile("a/devicefilestoretest", "ababab") != 0) {
+    return;
+  }
+  
+  if (umounta() != 0) {
+    return;
+  }
+
+  mkdir("ccc");
+  int res = mount("internal_fs_a", "ccc");
+  if (res != 0) {
+    printf(1, "devicefilestoretest: mount returned %d\n", res);
+    return;
+  }
+
+  if (verifyfilecontents("ccc/devicefilestoretest", "ababab") != 0) {
+    return;
+  }
+
+  res = umount("ccc");
+  if (res != 0) {
+    printf(1, "devicefilestoretest: umount did not fail as expected %d\n", res);
+    return;
+  }
+
+  unlink("ccc");
+
+  printf(1, "devicefilestoretest: SUCCESS\n");
+}
+
 void printheader(char *s) {
   printf(1, "----------------------------\n");
   printf(1, "--- %s\n", s);
@@ -289,6 +344,7 @@ main(int argc, char *argv[])
   writefiletest();
   directorywithintest();
   nestedmounttest();
+  devicefilestoretest();
 
   unlink("a");
   unlink("b");
