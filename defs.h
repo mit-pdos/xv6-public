@@ -115,6 +115,12 @@ void            end_op();
 extern int      ismp;
 void            mpinit(void);
 
+// namespace.c
+void            namespaceinit(void);
+struct nsproxy* allocnsproxy(void);
+struct nsproxy* namespacedup(struct nsproxy*);
+void            namespaceput(struct nsproxy*);
+
 // picirq.c
 void            picenable(int);
 void            picinit(void);

@@ -50,6 +50,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   struct mount *cwdmount;      // Mount in which current directory lies
   char name[16];               // Process name (debugging)
+  struct nsproxy *nsproxy;     // Namespace proxy object
 };
 
 // Process memory is laid out contiguously, low addresses first:

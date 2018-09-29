@@ -14,6 +14,7 @@ OBJS = \
 	main.o\
 	mount.o\
 	mp.o\
+	namespace.o\
 	picirq.o\
 	pipe.o\
 	proc.o\

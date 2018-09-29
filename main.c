@@ -36,6 +36,7 @@ main(void)
   userinit();      // first user process
   devinit();       // initialize devices
   mntinit();       // initialize mounts
+  namespaceinit(); // initialize namespaces
   mpmain();        // finish this processor's setup
 }
 

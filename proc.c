@@ -141,6 +141,7 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = nameimount("/", &p->cwdmount);
+  p->nsproxy = allocnsproxy();
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -209,6 +210,8 @@ fork(void)
   np->cwd = idup(curproc->cwd);
   np->cwdmount = mntdup(curproc->cwdmount);
 
+  np->nsproxy = namespacedup(curproc->nsproxy);
+
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
@@ -248,8 +251,10 @@ exit(void)
   end_op();
 
   mntput(curproc->cwdmount);
+  curproc->cwdmount = 0;
   curproc->cwd = 0;
 
+  namespaceput(curproc->nsproxy);
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().

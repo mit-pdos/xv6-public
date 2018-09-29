@@ -12,3 +12,4 @@
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       1000  // size of file system in blocks
 #define INT_FSSIZE   80  // size of internal file systems in blocks
+#define NNAMESPACE   20  // maximum number of namespaces
