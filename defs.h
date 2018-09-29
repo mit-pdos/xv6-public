@@ -3,6 +3,7 @@ struct context;
 struct file;
 struct inode;
 struct mount;
+struct mount_list;
 struct mount_ns;
 struct nsproxy;
 struct pipe;
@@ -78,6 +79,7 @@ struct mount* getrootmount();
 struct mount* mntdup(struct mount*);
 void mntput(struct mount*);
 struct mount* mntlookup(struct inode*, struct mount*);
+void umountall(struct mount_list*);
 
 // ide.c
 void            ideinit(void);

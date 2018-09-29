@@ -201,3 +201,13 @@ void printmounts() {
 
     release(&myproc()->nsproxy->mount_ns->lock);
 }
+
+void umountall(struct mount_list* mounts) {
+    while (mounts != 0) {
+        struct mount_list* next = mounts->next;
+        if (umount(&mounts->mnt) != 0) {
+            panic("failed to umount upon namespace close");
+        }
+        mounts = next;
+    }
+}

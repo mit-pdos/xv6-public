@@ -34,8 +34,14 @@ struct mount_ns* mount_nsdup(struct mount_ns* mount_ns) {
 
 void mount_nsput(struct mount_ns* mount_ns) {
     acquire(&mountnstable.lock);
+    if (mount_ns->ref == 1) {
+        release(&mountnstable.lock);
+
+        umountall(mount_ns->active_mounts);
+
+        acquire(&mountnstable.lock);
+    }
     mount_ns->ref--;
-    // TODO: If this gets to zero, clean up.
     release(&mountnstable.lock);
 }
 
