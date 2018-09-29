@@ -117,6 +117,7 @@ void            end_op();
 void            mount_nsinit(void);
 void            mount_nsput(struct mount_ns*);
 struct mount_ns* mount_nsdup(struct mount_ns*);
+struct mount_ns* newmount_ns(struct mount_ns*);
 
 // mp.c
 extern int      ismp;
@@ -124,7 +125,7 @@ void            mpinit(void);
 
 // namespace.c
 void            namespaceinit(void);
-struct nsproxy* allocnsproxy(void);
+struct nsproxy* emptynsproxy(void);
 struct nsproxy* namespacedup(struct nsproxy*);
 void            namespaceput(struct nsproxy*);
 int             unshare(int nstype);

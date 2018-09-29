@@ -57,9 +57,10 @@ static struct nsproxy* allocnsproxyinternal(void) {
     panic("out of nsproxy objects");
 }
 
-struct nsproxy* allocnsproxy(void) {
+struct nsproxy* emptynsproxy(void) {
     acquire(&namespacetable.lock);
     struct nsproxy* result = allocnsproxyinternal();
+    result->mount_ns = newmount_ns(0);
     release(&namespacetable.lock);
 
     return result;
@@ -76,6 +77,7 @@ int unshare(int nstype) {
     release(&namespacetable.lock);
     switch(nstype) {
         case MOUNT_NS:
+            myproc()->nsproxy->mount_ns = newmount_ns(myproc()->nsproxy->mount_ns);
             return 0;
         default:
             return -1;

@@ -141,7 +141,7 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = nameimount("/", &p->cwdmount);
-  p->nsproxy = allocnsproxy();
+  p->nsproxy = emptynsproxy();
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
