@@ -1,6 +1,9 @@
 #include "param.h"
 #include "x86.h"	
 #include "mmu.h"
+
+# the offset of cs in trapframe (i.e., tf->cs - tf)
+#define CSOFF  144
 	
 # vectors.S sends all traps here.
 .globl alltraps
@@ -22,7 +25,7 @@ alltraps:
   push %rbx
   push %rax
 
-  cmpw $KCSEG, 144(%rsp)   # compare to saved cs
+  cmpw $KCSEG, CSOFF(%rsp)   # compare to saved cs
   jz 1f 
   swapgs
   
@@ -33,7 +36,7 @@ alltraps:
 .globl trapret
 trapret:
   cli
-  cmpw $KCSEG, 144(%rsp)  # compare to saved cs
+  cmpw $KCSEG, CSOFF(%rsp)  # compare to saved cs
   jz 1f
   swapgs
 
