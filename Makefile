@@ -13,6 +13,7 @@ OBJS = \
 	log.o\
 	main.o\
 	mount.o\
+	mount_ns.o\
 	mp.o\
 	namespace.o\
 	picirq.o\

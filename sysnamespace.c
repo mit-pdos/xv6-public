@@ -17,6 +17,5 @@ int sys_unshare(void) {
         return -1;
     }
 
-    unshare(nstype);
-    return 0;
+    return unshare(nstype);
 }

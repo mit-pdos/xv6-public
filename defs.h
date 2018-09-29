@@ -2,6 +2,9 @@ struct buf;
 struct context;
 struct file;
 struct inode;
+struct mount;
+struct mount_ns;
+struct nsproxy;
 struct pipe;
 struct proc;
 struct rtcdate;
@@ -9,7 +12,6 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
-struct mount;
 
 // bio.c
 void            binit(void);
@@ -110,6 +112,11 @@ void            initlog(int dev);
 void            log_write(struct buf*);
 void            begin_op();
 void            end_op();
+
+// mount_ns.c
+void            mount_nsinit(void);
+void            mount_nsput(struct mount_ns*);
+struct mount_ns* mount_nsdup(struct mount_ns*);
 
 // mp.c
 extern int      ismp;

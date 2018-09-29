@@ -10,6 +10,7 @@
 #include "file.h"
 #include "mount.h"
 #include "namespace.h"
+#include "ns_types.h"
 
 struct {
   struct spinlock lock;
@@ -18,12 +19,24 @@ struct {
 
 void namespaceinit() {
     initlock(&namespacetable.lock, "namespace");
+    mount_nsinit();
 }
 
 void namespaceput(struct nsproxy* nsproxy) {
+    struct nsproxy oldnsproxy;
     acquire(&namespacetable.lock);
     nsproxy->ref--;
+
+    if (nsproxy->ref == 0) {
+        oldnsproxy = *nsproxy;
+    } else {
+        oldnsproxy.ref = nsproxy->ref;
+    }
+    
     release(&namespacetable.lock);
+    if (oldnsproxy.ref == 0) {
+        mount_nsput(oldnsproxy.mount_ns);
+    }
 }
 
 struct nsproxy* namespacedup(struct nsproxy* nsproxy) {
@@ -55,11 +68,15 @@ struct nsproxy* allocnsproxy(void) {
 int unshare(int nstype) {
     acquire(&namespacetable.lock);
     if (myproc()->nsproxy->ref > 1) {
+        struct nsproxy *oldns = myproc()->nsproxy;
         myproc()->nsproxy = allocnsproxyinternal();
-        // copy all nsproxy fields
+        myproc()->nsproxy->mount_ns = mount_nsdup(oldns->mount_ns);
+        oldns->ref--;
     }
     release(&namespacetable.lock);
     switch(nstype) {
+        case MOUNT_NS:
+            return 0;
         default:
             return -1;
     }
