@@ -85,11 +85,17 @@ int
 atoi(const char *s)
 {
   int n;
+  int sign;
 
+  sign=1;
+  while(*s == '-'){
+    sign = -sign;
+    s++;
+  }
   n = 0;
   while('0' <= *s && *s <= '9')
     n = n*10 + *s++ - '0';
-  return n;
+  return sign*n;
 }
 
 void*
