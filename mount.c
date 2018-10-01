@@ -99,13 +99,6 @@ int mount(struct inode *mountpoint, struct inode *device, struct mount *parent) 
             newmount->ref = 0;
             cprintf("mount already exists at that point.\n");
             return -1;
-        } else if (current->mnt.root == mountpoint) {
-            // error - mount on the root of another mound.
-            release(&myproc()->nsproxy->mount_ns->lock);
-            deviceput(dev);
-            newmount->ref = 0;
-            cprintf("can't mount to root of another mount\n");
-            return -1;
         }
         current = current->next;
     }
