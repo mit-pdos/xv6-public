@@ -38,6 +38,7 @@ void mount_nsput(struct mount_ns* mount_ns) {
         release(&mountnstable.lock);
 
         umountall(mount_ns->active_mounts);
+        mount_ns->active_mounts = 0;
 
         acquire(&mountnstable.lock);
     }

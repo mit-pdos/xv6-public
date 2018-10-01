@@ -23,20 +23,15 @@ void namespaceinit() {
 }
 
 void namespaceput(struct nsproxy* nsproxy) {
-    struct nsproxy oldnsproxy;
     acquire(&namespacetable.lock);
-    nsproxy->ref--;
-
-    if (nsproxy->ref == 0) {
-        oldnsproxy = *nsproxy;
-    } else {
-        oldnsproxy.ref = nsproxy->ref;
+    if (nsproxy->ref == 1) {
+        release(&namespacetable.lock);
+        mount_nsput(nsproxy->mount_ns);
+        nsproxy->mount_ns = 0;
+        acquire(&namespacetable.lock);
     }
-    
+    nsproxy->ref -= 1;
     release(&namespacetable.lock);
-    if (oldnsproxy.ref == 0) {
-        mount_nsput(oldnsproxy.mount_ns);
-    }
 }
 
 struct nsproxy* namespacedup(struct nsproxy* nsproxy) {
