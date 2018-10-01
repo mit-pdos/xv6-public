@@ -140,7 +140,7 @@ userinit(void)
   p->tf->eip = 0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
-  p->cwd = nameimount("/", &p->cwdmount);
+  p->cwd = initprocessroot(&p->cwdmount);
   p->nsproxy = emptynsproxy();
 
   // this assignment to p->state lets other cores

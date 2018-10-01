@@ -72,8 +72,12 @@ int unshare(int nstype) {
     release(&namespacetable.lock);
     switch(nstype) {
         case MOUNT_NS:
-            myproc()->nsproxy->mount_ns = newmount_ns(myproc()->nsproxy->mount_ns);
-            return 0;
+            {
+                struct mount_ns* previous = myproc()->nsproxy->mount_ns;
+                myproc()->nsproxy->mount_ns = copymount_ns();
+                mount_nsput(previous);
+                return 0;
+            }
         default:
             return -1;
     }

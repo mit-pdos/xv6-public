@@ -7,6 +7,7 @@
 #include "syscall.h"
 #include "traps.h"
 #include "memlayout.h"
+#include "ns_types.h"
 
 void fstat_file(char *path, struct stat *st) {
   int fd;
@@ -365,12 +366,6 @@ void errorondeletedevicetest() {
     return;
   }
 
-  res = unlink("internal_fs_a");
-  if (res != 0) {
-    printf(1, "errorondeletedevicetest: unlink returned %d\n", res);
-    return;
-  }
-
   printf(1, "errorondeletedevicetest: SUCCESS\n");
 }
 
@@ -378,6 +373,25 @@ void printheader(char *s) {
   printf(1, "----------------------------\n");
   printf(1, "--- %s\n", s);
   printf(1, "----------------------------\n");
+}
+
+void namespacetest() {
+  if (mounta() != 0) {
+    return;
+  }
+  int pid = fork();
+  if (pid == 0) {
+    unshare(MOUNT_NS);
+    umounta();
+    exit();
+  } else {
+    wait();
+    if (umounta() != 0) {
+      return;
+    }
+    
+    printf(1, "namespacetest: SUCCESS\n");
+  }
 }
 
 int
@@ -398,6 +412,10 @@ main(int argc, char *argv[])
   umountwithopenfiletest();
   errorondeletedevicetest();
 
+  printheader("Mount namespace tests:");
+  namespacetest();
+
+  printheader("Cleaning up:");
   unlink("a");
   unlink("b");
   return 0;

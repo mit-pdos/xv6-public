@@ -69,6 +69,7 @@ void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
 void            readsb(int, struct superblock *);
 void            fsinit(uint);
+struct inode*   initprocessroot(struct mount**);
 
 // mount.c
 void mntinit();
@@ -80,6 +81,9 @@ struct mount* mntdup(struct mount*);
 void mntput(struct mount*);
 struct mount* mntlookup(struct inode*, struct mount*);
 void umountall(struct mount_list*);
+struct mount_list* copyactivemounts();
+struct mount* getroot(struct mount_list*);
+struct mount* getinitialrootmount();
 
 // ide.c
 void            ideinit(void);
@@ -119,7 +123,8 @@ void            end_op();
 void            mount_nsinit(void);
 void            mount_nsput(struct mount_ns*);
 struct mount_ns* mount_nsdup(struct mount_ns*);
-struct mount_ns* newmount_ns(struct mount_ns*);
+struct mount_ns* newmount_ns();
+struct mount_ns* copymount_ns();
 
 // mp.c
 extern int      ismp;

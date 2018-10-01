@@ -13,7 +13,7 @@
 
 int sys_unshare(void) {
     int nstype;
-    if (argint(2, &nstype) < 0) {
+    if (argint(0, &nstype) < 0) {
         return -1;
     }
 

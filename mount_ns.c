@@ -61,16 +61,14 @@ static struct mount_ns* allocmount_ns() {
     panic("out of mount_ns objects");
 }
 
-void copymount_ns(struct mount_ns* dest, struct mount_ns* src) {
-
+struct mount_ns* copymount_ns() {
+    struct mount_ns* mount_ns = allocmount_ns();
+    mount_ns->active_mounts = copyactivemounts();
+    mount_ns->root = getroot(mount_ns->active_mounts);
+    return mount_ns;
 }
 
-struct mount_ns* newmount_ns(struct mount_ns* previous) {
+struct mount_ns* newmount_ns() {
     struct mount_ns* mount_ns = allocmount_ns();
-    if (previous != 0) {
-        copymount_ns(mount_ns, previous);
-        mount_nsput(previous);
-    }
-
     return mount_ns;
 }
