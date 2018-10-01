@@ -16,53 +16,63 @@ struct device {
 };
 
 struct {
-    struct sleeplock lock; // protects mnt_list
+    struct spinlock lock; // protects loopdevs
     struct device loopdevs[NLOOPDEVS];
     struct superblock idesb[NIDEDEVS];
 } dev_holder;
 
 void
 devinit(void) {
-    initsleeplock(&dev_holder.lock, "dev_list");
+    initlock(&dev_holder.lock, "dev_list");
 }
 
 int
 getorcreatedevice(struct inode *ip) {
-    acquiresleep(&dev_holder.lock);
+    acquire(&dev_holder.lock);
     int emptydevice = -1;
     for (int i = 0; i < NLOOPDEVS; i++) {
         if (dev_holder.loopdevs[i].ref == 0 && emptydevice == -1) {
             emptydevice = i;        
         } else if (dev_holder.loopdevs[i].ip == ip) {
             dev_holder.loopdevs[i].ref++;
-            releasesleep(&dev_holder.lock);
+            release(&dev_holder.lock);
             return i;
         }
     }
 
     if (emptydevice == -1) {
-        releasesleep(&dev_holder.lock);
+        release(&dev_holder.lock);
         return -1;
     }
 
     dev_holder.loopdevs[emptydevice].ref = 1;
     dev_holder.loopdevs[emptydevice].ip = idup(ip);
+    release(&dev_holder.lock);
     fsinit(LOOP_DEVICE_TO_DEV(emptydevice));
-    releasesleep(&dev_holder.lock);
     return LOOP_DEVICE_TO_DEV(emptydevice);
+}
+
+void deviceget(uint dev) {
+    dev = DEV_TO_LOOP_DEVICE(dev);
+    acquire(&dev_holder.lock);
+    dev_holder.loopdevs[dev].ref++;
+    release(&dev_holder.lock);
 }
 
 void
 deviceput(uint dev) {
     dev = DEV_TO_LOOP_DEVICE(dev);
-    acquiresleep(&dev_holder.lock);
-    dev_holder.loopdevs[dev].ref--;
+    acquire(&dev_holder.lock);
+    if (dev_holder.loopdevs[dev].ref == 1) {
+        release(&dev_holder.lock);
 
-    if (dev_holder.loopdevs[dev].ref == 0) {
         iput(dev_holder.loopdevs[dev].ip);
+
+        acquire(&dev_holder.lock);
         dev_holder.loopdevs[dev].ip = 0;
     }
-    releasesleep(&dev_holder.lock);
+    dev_holder.loopdevs[dev].ref--;
+    release(&dev_holder.lock);
 }
 
 struct inode*
@@ -82,7 +92,7 @@ getinodefordevice(uint dev) {
 
 void
 printdevices(void) {
-    acquiresleep(&dev_holder.lock);
+    acquire(&dev_holder.lock);
 
     cprintf("Printing devices:\n");
     for (int i = 0; i < NLOOPDEVS; i++) {
@@ -90,7 +100,7 @@ printdevices(void) {
             cprintf("Device %d backed by inode %x with ref %d\n", i, dev_holder.loopdevs[i].ip, dev_holder.loopdevs[i].ref);
         }
     }
-    releasesleep(&dev_holder.lock);
+    release(&dev_holder.lock);
 }
 
 struct superblock*
@@ -115,13 +125,13 @@ getsuperblock(uint dev) {
 
 int
 doesbackdevice(struct inode* ip) {
-    acquiresleep(&dev_holder.lock);
+    acquire(&dev_holder.lock);
     for (int i = 0; i < NLOOPDEVS; i++) {
         if (dev_holder.loopdevs[i].ip == ip) {
-            releasesleep(&dev_holder.lock);
+            release(&dev_holder.lock);
             return 1;
         }
     }
-    releasesleep(&dev_holder.lock);
+    release(&dev_holder.lock);
     return 0;
 }

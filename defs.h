@@ -29,6 +29,7 @@ void            panic(char*) __attribute__((noreturn));
 // device.c
 int             getorcreatedevice(struct inode*);
 void            deviceput(uint);
+void            deviceget(uint);
 void            printdevices(void);
 struct inode*   getinodefordevice(uint);
 struct superblock* getsuperblock(uint);
