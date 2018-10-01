@@ -11,7 +11,8 @@
 #include "file.h"
 #include "mount.h"
 
-int sys_unshare(void) {
+int
+sys_unshare(void) {
     int nstype;
     if (argint(0, &nstype) < 0) {
         return -1;

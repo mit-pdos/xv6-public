@@ -21,11 +21,13 @@ struct {
     struct superblock idesb[NIDEDEVS];
 } dev_holder;
 
-void devinit() {
+void
+devinit(void) {
     initsleeplock(&dev_holder.lock, "dev_list");
 }
 
-int getorcreatedevice(struct inode *ip) {
+int
+getorcreatedevice(struct inode *ip) {
     acquiresleep(&dev_holder.lock);
     int emptydevice = -1;
     for (int i = 0; i < NLOOPDEVS; i++) {
@@ -50,7 +52,8 @@ int getorcreatedevice(struct inode *ip) {
     return LOOP_DEVICE_TO_DEV(emptydevice);
 }
 
-void deviceput(uint dev) {
+void
+deviceput(uint dev) {
     dev = DEV_TO_LOOP_DEVICE(dev);
     acquiresleep(&dev_holder.lock);
     dev_holder.loopdevs[dev].ref--;
@@ -62,7 +65,8 @@ void deviceput(uint dev) {
     releasesleep(&dev_holder.lock);
 }
 
-struct inode * getinodefordevice(uint dev) {
+struct inode*
+getinodefordevice(uint dev) {
     if (!IS_LOOP_DEVICE(dev)) {
         return 0;
     }
@@ -76,7 +80,8 @@ struct inode * getinodefordevice(uint dev) {
     return dev_holder.loopdevs[dev].ip;
 }
 
-void printdevices() {
+void
+printdevices(void) {
     acquiresleep(&dev_holder.lock);
 
     cprintf("Printing devices:\n");
@@ -88,7 +93,8 @@ void printdevices() {
     releasesleep(&dev_holder.lock);
 }
 
-struct superblock * getsuperblock(uint dev) {
+struct superblock*
+getsuperblock(uint dev) {
     if (IS_LOOP_DEVICE(dev)) {
         dev = LOOP_DEVICE_TO_DEV(dev);
         if (dev >= NLOOPDEVS) {
@@ -107,7 +113,8 @@ struct superblock * getsuperblock(uint dev) {
     }
 }
 
-int doesbackdevice(struct inode* ip) {
+int
+doesbackdevice(struct inode* ip) {
     acquiresleep(&dev_holder.lock);
     for (int i = 0; i < NLOOPDEVS; i++) {
         if (dev_holder.loopdevs[i].ip == ip) {

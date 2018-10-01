@@ -29,10 +29,10 @@ void            panic(char*) __attribute__((noreturn));
 // device.c
 int             getorcreatedevice(struct inode*);
 void            deviceput(uint);
-void            printdevices();
+void            printdevices(void);
 struct inode*   getinodefordevice(uint);
 struct superblock* getsuperblock(uint);
-void            devinit();
+void            devinit(void);
 int             doesbackdevice(struct inode*);
 
 // exec.c
@@ -72,18 +72,18 @@ void            fsinit(uint);
 struct inode*   initprocessroot(struct mount**);
 
 // mount.c
-void mntinit();
-void printmounts();
-int mount(struct inode*, struct inode*, struct mount*);
-int umount(struct mount*);
-struct mount* getrootmount();
-struct mount* mntdup(struct mount*);
-void mntput(struct mount*);
-struct mount* mntlookup(struct inode*, struct mount*);
-void umountall(struct mount_list*);
-struct mount_list* copyactivemounts();
-struct mount* getroot(struct mount_list*);
-struct mount* getinitialrootmount();
+void            mntinit(void);
+void            printmounts(void);
+int             mount(struct inode*, struct inode*, struct mount*);
+int             umount(struct mount*);
+struct mount*   getrootmount(void);
+struct mount*   mntdup(struct mount*);
+void            mntput(struct mount*);
+struct mount*   mntlookup(struct inode*, struct mount*);
+void            umountall(struct mount_list*);
+struct mount_list* copyactivemounts(void);
+struct mount*   getroot(struct mount_list*);
+struct mount*   getinitialrootmount(void);
 
 // ide.c
 void            ideinit(void);
@@ -123,8 +123,8 @@ void            end_op();
 void            mount_nsinit(void);
 void            mount_nsput(struct mount_ns*);
 struct mount_ns* mount_nsdup(struct mount_ns*);
-struct mount_ns* newmount_ns();
-struct mount_ns* copymount_ns();
+struct mount_ns* newmount_ns(void);
+struct mount_ns* copymount_ns(void);
 
 // mp.c
 extern int      ismp;

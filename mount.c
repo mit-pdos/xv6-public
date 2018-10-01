@@ -27,7 +27,8 @@ struct mount_list* getactivemounts() {
 }
 
 // Parent mount (if it exists) must already be ref-incremented.
-void addmountinternal(struct mount_list *mnt_list, uint dev, struct inode *mountpoint, struct mount *parent) {
+static void
+addmountinternal(struct mount_list *mnt_list, uint dev, struct inode *mountpoint, struct mount *parent) {
     mnt_list->mnt.mountpoint = mountpoint;
     mnt_list->mnt.dev = dev;
     mnt_list->mnt.parent = parent;
@@ -37,15 +38,18 @@ void addmountinternal(struct mount_list *mnt_list, uint dev, struct inode *mount
     myproc()->nsproxy->mount_ns->active_mounts = mnt_list;
 }
 
-struct mount * getinitialrootmount() {
+struct mount *
+getinitialrootmount(void) {
     return &mount_holder.mnt_list[0].mnt;
 }
 
-struct mount * getrootmount() {
+struct mount *
+getrootmount(void) {
     return myproc()->nsproxy->mount_ns->root;
 }
 
-void mntinit() {
+void
+mntinit(void) {
     initlock(&mount_holder.mnt_list_lock, "mount_list");
 
     addmountinternal(&mount_holder.mnt_list[0], ROOTDEV, 0, 0);
@@ -53,20 +57,23 @@ void mntinit() {
     myproc()->nsproxy->mount_ns->root = getinitialrootmount();
 }
 
-struct mount * mntdup(struct mount *mnt) {
+struct mount*
+mntdup(struct mount *mnt) {
     acquire(&mount_holder.mnt_list_lock);
     mnt->ref++;
     release(&mount_holder.mnt_list_lock);
     return mnt;
 }
 
-void mntput(struct mount *mnt) {
+void
+mntput(struct mount *mnt) {
     acquire(&mount_holder.mnt_list_lock);
     mnt->ref--;
     release(&mount_holder.mnt_list_lock);
 }
 
-static struct mount_list* allocmntlist() {
+static struct mount_list*
+allocmntlist(void) {
     acquire(&mount_holder.mnt_list_lock);
     int i;
     // Find empty mount struct
@@ -86,7 +93,8 @@ static struct mount_list* allocmntlist() {
 }
 
 // mountpoint and device must be locked.
-int mount(struct inode *mountpoint, struct inode *device, struct mount *parent) {
+int
+mount(struct inode *mountpoint, struct inode *device, struct mount *parent) {
     struct mount_list *newmountentry = allocmntlist();
     struct mount *newmount = &newmountentry->mnt;
 
@@ -118,7 +126,8 @@ int mount(struct inode *mountpoint, struct inode *device, struct mount *parent) 
     return 0;
 }
 
-int umount(struct mount *mnt) {
+int
+umount(struct mount *mnt) {
     acquire(&myproc()->nsproxy->mount_ns->lock);
     struct mount_list *current = getactivemounts();
     struct mount_list **previous = &(myproc()->nsproxy->mount_ns->active_mounts);
@@ -173,7 +182,8 @@ int umount(struct mount *mnt) {
     return 0;
 }
 
-struct mount * mntlookup(struct inode *mountpoint, struct mount *parent) {
+struct mount*
+mntlookup(struct inode *mountpoint, struct mount *parent) {
     acquire(&myproc()->nsproxy->mount_ns->lock);
 
     struct mount_list *entry = getactivemounts();
@@ -189,7 +199,8 @@ struct mount * mntlookup(struct inode *mountpoint, struct mount *parent) {
     return 0;
 }
 
-void printmounts() {
+void
+printmounts(void) {
     acquire(&myproc()->nsproxy->mount_ns->lock);
 
     struct mount_list *entry = getactivemounts();
@@ -204,7 +215,8 @@ void printmounts() {
     release(&myproc()->nsproxy->mount_ns->lock);
 }
 
-void umountall(struct mount_list* mounts) {
+void
+umountall(struct mount_list* mounts) {
     while (mounts != 0) {
         struct mount_list* next = mounts->next;
         if (mounts->mnt.parent == 0) {
@@ -217,7 +229,8 @@ void umountall(struct mount_list* mounts) {
     }
 }
 
-struct mount_list* shallowcopyactivemounts(struct mount **newcwdmount) {
+static struct mount_list*
+shallowcopyactivemounts(struct mount **newcwdmount) {
     struct mount_list *head = 0;
     struct mount_list *entry = myproc()->nsproxy->mount_ns->active_mounts;
     struct mount_list *prev = 0;
@@ -245,7 +258,8 @@ struct mount_list* shallowcopyactivemounts(struct mount **newcwdmount) {
     return head;
 }
 
-void fixparents(struct mount_list* newentry) {
+static void
+fixparents(struct mount_list* newentry) {
     struct mount_list *entry = myproc()->nsproxy->mount_ns->active_mounts;
 
     while (entry != 0) {        
@@ -269,10 +283,11 @@ void fixparents(struct mount_list* newentry) {
     }
 }
 
-struct mount_list* copyactivemounts(void) {
+struct mount_list*
+copyactivemounts(void) {
     acquire(&myproc()->nsproxy->mount_ns->lock);
     struct mount *oldcwdmount = myproc()->cwdmount;
-    struct mount *newcwdmount;
+    struct mount *newcwdmount = 0;
     struct mount_list *newentry = shallowcopyactivemounts(&newcwdmount);
     fixparents(newentry);
     release(&myproc()->nsproxy->mount_ns->lock);
@@ -282,7 +297,8 @@ struct mount_list* copyactivemounts(void) {
     return newentry;
 }
 
-struct mount* getroot(struct mount_list* newentry) {
+struct mount*
+getroot(struct mount_list* newentry) {
     if (newentry != 0) {
         struct mount* current = &newentry->mnt;
         while (current != 0 && current->parent != 0) {

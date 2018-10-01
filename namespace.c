@@ -55,7 +55,7 @@ static struct nsproxy* allocnsproxyinternal(void) {
 struct nsproxy* emptynsproxy(void) {
     acquire(&namespacetable.lock);
     struct nsproxy* result = allocnsproxyinternal();
-    result->mount_ns = newmount_ns(0);
+    result->mount_ns = newmount_ns();
     release(&namespacetable.lock);
 
     return result;

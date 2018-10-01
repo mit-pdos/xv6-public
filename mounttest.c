@@ -9,7 +9,8 @@
 #include "memlayout.h"
 #include "ns_types.h"
 
-void fstat_file(char *path, struct stat *st) {
+static void
+fstat_file(char *path, struct stat *st) {
   int fd;
   if((fd = open(path, 0)) < 0){
     printf(1, "mounttest: cannot open %s\n", path);
@@ -25,7 +26,8 @@ void fstat_file(char *path, struct stat *st) {
   close(fd);
 }
 
-int createfile(char *path, char *contents) {
+static int
+createfile(char *path, char *contents) {
   int fd;
   if((fd = open(path, O_WRONLY|O_CREATE)) < 0){
     printf(1, "createfile: cannot open %s\n", path);
@@ -43,7 +45,8 @@ int createfile(char *path, char *contents) {
   return 0;
 }
 
-int verifyfilecontents(char *path, char *contents) {
+static int
+verifyfilecontents(char *path, char *contents) {
   int fd;
   struct stat st;
   if((fd = open(path, 0)) < 0){
@@ -84,7 +87,8 @@ int verifyfilecontents(char *path, char *contents) {
   return 0;
 }
 
-int testfile(char *path) {
+static int
+testfile(char *path) {
   if (createfile(path, "aaa") != 0) {
     return -1;
   }
@@ -96,7 +100,8 @@ int testfile(char *path) {
   return 0;
 }
 
-int mounta() {
+static int
+mounta(void) {
   mkdir("a");
   int res = mount("internal_fs_a", "a");
   if (res != 0) {
@@ -107,7 +112,8 @@ int mounta() {
   return 0;
 }
 
-int umounta() {
+static int
+umounta(void) {
   int res = umount("a");
   if (res != 0) {
     printf(1, "umounta: umount returned %d\n", res);
@@ -117,7 +123,8 @@ int umounta() {
   return 0;
 }
 
-void mounttest() {
+static void
+mounttest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -129,7 +136,8 @@ void mounttest() {
   printf(1, "mounttest: SUCCESS\n");
 }
 
-void statroottest() {
+static void
+statroottest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -148,7 +156,8 @@ void statroottest() {
   printf(1, "statroottest: SUCCESS\n");
 }
 
-void writefiletest() {
+static void
+writefiletest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -164,7 +173,8 @@ void writefiletest() {
   printf(1, "writefiletest: SUCCESS\n"); 
 }
 
-void invalidpathtest() {
+static void
+invalidpathtest(void) {
   int res = mount("internal_fs_a", "AAA");
   if (res != -1) {
     printf(1, "invalidpathtest: mount did not fail as expected %d\n", res);
@@ -195,7 +205,8 @@ void invalidpathtest() {
   printf(1, "invalidpathtest: SUCCESS\n");
 }
 
-void doublemounttest() {
+static void
+doublemounttest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -220,7 +231,8 @@ void doublemounttest() {
   printf(1, "doublemounttest: SUCCESS\n");
 }
 
-void samedirectorytest() {
+static void
+samedirectorytest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -238,7 +250,8 @@ void samedirectorytest() {
   printf(1, "samedirectorytest: SUCCESS\n");
 }
 
-void directorywithintest() {
+static void
+directorywithintest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -255,7 +268,8 @@ void directorywithintest() {
   printf(1, "directorywithintest: SUCCESS\n");
 }
 
-void nestedmounttest() {
+static void
+nestedmounttest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -290,7 +304,8 @@ void nestedmounttest() {
   printf(1, "nestedmounttest: SUCCESS\n");
 }
 
-void devicefilestoretest() {
+static void
+devicefilestoretest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -325,7 +340,8 @@ void devicefilestoretest() {
   printf(1, "devicefilestoretest: SUCCESS\n");
 }
 
-void umountwithopenfiletest() {
+static void
+umountwithopenfiletest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -351,7 +367,8 @@ void umountwithopenfiletest() {
   printf(1, "umountwithopenfiletest: SUCCESS\n");
 }
 
-void errorondeletedevicetest() {
+static void
+errorondeletedevicetest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -369,13 +386,8 @@ void errorondeletedevicetest() {
   printf(1, "errorondeletedevicetest: SUCCESS\n");
 }
 
-void printheader(char *s) {
-  printf(1, "----------------------------\n");
-  printf(1, "--- %s\n", s);
-  printf(1, "----------------------------\n");
-}
-
-void namespacetest() {
+static void
+namespacetest(void) {
   if (mounta() != 0) {
     return;
   }
@@ -393,6 +405,14 @@ void namespacetest() {
     printf(1, "namespacetest: SUCCESS\n");
   }
 }
+
+static void
+printheader(char *s) {
+  printf(1, "----------------------------\n");
+  printf(1, "--- %s\n", s);
+  printf(1, "----------------------------\n");
+}
+
 
 int
 main(int argc, char *argv[])
