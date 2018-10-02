@@ -81,7 +81,7 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
       *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
     }
   }
-  return &pgtab[PTX(va)];
+  return &pgtab[PX(level, va)];
 }
 
 // Create PTEs for virtual addresses starting at va that refer to
@@ -293,7 +293,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 // need to be less than oldsz.  oldsz can be larger than the actual
 // process size.  Returns the new process size.
 int
-deallocuvm(pde_t *pgdir, uint64 oldsz, uint64 newsz)
+deallocuvm(pde_t *pml4, uint64 oldsz, uint64 newsz)
 {
   pte_t *pte;
   uint64 a, pa;
@@ -303,7 +303,7 @@ deallocuvm(pde_t *pgdir, uint64 oldsz, uint64 newsz)
 
   a = PGROUNDUP(newsz);
   for(; a  < oldsz; a += PGSIZE){
-    pte = walkpgdir(pgdir, (char*)a, 0);
+    pte = walkpgdir(pml4, (char*)a, 0);
     if(!pte)
       a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
     else if((*pte & PTE_P) != 0){
@@ -318,37 +318,33 @@ deallocuvm(pde_t *pgdir, uint64 oldsz, uint64 newsz)
   return newsz;
 }
 
-// Free a page table and all the physical memory pages
-// in the user part.
+// Recursively free a page table
+void
+freelevel(pde_t *pgtab, int level) {
+  int i;
+  pde_t *pd;
+  
+  if (level > 0) {
+    for(i = 0; i < NPDENTRIES; i++) {
+      if(pgtab[i] & PTE_P){
+        pd = (pdpe_t*)P2V(PTE_ADDR(pgtab[i]));
+        freelevel(pd, level-1);
+      }
+    }
+  }
+  kfree((char*)pgtab);
+}
+
+// Free all the physical memory pages
+// in the user part and page table
 void
 freevm(pde_t *pml4, uint64 sz)
 {
-  uint i, j, k;
-  pde_t *pdp, *pd, *pt;
-
   if(pml4 == 0)
     panic("freevm: no pgdir");
 
   deallocuvm(pml4, sz, 0);
-  for(i = 0; i < NPDENTRIES; i++){
-    if(pml4[i] & PTE_P){
-      pdp = (pdpe_t*)P2V(PTE_ADDR(pml4[i]));
-      for(j = 0; j < NPDENTRIES; j++){
-        if(pdp[j] & PTE_P){
-          pd = (pde_t*)P2V(PTE_ADDR(pdp[j]));
-          for(k = 0; k < NPDENTRIES; k++){
-            if(pd[k] & PTE_P) {
-              pt = (pde_t*)P2V(PTE_ADDR(pd[k]));
-              kfree((char*)pt);
-            }
-          }
-          kfree((char*)pd);
-        }
-      }
-      kfree((char*)pdp);
-    }
-  }
-  kfree((char*)pml4);
+  freelevel(pml4, L_PML4);
 }
 
 // Clear PTE_U on a page. Used to create an inaccessible
