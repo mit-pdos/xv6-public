@@ -66,53 +66,21 @@ seginit(void)
 static pte_t *
 walkpgdir(pde_t *pml4, const void *va, int alloc)
 {
-  pml4e_t *pml4e;
-  pdpe_t *pdp;
-  pdpe_t *pdpe;
+  pde_t *pgtab = pml4;
   pde_t *pde;
-  pde_t *pd;
-  pte_t *pgtab;
-
-  // level 4
-  pml4e = &pml4[PMX(va)];
-  if(*pml4e & PTE_P)
-    pdp = (pdpe_t*)P2V(PTE_ADDR(*pml4e));  
-  else {
-    if(!alloc || (pdp = (pdpe_t*)kalloc()) == 0)
-      return 0;
-    // Make sure all those PTE_P bits are zero.
-    memset(pdp, 0, PGSIZE);
-    // The permissions here are overly generous, but they can
-    // be further restricted by the permissions in the page table
-    // entries, if necessary.
-    *pml4e = V2P(pdp) | PTE_P | PTE_W | PTE_U;
+  int level;
+  
+  for (level = L_PML4; level > 0; level--) {
+    pde = &pgtab[PX(level, va)];
+    if(*pde & PTE_P)
+      pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+    else {
+      if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
+        return 0;
+      memset(pgtab, 0, PGSIZE);
+      *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
+    }
   }
-
-  // XXX avoid repetition
-
-  // level 3
-  pdpe = &pdp[PDPX(va)];  
-  if(*pdpe & PTE_P) 
-    pd = (pde_t*)P2V(PTE_ADDR(*pdpe));
-  else {
-    if(!alloc || (pd = (pde_t*)kalloc()) == 0)
-      return 0;
-    memset(pd, 0, PGSIZE);
-    *pdpe = V2P(pd) | PTE_P | PTE_W | PTE_U;
-  }
-
-  // level 2
-  pde = &pd[PDX(va)]; 
-  if(*pde & PTE_P)
-    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
-  else {
-    if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
-      return 0;
-    memset(pgtab, 0, PGSIZE);
-    *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
-  }
-
-  // level 1
   return &pgtab[PTX(va)];
 }
 

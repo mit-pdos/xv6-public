@@ -91,26 +91,22 @@ struct segdesc {
 // +------+-------+--------------+----------+------------+-------------+
 //       \-PMX(va)-/\-PDPX(va)--/ \-PDX(va)-/ \-PTX(va)-/
 
-#define PMX(va)         (((uint64)(va) >> PML4XSHIFT) & PXMASK)
-#define PDPX(va)         (((uint64)(va) >> PDPXSHIFT) & PXMASK)
-// page directory index
-#define PDX(va)         (((uint64)(va) >> PDXSHIFT) & PXMASK)
-// page table index
-#define PTX(va)         (((uint64)(va) >> PTXSHIFT) & PXMASK)
-
-// construct virtual address from indexes and offset
-#define PGADDR(d, t, o) ((uint64)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
-
 // Page directory and page table constants.
 #define NPDENTRIES      512    // # directory entries per page directory
 #define NPTENTRIES      512    // # PTEs per page table
 #define PGSIZE          4096    // bytes mapped by a page
-
-#define PTXSHIFT        12      // offset of PTX in a linear address
+#define PGSHIFT         12      // offset of PTX in a linear address
 #define PDXSHIFT        21      // offset of PDX in a linear address
-#define PDPXSHIFT       30      // offset of PDPX in a linear address
-#define PML4XSHIFT      39      // offset of PML4X in a linear address
-#define PXMASK          0X1FF
+
+#define PXMASK          0x1FF
+#define PXSHIFT(n)	(PGSHIFT+(9*(n)))
+#define PDX(va)         (((uint64)(va) >> PDXSHIFT) & PXMASK)
+#define PTX(va)         (((uint64)(va) >> PGSHIFT) & PXMASK)
+#define PX(n, va)	((((uint64) (va)) >> PXSHIFT(n)) & PXMASK)
+#define L_PML4           3
+    
+// construct virtual address from indexes and offset
+#define PGADDR(d, t, o) ((uint64)((d) << PDXSHIFT | (t) << PGSHIFT | (o)))
 
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
