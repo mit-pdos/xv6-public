@@ -67,18 +67,18 @@ static pte_t *
 walkpgdir(pde_t *pml4, const void *va, int alloc)
 {
   pde_t *pgtab = pml4;
-  pde_t *pde;
+  pde_t *pte;
   int level;
   
   for (level = L_PML4; level > 0; level--) {
-    pde = &pgtab[PX(level, va)];
-    if(*pde & PTE_P)
-      pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+    pte = &pgtab[PX(level, va)];
+    if(*pte & PTE_P)
+      pgtab = (pte_t*)P2V(PTE_ADDR(*pte));
     else {
       if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
         return 0;
       memset(pgtab, 0, PGSIZE);
-      *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
+      *pte = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
     }
   }
   return &pgtab[PX(level, va)];
