@@ -305,7 +305,7 @@ deallocuvm(pde_t *pml4, uint64 oldsz, uint64 newsz)
   for(; a  < oldsz; a += PGSIZE){
     pte = walkpgdir(pml4, (char*)a, 0);
     if(!pte)
-      a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
+      continue;
     else if((*pte & PTE_P) != 0){
       pa = PTE_ADDR(*pte);
       if(pa == 0)
@@ -327,7 +327,7 @@ freelevel(pde_t *pgtab, int level) {
   if (level > 0) {
     for(i = 0; i < NPDENTRIES; i++) {
       if(pgtab[i] & PTE_P){
-        pd = (pdpe_t*)P2V(PTE_ADDR(pgtab[i]));
+        pd = (pde_t*)P2V(PTE_ADDR(pgtab[i]));
         freelevel(pd, level-1);
       }
     }

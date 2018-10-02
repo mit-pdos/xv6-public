@@ -95,7 +95,6 @@ struct segdesc {
 #define NPDENTRIES      512    // # directory entries per page directory
 #define PGSIZE          4096    // bytes mapped by a page
 #define PGSHIFT         12      // offset of PTX in a linear address
-#define PDXSHIFT        21      // offset of PDX in a linear address
 
 #define PXMASK          0x1FF
 #define PXSHIFT(n)	(PGSHIFT+(9*(n)))
@@ -103,9 +102,6 @@ struct segdesc {
 #define PX(n, va)	((((uint64) (va)) >> PXSHIFT(n)) & PXMASK)
 #define L_PML4           3
     
-// construct virtual address from indexes and offset
-#define PGADDR(d, t, o) ((uint64)((d) << PDXSHIFT | (t) << PGSHIFT | (o)))
-
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
 
