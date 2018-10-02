@@ -98,7 +98,6 @@ struct segdesc {
 
 #define PXMASK          0x1FF
 #define PXSHIFT(n)	(PGSHIFT+(9*(n)))
-#define PDX(va)         (((uint64)(va) >> PDXSHIFT) & PXMASK)
 #define PX(n, va)	((((uint64) (va)) >> PXSHIFT(n)) & PXMASK)
 #define L_PML4           3
     
