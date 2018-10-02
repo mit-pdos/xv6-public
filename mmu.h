@@ -89,15 +89,15 @@ struct segdesc {
 // | Sign | PML4  |Page Directory| Page Dir |Page Table  | Offset Page |
 // |Extend| Index | Pointer Index|  Index   |  Index     | in Page     |
 // +------+-------+--------------+----------+------------+-------------+
-//       \-PMX(va)-/\-PDPX(va)--/ \-PDX(va)-/ \-PTX(va)-/
+//         L3 pgtab   L2 pgtab      L1 pgtab   L0 pgtab
 
 // Page directory and page table constants.
-#define NPDENTRIES      512    // # directory entries per page directory
+#define NPDENTRIES      512     // # directory entries per page directory
 #define PGSIZE          4096    // bytes mapped by a page
 #define PGSHIFT         12      // offset of PTX in a linear address
 
 #define PXMASK          0x1FF
-#define PXSHIFT(n)	(PGSHIFT+(9*(n)))
+#define PXSHIFT(n)	(PGSHIFT+(9*(n)))  // shift for index into level n page table
 #define PX(n, va)	((((uint64) (va)) >> PXSHIFT(n)) & PXMASK)
 #define L_PML4           3
     
