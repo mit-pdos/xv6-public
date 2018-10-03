@@ -33,8 +33,8 @@ struct context {
   uint64 r12;
   uint64 r11;
   uint64 rbx;
-  uint64 ebp; //rbp
-  uint64 eip; //rip;
+  uint64 rbp;
+  uint64 rip;
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };

@@ -118,7 +118,7 @@ found:
   sp -= sizeof *p->context;
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
-  p->context->eip = (uint64)forkret;
+  p->context->rip = (uint64)forkret;
 
   return p;
 }
@@ -531,7 +531,7 @@ procdump(void)
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
     if(p->state == SLEEPING){
-      getcallerpcs((uint64*)p->context->ebp+2, pc);
+      getcallerpcs((uint64*)p->context->rbp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
     }
