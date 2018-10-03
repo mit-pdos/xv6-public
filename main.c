@@ -9,7 +9,7 @@
 extern pde_t *kpgdir;
 extern char end[]; // first address after kernel loaded from ELF file
 
-static void main(void)  __attribute__((noreturn));
+static void mpmain(void)  __attribute__((noreturn));
 static void startothers(void);
 
 
@@ -17,7 +17,7 @@ static void startothers(void);
 // Allocate a real stack and switch to it, first
 // doing some setup required for memory allocator to work.
 int
-bpmain(uint64 mbmagic, uint64 mbaddr)
+main(uint64 mbmagic, uint64 mbaddr)
 {
   if(mbmagic != 0x2badb002)
        panic("multiboot header not found");
@@ -41,13 +41,13 @@ bpmain(uint64 mbmagic, uint64 mbaddr)
  
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
   userinit();      // first user process
-  main();        
+  mpmain();        
   return 0;
 }
 
 // Common CPU setup code.
 static void
-main(void)
+mpmain(void)
 {
   cprintf("cpu%d: starting %d\n", cpuid(), cpuid());
   idtinit();       // load idt register
@@ -55,14 +55,14 @@ main(void)
   scheduler();     // start running processes
 }
 
-// Other CPUs jump here from entryother.S.
+// AP processors jump here from entryother.S.
 void
 apmain(void)
 {
   switchkvm();
   seginit();
   lapicinit();
-  main();
+  mpmain();
 }
 
 void apstart(void);

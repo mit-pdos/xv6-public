@@ -84,8 +84,8 @@ start64:
   # Clear frame pointer for stack walks
   movl $0, %ebp
   # Call into C code.
-  call bpmain
-  # should not return from bpmain
+  call main
+  # should not return from main
   jmp .
 
 .code32
