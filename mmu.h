@@ -15,12 +15,12 @@
 
 // Segment selectors (indexes) in our GDTs.
 // Defined by our convention, not the architecture.
-#define KCSEG32 (1<<3)  /* kernel 32-bit code segment */
-#define KCSEG   (2<<3)  /* kernel code segment */
-#define KDSEG   (3<<3)  /* kernel data segment */
-#define TSSSEG  (4<<3)  /* tss segment - takes two slots */
-#define UDSEG   (6<<3)  /* user data segment */
-#define UCSEG   (7<<3)  /* user code segment */
+#define SEG_KCODE32 (1<<3)  // kernel 32-bit code segment
+#define SEG_KCODE   (2<<3)  // kernel code segment
+#define SEG_KDATA   (3<<3)  // kernel data segment
+#define SEG_TSS     (4<<3)  // tss segment - takes two slots
+#define SEG_UDATA   (6<<3)  // user data segment
+#define SEG_UCODE   (7<<3)  // user code segment
 
 #define NSEGS 8
 
@@ -54,21 +54,21 @@ struct segdesc {
 
 #define DPL_USER    0x3     // User DPL
 
-#define SEG_A      (1<<0)      /* segment accessed bit */
-#define SEG_R      (1<<1)      /* readable (code) */
-#define SEG_W      (1<<1)      /* writable (data) */
-#define SEG_C      (1<<2)      /* conforming segment (code) */
-#define SEG_E      (1<<2)      /* expand-down bit (data) */
-#define SEG_CODE   (1<<3)      /* code segment (instead of data) */
+#define SEG_A      (1<<0)      // segment accessed bit 
+#define SEG_R      (1<<1)      // readable (code) 
+#define SEG_W      (1<<1)      // writable (data) 
+#define SEG_C      (1<<2)      // conforming segment (code) 
+#define SEG_E      (1<<2)      // expand-down bit (data) 
+#define SEG_CODE   (1<<3)      // code segment (instead of data) 
 
 // User and system segment bits.
-#define SEG_S      (1<<4)      /* if 0, system descriptor */
-#define SEG_DPL(x) ((x)<<5)    /* descriptor privilege level (2 bits) */
-#define SEG_P      (1<<7)      /* segment present */
-#define SEG_AVL    (1<<8)      /* available for operating system use */
-#define SEG_L      (1<<9)      /* long mode */
-#define SEG_D      (1<<10)     /* default operation size 32-bit */
-#define SEG_G      (1<<11)     /* granularity */
+#define SEG_S      (1<<4)      // if 0, system descriptor 
+#define SEG_DPL(x) ((x)<<5)    // descriptor privilege level (2 bits) 
+#define SEG_P      (1<<7)      // segment present 
+#define SEG_AVL    (1<<8)      // available for operating system use 
+#define SEG_L      (1<<9)      // long mode 
+#define SEG_D      (1<<10)     // default operation size 32-bit 
+#define SEG_G      (1<<11)     // granularity 
 
 // Application segment type bits
 #define STA_X       0x8     // Executable segment
@@ -76,12 +76,12 @@ struct segdesc {
 #define STA_R       0x2     // Readable (executable segments)
 
 // System segment type bits
-#define SEG_LDT    (2<<0)      /* local descriptor table */
-#define SEG_TSS64A (9<<0)      /* available 64-bit TSS */
-#define SEG_TSS64B (11<<0)     /* busy 64-bit TSS */
-#define SEG_CALL64 (12<<0)     /* 64-bit call gate */
-#define SEG_INTR64 (14<<0)     /* 64-bit interrupt gate */
-#define SEG_TRAP64 (15<<0)     /* 64-bit trap gate */
+#define SEG_LDT    (2<<0)      // local descriptor table 
+#define SEG_TSS64A (9<<0)      // available 64-bit TSS 
+#define SEG_TSS64B (11<<0)     // busy 64-bit TSS 
+#define SEG_CALL64 (12<<0)     // 64-bit call gate 
+#define SEG_INTR64 (14<<0)     // 64-bit interrupt gate 
+#define SEG_TRAP64 (15<<0)     // 64-bit trap gate 
 
 // A virtual address 'la' has a six-part structure as follows:
 //
@@ -129,7 +129,7 @@ struct taskstate {
   uint8 iopb[0];
 } __attribute__ ((packed));
 
-#define INT_P      (1<<7)      /* interrupt descriptor present */
+#define INT_P      (1<<7)      // interrupt descriptor present
 
 struct intgate
 {

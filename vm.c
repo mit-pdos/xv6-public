@@ -49,13 +49,13 @@ seginit(void)
   // to (star >> 32) + 8 and the CS selector to (star >> 32).
   // When executing a sysret instruction the CPU sets the SS selector
   // to (star >> 48) + 8 and the CS selector to (star >> 48) + 16.
-  uint64 star = ((((uint64)UCSEG|0x3)- 16)<<48)|((uint64)(KCSEG)<<32);
+  uint64 star = ((((uint64)SEG_UCODE|0x3)- 16)<<48)|((uint64)(SEG_KCODE)<<32);
   writemsr(MSR_STAR, star);
   writemsr(MSR_LSTAR, (uint64)&sysentry);
   writemsr(MSR_SFMASK, FL_TF | FL_IF);
 
     // Initialize cpu-local storage.
-  writegs(KDSEG);
+  writegs(SEG_KDATA);
   writemsr(MSR_GS_BASE, (uint64)c);
   writemsr(MSR_GS_KERNBASE, (uint64)c);
 }
@@ -202,8 +202,8 @@ switchuvm(struct proc *p)
 
   c = mycpu();
   uint64 base = (uint64) &(c->ts);
-  c->gdt[TSSSEG>>3] =  SEGDESC(base, (sizeof(c->ts)-1), SEG_P|SEG_TSS64A);
-  c->gdt[(TSSSEG>>3)+1] = SEGDESCHI(base);
+  c->gdt[SEG_TSS>>3] =  SEGDESC(base, (sizeof(c->ts)-1), SEG_P|SEG_TSS64A);
+  c->gdt[(SEG_TSS>>3)+1] = SEGDESCHI(base);
   c->ts.rsp[0] = (uint64) p->kstack + KSTACKSIZE;
   c->ts.iomba = (ushort) 0xFFFF;
 
@@ -211,7 +211,7 @@ switchuvm(struct proc *p)
   dtr.base = (uint64)c->gdt;
   lgdt((void *)&dtr.limit);
 
-  ltr(TSSSEG);
+  ltr(SEG_TSS);
 
   lcr3(V2P(p->pgdir));  // switch to process's address space
 

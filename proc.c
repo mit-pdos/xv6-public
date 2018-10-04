@@ -139,8 +139,8 @@ userinit(void)
   inituvm(p->pgdir, _binary_initcode_start, (uint64)_binary_initcode_size);
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
-  p->tf->cs = UCSEG | 0x3;
-  p->tf->ss = UDSEG | 0x3;
+  p->tf->cs = SEG_UCODE | DPL_USER;
+  p->tf->ss = SEG_UDATA | DPL_USER;
   p->tf->r11 = FL_IF;
   p->tf->rsp = PGSIZE;
   p->tf->rcx = 0;  // beginning of initcode.S

@@ -20,7 +20,7 @@ tvinit(void)
   int i;
 
   for(i=0; i<256; i++) {
-    idt[i] = INTDESC(KCSEG, vectors[i], INT_P | SEG_INTR64);
+    idt[i] = INTDESC(SEG_KCODE, vectors[i], INT_P | SEG_INTR64);
   }
   idtinit();
     
