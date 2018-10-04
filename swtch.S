@@ -8,7 +8,7 @@
 
 .globl swtch
 swtch:
-  # Save old callee-save registers
+  # Save old callee-saved registers
   push %rbp
   push %rbx
   push %r11
@@ -18,10 +18,10 @@ swtch:
   push %r15
 
   # Switch stacks
-  mov %rsp, (%rdi)   # first arg is in rdi
-  mov %rsi, %rsp     # second arg is in rsi
+  mov %rsp, (%rdi)   # first arg of swtch is in rdi
+  mov %rsi, %rsp     # second arg of swtch is in rsi
 
-  # Load new callee-save registers
+  # Load new callee-saved registers
   pop %r15
   pop %r14
   pop %r13
