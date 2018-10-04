@@ -270,6 +270,7 @@ iget(uint dev, uint inum)
   if(empty == 0)
     panic("iget: no inodes");
 
+  deviceget(dev);
   ip = empty;
   ip->dev = dev;
   ip->inum = inum;
@@ -358,6 +359,9 @@ iput(struct inode *ip)
 
   acquire(&icache.lock);
   ip->ref--;
+  if (ip->ref == 0) {
+    deviceput(ip->dev);
+  }
   release(&icache.lock);
 }
 
