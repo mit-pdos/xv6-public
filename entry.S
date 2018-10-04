@@ -66,7 +66,7 @@ start:
   call loadgdt
   
   # Enter new 32-bit code segment (already in 32-bit mode).
-  ljmp $KCSEG32, $V2P_WO(start32)  // code32 segment selector
+  ljmp $SEG_KCODE32, $V2P_WO(start32)  // code32 segment selector
   
 start32:
   # Initialize page table.
@@ -75,7 +75,7 @@ start32:
   
   movl $V2P_WO(start64), %eax
   # Enter 64-bit mode.
-  ljmp $KCSEG, $V2P_WO(tramp64)  // code64 segment selector
+  ljmp $SEG_KCODE, $V2P_WO(tramp64)  // code64 segment selector
 
 .code64
 start64:
@@ -92,12 +92,12 @@ start64:
 .global apstart
 apstart:
   call loadgdt
-  ljmp $KCSEG32, $V2P_WO(apstart32)  // code32 segment selector
+  ljmp $SEG_KCODE32, $V2P_WO(apstart32)  // code32 segment selector
   
 apstart32:
   call init32e
   movl $V2P_WO(apstart64), %eax
-  ljmp $KCSEG, $V2P_WO(tramp64)  // code64 segment selector
+  ljmp $SEG_KCODE, $V2P_WO(tramp64)  // code64 segment selector
 
 .code64       
 apstart64:
@@ -107,7 +107,7 @@ apstart64:
   movq %rax, %rsp
   movq $0, %rbp
   call apmain
-1:      jmp 1b
+  jmp .
   
 .code64
 tramp64:
@@ -212,7 +212,7 @@ loadgdt:
   lgdt 2(%esp)
   addl $8, %esp
 
-  movl $KDSEG, %eax  // data segment selector
+  movl $SEG_KDATA, %eax  // data segment selector
   movw %ax, %ds
   movw %ax, %es
   movw %ax, %ss
