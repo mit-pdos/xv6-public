@@ -36,7 +36,7 @@ getorcreatedevice(struct inode *ip) {
         } else if (dev_holder.loopdevs[i].ip == ip) {
             dev_holder.loopdevs[i].ref++;
             release(&dev_holder.lock);
-            return i;
+            return LOOP_DEVICE_TO_DEV(i);
         }
     }
 
