@@ -5,6 +5,7 @@
 #include "sleeplock.h"
 #include "fs.h"
 #include "buf.h"
+#include "device.h"
 
 // Simple logging that allows concurrent FS system calls.
 //
@@ -219,6 +220,12 @@ log_write(struct buf *b)
     panic("too big a transaction");
   if (log.outstanding < 1)
     panic("log_write outside of trans");
+
+  if (IS_LOOP_DEVICE(b->dev)) {
+    // disable journaling for loop devices.
+    bwrite(b);
+    return;
+  }
 
   acquire(&log.lock);
   for (i = 0; i < log.lh.n; i++) {
