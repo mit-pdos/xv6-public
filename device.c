@@ -53,26 +53,30 @@ getorcreatedevice(struct inode *ip) {
 }
 
 void deviceget(uint dev) {
-    dev = DEV_TO_LOOP_DEVICE(dev);
-    acquire(&dev_holder.lock);
-    dev_holder.loopdevs[dev].ref++;
-    release(&dev_holder.lock);
+    if (IS_LOOP_DEVICE(dev)) {
+        dev = DEV_TO_LOOP_DEVICE(dev);
+        acquire(&dev_holder.lock);
+        dev_holder.loopdevs[dev].ref++;
+        release(&dev_holder.lock);
+    }
 }
 
 void
 deviceput(uint dev) {
-    dev = DEV_TO_LOOP_DEVICE(dev);
-    acquire(&dev_holder.lock);
-    if (dev_holder.loopdevs[dev].ref == 1) {
-        release(&dev_holder.lock);
-
-        iput(dev_holder.loopdevs[dev].ip);
-
+    if (IS_LOOP_DEVICE(dev)) {
+        dev = DEV_TO_LOOP_DEVICE(dev);
         acquire(&dev_holder.lock);
-        dev_holder.loopdevs[dev].ip = 0;
+        if (dev_holder.loopdevs[dev].ref == 1) {
+            release(&dev_holder.lock);
+
+            iput(dev_holder.loopdevs[dev].ip);
+
+            acquire(&dev_holder.lock);
+            dev_holder.loopdevs[dev].ip = 0;
+        }
+        dev_holder.loopdevs[dev].ref--;
+        release(&dev_holder.lock);
     }
-    dev_holder.loopdevs[dev].ref--;
-    release(&dev_holder.lock);
 }
 
 struct inode*
