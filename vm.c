@@ -66,22 +66,22 @@ seginit(void)
 static pte_t *
 walkpgdir(pde_t *pml4, const void *va, int alloc)
 {
-  pde_t *pgtab = pml4;
-  pde_t *pte;
+  pde_t *pgdir = pml4;
+  pde_t *pde;
   int level;
   
   for (level = L_PML4; level > 0; level--) {
-    pte = &pgtab[PX(level, va)];
-    if(*pte & PTE_P)
-      pgtab = (pte_t*)P2V(PTE_ADDR(*pte));
+    pde = &pgdir[PX(level, va)];
+    if(*pde & PTE_P)
+      pgdir = (pte_t*)P2V(PTE_ADDR(*pde));
     else {
-      if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
+      if(!alloc || (pgdir = (pde_t*)kalloc()) == 0)
         return 0;
-      memset(pgtab, 0, PGSIZE);
-      *pte = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
+      memset(pgdir, 0, PGSIZE);
+      *pde = V2P(pgdir) | PTE_P | PTE_W | PTE_U;
     }
   }
-  return &pgtab[PX(level, va)];
+  return &pgdir[PX(level, va)];
 }
 
 // Create PTEs for virtual addresses starting at va that refer to
