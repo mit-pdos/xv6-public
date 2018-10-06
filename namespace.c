@@ -17,12 +17,16 @@ struct {
   struct nsproxy nsproxy[NNAMESPACE];
 } namespacetable;
 
-void namespaceinit() {
+void
+namespaceinit(void)
+{
     initlock(&namespacetable.lock, "namespace");
     mount_nsinit();
 }
 
-void namespaceput(struct nsproxy* nsproxy) {
+void
+namespaceput(struct nsproxy* nsproxy)
+{
     acquire(&namespacetable.lock);
     if (nsproxy->ref == 1) {
         release(&namespacetable.lock);
@@ -34,14 +38,18 @@ void namespaceput(struct nsproxy* nsproxy) {
     release(&namespacetable.lock);
 }
 
-struct nsproxy* namespacedup(struct nsproxy* nsproxy) {
+struct nsproxy*
+namespacedup(struct nsproxy* nsproxy)
+{
     acquire(&namespacetable.lock);
     nsproxy->ref++;
     release(&namespacetable.lock);
     return nsproxy;
 }
 
-static struct nsproxy* allocnsproxyinternal(void) {
+static struct nsproxy*
+allocnsproxyinternal(void)
+{
     for (int i = 0; i < NNAMESPACE; i++) {
         if (namespacetable.nsproxy[i].ref == 0) {
             namespacetable.nsproxy[i].ref++;
@@ -52,7 +60,9 @@ static struct nsproxy* allocnsproxyinternal(void) {
     panic("out of nsproxy objects");
 }
 
-struct nsproxy* emptynsproxy(void) {
+struct nsproxy*
+emptynsproxy(void)
+{
     acquire(&namespacetable.lock);
     struct nsproxy* result = allocnsproxyinternal();
     result->mount_ns = newmount_ns();
@@ -61,7 +71,9 @@ struct nsproxy* emptynsproxy(void) {
     return result;
 }
 
-int unshare(int nstype) {
+int
+unshare(int nstype)
+{
     acquire(&namespacetable.lock);
     if (myproc()->nsproxy->ref > 1) {
         struct nsproxy *oldns = myproc()->nsproxy;

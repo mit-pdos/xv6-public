@@ -105,7 +105,9 @@ bget(uint dev, uint blockno)
   panic("bget: no buffers");
 }
 
-void devicerw(struct inode *device, struct buf *b) {
+void
+devicerw(struct inode *device, struct buf *b)
+{
   if ((b->flags & B_DIRTY) == 0) {
     readi(device, (char *) b->data, BSIZE*b->blockno, BSIZE);
   } else {
@@ -115,7 +117,9 @@ void devicerw(struct inode *device, struct buf *b) {
   b->flags &= ~B_DIRTY;
 }
 
-void brw(struct buf *b) {
+void
+brw(struct buf *b)
+{
   struct inode *device;
   if ((device = getinodefordevice(b->dev)) != 0) {
     devicerw(device, b);

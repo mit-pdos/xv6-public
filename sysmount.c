@@ -17,7 +17,8 @@
 #include "mount.h"
 
 int
-sys_mount(void) {
+sys_mount(void)
+{
     char *device_path;
     char *mount_path;
     struct inode *device, *mount_dir;
@@ -75,7 +76,8 @@ sys_mount(void) {
 }
 
 int
-sys_umount(void) {
+sys_umount(void)
+{
     char *mount_path;
     struct inode *mount_dir;
     struct mount *mnt;
@@ -110,13 +112,15 @@ sys_umount(void) {
 }
 
 int
-sys_printmounts(void) {
+sys_printmounts(void)
+{
     printmounts();
     return 0;
 }
 
 int
-sys_printdevices(void) {
+sys_printdevices(void)
+{
     printdevices();
     return 0;
 }

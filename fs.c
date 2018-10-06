@@ -632,7 +632,8 @@ skipelem(char *path, char *name)
 }
 
 struct inode*
-initprocessroot(struct mount **mnt) {
+initprocessroot(struct mount **mnt)
+{
   *mnt = getinitialrootmount();
   return iget(ROOTDEV, ROOTINO);
 }
@@ -723,7 +724,8 @@ nameiparent(char *path, char *name)
 }
 
 struct inode*
-nameiparentmount(char *path, char *name, struct mount **mnt) {
+nameiparentmount(char *path, char *name, struct mount **mnt)
+{
   return namex(path, 1, name, mnt);
 }
 

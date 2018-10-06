@@ -63,7 +63,9 @@ xint(uint x)
   return y;
 }
 
-void printusageexit() {
+void
+printusageexit(void)
+{
   fprintf(stderr, "Usage: mkfs fs.img <is_internal (0/1)> files...\n");
   exit(1);
 }
