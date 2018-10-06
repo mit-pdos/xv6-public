@@ -347,7 +347,7 @@ umountwithopenfiletest(void) {
   }
 
   int fd;
-  if((fd = open("a/umountwithopenfiletest", O_WRONLY|O_CREATE)) < 0){
+  if((fd = open("a/umountwithop", O_WRONLY|O_CREATE)) < 0){
     printf(1, "umountwithopenfiletest: cannot open file\n");
     return;
   }
@@ -365,6 +365,13 @@ umountwithopenfiletest(void) {
   }
 
   printf(1, "umountwithopenfiletest: SUCCESS\n");
+}
+
+static void
+printheader(char *s) {
+  printf(1, "----------------------------\n");
+  printf(1, "--- %s\n", s);
+  printf(1, "----------------------------\n");
 }
 
 static void
@@ -391,10 +398,13 @@ namespacetest(void) {
   if (mounta() != 0) {
     return;
   }
+
   int pid = fork();
   if (pid == 0) {
     unshare(MOUNT_NS);
+
     umounta();
+
     exit();
   } else {
     wait();
@@ -407,12 +417,56 @@ namespacetest(void) {
 }
 
 static void
-printheader(char *s) {
-  printf(1, "----------------------------\n");
-  printf(1, "--- %s\n", s);
-  printf(1, "----------------------------\n");
-}
+namespacefiletest(void) {
+  if (mounta() != 0) {
+    return;
+  }
+  int pid = fork();
+  if (pid == 0) {
+    unshare(MOUNT_NS);
+    mkdir("b");
+    int res = mount("internal_fs_b", "b");
+    if (res != 0) {
+      printf(1, "namespacefiletest: mount returned %d\n", res);
+      return;
+    }
 
+    createfile("b/nsfiletest", "aaa");
+    exit();
+  } else {
+    wait();
+
+    if (umounta() != 0) {
+      return;
+    }
+    if (open("b/nsfiletest", 0) >= 0) {
+      printf(1, "namespacefiletest: should not have been able to open file\n");
+      return;
+    }
+
+    int res = mount("internal_fs_b", "b");
+    if (res != 0) {
+      printf(1, "namespacefiletest: mount returned %d\n", res);
+      return;
+    }
+
+    int fd;
+    if ((fd = open("b/nsfiletest", 0)) < 0) {
+      printf(1, "namespacefiletest: failed to open file after mount\n");
+      return;
+    }
+
+    close(fd);
+
+    res = umount("b");
+    if (res != 0) {
+      printf(1, "namespacefiletest: umount returned %d\n", res);
+      return;
+    }
+    
+    printf(1, "namespacefiletest: SUCCESS\n");
+  }
+}
 
 int
 main(int argc, char *argv[])
@@ -434,6 +488,7 @@ main(int argc, char *argv[])
 
   printheader("Mount namespace tests:");
   namespacetest();
+  namespacefiletest();
 
   printheader("Cleaning up:");
   unlink("a");
