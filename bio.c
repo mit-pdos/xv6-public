@@ -56,6 +56,18 @@ binit(void)
   }
 }
 
+void
+invalidateblocks(uint dev)
+{
+  acquire(&bcache.lock);
+  for(struct buf *b = bcache.head.next; b != &bcache.head; b = b->next){
+    if(b->dev == dev){
+      b->flags &= ~(B_VALID|B_DIRTY);
+    }
+  }
+  release(&bcache.lock);
+}
+
 // Look through buffer cache for block on device dev.
 // If not found, allocate a buffer.
 // In either case, return locked buffer.
@@ -100,6 +112,7 @@ void devicerw(struct inode *device, struct buf *b) {
     writei(device, (char *) b->data, BSIZE*b->blockno, BSIZE);
   }
   b->flags |= B_VALID;
+  b->flags &= ~B_DIRTY;
 }
 
 void brw(struct buf *b) {

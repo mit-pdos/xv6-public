@@ -70,6 +70,7 @@ deviceput(uint dev) {
             release(&dev_holder.lock);
 
             iput(dev_holder.loopdevs[dev].ip);
+            invalidateblocks(LOOP_DEVICE_TO_DEV(dev));
 
             acquire(&dev_holder.lock);
             dev_holder.loopdevs[dev].ip = 0;
