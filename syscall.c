@@ -25,6 +25,17 @@ fetchint(uint64 addr, int *ip)
   return 0;
 }
 
+// Fetch the uint64 at addr from the current process.
+int
+fetchaddr(uint64 addr, uint64 *ip)
+{
+  struct proc *curproc = myproc();
+  if(addr >= curproc->sz || addr+sizeof(uint64) > curproc->sz)
+    return -1;
+  *ip = *(uint64*)(addr);
+  return 0;
+}
+
 // Fetch the nul-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
@@ -67,16 +78,6 @@ fetcharg(int n)
   return -1;
 }
 
-int
-fetchaddr(uint64 addr, uint64 *ip)
-{
-  struct proc *curproc = myproc();
-  if(addr >= curproc->sz || addr+sizeof(uint64) > curproc->sz)
-    return -1;
-  *ip = *(uint64*)(addr);
-  return 0;
-}
-
 // Fetch the nth 32-bit system call argument.
 int
 argint(int n, int *ip)
@@ -116,8 +117,8 @@ argptr(int n, char **pp, int size)
 int
 argstr(int n, char **pp)
 {
-  int addr;
-  if(argint(n, &addr) < 0)
+  uint64 addr;
+  if(argaddr(n, &addr) < 0)
     return -1;
   return fetchstr(addr, pp);
 }
