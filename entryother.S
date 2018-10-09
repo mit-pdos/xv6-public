@@ -39,7 +39,7 @@ start:
   # Complete the transition to 32-bit protected mode by using a long jmp
   # to reload %cs and %eip.  The segment descriptors are set up with no
   # translation, so that the mapping is still the identity mapping.
-  ljmpl    $(KCSEG32), $start32
+  ljmpl    $(SEG_KCODE32), $start32
 
 .code32
 start32:
