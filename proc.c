@@ -17,10 +17,8 @@ static struct proc *initproc;
 int nextpid = 1;
 extern void forkret(void);
 
-// we can return two ways out of the kernel and
-// for new processes we can choose either way
+// for returning  out of the kernel
 extern void sysexit(void);
-extern void trapret(void);
 
 static void wakeup1(void *chan);
 
@@ -102,16 +100,16 @@ found:
   }
   sp = p->kstack + KSTACKSIZE;
 
-  // Leave room for trap frame.
-  sp -= sizeof *p->tf;
+  // Leave room for syscall frame.
+  sp -= sizeof *p->sf;
 
   if ((uint64) sp % 16)
     panic("misaligned sp");
 
-  p->tf = (struct trapframe*)sp;
+  p->sf = (struct sysframe*)sp;
 
   // Set up new context to start executing at forkret,
-  // which returns to trapret.
+  // which returns to sysexit.
   sp -= sizeof(uint64);
   *(uint64*)sp = (uint64)sysexit;
 
@@ -138,12 +136,10 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (uint64)_binary_initcode_size);
   p->sz = PGSIZE;
-  memset(p->tf, 0, sizeof(*p->tf));
-  p->tf->cs = SEG_UCODE | DPL_USER;
-  p->tf->ss = SEG_UDATA | DPL_USER;
-  p->tf->r11 = FL_IF;
-  p->tf->rsp = PGSIZE;
-  p->tf->rcx = 0;  // beginning of initcode.S
+  memset(p->sf, 0, sizeof(*p->sf));
+  p->sf->r11 = FL_IF;
+  p->sf->rsp = PGSIZE;
+  p->sf->rcx = 0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -204,10 +200,10 @@ fork(void)
   }
   np->sz = curproc->sz;
   np->parent = curproc;
-  *np->tf = *curproc->tf;
+  *np->sf = *curproc->sf;
 
   // Clear %eax so that fork returns 0 in the child.
-  np->tf->rax = 0;
+  np->sf->rax = 0;
 
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])

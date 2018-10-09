@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct sysframe;
 
 // bio.c
 void            binit(void);
@@ -156,7 +157,7 @@ int             argaddr(int, uint64 *);
 int             fetchint(uint64, int*);
 int             fetchstr(uint64, char**);
 int             fetchaddr(uint64, uint64*);
-void            syscall(void);
+void            syscall(struct sysframe*);
 
 // timer.c
 void            timerinit(void);

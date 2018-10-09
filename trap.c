@@ -41,16 +41,6 @@ idtinit(void)
 void
 trap(struct trapframe *tf)
 {
-  if(tf->trapno == T_SYSCALL){
-    if(myproc()->killed)
-      exit();
-    myproc()->tf = tf;
-    syscall();
-    if(myproc()->killed)
-      exit();
-    return;
-  }
-
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){

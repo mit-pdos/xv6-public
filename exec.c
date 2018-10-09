@@ -85,8 +85,8 @@ exec(char *path, char **argv)
   ustack[1] = argc;
   ustack[2] = sp - (argc+1)*sizeof(uint64);  // argv pointer
 
-  curproc->tf->rdi = argc;
-  curproc->tf->rsi = sp - (argc+1)*sizeof(uint64);
+  curproc->sf->rdi = argc;
+  curproc->sf->rsi = sp - (argc+1)*sizeof(uint64);
 
   sp -= (3+argc+1) * sizeof(uint64);
   if(copyout(pgdir, sp, ustack, (3+argc+1)*sizeof(uint64)) < 0)
@@ -102,9 +102,8 @@ exec(char *path, char **argv)
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
   curproc->sz = sz;
-  curproc->tf->rip = elf.entry;  // main
-  curproc->tf->rcx = elf.entry;
-  curproc->tf->rsp = sp;
+  curproc->sf->rcx = elf.entry;  // main
+  curproc->sf->rsp = sp;
   switchuvm(curproc);
   freevm(oldpgdir, oldsz);
   return 0;

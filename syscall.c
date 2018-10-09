@@ -62,17 +62,17 @@ fetcharg(int n)
   struct proc *curproc = myproc();
   switch (n) {
   case 0:
-    return curproc->tf->rdi;
+    return curproc->sf->rdi;
   case 1:
-    return curproc->tf->rsi;
+    return curproc->sf->rsi;
   case 2:
-    return curproc->tf->rdx;
+    return curproc->sf->rdx;
   case 3:
-    return curproc->tf->r10;
+    return curproc->sf->r10;
   case 4:
-    return curproc->tf->r8;
+    return curproc->sf->r8;
   case 5:
-    return curproc->tf->r9;
+    return curproc->sf->r9;
   }
   panic("fetcharg");
   return -1;
@@ -169,18 +169,31 @@ static int (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 };
 
-void
-syscall(void)
+static void
+dosyscall(void)
 {
   int num;
   struct proc *curproc = myproc();
 
-  num = curproc->tf->rax;
+  num = curproc->sf->rax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    curproc->tf->rax = syscalls[num]();
+    curproc->sf->rax = syscalls[num]();
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             curproc->pid, curproc->name, num);
-    curproc->tf->rax = -1;
+    curproc->sf->rax = -1;
   }
 }
+
+void
+syscall(struct sysframe *sf)
+{
+    if(myproc()->killed)
+      exit();
+    myproc()->sf = sf;
+    dosyscall();
+    if(myproc()->killed)
+      exit();
+    return;
+}
+

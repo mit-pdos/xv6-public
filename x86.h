@@ -166,6 +166,33 @@ struct trapframe {
    uint64 ss;      
 }__attribute__((packed));
 
+struct sysframe {
+  // arguments
+  uint64 rdi;
+  uint64 rsi;
+  uint64 rdx;
+  uint64 r10;
+  uint64 r8;
+  uint64 r9;
+  
+  // callee-saved registers
+  uint64 r15;
+  uint64 r14;
+  uint64 r13;
+  uint64 r12;
+  uint64 rbx;
+  uint64 rbp;
+
+  // return value
+  uint64 rax;
+
+  // syscall registers
+  uint64 r11;   // eflags
+  uint64 rcx;   // rip
+  uint64 rsp;
+  
+}__attribute__((packed));
+
 #endif
 
 #define TF_CS 144 // offset in trapframe for saved cs
