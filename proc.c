@@ -37,21 +37,29 @@ cpuid() {
 // Must be called with interrupts disabled to avoid the caller being
 // rescheduled between reading lapicid and running through the loop.
 struct cpu*
-mycpu(void)
+getmycpu(void)
 {
   int apicid, i;
   
   if(readeflags()&FL_IF)
-    panic("mycpu called with interrupts enabled\n");
+    panic("getmycpu called with interrupts enabled\n");
   
   apicid = lapicid();
-  // APIC IDs are not guaranteed to be contiguous. Maybe we should have
-  // a reverse map, or reserve a register to store &cpus[i].
+  // APIC IDs are not guaranteed to be contiguous.
   for (i = 0; i < ncpu; ++i) {
     if (cpus[i].apicid == apicid)
       return &cpus[i];
   }
   panic("unknown apicid\n");
+}
+
+// Return this core's cpu struct using %gs. %gs points this core's struct
+// cpu. Offet 24 in struct cpu is cpu.
+struct cpu*
+mycpu(void) {
+  struct cpu *c;
+  asm volatile("mov %%gs:24, %0" : "=r" (c));
+  return c;
 }
 
 // Disable interrupts so that we are not rescheduled

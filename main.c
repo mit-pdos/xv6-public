@@ -45,6 +45,8 @@ main(uint64 mbmagic, uint64 mbaddr)
   return 0;
 }
 
+extern struct cpu* getmycpu();
+
 // Common CPU setup code.
 static void
 mpmain(void)

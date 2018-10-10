@@ -110,6 +110,7 @@ int             fork(void);
 int             growproc(int);
 int             kill(int);
 struct cpu*     mycpu(void);
+struct cpu*     getmycpu(void);
 struct proc*    myproc();
 void            pinit(void);
 void            procdump(void);

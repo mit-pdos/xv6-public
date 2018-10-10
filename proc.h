@@ -3,6 +3,7 @@ struct cpu {
   uint64 syscallno;            // Temporary used by sysentry
   uint64 usp;                  // Temporary used by sysentry
   struct proc *proc;           // The process running on this cpu or null
+  struct cpu *cpu;             // XXX
   uchar apicid;                // Local APIC ID
   struct context *scheduler;   // swtch() here to enter scheduler
   struct taskstate ts;         // Used by x86 to find stack for interrupt

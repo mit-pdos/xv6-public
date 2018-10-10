@@ -39,7 +39,8 @@ seginit(void)
   struct cpu *c;
   struct desctr dtr;
 
-  c = mycpu();
+  c = getmycpu();
+  
   memmove(c->gdt, bootgdt, sizeof bootgdt);
   dtr.limit = sizeof(c->gdt)-1;
   dtr.base = (uint64) c->gdt;
@@ -54,10 +55,12 @@ seginit(void)
   writemsr(MSR_LSTAR, (uint64)&sysentry);
   writemsr(MSR_SFMASK, FL_TF | FL_IF);
 
-    // Initialize cpu-local storage.
+  // Initialize cpu-local storage so that each core can easily
+  // find its struct cpu using %gs.
   writegs(SEG_KDATA);
   writemsr(MSR_GS_BASE, (uint64)c);
   writemsr(MSR_GS_KERNBASE, (uint64)c);
+  c->cpu = c;
 }
 
 // Return the address of the PTE in page table pgdir
