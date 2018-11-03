@@ -233,7 +233,7 @@ consoleintr(int (*getc)(void))
 }
 
 int
-consoleread(struct inode *ip, char *dst, int n)
+consoleread(struct inode *ip, char *dst, uint off, int n)
 {
   uint target;
   int c;
@@ -271,7 +271,7 @@ consoleread(struct inode *ip, char *dst, int n)
 }
 
 int
-consolewrite(struct inode *ip, char *buf, int n)
+consolewrite(struct inode *ip, char *buf, uint off, int n)
 {
   int i;
 

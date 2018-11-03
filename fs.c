@@ -459,7 +459,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
-    return devsw[ip->major].read(ip, dst, n);
+    return devsw[ip->major].read(ip, dst, off, n);
   }
 
   if(off > ip->size || off + n < off)
@@ -488,7 +488,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
-    return devsw[ip->major].write(ip, src, n);
+    return devsw[ip->major].write(ip, src, off, n);
   }
 
   if(off > ip->size || off + n < off)
