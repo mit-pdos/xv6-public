@@ -89,3 +89,40 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_backtrace(void)
+{
+  struct proc *p = myproc();
+  cprintf("eax:0x%x\n", p->tf->eax);
+  cprintf("ebx:0x%x\n", p->tf->ebx);
+  cprintf("ecx:0x%x\n", p->tf->ecx);
+  cprintf("edx:0x%x\n", p->tf->edx);
+  cprintf("edi:0x%x\n", p->tf->edi);
+  cprintf("esi:0x%x\n", p->tf->esi);
+
+  cprintf("cs:0x%x\n", p->tf->cs);
+  cprintf("ds:0x%x\n", p->tf->ds);
+  cprintf("es:0x%x\n", p->tf->es);
+  cprintf("fs:0x%x\n", p->tf->fs);
+  cprintf("gs:0x%x\n", p->tf->gs);
+  cprintf("ss:0x%x\n", p->tf->ss);
+
+  cprintf("eflags:0x%x\n", p->tf->eflags);
+  cprintf("err:0x%x\n", p->tf->err);
+  
+  cprintf("esp:0x%x\n", p->tf->esp);
+  cprintf("eip:0x%x\n", p->tf->eip);
+  cprintf("ebp:0x%x\n", p->tf->ebp);
+
+  int count = 0;
+  uint ebp = p->tf->ebp;
+  uint return_addr = 0x0;
+  while (return_addr != 0xffffffff) {    
+    memmove(&return_addr, (const void *)(ebp + 4), sizeof(uint));
+    cprintf("%d#  0x%x\n", count++, return_addr);
+    memmove(&ebp, (const void *)ebp, sizeof(uint));
+  } 
+
+  return 0;
+}
