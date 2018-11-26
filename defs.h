@@ -68,13 +68,17 @@ char*           kalloc(void);
 void            kfree(char*);
 void            kinit1(void*, void*);
 void            kinit2(void*, void*);
+uint 			numFreePages(void);
+void 			incrementReferenceCount(uint pa);
+void 			decrementReferenceCount(uint pa);
+uint 			getReferenceCount(uint pa);
 
 // kbd.c
 void            kbdintr(void);
 
 // lapic.c
 void            cmostime(struct rtcdate *r);
-int             lapicid(void);
+int             cpunum(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
 void            lapicinit(void);
@@ -103,18 +107,14 @@ int             pipewrite(struct pipe*, char*, int);
 
 //PAGEBREAK: 16
 // proc.c
-int             cpuid(void);
 void            exit(void);
 int             fork(void);
 int             growproc(int);
 int             kill(int);
-struct cpu*     mycpu(void);
-struct proc*    myproc();
 void            pinit(void);
 void            procdump(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
-void            setproc(struct proc*);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
@@ -135,7 +135,7 @@ void            popcli(void);
 
 // sleeplock.c
 void            acquiresleep(struct sleeplock*);
-void            releasesleep(struct sleeplock*);
+void             releasesleep(struct sleeplock*);
 int             holdingsleep(struct sleeplock*);
 void            initsleeplock(struct sleeplock*, char*);
 
@@ -180,11 +180,12 @@ int             deallocuvm(pde_t*, uint, uint);
 void            freevm(pde_t*);
 void            inituvm(pde_t*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
-pde_t*          copyuvm(pde_t*, uint);
+pde_t*          copyuvm(pde_t*, uint);	// modified copyuvm for CoW fork
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+void			pagefault(uint err_code); // function to handle page fault
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
