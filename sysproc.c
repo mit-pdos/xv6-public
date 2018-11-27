@@ -156,11 +156,11 @@ sys_getprocinfo(void)
 
   memmove(up->name, p->name, 16);
   up->pid = p->pid;
-  up->parent = p->parent;
+  up->parentpid = up->pid == 1 ? 0 : p->parent->pid;  // The parent pid of first process init should be 0 (None)
   up->sz = p->sz;
   up->state = p->state;
   up->chan = p->chan == 0 ? 0 : 1;
-  up->killed = p->killed;
+  up->killed = p->killed == 0 ? 0 : 1;
 
   return 0;
 }

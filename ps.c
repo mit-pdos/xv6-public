@@ -18,13 +18,13 @@ main(int argc, char *argv[]) {
     struct uproc up;
     int i;
 
-    printf(1, "pid\tname\tsize\tchannel\tkilled\tstate\n");
+    printf(1, "PID\tName\tSize\tParPID\tChannel\tKilled\tState\n");
 
     for (i = 0; i < NPROC; i++) {
         if (getprocinfo(i, &up) != 0) {
             continue;
         }
-        printf(1, "%d\t%s\t%d\t%d\t%d\t%s\n", up.pid, up.name, up.sz, up.chan, up.killed, PROC_STATE[up.state]);
+        printf(1, "%d\t%s\t%d\t%d\t%d\t%d\t%s\n", up.pid, up.name, up.sz, up.parentpid, up.chan, up.killed, PROC_STATE[up.state]);
     }   
     exit();
 }
