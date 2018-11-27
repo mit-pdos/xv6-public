@@ -6,6 +6,8 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "spinlock.h"
+#include "uproc.h"
 
 int
 sys_fork(void)
@@ -123,6 +125,42 @@ sys_backtrace(void)
     cprintf("%d#  0x%x\n", count++, return_addr);
     memmove(&ebp, (const void *)ebp, sizeof(uint));
   } 
+
+  return 0;
+}
+
+struct {
+  struct spinlock lock;
+  struct proc proc[NPROC];
+} ptable;
+
+int
+sys_getprocinfo(void)
+{
+  int proc_num;
+  char *tmp; 
+
+  if(argint(0, &proc_num) < 0 || argptr(1, &tmp, sizeof(struct uproc)) < 0 )
+    return -1;
+  
+  if(proc_num >= NPROC || proc_num < 0) {
+    return -1;
+  }
+
+  struct uproc *up = (struct uproc *)tmp;
+  struct proc *p = &ptable.proc[proc_num];
+
+  if (p->state == UNUSED) {
+    return 1;
+  }
+
+  memmove(up->name, p->name, 16);
+  up->pid = p->pid;
+  up->parent = p->parent;
+  up->sz = p->sz;
+  up->state = p->state;
+  up->chan = p->chan == 0 ? 0 : 1;
+  up->killed = p->killed;
 
   return 0;
 }
