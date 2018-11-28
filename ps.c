@@ -7,7 +7,6 @@ int
 main(int argc, char *argv[])
 {
     cps();
-    cps();
     
     exit();
 }
