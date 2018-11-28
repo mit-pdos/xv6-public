@@ -47,11 +47,18 @@ sys_sbrk(void)
 {
   int addr;
   int n;
+  uint sz;
 
   if(argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
   myproc()->sz += n;
+  if(n < 0){
+    if((sz = deallocuvm(myproc()->pgdir, addr, myproc()->sz)) == 0){
+      cprintf("Deallocating failed...\n");
+      return -1;
+    }
+  }
   // if(growproc(n) < 0)
     // return -1;
   return addr;
