@@ -112,7 +112,7 @@ sys_cps(void)
 }
 
 int
-sys_calloc(void);
+sys_calloc(void)
 {
     return calloc();
 }
