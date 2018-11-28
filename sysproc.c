@@ -110,3 +110,9 @@ sys_cps(void)
 {
   return cps();
 }
+
+int
+sys_calloc(void);
+{
+    return calloc();
+}

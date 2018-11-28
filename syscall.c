@@ -104,6 +104,7 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_cps(void);
+extern int sys_calloc(void);
 
 
 static int (*syscalls[])(void) = {
@@ -129,6 +130,7 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_cps]     sys_cps,
+[SYS_calloc]  sys_calloc,
 };
 
 void

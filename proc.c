@@ -558,3 +558,9 @@ cps()
 
   return 22;
 }
+
+int
+calloc()
+{
+    return 23;
+}
