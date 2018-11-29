@@ -92,6 +92,27 @@ filestat(struct file *f, struct stat *st)
   return -1;
 }
 
+int 
+flstat(struct file *f, int *lockstatus){
+  if(f->type == FD_INODE){
+    *lockstatus = f->ip->lock.locked;
+    return 0;
+  }
+  return -1;
+}
+
+int flockwr(struct file *f, int *lockstatus,int lockrequest){
+  if(f->type == FD_INODE){
+    *lockstatus = f->ip->lock.lockedstat;
+    if(*lockstatus==0)
+    {
+      f->ip->lock.lockedstat=lockrequest;
+    }
+    return 0;
+  }
+  return -1;
+}
+
 // Read from file f.
 int
 fileread(struct file *f, char *addr, int n)
@@ -118,7 +139,8 @@ int
 filewrite(struct file *f, char *addr, int n)
 {
   int r;
-
+  if(f->ip->lock.lockedstat==1)
+    return -1;
   if(f->writable == 0)
     return -1;
   if(f->type == FD_PIPE)

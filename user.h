@@ -23,6 +23,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int flstat(int fd, int *lockstatus);
+int flockwr(int fd, int *lockstatus,int lockrequest);
 
 // ulib.c
 int stat(const char*, struct stat*);

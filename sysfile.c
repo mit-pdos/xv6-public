@@ -443,3 +443,28 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+int 
+sys_flstat(void)
+{
+  struct file *f;
+  int  *lockstat;
+  
+    if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&lockstat, sizeof(*lockstat)) < 0)
+    return -1;
+   return flstat(f, lockstat);
+  return 1;
+}
+
+int 
+sys_flockwr(void)
+{
+  struct file *f;
+  int  *lockstat;
+  int  lockrequest;
+  
+    if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&lockstat, sizeof(*lockstat)) < 0|| argint(2, &lockrequest) < 0)
+    return -1;
+   return flockwr(f, lockstat,lockrequest);
+  return 1;
+}
