@@ -37,5 +37,6 @@ char* gets(char*, int max);
 uint strlen(const char*);
 void* memset(void*, int, uint);
 void* malloc(uint);
+void* calloc_(uint size, uint nbytes);
 void free(void*);
 int atoi(const char*);

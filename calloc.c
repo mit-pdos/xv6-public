@@ -6,6 +6,6 @@
 int
 main(int argc, char* argv[])
 {
-    calloc_(atoi(argv[argc-1]),4096)
+    calloc_(atoi(argv[argc-1]),4096);
     exit();
 }
