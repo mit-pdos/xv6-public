@@ -6,13 +6,29 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "signal.h"
+
+
+#define SIGFPE 0
 
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
 
+#include "defhandlers.c"
 static struct proc *initproc;
+static int lastShInvokedPid=-1;
+
+int getSigBitwise(int signum)
+{
+	int ans=1;
+	return ans<<signum;
+}
+int getBitwiseXor(int a,int b)
+{
+	return a^b;
+}
 
 int nextpid = 1;
 extern void forkret(void);
@@ -531,4 +547,64 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int cps()
+{
+ struct proc *p;
+ sti();
+ acquire(&ptable.lock);
+ cprintf("name \t pid \t state \t \n");
+ for(p=ptable.proc;p<&ptable.proc[NPROC];p++){
+	if(p->state==SLEEPING)
+	  cprintf("%s \t %d \t SLEEPING \t \n",p->name,p->pid);
+	else if(p->state==RUNNING)
+	  cprintf("%s \t %d \t RUNNING \t \n ",p->name,p->pid);
+        else if(p->state==RUNNABLE)
+          cprintf("%s \t %d \t RUNNABLE \t \n",p->name,p->pid);
+ }
+ release(&ptable.lock);
+
+ return 22;
+}
+
+int signal(int signum,sighandler_t handler)
+{
+
+	if(signum>=0&&signum<=5)
+	{
+		myproc()->sighandlers[signum]=handler;
+		return 0;
+	}else{
+		return -1;
+	}
+}
+
+int sigsend(int pid,int signum){
+	struct proc *p;
+	int flag=0;
+	int sigBitwise=getSigBitwise(signum);
+	acquire(&ptable.lock);
+	for(p=ptable.proc;p<&ptable.proc[NPROC];p++)
+	{
+		if(p->pid==pid)
+		{
+		 flag=1;
+		 break;
+		}
+	}
+	if(flag==0)
+	{
+	release(&ptable.lock);
+	return -1;
+	}
+	p->pendingSignals=p->pendingSignals|sigBitwise;
+	release(&ptable.lock);
+	return 0;
+}
+
+void ctrlc(void)
+{
+  if(lastShInvokedPid!=-1)
+	sigsend(lastShInvokedPid,SIGINT);
 }

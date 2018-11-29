@@ -15,6 +15,11 @@
 #include "proc.h"
 #include "x86.h"
 
+#define SIGNIT 0
+
+int sigsend(int ,int );
+void ctrlc(void);
+
 static void consputc(int);
 
 static int panicked = 0;

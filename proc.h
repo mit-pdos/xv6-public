@@ -1,3 +1,5 @@
+#include "defs.h"
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -49,6 +51,11 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  int pendingSignals;
+  sighandler_t sighandlers[32];
+  int alarmticks;
+  void(* alarmhandler)();
+  int tickscount;
 };
 
 // Process memory is laid out contiguously, low addresses first:

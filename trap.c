@@ -8,6 +8,7 @@
 #include "traps.h"
 #include "spinlock.h"
 
+#define SIGFPE 0
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
@@ -51,8 +52,18 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
-      wakeup(&ticks);
+      wakeup(&ticks
+);
       release(&tickslock);
+    }
+     if(myproc()&&(tf->cs &3)==3){
+     myproc()->tickscount++;
+      if(myproc()->tickscount==myproc()->alarmticks){
+	myproc()->tickscount=0;
+	tf->esp-=4;
+	*(uint *) tf->esp= tf->eip;
+	tf->eip = (uint)myproc()->alarmhandler;
+	}
     }
     lapiceoi();
     break;

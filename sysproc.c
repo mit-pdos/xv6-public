@@ -6,6 +6,8 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+int signal(int signum,sighandler_t handler);
+int sigsend(int pid,int signum);
 
 int
 sys_fork(void)
@@ -88,4 +90,54 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int
+sys_cps(void)
+{
+  return cps();
+}
+
+int
+sys_alarm(void)
+{
+  int ticks;
+  void (*handler)();
+  if(argint(0,&ticks)<0)
+   return -1;
+  if(argptr(1,(char**)&handler,1)<0)
+   return -1;
+  myproc()->alarmticks =ticks;
+  myproc()->alarmhandler=handler;
+   return 0;
+}
+
+int sys_signal(void)
+{
+  int sig_num;
+  int handlerInt=0;
+  if(argint(0,&sig_num)<0)
+	return -1;
+  if(argint(1,&handlerInt)<0)
+	return -1;
+  return signal(sig_num,(sighandler_t)handlerInt);	
+}
+
+int sys_halt(void)
+{
+  char *p="Shutdown";
+  for(;*p;p++)
+	outw(0xB004,0x2000);
+  return 0;
+}
+
+int sys_sigsend(void){
+  int pid;
+  int signum;
+  if(argint(0,&pid)<0)
+	return -1;
+  if(argint(1,&signum)<0)
+	return -1;
+  return sigsend(pid,signum);
+
 }
