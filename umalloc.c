@@ -103,7 +103,7 @@ urealloc(void* curp, uint nbytes)
     if (sizeof(curp) < nbytes) {
       newp = malloc(nbytes);
       if (!newp) { goto error; }
-      memcpy(newp, curp, sizeof(curp));
+      memmove(newp, curp, sizeof(curp));
       free(curp);
     } else {
       newp = curp;
