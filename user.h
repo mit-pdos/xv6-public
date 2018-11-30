@@ -27,6 +27,7 @@ int cps(void);
 int calloc(void);
 int sbrk_de(int);
 char* csbrk(int);
+int realloc(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

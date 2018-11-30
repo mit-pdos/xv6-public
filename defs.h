@@ -125,6 +125,7 @@ int             cps(void);
 int             calloc(void);
 int             sbrk_de(void);
 int             cgrowproc(int);
+int			    realloc(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

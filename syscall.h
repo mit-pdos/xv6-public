@@ -24,3 +24,4 @@
 #define SYS_calloc  23
 #define SYS_sbrk_de 24
 #define SYS_csbrk   25
+#define SYS_realloc 26

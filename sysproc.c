@@ -176,3 +176,9 @@ sys_csbrk(void)
         return -1;
     return addr;
 }
+
+int
+sys_realloc(void)
+{
+  return realloc();
+}

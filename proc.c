@@ -591,3 +591,10 @@ cgrowproc(int n)
     switchuvm(curproc);
     return 0;
 }
+
+int
+realloc()
+{
+  cprintf("[success] proc.realloc() test!");
+  return 26;
+}

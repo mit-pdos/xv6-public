@@ -107,6 +107,7 @@ extern int sys_cps(void);
 extern int sys_calloc(void);
 extern int sys_sbrk_de(void);
 extern int sys_csbrk(void);
+extern int sys_realloc(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -134,7 +135,7 @@ static int (*syscalls[])(void) = {
 [SYS_calloc]  sys_calloc,
 [SYS_sbrk_de] sys_sbrk_de,
 [SYS_csbrk]   sys_csbrk,
-
+[SYS_csbrk]   sys_realloc,
 };
 
 void
