@@ -42,5 +42,6 @@ uint strlen(const char*);
 void* memset(void*, int, uint);
 void* malloc(uint);
 void* calloc_(uint size, uint nbytes);
+void* urealloc(void* curp, uint nbytes);
 void free(void*);
 int atoi(const char*);

@@ -89,6 +89,34 @@ malloc(uint nbytes)
   }
 }
 
+void*
+urealloc(void* curp, uint nbytes)
+{
+  Header *chp = curp;
+  void* *newp;
+
+  if (!chp) {
+    newp = malloc(nbytes);
+    printf(1,"not exist! new it!\t curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
+    if (!newp)
+      return 0;
+  } else {
+    if (chp->s.size < nbytes) {
+      printf(1,"exist! new bigger.\t curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
+      newp = malloc(nbytes);
+      if (!newp)
+        return 0;
+      memmove(newp, curp, chp->s.size);
+      free(curp);
+      printf(1,"curp=%p, newp=%p, csize=%d \n", curp, newp, chp->s.size);
+    } else {
+      printf(1,"exist! use curr.\t curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
+      newp = curp;
+    }
+  }
+  return newp;
+}
+
 //cmorecore
 
 static Header*
