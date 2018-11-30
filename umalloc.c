@@ -2,7 +2,6 @@
 #include "stat.h"
 #include "user.h"
 #include "param.h"
-#include "string"
 
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
@@ -92,25 +91,27 @@ malloc(uint nbytes)
 
 
 void*
-realloc(void* ap, uint nbytes)
+urealloc(void* curp, uint nbytes)
 {
-  void *new;
+  void *newp;
 
-  if (!ap) {
-    new = malloc(nbytes);
-    if (!new) { goto error; }
+  printf(1,"curp: %p, nbytes:%d \n", curp, nbytes);
+  
+  if (!curp) {
+    newp = malloc(nbytes);
+    if (!newp) { goto error; }
   } else {
-    if (sizeof(ap) < nbytes) {
-      new = malloc(nbytes);
-      if (!new) { goto error; }
-      memcpy(new, ap, sizeof(ap));
-      free(ap);
+    if (sizeof(curp) < nbytes) {
+      newp = malloc(nbytes);
+      if (!newp) { goto error; }
+      memcpy(newp, curp, sizeof(curp));
+      free(curp);
     } else {
-      new = ap;
+      newp = curp;
     }
   }
 
-  return new;
+  return newp;
 error:
   return 0;
 }
