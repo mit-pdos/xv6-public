@@ -6,7 +6,7 @@
 int
 main(int argc, char* argv[])
 {
-    printf(1,"[success] proc.realloc() test!");
+    printf(1,"[success] realloc.c main test!");
     realloc();
     exit();
 }
