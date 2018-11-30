@@ -6,7 +6,7 @@
 int
 main(int argc, char* argv[])
 {
-    cprintf("start realloc~");
+    printf("start realloc~");
     realloc();
     exit();
 }
