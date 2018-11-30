@@ -97,11 +97,11 @@ realloc(void* ap, uint nbytes)
   void *new;
 
   if (!ap) {
-    new = malloc(size);
+    new = malloc(nbytes);
     if (!new) { goto error; }
   } else {
     if (sizeof(ap) < nbytes) {
-      new = malloc(size);
+      new = malloc(nbytes);
       if (!new) { goto error; }
       memcpy(new, ap, sizeof(ap));
       free(ap);
