@@ -566,7 +566,7 @@ calloc()
 }
 
 int
-sbrk_de()
+brk_de()
 {
   return 24;
 }
@@ -596,4 +596,10 @@ int
 realloc()
 {
   return 26;
+}
+
+int
+sbrk_de()
+{
+  return 27;
 }

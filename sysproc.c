@@ -42,46 +42,25 @@ sys_getpid(void)
   return myproc()->pid;
 }
 
-// ===== brk and sbrk related sys call =====
-// int
-// sys_sbrk_final(void)
-// {
-//   int addr;
-//   int n;
-//   uint sz;
-
-//   if(argint(0, &n) < 0)
-//     return -1;
-//   addr = myproc()->sz;
-//   myproc()->sz += n;
-//   if(n < 0){
-//     if((sz = deallocuvm(myproc()->pgdir, addr, myproc()->sz)) == 0){
-//       cprintf("Deallocating failed...\n");
-//       return -1;
-//     }
-//   }
-//   if(growproc(n) < 0)
-//     return -1;
-//   return addr;
-// }
-
 int
-sys_sbrk_de(int nbyte)
+sys_brk_de(int input_addr)
 {
-  int addr;
+  int new_addr;
+  int old_addr;
   int n;
   uint sz;
-  // input offset amount
-  n = nbyte;
 
-  // whether offset viable
-  if (argint(0, &n) < 0)
+  // input address location, then change to int value
+  if (argint(0, &input_addr) < 0)
     return -1;
-  addr = myproc()->sz;
-  cprintf("proc old address: %p\n", addr);
+  old_addr = myproc()->sz;
+  cprintf("proc old address: %p\n", old_addr);
+  n = input_addr - myproc()->sz;
+
   // check the sign of offset, if negative, free memory, otherwise move the physical memory address
   if (n < 0) {
-    if ((sz = deallocuvm(myproc()->pgdir, addr, myproc()->sz)) == 0) {
+    new_addr = myproc()->sz - n;
+    if ((sz = deallocuvm(myproc()->pgdir, old_addr, new_addr)) == 0) {
       cprintf("Deallocating failed...\n");
       return -1;
     } else {
@@ -89,14 +68,62 @@ sys_sbrk_de(int nbyte)
       cprintf("proc new address: %p\n", myproc()->sz);
     }
   } else {
-    myproc()->sz += n;
-    cprintf("proc new address: %p\n", myproc()->sz);
+    new_addr = myproc()->sz + n;
+    if ((sz = allocuvm(myproc()->pgdir, old_addr, new_addr)) == 0) {
+      cprintf("Allocating failed...\n");
+      return -1;
+    } else {
+      myproc()->sz += n;
+      cprintf("proc new address: %p\n", myproc()->sz);
+    }
   }
   // move virtual memory address
   if (growproc(n) < 0)
     return -1;
-  addr = myproc()->sz;
-  return addr;
+  new_addr = myproc()->sz;
+  return new_addr;
+}
+
+int
+sys_sbrk_de(int nbyte)
+{
+  int old_addr;
+  int new_addr;
+  int n;
+  uint sz;
+  // input offset amount, then change to int value
+  n = nbyte;
+  if (argint(0, &n) < 0)
+    return -1;
+
+  old_addr = myproc()->sz;
+  cprintf("proc old address: %p\n", old_addr);
+
+  // check the sign of offset, if negative, free memory, otherwise move the physical memory address
+  if (n < 0) {
+    new_addr = myproc()->sz - n;
+    if ((sz = deallocuvm(myproc()->pgdir, old_addr, new_addr)) == 0) {
+      cprintf("Deallocating failed...\n");
+      return -1;
+    } else {
+      myproc()->sz -= n;
+      cprintf("proc new address: %p\n", myproc()->sz);
+    }
+  } else {
+    new_addr = myproc()->sz + n;
+    if ((sz = allocuvm(myproc()->pgdir, old_addr, new_addr)) == 0) {
+      cprintf("Allocating failed...\n");
+      return -1;
+    } else {
+      myproc()->sz += n;
+      cprintf("proc new address: %p\n", myproc()->sz);
+    }
+  }
+  // move virtual memory address
+  if (growproc(n) < 0)
+    return -1;
+  new_addr = myproc()->sz;
+  return new_addr;
 }
 
 int
@@ -166,15 +193,15 @@ sys_calloc(void)
 int
 sys_csbrk(void)
 {
-    int addr;
-    int n;
-    
-    if (argint(0, &n) < 0)
-        return -1;
-    addr = myproc()->sz;
-    if (cgrowproc(n) < 0)
-        return -1;
-    return addr;
+  int addr;
+  int n;
+
+  if (argint(0, &n) < 0)
+    return -1;
+  addr = myproc()->sz;
+  if (cgrowproc(n) < 0)
+    return -1;
+  return addr;
 }
 
 int
