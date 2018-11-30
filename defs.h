@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct iovec;
 
 // bio.c
 void            binit(void);
@@ -33,6 +34,10 @@ void            fileinit(void);
 int             fileread(struct file*, char*, int n);
 int             filestat(struct file*, struct stat*);
 int             filewrite(struct file*, char*, int n);
+int 		lseek(struct file *f, int offset, int whence);
+//int 		readv(int fd, const struct iovec *vector, int count);
+//int 		writev(int fd, const struct iovec *vector, int count);
+
 
 // fs.c
 void            readsb(int dev, struct superblock *sb);

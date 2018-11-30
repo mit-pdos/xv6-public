@@ -1,3 +1,6 @@
+#include "fcntl.h"
+#include "types.h"
+
 struct stat;
 struct rtcdate;
 
@@ -23,6 +26,9 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int lseek(int fd, int offset, int whence);
+int writev(int fd, const void*, int);
+int readv(int fd, const void*, int);
 
 // ulib.c
 int stat(const char*, struct stat*);

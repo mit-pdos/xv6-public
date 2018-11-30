@@ -87,7 +87,65 @@ sys_write(void)
 
   if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
+  
   return filewrite(f, p, n);
+}
+
+int
+sys_writev(void)
+{
+
+  struct file *f;
+  struct iovec* vector;
+  int count;
+
+  if(argfd(0, 0, &f) < 0 || argptr(1, (char**)&vector, sizeof(struct iovec*)) < 0 || argint(2, &count) < 0)
+    return -1;
+
+  int bytes = 0;
+  for (int i = 0 ; i < count ; i++){
+    bytes += vector[i].iov_len;
+  }
+  
+  char temp[bytes];
+  char *buffer = temp;
+  
+  int offset = 0;
+
+  for(int i = 0 ; i < count ; i++){
+    memmove((void*) (buffer + offset), (void*) vector[i].iov_base, vector[i].iov_len);
+    offset += vector[i].iov_len;
+  }
+
+  return filewrite(f, buffer, bytes);
+}
+
+int
+sys_readv(void)
+{
+  struct file *f;
+  struct iovec* vector;
+  int count;
+
+  if(argfd(0, 0, &f) < 0 || argptr(1, (char**)&vector, sizeof(struct iovec*)) < 0 || argint(2, &count) < 0)
+    return -1;
+
+  int bytes = 0;
+  for (int i = 0 ; i < count ; i++){
+    bytes += vector[i].iov_len;
+  }
+  
+  char temp[bytes];
+  char *buffer = temp;
+  
+  int offset = 0;
+
+  for(int i = 0 ; i < count ; i++){
+    memmove((void*) (buffer + offset), (void*) vector[i].iov_base, vector[i].iov_len);
+    offset += vector[i].iov_len;
+  }
+
+  return fileread(f, buffer, bytes);
 }
 
 int
@@ -442,4 +500,28 @@ sys_pipe(void)
   fd[0] = fd0;
   fd[1] = fd1;
   return 0;
+}
+
+int
+sys_lseek(void)
+{
+  struct file *f;
+  int offset;
+  int whence;
+  if (argfd(0, 0, &f) < 0)
+  {
+    cprintf("argfd\n");
+    return -1;
+  }
+  else if (argint(1, &offset) < 0)
+  {
+    cprintf("argint\n");
+    return -1;
+  }
+  else if (argint(2, &whence) < 0)
+  {
+    cprintf("argint\n");
+    return -1;
+  }
+  return lseek(f, offset, whence);
 }

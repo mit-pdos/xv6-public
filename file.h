@@ -32,6 +32,11 @@ struct devsw {
   int (*write)(struct inode*, char*, int);
 };
 
+struct iovec {
+  void  *iov_base;    /* Starting address */
+  int iov_len;     /* Number of bytes to transfer */
+};
+
 extern struct devsw devsw[];
 
 #define CONSOLE 1
