@@ -595,6 +595,5 @@ cgrowproc(int n)
 int
 realloc()
 {
-  cprintf("[success] proc.realloc() test!");
   return 26;
 }

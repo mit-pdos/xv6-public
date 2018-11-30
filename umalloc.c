@@ -89,19 +89,6 @@ malloc(uint nbytes)
   }
 }
 
-//calloc_
-
-void*
-calloc_(uint size, uint nbytes)
-{
-  printf(1,"size : %d \n ",size);
-  uint total = size * nbytes;
-  void* p = malloc(total);
-  printf(1,"process bytes : %d \n",total);
-  if(!p) return 0;
-  return memset(p,0,total);
-}
-
 //cmorecore
 
 static Header*
@@ -153,3 +140,15 @@ cmalloc(uint nbytes)
     }
 }
 
+//calloc_
+
+void*
+calloc_(uint size, uint nbytes)
+{
+  printf(1,"size : %d \n ",size);
+  uint total = size * nbytes;
+  void* p = cmalloc(total);
+  printf(1,"process bytes : %d \n",total);
+  if(!p) return 0;
+  return memset(p,0,total);
+}
