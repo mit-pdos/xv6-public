@@ -2,6 +2,7 @@
 #include "stat.h"
 #include "user.h"
 #include "param.h"
+#include "string"
 
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
@@ -87,6 +88,31 @@ malloc(uint nbytes)
       if((p = morecore(nunits)) == 0)
         return 0;
   }
+}
+
+
+void*
+realloc(void* ap, uint nbytes)
+{
+  void *new;
+
+  if (!ap) {
+    new = malloc(size);
+    if (!new) { goto error; }
+  } else {
+    if (sizeof(ap) < nbytes) {
+      new = malloc(size);
+      if (!new) { goto error; }
+      memcpy(new, ap, sizeof(ap));
+      free(ap);
+    } else {
+      new = ap;
+    }
+  }
+
+  return new;
+error:
+  return 0;
 }
 
 //calloc_
