@@ -97,22 +97,23 @@ urealloc(void* curp, uint nbytes)
 
   if (!chp) {
     newp = malloc(nbytes);
-    printf(1,"not exist! new it!\t curp=%p, size=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
+    printf(1,"not exist! new it!\t curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
     if (!newp) { goto error; }
   } else {
     if (chp->s.size < nbytes) {
-      printf(1,"exist! new bigger.\t curp=%p, size=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
+      printf(1,"exist! new bigger.\t curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
       newp = malloc(nbytes);
       if (!newp) { goto error; }
       memmove(newp, curp, chp->s.size);
       free(curp);
     } else {
-      printf(1,"exist! use curr.\t curp=%p, size=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
+      printf(1,"exist! use curr.\t curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
       newp = curp;
     }
   }
 
-  printf(1,"curp: %p, newp: %p, nbytes:%d \n", curp, newp, nbytes);
+  printf(1,"curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size);
+  printf(1,"newp=%p, nsize=%d, nbytes=%d \n", newp, ((Header)newp)->s.size);
 
   return newp;
 error:
