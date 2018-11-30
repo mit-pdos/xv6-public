@@ -135,7 +135,7 @@ static int (*syscalls[])(void) = {
 [SYS_calloc]  sys_calloc,
 [SYS_sbrk_de] sys_sbrk_de,
 [SYS_csbrk]   sys_csbrk,
-[SYS_csbrk]   sys_realloc,
+[SYS_realloc]   sys_realloc,
 };
 
 void
