@@ -207,5 +207,6 @@ sys_csbrk(void)
 int
 sys_realloc(void)
 {
+  cprintf("[success] sysproc.c sys_realloc(void) test!\n");
   return realloc();
 }
