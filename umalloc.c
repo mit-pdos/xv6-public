@@ -92,25 +92,23 @@ malloc(uint nbytes)
 void*
 urealloc(void* curp, uint nbytes)
 {
-  void *newp;
-
   Header *chp = curp;
-  Header *nhp = newp;
+  void* *newp;
 
   if (!chp) {
-    nhp = malloc(nbytes);
+    newp = malloc(nbytes);
     printf(1,"not exist! new it!\t curp=%p, size=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
-    if (!nhp) { goto error; }
+    if (!newp) { goto error; }
   } else {
     if (chp->s.size < nbytes) {
       printf(1,"exist! new bigger.\t curp=%p, size=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
-      nhp = malloc(nbytes);
-      if (!nhp) { goto error; }
-      memmove(nhp, chp, chp->s.size);
-      free(chp);
+      newp = malloc(nbytes);
+      if (!newp) { goto error; }
+      memmove(newp, curp, chp->s.size);
+      free(curp);
     } else {
       printf(1,"exist! use curr.\t curp=%p, size=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
-      nhp = chp;
+      newp = curp;
     }
   }
 
