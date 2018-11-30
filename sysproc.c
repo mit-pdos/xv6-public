@@ -89,3 +89,35 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+/*New System call*/
+
+int sys_cps(void)
+{
+  return cps();
+
+  exit();
+}
+
+int sys_getppid(void)
+{
+  return myproc()->parent->pid;
+
+  exit();
+}
+
+int sys_chpr(void)
+{
+    int pid , priority;
+    if (argint(0 , &pid)< 0)
+    {
+         return -1;
+    }
+
+    else if (argint(1 , &priority)< 0)
+    {
+         return -1;
+    }
+
+    return chpr(pid , priority);
+}
