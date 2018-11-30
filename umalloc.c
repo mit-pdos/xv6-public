@@ -94,20 +94,23 @@ urealloc(void* curp, uint nbytes)
 {
   void *newp;
 
-  if (!curp) {
-    newp = malloc(nbytes);
-    printf(1,"not exist! new it!\tcurp=%p, size=%d, nbytes=%d \n", curp, curp->s.size, nbytes);
-    if (!newp) { goto error; }
+  Header *chp = (Header) curp;
+  Header *nhp = (Header) newp;
+
+  if (!chp) {
+    nhp = malloc(nbytes);
+    printf(1,"not exist! new it!\t curp=%p, size=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
+    if (!nhp) { goto error; }
   } else {
-    if (sizeof(curp) < nbytes) {
-      printf(1,"exist! new bigger.\tcurp=%p, size=%d, nbytes=%d \n", curp, curp->s.size, nbytes);
-      newp = malloc(nbytes);
-      if (!newp) { goto error; }
-      memmove(newp, curp, sizeof(curp));
-      free(curp);
+    if (chp->s.size < nbytes) {
+      printf(1,"exist! new bigger.\t curp=%p, size=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
+      nhp = malloc(nbytes);
+      if (!nhp) { goto error; }
+      memmove(nhp, chp, chp->s.size);
+      free(chp);
     } else {
-      printf(1,"exist! use curr.\tcurp=%p, size=%d, nbytes=%d \n", curp, curp->s.size, nbytes);
-      newp = curp;
+      printf(1,"exist! use curr.\t curp=%p, size=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
+      nhp = chp;
     }
   }
 
