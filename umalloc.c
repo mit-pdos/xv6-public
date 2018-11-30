@@ -94,21 +94,24 @@ urealloc(void* curp, uint nbytes)
 {
   void *newp;
 
-  printf(1,"curp: %p, nbytes:%d \n", curp, nbytes);
-  
   if (!curp) {
     newp = malloc(nbytes);
+    printf(1,"not exist! new it!\tcurp=%p, size=%d, nbytes=%d \n", curp, curp->s.size, nbytes);
     if (!newp) { goto error; }
   } else {
     if (sizeof(curp) < nbytes) {
+      printf(1,"exist! new bigger.\tcurp=%p, size=%d, nbytes=%d \n", curp, curp->s.size, nbytes);
       newp = malloc(nbytes);
       if (!newp) { goto error; }
       memmove(newp, curp, sizeof(curp));
       free(curp);
     } else {
+      printf(1,"exist! use curr.\tcurp=%p, size=%d, nbytes=%d \n", curp, curp->s.size, nbytes);
       newp = curp;
     }
   }
+
+  printf(1,"curp: %p, newp: %p, nbytes:%d \n", curp, newp, nbytes);
 
   return newp;
 error:
