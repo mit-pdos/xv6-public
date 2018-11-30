@@ -93,7 +93,7 @@ void*
 urealloc(void* curp, uint nbytes)
 {
   Header *chp = curp;
-  void* *newp = 0;
+  void* *newp;
 
   if (!chp) {
     newp = malloc(nbytes);
@@ -114,10 +114,11 @@ urealloc(void* curp, uint nbytes)
     }
   }
 
-  Header *nhp = newp;
-  printf(1,"curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size);
-  printf(1,"newp=%p, nsize=%d, nbytes=%d \n", newp, nhp->s.size);
-
+  if (newp) {
+    Header *nhp = newp;
+    printf(1,"curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size);
+    printf(1,"newp=%p, nsize=%d, nbytes=%d \n", newp, nhp->s.size);
+  }
   return newp;
 }
 
