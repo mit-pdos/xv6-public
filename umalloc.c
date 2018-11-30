@@ -108,16 +108,13 @@ urealloc(void* curp, uint nbytes)
         return 0;
       memmove(newp, curp, chp->s.size);
       free(curp);
+      Header *nhp = newp;
+      printf(1,"curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size);
+      printf(1,"newp=%p, nsize=%d, nbytes=%d \n", newp, nhp->s.size);
     } else {
       printf(1,"exist! use curr.\t curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size, nbytes);
       newp = curp;
     }
-  }
-
-  if (newp) {
-    Header *nhp = newp;
-    printf(1,"curp=%p, csize=%d, nbytes=%d \n", curp, chp->s.size);
-    printf(1,"newp=%p, nsize=%d, nbytes=%d \n", newp, nhp->s.size);
   }
   return newp;
 }
