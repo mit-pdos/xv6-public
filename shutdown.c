@@ -4,7 +4,7 @@
 
 int main(void)
 {
-	write(1,"Shutdown...\n",12);
+	write(1,"shutdown...\n",12);
 	halt();
-	exit();
+	return 0;
 }

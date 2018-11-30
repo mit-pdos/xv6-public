@@ -443,3 +443,14 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+//selectpiperead
+int
+sys_selectpiperead(void)
+{
+  int* fdsptr;
+  int  nfds,t;
+  if(argptr(0, (void*)&fdsptr, sizeof(int*)) < 0 || argint(1, &nfds) < 0 || argint(2, &t) < 0)
+	return -1;
+  return selectpiperead(fdsptr,nfds,t);
+}

@@ -17,6 +17,7 @@ struct pipe {
   uint nwrite;    // number of bytes written
   int readopen;   // read fd is still open
   int writeopen;  // write fd is still open
+  int* wp;
 };
 
 int
@@ -34,6 +35,7 @@ pipealloc(struct file **f0, struct file **f1)
   p->writeopen = 1;
   p->nwrite = 0;
   p->nread = 0;
+  p->wp = 0;
   initlock(&p->lock, "pipe");
   (*f0)->type = FD_PIPE;
   (*f0)->readable = 1;
@@ -93,6 +95,11 @@ pipewrite(struct pipe *p, char *addr, int n)
     p->data[p->nwrite++ % PIPESIZE] = addr[i];
   }
   wakeup(&p->nread);  //DOC: pipewrite-wakeup1
+  if(p->wp!=0)
+  {
+    *(p->wp) = 0;
+	wakeup(&tickslock);
+  }
   release(&p->lock);
   return n;
 }
@@ -115,7 +122,22 @@ piperead(struct pipe *p, char *addr, int n)
       break;
     addr[i] = p->data[p->nread++ % PIPESIZE];
   }
+  p->wp = 0;
   wakeup(&p->nwrite);  //DOC: piperead-wakeup
   release(&p->lock);
   return i;
+}
+
+int
+pipereadcheck(struct pipe *p, int* ip)
+{
+  int r = 1;
+  acquire(&p->lock);
+  if(p->nread == p->nwrite && p->writeopen) //DOC: pipe-empty
+  {
+    r = 0;
+	p->wp = ip;
+  }
+  release(&p->lock);
+  return r;
 }

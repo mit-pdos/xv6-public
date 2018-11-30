@@ -100,6 +100,7 @@ int             pipealloc(struct file**, struct file**);
 void            pipeclose(struct pipe*, int);
 int             piperead(struct pipe*, char*, int);
 int             pipewrite(struct pipe*, char*, int);
+int				pipereadcheck(struct pipe* p, int* ip);
 
 //PAGEBREAK: 16
 // proc.c
@@ -185,6 +186,10 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+
+//selectpiperead.c
+void fsleep(int t, int* f);
+int selectpiperead(int* fdsptr, int nfds, int t);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
