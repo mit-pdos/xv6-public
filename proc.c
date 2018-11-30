@@ -544,9 +544,10 @@ cps()
 
   // Loop over process table looking for process with pid.
   acquire(&ptable.lock);
+  cprintf("NAME \t PID \t SIZE \t STATE \t \n ");
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == SLEEPING)
-      cprintf("%s \t %d \t %p \tSLEEPING \t \n ", p->name, p->pid, p->sz);
+      cprintf("%s \t %d \t %p \t SLEEPING \t \n ", p->name, p->pid, p->sz);
     else if(p->state == RUNNING)
       cprintf("%s \t %d \t %p \t RUNNING \t \n ", p->name, p->pid, p->sz);
     else if(p->state == RUNNABLE)
@@ -562,4 +563,10 @@ int
 calloc()
 {
   return 23;
+}
+
+int
+sbrk_de()
+{
+  return 24;
 }
