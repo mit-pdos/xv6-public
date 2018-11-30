@@ -93,7 +93,7 @@ void*
 urealloc(void* curp, uint nbytes)
 {
   Header *chp = curp;
-  void* *newp;
+  void* *newp = 0;
 
   if (!chp) {
     newp = malloc(nbytes);
