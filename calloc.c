@@ -6,6 +6,7 @@
 int
 main(int argc, char* argv[])
 {
+    printf(1,"successfully called calloc_");
     calloc_(atoi(argv[argc-1]),4096);
     exit();
 }

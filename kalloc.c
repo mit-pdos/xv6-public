@@ -94,3 +94,26 @@ kalloc(void)
   return (char*)r;
 }
 
+// ckalloc for continuous
+
+char*
+ckalloc(void)
+{
+    struct run *r;
+    
+    if(kmem.use_lock)
+        acquire(&kmem.lock);
+    r = kmem.freelist;
+    while((r-r->next != -1024)&&(r-r->next != 1024))
+    {
+        cprintf("no continuous memory");
+        kmem.freelist = r->next;
+        r = kmem.freelist;
+    }
+    if(r)
+        kmem.freelist = r->next;
+    if(kmem.use_lock)
+        release(&kmem.lock);
+    cprintf("ckalloc r = %p \n", r);
+    return (char*)r;
+}

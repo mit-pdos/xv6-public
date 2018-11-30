@@ -89,13 +89,67 @@ malloc(uint nbytes)
   }
 }
 
+//calloc_
+
 void*
 calloc_(uint size, uint nbytes)
 {
-  printf(1,"test : %d \n ",size);
+  printf(1,"size : %d \n ",size);
   uint total = size * nbytes;
   void* p = malloc(total);
-  printf(1,"process size : %d \n",total);
+  printf(1,"process bytes : %d \n",total);
   if(!p) return 0;
   return memset(p,0,total);
 }
+
+//cmorecore
+
+static Header*
+cmorecore(uint nu)
+{
+    char *p;
+    Header *hp;
+    
+    if(nu < 4096)
+        nu = 4096;
+    p = csbrk(nu * sizeof(Header));
+    printf(1,"called cmorecore\n");
+    if(p == (char*)-1)
+        return 0;
+    hp = (Header*)p;
+    hp->s.size = nu;
+    free((void*)(hp + 1));
+    return freep;
+}
+
+//cmalloc
+
+void*
+cmalloc(uint nbytes)
+{
+    Header *p, *prevp;
+    uint nunits;
+    
+    nunits = (nbytes + sizeof(Header) - 1)/sizeof(Header) + 1;
+    if((prevp = freep) == 0){
+        base.s.ptr = freep = prevp = &base;
+        base.s.size = 0;
+    }
+    for(p = prevp->s.ptr; ; prevp = p, p = p->s.ptr){
+        if(p->s.size >= nunits){
+            if(p->s.size == nunits)
+                prevp->s.ptr = p->s.ptr;
+            else {
+                p->s.size -= nunits;
+                p += p->s.size;
+                p->s.size = nunits;
+            }
+            freep = prevp;
+            return (void*)(p + 1);
+        }
+        if(p == freep)
+            if((p = cmorecore(nunits)) == 0)
+                return 0;
+    }
+}
+

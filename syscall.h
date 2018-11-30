@@ -23,3 +23,4 @@
 #define SYS_cps     22
 #define SYS_calloc  23
 #define SYS_sbrk_de 24
+#define SYS_csbrk   25

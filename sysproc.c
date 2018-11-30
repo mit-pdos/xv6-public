@@ -153,8 +153,26 @@ sys_cps(void)
   return cps();
 }
 
+//sys_calloc
+
 int
 sys_calloc(void)
 {
   return calloc();
+}
+
+//sys_csbrk
+
+int
+sys_csbrk(void)
+{
+    int addr;
+    int n;
+    
+    if (argint(0, &n) < 0)
+        return -1;
+    addr = myproc()->sz;
+    if (cgrowproc(n) < 0)
+        return -1;
+    return addr;
 }

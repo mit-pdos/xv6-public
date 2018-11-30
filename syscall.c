@@ -106,6 +106,7 @@ extern int sys_uptime(void);
 extern int sys_cps(void);
 extern int sys_calloc(void);
 extern int sys_sbrk_de(void);
+extern int sys_csbrk(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -132,6 +133,7 @@ static int (*syscalls[])(void) = {
 [SYS_cps]     sys_cps,
 [SYS_calloc]  sys_calloc,
 [SYS_sbrk_de] sys_sbrk_de,
+[SYS_csbrk]   sys_csbrk,
 
 };
 
