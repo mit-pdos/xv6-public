@@ -105,9 +105,10 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_cps(void);
 extern int sys_calloc(void);
-extern int sys_sbrk_de(void);
+extern int sys_brk_de(void);
 extern int sys_csbrk(void);
 extern int sys_realloc(void);
+extern int sys_sbrk_de(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -133,9 +134,10 @@ static int (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_cps]     sys_cps,
 [SYS_calloc]  sys_calloc,
-[SYS_sbrk_de] sys_sbrk_de,
+[SYS_brk_de]  sys_brk_de,
 [SYS_csbrk]   sys_csbrk,
 [SYS_realloc] sys_realloc,
+[SYS_sbrk_de] sys_sbrk_de,
 };
 
 void

@@ -123,9 +123,10 @@ void            wakeup(void*);
 void            yield(void);
 int             cps(void);
 int             calloc(void);
-int             sbrk_de(void);
+int             brk_de(void);
 int             cgrowproc(int);
 int			    realloc(void);
+int             sbrk_de(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

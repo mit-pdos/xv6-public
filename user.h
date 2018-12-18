@@ -25,9 +25,10 @@ int sleep(int);
 int uptime(void);
 int cps(void);
 int calloc(void);
-int sbrk_de(int);
+int brk_de(int);
 char* csbrk(int);
 int realloc(void);
+int sbrk_de(int);
 
 // ulib.c
 int stat(const char*, struct stat*);
