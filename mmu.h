@@ -64,28 +64,33 @@ struct segdesc {
 
 // A virtual address 'la' has a three-part structure as follows:
 //
-// +--------10------+-------10-------+---------12----------+
-// | Page Directory |   Page Table   | Offset within Page  |
-// |      Index     |      Index     |                     |
-// +----------------+----------------+---------------------+
-//  \--- PDX(va) --/ \--- PTX(va) --/
+// +---------2----------+--------9-------+-------9--------+---------12----------+
+// |    Page Directory  | Page Directory |   Page Table   | Offset within Page  |
+// |    Pointer Index   |      Index     |      Index     |                     |
+// +--------------------+----------------+----------------+---------------------+
+// \-----PDPI(va)-----/  \--- PDX(va) --/ \--- PTX(va) --/
+
+//page directory pointer index
+#define PDPI(va)        (((uint)(va) >> PDXSHIFT) & 0x3)
 
 // page directory index
-#define PDX(va)         (((uint)(va) >> PDXSHIFT) & 0x3FF)
+#define PDX(va)         (((uint)(va) >> PDXSHIFT) & 0x1FF)
 
 // page table index
-#define PTX(va)         (((uint)(va) >> PTXSHIFT) & 0x3FF)
+#define PTX(va)         (((uint)(va) >> PTXSHIFT) & 0x1FF)
 
 // construct virtual address from indexes and offset
-#define PGADDR(d, t, o) ((uint)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
+#define PGADDR(p, d, t, o) ((uint)((p) << PDPISHIFT | (uint)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
 // Page directory and page table constants.
-#define NPDENTRIES      1024    // # directory entries per page directory
-#define NPTENTRIES      1024    // # PTEs per page table
+#define NPDPENTRIES     4
+#define NPDENTRIES      512    // # directory entries per page directory
+#define NPTENTRIES      512    // # PTEs per page table
 #define PGSIZE          4096    // bytes mapped by a page
 
+#define PDPISHIFT       30       //offset of PDPI in a linear address
+#define PDXSHIFT        21      // offset of PDX in a linear address
 #define PTXSHIFT        12      // offset of PTX in a linear address
-#define PDXSHIFT        22      // offset of PDX in a linear address
 
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))

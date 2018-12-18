@@ -38,7 +38,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
   pde_t *pde;
   pte_t *pgtab;
 
-  pde = &pgdir[PDX(va)];
+  pde = &pgdir[PDPI(va)][PDX(va)];
   if(*pde & PTE_P){
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   } else {
