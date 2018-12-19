@@ -8,6 +8,7 @@
 #include "elf.h"
 
 extern char data[];  // defined by kernel.ld
+pde_t (*kpgdirp)[NPDENTRIES];
 pde_t *kpgdir;  // for use in scheduler()
 
 // Set up CPU's kernel segment descriptors.
@@ -33,7 +34,7 @@ seginit(void)
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
 static pte_t *
-walkpgdir(pde_t *pgdir, const void *va, int alloc)
+walkpgdir(pde_t (*pgdir)[NPDENTRIES], const void *va, int alloc)
 {
   pde_t *pde;
   pte_t *pgtab;
@@ -58,7 +59,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
 int
-mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
+mappages(pde_t (*pgdir)[NPDENTRIES], void *va, uint size, uint pa, int perm)
 {
   char *a, *last;
   pte_t *pte;
@@ -123,6 +124,7 @@ setupkvm(void)
 
   if((pgdir = (pde_t*)kalloc()) == 0)
     return 0;
+    pde_t (*pgdir)[NPDENTRIES] = (pde_t (*)[NPDENTRIES])pgdir;
   memset(pgdir, 0, PGSIZE);
   if (P2V(PHYSTOP) > (void*)DEVSPACE)
     panic("PHYSTOP too high");
@@ -141,6 +143,7 @@ void
 kvmalloc(void)
 {
   kpgdir = setupkvm();
+  kpgdirp = (pde_t(*)[NPDENTRIES])kpgdir;
   switchkvm();
 }
 
@@ -149,7 +152,7 @@ kvmalloc(void)
 void
 switchkvm(void)
 {
-  lcr3(V2P(kpgdir));   // switch to the kernel page table
+  lcr3(V2P(kpgdirp));   // switch to the kernel page table
 }
 
 // Switch TSS and h/w page table to correspond to process p.
