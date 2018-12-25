@@ -74,23 +74,23 @@ struct segdesc {
 #define PDPI(va)        (((uint)(va) >> PDPISHIFT) & 0x3)
 
 // page directory index
-#define PDX(va)         (((uint)(va) >> PDXSHIFT) & 0x1FF)
+#define PDX(va)         (((uint)(va) >> PDXSHIFT) & 0x3FF)
 
 // page table index
-#define PTX(va)         (((uint)(va) >> PTXSHIFT) & 0x1FF)
+#define PTX(va)         (((uint)(va) >> PTXSHIFT) & 0x3FF)
 
 // construct virtual address from indexes and offset
-#define PGADDR(dp, d, t, o) ((uint)((dp) << PDPISHIFT | (d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
+#define PGADDR(d, t, o) ((uint)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
 // Page directory and page table constants.
 #define NPDPENTRIES     4
-#define NPDENTRIES      512    // # directory entries per page directory
-#define NPTENTRIES      512    // # PTEs per page table
+#define NPDENTRIES      1024    // # directory entries per page directory
+#define NPTENTRIES      1024    // # PTEs per page table
 #define PGSIZE          4096    // bytes mapped by a page
 
 #define PGSHIFT         12
 #define PDPISHIFT       30       //offset of PDPI in a linear address
-#define PDXSHIFT        21      // offset of PDX in a linear address
+#define PDXSHIFT        22      // offset of PDX in a linear address
 #define PTXSHIFT        12      // offset of PTX in a linear address
 
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
