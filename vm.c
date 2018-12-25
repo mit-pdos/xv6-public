@@ -124,7 +124,8 @@ setupkvm(void)
 
   if((pgdir = (pde_t*)kalloc()) == 0)
     return 0;
-    pde_t (*pgdir)[NPDENTRIES] = (pde_t (*)[NPDENTRIES])pgdir;
+    
+  pde_t (*pgdir)[NPDPENTRIES] = (pde_t (*)[NPDPENTRIES])pgdir;
   memset(pgdir, 0, PGSIZE);
   if (P2V(PHYSTOP) > (void*)DEVSPACE)
     panic("PHYSTOP too high");
