@@ -71,7 +71,7 @@ struct segdesc {
 // \-----PDPI(va)-----/  \--- PDX(va) --/ \--- PTX(va) --/
 
 //page directory pointer index
-#define PDPI(va)        (((uint)(va) >> PDXSHIFT) & 0x3)
+#define PDPI(va)        (((uint)(va) >> PDPISHIFT) & 0x3)
 
 // page directory index
 #define PDX(va)         (((uint)(va) >> PDXSHIFT) & 0x1FF)
@@ -80,7 +80,7 @@ struct segdesc {
 #define PTX(va)         (((uint)(va) >> PTXSHIFT) & 0x1FF)
 
 // construct virtual address from indexes and offset
-#define PGADDR(p, d, t, o) ((uint)((p) << PDPISHIFT | (d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
+#define PGADDR(dp, d, t, o) ((uint)((dp) << PDPISHIFT | (d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
 // Page directory and page table constants.
 #define NPDPENTRIES     4
