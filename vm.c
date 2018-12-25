@@ -125,17 +125,17 @@ setupkvm(void)
   if((pgdir = (pde_t*)kalloc()) == 0)
     return 0;
     
-  pde_t (*pgdir)[NPDPENTRIES] = (pde_t (*)[NPDPENTRIES])pgdir;
-  memset(pgdir, 0, PGSIZE);
+  pde_t (*pgpdir)[NPDENTRIES] = (pde_t (*)[NPDENTRIES])pgdir;
+  memset(pgpdir, 0, PGSIZE);
   if (P2V(PHYSTOP) > (void*)DEVSPACE)
     panic("PHYSTOP too high");
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
-    if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
+    if(mappages(pgpdir, k->virt, k->phys_end - k->phys_start,
                 (uint)k->phys_start, k->perm) < 0) {
-      freevm(pgdir);
+      freevm(pgpdir);
       return 0;
     }
-  return pgdir;
+  return pgpdir;
 }
 
 // Allocate one page table for the machine for the kernel address
