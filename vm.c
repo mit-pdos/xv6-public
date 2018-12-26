@@ -33,7 +33,7 @@ seginit(void)
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
 static pte_t *
-walkpgdir(pde_t (*pgdir), const void *va, int alloc)
+walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
   pte_t *pgtab;
@@ -58,7 +58,7 @@ walkpgdir(pde_t (*pgdir), const void *va, int alloc)
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
 int
-mappages(pde_t (*pgpdir), void *va, uint size, uint pa, int perm)
+mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
   char *a, *last;
   pte_t *pte;
@@ -66,7 +66,7 @@ mappages(pde_t (*pgpdir), void *va, uint size, uint pa, int perm)
   a = (char*)PGROUNDDOWN((uint)va);
   last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
   for(;;){
-    if((pte = walkpgdir(pgpdir, a, 1)) == 0)
+    if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
     if(*pte & PTE_P)
       panic("remap");
@@ -333,7 +333,7 @@ copyuvm(pde_t *pgdir, uint sz)
     if((mem = kalloc()) == 0)
       goto bad;
     memmove(mem, (char*)P2V(pa), PGSIZE);
-    if(mappages(pgdir, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
+    if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
       kfree(mem);
       goto bad;
     }
