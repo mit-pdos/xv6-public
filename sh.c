@@ -1,5 +1,3 @@
-// Shell.
-
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
@@ -15,15 +13,22 @@
 #define MAXARGS 10
 #define BUFFERSIZE 256
 
-char* strncat(char *dest,const char *src,int n)
+
+char*
+strncat(char *dest, const char *src,int n)
 {
-   int dest_len=strlen(dest);
+   int dest_len = strlen(dest);
    int i;
-   for(i=0;i<n&&src[i]!='\0';i++)
-         dest[dest_len+i]=src[i];
-	dest[dest_len+i]='\0';
-	return dest;
+
+   for (i = 0 ; i < n && src[i] != '\0' ; i++)
+	   dest[dest_len + i] = src[i];
+   dest[dest_len + i] = '\0';
+
+   return dest;
 }
+
+
+
 
 struct cmd {
   int type;
@@ -78,7 +83,7 @@ runcmd(struct cmd *cmd)
 
   if(cmd == 0)
     exit();
-
+  
   switch(cmd->type){
   default:
     panic("runcmd");
@@ -132,7 +137,7 @@ runcmd(struct cmd *cmd)
     wait();
     wait();
     break;
-
+    
   case BACK:
     bcmd = (struct backcmd*)cmd;
     if(fork1() == 0)
@@ -143,9 +148,9 @@ runcmd(struct cmd *cmd)
 }
 
 int
-getcmd(char *buf, int nbuf)
+getcmd(char *buf, int nbuf, char *pwd)
 {
-  printf(2, "$ ");
+  printf(2, "%s/>", pwd);
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
   if(buf[0] == 0) // EOF
@@ -153,27 +158,103 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
+void doCdGoBack(char * pwd){
+	int length = strlen(pwd);
+	int endOfWord = length -1;
+	while (pwd[endOfWord] !='/' && endOfWord >0)
+		endOfWord--;
+	pwd[endOfWord] = 0;
+	
+}
+
+void doGotoDir(char *pwd, char *buf){
+	strncat(pwd, "/",BUFFERSIZE);
+	strncat(pwd, buf,BUFFERSIZE);
+	
+}
+
+void changePrompt(char *pwd, char buf[BUFFERSIZE], int currentChar, int fromRoot){
+	int charInd;
+	char * wordBuf = (char *) malloc (sizeof(char) * BUFFERSIZE); //initializing the maximum size of a directory name
+	int wordBufIndex = 0;
+	if (fromRoot == 1){
+		//need to start from root directory
+		pwd[0] = 0;
+		//the next information should be added, but not reset to the root
+		fromRoot = 0;
+	}
+	
+	
+	for (charInd = currentChar; charInd<BUFFERSIZE && buf[charInd] != 0; charInd++){
+			if (buf[charInd] != '/'){
+				wordBuf[wordBufIndex] = buf[charInd];
+				wordBufIndex++;
+			}
+			else {
+				wordBuf[wordBufIndex] = 0;
+				//will now handle one word(tommorow morning)
+				if (strcmp(wordBuf, "..") == 0)
+					doCdGoBack(pwd);
+				else
+					if (strcmp(wordBuf, ".") != 0 && strcmp(wordBuf, "") != 0){
+						doGotoDir(pwd, wordBuf);
+						//printf(2, "\n\n pwd is: %s \n", pwd);
+					}
+				wordBufIndex = 0;
+			}
+	}
+	
+	//for epilogue is needed for the last directory, if someone used 'cd xyz' and not 'cd xyz/' - which is the same thing
+	//for epilogue:
+	
+	wordBuf[wordBufIndex] = 0;
+	if (strcmp(wordBuf, "..") == 0)
+		doCdGoBack(pwd); 
+	else
+		if (strcmp(wordBuf, ".") != 0 && strcmp(wordBuf, "") != 0)
+			doGotoDir(pwd, wordBuf);
+	wordBufIndex = 0;
+	//rof
+	 
+	
+}
+
 int
 main(void)
 {
-  static char buf[100];
+  static char buf[BUFFERSIZE];
   int fd;
-
-  // Ensure that three file descriptors are open.
+  int fromRoot;
+  char * pwd = (char *) malloc(sizeof(char) * 1024);
+  pwd[0] = 0;
+  
+  
+  // Assumes three file descriptors open.
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
       close(fd);
       break;
     }
   }
-
+  
   // Read and run input commands.
-  while(getcmd(buf, sizeof(buf)) >= 0){
+  while(getcmd(buf, sizeof(buf), pwd) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
-      // Chdir must be called by the parent, not the child.
+      // Clumsy but will have to do for now.
+      // Chdir has no effect on the parent if run in the child.
       buf[strlen(buf)-1] = 0;  // chop \n
       if(chdir(buf+3) < 0)
-        printf(2, "cannot cd %s\n", buf+3);
+		printf(2, "cannot cd %s\n", buf+3);
+      else{
+		//success in chdir-ing, we have to change our prompt
+		if (buf[3] =='/')
+			fromRoot = 1;
+		else 
+			fromRoot = 0;
+		changePrompt(pwd, buf, 3, fromRoot);
+		
+	  }
+      
       continue;
     }
     if(fork1() == 0)
@@ -194,7 +275,7 @@ int
 fork1(void)
 {
   int pid;
-
+  
   pid = fork();
   if(pid == -1)
     panic("fork");
@@ -279,7 +360,7 @@ gettoken(char **ps, char *es, char **q, char **eq)
 {
   char *s;
   int ret;
-
+  
   s = *ps;
   while(s < es && strchr(whitespace, *s))
     s++;
@@ -312,7 +393,7 @@ gettoken(char **ps, char *es, char **q, char **eq)
   }
   if(eq)
     *eq = s;
-
+  
   while(s < es && strchr(whitespace, *s))
     s++;
   *ps = s;
@@ -323,7 +404,7 @@ int
 peek(char **ps, char *es, char *toks)
 {
   char *s;
-
+  
   s = *ps;
   while(s < es && strchr(whitespace, *s))
     s++;
@@ -431,7 +512,7 @@ parseexec(char **ps, char *es)
   int tok, argc;
   struct execcmd *cmd;
   struct cmd *ret;
-
+  
   if(peek(ps, es, "("))
     return parseblock(ps, es);
 
@@ -470,7 +551,7 @@ nulterminate(struct cmd *cmd)
 
   if(cmd == 0)
     return 0;
-
+  
   switch(cmd->type){
   case EXEC:
     ecmd = (struct execcmd*)cmd;
@@ -489,7 +570,7 @@ nulterminate(struct cmd *cmd)
     nulterminate(pcmd->left);
     nulterminate(pcmd->right);
     break;
-
+    
   case LIST:
     lcmd = (struct listcmd*)cmd;
     nulterminate(lcmd->left);

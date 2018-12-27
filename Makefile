@@ -91,7 +91,7 @@ ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
 endif
 
-xv6.img: bootblock kernel
+xv6.img: bootblock kernel fs.img
 	dd if=/dev/zero of=xv6.img count=10000
 	dd if=bootblock of=xv6.img conv=notrunc
 	dd if=kernel of=xv6.img seek=1 conv=notrunc
@@ -185,6 +185,7 @@ UPROGS=\
         _ps\
 	_zombie\
 	_test\
+	_sanity\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
@@ -194,8 +195,8 @@ fs.img: mkfs README $(UPROGS)
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm *.sym vectors.S bootblock entryother \
-	initcode initcode.out kernel xv6.img fs.img kernelmemfs \
-	xv6memfs.img mkfs .gdbinit \
+	initcode initcode.out kernel xv6.img fs.img kernelmemfs mkfs\
+	.gdbinit \
 	$(UPROGS)
 
 # make a printout

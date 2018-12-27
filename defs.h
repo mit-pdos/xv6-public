@@ -10,7 +10,7 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
-typedef void (*sighandler_t)(int);
+typedef void (*sighandler_t)(void);
 
 // bio.c
 void            binit(void);

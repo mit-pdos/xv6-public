@@ -1,20 +1,24 @@
 #include "defs.h"
-
 // Per-CPU state
 struct cpu {
-  uchar apicid;                // Local APIC ID
+  uchar apicid;                // Local APIC ID; index into cpus[] below
   struct context *scheduler;   // swtch() here to enter scheduler
   struct taskstate ts;         // Used by x86 to find stack for interrupt
   struct segdesc gdt[NSEGS];   // x86 global descriptor table
-  volatile uint started;       // Has the CPU started?
+  volatile uint started;        // Has the CPU started?
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
-  struct proc *proc;           // The process running on this cpu or null
+  //int lastForkingPid
+  // Cpu-local storage variables; see below
+  struct cpu *cpu;
+  struct proc *proc;           // The currently-running process.
 };
 
 extern struct cpu cpus[NCPU];
 extern int ncpu;
 
+extern struct cpu *cpu asm("%gs:0"); 
+extern struct proc *proc asm("%gs:4"); 
 //PAGEBREAK: 17
 // Saved registers for kernel context switches.
 // Don't need to save all the segment registers (%cs, etc),
@@ -35,6 +39,8 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+typedef void(*sighandler_t)(void);
 
 // Per-process state
 struct proc {

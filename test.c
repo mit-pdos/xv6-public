@@ -1,29 +1,23 @@
-#include"types.h"
-#include"stat.h"
-#include"user.h"
-#include"signal.h"
+#include "types.h"
+#include "stat.h"
+#include "user.h"
+#include "signal.h"
+/*
+#ifndef sighandler_t
+typedef void (*sighandler_t)(void);
+#endif
+*/
 
-//static int count=0;
+int main (void){
+	sighandler_t firstHandler = (sighandler_t) 5;
+	//int pid;
+	signal(10, firstHandler);
+	signal(SIGINT, (sighandler_t) SIG_DFL);
+	sleep(50);
+	printf(2, "getpid is: %d\n", getpid());
 
-void handle_signal(int signum)
-{
-	printf(1,"Caught signal %d\n",signum);
-	if(signum==SIGFPE)
-		printf(1,"test pass\n");
-	else 
-		printf(1,"test failed: signal sent %d\n",signum);
+	printf(1,"afffffffffffff");
+	
+	
 	exit();
-}
-
-int main(int argc,char *argv[])
-{
-	int x=2;
-	int y=0;
-
-	handle_signal(signal(SIGFPE,handle_signal));
-	x=x/y;	
-
-	printf(2,"getpid is: %d\n",getpid());
-	exit();
-
 }

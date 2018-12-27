@@ -582,23 +582,24 @@ int signal(int signum,sighandler_t handler)
 
 int sigsend(int pid,int signum){
 	struct proc *p;
-	int flag=0;
-	int sigBitwise=getSigBitwise(signum);
+	//int i;
+	
+	int flag = 0;
+	int sigBitwise = getSigBitwise(signum);
 	acquire(&ptable.lock);
-	for(p=ptable.proc;p<&ptable.proc[NPROC];p++)
-	{
-		if(p->pid==pid)
-		{
-		 flag=1;
-		 break;
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+		if (p->pid == pid){
+			flag = 1;
+			break;
 		}
 	}
-	if(flag==0)
-	{
-	release(&ptable.lock);
-	return -1;
+	
+	if (flag == 0){
+		release(&ptable.lock);
+		return -1;
 	}
-	p->pendingSignals=p->pendingSignals|sigBitwise;
+	p->pendingSignals = p->pendingSignals | sigBitwise;
+	
 	release(&ptable.lock);
 	return 0;
 }

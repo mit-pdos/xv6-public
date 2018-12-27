@@ -1,7 +1,7 @@
 struct stat;
 struct rtcdate;
 
-typedef void (*sighandler_t)(int);
+typedef void (*sighandler_t)(void);
 
 // system calls
 int fork(void);
