@@ -3,9 +3,60 @@
 #include "fcntl.h"
 #include "user.h"
 #include "x86.h"
+#include "param.h"
+#include "syscall.h"
+#include "traps.h"
+#include "fs.h"
+#define PGSIZE 4096
+
+
+int lock_init(lock_t *lk)
+{
+	lk->flag = 0;
+	return 0;
+}
+
+void lock_acquire(lock_t *lk){
+	while(xchg(&lk->flag, 1) != 0)
+	    ;
+}
+
+void lock_release(lock_t *lk){
+	xchg(&lk->flag, 0);
+}
+
+
+int
+thread_create(void (*start_routine)(void*), void *arg)
+{
+	lock_t lk;
+	lock_init(&lk);
+	lock_acquire(&lk);
+	void *stack= malloc(PGSIZE*2);
+	lock_release(&lk);
+
+	if((uint)stack % PGSIZE)
+		stack = stack + (PGSIZE - (uint)stack % PGSIZE);
+
+	int result = clone(start_routine,arg,stack);
+	return result;
+}
+
+int thread_join(){
+	void *stack = malloc(sizeof(void*));
+	int result= join(&stack);
+
+	lock_t lk;
+	lock_init(&lk);
+	lock_acquire(&lk);
+	free(stack);
+	lock_release(&lk);
+
+	return result;
+}
 
 char*
-strcpy(char *s, const char *t)
+strcpy(char *s, char *t)
 {
   char *os;
 
@@ -24,7 +75,7 @@ strcmp(const char *p, const char *q)
 }
 
 uint
-strlen(const char *s)
+strlen(char *s)
 {
   int n;
 
@@ -68,7 +119,7 @@ gets(char *buf, int max)
 }
 
 int
-stat(const char *n, struct stat *st)
+stat(char *n, struct stat *st)
 {
   int fd;
   int r;
@@ -93,11 +144,10 @@ atoi(const char *s)
 }
 
 void*
-memmove(void *vdst, const void *vsrc, int n)
+memmove(void *vdst, void *vsrc, int n)
 {
-  char *dst;
-  const char *src;
-
+  char *dst, *src;
+  
   dst = vdst;
   src = vsrc;
   while(n-- > 0)

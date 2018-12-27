@@ -12,11 +12,10 @@ grep(char *pattern, int fd)
 {
   int n, m;
   char *p, *q;
-
+  
   m = 0;
-  while((n = read(fd, buf+m, sizeof(buf)-m-1)) > 0){
+  while((n = read(fd, buf+m, sizeof(buf)-m)) > 0){
     m += n;
-    buf[m] = '\0';
     p = buf;
     while((q = strchr(p, '\n')) != 0){
       *q = 0;
@@ -40,13 +39,13 @@ main(int argc, char *argv[])
 {
   int fd, i;
   char *pattern;
-
+  
   if(argc <= 1){
     printf(2, "usage: grep pattern [file ...]\n");
     exit();
   }
   pattern = argv[1];
-
+  
   if(argc <= 2){
     grep(pattern, 0);
     exit();

@@ -1,9 +1,3 @@
-//
-// File-system system calls.
-// Mostly argument checking, since we don't trust
-// user code, and calls into file.c and fs.c.
-//
-
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -11,10 +5,9 @@
 #include "mmu.h"
 #include "proc.h"
 #include "fs.h"
-#include "spinlock.h"
-#include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "sysfunc.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -26,7 +19,7 @@ argfd(int n, int *pfd, struct file **pf)
 
   if(argint(n, &fd) < 0)
     return -1;
-  if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
+  if(fd < 0 || fd >= NOFILE || (f=proc->ofile[fd]) == 0)
     return -1;
   if(pfd)
     *pfd = fd;
@@ -41,11 +34,10 @@ static int
 fdalloc(struct file *f)
 {
   int fd;
-  struct proc *curproc = myproc();
 
   for(fd = 0; fd < NOFILE; fd++){
-    if(curproc->ofile[fd] == 0){
-      curproc->ofile[fd] = f;
+    if(proc->ofile[fd] == 0){
+      proc->ofile[fd] = f;
       return fd;
     }
   }
@@ -57,7 +49,7 @@ sys_dup(void)
 {
   struct file *f;
   int fd;
-
+  
   if(argfd(0, 0, &f) < 0)
     return -1;
   if((fd=fdalloc(f)) < 0)
@@ -95,10 +87,10 @@ sys_close(void)
 {
   int fd;
   struct file *f;
-
+  
   if(argfd(0, &fd, &f) < 0)
     return -1;
-  myproc()->ofile[fd] = 0;
+  proc->ofile[fd] = 0;
   fileclose(f);
   return 0;
 }
@@ -108,7 +100,7 @@ sys_fstat(void)
 {
   struct file *f;
   struct stat *st;
-
+  
   if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
     return -1;
   return filestat(f, st);
@@ -123,20 +115,13 @@ sys_link(void)
 
   if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
     return -1;
-
-  begin_op();
-  if((ip = namei(old)) == 0){
-    end_op();
+  if((ip = namei(old)) == 0)
     return -1;
-  }
-
   ilock(ip);
   if(ip->type == T_DIR){
     iunlockput(ip);
-    end_op();
     return -1;
   }
-
   ip->nlink++;
   iupdate(ip);
   iunlock(ip);
@@ -150,9 +135,6 @@ sys_link(void)
   }
   iunlockput(dp);
   iput(ip);
-
-  end_op();
-
   return 0;
 
 bad:
@@ -160,7 +142,6 @@ bad:
   ip->nlink--;
   iupdate(ip);
   iunlockput(ip);
-  end_op();
   return -1;
 }
 
@@ -180,7 +161,6 @@ isdirempty(struct inode *dp)
   return 1;
 }
 
-//PAGEBREAK!
 int
 sys_unlink(void)
 {
@@ -191,28 +171,28 @@ sys_unlink(void)
 
   if(argstr(0, &path) < 0)
     return -1;
-
-  begin_op();
-  if((dp = nameiparent(path, name)) == 0){
-    end_op();
+  if((dp = nameiparent(path, name)) == 0)
     return -1;
-  }
-
   ilock(dp);
 
   // Cannot unlink "." or "..".
-  if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
-    goto bad;
+  if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0){
+    iunlockput(dp);
+    return -1;
+  }
 
-  if((ip = dirlookup(dp, name, &off)) == 0)
-    goto bad;
+  if((ip = dirlookup(dp, name, &off)) == 0){
+    iunlockput(dp);
+    return -1;
+  }
   ilock(ip);
 
   if(ip->nlink < 1)
     panic("unlink: nlink < 1");
   if(ip->type == T_DIR && !isdirempty(ip)){
     iunlockput(ip);
-    goto bad;
+    iunlockput(dp);
+    return -1;
   }
 
   memset(&de, 0, sizeof(de));
@@ -227,15 +207,7 @@ sys_unlink(void)
   ip->nlink--;
   iupdate(ip);
   iunlockput(ip);
-
-  end_op();
-
   return 0;
-
-bad:
-  iunlockput(dp);
-  end_op();
-  return -1;
 }
 
 static struct inode*
@@ -279,7 +251,6 @@ create(char *path, short type, short major, short minor)
     panic("create: dirlink");
 
   iunlockput(dp);
-
   return ip;
 }
 
@@ -293,24 +264,15 @@ sys_open(void)
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
-
-  begin_op();
-
   if(omode & O_CREATE){
-    ip = create(path, T_FILE, 0, 0);
-    if(ip == 0){
-      end_op();
+    if((ip = create(path, T_FILE, 0, 0)) == 0)
       return -1;
-    }
   } else {
-    if((ip = namei(path)) == 0){
-      end_op();
+    if((ip = namei(path)) == 0)
       return -1;
-    }
     ilock(ip);
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
-      end_op();
       return -1;
     }
   }
@@ -319,11 +281,9 @@ sys_open(void)
     if(f)
       fileclose(f);
     iunlockput(ip);
-    end_op();
     return -1;
   }
   iunlock(ip);
-  end_op();
 
   f->type = FD_INODE;
   f->ip = ip;
@@ -339,13 +299,9 @@ sys_mkdir(void)
   char *path;
   struct inode *ip;
 
-  begin_op();
-  if(argstr(0, &path) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0){
-    end_op();
+  if(argstr(0, &path) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0)
     return -1;
-  }
   iunlockput(ip);
-  end_op();
   return 0;
 }
 
@@ -354,18 +310,15 @@ sys_mknod(void)
 {
   struct inode *ip;
   char *path;
+  int len;
   int major, minor;
-
-  begin_op();
-  if((argstr(0, &path)) < 0 ||
+  
+  if((len=argstr(0, &path)) < 0 ||
      argint(1, &major) < 0 ||
      argint(2, &minor) < 0 ||
-     (ip = create(path, T_DEV, major, minor)) == 0){
-    end_op();
+     (ip = create(path, T_DEV, major, minor)) == 0)
     return -1;
-  }
   iunlockput(ip);
-  end_op();
   return 0;
 }
 
@@ -374,23 +327,17 @@ sys_chdir(void)
 {
   char *path;
   struct inode *ip;
-  struct proc *curproc = myproc();
-  
-  begin_op();
-  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0){
-    end_op();
+
+  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0)
     return -1;
-  }
   ilock(ip);
   if(ip->type != T_DIR){
     iunlockput(ip);
-    end_op();
     return -1;
   }
   iunlock(ip);
-  iput(curproc->cwd);
-  end_op();
-  curproc->cwd = ip;
+  iput(proc->cwd);
+  proc->cwd = ip;
   return 0;
 }
 
@@ -408,13 +355,13 @@ sys_exec(void)
   for(i=0;; i++){
     if(i >= NELEM(argv))
       return -1;
-    if(fetchint(uargv+4*i, (int*)&uarg) < 0)
+    if(fetchint(proc, uargv+4*i, (int*)&uarg) < 0)
       return -1;
     if(uarg == 0){
       argv[i] = 0;
       break;
     }
-    if(fetchstr(uarg, &argv[i]) < 0)
+    if(fetchstr(proc, uarg, &argv[i]) < 0)
       return -1;
   }
   return exec(path, argv);
@@ -434,7 +381,7 @@ sys_pipe(void)
   fd0 = -1;
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
     if(fd0 >= 0)
-      myproc()->ofile[fd0] = 0;
+      proc->ofile[fd0] = 0;
     fileclose(rf);
     fileclose(wf);
     return -1;

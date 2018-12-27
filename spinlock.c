@@ -4,7 +4,6 @@
 #include "defs.h"
 #include "param.h"
 #include "x86.h"
-#include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
 #include "spinlock.h"
@@ -29,16 +28,13 @@ acquire(struct spinlock *lk)
     panic("acquire");
 
   // The xchg is atomic.
+  // It also serializes, so that reads after acquire are not
+  // reordered before it. 
   while(xchg(&lk->locked, 1) != 0)
     ;
 
-  // Tell the C compiler and the processor to not move loads or stores
-  // past this point, to ensure that the critical section's memory
-  // references happen after the lock is acquired.
-  __sync_synchronize();
-
   // Record info about lock acquisition for debugging.
-  lk->cpu = mycpu();
+  lk->cpu = cpu;
   getcallerpcs(&lk, lk->pcs);
 }
 
@@ -52,17 +48,16 @@ release(struct spinlock *lk)
   lk->pcs[0] = 0;
   lk->cpu = 0;
 
-  // Tell the C compiler and the processor to not move loads or stores
-  // past this point, to ensure that all the stores in the critical
-  // section are visible to other cores before the lock is released.
-  // Both the C compiler and the hardware may re-order loads and
-  // stores; __sync_synchronize() tells them both not to.
-  __sync_synchronize();
-
-  // Release the lock, equivalent to lk->locked = 0.
-  // This code can't use a C assignment, since it might
-  // not be atomic. A real OS would use C atomics here.
-  asm volatile("movl $0, %0" : "+m" (lk->locked) : );
+  // The xchg serializes, so that reads before release are 
+  // not reordered after it.  The 1996 PentiumPro manual (Volume 3,
+  // 7.2) says reads can be carried out speculatively and in
+  // any order, which implies we need to serialize here.
+  // But the 2007 Intel 64 Architecture Memory Ordering White
+  // Paper says that Intel 64 and IA-32 will not move a load
+  // after a store. So lock->locked = 0 would work here.
+  // The xchg being asm volatile ensures gcc emits it after
+  // the above assignments (and after the critical section).
+  xchg(&lk->locked, 0);
 
   popcli();
 }
@@ -73,10 +68,10 @@ getcallerpcs(void *v, uint pcs[])
 {
   uint *ebp;
   int i;
-
+  
   ebp = (uint*)v - 2;
   for(i = 0; i < 10; i++){
-    if(ebp == 0 || ebp < (uint*)KERNBASE || ebp == (uint*)0xffffffff)
+    if(ebp == 0 || ebp < (uint*)0x100000 || ebp == (uint*)0xffffffff)
       break;
     pcs[i] = ebp[1];     // saved %eip
     ebp = (uint*)ebp[0]; // saved %ebp
@@ -89,11 +84,7 @@ getcallerpcs(void *v, uint pcs[])
 int
 holding(struct spinlock *lock)
 {
-  int r;
-  pushcli();
-  r = lock->locked && lock->cpu == mycpu();
-  popcli();
-  return r;
+  return lock->locked && lock->cpu == cpu;
 }
 
 
@@ -105,12 +96,11 @@ void
 pushcli(void)
 {
   int eflags;
-
+  
   eflags = readeflags();
   cli();
-  if(mycpu()->ncli == 0)
-    mycpu()->intena = eflags & FL_IF;
-  mycpu()->ncli += 1;
+  if(cpu->ncli++ == 0)
+    cpu->intena = eflags & FL_IF;
 }
 
 void
@@ -118,9 +108,9 @@ popcli(void)
 {
   if(readeflags()&FL_IF)
     panic("popcli - interruptible");
-  if(--mycpu()->ncli < 0)
+  if(--cpu->ncli < 0)
     panic("popcli");
-  if(mycpu()->ncli == 0 && mycpu()->intena)
+  if(cpu->ncli == 0 && cpu->intena)
     sti();
 }
 

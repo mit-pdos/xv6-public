@@ -1,6 +1,6 @@
 // Boot loader.
-//
-// Part of the boot block, along with bootasm.S, which calls bootmain().
+// 
+// Part of the boot sector, along with bootasm.S, which calls bootmain().
 // bootasm.S has put the processor into protected 32-bit mode.
 // bootmain() loads an ELF kernel image from the disk starting at
 // sector 1 and then jumps to the kernel entry routine.
@@ -8,7 +8,6 @@
 #include "types.h"
 #include "elf.h"
 #include "x86.h"
-#include "memlayout.h"
 
 #define SECTSIZE  512
 
@@ -20,7 +19,7 @@ bootmain(void)
   struct elfhdr *elf;
   struct proghdr *ph, *eph;
   void (*entry)(void);
-  uchar* pa;
+  uchar* va;
 
   elf = (struct elfhdr*)0x10000;  // scratch space
 
@@ -35,10 +34,10 @@ bootmain(void)
   ph = (struct proghdr*)((uchar*)elf + elf->phoff);
   eph = ph + elf->phnum;
   for(; ph < eph; ph++){
-    pa = (uchar*)ph->paddr;
-    readseg(pa, ph->filesz, ph->off);
+    va = (uchar*)ph->va;
+    readseg(va, ph->filesz, ph->offset);
     if(ph->memsz > ph->filesz)
-      stosb(pa + ph->filesz, 0, ph->memsz - ph->filesz);
+      stosb(va + ph->filesz, 0, ph->memsz - ph->filesz);
   }
 
   // Call the entry point from the ELF header.
@@ -73,17 +72,17 @@ readsect(void *dst, uint offset)
   insl(0x1F0, dst, SECTSIZE/4);
 }
 
-// Read 'count' bytes at 'offset' from kernel into physical address 'pa'.
+// Read 'count' bytes at 'offset' from kernel into virtual address 'va'.
 // Might copy more than asked.
 void
-readseg(uchar* pa, uint count, uint offset)
+readseg(uchar* va, uint count, uint offset)
 {
-  uchar* epa;
+  uchar* eva;
 
-  epa = pa + count;
+  eva = va + count;
 
   // Round down to sector boundary.
-  pa -= offset % SECTSIZE;
+  va -= offset % SECTSIZE;
 
   // Translate from bytes to sectors; kernel starts at sector 1.
   offset = (offset / SECTSIZE) + 1;
@@ -91,6 +90,6 @@ readseg(uchar* pa, uint count, uint offset)
   // If this is too slow, we could read lots of sectors at a time.
   // We'd write more to memory than asked, but it doesn't matter --
   // we load in increasing order.
-  for(; pa < epa; pa += SECTSIZE, offset++)
-    readsect(pa, offset);
+  for(; va < eva; va += SECTSIZE, offset++)
+    readsect(va, offset);
 }

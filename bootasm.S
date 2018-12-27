@@ -1,19 +1,22 @@
 #include "asm.h"
-#include "memlayout.h"
-#include "mmu.h"
 
 # Start the first CPU: switch to 32-bit protected mode, jump into C.
 # The BIOS loads this code from the first sector of the hard disk into
 # memory at physical address 0x7c00 and starts executing in real mode
 # with %cs=0 %ip=7c00.
 
+#define SEG_KCODE 1  // kernel code
+#define SEG_KDATA 2  // kernel data+stack
+
+#define CR0_PE    1  // protected mode enable bit
+
 .code16                       # Assemble for 16-bit mode
 .globl start
 start:
   cli                         # BIOS enabled interrupts; disable
 
-  # Zero data segment registers DS, ES, and SS.
-  xorw    %ax,%ax             # Set %ax to zero
+  # Set up the important data segment registers (DS, ES, SS).
+  xorw    %ax,%ax             # Segment number zero
   movw    %ax,%ds             # -> Data Segment
   movw    %ax,%es             # -> Extra Segment
   movw    %ax,%ss             # -> Stack Segment
@@ -37,16 +40,15 @@ seta20.2:
   outb    %al,$0x60
 
   # Switch from real to protected mode.  Use a bootstrap GDT that makes
-  # virtual addresses map directly to physical addresses so that the
+  # virtual addresses map dierctly to  physical addresses so that the
   # effective memory map doesn't change during the transition.
   lgdt    gdtdesc
   movl    %cr0, %eax
   orl     $CR0_PE, %eax
   movl    %eax, %cr0
 
-//PAGEBREAK!
-  # Complete the transition to 32-bit protected mode by using a long jmp
-  # to reload %cs and %eip.  The segment descriptors are set up with no
+  # Complete transition to 32-bit protected mode by using long jmp
+  # to reload %cs and %eip.  The segment registers are set up with no
   # translation, so that the mapping is still the identity mapping.
   ljmp    $(SEG_KCODE<<3), $start32
 
@@ -85,4 +87,3 @@ gdt:
 gdtdesc:
   .word   (gdtdesc - gdt - 1)             # sizeof(gdt) - 1
   .long   gdt                             # address gdt
-
