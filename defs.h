@@ -9,12 +9,20 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct semaphore;
 
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
 void            brelse(struct buf*);
 void            bwrite(struct buf*);
+
+//semaphore.c
+void		seminit(void);
+int 		sem_init(int, int);
+int 		sem_destroy(int);
+int		sem_wait(int, int);
+int 		sem_signal(int, int);
 
 // console.c
 void            consoleinit(void);
@@ -120,6 +128,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int             clone(void*, void*, void*);
+int             join(void**);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

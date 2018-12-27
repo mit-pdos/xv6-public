@@ -20,3 +20,9 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+#define SYS_sem_init    22
+#define SYS_sem_destroy 23
+#define SYS_sem_wait    24
+#define SYS_sem_signal  25
+#define SYS_clone  26
+#define SYS_join  27
