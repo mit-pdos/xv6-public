@@ -7,7 +7,6 @@ x86.h
 asm.h
 mmu.h
 elf.h
-date.h
 
 # entering xv6
 entry.S
@@ -61,9 +60,11 @@ mp.h
 mp.c
 lapic.c
 ioapic.c
+picirq.c
 kbd.h
 kbd.c
 console.c
+timer.c
 uart.c
 
 # user-level
@@ -76,5 +77,3 @@ sh.c
 bootasm.S
 bootmain.c
 
-# link
-kernel.ld

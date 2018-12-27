@@ -14,7 +14,6 @@ pad()
 mkdir -p fmt
 rm -f fmt/*
 cp README fmt
-echo > fmt/blank
 files=`grep -v '^#' runoff.list | awk '{print $1}'`
 n=99
 for i in $files
@@ -215,9 +214,7 @@ awk '
 	# pr -t -2 t.defs | ../pr.pl -h "definitions" | pad
 	pr -t -l50 -2 refs | ../pr.pl -h "cross-references" | pad
 	# pr.pl -h "definitions" -2 t.defs | pad
-	# pr.pl -h "cross-references" -2 refs | pad
-	../pr.pl blank  # make sheet 1 start on left page
-	../pr.pl blank
+	# pr.pl -h "cross-references" -2 refs | pad 
 	for i in $files
 	do
 		../pr.pl -h "xv6/$i" $i

@@ -6,7 +6,7 @@ ACKNOWLEDGMENTS
 
 xv6 is inspired by John Lions's Commentary on UNIX 6th Edition (Peer
 to Peer Communications; ISBN: 1-57398-013-7; 1st edition (June 14,
-2000)). See also https://pdos.csail.mit.edu/6.828/, which
+2000)). See also http://pdos.csail.mit.edu/6.828/2016/xv6.html, which
 provides pointers to on-line resources for v6.
 
 xv6 borrows code from the following sources:
@@ -20,31 +20,34 @@ locking), Cliff Frey (MP), Xiao Yu (MP), Nickolai Zeldovich, and Austin
 Clements.
 
 We are also grateful for the bug reports and patches contributed by Silas
-Boyd-Wickizer, Anton Burtsev, Cody Cutler, Mike CAT, Tej Chajed, eyalz800,
-Nelson Elhage, Saar Ettinger, Alice Ferrazzi, Nathaniel Filardo, Peter
-Froehlich, Yakir Goaron,Shivam Handa, Bryan Henry, Jim Huang, Alexander
-Kapshuk, Anders Kaseorg, kehao95, Wolfgang Keller, Eddie Kohler, Austin
-Liew, Imbar Marinescu, Yandong Mao, Matan Shabtay, Hitoshi Mitake, Carmi
-Merimovich, Mark Morrissey, mtasm, Joel Nider, Greg Price, Ayan Shafqat,
-Eldar Sehayek, Yongming Shen, Cam Tenny, tyfkda, Rafael Ubal, Warren
-Toomey, Stephen Tu, Pablo Ventura, Xi Wang, Keiichi Watanabe, Nicolas
-Wolovick, wxdao, Grant Wu, Jindong Zhang, Icenowy Zheng, and Zou Chang Wei.
+Boyd-Wickizer, Mike CAT, Nelson Elhage, Nathaniel Filardo, Peter Froehlich,
+Yakir Goaran, Shivam Handa, Bryan Henry, Jim Huang, Anders Kaseorg, kehao95,
+Eddie Kohler, Imbar Marinescu, Yandong Mao, Hitoshi Mitake, Carmi Merimovich,
+Joel Nider, Greg Price, Ayan Shafqat, Eldar Sehayek, Yongming Shen, Cam Tenny,
+Rafael Ubal, Warren Toomey, Stephen Tu, Pablo Ventura, Xi Wang, Keiichi
+Watanabe, Nicolas Wolovick, Jindong Zhang, and Zou Chang Wei.
 
 The code in the files that constitute xv6 is
-Copyright 2006-2018 Frans Kaashoek, Robert Morris, and Russ Cox.
+Copyright 2006-2016 Frans Kaashoek, Robert Morris, and Russ Cox.
 
 ERROR REPORTS
 
-Please send errors and suggestions to Frans Kaashoek and Robert Morris
-(kaashoek,rtm@mit.edu). The main purpose of xv6 is as a teaching
-operating system for MIT's 6.828, so we are more interested in
-simplifications and clarifications than new features.
+If you spot errors or have suggestions for improvement, please send email to
+Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).  If you have
+suggestions for improvements, please keep in mind that the main purpose of xv6
+is as a teaching operating system for MIT's 6.828. For example, we are in
+particular interested in simplifications and clarifications, instead of
+suggestions for new systems calls, more portability, etc.
 
 BUILDING AND RUNNING XV6
 
-To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run
-"make". On non-x86 or non-ELF machines (like OS X, even on x86), you
-will need to install a cross-compiler gcc suite capable of producing
-x86 ELF binaries (see https://pdos.csail.mit.edu/6.828/).
-Then run "make TOOLPREFIX=i386-jos-elf-". Now install the QEMU PC
-simulator and run "make qemu".
+To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run "make".
+On non-x86 or non-ELF machines (like OS X, even on x86), you will
+need to install a cross-compiler gcc suite capable of producing x86 ELF
+binaries.  See http://pdos.csail.mit.edu/6.828/2016/tools.html.
+Then run "make TOOLPREFIX=i386-jos-elf-".
+
+To run xv6, install the QEMU PC simulators.  To run in QEMU, run "make qemu".
+
+To create a typeset version of the code, run "make xv6.pdf".  This
+requires the "mpage" utility.  See http://www.mesa.nl/pub/mpage/.

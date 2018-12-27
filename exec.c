@@ -17,20 +17,18 @@ exec(char *path, char **argv)
   struct inode *ip;
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
-  struct proc *curproc = myproc();
 
   begin_op();
 
   if((ip = namei(path)) == 0){
     end_op();
-    cprintf("exec: fail\n");
     return -1;
   }
   ilock(ip);
   pgdir = 0;
 
   // Check ELF header
-  if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
+  if(readi(ip, (char*)&elf, 0, sizeof(elf)) < sizeof(elf))
     goto bad;
   if(elf.magic != ELF_MAGIC)
     goto bad;
@@ -91,15 +89,15 @@ exec(char *path, char **argv)
   for(last=s=path; *s; s++)
     if(*s == '/')
       last = s+1;
-  safestrcpy(curproc->name, last, sizeof(curproc->name));
+  safestrcpy(proc->name, last, sizeof(proc->name));
 
   // Commit to the user image.
-  oldpgdir = curproc->pgdir;
-  curproc->pgdir = pgdir;
-  curproc->sz = sz;
-  curproc->tf->eip = elf.entry;  // main
-  curproc->tf->esp = sp;
-  switchuvm(curproc);
+  oldpgdir = proc->pgdir;
+  proc->pgdir = pgdir;
+  proc->sz = sz;
+  proc->tf->eip = elf.entry;  // main
+  proc->tf->esp = sp;
+  switchuvm(proc);
   freevm(oldpgdir);
   return 0;
 

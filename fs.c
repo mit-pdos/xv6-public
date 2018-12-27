@@ -110,28 +110,28 @@ bfree(int dev, uint b)
 // to provide a place for synchronizing access
 // to inodes used by multiple processes. The cached
 // inodes include book-keeping information that is
-// not stored on disk: ip->ref and ip->valid.
+// not stored on disk: ip->ref and ip->flags.
 //
-// An inode and its in-memory representation go through a
+// An inode and its in-memory represtative go through a
 // sequence of states before they can be used by the
 // rest of the file system code.
 //
 // * Allocation: an inode is allocated if its type (on disk)
-//   is non-zero. ialloc() allocates, and iput() frees if
-//   the reference and link counts have fallen to zero.
+//   is non-zero. ialloc() allocates, iput() frees if
+//   the link count has fallen to zero.
 //
 // * Referencing in cache: an entry in the inode cache
 //   is free if ip->ref is zero. Otherwise ip->ref tracks
 //   the number of in-memory pointers to the entry (open
-//   files and current directories). iget() finds or
-//   creates a cache entry and increments its ref; iput()
-//   decrements ref.
+//   files and current directories). iget() to find or
+//   create a cache entry and increment its ref, iput()
+//   to decrement ref.
 //
 // * Valid: the information (type, size, &c) in an inode
-//   cache entry is only correct when ip->valid is 1.
-//   ilock() reads the inode from
-//   the disk and sets ip->valid, while iput() clears
-//   ip->valid if ip->ref has fallen to zero.
+//   cache entry is only correct when the I_VALID bit
+//   is set in ip->flags. ilock() reads the inode from
+//   the disk and sets I_VALID, while iput() clears
+//   I_VALID if ip->ref has fallen to zero.
 //
 // * Locked: file system code may only examine and modify
 //   the information in an inode and its content if it
@@ -154,15 +154,6 @@ bfree(int dev, uint b)
 // Many internal file system functions expect the caller to
 // have locked the inodes involved; this lets callers create
 // multi-step atomic operations.
-//
-// The icache.lock spin-lock protects the allocation of icache
-// entries. Since ip->ref indicates whether an entry is free,
-// and ip->dev and ip->inum indicate which i-node an entry
-// holds, one must hold icache.lock while using any of those fields.
-//
-// An ip->lock sleep-lock protects all ip-> fields other than ref,
-// dev, and inum.  One must hold ip->lock in order to
-// read or write that inode's ip->valid, ip->size, ip->type, &c.
 
 struct {
   struct spinlock lock;
@@ -178,7 +169,7 @@ iinit(int dev)
   for(i = 0; i < NINODE; i++) {
     initsleeplock(&icache.inode[i].lock, "inode");
   }
-
+  
   readsb(dev, &sb);
   cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
  inodestart %d bmap start %d\n", sb.size, sb.nblocks,
@@ -189,9 +180,8 @@ iinit(int dev)
 static struct inode* iget(uint dev, uint inum);
 
 //PAGEBREAK!
-// Allocate an inode on device dev.
-// Mark it as allocated by  giving it type type.
-// Returns an unlocked but allocated and referenced inode.
+// Allocate a new inode with the given type on device dev.
+// A free inode has a type of zero.
 struct inode*
 ialloc(uint dev, short type)
 {
@@ -215,9 +205,6 @@ ialloc(uint dev, short type)
 }
 
 // Copy a modified in-memory inode to disk.
-// Must be called after every change to an ip->xxx field
-// that lives on disk, since i-node cache is write-through.
-// Caller must hold ip->lock.
 void
 iupdate(struct inode *ip)
 {
@@ -266,7 +253,7 @@ iget(uint dev, uint inum)
   ip->dev = dev;
   ip->inum = inum;
   ip->ref = 1;
-  ip->valid = 0;
+  ip->flags = 0;
   release(&icache.lock);
 
   return ip;
@@ -296,7 +283,7 @@ ilock(struct inode *ip)
 
   acquiresleep(&ip->lock);
 
-  if(ip->valid == 0){
+  if(!(ip->flags & I_VALID)){
     bp = bread(ip->dev, IBLOCK(ip->inum, sb));
     dip = (struct dinode*)bp->data + ip->inum%IPB;
     ip->type = dip->type;
@@ -306,7 +293,7 @@ ilock(struct inode *ip)
     ip->size = dip->size;
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     brelse(bp);
-    ip->valid = 1;
+    ip->flags |= I_VALID;
     if(ip->type == 0)
       panic("ilock: no type");
   }
@@ -332,22 +319,16 @@ iunlock(struct inode *ip)
 void
 iput(struct inode *ip)
 {
-  acquiresleep(&ip->lock);
-  if(ip->valid && ip->nlink == 0){
-    acquire(&icache.lock);
-    int r = ip->ref;
-    release(&icache.lock);
-    if(r == 1){
-      // inode has no links and no other references: truncate and free.
-      itrunc(ip);
-      ip->type = 0;
-      iupdate(ip);
-      ip->valid = 0;
-    }
-  }
-  releasesleep(&ip->lock);
-
   acquire(&icache.lock);
+  if(ip->ref == 1 && (ip->flags & I_VALID) && ip->nlink == 0){
+    // inode has no links and no other references: truncate and free.
+    release(&icache.lock);
+    itrunc(ip);
+    ip->type = 0;
+    iupdate(ip);
+    acquire(&icache.lock);
+    ip->flags = 0;
+  }
   ip->ref--;
   release(&icache.lock);
 }
@@ -436,7 +417,6 @@ itrunc(struct inode *ip)
 }
 
 // Copy stat information from inode.
-// Caller must hold ip->lock.
 void
 stati(struct inode *ip, struct stat *st)
 {
@@ -449,7 +429,6 @@ stati(struct inode *ip, struct stat *st)
 
 //PAGEBREAK!
 // Read data from inode.
-// Caller must hold ip->lock.
 int
 readi(struct inode *ip, char *dst, uint off, uint n)
 {
@@ -470,6 +449,13 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
     m = min(n - tot, BSIZE - off%BSIZE);
+    /*
+    cprintf("data off %d:\n", off);
+    for (int j = 0; j < min(m, 10); j++) {
+      cprintf("%x ", bp->data[off%BSIZE+j]);
+    }
+    cprintf("\n");
+    */
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
   }
@@ -478,7 +464,6 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 
 // PAGEBREAK!
 // Write data to inode.
-// Caller must hold ip->lock.
 int
 writei(struct inode *ip, char *src, uint off, uint n)
 {
@@ -533,7 +518,7 @@ dirlookup(struct inode *dp, char *name, uint *poff)
 
   for(off = 0; off < dp->size; off += sizeof(de)){
     if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-      panic("dirlookup read");
+      panic("dirlink read");
     if(de.inum == 0)
       continue;
     if(namecmp(name, de.name) == 0){
@@ -630,7 +615,7 @@ namex(char *path, int nameiparent, char *name)
   if(*path == '/')
     ip = iget(ROOTDEV, ROOTINO);
   else
-    ip = idup(myproc()->cwd);
+    ip = idup(proc->cwd);
 
   while((path = skipelem(path, name)) != 0){
     ilock(ip);

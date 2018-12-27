@@ -5,7 +5,7 @@
 #include "x86.h"
 
 char*
-strcpy(char *s, const char *t)
+strcpy(char *s, char *t)
 {
   char *os;
 
@@ -24,7 +24,7 @@ strcmp(const char *p, const char *q)
 }
 
 uint
-strlen(const char *s)
+strlen(char *s)
 {
   int n;
 
@@ -68,7 +68,7 @@ gets(char *buf, int max)
 }
 
 int
-stat(const char *n, struct stat *st)
+stat(char *n, struct stat *st)
 {
   int fd;
   int r;
@@ -93,10 +93,9 @@ atoi(const char *s)
 }
 
 void*
-memmove(void *vdst, const void *vsrc, int n)
+memmove(void *vdst, void *vsrc, int n)
 {
-  char *dst;
-  const char *src;
+  char *dst, *src;
 
   dst = vdst;
   src = vsrc;

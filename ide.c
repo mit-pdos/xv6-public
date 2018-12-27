@@ -53,6 +53,7 @@ ideinit(void)
   int i;
 
   initlock(&idelock, "ide");
+  picenable(IRQ_IDE);
   ioapicenable(IRQ_IDE, ncpu - 1);
   idewait(0);
 
@@ -107,9 +108,9 @@ ideintr(void)
 
   // First queued buffer is the active request.
   acquire(&idelock);
-
   if((b = idequeue) == 0){
     release(&idelock);
+    // cprintf("spurious IDE interrupt\n");
     return;
   }
   idequeue = b->qnext;
@@ -162,7 +163,6 @@ iderw(struct buf *b)
   while((b->flags & (B_VALID|B_DIRTY)) != B_VALID){
     sleep(b, &idelock);
   }
-
 
   release(&idelock);
 }

@@ -1724,19 +1724,6 @@ uio()
   printf(1, "uio test done\n");
 }
 
-void argptest()
-{
-  int fd;
-  fd = open("init", O_RDONLY);
-  if (fd < 0) {
-    printf(2, "open failed\n");
-    exit();
-  }
-  read(fd, sbrk(0) - 1, -1);
-  close(fd);
-  printf(1, "arg test passed\n");
-}
-
 unsigned long randstate = 1;
 unsigned int
 rand()
@@ -1756,7 +1743,6 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREATE));
 
-  argptest();
   createdelete();
   linkunlink();
   concreate();
