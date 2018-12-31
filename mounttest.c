@@ -493,5 +493,6 @@ main(int argc, char *argv[])
   printheader("Cleaning up:");
   unlink("a");
   unlink("b");
-  return 0;
+
+  exit();
 }
