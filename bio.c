@@ -60,7 +60,8 @@ void
 invalidateblocks(uint dev)
 {
   acquire(&bcache.lock);
-  for(struct buf *b = bcache.head.next; b != &bcache.head; b = b->next){
+  struct buf *b;
+  for(b = bcache.head.next; b != &bcache.head; b = b->next){
     if(b->dev == dev){
       b->flags &= ~(B_VALID|B_DIRTY);
     }
