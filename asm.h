@@ -15,4 +15,4 @@
 
 #define STA_X     0x8       // Executable segment
 #define STA_W     0x2       // Writeable (non-executable segments)
-#define STA_R     0x2       // Readable (executable segments)
+#define STA_R     0xa       // Readable (executable segments)
