@@ -74,6 +74,7 @@ endif
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
+STRIP = $(TOOLPREFIX)strip
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
@@ -184,6 +185,7 @@ UPROGS=\
 	_zombie\
 
 fs.img: mkfs README $(UPROGS)
+	$(STRIP) _usertests
 	./mkfs fs.img README $(UPROGS)
 
 -include *.d
