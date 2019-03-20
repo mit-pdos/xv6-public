@@ -279,6 +279,8 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
+  pde_t *zpgdir;
+  char *zkstack;
   
   acquire(&ptable.lock);
   for(;;){
@@ -291,15 +293,17 @@ wait(void)
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
-        kfree(p->kstack);
+        zkstack = p->kstack;
         p->kstack = 0;
-        freevm(p->pgdir);
+        zpgdir = p->pgdir;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
         release(&ptable.lock);
+        kfree(zkstack);
+        freevm(zpgdir);
         return pid;
       }
     }
