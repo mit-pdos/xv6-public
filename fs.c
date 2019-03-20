@@ -84,7 +84,6 @@ bfree(int dev, uint b)
   struct buf *bp;
   int bi, m;
 
-  readsb(dev, &sb);
   bp = bread(dev, BBLOCK(b, sb));
   bi = b % BPB;
   m = 1 << (bi % 8);
