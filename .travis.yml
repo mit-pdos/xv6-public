@@ -1,4 +1,6 @@
 language: c
+script: make
+language: c
 script: make && make fs.img
 deploy:
   provider: releases
