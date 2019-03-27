@@ -502,7 +502,7 @@ getprocs(void)
 	int count = 0;
 	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 		if (p->state != UNUSED || p->state != ZOMBIE) {
-		count += 1
+			count += 1;
 		}
 	}
 	return count;
