@@ -496,6 +496,19 @@ kill(int pid)
   return -1;
 }
 
+int
+getprocs(void) 
+{
+	int count = 0;
+	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+		if (p->state != UNUSED || p->state != ZOMBIE) {
+		count += 1
+		}
+	}
+	return count;
+
+}
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
