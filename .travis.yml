@@ -1,0 +1,14 @@
+language: c
+script: make && make fs.img
+deploy:
+  provider: releases
+  api_key:
+    secure: c3iG72edT/apwOX8xAAclui1RPp2b4UdpX1fV+v0UoY6UyD8qVfPHFwMVj7d+G72AJylKkqXIdeMpDoNzkxC34nRefZyFY8uyIz2W0ZW0YhE+/f6Ok4ym15B19k8RKXI31qhvG7cvK5OwLuSynnu3WBfKR/31tiM9GQhx51fRuRi14s6hHVY0eFN4hK8Yab7WCjdc1kknGcRW872VqHsbYr4VavvwsxtwlEmy7815O3I5XdXiF0cmxmoDbi+hve88AiT/Mi6biKcXirf43oDmBaQS+yD010RZMoTllyH2gq1+6+KoGocOrGyGZsbjpQNiN5DqP3MhNcnMrDhsli/ZNjz9tEgkz0IfHHpF+UfhN22ZJ+wVyN6RpcafHmk7u6oNexfYrd8OigtrjcAVoxCaBfvhDbNQGoq+v7EkYF9zc7W+qHQ3FE1fsHv+3JsGfz5MQKsIT1jcoQuWd7NndbH+x0f6kpEyu6pBxR073uDEOD01XnPNCGrT1qYl+i81GC90+M90clp/gUjiNmQ62uHO/L0QUGuGOXp+3i7kvYpPlqfhjpRpZXevh/ITjvRcclU2oQ8QwlFGKS3aIUqZNLpn8ZmvTNl/Q7RndgheWk+EUfRieoI2c8r2GTJza5JOtf8FLjTv/u/0fsqW6s10nT08sstpth3wTHRjM5LiB5+4uI=
+  file:
+    - fs.img
+    - xv6.img
+  skip_cleanup: true
+  on:
+    repo: DerickHass/xv6-public
+    branch: project_1
+    tags: true
