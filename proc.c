@@ -142,7 +142,10 @@ userinit(void)
   p->tf->eip = 0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
-  p->cwd = namei("/");
+
+  // Note that we assign p->cwd in forkret, when
+  // returning to userspace after initializing the
+  // inode cache.
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -415,6 +418,7 @@ forkret(void)
     first = 0;
     iinit(ROOTDEV);
     initlog(ROOTDEV);
+    myproc()->cwd = namei("/");
   }
 
   // Return to "caller", actually trapret (see allocproc).
