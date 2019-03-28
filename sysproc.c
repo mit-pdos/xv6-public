@@ -46,15 +46,7 @@ sys_getpid(void)
 int
 sys_getprocs(void)
 {
-	struct proc *p;
-	int count = 0;
-	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-		if (p->state != UNUSED || p->state != ZOMBIE) {
-			count += 1;
-		}
-	}
-	return count;
-	//return getprocs();
+	return getprocs();
 }
 
 
