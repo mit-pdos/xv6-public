@@ -1,7 +1,9 @@
 #include "types.h"
 #include "stat.h"
+#include "defs.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include "proc.h"
 
 
 
