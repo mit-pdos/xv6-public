@@ -1,7 +1,8 @@
 #include "types.h"
 #include "stat.h"
-#include "stdio.h"
 #include "defs.h"
+#include "stdio.h"
+
 
 
 int main(void) {
