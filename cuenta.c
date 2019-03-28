@@ -1,5 +1,7 @@
-#include <defs.h>
-#include <cstdlib>
+#include "types.h"
+#include "stat.h"
+#include "user.h"
+#include "defs.h"
 
 
 int main(void) {
