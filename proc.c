@@ -496,6 +496,7 @@ kill(int pid)
   return -1;
 }
 
+/*
 int
 getprocs(void) 
 {
@@ -509,6 +510,7 @@ getprocs(void)
 	return count;
 
 }
+*/
 
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
