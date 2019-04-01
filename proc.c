@@ -534,19 +534,17 @@ procdump(void)
 }
 
 int
-getprocs()
+getprocs(void)
 {
-  struct  proc *p;
-  sti();
+  int c=0;
+  struct proc *p;
   acquire(&ptable.lock);
-  for (p = ptable.proc; p < &ptable.proc[NPROC];p++)
-  {
-    if( p-> state != UNUSED || p->ZOMBIE)
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
-      int count ++;
+      if(p->state == RUNNING) // UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE }; //UNUSED && p->state != ZOMBIE
+        c++;
     }
-  }
-  printf("La cantidad de procesos corriendo en el sistema es de: %d",count);
   release(&ptable.lock);
-  return 22; 
+  return c;
 }
