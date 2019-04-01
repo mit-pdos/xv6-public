@@ -8,6 +8,20 @@
 #include "proc.h"
 
 int
+sys_wcupa(void)
+{
+  return 1871;
+}
+
+int
+sys_getreadcount(void)
+{
+  return readcount;
+}
+
+////
+
+int
 sys_fork(void)
 {
   return fork();
