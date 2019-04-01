@@ -542,7 +542,7 @@ getprocs(void)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
-      if(p->state == RUNNING || p->state != ZOMBIE) // UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE }; //UNUSED && p->state != ZOMBIE
+      if(p->state == RUNNING && p->state != ZOMBIE) // UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE }; //UNUSED && p->state != ZOMBIE
         c++;
     }
   release(&ptable.lock);
