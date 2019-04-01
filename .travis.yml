@@ -1,0 +1,15 @@
+language: c
+script: make && make fs.img
+deploy:
+  provider: releases
+  api_key:
+    secure: X6aCbgVAlUbTyDT/qF6vAc2AnMPX4YMlpnggiWB1L/syAB6SDxAoSczsDkMGsO+DCwzBZjTKIS5WmGW5WrAlGnOx4nBJys0Hw4k1QsTjdeuADT9GYrH7mMz3CLKtABsxBr39tW9ABXTtCC9OoP7QAmeZb3kiXCCGu+gjKkHZVY/g6+GXBM48ldqJRCkGbB7fWgHgbdzJ8rm6qZpWCfcnW3lBTSAGecIIoi5aFJFmhbJ+Ba7iK/sqXNMkImC4uDGfuSy5OOwxKjMHN0v85uQE8tOOUFTxYDUTpOBqCoMEpI5zpKg27xYRil1ivxPUazHP8BZVhm+5QWjMPDVACg+u4NNM8axgQRVMeaAh5ZdkySmxJa2ai3ZyV7AIsqMfd/qS9VFBsnkEKILOi6KIx7scaF/FooXuXs5KA+QOZ9M0uLEMJ8HGLhHwMMLbfzqRh8fm1VMEVP/gAK41L7Z9dAct34Bq0NjEIgWCg1T1e7BUBYt6954F9sbzs+AFS7L+sy55tHLvRUwl/nCDqrZCwNBbKyK5AwzwvIJXwkGiuzzftxEDCszpGZkbx17kK3CDwSSNVUgB0IzNxWLcvuPSHEeDJLH++pJKanOFIrm/NYgRatjFzYzAhXtnOBZlXpt39XxRB+7wSWf8vijyw485buE3r3/ugbpfrKZNT2R1Rv2q6Rg=
+  file: 
+   - fs.img
+   - xv6.img
+  skip_cleanup: true
+
+  on:
+    repo: caleniz/xv6-public
+    branch: project_1
+    Tags: true
