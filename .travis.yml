@@ -1,0 +1,14 @@
+script: make && make fs.img
+language: c
+deploy:
+  provider: releases
+  api_key:
+    secure: hpQE+IuREpPq9fITDd57PXz3iaa0ut5w+cXXihfA9IWWPtAUENDVWXbkb4weulA10z8W9Q7tzgaysXoF4S5rJAi2t5Jt1seIiCXaP3OkpZx5XaH69llM0R7lSTIwPM3BdT2s3ScM5WP/BgomimjL/jtDU9OxRBkTsrvDV7yWOsAeq2tM4HT98kIc6NjyeWdVzpKkEP57LRs+LdMisaTh4H/AoeWBKr9iMBZ/GwSZXTQVHG2sdsvBmtkt75gB7zCaCJxlAhsUl7AA5YcI+3n+chqfyBaA+ux2WKliF7G6plvMsc6z416uj+EYospGAELWgNPD9YX8DnLZh94ys5ay7M90B6xv13T8qpzo4x2xh+q5edE/sgSNhVvg8LCDbYfUQSvVLKubWUSN0+9bNXeLO7CH1fwa+vU2s7PZm0EhgN1Ip1c01Bo17Mm8U6uh6DI4CGHJhtV0ZG+JV/bOYdEywOxIWew+okokiM/QwwU3j7qaYEPGIMwyZbtNmpfewsgK4/cuwQ64E1bweB8aAVfX6Gr+GfSquBZEB1Z+M/NENV1EyYrx1dwfuRpRX1AL1V04xUc7a3l8/z6pGdY62nbCKF6SaUYwsf/imotwlyJup6OVdak5vNoKHl8CLQs86/2Mh6/6VlWHi/4NglrpPEfwHVT6n/ds3igUevJdn3BX//A=
+  file: 
+    -fs.img
+    -xv6.img
+  skip_cleanup: true
+  on:
+    repo: mit-pdos/xv6-public
+    branch: Tarea1
+    tags: true
