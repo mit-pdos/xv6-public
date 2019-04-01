@@ -532,3 +532,21 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+int
+getprocs()
+{
+  struct  proc *p;
+  sti();
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC];p++)
+  {
+    if( p-> state != UNUSED || p->ZOMBIE)
+    {
+      int count ++;
+    }
+  }
+  printf("La cantidad de procesos corriendo en el sistema es de: %d",count);
+  release(&ptable.lock);
+  return 22; 
+}
