@@ -4,6 +4,7 @@
 
 
 int main(void) {
-printf(1,"La cantidad de procesos en ejecucion en la CPU es %i\n", getprocs());
+printf(1,"La cantidad de procesos en ejecucion en la CPU es %d\n", getprocs());
+exit();
 }
  
