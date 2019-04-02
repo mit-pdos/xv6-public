@@ -507,6 +507,7 @@ getprocs(void)
 			count += 1;
 		}
 	}
+	release(&ptable.lock);
 	return count;
 }
 
