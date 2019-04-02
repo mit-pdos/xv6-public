@@ -89,3 +89,11 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_ps(void)
+{
+    ps_test();
+    cprintf("Hey you called ps!\n");
+    return 0;
+}

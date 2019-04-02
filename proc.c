@@ -532,3 +532,8 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+void ps_test()
+{
+    cprintf("This is a test\n");
+}
