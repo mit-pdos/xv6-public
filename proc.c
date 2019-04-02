@@ -501,6 +501,7 @@ getprocs(void)
 {
 	struct proc *p;
 	int count = 0;
+	acquire(&ptable.lock);
 	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 		if (p->state != UNUSED || p->state != ZOMBIE) {
 			count += 1;
