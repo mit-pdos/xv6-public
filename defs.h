@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct uproc;
 
 // bio.c
 void            binit(void);
@@ -116,11 +117,11 @@ void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
 void            setproc(struct proc*);
 void            sleep(void*, struct spinlock*);
-void            ps_test(void);
 void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int		getprocs(int, struct uproc*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -156,7 +157,6 @@ int             argstr(int, char**);
 int             fetchint(uint, int*);
 int             fetchstr(uint, char**);
 void            syscall(void);
-
 // timer.c
 void            timerinit(void);
 

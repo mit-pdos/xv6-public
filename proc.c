@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "uproc.h"
 
 struct {
   struct spinlock lock;
@@ -19,6 +20,7 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+
 
 void
 pinit(void)
@@ -88,8 +90,12 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  acquire(&tickslock);
+  p->ticks = ticks;
+  release(&tickslock);
 
   release(&ptable.lock);
+  p->uptime = p->ticks;
 
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
@@ -342,6 +348,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      p->ticks = ticks;
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -418,7 +425,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   if(p == 0)
     panic("sleep");
 
@@ -533,7 +540,30 @@ procdump(void)
   }
 }
 
-void ps_test()
+
+int
+getprocs(int max, struct uproc table[])
 {
-    cprintf("This is a test\n");
+  struct proc *p;
+  int num = 0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)  // For each process in the ptable
+  {
+    if(p->state != UNUSED)			      // If it's not unused, 
+    {
+      table[num].pid = p->pid;		              // Copy information to the table
+      if(p->pid == 1)
+	table[num].ppid = 0;
+      else
+        table[num].ppid = p->parent->pid;
+      table[num].state = p->state;
+      table[num].sz = p->sz;
+      table[num].ticks = p->ticks;
+      table[num].uptime = p->uptime;
+      int dest_size = sizeof(table[num].name);
+      strncpy(table[num].name, p->name, dest_size);
+      table[num].name[dest_size-1] = '\0';
+      num += 1;					     // Keep track of the number of processes
+    }
+  }
+  return num;
 }

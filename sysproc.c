@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "uproc.h"
 
 int
 sys_fork(void)
@@ -91,9 +92,15 @@ sys_uptime(void)
 }
 
 int
-sys_ps(void)
+sys_getprocs(void)
 {
-    ps_test();
-    cprintf("Hey you called ps!\n");
-    return 0;
+  int max;
+  struct uproc *table;
+  // Get max and table off of the stack, if either returns -1, error
+  if(argint(0, &max) < 0 || argptr(1, (void *)&table, 
+						max*sizeof(struct uproc)) < 0)
+  {
+    return -1;
+  }
+  return getprocs(max, table);
 }
