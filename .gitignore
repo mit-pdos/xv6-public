@@ -14,3 +14,12 @@ kernel
 kernelmemfs
 mkfs
 .gdbinit
+
+TEST
+.vscode/launch.json
+partner.txt
+
+*.icloud
+
+*.bin
+*.ipch
