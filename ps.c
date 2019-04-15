@@ -41,8 +41,11 @@ main(int argc, char* argv[])
     // Sort by process state
     if (strcmp(argv[1], "-sp") == 0) {
       printf(1, "Found sp option\n");
-      sort_state(table, procnum);
+      //sort_state(table, procnum);
     } 
+    else if (strcmp(argv[1], "-n") == 0){
+      printf(1, "Number of processes: %d\n", procnum);
+    }
     
     // Search by process name
     else if (strcmp(argv[1], "-s") == 0) {
