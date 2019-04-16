@@ -2,6 +2,9 @@
 #include "user.h"
 #include "uproc.h"
 
+
+int search_proc(char* searched, struct uproc *table, int procnum, struct uproc *result);
+
 void sort_size(struct uproc *table, int procnum)
 {
   int i, j;
@@ -17,6 +20,24 @@ void sort_size(struct uproc *table, int procnum)
     table[j+1] = key;
   }
 
+}
+
+int 
+search_proc(char* searched, struct uproc *table, int procnum, struct uproc *result){
+  for(int i=0; i<procnum; i++){
+    if(strcmp(searched, table[i].name) == 0){
+      result->pid = table[i].pid;
+      result->ppid = table[i].ppid;
+      result->state = table[i].state;
+      result->sz = table[i].sz;
+      result->uptime = table[i].uptime;
+      result->ticks = table[i].ticks;
+      result->sleepticks = table[i].sleepticks;
+      strcpy(result->name, table[i].name);
+      return 1;
+    }
+  }
+  return 0;
 }
 
 int
@@ -52,8 +73,40 @@ main(int argc, char* argv[])
       sort_size(table, procnum);
     } 
     // Search by process name
-    else if (strcmp(argv[1], "-s") == 0) {
-    }
+    else
+    if((strcmp(argv[1], "-s") == 0)){
+      if((argc > 2)){         
+        struct uproc *p = (struct uproc *)malloc(sizeof(struct uproc)); 
+
+        if((search_proc(argv[2], table, procnum, p)) == 1){ //create this function 
+          printf(1, "PID  PPID  STATE TIME UPTIME  SIZE  NAME\n");
+          printf(1, " %d   ", p->pid);
+          printf(1, "%d  ", p->ppid);
+          int state = p->state;
+            if(state == 1)
+              printf(1, "EMBRYO  ");
+            if(state == 2)
+              printf(1, "SLEEPING  ");
+            if(state == 3)
+              printf(1, "RUNNABLE  ");
+            if(state == 4)
+              printf(1, "RUNNING  ");
+            if(state == 5)
+              printf(1, "ZOMBIE  ");
+            
+          printf(1, "%d  ", (uptime() - p->ticks)/10);
+          printf(1, "%d  ", (uptime() - p->uptime)/10);
+          printf(1, "%d  ", p->sz);
+          printf(1, "%s\n\n", p->name);
+
+        } else {
+            printf(1, "process not found\n\n");
+        }
+      } else {
+        printf(1, "usage: no process name given to search\n\n"); //error
+      }
+
+    } 
   }
 
   printf(1, "PID  PPID  STATE TIME UPTIME  SIZE  NAME\n");
