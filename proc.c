@@ -8,6 +8,8 @@
 #include "spinlock.h"
 #include "rand.h"
 
+const int DEFAULT_TIX = 20;
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -48,6 +50,7 @@ allocproc(void)
   return 0;
 
 found:
+  p->tix = DEFAULT_TIX;
   p->state = EMBRYO;
   p->pid = nextpid++;
   release(&ptable.lock);
@@ -280,9 +283,24 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    int tixTotal = 0;
+    int tixCounted = 0;
+
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      tixTotal += p->tix;
+    }
+    uint jackpot = random_at_most(tixTotal);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
+
+      tixCounted += tixTotal;
+      if (jackpot > tixCounted) 
+      {
+        continue;
+      }
+      // below doesn't get run until the jackpot is surpassed by the total tickets counted
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -297,9 +315,9 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       proc = 0;
+      break; // restart scheduler loop and reset tickets to 0
     }
     release(&ptable.lock);
-
   }
 }
 

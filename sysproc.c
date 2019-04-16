@@ -98,3 +98,8 @@ sys_gettime(void) {
   cmostime(d);
   return 0;
 }
+
+void sys_settickets(int newTix)
+{
+  proc->tix = newTix;
+}

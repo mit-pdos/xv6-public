@@ -14,3 +14,6 @@ kernel
 kernelmemfs
 mkfs
 .gdbinit
+
+*.ipch
+*.bin
