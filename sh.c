@@ -149,6 +149,9 @@ main(void) {
 #ifdef FCFS
     printf(1, "FCFS\n");
 #endif
+#ifdef FRR
+    printf(1, "FRR\n");
+#endif
     
     static char buf[100];
     int fd;

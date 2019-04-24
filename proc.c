@@ -8,6 +8,7 @@
 #include "spinlock.h"
 
 #define NULL 0
+#define QUANTA 5
 
 struct {
     struct spinlock lock;
@@ -94,6 +95,7 @@ allocproc(void) {
     p->retime = 0;
     p->rutime = 0;
     p->stime = 0;
+    p->quanta = 0;
 
     release(&ptable.lock);
 
@@ -349,6 +351,7 @@ int wait2(int *retime, int *rutime, int *stime) {
                 p->retime = 0;
                 p->rutime = 0;
                 p->stime = 0;
+                p->quanta = 0;
                 // XXX Dados de tempo do proc
                 p->state = UNUSED;
                 release(&ptable.lock);
@@ -388,14 +391,10 @@ scheduler(void) {
         acquire(&ptable.lock);
 
         for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-#ifdef DEFAULT
             if (p->state != RUNNABLE)
                 continue;
-#endif
 #ifdef FCFS
             struct proc *minP = 0;
-            if (p->state != RUNNABLE)
-                continue;
 
             // XXX Ignora processo init e sh, para não travar o computador
             if (p->pid > 1) {
@@ -460,10 +459,15 @@ sched(void) {
 // Give up the CPU for one scheduling round.
 void
 yield(void) {
-    acquire(&ptable.lock);  //DOC: yieldlock
-    myproc()->state = RUNNABLE;
-    sched();
-    release(&ptable.lock);
+#ifdef FRR
+    if (myproc()->quanta >= QUANTA || myproc()->state != RUNNING)
+#endif
+    {
+        acquire(&ptable.lock);  //DOC: yieldlock
+        myproc()->state = RUNNABLE;
+        sched();
+        release(&ptable.lock);
+    }
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -617,6 +621,7 @@ void atualizaestatisticas() {
                 break;
             case RUNNING:
                 p->rutime++;
+                p->quanta++;
                 break;
             default:;
         }

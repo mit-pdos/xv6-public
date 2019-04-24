@@ -3,7 +3,7 @@
 #include "user.h"
 
 #define N 10
-#define M 10
+#define M 1000
 
 void
 printChild() {
