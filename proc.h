@@ -52,6 +52,9 @@ struct proc {
     struct inode *cwd;           // Current directory
     char name[16];               // Process name (debugging)
     uint ctime;                  // XXX Tempo de criação do processo
+    int stime;                   // XXX SLEEPING time, tempo "Dormindo"
+    int retime;                  // XXX READY(RUNNABLE) time, tempo com o processo "Pronto para rodar"
+    int rutime;                  // XXX RUNNING time, tempo do processo "Rodando"
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -59,3 +62,5 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+void atualizaestatisticas();
