@@ -51,6 +51,7 @@ struct proc {
   struct mount *cwdmount;      // Mount in which current directory lies
   char name[16];               // Process name (debugging)
   struct nsproxy *nsproxy;     // Namespace proxy object
+  int status;                  // Process exit status
 };
 
 // Process memory is laid out contiguously, low addresses first:

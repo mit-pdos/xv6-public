@@ -405,7 +405,7 @@ namespacetest(void) {
 
     umounta();
 
-    exit();
+    exit(0);
   } else {
     wait();
     if (umounta() != 0) {
@@ -432,7 +432,7 @@ namespacefiletest(void) {
     }
 
     createfile("b/nsfiletest", "aaa");
-    exit();
+    exit(0);
   } else {
     wait();
 
@@ -494,5 +494,5 @@ main(int argc, char *argv[])
   unlink("a");
   unlink("b");
 
-  exit();
+  exit(0);
 }
