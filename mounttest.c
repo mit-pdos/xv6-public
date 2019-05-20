@@ -407,7 +407,7 @@ namespacetest(void) {
 
     exit(0);
   } else {
-    wait();
+    wait(0);
     if (umounta() != 0) {
       return;
     }
@@ -434,7 +434,7 @@ namespacefiletest(void) {
     createfile("b/nsfiletest", "aaa");
     exit(0);
   } else {
-    wait();
+    wait(0);
 
     if (umounta() != 0) {
       return;
