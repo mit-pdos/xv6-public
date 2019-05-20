@@ -149,7 +149,7 @@ syscall(void)
     curproc->tf->eax = syscalls[num]();
   } else {
     cprintf("%d %s: unknown sys call %d\n",
-            curproc->pid, curproc->name, num);
+            curproc->ns_pid, curproc->name, num);
     curproc->tf->eax = -1;
   }
 }

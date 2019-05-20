@@ -11,6 +11,7 @@
 #include "mount.h"
 #include "namespace.h"
 #include "ns_types.h"
+#include "pid_ns.h"
 
 struct {
   struct spinlock lock;
@@ -22,6 +23,7 @@ namespaceinit(void)
 {
     initlock(&namespacetable.lock, "namespace");
     mount_nsinit();
+    pid_ns_init();
 }
 
 void
@@ -32,6 +34,8 @@ namespaceput(struct nsproxy* nsproxy)
         release(&namespacetable.lock);
         mount_nsput(nsproxy->mount_ns);
         nsproxy->mount_ns = 0;
+        pid_ns_put(nsproxy->pid_ns);
+        nsproxy->pid_ns = 0;
         acquire(&namespacetable.lock);
     }
     nsproxy->ref -= 1;
@@ -66,6 +70,7 @@ emptynsproxy(void)
     acquire(&namespacetable.lock);
     struct nsproxy* result = allocnsproxyinternal();
     result->mount_ns = newmount_ns();
+    result->pid_ns = pid_ns_new(0);
     release(&namespacetable.lock);
 
     return result;
@@ -79,6 +84,7 @@ unshare(int nstype)
         struct nsproxy *oldns = myproc()->nsproxy;
         myproc()->nsproxy = allocnsproxyinternal();
         myproc()->nsproxy->mount_ns = mount_nsdup(oldns->mount_ns);
+        myproc()->nsproxy->pid_ns = pid_ns_dup(oldns->pid_ns);
         oldns->ref--;
     }
     release(&namespacetable.lock);
@@ -89,6 +95,17 @@ unshare(int nstype)
                 myproc()->nsproxy->mount_ns = copymount_ns();
                 mount_nsput(previous);
                 return 0;
+            }
+        case PID_NS:
+            {
+              if (myproc()->child_pid_ns) {
+                return -1;
+              }
+
+              myproc()->child_pid_ns = pid_ns_new(myproc()->nsproxy->pid_ns);
+              cprintf("child_pid_ns = %p, my_ns = %p\n", myproc()->child_pid_ns,
+                  myproc()->nsproxy->pid_ns);
+              return 0;
             }
         default:
             return -1;

@@ -7,15 +7,25 @@
 #include "proc.h"
 #include "spinlock.h"
 #include "wstatus.h"
+#include "pid_ns.h"
+#include "namespace.h"
 
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
 
+int get_pid_for_ns(struct proc* proc, struct pid_ns* pid_ns) {
+  for (int i = 0; i < MAX_PID_NS_DEPTH; i++) {
+    if (proc->pids[i].pid_ns == pid_ns) {
+      return proc->pids[i].pid;
+    }
+  }
+  return 0;
+}
+
 static struct proc *initproc;
 
-int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
@@ -87,8 +97,8 @@ allocproc(void)
   return 0;
 
 found:
+  p->child_pid_ns = 0;
   p->state = EMBRYO;
-  p->pid = nextpid++;
 
   release(&ptable.lock);
 
@@ -143,6 +153,11 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = initprocessroot(&p->cwdmount);
   p->nsproxy = emptynsproxy();
+
+  p->ns_pid = pid_ns_next_pid(p->nsproxy->pid_ns);
+
+  p->pids[0].pid = p->ns_pid;
+  p->pids[0].pid_ns = p->nsproxy->pid_ns;
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -212,10 +227,36 @@ fork(void)
   np->cwdmount = mntdup(curproc->cwdmount);
 
   np->nsproxy = namespacedup(curproc->nsproxy);
+  struct pid_ns* cur = np->nsproxy->pid_ns;
+  if (curproc->child_pid_ns) {
+    pid_ns_put(cur);
+
+    cur = curproc->child_pid_ns;
+    pid_ns_get(cur);
+  }
+
+
+  // for each pid_ns get me a pid
+  i = 0;
+  while (cur) {
+    if (i >= MAX_PID_NS_DEPTH) {
+      panic("too many danif!");
+    }
+
+    np->pids[i].pid = pid_ns_next_pid(cur);
+    np->pids[i].pid_ns = cur;
+    cprintf("%s - i = %d, pid = %d, pid_ns = %p\n", __func__, i,
+        np->pids[i].pid, np->pids[i].pid_ns);
+    i++;
+    cur = cur->parent;
+  }
+
+  np->ns_pid = np->pids[0].pid;
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
-  pid = np->pid;
+  pid = get_pid_for_ns(np, curproc->nsproxy->pid_ns);
+  cprintf("%s - unshare - %d, pid4parent = %d\n", __func__, np->ns_pid, pid);
 
   acquire(&ptable.lock);
 
@@ -263,6 +304,8 @@ exit(int status)
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
 
+  // TODO: handle pid 1 logic namespace
+
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
@@ -297,11 +340,12 @@ wait(int *wstatus)
       havekids = 1;
       if(p->state == ZOMBIE){
         // Found one.
-        pid = p->pid;
+        pid = get_pid_for_ns(p, curproc->nsproxy->pid_ns);
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
-        p->pid = 0;
+        p->ns_pid = 0;
+        // TODO: add other ns logic here
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
@@ -497,8 +541,9 @@ kill(int pid)
   struct proc *p;
 
   acquire(&ptable.lock);
+  struct pid_ns* pid_ns = myproc()->nsproxy->pid_ns;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->pid == pid){
+    if(get_pid_for_ns(p, pid_ns) == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
@@ -538,7 +583,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("%d %s %s", get_pid_for_ns(p, initproc->nsproxy->pid_ns), state, p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)

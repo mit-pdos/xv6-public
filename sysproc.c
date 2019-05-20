@@ -47,7 +47,7 @@ sys_kill(void)
 int
 sys_getpid(void)
 {
-  return myproc()->pid;
+  return myproc()->ns_pid;
 }
 
 int

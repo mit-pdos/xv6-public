@@ -6,7 +6,7 @@
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
-#define CLONE_NEWPID 0x20000000
+#define CLONE_NEWPID 2
 #define NULL 0
 
 typedef   signed int          pid_t;
@@ -28,6 +28,7 @@ void assert_msg(int r, const char *msg) {
     return;
   }
   printf(stderr, "%s\n", (char *)msg);
+  exit(1);
 }
 
 static int child_exit_status(int pid) {
@@ -113,12 +114,14 @@ int test_simple_pidns() {
   int ret = check(fork(), "failed to fork");
   // child
   if (ret == 0) {
+    printf(1, "getpid = %d\n", getpid());
     assert_msg(getpid() == 1, "pid not equal to 1");
     exit(0);
   }
 
   // flaky test because pid can recycle. However strictly speaking pid should be
   // increasing
+  printf(1, "getpid = %d, ret = %d\n", getpid(), ret);
   assert_msg(getpid() < ret, "wrong pid");
 
   int status = child_exit_status(ret);
@@ -348,14 +351,14 @@ int main() {
   run_test(unshare_twice, "unshare_twice");
   run_test(test_simple_pidns, "test_simple_pidns");
   run_test(test_simple_pidns_fork, "test_simple_pidns_fork");
-  run_test(test_nested_pidns_create, "test_nested_pidns_create");
-  run_test(test_children_reaped_by_nspid1, "test_children_reaped_by_nspid1");
-  run_test(test_all_children_kill_when_nspid1_dies,
-           "test_all_children_kill_when_nspid1_dies");
-  run_test(test_calling_fork_after_nspid1_dies_fails, "test_calling_fork_after_nspid1_dies_fails");
+  /* run_test(test_nested_pidns_create, "test_nested_pidns_create"); */
+  /* run_test(test_children_reaped_by_nspid1, "test_children_reaped_by_nspid1"); */
+  /* run_test(test_all_children_kill_when_nspid1_dies, */
+  /*          "test_all_children_kill_when_nspid1_dies"); */
+  /* run_test(test_calling_fork_after_nspid1_dies_fails, "test_calling_fork_after_nspid1_dies_fails"); */
   // run_test(test_calling_fork_recursive_after_nspid1_dies_fails, "test_calling_fork_recursive_after_nspid1_dies_fails");
  
-  run_test(test_unshare_recrusive_limit, "test_unshare_recrusive_limit");
+  /* run_test(test_unshare_recrusive_limit, "test_unshare_recrusive_limit"); */
 
-  return 0;
+  exit(0);
 }

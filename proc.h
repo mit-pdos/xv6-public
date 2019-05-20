@@ -34,13 +34,21 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+struct pid_entry {
+  struct pid_ns* pid_ns;
+  int pid;
+};
+
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
-  int pid;                     // Process ID
+  /* int pid;                     // Process ID */
+  int ns_pid;
+  struct pid_entry pids[4];
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
@@ -51,7 +59,8 @@ struct proc {
   struct mount *cwdmount;      // Mount in which current directory lies
   char name[16];               // Process name (debugging)
   struct nsproxy *nsproxy;     // Namespace proxy object
-  int status;                  // Process exit status
+  struct pid_ns *child_pid_ns; // PID namespace for child procs
+  int status;		               // Process exit status
 };
 
 // Process memory is laid out contiguously, low addresses first:
