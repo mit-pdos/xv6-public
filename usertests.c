@@ -7,6 +7,7 @@
 #include "syscall.h"
 #include "traps.h"
 #include "memlayout.h"
+#include "wstatus.h"
 
 char buf[8192];
 char name[3];
@@ -1745,6 +1746,24 @@ rand()
   return randstate;
 }
 
+void
+exitrctest()
+{
+  int exit_code = 501;
+  int pid = fork();
+  if (pid == 0) {
+    exit(exit_code);
+  }
+  int wstatus;
+  wait(&wstatus);
+  if (WEXITSTATUS(wstatus) != exit_code) {
+    printf(2, "exitrctest: ERROR - failed to get correct exit status\n");
+    exit(1);
+  } else {
+    printf(1, "exitrctest ok\n");
+  }
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1796,8 +1815,8 @@ main(int argc, char *argv[])
   bigdir(); // slow
 
   uio();
-
-  exectest();
+  exitrctest();
+  exectest(); // Ensure this test to be the last one to run (prints ALL TESTS PASSED) 
 
   exit(0);
 }
