@@ -98,6 +98,7 @@ allocproc(void)
 
 found:
   p->child_pid_ns = 0;
+  p->child_pid_ns_destroyed = 0;
   p->state = EMBRYO;
 
   release(&ptable.lock);
@@ -200,6 +201,10 @@ fork(void)
   int i, pid;
   struct proc *np;
   struct proc *curproc = myproc();
+
+  if (curproc->child_pid_ns_destroyed) {
+      return -1;
+  }
 
   // Allocate process.
   if((np = allocproc()) == 0){
@@ -335,6 +340,7 @@ exit(int status)
   // If pid1 dies, all of it's children must be killed as well
   if (curproc == procpid1) {
     // find parent procpid1
+    curproc->parent->child_pid_ns_destroyed = 1;
     kill_recursively(procpid1);
   } else {
     // Pass abandoned children to init.

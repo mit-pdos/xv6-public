@@ -206,7 +206,7 @@ int loop_forever() {
 /* support function to busy wait about 1 secound */
 int sleep_1s() {
   // TODO: find a better way to sync the destruction
-  sleep(100);
+  sleep(10);
   return 0;
 }
 
@@ -388,6 +388,42 @@ int unshare_twice() {
   return 1;
 }
 
+int test_calling_fork_twice_after_unshare() {
+  check(unshare(CLONE_NEWPID), "failed to unshare");
+
+  int ret = check(fork(), "failed to fork");
+  if (ret == 0) {
+
+    // child is pid 1
+    assert_msg(getpid() == 1, "pid not equal to 1");
+
+    sleep(1);
+
+    // pid 1 exits
+    exit(0);
+  }
+
+  int ret2 = check(fork(), "failed to fork");
+  if (ret2 == 0) {
+
+    // child is pid 2
+    assert_msg(getpid() == 2, "pid not equal to 2");
+
+    // pid 1 exits
+    exit(0);
+  }
+
+  // make sure it's dead
+  int status = child_exit_status(ret2);
+  assert_msg(status == 0, "child process failed");
+  
+  // make sure it's dead
+  status = child_exit_status(ret);
+  assert_msg(status == 0, "child process failed");
+
+  return 0;
+}
+
 int run_test(test_func_t func, const char *name) {
   int status = 0;
   int pid = -1;
@@ -414,9 +450,8 @@ int main() {
   run_test(test_children_reaped_by_nspid1, "test_children_reaped_by_nspid1");
   run_test(test_all_children_kill_when_nspid1_dies,
            "test_all_children_kill_when_nspid1_dies");
-  /* run_test(test_calling_fork_after_nspid1_dies_fails, "test_calling_fork_after_nspid1_dies_fails"); */
-  // run_test(test_calling_fork_recursive_after_nspid1_dies_fails, "test_calling_fork_recursive_after_nspid1_dies_fails");
- 
+  run_test(test_calling_fork_twice_after_unshare, "test_calling_fork_twice_after_unshare");
+  run_test(test_calling_fork_after_nspid1_dies_fails, "test_calling_fork_after_nspid1_dies_fails");
   run_test(test_unshare_recrusive_limit, "test_unshare_recrusive_limit");
 
   exit(0);
