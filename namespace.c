@@ -88,7 +88,7 @@ int
 unshare(int nstype)
 {
     acquire(&namespacetable.lock);
-    if (myproc()->nsproxy->ref > 1) {
+    if (myproc()->nsproxy->ref > 1 && nstype != PID_NS) {
         struct nsproxy *oldns = myproc()->nsproxy;
         myproc()->nsproxy = allocnsproxyinternal();
         myproc()->nsproxy->mount_ns = mount_nsdup(oldns->mount_ns);
