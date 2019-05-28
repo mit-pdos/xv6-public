@@ -97,10 +97,7 @@ allocproc(void)
   return 0;
 
 found:
-  p->child_pid_ns = 0;
-  p->child_pid_ns_destroyed = 0;
   p->state = EMBRYO;
-  p->killed = 0;
 
   release(&ptable.lock);
 
@@ -393,15 +390,18 @@ wait(int *wstatus)
         p->kstack = 0;
         freevm(p->pgdir);
         p->ns_pid = 0;
-        // TODO: add other ns logic here
+        memset(p->pids, 0, sizeof(p->pids));
+        p->child_pid_ns = 0;
+        p->child_pid_ns_destroyed = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        release(&ptable.lock);
         if (wstatus != 0) {
          *wstatus = W_STOPCODE(p->status); 
         }
+        p->status = 0;
+        release(&ptable.lock);
         return pid;
       }
     }
