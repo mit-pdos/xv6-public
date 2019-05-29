@@ -1,0 +1,4 @@
+[gerrit]
+host=review.gerrithub.io
+port=29418
+project=davidsaOpenu/xv6-ns
