@@ -107,6 +107,8 @@ int             cpuid(void);
 void            exit(void);
 int             fork(void);
 int             growproc(int);
+pagetable_t     proc_pagetable(struct proc *);
+void            proc_freepagetable(pagetable_t, uint64);
 int             kill(int);
 struct cpu*     mycpu(void);
 struct cpu*     getmycpu(void);
@@ -178,11 +180,14 @@ void            kvminit(void);
 void            kvmswitch(void);
 pagetable_t     uvmcreate(void);
 void            uvminit(pagetable_t, char *, uint);
-int             uvmdealloc(pagetable_t, uint64, uint64);
+uint64          uvmalloc(pagetable_t, uint64, uint64);
+uint64          uvmdealloc(pagetable_t, uint64, uint64);
 void            uvmcopy(pagetable_t, pagetable_t, uint64);
 void            uvmfree(pagetable_t, uint64);
 void            mappages(pagetable_t, uint64, uint64, uint64, int);
 void            unmappages(pagetable_t, uint64, uint64, int);
+uint64          walkaddr(pagetable_t, uint64);
+int             copyout(pagetable_t, uint64, char *, uint64);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

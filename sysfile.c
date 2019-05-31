@@ -5,10 +5,10 @@
 //
 
 #include "types.h"
+#include "riscv.h"
 #include "defs.h"
 #include "param.h"
 #include "stat.h"
-#include "mmu.h"
 #include "proc.h"
 #include "fs.h"
 #include "spinlock.h"
@@ -401,22 +401,32 @@ sys_exec(void)
   int i;
   uint64 uargv, uarg;
 
+  printf("sys_exec\n");
+
   if(argstr(0, &path) < 0 || argaddr(1, &uargv) < 0){
+    printf("error 1\n");
     return -1;
   }
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
-    if(i >= NELEM(argv))
+    if(i >= NELEM(argv)){
+      printf("error 2\n");
       return -1;
-    if(fetchaddr(uargv+sizeof(uint64)*i, (uint64*)&uarg) < 0)
+    }
+    if(fetchaddr(uargv+sizeof(uint64)*i, (uint64*)&uarg) < 0){
+      printf("error 3\n");
       return -1;
+    }
     if(uarg == 0){
       argv[i] = 0;
       break;
     }
-    if(fetchstr(uarg, &argv[i]) < 0)
+    if(fetchstr(uarg, &argv[i]) < 0){
+      printf("error 4\n");
       return -1;
+    }
   }
+  printf("calling exec\n");
   return exec(path, argv);
 }
 

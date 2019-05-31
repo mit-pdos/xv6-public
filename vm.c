@@ -71,9 +71,9 @@ kvmswitch(void)
 //   12..20 -- 9 bits of level-0 index.
 //    0..12 -- 12 bits of byte offset within the page.
 static pte_t *
-walk(pagetable_t pagetable, const void *va, int alloc)
+walk(pagetable_t pagetable, uint64 va, int alloc)
 {
-  if((uint64)va >= MAXVA)
+  if(va >= MAXVA)
     panic("walk");
 
   for(int level = 2; level > 0; level--) {
@@ -90,17 +90,38 @@ walk(pagetable_t pagetable, const void *va, int alloc)
   return &pagetable[PX(0, va)];
 }
 
+// Look up a virtual address, return the physical address,
+// Can only be used to look up user pages.
+// or 0 if not mapped.
+uint64
+walkaddr(pagetable_t pagetable, uint64 va)
+{
+  pte_t *pte;
+  uint64 pa;
+
+  pte = walk(pagetable, va, 0);
+  if(pte == 0)
+    return 0;
+  if((*pte & PTE_V) == 0)
+    return 0;
+  if((*pte & PTE_U) == 0)
+    return 0;
+  pa = PTE2PA(*pte);
+  return pa;
+}
+
+
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
 void
 mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 {
-  char *a, *last;
+  uint64 a, last;
   pte_t *pte;
 
-  a = (char*)PGROUNDDOWN(va);
-  last = (char*)PGROUNDDOWN(va + size - 1);
+  a = PGROUNDDOWN(va);
+  last = PGROUNDDOWN(va + size - 1);
   for(;;){
     if((pte = walk(pagetable, a, 1)) == 0)
       panic("mappages: walk");
@@ -120,12 +141,12 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 void
 unmappages(pagetable_t pagetable, uint64 va, uint64 size, int do_free)
 {
-  char *a, *last;
+  uint64 a, last;
   pte_t *pte;
   uint64 pa;
 
-  a = (char*)PGROUNDDOWN(va);
-  last = (char*)PGROUNDDOWN(va + size - 1);
+  a = PGROUNDDOWN(va);
+  last = PGROUNDDOWN(va + size - 1);
   for(;;){
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("unmappages: walk");
@@ -173,11 +194,35 @@ uvminit(pagetable_t pagetable, char *src, uint sz)
   memmove(mem, src, sz);
 }
 
+// Allocate PTEs and physical memory to grow process from oldsz to
+// newsz, which need not be page aligned.  Returns new size or 0 on error.
+uint64
+uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
+{
+  char *mem;
+  uint64 a;
+
+  if(newsz < oldsz)
+    return oldsz;
+
+  a = PGROUNDUP(oldsz);
+  for(; a < newsz; a += PGSIZE){
+    mem = kalloc();
+    if(mem == 0){
+      uvmdealloc(pagetable, newsz, oldsz);
+      return 0;
+    }
+    memset(mem, 0, PGSIZE);
+    mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R);
+  }
+  return newsz;
+}
+
 // Deallocate user pages to bring the process size from oldsz to
 // newsz.  oldsz and newsz need not be page-aligned, nor does newsz
 // need to be less than oldsz.  oldsz can be larger than the actual
 // process size.  Returns the new process size.
-int
+uint64
 uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
 {
   if(newsz >= oldsz)
@@ -229,7 +274,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walk(old, (void *) i, 0)) == 0)
+    if((pte = walk(old, i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if((*pte & PTE_V) == 0)
       panic("copyuvm: page not present");
@@ -240,4 +285,29 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     memmove(mem, (char*)pa, PGSIZE);
     mappages(new, i, PGSIZE, (uint64)mem, flags);
   }
+}
+
+// Copy len bytes from src to virtual address dstva in a given page table.
+// Most useful when pagetable is not the current page table.
+// Return 0 on success, -1 on error.
+int
+copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
+{
+  uint64 n, va0, pa0;
+
+  while(len > 0){
+    va0 = (uint)PGROUNDDOWN(dstva);
+    pa0 = walkaddr(pagetable, va0);
+    if(pa0 == 0)
+      return -1;
+    n = PGSIZE - (dstva - va0);
+    if(n > len)
+      n = len;
+    memmove((void *)(pa0 + (dstva - va0)), src, n);
+
+    len -= n;
+    src += n;
+    dstva = va0 + PGSIZE;
+  }
+  return 0;
 }

@@ -19,7 +19,9 @@ OBJS = \
   sleeplock.o \
   file.o \
   pipe.o \
-  ramdisk.o
+  ramdisk.o \
+  exec.o \
+  sysfile.o
 
 XXXOBJS = \
 	bio.o\

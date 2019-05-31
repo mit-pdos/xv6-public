@@ -94,18 +94,7 @@ found:
   }
 
   // An empty user page table.
-  p->pagetable = uvmcreate();
-
-  // map the trampoline code (for system call return)
-  // at the highest user virtual address.
-  // only the supervisor uses it, on the way
-  // to/from user space, so not PTE_U.
-  mappages(p->pagetable, TRAMPOLINE, PGSIZE,
-           (uint64)trampstart, PTE_R | PTE_X);
-
-  // map the trapframe, for trampoline.S.
-  mappages(p->pagetable, (TRAMPOLINE - PGSIZE), PGSIZE,
-           (uint64)(p->tf), PTE_R | PTE_W);
+  p->pagetable = proc_pagetable(p);
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -114,6 +103,45 @@ found:
   p->context.sp = (uint64)p->kstack + PGSIZE;
 
   return p;
+}
+
+// Create a page table for a given process,
+// with no users pages, but with trampoline pages.
+// Called both when creating a process, and
+// by exec() when building tentative new memory image,
+// which might fail.
+pagetable_t
+proc_pagetable(struct proc *p)
+{
+  pagetable_t pagetable;
+
+  // An empty user page table.
+  pagetable = uvmcreate();
+
+  // map the trampoline code (for system call return)
+  // at the highest user virtual address.
+  // only the supervisor uses it, on the way
+  // to/from user space, so not PTE_U.
+  mappages(pagetable, TRAMPOLINE, PGSIZE,
+           (uint64)trampstart, PTE_R | PTE_X);
+
+  // map the trapframe, for trampoline.S.
+  mappages(pagetable, (TRAMPOLINE - PGSIZE), PGSIZE,
+           (uint64)(p->tf), PTE_R | PTE_W);
+
+  return pagetable;
+}
+
+// Free a process's page table, and free the
+// physical memory the page table refers to.
+// Called both when a process exits and from
+// exec() if it fails.
+void
+proc_freepagetable(pagetable_t pagetable, uint64 sz)
+{
+  unmappages(pagetable, TRAMPOLINE, PGSIZE, 0);
+  unmappages(pagetable, TRAMPOLINE-PGSIZE, PGSIZE, 0);
+  uvmfree(pagetable, sz);
 }
 
 // a user program that calls exec("/init")
@@ -295,9 +323,7 @@ wait(void)
         np->kstack = 0;
         kfree((void*)np->tf);
         np->tf = 0;
-        unmappages(np->pagetable, TRAMPOLINE, PGSIZE, 0);
-        unmappages(np->pagetable, TRAMPOLINE-PGSIZE, PGSIZE, 0);
-        uvmfree(np->pagetable, np->sz);
+        proc_freepagetable(np->pagetable, np->sz);
         np->pagetable = 0;
         np->pid = 0;
         np->parent = 0;
