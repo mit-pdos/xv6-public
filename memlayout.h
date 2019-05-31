@@ -1,16 +1,25 @@
-// Memory layout
+// Physical memory layout
 
-#define EXTMEM  0x100000            // Start of extended memory
-#define PHYSTOP 0xE000000           // Top physical memory
-#define DEVSPACE 0xFE000000         // Other devices are top of 32-bit address space
-#define DEVSPACETOP 0x100000000
+// qemu -machine virt is set up like this:
+// 00001000 -- boot ROM, provided by qemu
+// 10000000 -- uart0 registers
+// 80000000 -- boot ROM jumps here in machine mode
+// unused RAM after 80000000.
 
-// Key addresses for address space layout (see kmap in vm.c for layout)
-#define KERNBASE  0xFFFFFF0000000000  // First kernel virtual address
-#define KERNLINK (KERNBASE+EXTMEM)  // Address where kernel is linked
+// the kernel uses physical memory thus:
+// 80000000 -- entry.S, then kernel text and data
+// end -- start of kernel page allocation area
+// PHYSTOP -- end RAM used by the kernel
 
-#define V2P(a) (((uint64) (a)) - KERNBASE)
-#define P2V(a) ((void *)(((char *) (a)) + KERNBASE))
+// registers start here in physical memory.
+#define UART0 0x10000000L
 
-#define V2P_WO(x) ((x) - KERNBASE)    // same as V2P, but without casts
-#define P2V_WO(x) ((x) + KERNBASE)    // same as P2V, but without casts
+// the kernel expects there to be RAM
+// for use by the kernel and user pages
+// from physical address 0x80000000 to PHYSTOP.
+#define KERNBASE 0x80000000L
+#define PHYSTOP (KERNBASE + 64*1024*1024)
+
+// map the trampoline page to the highest address,
+// in both user and kernel space.
+#define TRAMPOLINE (MAXVA - PGSIZE)

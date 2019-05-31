@@ -3,13 +3,14 @@
 // and pipe buffers. Allocates 4096-byte pages.
 
 #include "types.h"
-#include "defs.h"
 #include "param.h"
 #include "memlayout.h"
-#include "mmu.h"
 #include "spinlock.h"
+#include "riscv.h"
+#include "defs.h"
 
-void freerange(void *vstart, void *vend);
+void freerange(void *pa_start, void *pa_end);
+
 extern char end[]; // first address after kernel loaded from ELF file
                    // defined by the kernel linker script in kernel.ld
 
@@ -19,36 +20,22 @@ struct run {
 
 struct {
   struct spinlock lock;
-  int use_lock;
   struct run *freelist;
 } kmem;
 
-// Initialization happens in two phases.
-// 1. main() calls kinit1() while still using entrypgdir to place just
-// the pages mapped by entrypgdir on free list.
-// 2. main() calls kinit2() with the rest of the physical pages
-// after installing a full page table that maps them on all cores.
 void
-kinit1(void *vstart, void *vend)
+kinit()
 {
   initlock(&kmem.lock, "kmem");
-  kmem.use_lock = 0;
-  freerange(vstart, vend);
+  freerange(end, (void*)PHYSTOP);
 }
 
 void
-kinit2(void *vstart, void *vend)
-{
-  freerange(vstart, vend);
-  kmem.use_lock = 1;
-}
-
-void
-freerange(void *vstart, void *vend)
+freerange(void *pa_start, void *pa_end)
 {
   char *p;
-  p = (char*)PGROUNDUP((uint64)vstart);
-  for(; p + PGSIZE <= (char*)vend; p += PGSIZE)
+  p = (char*)PGROUNDUP((uint64)pa_start);
+  for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
     kfree(p);
 }
 //PAGEBREAK: 21
@@ -57,42 +44,37 @@ freerange(void *vstart, void *vend)
 // call to kalloc().  (The exception is when
 // initializing the allocator; see kinit above.)
 void
-kfree(char *v)
+kfree(void *pa)
 {
   struct run *r;
 
-  if((uint64)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
+  if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
-  memset(v, 1, PGSIZE);
+  memset(pa, 1, PGSIZE);
 
-  if(kmem.use_lock)
-    acquire(&kmem.lock);
-  r = (struct run*)v;
+  acquire(&kmem.lock);
+  r = (struct run*)pa;
   r->next = kmem.freelist;
   kmem.freelist = r;
-  if(kmem.use_lock)
-    release(&kmem.lock);
+  release(&kmem.lock);
 }
 
 // Allocate one 4096-byte page of physical memory.
 // Returns a pointer that the kernel can use.
 // Returns 0 if the memory cannot be allocated.
-char*
+void *
 kalloc(void)
 {
   struct run *r;
 
-  if(kmem.use_lock)
-    acquire(&kmem.lock);
+  acquire(&kmem.lock);
   r = kmem.freelist;
   if(r)
     kmem.freelist = r->next;
-  if(kmem.use_lock)
-    release(&kmem.lock);
-  if(r != 0 && (uint64) r < KERNBASE)
-    panic("kalloc");
-  return (char*)r;
+  release(&kmem.lock);
+  memset((char*)r, 5, PGSIZE); // fill with junk
+  return (void*)r;
 }
 

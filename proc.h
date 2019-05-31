@@ -1,13 +1,30 @@
+// Saved registers for kernel context switches.
+struct context {
+  uint64 ra;
+  uint64 sp;
+
+  // callee-saved
+  uint64 s0;
+  uint64 s1;
+  uint64 s2;
+  uint64 s3;
+  uint64 s4;
+  uint64 s5;
+  uint64 s6;
+  uint64 s7;
+  uint64 s8;
+  uint64 s9;
+  uint64 s10;
+  uint64 s11;
+};
+
 // Per-CPU state
 struct cpu {
   uint64 syscallno;            // Temporary used by sysentry
   uint64 usp;                  // Temporary used by sysentry
   struct proc *proc;           // The process running on this cpu or null
   struct cpu *cpu;             // XXX
-  uchar apicid;                // Local APIC ID
-  struct context *scheduler;   // swtch() here to enter scheduler
-  struct taskstate ts;         // Used by x86 to find stack for interrupt
-  struct segdesc gdt[NSEGS];   // x86 global descriptor table
+  struct context scheduler;   // swtch() here to enter scheduler
   volatile uint started;       // Has the CPU started?
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
@@ -17,39 +34,52 @@ extern struct cpu cpus[NCPU];
 extern int ncpu;
 
 //PAGEBREAK: 17
-// Saved registers for kernel context switches.
-// Don't need to save all the segment registers (%cs, etc),
-// because they are constant across kernel contexts.
-// Don't need to save %eax, %ecx, %edx, because the
-// x86 convention is that the caller has saved them.
-// Contexts are stored at the bottom of the stack they
-// describe; the stack pointer is the address of the context.
-// The layout of the context matches the layout of the stack in swtch.S
-// at the "Switch stacks" comment. Switch doesn't save eip explicitly,
-// but it is on the stack and allocproc() manipulates it.
-struct context {
-  uint64 r15;
-  uint64 r14;
-  uint64 r13;
-  uint64 r12;
-  uint64 r11;
-  uint64 rbx;
-  uint64 rbp;
-  uint64 rip;
+
+// per-process data for the early trap handling code in trampoline.S.
+// sits in a page by itself just under the trampoline page in the
+// user page table. not specially mapped in the kernel page table.
+// the sscratch register points here.
+// trampoline.S saves user registers, then restores kernel_sp and
+// kernel_satp.
+// no need to save s0-s11 (callee-saved) since C code and swtch() save them.
+struct trapframe {
+  /*   0 */ uint64 kernel_satp;
+  /*   8 */ uint64 kernel_sp;
+  /*  16 */ uint64 kernel_trap; // address of trap()
+  /*  24 */ uint64 epc; // saved user program counter
+  /*  32 */ uint64 ra;
+  /*  40 */ uint64 sp;
+  /*  48 */ uint64 gp;
+  /*  56 */ uint64 tp;
+  /*  64 */ uint64 t0;
+  /*  72 */ uint64 t1;
+  /*  80 */ uint64 t2;
+  /*  88 */ uint64 a0;
+  /*  96 */ uint64 a1;
+  /* 104 */ uint64 a2;
+  /* 112 */ uint64 a3;
+  /* 120 */ uint64 a4;
+  /* 128 */ uint64 a5;
+  /* 136 */ uint64 a6;
+  /* 144 */ uint64 a7;
+  /* 152 */ uint64 t3;
+  /* 160 */ uint64 t4;
+  /* 168 */ uint64 t5;
+  /* 176 */ uint64 t6;
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
-  char *kstack;                // Bottom of kernel stack for this process, must be first entry
+  char *kstack;                // Bottom of kernel stack for this process
   uint64 sz;                   // Size of process memory (bytes)
-  pde_t* pgdir;                // Page table
+  pagetable_t pagetable;       // Page table
   enum procstate state;        // Process state
   int pid;                     // Process ID
   struct proc *parent;         // Parent process
-  struct sysframe *sf;         // Syscall frame for current syscall
-  struct context *context;     // swtch() here to run process
+  struct trapframe *tf;        // data page for trampoline.S
+  struct context context;      // swtch() here to run process
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files

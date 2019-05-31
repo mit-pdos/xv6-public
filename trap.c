@@ -1,109 +1,113 @@
 #include "types.h"
-#include "defs.h"
 #include "param.h"
 #include "memlayout.h"
-#include "mmu.h"
+#include "riscv.h"
 #include "proc.h"
-#include "x86.h"
-#include "traps.h"
 #include "spinlock.h"
+#include "defs.h"
 
-// Interrupt descriptor table (shared by all CPUs).
-struct intgate idt[256];
-extern uint64 vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
 
+extern char trampstart[], trampvec[];
+
+void kerneltrap();
+
 void
-tvinit(void)
+trapinit(void)
 {
   int i;
 
-  for(i=0; i<256; i++) {
-    idt[i] = INTDESC(SEG_KCODE, vectors[i], INT_P | SEG_INTR64);
-  }
-  idtinit();
-    
+  // send interrupts and exceptions to kerneltrap().
+  w_stvec((uint64)kerneltrap);
+
   initlock(&tickslock, "time");
 }
 
+//
+// handle an interrupt, exception, or system call from user space.
+// called from trampoline.S
+//
 void
-idtinit(void)
+usertrap(void)
 {
-  struct desctr dtr;
+  if((r_sstatus() & SSTATUS_SPP) != 0)
+    panic("usertrap: not from user mode");
 
-  dtr.limit = sizeof(idt) - 1;
-  dtr.base = (uint64)idt;
-  lidt((void *)&dtr.limit);
-}
+  // send interrupts and exceptions to kerneltrap(),
+  // since we're now in the kernel.
+  w_stvec((uint64)kerneltrap);
 
-//PAGEBREAK: 41
-void
-trap(struct trapframe *tf)
-{
-  switch(tf->trapno){
-  case T_IRQ0 + IRQ_TIMER:
-    if(cpuid() == 0){
-      acquire(&tickslock);
-      ticks++;
-      wakeup(&ticks);
-      release(&tickslock);
-    }
-    lapiceoi();
-    break;
-  case T_IRQ0 + IRQ_IDE:
-    ideintr();
-    lapiceoi();
-    break;
-  case T_IRQ0 + IRQ_IDE+1:
-    // Bochs generates spurious IDE1 interrupts.
-    break;
-  case T_IRQ0 + IRQ_KBD:
-    kbdintr();
-    lapiceoi();
-    break;
-  case T_IRQ0 + IRQ_COM1:
-    uartintr();
-    lapiceoi();
-    break;
-  case T_IRQ0 + 7:
-  case T_IRQ0 + IRQ_SPURIOUS:
-    cprintf("cpu%d: spurious interrupt at %x:%x\n",
-            cpuid(), tf->cs, tf->rip);
-    lapiceoi();
-    break;
+  struct proc *p = myproc();
+  
+  // save user program counter.
+  p->tf->epc = r_sepc();
+  
+  if(r_scause() == 8){
+    // system call
+    printf("usertrap(): system call pid=%d syscall=%d\n", p->pid, p->tf->a7);
 
-  //PAGEBREAK: 13
-  default:
-    if(myproc() == 0 || (tf->cs&3) == 0){
-      // In kernel, it must be our mistake.
-      cprintf("unexpected trap %d from cpu %d rip %x (cr2=0x%x)\n",
-              tf->trapno, cpuid(), tf->rip, rcr2());
-      panic("trap");
-    }
-    // In user space, assume process misbehaved.
-    cprintf("pid %d %s: trap %d err %d on cpu %d "
-            "rip 0x%x addr 0x%x--kill proc\n",
-            myproc()->pid, myproc()->name, tf->trapno,
-            tf->err, cpuid(), tf->rip, rcr2());
-    myproc()->killed = 1;
+    // sepc points to the ecall instruction,
+    // but we want to return to the next instruction.
+    p->tf->epc += 4;
+
+    syscall();
+  } else {
+    printf("usertrap(): unexpected scause 0x%x pid=%d\n", r_scause(), p->pid);
+    panic("usertrap");
   }
 
-  // Force process exit if it has been killed and is in user space.
-  // (If it is still executing in the kernel, let it keep running
-  // until it gets to the regular system call return.)
-  if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
-    exit();
-
-  // Force process to give up CPU on clock tick.
-  // If interrupts were on while locks held, would need to check nlock.
-  if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER)
-    yield();
-  
-  // Check if the process has been killed since we yielded
-  if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
-    exit();
+  usertrapret();
 }
 
+//
+// return to user space
+//
+void
+usertrapret(void)
+{
+  struct proc *p = myproc();
 
+  // XXX turn off interrupts, since we're switching
+  // now from kerneltrap() to usertrap().
+
+  // send interrupts and exceptions to trampoline.S
+  w_stvec(TRAMPOLINE + (trampvec - trampstart));
+
+  // set up values that trampoline.S will need when
+  // the process next re-enters the kernel.
+  p->tf->kernel_satp = r_satp();
+  p->tf->kernel_sp = (uint64)p->kstack + PGSIZE;
+  p->tf->kernel_trap = (uint64)usertrap;
+
+  // set up the registers that trampoline.S's sret will use
+  // to get to user space.
+  
+  // set S Previous Privilege mode to User.
+  unsigned long x = r_sstatus();
+  x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode
+  w_sstatus(x);
+
+  // set S Exception Program Counter to the saved user pc.
+  w_sepc(p->tf->epc);
+
+  // tell trampline.S the user page table to switch to.
+  uint64 satp = MAKE_SATP(p->pagetable);
+
+  // jump to trampoline.S at the top of memory, which 
+  // switches to the user page table, restores user registers,
+  // and switches to user mode with sret.
+  ((void (*)(uint64,uint64))TRAMPOLINE)(TRAMPOLINE - PGSIZE, satp);
+}
+
+// interrupts and exceptions from kernel code go here,
+// on whatever the current kernel stack is.
+// must be 4-byte aligned to fit in stvec.
+void __attribute__ ((aligned (4)))
+kerneltrap()
+{
+  if((r_sstatus() & SSTATUS_SPP) == 0)
+    panic("kerneltrap: not from supervisor mode");
+
+  panic("kerneltrap");
+}

@@ -19,7 +19,7 @@ void            bwrite(struct buf*);
 
 // console.c
 void            consoleinit(void);
-void            cprintf(char*, ...);
+void            printf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 
@@ -65,10 +65,9 @@ extern uchar    ioapicid;
 void            ioapicinit(void);
 
 // kalloc.c
-char*           kalloc(void);
-void            kfree(char*);
-void            kinit1(void*, void*);
-void            kinit2(void*, void*);
+void*           kalloc(void);
+void            kfree(void *);
+void            kinit();
 
 // kbd.c
 void            kbdintr(void);
@@ -112,7 +111,7 @@ int             kill(int);
 struct cpu*     mycpu(void);
 struct cpu*     getmycpu(void);
 struct proc*    myproc();
-void            pinit(void);
+void            procinit(void);
 void            procdump(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
@@ -124,7 +123,7 @@ void            wakeup(void*);
 void            yield(void);
 
 // swtch.S
-void            swtch(struct context**, struct context*);
+void            swtch(struct context*, struct context*);
 
 // spinlock.c
 void            acquire(struct spinlock*);
@@ -158,16 +157,16 @@ int             argaddr(int, uint64 *);
 int             fetchint(uint64, int*);
 int             fetchstr(uint64, char**);
 int             fetchaddr(uint64, uint64*);
-void            syscall(struct sysframe*);
+void            syscall();
 
 // timer.c
 void            timerinit(void);
 
 // trap.c
-void            idtinit(void);
 extern uint     ticks;
-void            tvinit(void);
+void            trapinit(void);
 extern struct spinlock tickslock;
+void            usertrapret(void);
 
 // uart.c
 void            uartinit(void);
@@ -175,20 +174,15 @@ void            uartintr(void);
 void            uartputc(int);
 
 // vm.c
-void            seginit(void);
-void            kvmalloc(void);
-pde_t*          setupkvm(void);
-char*           uva2ka(pde_t*, char*);
-int             allocuvm(pde_t*, uint, uint);
-int             deallocuvm(pde_t*, uint64, uint64);
-void            freevm(pde_t*, uint64);
-void            inituvm(pde_t*, char*, uint);
-int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
-pde_t*          copyuvm(pde_t*, uint);
-void            switchuvm(struct proc*);
-void            switchkvm(void);
-int             copyout(pde_t*, uint, void*, uint);
-void            clearpteu(pde_t *pgdir, char *uva);
+void            kvminit(void);
+void            kvmswitch(void);
+pagetable_t     uvmcreate(void);
+void            uvminit(pagetable_t, char *, uint);
+int             uvmdealloc(pagetable_t, uint64, uint64);
+void            uvmcopy(pagetable_t, pagetable_t, uint64);
+void            uvmfree(pagetable_t, uint64);
+void            mappages(pagetable_t, uint64, uint64, uint64, int);
+void            unmappages(pagetable_t, uint64, uint64, int);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

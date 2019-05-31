@@ -1,11 +1,10 @@
 #include "types.h"
-#include "defs.h"
 #include "param.h"
 #include "memlayout.h"
-#include "mmu.h"
+#include "riscv.h"
 #include "proc.h"
-#include "x86.h"
 #include "syscall.h"
+#include "defs.h"
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
@@ -17,9 +16,9 @@
 int
 fetchint(uint64 addr, int *ip)
 {
-  struct proc *curproc = myproc();
+  struct proc *p = myproc();
 
-  if(addr >= curproc->sz || addr+4 > curproc->sz)
+  if(addr >= p->sz || addr+4 > p->sz)
     return -1;
   *ip = *(uint64*)(addr);
   return 0;
@@ -29,8 +28,8 @@ fetchint(uint64 addr, int *ip)
 int
 fetchaddr(uint64 addr, uint64 *ip)
 {
-  struct proc *curproc = myproc();
-  if(addr >= curproc->sz || addr+sizeof(uint64) > curproc->sz)
+  struct proc *p = myproc();
+  if(addr >= p->sz || addr+sizeof(uint64) > p->sz)
     return -1;
   *ip = *(uint64*)(addr);
   return 0;
@@ -43,12 +42,12 @@ int
 fetchstr(uint64 addr, char **pp)
 {
   char *s, *ep;
-  struct proc *curproc = myproc();
+  struct proc *p = myproc();
 
-  if(addr >= curproc->sz)
+  if(addr >= p->sz)
     return -1;
   *pp = (char*)addr;
-  ep = (char*)curproc->sz;
+  ep = (char*)p->sz;
   for(s = *pp; s < ep; s++){
     if(*s == 0)
       return s - *pp;
@@ -59,20 +58,20 @@ fetchstr(uint64 addr, char **pp)
 static uint64
 fetcharg(int n)
 {
-  struct proc *curproc = myproc();
+  struct proc *p = myproc();
   switch (n) {
   case 0:
-    return curproc->sf->rdi;
+    return p->tf->a0;
   case 1:
-    return curproc->sf->rsi;
+    return p->tf->a1;
   case 2:
-    return curproc->sf->rdx;
+    return p->tf->a2;
   case 3:
-    return curproc->sf->r10;
+    return p->tf->a3;
   case 4:
-    return curproc->sf->r8;
+    return p->tf->a4;
   case 5:
-    return curproc->sf->r9;
+    return p->tf->a5;
   }
   panic("fetcharg");
   return -1;
@@ -100,11 +99,11 @@ int
 argptr(int n, char **pp, int size)
 {
   uint64 i;
-  struct proc *curproc = myproc();
+  struct proc *p = myproc();
  
   if(argaddr(n, &i) < 0)
     return -1;
-  if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
+  if(size < 0 || (uint)i >= p->sz || (uint)i+size > p->sz)
     return -1;
   *pp = (char*)i;
   return 0;
@@ -149,48 +148,47 @@ static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
 [SYS_wait]    sys_wait,
-[SYS_pipe]    sys_pipe,
-[SYS_read]    sys_read,
-[SYS_kill]    sys_kill,
-[SYS_exec]    sys_exec,
-[SYS_fstat]   sys_fstat,
-[SYS_chdir]   sys_chdir,
-[SYS_dup]     sys_dup,
+//[SYS_pipe]    sys_pipe,
+//[SYS_read]    sys_read,
+//[SYS_kill]    sys_kill,
+//[SYS_exec]    sys_exec,
+//[SYS_fstat]   sys_fstat,
+//[SYS_chdir]   sys_chdir,
+//[SYS_dup]     sys_dup,
 [SYS_getpid]  sys_getpid,
-[SYS_sbrk]    sys_sbrk,
-[SYS_sleep]   sys_sleep,
-[SYS_uptime]  sys_uptime,
-[SYS_open]    sys_open,
-[SYS_write]   sys_write,
-[SYS_mknod]   sys_mknod,
-[SYS_unlink]  sys_unlink,
-[SYS_link]    sys_link,
-[SYS_mkdir]   sys_mkdir,
-[SYS_close]   sys_close,
+//[SYS_sbrk]    sys_sbrk,
+//[SYS_sleep]   sys_sleep,
+//[SYS_uptime]  sys_uptime,
+//[SYS_open]    sys_open,
+//[SYS_write]   sys_write,
+//[SYS_mknod]   sys_mknod,
+//[SYS_unlink]  sys_unlink,
+//[SYS_link]    sys_link,
+//[SYS_mkdir]   sys_mkdir,
+//[SYS_close]   sys_close,
 };
 
 static void
 dosyscall(void)
 {
   int num;
-  struct proc *curproc = myproc();
+  struct proc *p = myproc();
 
-  num = curproc->sf->rax;
+  num = p->tf->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    curproc->sf->rax = syscalls[num]();
+    p->tf->a0 = syscalls[num]();
   } else {
-    cprintf("%d %s: unknown sys call %d\n",
-            curproc->pid, curproc->name, num);
-    curproc->sf->rax = -1;
+    printf("%d %s: unknown sys call %d\n",
+            p->pid, p->name, num);
+    p->tf->a0 = -1;
   }
 }
 
 void
-syscall(struct sysframe *sf)
+syscall()
 {
     if(myproc()->killed)
       exit();
-    myproc()->sf = sf;
     dosyscall();
     if(myproc()->killed)
       exit();

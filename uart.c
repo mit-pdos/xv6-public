@@ -1,77 +1,51 @@
-// Intel 8250 serial port (UART).
+#include "memlayout.h"
 
-#include "types.h"
-#include "defs.h"
-#include "param.h"
-#include "traps.h"
-#include "spinlock.h"
-#include "sleeplock.h"
-#include "fs.h"
-#include "file.h"
-#include "mmu.h"
-#include "proc.h"
-#include "x86.h"
+//
+// qemu -machine virt has a 16550a UART
+// qemu/hw/riscv/virt.c
+// http://byterunner.com/16550.html
+//
+// caller should lock.
+//
 
-#define COM1    0x3f8
-
-static int uart;    // is there a uart?
+// address of one of the registers
+#define R(reg) ((unsigned int*)(UART0 + 4*(reg)))
 
 void
 uartinit(void)
 {
-  char *p;
+  // disable interrupts
+  *R(1) = 0x00;
 
-  // Turn off the FIFO
-  outb(COM1+2, 0);
+  // special mode to set baud rate
+  *R(3) = 0x80;
 
-  // 9600 baud, 8 data bits, 1 stop bit, parity off.
-  outb(COM1+3, 0x80);    // Unlock divisor
-  outb(COM1+0, 115200/9600);
-  outb(COM1+1, 0);
-  outb(COM1+3, 0x03);    // Lock divisor, 8 data bits.
-  outb(COM1+4, 0);
-  outb(COM1+1, 0x01);    // Enable receive interrupts.
+  // LSB for baud rate of 38.4K
+  *R(0) = 0x03;
 
-  // If status is 0xFF, no serial port.
-  if(inb(COM1+5) == 0xFF)
-    return;
-  uart = 1;
+  // MSB for baud rate of 38.4K
+  *R(1) = 0x00;
 
-  // Acknowledge pre-existing interrupt conditions;
-  // enable interrupts.
-  inb(COM1+2);
-  inb(COM1+0);
-  ioapicenable(IRQ_COM1, 0);
+  // leave set-baud mode,
+  // and set word length to 8 bits, no parity.
+  *R(3) = 0x03;
 
-  // Announce that we're here.
-  for(p="xv6...\n"; *p; p++)
-    uartputc(*p);
+  // reset and enable FIFOs.
+  *R(2) = 0x07;
 }
 
 void
 uartputc(int c)
 {
-  int i;
-
-  if(!uart)
-    return;
-  for(i = 0; i < 128 && !(inb(COM1+5) & 0x20); i++)
-    microdelay(10);
-  outb(COM1+0, c);
+  *R(0) = c;
 }
 
 static int
 uartgetc(void)
 {
-  if(!uart)
-    return -1;
-  if(!(inb(COM1+5) & 0x01))
-    return -1;
-  return inb(COM1+0);
 }
 
 void
 uartintr(void)
 {
-  consoleintr(uartgetc);
 }

@@ -1,13 +1,11 @@
 // Mutual exclusion spin locks.
 
 #include "types.h"
-#include "defs.h"
 #include "param.h"
-#include "x86.h"
 #include "memlayout.h"
-#include "mmu.h"
-#include "proc.h"
 #include "spinlock.h"
+#include "riscv.h"
+#include "defs.h"
 
 void
 initlock(struct spinlock *lk, char *name)
@@ -17,6 +15,27 @@ initlock(struct spinlock *lk, char *name)
   lk->cpu = 0;
 }
 
+void
+acquire(struct spinlock *lk)
+{
+  lk->locked = 1;
+  lk->cpu = mycpu();
+}
+
+void
+release(struct spinlock *lk)
+{
+  lk->locked = 0;
+  lk->cpu = 0;
+}
+
+int
+holding(struct spinlock *lk)
+{
+  return lk->locked && lk->cpu == mycpu();
+}
+
+#if 0
 // Acquire the lock.
 // Loops (spins) until the lock is acquired.
 // Holding a lock for a long time may cause
@@ -37,7 +56,7 @@ acquire(struct spinlock *lk)
   // references happen after the lock is acquired.
   __sync_synchronize();
 
-  // Record info about lock acquisition for debugging.
+  // Record info about lock acquisition for holding() and debugging.
   lk->cpu = mycpu();
   getcallerpcs(&lk, lk->pcs);
 }
@@ -87,11 +106,11 @@ getcallerpcs(void *v, uint64 pcs[])
 
 // Check whether this cpu is holding the lock.
 int
-holding(struct spinlock *lock)
+holding(struct spinlock *lk)
 {
   int r;
   pushcli();
-  r = lock->locked && lock->cpu == mycpu();
+  r = lk->locked && lk->cpu == mycpu();
   popcli();
   return r;
 }
@@ -123,4 +142,4 @@ popcli(void)
   if(mycpu()->ncli == 0 && mycpu()->intena)
     sti();
 }
-
+#endif

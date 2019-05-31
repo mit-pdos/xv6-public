@@ -2,22 +2,20 @@
 # This code runs in user space.
 
 #include "syscall.h"
-#include "traps.h"
-
 
 # exec(init, argv)
 .globl start
 start:
-  mov $init, %rdi
-  mov $argv, %rsi
-  mov $SYS_exec, %rax  
-  syscall
+        la a0, init
+        la a1, argv
+        li a7, SYS_exec
+        ecall
 
 # for(;;) exit();
 exit:
-  mov $SYS_exit, %rax
-  syscall
-  jmp exit
+        li a7, SYS_exit
+        ecall
+        jal exit
 
 # char init[] = "/init\0";
 init:
@@ -28,4 +26,3 @@ init:
 argv:
   .long init
   .long 0
-

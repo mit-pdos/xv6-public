@@ -1,17 +1,10 @@
 #include "types.h"
-#include "x86.h"
+#include "riscv.h"
 #include "defs.h"
 #include "date.h"
 #include "param.h"
 #include "memlayout.h"
-#include "mmu.h"
 #include "proc.h"
-
-int
-sys_fork(void)
-{
-  return fork();
-}
 
 int
 sys_exit(void)
@@ -21,11 +14,24 @@ sys_exit(void)
 }
 
 int
+sys_getpid(void)
+{
+  return myproc()->pid;
+}
+
+int
+sys_fork(void)
+{
+  return fork();
+}
+
+int
 sys_wait(void)
 {
   return wait();
 }
 
+#if 0
 int
 sys_kill(void)
 {
@@ -34,12 +40,6 @@ sys_kill(void)
   if(argint(0, &pid) < 0)
     return -1;
   return kill(pid);
-}
-
-int
-sys_getpid(void)
-{
-  return myproc()->pid;
 }
 
 int
@@ -89,3 +89,4 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+#endif
