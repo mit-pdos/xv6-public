@@ -17,11 +17,9 @@ main()
   kvminit();       // kernel page table
   procinit();      // process table
   trapinit();      // trap vectors
-#if 0
   binit();         // buffer cache
   fileinit();      // file table
-  ideinit();       // disk
-#endif
+  ramdiskinit();   // disk
   userinit();      // first user process
 
   scheduler();        

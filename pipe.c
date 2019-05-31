@@ -1,7 +1,7 @@
 #include "types.h"
+#include "riscv.h"
 #include "defs.h"
 #include "param.h"
-#include "mmu.h"
 #include "proc.h"
 #include "fs.h"
 #include "spinlock.h"

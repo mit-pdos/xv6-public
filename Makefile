@@ -12,7 +12,14 @@ OBJS = \
   trampoline.o \
   trap.o \
   syscall.o \
-  sysproc.o
+  sysproc.o \
+  bio.o \
+  fs.o \
+  log.o \
+  sleeplock.o \
+  file.o \
+  pipe.o \
+  ramdisk.o
 
 XXXOBJS = \
 	bio.o\
@@ -83,15 +90,15 @@ endif
 
 LDFLAGS = -z max-page-size=4096
 
-kernel: $(OBJS) entry.o kernel.ld 
+kernel: $(OBJS) entry.o kernel.ld initcode
 	$(LD) $(LDFLAGS) -T kernel.ld -o kernel entry.o $(OBJS) 
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernel.sym
 
 initcode: initcode.S
 	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
-	#$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o initcode.out initcode.o
-	#$(OBJCOPY) -S -O binary initcode.out initcode
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o initcode.out initcode.o
+	$(OBJCOPY) -S -O binary initcode.out initcode
 	$(OBJDUMP) -S initcode.o > initcode.asm
 
 tags: $(OBJS) entryother.S _init
@@ -106,6 +113,9 @@ _%: %.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
 	$(OBJDUMP) -S $@ > $*.asm
 	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $*.sym
+
+usys.S : usys.pl
+	perl ./usys.pl > usys.S
 
 _forktest: forktest.o $(ULIB)
 	# forktest has less library code linked in - needs to be small
@@ -171,7 +181,7 @@ ifndef CPUS
 CPUS := 1
 endif
 QEMUOPTS = -machine virt -kernel kernel -m 3G -smp $(CPUS) -nographic
-#QEMUOPTS += -initrd fs.img
+QEMUOPTS += -initrd fs.img
 
 qemu: kernel
 	$(QEMU) $(QEMUOPTS)

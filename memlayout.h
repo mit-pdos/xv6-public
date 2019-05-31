@@ -4,6 +4,8 @@
 // 00001000 -- boot ROM, provided by qemu
 // 10000000 -- uart0 registers
 // 80000000 -- boot ROM jumps here in machine mode
+//             -kernel loads the kernel here
+// 88000000 -- -initrd fs.img ramdisk image.
 // unused RAM after 80000000.
 
 // the kernel uses physical memory thus:
@@ -13,6 +15,8 @@
 
 // registers start here in physical memory.
 #define UART0 0x10000000L
+
+#define RAMDISK 0x88000000
 
 // the kernel expects there to be RAM
 // for use by the kernel and user pages

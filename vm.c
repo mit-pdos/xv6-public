@@ -4,6 +4,7 @@
 #include "elf.h"
 #include "riscv.h"
 #include "defs.h"
+#include "fs.h"
 
 /*
  * the kernel's page table.
@@ -36,6 +37,10 @@ kvminit()
   // map kernel data and the physical RAM we'll make use of.
   mappages(kernel_pagetable, (uint64)etext, PHYSTOP-(uint64)etext,
            (uint64)etext, PTE_R | PTE_W);
+
+  // map the qemu -initrd fs.img ramdisk
+  mappages(kernel_pagetable, RAMDISK, FSSIZE * BSIZE,
+           RAMDISK, PTE_R | PTE_W);
 
   // map the trampoline for trap entry/exit to
   // the highest virtual address in the kernel.

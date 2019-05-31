@@ -116,16 +116,13 @@ found:
   return p;
 }
 
-// XXX hack because I don't know how to incorporate initcode
-// into the kernel binary. just the exec system call, no arguments.
-// manually copied from initcode.asm.
+// a user program that calls exec("/init")
+// od -t xC initcode
 unsigned char initcode[] = {
-  0x85, 0x48,             // li a7, 1 -- SYS_fork
-  0x73, 0x00, 0x00, 0x00, // ecall
-  0x8d, 0x48,             // li a7, 3 -- SYS_wait
-  0x73, 0x00, 0x00, 0x00, // ecall
-  0x89, 0x48,             // li a7, 2 -- SYS_exit
-  0x73, 0x00, 0x00, 0x00, // ecall
+  0x17, 0x05, 0x00, 0x00, 0x13, 0x05, 0x05, 0x02, 0x97, 0x05, 0x00, 0x00, 0x93, 0x85, 0x05, 0x02,
+  0x9d, 0x48, 0x73, 0x00, 0x00, 0x00, 0x89, 0x48, 0x73, 0x00, 0x00, 0x00, 0xef, 0xf0, 0xbf, 0xff,
+  0x2f, 0x69, 0x6e, 0x69, 0x74, 0x00, 0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00
 };
 
 //PAGEBREAK: 32
@@ -146,8 +143,7 @@ userinit(void)
   p->tf->sp = PGSIZE;
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
-  // XXX riscv
-  //p->cwd = namei("/");
+  p->cwd = namei("/");
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -210,13 +206,11 @@ fork(void)
   // Cause fork to return 0 in the child.
   np->tf->a0 = 0;
 
-#if 0 // XXX riscv
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
     if(p->ofile[i])
       np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
-#endif
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
@@ -244,7 +238,6 @@ exit(void)
   if(p == initproc)
     panic("init exiting");
 
-#if 0 // XXX riscv
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
     if(p->ofile[fd]){
@@ -256,7 +249,6 @@ exit(void)
   begin_op();
   iput(p->cwd);
   end_op();
-#endif
   p->cwd = 0;
 
   acquire(&ptable.lock);
@@ -423,9 +415,8 @@ forkret(void)
     // of a regular process (e.g., they call sleep), and thus cannot
     // be run from main().
     first = 0;
-    // XXX riscv
-    //iinit(ROOTDEV);
-    //initlog(ROOTDEV);
+    iinit(ROOTDEV);
+    initlog(ROOTDEV);
   }
 
   usertrapret();

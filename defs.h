@@ -54,10 +54,10 @@ int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
 
-// ide.c
-void            ideinit(void);
-void            ideintr(void);
-void            iderw(struct buf*);
+// ramdisk.c
+void            ramdiskinit(void);
+void            ramdiskintr(void);
+void            ramdiskrw(struct buf*);
 
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
