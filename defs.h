@@ -31,9 +31,9 @@ struct file*    filealloc(void);
 void            fileclose(struct file*);
 struct file*    filedup(struct file*);
 void            fileinit(void);
-int             fileread(struct file*, char*, int n);
-int             filestat(struct file*, struct stat*);
-int             filewrite(struct file*, char*, int n);
+int             fileread(struct file*, uint64, int n);
+int             filestat(struct file*, uint64 addr);
+int             filewrite(struct file*, uint64, int n);
 
 // fs.c
 void            readsb(int dev, struct superblock *sb);
@@ -153,11 +153,11 @@ char*           strncpy(char*, const char*, int);
 
 // syscall.c
 int             argint(int, int*);
-int             argptr(int, char**, int);
-int             argstr(int, char**);
+int             argptr(int, uint64*, int);
+int             argstr(int, char*, int);
 int             argaddr(int, uint64 *);
 int             fetchint(uint64, int*);
-int             fetchstr(uint64, char**);
+int             fetchstr(uint64, char*, int);
 int             fetchaddr(uint64, uint64*);
 void            syscall();
 
@@ -188,6 +188,8 @@ void            mappages(pagetable_t, uint64, uint64, uint64, int);
 void            unmappages(pagetable_t, uint64, uint64, int);
 uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
+int             copyin(pagetable_t, char *, uint64, uint64);
+int             copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

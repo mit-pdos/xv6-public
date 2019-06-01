@@ -41,31 +41,46 @@ extern int ncpu;
 // the sscratch register points here.
 // trampoline.S saves user registers, then restores kernel_sp and
 // kernel_satp.
-// no need to save s0-s11 (callee-saved) since C code and swtch() save them.
+// includes callee-saved registers like s0-s11 because the
+// return-to-user path via usertrapret() doesn't return through
+// the entire kernel call stack.
 struct trapframe {
   /*   0 */ uint64 kernel_satp;
   /*   8 */ uint64 kernel_sp;
   /*  16 */ uint64 kernel_trap; // address of trap()
   /*  24 */ uint64 epc; // saved user program counter
-  /*  32 */ uint64 ra;
-  /*  40 */ uint64 sp;
-  /*  48 */ uint64 gp;
-  /*  56 */ uint64 tp;
-  /*  64 */ uint64 t0;
-  /*  72 */ uint64 t1;
-  /*  80 */ uint64 t2;
-  /*  88 */ uint64 a0;
-  /*  96 */ uint64 a1;
-  /* 104 */ uint64 a2;
-  /* 112 */ uint64 a3;
-  /* 120 */ uint64 a4;
-  /* 128 */ uint64 a5;
-  /* 136 */ uint64 a6;
-  /* 144 */ uint64 a7;
-  /* 152 */ uint64 t3;
-  /* 160 */ uint64 t4;
-  /* 168 */ uint64 t5;
-  /* 176 */ uint64 t6;
+  /*  32 */ uint64 unused;
+  /*  40 */ uint64 ra;
+  /*  48 */ uint64 sp;
+  /*  56 */ uint64 gp;
+  /*  64 */ uint64 tp;
+  /*  72 */ uint64 t0;
+  /*  80 */ uint64 t1;
+  /*  88 */ uint64 t2;
+  /*  96 */ uint64 s0;
+  /* 104 */ uint64 s1;
+  /* 112 */ uint64 a0;
+  /* 120 */ uint64 a1;
+  /* 128 */ uint64 a2;
+  /* 136 */ uint64 a3;
+  /* 144 */ uint64 a4;
+  /* 152 */ uint64 a5;
+  /* 160 */ uint64 a6;
+  /* 168 */ uint64 a7;
+  /* 176 */ uint64 s2;
+  /* 184 */ uint64 s3;
+  /* 192 */ uint64 s4;
+  /* 200 */ uint64 s5;
+  /* 208 */ uint64 s6;
+  /* 216 */ uint64 s7;
+  /* 224 */ uint64 s8;
+  /* 232 */ uint64 s9;
+  /* 240 */ uint64 s10;
+  /* 248 */ uint64 s11;
+  /* 256 */ uint64 t3;
+  /* 264 */ uint64 t4;
+  /* 272 */ uint64 t5;
+  /* 280 */ uint64 t6;
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };

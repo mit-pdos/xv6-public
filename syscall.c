@@ -20,7 +20,8 @@ fetchint(uint64 addr, int *ip)
 
   if(addr >= p->sz || addr+4 > p->sz)
     return -1;
-  *ip = *(uint64*)(addr);
+  if(copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
+    return -1;
   return 0;
 }
 
@@ -31,28 +32,22 @@ fetchaddr(uint64 addr, uint64 *ip)
   struct proc *p = myproc();
   if(addr >= p->sz || addr+sizeof(uint64) > p->sz)
     return -1;
-  *ip = *(uint64*)(addr);
+  if(copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
+    return -1;
   return 0;
 }
 
 // Fetch the nul-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.
-// Returns length of string, not including nul.
+// Returns length of string, not including nul, or -1 for error.
 int
-fetchstr(uint64 addr, char **pp)
+fetchstr(uint64 addr, char *buf, int max)
 {
-  char *s, *ep;
   struct proc *p = myproc();
-
-  if(addr >= p->sz)
-    return -1;
-  *pp = (char*)addr;
-  ep = (char*)p->sz;
-  for(s = *pp; s < ep; s++){
-    if(*s == 0)
-      return s - *pp;
-  }
-  return -1;
+  int err = copyinstr(p->pagetable, buf, addr, max);
+  if(err < 0)
+    return err;
+  return strlen(buf);
 }
 
 static uint64
@@ -96,7 +91,7 @@ argaddr(int n, uint64 *ip)
 // to a block of memory of size bytes.  Check that the pointer
 // lies within the process address space.
 int
-argptr(int n, char **pp, int size)
+argptr(int n, uint64 *pp, int size)
 {
   uint64 i;
   struct proc *p = myproc();
@@ -105,21 +100,20 @@ argptr(int n, char **pp, int size)
     return -1;
   if(size < 0 || (uint)i >= p->sz || (uint)i+size > p->sz)
     return -1;
-  *pp = (char*)i;
+  *pp = i;
   return 0;
 }
 
-// Fetch the nth word-sized system call argument as a string pointer.
-// Check that the pointer is valid and the string is nul-terminated.
-// (There is no shared writable memory, so the string can't change
-// between this check and being used by the kernel.)
+// Fetch the nth word-sized system call argument as a null-terminated string.
+// Copies into buf, at most max.
+// Returns string length if OK (including nul), -1 if error.
 int
-argstr(int n, char **pp)
+argstr(int n, char *buf, int max)
 {
   uint64 addr;
   if(argaddr(n, &addr) < 0)
     return -1;
-  return fetchstr(addr, pp);
+  return fetchstr(addr, buf, max);
 }
 
 extern int sys_chdir(void);

@@ -13,6 +13,7 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "defs.h"
+#include "proc.h"
 
 static void consputc(int);
 
@@ -24,12 +25,6 @@ static struct {
 } cons;
 
 static char digits[] = "0123456789abcdef";
-
-void
-consoleinit(void)
-{
-  initlock(&cons.lock, "console");
-}
 
 static void
 printint(int xx, int base, int sign)
@@ -147,4 +142,77 @@ consputc(int c)
     uartputc('\b'); uartputc(' '); uartputc('\b');
   } else
     uartputc(c);
+}
+
+#define INPUT_BUF 128
+struct {
+  char buf[INPUT_BUF];
+  uint r;  // Read index
+  uint w;  // Write index
+  uint e;  // Edit index
+} input;
+
+#define C(x)  ((x)-'@')  // Contro
+
+int
+consoleread(struct inode *ip, char *dst, int n)
+{
+  uint target;
+  int c;
+
+  iunlock(ip);
+  target = n;
+  acquire(&cons.lock);
+  while(n > 0){
+    while(input.r == input.w){
+      if(myproc()->killed){
+        release(&cons.lock);
+        ilock(ip);
+        return -1;
+      }
+      sleep(&input.r, &cons.lock);
+    }
+    c = input.buf[input.r++ % INPUT_BUF];
+    if(c == C('D')){  // EOF
+      if(n < target){
+        // Save ^D for next time, to make sure
+        // caller gets a 0-byte result.
+        input.r--;
+      }
+      break;
+    }
+    *dst++ = c;
+    --n;
+    if(c == '\n')
+      break;
+  }
+  release(&cons.lock);
+  ilock(ip);
+
+  return target - n;
+}
+
+int
+consolewrite(struct inode *ip, char *buf, int n)
+{
+  int i;
+
+  iunlock(ip);
+  acquire(&cons.lock);
+  for(i = 0; i < n; i++)
+    consputc(buf[i] & 0xff);
+  release(&cons.lock);
+  ilock(ip);
+
+  return n;
+}
+
+void
+consoleinit(void)
+{
+  initlock(&cons.lock, "console");
+
+  devsw[CONSOLE].write = consolewrite;
+  devsw[CONSOLE].read = consoleread;
+  cons.locking = 1;
 }

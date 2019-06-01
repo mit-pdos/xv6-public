@@ -9,7 +9,7 @@
 struct spinlock tickslock;
 uint ticks;
 
-extern char trampstart[], trampvec[];
+extern char trampout[], trampin[];
 
 void kerneltrap();
 
@@ -53,6 +53,7 @@ usertrap(void)
     syscall();
   } else {
     printf("usertrap(): unexpected scause 0x%x pid=%d\n", r_scause(), p->pid);
+    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     panic("usertrap");
   }
 
@@ -71,7 +72,7 @@ usertrapret(void)
   // now from kerneltrap() to usertrap().
 
   // send interrupts and exceptions to trampoline.S
-  w_stvec(TRAMPOLINE + (trampvec - trampstart));
+  w_stvec(TRAMPOLINE + (trampin - trampout));
 
   // set up values that trampoline.S will need when
   // the process next re-enters the kernel.
@@ -107,6 +108,9 @@ kerneltrap()
 {
   if((r_sstatus() & SSTATUS_SPP) == 0)
     panic("kerneltrap: not from supervisor mode");
+
+  printf("scause 0x%x\n", r_scause());
+  printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
 
   panic("kerneltrap");
 }

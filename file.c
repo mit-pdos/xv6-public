@@ -1,5 +1,5 @@
 //
-// File descriptors
+// Support functions for system calls that involve file descriptors.
 //
 
 #include "types.h"
@@ -10,6 +10,8 @@
 #include "spinlock.h"
 #include "sleeplock.h"
 #include "file.h"
+#include "stat.h"
+#include "proc.h"
 
 struct devsw devsw[NDEV];
 struct {
@@ -81,50 +83,92 @@ fileclose(struct file *f)
 }
 
 // Get metadata about file f.
+// addr is a user virtual address, pointing to a struct stat.
 int
-filestat(struct file *f, struct stat *st)
+filestat(struct file *f, uint64 addr)
 {
+  struct proc *p = myproc();
+  struct stat st;
+  
   if(f->type == FD_INODE){
     ilock(f->ip);
-    stati(f->ip, st);
+    stati(f->ip, &st);
     iunlock(f->ip);
+    if(copyout(p->pagetable, addr, (char *)&st, sizeof(st)) < 0)
+      return -1;
     return 0;
   }
   return -1;
 }
 
 // Read from file f.
+// addr is a user virtual address.
 int
-fileread(struct file *f, char *addr, int n)
+fileread(struct file *f, uint64 addr, int n)
 {
-  int r;
+  struct proc *p = myproc();
+  int r = 0;
+  char *buf;
 
   if(f->readable == 0)
     return -1;
-  if(f->type == FD_PIPE)
-    return piperead(f->pipe, addr, n);
-  if(f->type == FD_INODE){
+
+  // XXX break into page-size pieces.
+  if(n > PGSIZE)
+    panic("fileread PGSIZE");
+
+  buf = kalloc();
+  if(buf == 0)
+    panic("fileread kalloc");
+
+  if(f->type == FD_PIPE){
+    r = piperead(f->pipe, buf, n);
+  } else if(f->type == FD_INODE){
     ilock(f->ip);
-    if((r = readi(f->ip, addr, f->off, n)) > 0)
+    if((r = readi(f->ip, buf, f->off, n)) > 0)
       f->off += r;
     iunlock(f->ip);
-    return r;
+  } else {
+    panic("fileread");
   }
-  panic("fileread");
+
+  if(r > 0){
+    if(copyout(p->pagetable, addr, buf, n) < 0){
+      r = -1;
+    }
+  }
+
+  kfree(buf);
+
+  return r;
 }
 
 //PAGEBREAK!
 // Write to file f.
+// addr is a user virtual address.
 int
-filewrite(struct file *f, char *addr, int n)
+filewrite(struct file *f, uint64 addr, int n)
 {
-  int r;
+  struct proc *p = myproc();
+  int r, ret = 0;
+  char *buf;
 
   if(f->writable == 0)
     return -1;
-  if(f->type == FD_PIPE)
-    return pipewrite(f->pipe, addr, n);
-  if(f->type == FD_INODE){
+
+  // XXX break into pieces
+  if(n > PGSIZE)
+    panic("filewrite PGSIZE");
+
+  buf = kalloc();
+  if(copyin(p->pagetable, buf, addr, n) < 0){
+    kfree(buf);
+    return -1;
+  }
+
+  if(f->type == FD_PIPE){
+    ret = pipewrite(f->pipe, buf, n);
+  } else if(f->type == FD_INODE){
     // write a few blocks at a time to avoid exceeding
     // the maximum log transaction size, including
     // i-node, indirect block, allocation blocks,
@@ -140,7 +184,7 @@ filewrite(struct file *f, char *addr, int n)
 
       begin_op();
       ilock(f->ip);
-      if ((r = writei(f->ip, addr + i, f->off, n1)) > 0)
+      if ((r = writei(f->ip, buf + i, f->off, n1)) > 0)
         f->off += r;
       iunlock(f->ip);
       end_op();
@@ -151,8 +195,13 @@ filewrite(struct file *f, char *addr, int n)
         panic("short filewrite");
       i += r;
     }
-    return i == n ? n : -1;
+    ret = (i == n ? n : -1);
+  } else {
+    panic("filewrite");
   }
-  panic("filewrite");
+
+  kfree(buf);
+  
+  return ret;
 }
 

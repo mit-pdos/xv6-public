@@ -71,7 +71,7 @@ sys_read(void)
 {
   struct file *f;
   int n;
-  char *p;
+  uint64 p;
 
   if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
@@ -83,10 +83,11 @@ sys_write(void)
 {
   struct file *f;
   int n;
-  char *p;
+  uint64 p;
 
   if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
+
   return filewrite(f, p, n);
 }
 
@@ -107,9 +108,9 @@ int
 sys_fstat(void)
 {
   struct file *f;
-  struct stat *st;
+  uint64 st; // user pointer to struct stat
 
-  if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
+  if(argfd(0, 0, &f) < 0 || argptr(1, &st, sizeof(struct stat)) < 0)
     return -1;
   return filestat(f, st);
 }
@@ -118,10 +119,10 @@ sys_fstat(void)
 int
 sys_link(void)
 {
-  char name[DIRSIZ], *new, *old;
+  char name[DIRSIZ], new[MAXPATH], old[MAXPATH];
   struct inode *dp, *ip;
 
-  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
+  if(argstr(0, old, MAXPATH) < 0 || argstr(1, new, MAXPATH) < 0)
     return -1;
 
   begin_op();
@@ -186,10 +187,10 @@ sys_unlink(void)
 {
   struct inode *ip, *dp;
   struct dirent de;
-  char name[DIRSIZ], *path;
+  char name[DIRSIZ], path[MAXPATH];
   uint off;
 
-  if(argstr(0, &path) < 0)
+  if(argstr(0, path, MAXPATH) < 0)
     return -1;
 
   begin_op();
@@ -286,12 +287,12 @@ create(char *path, short type, short major, short minor)
 int
 sys_open(void)
 {
-  char *path;
+  char path[MAXPATH];
   int fd, omode;
   struct file *f;
   struct inode *ip;
 
-  if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
+  if(argstr(0, path, MAXPATH) < 0 || argint(1, &omode) < 0)
     return -1;
 
   begin_op();
@@ -336,11 +337,11 @@ sys_open(void)
 int
 sys_mkdir(void)
 {
-  char *path;
+  char path[MAXPATH];
   struct inode *ip;
 
   begin_op();
-  if(argstr(0, &path) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0){
+  if(argstr(0, path, MAXPATH) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0){
     end_op();
     return -1;
   }
@@ -353,11 +354,11 @@ int
 sys_mknod(void)
 {
   struct inode *ip;
-  char *path;
+  char path[MAXPATH];
   int major, minor;
 
   begin_op();
-  if((argstr(0, &path)) < 0 ||
+  if((argstr(0, path, MAXPATH)) < 0 ||
      argint(1, &major) < 0 ||
      argint(2, &minor) < 0 ||
      (ip = create(path, T_DEV, major, minor)) == 0){
@@ -372,12 +373,12 @@ sys_mknod(void)
 int
 sys_chdir(void)
 {
-  char *path;
+  char path[MAXPATH];
   struct inode *ip;
   struct proc *p = myproc();
   
   begin_op();
-  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0){
+  if(argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0){
     end_op();
     return -1;
   }
@@ -397,59 +398,68 @@ sys_chdir(void)
 int
 sys_exec(void)
 {
-  char *path, *argv[MAXARG];
+  char path[MAXPATH], *argv[MAXARG];
   int i;
   uint64 uargv, uarg;
 
-  printf("sys_exec\n");
-
-  if(argstr(0, &path) < 0 || argaddr(1, &uargv) < 0){
-    printf("error 1\n");
+  if(argstr(0, path, MAXPATH) < 0 || argaddr(1, &uargv) < 0){
     return -1;
   }
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv)){
-      printf("error 2\n");
       return -1;
     }
     if(fetchaddr(uargv+sizeof(uint64)*i, (uint64*)&uarg) < 0){
-      printf("error 3\n");
       return -1;
     }
     if(uarg == 0){
       argv[i] = 0;
       break;
     }
-    if(fetchstr(uarg, &argv[i]) < 0){
-      printf("error 4\n");
+    argv[i] = kalloc();
+    if(argv[i] == 0)
+      panic("sys_exec kalloc");
+    if(fetchstr(uarg, argv[i], PGSIZE) < 0){
       return -1;
     }
   }
-  printf("calling exec\n");
-  return exec(path, argv);
+
+  int ret = exec(path, argv);
+
+  for(i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    kfree(argv[i]);
+
+  return ret;
 }
 
 int
 sys_pipe(void)
 {
-  int *fd;
+  uint64 fdarray; // user pointer to array of two integers
   struct file *rf, *wf;
   int fd0, fd1;
+  struct proc *p = myproc();
 
-  if(argptr(0, (void*)&fd, 2*sizeof(fd[0])) < 0)
+  if(argptr(0, &fdarray, 2*sizeof(int)) < 0)
     return -1;
   if(pipealloc(&rf, &wf) < 0)
     return -1;
   fd0 = -1;
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
     if(fd0 >= 0)
-      myproc()->ofile[fd0] = 0;
+      p->ofile[fd0] = 0;
     fileclose(rf);
     fileclose(wf);
     return -1;
   }
-  fd[0] = fd0;
-  fd[1] = fd1;
+  if(copyout(p->pagetable, fdarray, (char*)&fd0, sizeof(fd0)) < 0 ||
+     copyout(p->pagetable, fdarray+sizeof(fd0), (char *)&fd1, sizeof(fd1)) < 0){
+    p->ofile[fd0] = 0;
+    p->ofile[fd1] = 0;
+    fileclose(rf);
+    fileclose(wf);
+    return -1;
+  }
   return 0;
 }

@@ -21,8 +21,6 @@ exec(char *path, char **argv)
   struct proc *p = myproc();
   uint64 oldsz = p->sz;
 
-  printf("EXEC\n");
-  
   begin_op();
 
   if((ip = namei(path)) == 0){

@@ -5,14 +5,15 @@
         # in user and kernel space so that it can switch
         # page tables.
 	#
-	# kernel.ld causes trampstart to be aligned
+	# kernel.ld causes trampout to be aligned
         # to a page boundary.
         #
 .globl usertrap
 	.section trampoline
-.globl trampstart
-trampstart:
+.globl trampout
+trampout:
         # switch from kernel to user.
+        # usertrapret() calls here.
 	# a0: p->tf in user page table
         # a1: new value for satp, for user page table
 
@@ -21,28 +22,40 @@ trampstart:
 
         # put the saved user a0 in sscratch, so we
         # can swap it with our a0 (p->tf) in the last step.
-        ld t0, 80(a0)
+        ld t0, 112(a0)
         csrw sscratch, t0
 
         # restore all but a0 from p->tf
-        ld ra, 32(a0)
-        ld sp, 40(a0)
-        ld gp, 48(a0)
-        ld tp, 56(a0)
-        ld t0, 64(a0)
-        ld t1, 72(a0)
-        ld t2, 80(a0)
-        ld a1, 96(a0)
-        ld a2, 104(a0)
-        ld a3, 112(a0)
-        ld a4, 120(a0)
-        ld a5, 128(a0)
-        ld a6, 136(a0)
-        ld a7, 144(a0)
-        ld t3, 152(a0)
-        ld t4, 160(a0)
-        ld t5, 168(a0)
-        ld t6, 176(a0)
+        ld ra, 40(a0)
+        ld sp, 48(a0)
+        ld gp, 56(a0)
+        ld tp, 64(a0)
+        ld t0, 72(a0)
+        ld t1, 80(a0)
+        ld t2, 88(a0)
+        ld s0, 96(a0)
+        ld s1, 104(a0)
+        ld a1, 120(a0)
+        ld a2, 128(a0)
+        ld a3, 136(a0)
+        ld a4, 144(a0)
+        ld a5, 152(a0)
+        ld a6, 160(a0)
+        ld a7, 168(a0)
+        ld s2, 176(a0)
+        ld s3, 184(a0)
+        ld s4, 192(a0)
+        ld s5, 200(a0)
+        ld s6, 208(a0)
+        ld s7, 216(a0)
+        ld s8, 224(a0)
+        ld s9, 232(a0)
+        ld s10, 240(a0)
+        ld s11, 248(a0)
+        ld t3, 256(a0)
+        ld t4, 264(a0)
+        ld t5, 272(a0)
+        ld t6, 280(a0)
 
 	# restore user a0, and save p->tf
         csrrw a0, sscratch, a0
@@ -51,45 +64,58 @@ trampstart:
         # caller has set up sstatus and sepc.
         sret
 
+.align 4
+.globl trampin
+trampin:    
 	#
         # trap.c set stvec to point here, so
-        # interrupts and exceptions start here,
+        # user interrupts and exceptions start here,
         # in supervisor mode, but with a
         # user page table.
         #
         # sscratch points to where the process's p->tf is
         # mapped into user space (TRAMPOLINE - 4096).
         #
-.align 4
-.globl trampvec
-trampvec:    
+        
 	# swap a0 and sscratch
         # so that a0 is p->tf
         csrrw a0, sscratch, a0
 
         # save the user registers in p->tf
-        sd ra, 32(a0)
-        sd sp, 40(a0)
-        sd gp, 48(a0)
-        sd tp, 56(a0)
-        sd t0, 64(a0)
-        sd t1, 72(a0)
-        sd t2, 80(a0)
-        sd a1, 96(a0)
-        sd a2, 104(a0)
-        sd a3, 112(a0)
-        sd a4, 120(a0)
-        sd a5, 128(a0)
-        sd a6, 136(a0)
-        sd a7, 144(a0)
-        sd t3, 152(a0)
-        sd t4, 160(a0)
-        sd t5, 168(a0)
-        sd t6, 176(a0)
+        sd ra, 40(a0)
+        sd sp, 48(a0)
+        sd gp, 56(a0)
+        sd tp, 64(a0)
+        sd t0, 72(a0)
+        sd t1, 80(a0)
+        sd t2, 88(a0)
+        sd s0, 96(a0)
+        sd s1, 104(a0)
+        sd a1, 120(a0)
+        sd a2, 128(a0)
+        sd a3, 136(a0)
+        sd a4, 144(a0)
+        sd a5, 152(a0)
+        sd a6, 160(a0)
+        sd a7, 168(a0)
+        sd s2, 176(a0)
+        sd s3, 184(a0)
+        sd s4, 192(a0)
+        sd s5, 200(a0)
+        sd s6, 208(a0)
+        sd s7, 216(a0)
+        sd s8, 224(a0)
+        sd s9, 232(a0)
+        sd s10, 240(a0)
+        sd s11, 248(a0)
+        sd t3, 256(a0)
+        sd t4, 264(a0)
+        sd t5, 272(a0)
+        sd t6, 280(a0)
 
 	# save the user a0 in p->tf->a0
         csrr t0, sscratch
-        sd t0, 80(a0)
+        sd t0, 112(a0)
 
         # restore kernel stack pointer from p->tf->kernel_sp
         ld sp, 8(a0)
