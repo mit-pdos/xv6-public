@@ -52,17 +52,21 @@ uartputc(int c)
 int
 uartgetc(void)
 {
-  if(*(5) & 0x01){
+  if(*R(5) & 0x01){
     // input data is ready.
     return *R(0);
   } else {
     return -1;
-  };
+  }
 }
 
 void
 uartintr(void)
 {
-  int c = uartgetc();
-  printf("%x ", c & 0xff);
+  while(1){
+    int c = uartgetc();
+    if(c == -1)
+      break;
+    consoleintr(c);
+  }
 }

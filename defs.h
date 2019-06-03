@@ -20,7 +20,7 @@ void            bwrite(struct buf*);
 // console.c
 void            consoleinit(void);
 void            printf(char*, ...);
-void            consoleintr(int(*)(void));
+void            consoleintr(int);
 void            panic(char*) __attribute__((noreturn));
 
 // exec.c
@@ -114,7 +114,6 @@ struct cpu*     mycpu(void);
 struct cpu*     getmycpu(void);
 struct proc*    myproc();
 void            procinit(void);
-void            procdump(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
 void            setproc(struct proc*);

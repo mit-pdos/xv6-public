@@ -150,7 +150,7 @@ static int (*syscalls[])(void) = {
 [SYS_chdir]   sys_chdir,
 [SYS_dup]     sys_dup,
 [SYS_getpid]  sys_getpid,
-//[SYS_sbrk]    sys_sbrk,
+[SYS_sbrk]    sys_sbrk,
 //[SYS_sleep]   sys_sleep,
 //[SYS_uptime]  sys_uptime,
 [SYS_open]    sys_open,

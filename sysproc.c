@@ -31,17 +31,6 @@ sys_wait(void)
   return wait();
 }
 
-#if 0
-int
-sys_kill(void)
-{
-  int pid;
-
-  if(argint(0, &pid) < 0)
-    return -1;
-  return kill(pid);
-}
-
 int
 sys_sbrk(void)
 {
@@ -54,6 +43,17 @@ sys_sbrk(void)
   if(growproc(n) < 0)
     return -1;
   return addr;
+}
+
+#if 0
+int
+sys_kill(void)
+{
+  int pid;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+  return kill(pid);
 }
 
 int
