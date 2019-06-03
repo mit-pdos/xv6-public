@@ -21,6 +21,19 @@ trapinit(void)
   // send interrupts and exceptions to kerneltrap().
   w_stvec((uint64)kerneltrap);
 
+  // set up the riscv Platform Level Interrupt Controller
+  // to send uart interrupts to hart 0 S-Mode.
+
+  // qemu makes UART0 be interrupt number 10.
+  int irq = 10;
+  // set uart's priority to be non-zero (otherwise disabled).
+  *(uint*)(0x0c000000L + irq*4) = 1;
+  // set uart's enable bit for hart 0 S-mode. 
+  *(uint*)0x0c002080 = (1 << irq);
+
+  // set hart 0 S-mode priority threshold to 0.
+  *(uint*)0x0c201000 = 0;
+
   initlock(&tickslock, "time");
 }
 
@@ -42,17 +55,6 @@ usertrap(void)
   
   // save user program counter.
   p->tf->epc = r_sepc();
-
-  // PLIC setup
-  // qemu makes UART0 be interrupt number 10.
-  int irq = 10;
-  // set uart's priority to be non-zero (otherwise disabled).
-  *(uint*)(0x0c000000L + irq*4) = 1;
-  // set uart's enable bit for hart 0 s-mode. 
-  *(uint*)0x0c002080 = (1 << irq);
-
-  // hart 0 S-mode priority threshold.
-  *(uint*)0x0c201000 = 0;
 
   intr_on();
   
