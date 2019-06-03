@@ -30,6 +30,11 @@ kvminit()
   mappages(kernel_pagetable, UART0, PGSIZE,
            UART0, PTE_R | PTE_W);
 
+  // PLIC
+  mappages(kernel_pagetable, PLIC, 0x4000000,
+           PLIC, PTE_R | PTE_W);
+  
+
   // map kernel text executable and read-only.
   mappages(kernel_pagetable, KERNBASE, (uint64)etext-KERNBASE,
            KERNBASE, PTE_R | PTE_X);

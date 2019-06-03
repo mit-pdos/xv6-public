@@ -30,7 +30,11 @@ w_mepc(uint64 x)
 
 // Supervisor Status Register, sstatus
 
-#define SSTATUS_SPP (1L << 8) // 1=Supervisor, 0=User
+#define SSTATUS_SPP (1L << 8)  // Previous mode, 1=Supervisor, 0=User
+#define SSTATUS_SPIE (1L << 5) // Supervisor Previous Interrupt Enable
+#define SSTATUS_UPIE (1L << 4) // User Previous Interrupt Enable
+#define SSTATUS_SIE (1L << 1)  // Supervisor Interrupt Enable
+#define SSTATUS_UIE (1L << 0)  // User Interrupt Enable
 
 static inline uint64
 r_sstatus()
@@ -44,6 +48,33 @@ static inline void
 w_sstatus(uint64 x)
 {
   asm("csrw sstatus, %0" : : "r" (x));
+}
+
+// Supervisor Interrupt Pending
+static inline uint64
+r_sip()
+{
+  uint64 x;
+  asm("csrr %0, sip" : "=r" (x) );
+  return x;
+}
+
+// Supervisor Interrupt Enable
+#define SIE_SEIE (1L << 9) // external
+#define SIE_STIE (1L << 5) // timer
+#define SIE_SSIE (1L << 1) // software
+static inline uint64
+r_sie()
+{
+  uint64 x;
+  asm("csrr %0, sie" : "=r" (x) );
+  return x;
+}
+
+static inline void 
+w_sie(uint64 x)
+{
+  asm("csrw sie, %0" : : "r" (x));
 }
 
 // machine exception program counter, holds the
@@ -145,6 +176,29 @@ r_stval()
   uint64 x;
   asm("csrr %0, stval" : "=r" (x) );
   return x;
+}
+
+// enable interrupts
+static inline void
+intr_on()
+{
+  w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
+  w_sstatus(r_sstatus() | SSTATUS_SIE);
+}
+
+// disable interrupts
+static inline void
+intr_off()
+{
+  w_sstatus(r_sstatus() & ~SSTATUS_SIE);
+}
+
+// are interrupts enabled?
+static inline int
+intr_get()
+{
+  uint64 x = r_sstatus();
+  return (x & SSTATUS_SIE) != 0;
 }
 
 #define PGSIZE 4096 // bytes per page

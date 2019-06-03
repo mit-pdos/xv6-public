@@ -13,8 +13,11 @@
 // end -- start of kernel page allocation area
 // PHYSTOP -- end RAM used by the kernel
 
-// registers start here in physical memory.
+// qemu puts UART registers here in physical memory.
 #define UART0 0x10000000L
+
+// qemu puts programmable interrupt controller here.
+#define PLIC 0x0c000000L
 
 #define RAMDISK 0x88000000
 
