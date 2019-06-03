@@ -174,6 +174,7 @@ void            usertrapret(void);
 void            uartinit(void);
 void            uartintr(void);
 void            uartputc(int);
+int             uartgetc(void);
 
 // vm.c
 void            kvminit(void);
