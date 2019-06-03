@@ -11,28 +11,16 @@ uint ticks;
 
 extern char trampout[], trampin[];
 
-void kerneltrap();
+// in kernelvec.S, calls kerneltrap().
+void kernelvec();
 
 void
 trapinit(void)
 {
   int i;
 
-  // send interrupts and exceptions to kerneltrap().
-  w_stvec((uint64)kerneltrap);
-
-  // set up the riscv Platform Level Interrupt Controller
-  // to send uart interrupts to hart 0 S-Mode.
-
-  // qemu makes UART0 be interrupt number 10.
-  int irq = 10;
-  // set uart's priority to be non-zero (otherwise disabled).
-  *(uint*)(0x0c000000L + irq*4) = 1;
-  // set uart's enable bit for hart 0 S-mode. 
-  *(uint*)0x0c002080 = (1 << irq);
-
-  // set hart 0 S-mode priority threshold to 0.
-  *(uint*)0x0c201000 = 0;
+  // set up to take exceptions and traps while in the kernel.
+  w_stvec((uint64)kernelvec);
 
   initlock(&tickslock, "time");
 }
@@ -49,7 +37,7 @@ usertrap(void)
 
   // send interrupts and exceptions to kerneltrap(),
   // since we're now in the kernel.
-  w_stvec((uint64)kerneltrap);
+  w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
   
@@ -83,8 +71,9 @@ usertrapret(void)
 {
   struct proc *p = myproc();
 
-  // XXX turn off interrupts, since we're switching
+  // turn off interrupts, since we're switching
   // now from kerneltrap() to usertrap().
+  intr_off();
 
   // send interrupts and exceptions to trampoline.S
   w_stvec(TRAMPOLINE + (trampin - trampout));
@@ -101,6 +90,7 @@ usertrapret(void)
   // set S Previous Privilege mode to User.
   unsigned long x = r_sstatus();
   x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode
+  x |= SSTATUS_SPIE; // enable interrupts in user mode
   w_sstatus(x);
 
   // set S Exception Program Counter to the saved user pc.
@@ -121,11 +111,34 @@ usertrapret(void)
 void __attribute__ ((aligned (4)))
 kerneltrap()
 {
-  if((r_sstatus() & SSTATUS_SPP) == 0)
+  uint64 sstatus = r_sstatus();
+  uint64 scause = r_scause();
+  
+  if((sstatus & SSTATUS_SPP) == 0)
     panic("kerneltrap: not from supervisor mode");
 
-  printf("scause 0x%x\n", r_scause());
-  printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
+  if((scause & 0x8000000000000000L) &&
+     (scause & 0xff) == 9){
+    // supervisor external interrupt, via PLIC.
+    int irq = plic_claim();
 
-  panic("kerneltrap");
+    if(irq == UART0_IRQ){
+      uartintr();
+    } else {
+      printf("stray interrupt irq=%d\n", irq);
+    }
+
+    plic_complete(irq);
+  } else {
+    printf("scause 0x%p\n", scause);
+    printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
+    panic("kerneltrap");
+  }
+
+  // turn off interrupts to ensure we
+  // return with the correct sstatus.
+  intr_off();
+
+  // restore previous interrupt status.
+  w_sstatus(sstatus);
 }

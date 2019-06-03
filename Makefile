@@ -21,7 +21,9 @@ OBJS = \
   pipe.o \
   ramdisk.o \
   exec.o \
-  sysfile.o
+  sysfile.o \
+  kernelvec.o \
+  plic.o
 
 XXXOBJS = \
 	bio.o\

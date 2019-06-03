@@ -59,4 +59,6 @@ uartgetc(void)
 void
 uartintr(void)
 {
+  int c = uartgetc();
+  printf("%x ", c & 0xff);
 }

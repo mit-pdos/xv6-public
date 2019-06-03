@@ -191,5 +191,11 @@ int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max);
 
+// plic.c
+void            plicinit(void);
+uint64          plic_pending(void);
+int             plic_claim(void);
+void            plic_complete(int);
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

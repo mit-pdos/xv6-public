@@ -15,6 +15,7 @@
 
 // qemu puts UART registers here in physical memory.
 #define UART0 0x10000000L
+#define UART0_IRQ 10
 
 // qemu puts programmable interrupt controller here.
 #define PLIC 0x0c000000L

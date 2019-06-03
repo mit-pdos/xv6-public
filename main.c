@@ -17,6 +17,7 @@ main()
   kvminit();       // kernel page table
   procinit();      // process table
   trapinit();      // trap vectors
+  plicinit();      // set up interrupt controller
   binit();         // buffer cache
   fileinit();      // file table
   ramdiskinit();   // disk
