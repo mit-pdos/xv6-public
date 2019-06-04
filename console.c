@@ -155,10 +155,11 @@ struct {
 #define C(x)  ((x)-'@')  // Contro
 
 int
-consoleread(struct inode *ip, char *dst, int n)
+consoleread(struct inode *ip, int user_dst, uint64 dst, int n)
 {
   uint target;
   int c;
+  char buf[1];
 
   iunlock(ip);
   target = n;
@@ -181,7 +182,10 @@ consoleread(struct inode *ip, char *dst, int n)
       }
       break;
     }
-    *dst++ = c;
+    buf[0] = c;
+    if(either_copyout(user_dst, dst, &buf[0], 1) == -1)
+      break;
+    dst++;
     --n;
     if(c == '\n')
       break;
@@ -193,14 +197,18 @@ consoleread(struct inode *ip, char *dst, int n)
 }
 
 int
-consolewrite(struct inode *ip, char *buf, int n)
+consolewrite(struct inode *ip, int user_src, uint64 src, int n)
 {
   int i;
 
   iunlock(ip);
   acquire(&cons.lock);
-  for(i = 0; i < n; i++)
-    consputc(buf[i] & 0xff);
+  for(i = 0; i < n; i++){
+    char c;
+    if(either_copyin(&c, user_src, src, 1) == -1)
+      break;
+    consputc(c);
+  }
   release(&cons.lock);
   ilock(ip);
 

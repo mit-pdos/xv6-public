@@ -180,6 +180,8 @@ iinit(int dev)
   }
 
   readsb(dev, &sb);
+  if(sb.magic != FSMAGIC)
+    panic("invalid file system");
   printf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
  inodestart %d bmap start %d\n", sb.size, sb.nblocks,
           sb.ninodes, sb.nlog, sb.logstart, sb.inodestart,
@@ -450,8 +452,10 @@ stati(struct inode *ip, struct stat *st)
 //PAGEBREAK!
 // Read data from inode.
 // Caller must hold ip->lock.
+// If user_dst==1, then dst is a user virtual address;
+// otherwise, dst is a kernel address.
 int
-readi(struct inode *ip, char *dst, uint off, uint n)
+readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)
 {
   uint tot, m;
   struct buf *bp;
@@ -459,7 +463,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
-    return devsw[ip->major].read(ip, dst, n);
+    return devsw[ip->major].read(ip, user_dst, dst, n);
   }
 
   if(off > ip->size || off + n < off)
@@ -470,7 +474,8 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
     m = min(n - tot, BSIZE - off%BSIZE);
-    memmove(dst, bp->data + off%BSIZE, m);
+    if(either_copyout(user_dst, dst, bp->data + (off % BSIZE), m) == -1)
+      break;
     brelse(bp);
   }
   return n;
@@ -479,8 +484,10 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 // PAGEBREAK!
 // Write data to inode.
 // Caller must hold ip->lock.
+// If user_src==1, then src is a user virtual address;
+// otherwise, src is a kernel address.
 int
-writei(struct inode *ip, char *src, uint off, uint n)
+writei(struct inode *ip, int user_src, uint64 src, uint off, uint n)
 {
   uint tot, m;
   struct buf *bp;
@@ -489,7 +496,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write){
       return -1;
     }
-    return devsw[ip->major].write(ip, src, n);
+    return devsw[ip->major].write(ip, user_src, src, n);
   }
 
   if(off > ip->size || off + n < off)
@@ -500,7 +507,8 @@ writei(struct inode *ip, char *src, uint off, uint n)
   for(tot=0; tot<n; tot+=m, off+=m, src+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
     m = min(n - tot, BSIZE - off%BSIZE);
-    memmove(bp->data + off%BSIZE, src, m);
+    if(either_copyin(bp->data + (off % BSIZE), user_src, src, m) == -1)
+      break;
     log_write(bp);
     brelse(bp);
   }
@@ -533,7 +541,7 @@ dirlookup(struct inode *dp, char *name, uint *poff)
     panic("dirlookup not DIR");
 
   for(off = 0; off < dp->size; off += sizeof(de)){
-    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+    if(readi(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
       panic("dirlookup read");
     if(de.inum == 0)
       continue;
@@ -565,7 +573,7 @@ dirlink(struct inode *dp, char *name, uint inum)
 
   // Look for an empty dirent.
   for(off = 0; off < dp->size; off += sizeof(de)){
-    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+    if(readi(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
       panic("dirlink read");
     if(de.inum == 0)
       break;
@@ -573,7 +581,7 @@ dirlink(struct inode *dp, char *name, uint inum)
 
   strncpy(de.name, name, DIRSIZ);
   de.inum = inum;
-  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+  if(writei(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
     panic("dirlink");
 
   return 0;

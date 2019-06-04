@@ -50,9 +50,9 @@ void            iupdate(struct inode*);
 int             namecmp(const char*, const char*);
 struct inode*   namei(char*);
 struct inode*   nameiparent(char*, char*);
-int             readi(struct inode*, char*, uint, uint);
+int             readi(struct inode*, int, uint64, uint, uint);
 void            stati(struct inode*, struct stat*);
-int             writei(struct inode*, char*, uint, uint);
+int             writei(struct inode*, int, uint64, uint, uint);
 
 // ramdisk.c
 void            ramdiskinit(void);
@@ -98,8 +98,8 @@ void            picinit(void);
 // pipe.c
 int             pipealloc(struct file**, struct file**);
 void            pipeclose(struct pipe*, int);
-int             piperead(struct pipe*, char*, int);
-int             pipewrite(struct pipe*, char*, int);
+int             piperead(struct pipe*, uint64, int);
+int             pipewrite(struct pipe*, uint64, int);
 
 //PAGEBREAK: 16
 // proc.c
@@ -122,6 +122,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int             either_copyout(int user_dst, uint64 dst, char *src, uint64 len);
+int             either_copyin(char *dst, int user_src, uint64 src, uint64 len);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
