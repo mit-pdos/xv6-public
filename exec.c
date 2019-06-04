@@ -13,7 +13,7 @@ exec(char *path, char **argv)
 {
   char *s, *last;
   int i, off;
-  uint64 argc, sz, sp, ustack[3+MAXARG+1];
+  uint64 argc, sz, sp, ustack[MAXARG+1];
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
@@ -71,24 +71,24 @@ exec(char *path, char **argv)
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
       goto bad;
-    sp = (sp - (strlen(argv[argc]) + 1)) & ~(sizeof(uint64)-1);
+    sp -= strlen(argv[argc]) + 1;
+    sp -= sp % 16; // riscv sp must be 16-byte aligned
     if(copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
-    ustack[3+argc] = sp;
+    ustack[argc] = sp;
   }
-  ustack[3+argc] = 0;
+  ustack[argc] = 0;
 
-  ustack[0] = 0xffffffff;  // fake return PC
-  ustack[1] = argc;
-  ustack[2] = sp - (argc+1)*sizeof(uint64);  // argv pointer
+  // push the array of argv[] pointers.
+  sp -= (argc+1) * sizeof(uint64);
+  sp -= sp % 16;
+  if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
+    goto bad;
 
   // arguments to user main(argc, argv)
-  p->tf->a0 = argc;
-  p->tf->a1 = sp - (argc+1)*sizeof(uint64);
-
-  sp -= (3+argc+1) * sizeof(uint64);
-  if(copyout(pagetable, sp, (char *)ustack, (3+argc+1)*sizeof(uint64)) < 0)
-    goto bad;
+  // argc is returned via the system call return
+  // value, which goes in a0.
+  p->tf->a1 = sp;
 
   // Save program name for debugging.
   for(last=s=path; *s; s++)
@@ -103,7 +103,7 @@ exec(char *path, char **argv)
   p->tf->epc = elf.entry;  // initial program counter = main
   p->tf->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
-  return 0;
+  return argc; // this ends up in a0, the first argument to main(argc, argv)
 
  bad:
   if(pagetable)

@@ -205,7 +205,7 @@ consolewrite(struct inode *ip, int user_src, uint64 src, int n)
   acquire(&cons.lock);
   for(i = 0; i < n; i++){
     char c;
-    if(either_copyin(&c, user_src, src, 1) == -1)
+    if(either_copyin(&c, user_src, src+i, 1) == -1)
       break;
     consputc(c);
   }
