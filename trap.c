@@ -108,7 +108,7 @@ usertrapret(void)
 // interrupts and exceptions from kernel code go here,
 // on whatever the current kernel stack is.
 // must be 4-byte aligned to fit in stvec.
-void __attribute__ ((aligned (4)))
+void 
 kerneltrap()
 {
   uint64 sstatus = r_sstatus();

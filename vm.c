@@ -33,12 +33,11 @@ kvminit()
   // PLIC
   mappages(kernel_pagetable, PLIC, 0x4000000,
            PLIC, PTE_R | PTE_W);
-  
 
   // map kernel text executable and read-only.
   mappages(kernel_pagetable, KERNBASE, (uint64)etext-KERNBASE,
            KERNBASE, PTE_R | PTE_X);
-  
+
   // map kernel data and the physical RAM we'll make use of.
   mappages(kernel_pagetable, (uint64)etext, PHYSTOP-(uint64)etext,
            (uint64)etext, PTE_R | PTE_W);
@@ -52,14 +51,8 @@ kvminit()
   mappages(kernel_pagetable, TRAMPOLINE, PGSIZE,
            (uint64)trampout, PTE_R | PTE_X);
 
-  kvmswitch();
-}
-
-// Switch h/w page table register to the kernel's page table,
-// and enable paging.
-void
-kvmswitch(void)
-{
+  // Switch h/w page table register to the kernel's page table,
+  // and enable paging.
   w_satp(MAKE_SATP(kernel_pagetable));
 }
 
@@ -214,7 +207,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
   for(; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){
-      uvmdealloc(pagetable, newsz, oldsz);
+      uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
     memset(mem, 0, PGSIZE);

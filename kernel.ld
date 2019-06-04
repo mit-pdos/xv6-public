@@ -26,8 +26,6 @@ SECTIONS
   }
   bss : {
     *(.bss)
+    PROVIDE(end = .);
   }
-
-  . = ALIGN(0x1000);
-  PROVIDE(end = .);
 }

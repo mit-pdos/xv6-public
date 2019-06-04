@@ -132,6 +132,14 @@ w_stvec(uint64 x)
   asm("csrw stvec, %0" : : "r" (x));
 }
 
+static inline uint64
+r_stvec()
+{
+  uint64 x;
+  asm("csrr %0, stvec" : "=r" (x) );
+  return x;
+}
+
 // use riscv's sv39 page table scheme.
 #define SATP_SV39 (8L << 60)
 
@@ -199,6 +207,14 @@ intr_get()
 {
   uint64 x = r_sstatus();
   return (x & SSTATUS_SIE) != 0;
+}
+
+static inline uint64
+r_sp()
+{
+  uint64 x;
+  asm("mv %0, sp" : "=r" (x) );
+  return x;
 }
 
 #define PGSIZE 4096 // bytes per page

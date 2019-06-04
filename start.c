@@ -6,7 +6,7 @@
 void main();
 
 // entry.S uses this as the initial stack.
-char stack0[4096];
+__attribute__ ((aligned (16))) char stack0[4096];
 
 // entry.S jumps here in machine mode on stack0.
 void

@@ -39,6 +39,7 @@ sys_sbrk(void)
 
   if(argint(0, &n) < 0)
     return -1;
+  printf("sbrk(%d), sz was %d\n", n, (int)myproc()->sz);
   addr = myproc()->sz;
   if(growproc(n) < 0)
     return -1;

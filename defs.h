@@ -179,7 +179,6 @@ int             uartgetc(void);
 
 // vm.c
 void            kvminit(void);
-void            kvmswitch(void);
 pagetable_t     uvmcreate(void);
 void            uvminit(pagetable_t, char *, uint);
 uint64          uvmalloc(pagetable_t, uint64, uint64);

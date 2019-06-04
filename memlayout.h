@@ -2,6 +2,7 @@
 
 // qemu -machine virt is set up like this:
 // 00001000 -- boot ROM, provided by qemu
+// 0C000000 -- PLIC
 // 10000000 -- uart0 registers
 // 80000000 -- boot ROM jumps here in machine mode
 //             -kernel loads the kernel here
@@ -26,7 +27,7 @@
 // for use by the kernel and user pages
 // from physical address 0x80000000 to PHYSTOP.
 #define KERNBASE 0x80000000L
-#define PHYSTOP (KERNBASE + 64*1024*1024)
+#define PHYSTOP (KERNBASE + 128*1024*1024)
 
 // map the trampoline page to the highest address,
 // in both user and kernel space.
