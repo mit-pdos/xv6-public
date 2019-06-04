@@ -182,10 +182,6 @@ iinit(int dev)
   readsb(dev, &sb);
   if(sb.magic != FSMAGIC)
     panic("invalid file system");
-  printf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
- inodestart %d bmap start %d\n", sb.size, sb.nblocks,
-          sb.ninodes, sb.nlog, sb.logstart, sb.inodestart,
-          sb.bmapstart);
 }
 
 static struct inode* iget(uint dev, uint inum);

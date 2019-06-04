@@ -14,6 +14,8 @@ extern char trampout[], trampin[];
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
 
+extern int devintr();
+
 void
 trapinit(void)
 {
@@ -21,6 +23,8 @@ trapinit(void)
 
   // set up to take exceptions and traps while in the kernel.
   w_stvec((uint64)kernelvec);
+
+  // time, cycle, instret CSRs
 
   initlock(&tickslock, "time");
 }
@@ -39,6 +43,10 @@ usertrap(void)
   // since we're now in the kernel.
   w_stvec((uint64)kernelvec);
 
+  //printf("mtimecmp %x mtime %x\n", *(uint64*)CLINT_MTIMECMP0, *(uint64*)CLINT_MTIME);
+
+  *(uint64*)CLINT_MTIMECMP0 = *(uint64*)CLINT_MTIME + 10000;
+
   struct proc *p = myproc();
   
   // save user program counter.
@@ -54,8 +62,10 @@ usertrap(void)
     p->tf->epc += 4;
 
     syscall();
+  } else if(devintr()){
+    // ok
   } else {
-    printf("usertrap(): unexpected scause 0x%x pid=%d\n", r_scause(), p->pid);
+    printf("usertrap(): unexpected scause 0x%p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
@@ -120,19 +130,7 @@ kerneltrap()
   if((sstatus & SSTATUS_SPP) == 0)
     panic("kerneltrap: not from supervisor mode");
 
-  if((scause & 0x8000000000000000L) &&
-     (scause & 0xff) == 9){
-    // supervisor external interrupt, via PLIC.
-    int irq = plic_claim();
-
-    if(irq == UART0_IRQ){
-      uartintr();
-    } else {
-      printf("stray interrupt irq=%d\n", irq);
-    }
-
-    plic_complete(irq);
-  } else {
+  if(devintr() == 0){
     printf("scause 0x%p\n", scause);
     printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
     panic("kerneltrap");
@@ -145,3 +143,42 @@ kerneltrap()
   // restore previous interrupt status.
   w_sstatus(sstatus);
 }
+
+// check if it's an external interrupt or software interrupt,
+// and handle it.
+// returns 1 if handled, 0 if not recognized.
+int
+devintr()
+{
+  uint64 scause = r_scause();
+
+  if((scause & 0x8000000000000000L) &&
+     (scause & 0xff) == 9){
+    // supervisor external interrupt, via PLIC.
+    int irq = plic_claim();
+
+    if(irq == UART0_IRQ){
+      uartintr();
+    } else {
+      printf("stray interrupt irq=%d\n", irq);
+    }
+
+    plic_complete(irq);
+    return 1;
+  } else if(scause == 0x8000000000000001){
+    // software interrupt from a machine-mode timer interrupt.
+
+    acquire(&tickslock);
+    ticks++;
+    wakeup(&ticks);
+    release(&tickslock);
+    
+    // acknowledge.
+    w_sip(r_sip() & ~2);
+
+    return 1;
+  } else {
+    return 0;
+  }
+}
+

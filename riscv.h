@@ -4,6 +4,7 @@
 #define MSTATUS_MPP_M (3L << 11)
 #define MSTATUS_MPP_S (1L << 11)
 #define MSTATUS_MPP_U (0L << 11)
+#define MSTATUS_MIE (1L << 3)
 
 static inline uint64
 r_mstatus()
@@ -59,6 +60,12 @@ r_sip()
   return x;
 }
 
+static inline void 
+w_sip(uint64 x)
+{
+  asm("csrw sip, %0" : : "r" (x));
+}
+
 // Supervisor Interrupt Enable
 #define SIE_SEIE (1L << 9) // external
 #define SIE_STIE (1L << 5) // timer
@@ -75,6 +82,24 @@ static inline void
 w_sie(uint64 x)
 {
   asm("csrw sie, %0" : : "r" (x));
+}
+
+// Machine-mode Interrupt Enable
+#define MIE_MEIE (1L << 11) // external
+#define MIE_MTIE (1L << 7) // timer
+#define MIE_MSIE (1L << 3) // software
+static inline uint64
+r_mie()
+{
+  uint64 x;
+  asm("csrr %0, mie" : "=r" (x) );
+  return x;
+}
+
+static inline void 
+w_mie(uint64 x)
+{
+  asm("csrw mie, %0" : : "r" (x));
 }
 
 // machine exception program counter, holds the
@@ -140,6 +165,13 @@ r_stvec()
   return x;
 }
 
+// Machine-mode interrupt vector
+static inline void 
+w_mtvec(uint64 x)
+{
+  asm("csrw mtvec, %0" : : "r" (x));
+}
+
 // use riscv's sv39 page table scheme.
 #define SATP_SV39 (8L << 60)
 
@@ -168,6 +200,12 @@ w_sscratch(uint64 x)
   asm("csrw sscratch, %0" : : "r" (x));
 }
 
+static inline void 
+w_mscratch(uint64 x)
+{
+  asm("csrw mscratch, %0" : : "r" (x));
+}
+
 // Supervisor Trap Cause
 static inline uint64
 r_scause()
@@ -183,6 +221,30 @@ r_stval()
 {
   uint64 x;
   asm("csrr %0, stval" : "=r" (x) );
+  return x;
+}
+
+// Machine-mode Counter-Enable
+static inline void 
+w_mcounteren(uint64 x)
+{
+  asm("csrw mcounteren, %0" : : "r" (x));
+}
+
+static inline uint64
+r_mcounteren()
+{
+  uint64 x;
+  asm("csrr %0, mcounteren" : "=r" (x) );
+  return x;
+}
+
+// machine-mode cycle counter
+static inline uint64
+r_time()
+{
+  uint64 x;
+  asm("csrr %0, time" : "=r" (x) );
   return x;
 }
 

@@ -1,7 +1,10 @@
 // Physical memory layout
 
-// qemu -machine virt is set up like this:
+// qemu -machine virt is set up like this,
+// based on qemu's hw/riscv/virt.c:
+//
 // 00001000 -- boot ROM, provided by qemu
+// 02000000 -- CLINT
 // 0C000000 -- PLIC
 // 10000000 -- uart0 registers
 // 80000000 -- boot ROM jumps here in machine mode
@@ -18,10 +21,16 @@
 #define UART0 0x10000000L
 #define UART0_IRQ 10
 
+// local interrupt controller, which contains the timer.
+#define CLINT 0x2000000L
+#define CLINT_MSIP0 (CLINT + 0x0)
+#define CLINT_MTIMECMP0 (CLINT + 0x4000)
+#define CLINT_MTIME (CLINT + 0xBFF8)
+
 // qemu puts programmable interrupt controller here.
 #define PLIC 0x0c000000L
 
-#define RAMDISK 0x88000000
+#define RAMDISK 0x88000000L
 
 // the kernel expects there to be RAM
 // for use by the kernel and user pages
