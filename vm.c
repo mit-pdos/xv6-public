@@ -148,8 +148,10 @@ unmappages(pagetable_t pagetable, uint64 va, uint64 size, int do_free)
   for(;;){
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("unmappages: walk");
-    if((*pte & PTE_V) == 0)
+    if((*pte & PTE_V) == 0){
+      printf("va=%p pte=%p\n", a, *pte);
       panic("unmappages: not mapped");
+    }
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("unmappages: not a leaf");
     if(do_free){
@@ -203,7 +205,8 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
   if(newsz < oldsz)
     return oldsz;
 
-  a = PGROUNDUP(oldsz);
+  oldsz = PGROUNDUP(oldsz);
+  a = oldsz;
   for(; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){

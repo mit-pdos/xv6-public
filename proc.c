@@ -500,8 +500,6 @@ wakeup(void *chan)
   release(&ptable.lock);
 }
 
-#if 0
-
 // Kill the process with the given pid.
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
@@ -524,8 +522,6 @@ kill(int pid)
   release(&ptable.lock);
   return -1;
 }
-
-#endif
 
 // Copy to either a user address, or kernel address,
 // depending on usr_dst.
