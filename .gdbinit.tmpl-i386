@@ -1,3 +1,4 @@
+set confirm off
 python
 gdb.execute("target remote localhost:26000")
 gdb.execute("set architecture i386")

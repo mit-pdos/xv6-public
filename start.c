@@ -1,25 +1,19 @@
 #include "types.h"
+#include "param.h"
 #include "memlayout.h"
 #include "riscv.h"
 #include "defs.h"
 
 void main();
 
-// entry.S uses this as the initial stack.
-__attribute__ ((aligned (16))) char stack0[4096];
+// entry.S needs one stack per CPU.
+__attribute__ ((aligned (16))) char stack0[4096 * NCPU];
 
 // assembly code in kernelvec for machine-mode timer interrupt.
 extern void machinevec();
 
-// scratch area for timer interrupt.
-uint64 mscratch0[8];
-
-__attribute__ ((aligned (16)))
-void
-xyzzy()
-{
-  uartputc('I');
-}
+// scratch area for timer interrupt, one per CPU.
+uint64 mscratch0[NCPU * 32];
 
 // entry.S jumps here in machine mode on stack0.
 void
@@ -42,15 +36,19 @@ mstart()
   w_medeleg(0xffff);
   w_mideleg(0xffff);
 
-  // set up to receive timer interrupts in machine mode.
-  *(uint64*)CLINT_MTIMECMP0 = *(uint64*)CLINT_MTIME + 10000;
-  mscratch0[4] = CLINT_MTIMECMP0;
-  mscratch0[5] = 10000000;
-  w_mscratch((uint64)mscratch0);
+  // set up to receive timer interrupts in machine mode,
+  // for pre-emptive switching and (on hart 0) to drive time.
+  int id = r_mhartid();
+  uint64 *scratch = &mscratch0[32 * id];
+  *(uint64*)CLINT_MTIMECMP(id) = *(uint64*)CLINT_MTIME + 10000;
+  scratch[4] = CLINT_MTIMECMP(id);
+  scratch[5] = 10000000;
+  w_mscratch((uint64)scratch);
   w_mtvec((uint64)machinevec);
   w_mstatus(r_mstatus() | MSTATUS_MIE);
   w_mie(r_mie() |  MIE_MTIE);
 
-  // jump to main in supervisor mode.
-  asm("mret");
+  // call main(hartid) in supervisor mode.
+  asm("csrr a0, mhartid ; \
+       mret");
 }

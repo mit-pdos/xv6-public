@@ -32,28 +32,33 @@ procinit(void)
   initlock(&ptable.lock, "ptable");
 }
 
-// Must be called with interrupts disabled.
-// XXX riscv
+// Must be called with interrupts disabled,
+// to prevent race with process being moved
+// to a different CPU.
 int
-cpuid() {
-  return 0;
+cpuid()
+{
+  int id = r_tp();
+  return id;
 }
 
 // Return this core's cpu struct.
-// XXX riscv
+// Interrupts must be disabled.
 struct cpu*
 mycpu(void) {
-  struct cpu *c;
-  c = &cpus[0];
+  int id = cpuid();
+  struct cpu *c = &cpus[id];
   return c;
 }
 
-// Disable interrupts so that we are not rescheduled
-// while reading proc from the cpu structure
-// XXX riscv
+// Return the current struct proc *.
 struct proc*
 myproc(void) {
-  return cpus[0].proc;
+  // XXX push intr off
+  struct cpu *c = mycpu();
+  struct proc *p = c->proc;
+  // XXX pop intr
+  return p;
 }
 
 //PAGEBREAK: 32

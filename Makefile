@@ -187,13 +187,13 @@ endif
 QEMUOPTS = -machine virt -kernel kernel -m 3G -smp $(CPUS) -nographic
 QEMUOPTS += -initrd fs.img
 
-qemu: kernel
+qemu: kernel fs.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
-qemu-gdb: kernel .gdbinit
+qemu-gdb: kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb'." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 

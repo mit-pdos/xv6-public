@@ -24,8 +24,6 @@ trapinit(void)
   // set up to take exceptions and traps while in the kernel.
   w_stvec((uint64)kernelvec);
 
-  // time, cycle, instret CSRs
-
   initlock(&tickslock, "time");
 }
 
@@ -44,10 +42,6 @@ usertrap(void)
   // send interrupts and exceptions to kerneltrap(),
   // since we're now in the kernel.
   w_stvec((uint64)kernelvec);
-
-  //printf("mtimecmp %x mtime %x\n", *(uint64*)CLINT_MTIMECMP0, *(uint64*)CLINT_MTIME);
-
-  *(uint64*)CLINT_MTIMECMP0 = *(uint64*)CLINT_MTIME + 10000;
 
   struct proc *p = myproc();
   
@@ -102,6 +96,7 @@ usertrapret(void)
   p->tf->kernel_satp = r_satp();
   p->tf->kernel_sp = (uint64)p->kstack + PGSIZE;
   p->tf->kernel_trap = (uint64)usertrap;
+  p->tf->hartid = r_tp();
 
   // set up the registers that trampoline.S's sret will use
   // to get to user space.
@@ -132,9 +127,12 @@ kerneltrap()
 {
   uint64 sstatus = r_sstatus();
   uint64 scause = r_scause();
+  uint64 sepc = r_sepc(); // XXX needed only for check at end?
   
   if((sstatus & SSTATUS_SPP) == 0)
     panic("kerneltrap: not from supervisor mode");
+  if(intr_get() != 0)
+    panic("kerneltrap: interrupts enabled");
 
   if(devintr() == 0){
     printf("scause 0x%p\n", scause);
@@ -142,12 +140,11 @@ kerneltrap()
     panic("kerneltrap");
   }
 
-  // turn off interrupts to ensure we
-  // return with the correct sstatus.
-  intr_off();
-
-  // restore previous interrupt status.
-  w_sstatus(sstatus);
+  // XXX assert that we don't have to save/restore sstatus or sepc.
+  if(r_sstatus() != sstatus)
+    panic("kerneltrap sstatus");
+  if(r_sepc() != sepc)
+    panic("kerneltrap sepc");
 }
 
 // check if it's an external interrupt or software interrupt,

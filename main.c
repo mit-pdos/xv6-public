@@ -8,11 +8,12 @@
 // Allocate a real stack and switch to it, first
 // doing some setup required for memory allocator to work.
 void
-main()
+main(int hartid)
 {
+  w_tp(hartid);    // save hartid where cpuid() can find it
   uartinit();      // serial port
   consoleinit();
-  printf("entering main()\n");
+  printf("entering main() on hart %d\n", hartid);
   kinit();         // physical page allocator
   kvminit();       // kernel page table
   procinit();      // process table

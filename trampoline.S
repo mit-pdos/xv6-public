@@ -120,6 +120,9 @@ trampin:
         # restore kernel stack pointer from p->tf->kernel_sp
         ld sp, 8(a0)
 
+        # make tp hold the current hartid, from p->tf->hartid
+        ld tp, 32(a0)
+
         # remember the address of usertrap(), p->tf->kernel_trap
         ld t0, 16(a0)
 

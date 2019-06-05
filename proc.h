@@ -20,10 +20,7 @@ struct context {
 
 // Per-CPU state
 struct cpu {
-  uint64 syscallno;            // Temporary used by sysentry
-  uint64 usp;                  // Temporary used by sysentry
   struct proc *proc;           // The process running on this cpu or null
-  struct cpu *cpu;             // XXX
   struct context scheduler;   // swtch() here to enter scheduler
   volatile uint started;       // Has the CPU started?
   int ncli;                    // Depth of pushcli nesting.
@@ -31,7 +28,6 @@ struct cpu {
 };
 
 extern struct cpu cpus[NCPU];
-extern int ncpu;
 
 //PAGEBREAK: 17
 
@@ -47,9 +43,9 @@ extern int ncpu;
 struct trapframe {
   /*   0 */ uint64 kernel_satp;
   /*   8 */ uint64 kernel_sp;
-  /*  16 */ uint64 kernel_trap; // address of trap()
+  /*  16 */ uint64 kernel_trap; // usertrap()
   /*  24 */ uint64 epc; // saved user program counter
-  /*  32 */ uint64 unused;
+  /*  32 */ uint64 hartid;
   /*  40 */ uint64 ra;
   /*  48 */ uint64 sp;
   /*  56 */ uint64 gp;

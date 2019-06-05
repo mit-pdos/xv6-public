@@ -1,3 +1,12 @@
+// which hart (core) is this?
+static inline uint64
+r_mhartid()
+{
+  uint64 x;
+  asm("csrr %0, mhartid" : "=r" (x) );
+  return x;
+}
+
 // Machine Status Register, mstatus
 
 #define MSTATUS_MPP_MASK (3L << 11)
@@ -277,6 +286,22 @@ r_sp()
   uint64 x;
   asm("mv %0, sp" : "=r" (x) );
   return x;
+}
+
+// read and write tp, the thread pointer, which holds
+// this core's hartid (core number), the index into cpus[].
+static inline uint64
+r_tp()
+{
+  uint64 x;
+  asm("mv %0, tp" : "=r" (x) );
+  return x;
+}
+
+static inline void 
+w_tp(uint64 x)
+{
+  asm("mv tp, %0" : : "r" (x));
 }
 
 #define PGSIZE 4096 // bytes per page

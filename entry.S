@@ -10,12 +10,15 @@
 .section .text
 .globl _entry
 _entry:
-	# set up a stack for C; stack0 is declared in start.
+	# set up a stack for C.
+        # stack0 is declared in start,
+        # with 4096 bytes per CPU.
         la sp, stack0
-        addi sp, sp, 1024
-        addi sp, sp, 1024
-        addi sp, sp, 1024
-        addi sp, sp, 1024
+        li a0, 1024*4
+	csrr a1, mhartid
+        addi a1, a1, 1
+        mul a0, a0, a1
+        add sp, sp, a0
 	# jump to mstart() in start.c
         call mstart
 junk:
