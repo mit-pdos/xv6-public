@@ -11,7 +11,6 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
-// XXX riscv move somewhere else
 struct cpu cpus[NCPU];
 
 struct proc *initproc;
@@ -54,10 +53,10 @@ mycpu(void) {
 // Return the current struct proc *.
 struct proc*
 myproc(void) {
-  // XXX push intr off
+  push_off();
   struct cpu *c = mycpu();
   struct proc *p = c->proc;
-  // XXX pop intr
+  pop_off();
   return p;
 }
 
@@ -403,8 +402,13 @@ sched(void)
 
   if(!holding(&ptable.lock))
     panic("sched ptable.lock");
+  if(mycpu()->noff != 1)
+    panic("sched locks");
   if(p->state == RUNNING)
     panic("sched running");
+  if(intr_get())
+    panic("sched interruptible");
+
   intena = mycpu()->intena;
   swtch(&p->context, &mycpu()->scheduler);
   mycpu()->intena = intena;
