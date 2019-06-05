@@ -360,7 +360,7 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-   
+
   c->proc = 0;
   for(;;){
     // Enable interrupts on this processor.
@@ -385,7 +385,6 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -393,7 +392,7 @@ scheduler(void)
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
 // kernel thread, not this CPU. It should
-// be proc->intena and proc->ncli, but that would
+// be proc->intena and proc->noff, but that would
 // break in the few places where a lock is held but
 // there's no process.
 void

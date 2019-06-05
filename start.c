@@ -9,11 +9,11 @@ void main();
 // entry.S needs one stack per CPU.
 __attribute__ ((aligned (16))) char stack0[4096 * NCPU];
 
-// assembly code in kernelvec for machine-mode timer interrupt.
-extern void machinevec();
-
 // scratch area for timer interrupt, one per CPU.
 uint64 mscratch0[NCPU * 32];
+
+// assembly code in kernelvec for machine-mode timer interrupt.
+extern void machinevec();
 
 // entry.S jumps here in machine mode on stack0.
 void
@@ -48,7 +48,9 @@ mstart()
   w_mstatus(r_mstatus() | MSTATUS_MIE);
   w_mie(r_mie() |  MIE_MTIE);
 
-  // call main(hartid) in supervisor mode.
-  asm("csrr a0, mhartid ; \
-       mret");
+  // keep each CPU's hartid in its tp register, for cpuid().
+  w_tp(id);
+
+  // call main() in supervisor mode.
+  asm("mret");
 }

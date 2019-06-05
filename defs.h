@@ -130,12 +130,11 @@ void            swtch(struct context*, struct context*);
 
 // spinlock.c
 void            acquire(struct spinlock*);
-void            getcallerpcs(void*, uint64*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
-void            pushcli(void);
-void            popcli(void);
+void            push_off(void);
+void            pop_off(void);
 
 // sleeplock.c
 void            acquiresleep(struct sleeplock*);
@@ -168,6 +167,7 @@ void            timerinit(void);
 // trap.c
 extern uint     ticks;
 void            trapinit(void);
+void            trapinithart(void);
 extern struct spinlock tickslock;
 void            usertrapret(void);
 
@@ -179,6 +179,7 @@ int             uartgetc(void);
 
 // vm.c
 void            kvminit(void);
+void            kvminithart(void);
 pagetable_t     uvmcreate(void);
 void            uvminit(pagetable_t, char *, uint);
 uint64          uvmalloc(pagetable_t, uint64, uint64);
@@ -194,6 +195,7 @@ int             copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64
 
 // plic.c
 void            plicinit(void);
+void            plicinithart(void);
 uint64          plic_pending(void);
 int             plic_claim(void);
 void            plic_complete(int);

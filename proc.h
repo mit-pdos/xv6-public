@@ -22,9 +22,8 @@ struct context {
 struct cpu {
   struct proc *proc;           // The process running on this cpu or null
   struct context scheduler;   // swtch() here to enter scheduler
-  volatile uint started;       // Has the CPU started?
-  int ncli;                    // Depth of pushcli nesting.
-  int intena;                  // Were interrupts enabled before pushcli?
+  int noff;                    // Depth of push_off() nesting.
+  int intena;                  // Were interrupts enabled before push_off()?
 };
 
 extern struct cpu cpus[NCPU];

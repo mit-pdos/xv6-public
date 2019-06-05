@@ -4,25 +4,39 @@
 #include "riscv.h"
 #include "defs.h"
 
+volatile static int started = 0;
+
 // Bootstrap processor starts running C code here.
 // Allocate a real stack and switch to it, first
 // doing some setup required for memory allocator to work.
 void
-main(int hartid)
+main()
 {
-  w_tp(hartid);    // save hartid where cpuid() can find it
-  uartinit();      // serial port
-  consoleinit();
-  printf("entering main() on hart %d\n", hartid);
-  kinit();         // physical page allocator
-  kvminit();       // kernel page table
-  procinit();      // process table
-  trapinit();      // trap vectors
-  plicinit();      // set up interrupt controller
-  binit();         // buffer cache
-  fileinit();      // file table
-  ramdiskinit();   // disk
-  userinit();      // first user process
+  if(cpuid() == 0){
+    uartinit();      // serial port
+    consoleinit();
+    printf("hart %d starting\n", cpuid());
+    kinit();         // physical page allocator
+    kvminit();       // create kernel page table
+    kvminithart();   // turn on paging
+    procinit();      // process table
+    trapinit();      // trap vectors
+    trapinithart();  // install kernel trap vector
+    plicinit();      // set up interrupt controller
+    plicinithart();  // ask PLIC for device interrupts
+    binit();         // buffer cache
+    fileinit();      // file table
+    ramdiskinit();   // disk
+    userinit();      // first user process
+    started = 1;
+  } else {
+    while(started == 0)
+      ;
+    printf("hart %d starting\n", cpuid());
+    kvminithart();    // turn on paging
+    trapinithart();   // install kernel trap vector
+    plicinithart();   // ask PLIC for device interrupts
+  }
 
   scheduler();        
 }
