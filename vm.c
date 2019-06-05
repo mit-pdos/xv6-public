@@ -190,7 +190,7 @@ uvmcreate()
 // for the very first process.
 // sz must be less than a page.
 void
-uvminit(pagetable_t pagetable, char *src, uint sz)
+uvminit(pagetable_t pagetable, uchar *src, uint sz)
 {
   char *mem;
 
@@ -254,7 +254,6 @@ freewalk(pagetable_t pagetable)
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
-      // XXX trampoline pages...
       panic("freewalk: leaf");
     }
   }

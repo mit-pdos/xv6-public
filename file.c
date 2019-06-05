@@ -106,9 +106,7 @@ filestat(struct file *f, uint64 addr)
 int
 fileread(struct file *f, uint64 addr, int n)
 {
-  struct proc *p = myproc();
   int r = 0;
-  char *buf;
 
   if(f->readable == 0)
     return -1;
@@ -133,9 +131,7 @@ fileread(struct file *f, uint64 addr, int n)
 int
 filewrite(struct file *f, uint64 addr, int n)
 {
-  struct proc *p = myproc();
   int r, ret = 0;
-  char *buf;
 
   if(f->writable == 0)
     return -1;

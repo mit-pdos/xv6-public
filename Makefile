@@ -25,36 +25,6 @@ OBJS = \
   kernelvec.o \
   plic.o
 
-XXXOBJS = \
-	bio.o\
-	console.o\
-	exec.o\
-	file.o\
-	fs.o\
-	ide.o\
-	ioapic.o\
-	kalloc.o\
-	kbd.o\
-	lapic.o\
-	log.o\
-	main.o\
-	mp.o\
-	picirq.o\
-	pipe.o\
-	proc.o\
-	sleeplock.o\
-	spinlock.o\
-	string.o\
-	swtch.o\
-	syscall.o\
-	sysfile.o\
-	sysproc.o\
-	trapasm.o\
-	trap.o\
-	uart.o\
-	vectors.o\
-	vm.o\
-
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
 #TOOLPREFIX = 
@@ -79,8 +49,9 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -Werror -fno-omit-frame-pointer -O
-CFLAGS = -mcmodel=medany
+# CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -Werror -fno-omit-frame-pointer -O
+CFLAGS = -Wall -Werror
+CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 

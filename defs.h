@@ -122,8 +122,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-int             either_copyout(int user_dst, uint64 dst, char *src, uint64 len);
-int             either_copyin(char *dst, int user_src, uint64 src, uint64 len);
+int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
+int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -181,7 +181,7 @@ int             uartgetc(void);
 void            kvminit(void);
 void            kvminithart(void);
 pagetable_t     uvmcreate(void);
-void            uvminit(pagetable_t, char *, uint);
+void            uvminit(pagetable_t, uchar *, uint);
 uint64          uvmalloc(pagetable_t, uint64, uint64);
 uint64          uvmdealloc(pagetable_t, uint64, uint64);
 void            uvmcopy(pagetable_t, pagetable_t, uint64);

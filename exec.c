@@ -129,7 +129,6 @@ loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz
 {
   uint i, n;
   uint64 pa;
-  pte_t *pte;
 
   if((va % PGSIZE) != 0)
     panic("loadseg: va must be page aligned");

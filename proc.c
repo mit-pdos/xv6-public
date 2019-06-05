@@ -150,7 +150,7 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 
 // a user program that calls exec("/init")
 // od -t xC initcode
-unsigned char initcode[] = {
+uchar initcode[] = {
   0x17, 0x05, 0x00, 0x00, 0x13, 0x05, 0x05, 0x02, 0x97, 0x05, 0x00, 0x00, 0x93, 0x85, 0x05, 0x02,
   0x9d, 0x48, 0x73, 0x00, 0x00, 0x00, 0x89, 0x48, 0x73, 0x00, 0x00, 0x00, 0xef, 0xf0, 0xbf, 0xff,
   0x2f, 0x69, 0x6e, 0x69, 0x74, 0x00, 0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -429,9 +429,8 @@ yield(void)
 void
 forkret(void)
 {
-  struct proc *p = myproc();
-
   static int first = 1;
+
   // Still holding ptable.lock from scheduler.
   release(&ptable.lock);
 
@@ -535,13 +534,14 @@ kill(int pid)
 // depending on usr_dst.
 // Returns 0 on success, -1 on error.
 int
-either_copyout(int user_dst, uint64 dst, char *src, uint64 len)
+either_copyout(int user_dst, uint64 dst, void *src, uint64 len)
 {
   struct proc *p = myproc();
   if(user_dst){
     return copyout(p->pagetable, dst, src, len);
   } else {
     memmove((char *)dst, src, len);
+    return 0;
   }
 }
 
@@ -549,13 +549,14 @@ either_copyout(int user_dst, uint64 dst, char *src, uint64 len)
 // depending on usr_src.
 // Returns 0 on success, -1 on error.
 int
-either_copyin(char *dst, int user_src, uint64 src, uint64 len)
+either_copyin(void *dst, int user_src, uint64 src, uint64 len)
 {
   struct proc *p = myproc();
   if(user_src){
     return copyin(p->pagetable, dst, src, len);
   } else {
     memmove(dst, (char*)src, len);
+    return 0;
   }
 }
 
