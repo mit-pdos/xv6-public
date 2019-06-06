@@ -56,11 +56,13 @@ release(struct spinlock *lk)
   // section are visible to other cores before the lock is released.
   // Both the C compiler and the hardware may re-order loads and
   // stores; __sync_synchronize() tells them both not to.
+  // On RISC-V, this turns into a fence instruction.
   __sync_synchronize();
 
   // Release the lock, equivalent to lk->locked = 0.
   // This code can't use a C assignment, since it might
   // not be atomic. A real OS would use C atomics here.
+  // On RISC-V, use an amoswap instruction.
   //asm volatile("movl $0, %0" : "+m" (lk->locked) : );
   __sync_lock_release(&lk->locked);
 
@@ -73,7 +75,7 @@ holding(struct spinlock *lk)
 {
   int r;
   push_off();
-  r = lk->locked && lk->cpu == mycpu();
+  r = (lk->locked && lk->cpu == mycpu());
   pop_off();
   return r;
 }

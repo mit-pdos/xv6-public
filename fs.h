@@ -2,8 +2,8 @@
 // Both the kernel and user programs use this header file.
 
 
-#define ROOTINO 1  // root i-number
-#define BSIZE 512  // block size
+#define ROOTINO  1   // root i-number
+#define BSIZE 1024  // block size
 
 // Disk layout:
 // [ boot block | super block | log | inode blocks |
@@ -48,7 +48,7 @@ struct dinode {
 #define BPB           (BSIZE*8)
 
 // Block of free map containing bit for block b
-#define BBLOCK(b, sb) (b/BPB + sb.bmapstart)
+#define BBLOCK(b, sb) ((b)/BPB + sb.bmapstart)
 
 // Directory is a file containing a sequence of dirent structures.
 #define DIRSIZ 14

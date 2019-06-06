@@ -219,9 +219,15 @@ consolewrite(struct inode *ip, int user_src, uint64 src, int n)
 void
 consoleintr(int c)
 {
+  int doprocdump = 0;
+  
   acquire(&cons.lock);
 
   switch(c){
+  case C('P'):  // Process list.
+    // procdump() locks cons.lock indirectly; invoke later
+    doprocdump = 1;
+    break;
   case C('U'):  // Kill line.
     while(input.e != input.w &&
           input.buf[(input.e-1) % INPUT_BUF] != '\n'){
@@ -249,6 +255,9 @@ consoleintr(int c)
   }
   
   release(&cons.lock);
+
+  if(doprocdump)
+    procdump();
 }
 
 void
