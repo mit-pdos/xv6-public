@@ -1,0 +1,28 @@
+#!/usr/bin/expect -f
+
+# no limit - usertests are time consuming
+set timeout -1
+
+# dry-run to get qemu command - to end qemu with close afterwards
+spawn bash -c "make -n qemu-nox | grep qemu"
+expect eof
+set qemu_command $expect_out(buffer)
+
+# TODO: use the resut of dry run as an agument fot spawn ($expect_out(buffer) is not working for some reason)
+# actual run
+spawn qemu-system-i386 -nographic -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp 2 -m 512
+expect "$ "
+
+# run usertests and log the output
+send "usertests\n"
+log_file -noappend [lindex $argv 0]
+expect {
+   "$ "
+}
+log_file
+
+# just in case
+close
+
+# jenkins will check if lines=$(grep "ALL TESTS PASSED" mylog.txt | wc -l)
+# -eq 1 (aka SUCCESS, FAILURE otherwise).

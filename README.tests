@@ -1,0 +1,6 @@
+The following command:
+
+   ./runtests.exp log.txt
+
+will spawn 'make qemu-nox', execute usertests from the xv6 command line,
+log the output to the log.txt and, finally, kill the qemu process.
