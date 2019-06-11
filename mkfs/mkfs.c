@@ -6,10 +6,10 @@
 #include <assert.h>
 
 #define stat xv6_stat  // avoid clash with host struct stat
-#include "types.h"
-#include "fs.h"
-#include "stat.h"
-#include "param.h"
+#include "kernel/types.h"
+#include "kernel/fs.h"
+#include "kernel/stat.h"
+#include "kernel/param.h"
 
 #ifndef static_assert
 #define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
@@ -129,7 +129,14 @@ main(int argc, char *argv[])
   iappend(rootino, &de, sizeof(de));
 
   for(i = 2; i < argc; i++){
-    assert(index(argv[i], '/') == 0);
+    // get rid of "user/"
+    char *shortname;
+    if(strncmp(argv[i], "user/", 5) == 0)
+      shortname = argv[i] + 5;
+    else
+      shortname = argv[i];
+    
+    assert(index(shortname, '/') == 0);
 
     if((fd = open(argv[i], 0)) < 0){
       perror(argv[i]);
@@ -140,14 +147,14 @@ main(int argc, char *argv[])
     // The binaries are named _rm, _cat, etc. to keep the
     // build operating system from trying to execute them
     // in place of system binaries like rm and cat.
-    if(argv[i][0] == '_')
-      ++argv[i];
+    if(shortname[0] == '_')
+      shortname += 1;
 
     inum = ialloc(T_FILE);
 
     bzero(&de, sizeof(de));
     de.inum = xshort(inum);
-    strncpy(de.name, argv[i], DIRSIZ);
+    strncpy(de.name, shortname, DIRSIZ);
     iappend(rootino, &de, sizeof(de));
 
     while((cc = read(fd, buf, sizeof(buf))) > 0)
