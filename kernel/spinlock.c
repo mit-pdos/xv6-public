@@ -27,9 +27,10 @@ acquire(struct spinlock *lk)
   if(holding(lk))
     panic("acquire");
 
-  // The xchg is atomic.
-  //while(xchg(&lk->locked, 1) != 0)
-  //  ;
+  // On RISC-V, this turns into an atomic swap:
+  //   a5 = 1
+  //   s1 = &lk->locked
+  //   amoswap.w.aq a5, a5, (s1)
   while(__sync_lock_test_and_set(&lk->locked, 1) != 0)
     ;
 
@@ -51,19 +52,18 @@ release(struct spinlock *lk)
 
   lk->cpu = 0;
 
-  // Tell the C compiler and the processor to not move loads or stores
+  // Tell the C compiler and the CPU to not move loads or stores
   // past this point, to ensure that all the stores in the critical
   // section are visible to other cores before the lock is released.
-  // Both the C compiler and the hardware may re-order loads and
-  // stores; __sync_synchronize() tells them both not to.
   // On RISC-V, this turns into a fence instruction.
   __sync_synchronize();
 
   // Release the lock, equivalent to lk->locked = 0.
   // This code can't use a C assignment, since it might
-  // not be atomic. A real OS would use C atomics here.
-  // On RISC-V, use an amoswap instruction.
-  //asm volatile("movl $0, %0" : "+m" (lk->locked) : );
+  // not be atomic.
+  // On RISC-V, this turns into an atomic swap:
+  //   s1 = &lk->locked
+  //   amoswap.w zero, zero, (s1)
   __sync_lock_release(&lk->locked);
 
   pop_off();
