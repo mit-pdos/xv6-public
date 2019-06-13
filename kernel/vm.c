@@ -30,7 +30,7 @@ kvminit()
   mappages(kernel_pagetable, UART0, PGSIZE,
            UART0, PTE_R | PTE_W);
 
-  // virtio disk interface
+  // virtio mmio disk interface
   mappages(kernel_pagetable, VIRTIO, PGSIZE,
            VIRTIO, PTE_R | PTE_W);
 
@@ -49,10 +49,6 @@ kvminit()
   // map kernel data and the physical RAM we'll make use of.
   mappages(kernel_pagetable, (uint64)etext, PHYSTOP-(uint64)etext,
            (uint64)etext, PTE_R | PTE_W);
-
-  // map the qemu -initrd fs.img ramdisk
-  mappages(kernel_pagetable, RAMDISK, FSSIZE * BSIZE,
-           RAMDISK, PTE_R | PTE_W);
 
   // map the trampoline for trap entry/exit to
   // the highest virtual address in the kernel.

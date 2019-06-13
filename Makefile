@@ -23,7 +23,6 @@ OBJS = \
   $K/sleeplock.o \
   $K/file.o \
   $K/pipe.o \
-  $K/ramdisk.o \
   $K/exec.o \
   $K/sysfile.o \
   $K/kernelvec.o \
@@ -163,7 +162,6 @@ ifndef CPUS
 CPUS := 3
 endif
 QEMUOPTS = -machine virt -kernel $K/kernel -m 3G -smp $(CPUS) -nographic
-QEMUOPTS += -initrd fs.img
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 qemu: $K/kernel fs.img
