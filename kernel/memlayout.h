@@ -6,7 +6,8 @@
 // 00001000 -- boot ROM, provided by qemu
 // 02000000 -- CLINT
 // 0C000000 -- PLIC
-// 10000000 -- uart0 registers
+// 10000000 -- uart0 
+// 10001000 -- virtio disk 
 // 80000000 -- boot ROM jumps here in machine mode
 //             -kernel loads the kernel here
 // 88000000 -- -initrd fs.img ramdisk image.
@@ -20,6 +21,9 @@
 // qemu puts UART registers here in physical memory.
 #define UART0 0x10000000L
 #define UART0_IRQ 10
+
+#define VIRTIO 0x10001000
+#define VIRTIO_IRQ 1 // really the first of 8 units
 
 // local interrupt controller, which contains the timer.
 #define CLINT 0x2000000L

@@ -27,7 +27,8 @@ OBJS = \
   $K/exec.o \
   $K/sysfile.o \
   $K/kernelvec.o \
-  $K/plic.o
+  $K/plic.o \
+  $K/virtio_disk.o
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -163,6 +164,7 @@ CPUS := 3
 endif
 QEMUOPTS = -machine virt -kernel $K/kernel -m 3G -smp $(CPUS) -nographic
 QEMUOPTS += -initrd fs.img
+QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 qemu: $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)

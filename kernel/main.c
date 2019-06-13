@@ -26,7 +26,8 @@ main()
     plicinithart();  // ask PLIC for device interrupts
     binit();         // buffer cache
     fileinit();      // file table
-    ramdiskinit();   // disk
+    virtio_disk_init(); // emulated hard disk
+    ramdiskinit();   // in-memory disk
     userinit();      // first user process
     started = 1;
   } else {
