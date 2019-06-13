@@ -159,7 +159,7 @@ devintr()
 
     if(irq == UART0_IRQ){
       uartintr();
-    } else if(irq == VIRTIO_IRQ){
+    } else if(irq == VIRTIO0_IRQ){
       virtio_disk_intr();
     }
 

@@ -23,8 +23,8 @@
 #define UART0_IRQ 10
 
 // virtio mmio interface
-#define VIRTIO 0x10001000
-#define VIRTIO_IRQ 1 // really the first of 8 units
+#define VIRTIO0 0x10001000
+#define VIRTIO0_IRQ 1
 
 // local interrupt controller, which contains the timer.
 #define CLINT 0x2000000L

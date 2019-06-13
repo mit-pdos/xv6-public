@@ -4,12 +4,15 @@
 // only tested with qemu.
 // this is the "legacy" virtio interface.
 //
+// the virtio spec:
+// https://docs.oasis-open.org/virtio/virtio/v1.1/virtio-v1.1.pdf
+//
 
 // virtio mmio control registers, mapped starting at 0x10001000.
 // from qemu virtio_mmio.h
 #define VIRTIO_MMIO_MAGIC_VALUE		0x000 // 0x74726976
-#define VIRTIO_MMIO_VERSION		0x004 // 1 -- version, 1 is legacy
-#define VIRTIO_MMIO_DEVICE_ID		0x008 // 2 -- block device type
+#define VIRTIO_MMIO_VERSION		0x004 // version; 1 is legacy
+#define VIRTIO_MMIO_DEVICE_ID		0x008 // device type; 1 is net, 2 is disk
 #define VIRTIO_MMIO_VENDOR_ID		0x00c // 0x554d4551
 #define VIRTIO_MMIO_DEVICE_FEATURES	0x010
 #define VIRTIO_MMIO_DRIVER_FEATURES	0x020

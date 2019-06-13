@@ -31,8 +31,8 @@ kvminit()
            UART0, PTE_R | PTE_W);
 
   // virtio mmio disk interface
-  mappages(kernel_pagetable, VIRTIO, PGSIZE,
-           VIRTIO, PTE_R | PTE_W);
+  mappages(kernel_pagetable, VIRTIO0, PGSIZE,
+           VIRTIO0, PTE_R | PTE_W);
 
   // CLINT
   mappages(kernel_pagetable, CLINT, 0x10000,
