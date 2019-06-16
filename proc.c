@@ -496,6 +496,19 @@ kill(int pid)
   return -1;
 }
 
+int 
+sys_getprocs(void)
+{
+  int NumProcs = 0;
+  struct proc *ptr = ptable.proc;
+  for (; ptr < &ptable.proc[NPROC]; ptr++){
+    if(!(ptr->state == UNUSED) && !(ptr->state == ZOMBIE)){
+      NumProcs++;
+    }
+  }
+  return NumProcs;
+}
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
