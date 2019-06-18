@@ -1,0 +1,14 @@
+<PipeLaunchOptions xmlns="http://schemas.microsoft.com/vstudio/MDDDebuggerOptions/2014"
+  PipePath="C:\windows\sysnative\bash.exe"
+  PipeCommandArguments="-c"
+  PipeArguments="-c 'gdb --interpreter=mi -command {{project_root}}/windows-debugging/gdbcommand'"
+  MiMode="gdb"
+  ExePath="/bin/bash"
+  TargetArchitecture="x86"
+  PipeCwd=""
+  WorkingDirectory="/"
+  >
+  <CustomLaunchSetupCommands>
+    <Command IgnoreFailures="false" Description="Attach">target remote :25000</Command>
+  </CustomLaunchSetupCommands>
+</PipeLaunchOptions>

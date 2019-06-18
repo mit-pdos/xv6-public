@@ -1,0 +1,162 @@
+py
+import gdb
+import sys
+import mmap
+import struct
+
+__all__ = ['LoadSymbols']
+
+integer = type(0xffffffffffffffff)
+get_string = lambda value: str(gdb.parse_and_eval(value)) if value.startswith('$') else value
+get_number = lambda value: integer(gdb.parse_and_eval(value))
+elf_magic = 0x464c457f
+loadable_program_header = 1
+assume_nonzero_preferred_base_means_absolute_addresses = 1
+
+ELFCLASS32 = 1
+ELFCLASS64 = 2
+elf_header = (None,
+    struct.Struct('xxxxBxxxxxxxxxxxHHIIIIIHHHHHH'),
+    struct.Struct('xxxxBxxxxxxxxxxxHHIQQQIHHHHHH'),
+)
+
+program_header = (None,
+    struct.Struct('IIIIIIII'),
+    struct.Struct('IIQQQQQQ'),
+)
+
+section_header = (None,
+    struct.Struct('IIIIIIIIII'),
+    struct.Struct('IIQQQQIIQQ'),
+)
+
+class LoadSymbols(gdb.Command):
+    """
+    Use the following syntax for the command:
+    load-symbols [Arbitrary address in ELF - Example: $rip] [Path to ELF]
+    """
+
+    def __init__(self):
+        super(LoadSymbols, self).__init__("load-symbols", gdb.COMMAND_USER)
+        self.dont_repeat()
+
+    def invoke(self, args, from_tty):
+        # Obtain an argv
+        argv = gdb.string_to_argv(args)
+
+        # Parse arguments.
+        address = get_number(argv[0])
+        path = get_string(argv[1])
+
+        # Find the base address of the ELF.
+        base_address = address & 0xfffffffffffff000
+        while get_number('*(int *){}'.format(base_address)) != elf_magic:
+            base_address -= 0x1000
+
+        # Print base address.
+        print("Base ({}): {}".format(path, hex(base_address)))
+
+        # Map the ELF to memory.
+        with open(path, 'rb') as f:
+            map = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+
+        # Parse the ELF header.
+        (e_ident_class, e_type, e_machine, e_version, e_entry, e_phoff,
+        e_shoff, e_flags, e_ehsize, e_phentsize,
+        e_phnum, e_shentsize, e_shnum, e_shstrndx) = (
+            elf_header[ELFCLASS32].unpack_from(map))
+
+        # If 64 bit, reparse with 64 bit layout.
+        if e_ident_class == ELFCLASS64:
+            (e_ident_class, e_type, e_machine, e_version, e_entry, e_phoff,
+            e_shoff, e_flags, e_ehsize, e_phentsize,
+            e_phnum, e_shentsize, e_shnum, e_shstrndx) = (
+                elf_header[ELFCLASS64].unpack_from(map))
+
+        # Find first loadable program header to fetch the preferred base.
+        if e_ident_class == ELFCLASS32:
+            for program_header_index in range(e_phnum):
+                # Parse the program header.
+                (p_type, p_offset, p_vaddr, p_paddr, p_filesz, p_memsz,
+                p_flags, p_align) = program_header[e_ident_class].unpack_from(
+                    map, offset=(e_phoff + e_phentsize * program_header_index))
+
+                # If the program header type is not loadable, continue.
+                if p_type != loadable_program_header:
+                    continue
+
+                # Found first loadable program header, set the preferred base
+                # to the virtual address.
+                preferred_base = p_vaddr
+                break
+        else:
+            for program_header_index in range(e_phnum):
+                # Parse the program header.
+                (p_type, p_flags, p_offset, p_vaddr, p_paddr, p_filesz,
+                p_memsz, p_align) = program_header[e_ident_class].unpack_from(
+                    map, offset=(e_phoff + e_phentsize * program_header_index))
+
+                # If the program header type is not loadable, continue.
+                if p_type != loadable_program_header:
+                    continue
+
+                # Found first loadable program header, set the preferred base
+                # to the virtual address.
+                preferred_base = p_vaddr
+                break
+
+        # Print the preferred base.
+        print("Preferred base ({}): {}".format(path, hex(preferred_base)))
+
+        # Compute the base difference.
+        base_difference = base_address - preferred_base
+
+        # If nonzero preferred base, and we shall assume absolute addresses,
+        # make the base difference zero.
+        if preferred_base and assume_nonzero_preferred_base_means_absolute_addresses:
+            print("Assuming absolute addresses due to nonzero preferred base.")
+            base_difference = 0
+        else:
+            # Print the base difference.
+            print("Base difference ({}): {}".format(path, hex(base_difference)))
+
+        # String table section.
+        (sh_name, sh_type, sh_flags, sh_addr,
+        sh_offset, sh_size, sh_link, sh_info,
+        sh_addralign, sh_entsize) = section_header[e_ident_class].unpack_from(
+            map, offset=(e_shoff + e_shentsize * e_shstrndx))
+
+        # String table.
+        def string_table(index, offset=sh_offset):
+            return map[offset + index:map.find(b'\x00', offset + index)].decode('ascii')
+
+        # Find section addresses.
+        section_addresses = {}
+        for section_header_index in range(e_shnum):
+            (sh_name, sh_type, sh_flags, sh_addr,
+            sh_offset, sh_size, sh_link, sh_info,
+            sh_addralign, sh_entsize) = section_header[e_ident_class].unpack_from(
+                map, offset=(e_shoff + e_shentsize * section_header_index))
+
+            # If there is no address for the section, skip.
+            if not sh_addr:
+                continue
+
+            # The section absolute address is the relative address plus the base difference.
+            section_addresses[string_table(sh_name)] = base_difference + sh_addr
+
+        # Remove previous symbol file.
+        try:
+            gdb.execute('remove-symbol-file {path}'.format(path=path))
+        except:
+            pass
+
+        # Add the symbol file.
+        gdb.execute('add-symbol-file {path} {textaddr} -s {sections}'.format(
+            path=path, textaddr=section_addresses['.text'],
+            sections=' -s '.join(' '.join((name, str(address))) for name, address in section_addresses.items() if name != '.text')
+        ))
+
+LoadSymbols()
+end
+

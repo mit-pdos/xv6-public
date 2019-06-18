@@ -1,0 +1,11 @@
+set disassembly-flavor intel
+
+define zstartw
+  source {{project_root}}/windows-debugging/load-symbols
+	directory {{project_root}}/windows-debugging
+	set substitute-path /mnt/c C:
+	set substitute-path /mnt/d D:
+	set substitute-path /mnt/e E:
+	load-symbols $eip "{{project_root}}/kernel"
+	set *(char *)&gdb_attached = 1
+end
