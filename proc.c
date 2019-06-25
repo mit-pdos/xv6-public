@@ -358,7 +358,7 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
-    if (total_tickets > 0) winner = rand()%total_tickets;
+    winner = rand()%total_tickets;
 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
