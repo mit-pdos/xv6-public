@@ -10,5 +10,5 @@ deploy:
   skip_cleanup: true
   on:
     repo: DJRamosA/xv6-public
-    branch: project_1
+    branch: lotery
   tags: true
