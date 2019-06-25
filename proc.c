@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "random.h"
 
 struct {
   struct spinlock lock;
@@ -19,6 +20,21 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+
+// Count the amount of procs
+int
+getprocs(void)
+{
+  int count = 0;
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != UNUSED && p->state != ZOMBIE)
+      count++;
+  }
+  release(&ptable.lock);
+  return count;
+}
 
 void
 pinit(void)
@@ -88,6 +104,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->num_tickets = 100;
 
   release(&ptable.lock);
 
@@ -311,6 +328,10 @@ wait(void)
   }
 }
 
+int Countickets(void){
+  return getprocs()*100;
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -325,20 +346,31 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
+  int total_tickets;
+  int winner; //ticket ganador
+  // con getprocs() se puede obtener el n° de procesos y distribuir los tickets
   
   for(;;){
     // Enable interrupts on this processor.
     sti();
-
+    int tickets_passed = 0;
+    total_tickets = Countickets();
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+    if (total_tickets > 0) winner = rand()%total_tickets;
+
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
-
+      tickets_passed += p->num_tickets;
+      if (tickets_passed < winner){
+        continue;
+      }
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+      cprintf("EL PROCESO GANADOR ES: #%s  \n", p->name);
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -531,18 +563,4 @@ procdump(void)
     }
     cprintf("\n");
   }
-}
-
-int
-getprocs(void)
-{
-  int count = 0;
-  struct proc *p;
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state != UNUSED && p->state != ZOMBIE)
-      count++;
-  }
-  release(&ptable.lock);
-  return count;
 }
