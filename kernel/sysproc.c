@@ -6,32 +6,32 @@
 #include "memlayout.h"
 #include "proc.h"
 
-int
+uint64
 sys_exit(void)
 {
   exit();
   return 0;  // not reached
 }
 
-int
+uint64
 sys_getpid(void)
 {
   return myproc()->pid;
 }
 
-int
+uint64
 sys_fork(void)
 {
   return fork();
 }
 
-int
+uint64
 sys_wait(void)
 {
   return wait();
 }
 
-int
+uint64
 sys_sbrk(void)
 {
   int addr;
@@ -45,7 +45,7 @@ sys_sbrk(void)
   return addr;
 }
 
-int
+uint64
 sys_sleep(void)
 {
   int n;
@@ -66,7 +66,7 @@ sys_sleep(void)
   return 0;
 }
 
-int
+uint64
 sys_kill(void)
 {
   int pid;
@@ -78,7 +78,7 @@ sys_kill(void)
 
 // return how many clock tick interrupts have occurred
 // since start.
-int
+uint64
 sys_uptime(void)
 {
   uint xticks;
