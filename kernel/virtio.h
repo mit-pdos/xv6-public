@@ -43,6 +43,10 @@
 #define VIRTIO_RING_F_INDIRECT_DESC 28
 #define VIRTIO_RING_F_EVENT_IDX     29
 
+// this many virtio descriptors.
+// must be a power of two.
+#define NUM 8
+
 struct VRingDesc {
   uint64 addr;
   uint32 len;
@@ -60,3 +64,9 @@ struct VRingUsedElem {
 // for disk ops
 #define VIRTIO_BLK_T_IN  0 // read the disk
 #define VIRTIO_BLK_T_OUT 1 // write the disk
+
+struct UsedArea {
+  uint16 flags;
+  uint16 id;
+  struct VRingUsedElem elems[NUM];
+};

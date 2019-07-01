@@ -22,10 +22,6 @@
 
 struct spinlock virtio_disk_lock;
 
-// this many virtio descriptors.
-// must be a power of two.
-#define NUM 8
-
 // memory for virtio descriptors &c for queue 0.
 // this is a global instead of allocated because it has
 // to be multiple contiguous pages, which kalloc()
@@ -34,7 +30,7 @@ __attribute__ ((aligned (PGSIZE)))
 static char pages[2*PGSIZE];
 static struct VRingDesc *desc;
 static uint16 *avail;
-static char *used;
+static struct UsedArea *used;
 
 // our own book-keeping.
 static char free[NUM];  // is a descriptor free?
@@ -106,7 +102,7 @@ virtio_disk_init(void)
 
   desc = (struct VRingDesc *) pages;
   avail = (uint16*)(((char*)desc) + NUM*sizeof(struct VRingDesc));
-  used = pages + PGSIZE;
+  used = (struct UsedArea *) (pages + PGSIZE);
 
   for(int i = 0; i < NUM; i++)
     free[i] = 1;
@@ -153,6 +149,21 @@ free_chain(int i)
   }
 }
 
+static int
+alloc3_desc(int *idx)
+{
+  for(int i = 0; i < 3; i++){
+    idx[i] = alloc_desc();
+    if(idx[i] < 0){
+      for(int j = 0; j < i; j++)
+        free_desc(idx[j]);
+      return -1;
+      break;
+    }
+  }
+  return 0;
+}
+
 void
 virtio_disk_rw(struct buf *b)
 {
@@ -167,21 +178,12 @@ virtio_disk_rw(struct buf *b)
   // allocate the three descriptors.
   int idx[3];
   while(1){
-    int done = 1;
-    for(int i = 0; i < 3; i++){
-      idx[i] = alloc_desc();
-      if(idx[i] < 0){
-        for(int j = 0; j < i; j++)
-          free_desc(idx[j]);
-        done = 0;
-        break;
-      }
-    }
-    if(done)
+    if(alloc3_desc(idx) == 0) {
       break;
+    }
     sleep(&free[0], &virtio_disk_lock);
   }
-
+  
   // format the three descriptors.
   // qemu's virtio-blk.c reads them.
 
@@ -242,28 +244,21 @@ virtio_disk_rw(struct buf *b)
 void
 virtio_disk_intr()
 {
-  // the used area is:
-  // uint16 flags
-  // uint16 idx
-  // array of VRingUsedElem
-  volatile uint16 *idxp = (uint16 *)(used + 2);
-  volatile struct VRingUsedElem *e0 = (struct VRingUsedElem *)(used + 4);
-
   acquire(&virtio_disk_lock);
 
-  while((used_idx % NUM) != (*idxp % NUM)){
-    volatile struct VRingUsedElem *ue = &e0[used_idx];
+  while((used_idx % NUM) != (used->id % NUM)){
+    int id = used->elems[used_idx].id;
 
-    if(info[ue->id].status != 0)
+    if(info[id].status != 0)
       panic("virtio_disk_intr status");
 
-    info[ue->id].b->flags |= B_VALID;
-    info[ue->id].b->flags &= ~B_DIRTY;
+    info[id].b->flags |= B_VALID;
+    info[id].b->flags &= ~B_DIRTY;
 
-    wakeup(info[ue->id].b);
+    wakeup(info[id].b);
 
-    info[ue->id].b = 0;
-    free_chain(ue->id);
+    info[id].b = 0;
+    free_chain(id);
 
     used_idx = (used_idx + 1) % NUM;
   }
