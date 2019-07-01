@@ -158,7 +158,6 @@ alloc3_desc(int *idx)
       for(int j = 0; j < i; j++)
         free_desc(idx[j]);
       return -1;
-      break;
     }
   }
   return 0;
