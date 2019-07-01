@@ -109,6 +109,28 @@ found:
   return p;
 }
 
+// free a proc structure and the data hanging from it,
+// including user pages.
+// the proc lock must be held.
+static void
+freeproc(struct proc *p)
+{
+  if(p->kstack)
+    kfree(p->kstack);
+  p->kstack = 0;
+  if(p->tf)
+    kfree((void*)p->tf);
+  p->tf = 0;
+  if(p->pagetable)
+    proc_freepagetable(p->pagetable, p->sz);
+  p->pagetable = 0;
+  p->pid = 0;
+  p->parent = 0;
+  p->name[0] = 0;
+  p->killed = 0;
+  p->state = UNUSED;
+}
+
 // Create a page table for a given process,
 // with no users pages, but with trampoline pages.
 // Called both when creating a process, and
@@ -145,7 +167,8 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   unmappages(pagetable, TRAMPOLINE, PGSIZE, 0);
   unmappages(pagetable, TRAMPOLINE-PGSIZE, PGSIZE, 0);
-  uvmfree(pagetable, sz);
+  if(sz > 0)
+    uvmfree(pagetable, sz);
 }
 
 // a user program that calls exec("/init")
@@ -223,7 +246,10 @@ fork(void)
   }
 
   // Copy user memory from parent to child.
-  uvmcopy(p->pagetable, np->pagetable, p->sz);
+  if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
+    freeproc(np);
+    return -1;
+  }
   np->sz = p->sz;
 
   np->parent = p;
@@ -319,17 +345,7 @@ wait(void)
       if(np->state == ZOMBIE){
         // Found one.
         pid = np->pid;
-        kfree(np->kstack);
-        np->kstack = 0;
-        kfree((void*)np->tf);
-        np->tf = 0;
-        proc_freepagetable(np->pagetable, np->sz);
-        np->pagetable = 0;
-        np->pid = 0;
-        np->parent = 0;
-        np->name[0] = 0;
-        np->killed = 0;
-        np->state = UNUSED;
+        freeproc(np);
         release(&ptable.lock);
         return pid;
       }
