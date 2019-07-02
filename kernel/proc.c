@@ -372,12 +372,14 @@ wait(void)
 }
 
 // Loop over process table looking for process to run.
-struct proc *find_runnable() {
+struct proc *find_runnable(int start) {
   struct proc *p;
   acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+  for(int i = start; i < start+NPROC; i++) {
+    p = &ptable.proc[i % NPROC];
     acquire(&p->lock);
     if(p->state == RUNNABLE) {
+      p->state = RUNNING;
       release(&ptable.lock);
       return p;
     }
@@ -400,19 +402,19 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-
+  int next;
+  
   c->proc = 0;
   for(;;){
     // Enable interrupts on this processor.
     intr_on();
 
-    if((p = find_runnable()) != 0){
+    if((p = find_runnable(next)) != 0) {
+      next = (next + 1) & NPROC;
       // Switch to chosen process.  It is the process's job
       // to release its lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
-      p->state = RUNNING;
-
       swtch(&c->scheduler, &p->context);
 
       // Process is done running for now.
