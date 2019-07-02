@@ -1473,7 +1473,7 @@ sbrktest(void)
 
   // can one grow address space to something big?
   a = sbrk(0);
-  amt = (BIG) - (uint64)a;
+  amt = BIG - (uint64)a;
   p = sbrk(amt);
   if (p != a) {
     printf(stdout, "sbrk test failed to grow big address space; enough phys mem?\n");
