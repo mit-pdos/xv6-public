@@ -20,7 +20,7 @@ initlock(struct spinlock *lk, char *name)
 // Loops (spins) until the lock is acquired.
 // Holding a lock for a long time may cause
 // other CPUs to waste time spinning to acquire it.
-void
+void //__attribute__ ((noinline))
 acquire(struct spinlock *lk)
 {
   push_off(); // disable interrupts to avoid deadlock.
@@ -44,11 +44,13 @@ acquire(struct spinlock *lk)
 }
 
 // Release the lock.
-void
+void //__attribute__ ((noinline))
 release(struct spinlock *lk)
 {
-  if(!holding(lk))
+  if(!holding(lk)) {
+    printf("%p: !holding %s %p\n", mycpu(), lk->name, lk->cpu);
     panic("release");
+  }
 
   lk->cpu = 0;
 

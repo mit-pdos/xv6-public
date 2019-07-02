@@ -2,6 +2,7 @@
 #include "param.h"
 #include "memlayout.h"
 #include "riscv.h"
+#include "spinlock.h"
 #include "proc.h"
 #include "syscall.h"
 #include "defs.h"
@@ -170,7 +171,9 @@ dosyscall(void)
 
   num = p->tf->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    //printf("%d: syscall %d\n", p->pid, num);
     p->tf->a0 = syscalls[num]();
+    //printf("%d: syscall %d -> %d\n", p->pid, num, p->tf->a0);
   } else {
     printf("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);
