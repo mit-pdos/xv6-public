@@ -37,7 +37,7 @@ void
 usertrap(void)
 {
   int which_dev = 0;
-  
+
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
 
@@ -49,8 +49,6 @@ usertrap(void)
   
   // save user program counter.
   p->tf->epc = r_sepc();
-
-  intr_on();
   
   if(r_scause() == 8){
     // system call
@@ -59,11 +57,15 @@ usertrap(void)
     // but we want to return to the next instruction.
     p->tf->epc += 4;
 
+    // an interrupt will change sstatus &c registers,
+    // so don't enable until done with those registers.
+    intr_on();
+
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
-    printf("usertrap(): unexpected scause 0x%p pid=%d\n", r_scause(), p->pid);
+    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
@@ -121,12 +123,14 @@ usertrapret(void)
   ((void (*)(uint64,uint64))TRAMPOLINE)(TRAMPOLINE - PGSIZE, satp);
 }
 
-// interrupts and exceptions from kernel code go here,
+// interrupts and exceptions from kernel code go here via kernelvec,
 // on whatever the current kernel stack is.
 // must be 4-byte aligned to fit in stvec.
 void 
 kerneltrap()
 {
+  int which_dev = 0;
+  uint64 sepc = r_sepc();
   uint64 sstatus = r_sstatus();
   uint64 scause = r_scause();
   
@@ -135,11 +139,20 @@ kerneltrap()
   if(intr_get() != 0)
     panic("kerneltrap: interrupts enabled");
 
-  if(devintr() == 0){
-    printf("scause 0x%p\n", scause);
+  if((which_dev = devintr()) == 0){
+    printf("scause %p\n", scause);
     printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
     panic("kerneltrap");
   }
+
+  // give up the CPU if this is a timer interrupt.
+  if(which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+    yield();
+
+  // the yield() may have caused some traps to occur,
+  // so restore trap registers for use by kernelvec.S's sepc instruction.
+  w_sepc(sepc);
+  w_sstatus(sstatus);
 }
 
 // check if it's an external interrupt or software interrupt,

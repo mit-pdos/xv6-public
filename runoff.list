@@ -1,76 +1,64 @@
 # basic headers
-types.h
-param.h
-memlayout.h
-defs.h
-x86.h
-asm.h
-mmu.h
-elf.h
-date.h
+kernel/types.h
+kernel/param.h
+kernel/memlayout.h
+kernel/defs.h
+kernel/riscv.h
+kernel/elf.h
+kernel/date.h
 
 # entering xv6
-entry.S
-entryother.S
-main.c
+kernel/entry.S
+kernel/main.c
 
 # locks
-spinlock.h
-spinlock.c
+kernel/spinlock.h
+kernel/spinlock.c
 
 # processes
-vm.c
-proc.h
-proc.c
-swtch.S
-kalloc.c
+kernel/vm.c
+kernel/proc.h
+kernel/proc.c
+kernel/swtch.S
+kernel/kalloc.c
 
 # system calls
-traps.h
-vectors.pl
-trapasm.S
-trap.c
-syscall.h
-syscall.c
-sysproc.c
+user/usys.pl
+kernel/trap.c
+kernel/syscall.h
+kernel/syscall.c
+kernel/sysproc.c
 
 # file system
-buf.h
-sleeplock.h
-fcntl.h
-stat.h
-fs.h
-file.h
-ide.c
-bio.c
-sleeplock.c
-log.c
-fs.c
-file.c
-sysfile.c
-exec.c
+kernel/buf.h
+kernel/sleeplock.h
+kernel/fcntl.h
+kernel/stat.h
+kernel/fs.h
+kernel/file.h
+kernel/virtio_disk.c
+kernel/bio.c
+kernel/sleeplock.c
+kernel/log.c
+kernel/fs.c
+kernel/file.c
+kernel/sysfile.c
+kernel/exec.c
 
 # pipes
-pipe.c
+kernel/pipe.c
 
 # string operations
-string.c
+kernel/string.c
 
 # low-level hardware
-mp.h
-mp.c
-lapic.c
-ioapic.c
-kbd.h
-kbd.c
-console.c
-uart.c
+kernel/uart.c
 
 # user-level
-initcode.S
-usys.S
-init.c
-sh.c
+user/initcode.S
+user/usys.S
+user/init.c
+user/sh.c
 
 # link
-kernel.ld
+kernel/kernel.ld
