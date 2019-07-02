@@ -124,9 +124,11 @@ freeproc(struct proc *p)
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
+  p->sz = 0;
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
+  p->chan = 0;
   p->killed = 0;
   p->state = UNUSED;
 }
