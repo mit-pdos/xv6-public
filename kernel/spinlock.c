@@ -20,7 +20,7 @@ initlock(struct spinlock *lk, char *name)
 // Loops (spins) until the lock is acquired.
 // Holding a lock for a long time may cause
 // other CPUs to waste time spinning to acquire it.
-void //__attribute__ ((noinline))
+void
 acquire(struct spinlock *lk)
 {
   push_off(); // disable interrupts to avoid deadlock.
@@ -44,14 +44,19 @@ acquire(struct spinlock *lk)
 }
 
 // Release the lock.
-void //__attribute__ ((noinline))
+void
 release(struct spinlock *lk)
 {
+  uint64 x;
+  asm volatile("mv %0, ra" : "=r" (x) );
   if(!holding(lk)) {
-    printf("%p: !holding %s %p\n", mycpu(), lk->name, lk->cpu);
+    printf("%p: !holding %d %s %p %p %p %p\n", mycpu(), lk->locked, lk->name, lk->cpu,
+           lk->last_release, lk->last_pc, x);
     panic("release");
   }
 
+  lk->last_release = lk->cpu;
+  lk->last_pc  = x;
   lk->cpu = 0;
 
   // Tell the C compiler and the CPU to not move loads or stores

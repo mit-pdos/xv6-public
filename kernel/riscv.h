@@ -304,6 +304,15 @@ w_tp(uint64 x)
   asm volatile("mv tp, %0" : : "r" (x));
 }
 
+static inline uint64
+r_ra()
+{
+  uint64 x;
+  asm volatile("mv %0, ra" : "=r" (x) );
+  return x;
+}
+
+
 #define PGSIZE 4096 // bytes per page
 #define PGSHIFT 12  // bits of offset within a page
 

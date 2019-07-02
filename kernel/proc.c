@@ -297,15 +297,16 @@ exit(void)
   panic("zombie exit");
 }
 
-void tellparent(struct proc *p, struct proc *parent) {
+void reparent(struct proc *p) {
   struct proc *pp;
+  struct proc *parent = p->parent;
 
   acquire(&parent->lock);
   
   // Parent might be sleeping in wait().
   wakeup1(parent);
 
-  // Pass abandoned children to init.
+  // Pass p's abandoned children to init.
   for(pp = ptable.proc; pp < &ptable.proc[NPROC]; pp++){
     if(pp->parent == p){
       pp->parent = initproc;
@@ -329,8 +330,6 @@ wait(void)
   int havekids, pid;
   struct proc *p = myproc();
 
-  // should p lock!
-  
   acquire(&p->lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -367,11 +366,27 @@ wait(void)
       return -1;
     }
     
-    // Wait for children to exit.  (See wakeup1 call in tellparent.)
+    // Wait for children to exit.  (See wakeup1 call in reparent.)
     sleep(p, &p->lock);  //DOC: wait-sleep
   }
 }
 
+// Loop over process table looking for process to run.
+struct proc *find_runnable() {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == RUNNABLE) {
+      release(&ptable.lock);
+      return p;
+    }
+    release(&p->lock);
+  }
+  release(&ptable.lock);
+  return 0;
+}
+  
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -391,15 +406,7 @@ scheduler(void)
     // Enable interrupts on this processor.
     intr_on();
 
-    // Loop over process table looking for process to run.
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-      acquire(&p->lock);
-      
-      if(p->state != RUNNABLE) {
-        release(&p->lock);
-        continue;
-      }
-
+    if((p = find_runnable()) != 0){
       // Switch to chosen process.  It is the process's job
       // to release its lock and then reacquire it
       // before jumping back to us.
@@ -412,11 +419,9 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
       release(&p->lock);
-
       if(p->state == ZOMBIE) {
-        tellparent(p, p->parent);
+        reparent(p);
       }
-
     }
   }
 }
@@ -485,7 +490,9 @@ forkret(void)
 void
 sleep(void *chan, struct spinlock *lk)
 {
-  if(myproc() == 0)
+  struct proc *p = myproc();
+  
+  if(p == 0)
     panic("sleep");
 
   if(lk == 0)
@@ -497,29 +504,29 @@ sleep(void *chan, struct spinlock *lk)
   // guaranteed that we won't miss any wakeup
   // (wakeup runs with p->lock locked),
   // so it's okay to release lk.
-  if(lk != &myproc()->lock){  //DOC: sleeplock0
-    acquire(&myproc()->lock);  //DOC: sleeplock1
+  if(lk != &p->lock){  //DOC: sleeplock0
+    acquire(&p->lock);  //DOC: sleeplock1
     release(lk);
   }
   // Go to sleep.
-  myproc()->chan = chan;
-  myproc()->state = SLEEPING;
+  p->chan = chan;
+  p->state = SLEEPING;
 
   sched();
 
   // Tidy up.
-  myproc()->chan = 0;
+  p->chan = 0;
 
   // Reacquire original lock.
-  if(lk != &myproc()->lock){  //DOC: sleeplock2
-    release(&myproc()->lock);
+  if(lk != &p->lock){  //DOC: sleeplock2
+    release(&p->lock);
     acquire(lk);
   }
 }
 
 //PAGEBREAK!
 // Wake up all processes sleeping on chan,
-// where chan is a proc.
+// where chan is a proc, which is locked.
 static void
 wakeup1(struct proc *chan)
 {
