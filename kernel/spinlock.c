@@ -47,16 +47,9 @@ acquire(struct spinlock *lk)
 void
 release(struct spinlock *lk)
 {
-  uint64 x;
-  asm volatile("mv %0, ra" : "=r" (x) );
-  if(!holding(lk)) {
-    printf("%p: !holding %d %s %p %p %p %p\n", mycpu(), lk->locked, lk->name, lk->cpu,
-           lk->last_release, lk->last_pc, x);
+  if(!holding(lk))
     panic("release");
-  }
 
-  lk->last_release = lk->cpu;
-  lk->last_pc  = x;
   lk->cpu = 0;
 
   // Tell the C compiler and the CPU to not move loads or stores
