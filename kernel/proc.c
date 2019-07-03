@@ -288,6 +288,22 @@ fork(void)
   return pid;
 }
 
+void reparent(struct proc *p) {
+  struct proc *pp;
+
+  // Pass p's abandoned children to init.
+  for(pp = ptable.proc; pp < &ptable.proc[NPROC]; pp++){
+    acquire(&pp->lock);
+    if(pp->parent == p){
+      pp->parent = initproc;
+      if(pp->state == ZOMBIE) {
+          wakeup1(initproc);
+      }
+    }
+    release(&pp->lock);
+  }
+}
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait().
@@ -315,37 +331,22 @@ exit(void)
   iput(cwd);
   end_op();
 
+  reparent(p);
+  
+  acquire(&p->parent->lock);
+    
   acquire(&p->lock);
   p->cwd = 0;
+  p->state = ZOMBIE;
+
+  release(&p->parent->lock);
+
+  // Parent might be sleeping in wait().
+  wakeup1(p->parent);
 
   // Jump into the scheduler, never to return.
-  p->state = ZOMBIE;
   sched();
   panic("zombie exit");
-}
-
-void reparent(struct proc *p) {
-  struct proc *pp;
-  struct proc *parent = p->parent;
-
-  acquire(&parent->lock);
-  
-  // Parent might be sleeping in wait().
-  wakeup1(parent);
-
-  // Pass p's abandoned children to init.
-  for(pp = ptable.proc; pp < &ptable.proc[NPROC]; pp++){
-    if(pp->parent == p){
-      pp->parent = initproc;
-      if(pp->state == ZOMBIE) {
-          acquire(&initproc->lock);
-          wakeup1(initproc);
-          acquire(&initproc->lock);
-      }
-    }
-  }
-
-  release(&parent->lock);
 }
 
 // Wait for a child process to exit and return its pid.
@@ -421,9 +422,6 @@ scheduler(void)
         // It should have changed its p->state before coming back.
         c->proc = 0;
         release(&p->lock);
-        if(p->state == ZOMBIE) {
-          reparent(p);
-        }
       } else {
         release(&p->lock);
       }
