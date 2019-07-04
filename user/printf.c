@@ -68,6 +68,8 @@ printf(int fd, const char *fmt, ...)
     } else if(state == '%'){
       if(c == 'd'){
         printint(fd, va_arg(ap, int), 10, 1);
+      } else if(c == 'l') {
+        printint(fd, va_arg(ap, uint64), 10, 0);
       } else if(c == 'x') {
         printint(fd, va_arg(ap, int), 16, 0);
       } else if(c == 'p') {
