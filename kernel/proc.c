@@ -288,10 +288,10 @@ fork(void)
   return pid;
 }
 
+// Pass p's abandoned children to init.
 void reparent(struct proc *p) {
   struct proc *pp;
 
-  // Pass p's abandoned children to init.
   for(pp = ptable.proc; pp < &ptable.proc[NPROC]; pp++){
     acquire(&pp->lock);
     if(pp->parent == p){
