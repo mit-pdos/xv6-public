@@ -417,22 +417,93 @@ exitwait(void)
 {
   int i, pid;
 
+  printf(1, "exitwait test\n");
+
   for(i = 0; i < 100; i++){
     pid = fork();
     if(pid < 0){
       printf(1, "fork failed\n");
-      return;
+      exit();
     }
     if(pid){
       if(wait() != pid){
         printf(1, "wait wrong pid\n");
-        return;
+        exit();
       }
     } else {
       exit();
     }
   }
   printf(1, "exitwait ok\n");
+}
+
+// try to find races in the reparenting
+// code that handles a parent exiting
+// when it still has live children.
+void
+reparent(void)
+{
+  int master_pid = getpid();
+  
+  printf(1, "reparent test\n");
+
+  for(int i = 0; i < 100; i++){
+    int pid = fork();
+    if(pid < 0){
+      printf(1, "fork failed\n");
+      exit();
+    }
+    if(pid){
+      if(wait() != pid){
+        printf(1, "wait wrong pid\n");
+        exit();
+      }
+    } else {
+      int pid2 = fork();
+      if(pid2 < 0){
+        printf(1, "fork failed\n");
+        kill(master_pid);
+        exit();
+      }
+      if(pid2 == 0){
+        exit();
+      } else {
+        exit();
+      }
+    }
+  }
+  printf(1, "reparent ok\n");
+}
+
+// what if two children exit() at the same time?
+void
+twochildren(void)
+{
+  printf(1, "twochildren test\n");
+
+  for(int i = 0; i < 1000; i++){
+    int pid1 = fork();
+    if(pid1 < 0){
+      printf(1, "fork failed\n");
+      exit();
+    }
+    if(pid1 == 0){
+      exit();
+    } else {
+      int pid2 = fork();
+      if(pid2 < 0){
+        printf(1, "fork failed\n");
+        exit();
+      }
+      if(pid2 == 0){
+        exit();
+      } else {
+        wait();
+        wait();
+      }
+    }
+  }
+  printf(1, "twochildren ok\n");
 }
 
 void
@@ -1751,6 +1822,9 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREATE));
 
+  reparent();
+  twochildren();
+  
   argptest();
   createdelete();
   linkunlink();
