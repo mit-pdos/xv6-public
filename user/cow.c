@@ -129,7 +129,7 @@ filetest()
 {
   int parent = getpid();
   
-  printf(1, "file test: ");
+  printf(1, "file: ");
   
   buf[0] = 99;
 
