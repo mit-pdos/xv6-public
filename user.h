@@ -2,6 +2,7 @@
 #define XV6_USER_H
 
 #include "types.h"
+#include "ioctl_request.h"
 
 struct stat;
 struct rtcdate;
@@ -29,6 +30,7 @@ char* sbrk(int);
 int sleep(int);
 int usleep(unsigned int);
 int uptime(void);
+int ioctl(int fd, unsigned long request, ...);
 
 int mount(const char*, const char*, const char *);
 int umount(const char*);

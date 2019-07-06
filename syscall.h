@@ -26,3 +26,4 @@
 #define SYS_printdevices  25
 #define SYS_unshare 26
 #define SYS_usleep 27
+#define SYS_ioctl 28
