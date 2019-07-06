@@ -16,6 +16,16 @@ void cginit(void)
     initlock(&cgtable.lock, "cgtable");
 }
 
+void cgroup_lock()
+{
+    acquire(&cgtable.lock);
+}
+
+void cgroup_unlock()
+{
+    release(&cgtable.lock);
+}
+
 /*Raise the value of the number located in the string num by 1.*/
 static void increment_num_string(char * num)
 {
@@ -331,6 +341,17 @@ void cgroup_initialize(struct cgroup * cgroup,
     set_max_depth_value(cgroup, MAX_DEP_DEF);
     set_nr_descendants(cgroup, "0");
     set_nr_dying_descendants(cgroup, "0");
+
+    cgroup->cpu_account_frame = 0;
+    cgroup->cpu_percent = 0;
+    cgroup->cpu_time = 0;
+    cgroup->cpu_period_time = 0;
+    cgroup->cpu_time_limit = ~0;
+    cgroup->cpu_account_period = 1 * 100 * 1000;
+    cgroup->cpu_nr_periods = 0;
+    cgroup->cpu_nr_throttled = 0;
+    cgroup->cpu_throttled_usec = 0;
+    cgroup->cpu_is_throttled_period = 0;
 }
 
 int cgroup_insert(struct cgroup * cgroup, struct proc * proc)

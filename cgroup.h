@@ -47,8 +47,20 @@ struct cgroup
 
     char nr_descendants[MAX_DECS_SIZE]; /*String with the current number
                                               of descendant cgroups.*/
+
     char nr_dying_descendants
         [MAX_DECS_SIZE]; /*String with the current number of dying descendant cgroups.*/
+
+    unsigned long long cpu_time;
+    unsigned int cpu_period_time;
+    unsigned int cpu_percent;
+    unsigned int cpu_account_period;
+    unsigned int cpu_time_limit;
+    unsigned int cpu_account_frame;
+    unsigned int cpu_nr_periods;
+    unsigned int cpu_nr_throttled;
+    unsigned int cpu_throttled_usec;
+    char cpu_is_throttled_period;
 };
 
 /**
@@ -57,6 +69,16 @@ struct cgroup
  * Return value is a pointer to root cgroup, &cgroups[0].
  */
 struct cgroup * cgroup_root(void);
+
+/**
+ * Lock the cgroup table.
+ */
+void cgroup_lock();
+
+/**
+ * Unlock the cgroup table.
+ */
+void cgroup_unlock();
 
 /**
  * This function creates a new cgroup and initializes it at the given path.

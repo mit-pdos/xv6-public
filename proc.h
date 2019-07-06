@@ -73,6 +73,10 @@ struct proc {
   int status;                  // Process exit status
   char cwdp[MAX_PATH_LENGTH];  // Current directory path.
   struct cgroup * cgroup;      // The process control group.
+  unsigned int cpu_time;       // Process cpu time.
+  unsigned int cpu_period_time;// Cpu time in microseconds in the last accounting frame.
+  unsigned int cpu_percent;   // Cpu usage percentage in the last accounting frame.
+  unsigned int cpu_account_frame; // The cpu account frame.
 };
 
 /**

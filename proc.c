@@ -9,7 +9,7 @@
 #include "wstatus.h"
 #include "pid_ns.h"
 #include "namespace.h"
-#include "cgroup.h"
+#include "cpu_account.h"
 
 struct {
   struct spinlock lock;
@@ -135,6 +135,12 @@ found:
 
   // Set cgroup to none.
   p->cgroup = 0;
+
+  // Set cpu information.
+  p->cpu_account_frame = 0;
+  p->cpu_time = 0;
+  p->cpu_period_time = 0;
+  p->cpu_percent = 0;
 
   return p;
 }
@@ -453,10 +459,14 @@ wait(int *wstatus)
 void
 scheduler(void)
 {
-  struct proc *p;
+  struct cpu_account cpu;
+  struct proc *p = 0;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
+  // Initialize the cpu account.
+  cpu_account_initialize(&cpu);
+
   for(;;){
     // The amount of processes that have been scheduled in this run.
     unsigned int scheduled = 0;
@@ -467,11 +477,23 @@ scheduler(void)
     // Take the ptable lock.
     acquire(&ptable.lock);
 
+    // Start schedule.
+    cpu_account_schedule_start(&cpu);
+
     // Loop over process table looking for process to run.
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      // Update proc information.
+      cpu_account_schedule_proc_update(&cpu, p);
+
       // If process not runnable, continue.
-      if(p->state != RUNNABLE)
+      if (p->state != RUNNABLE) {
         continue;
+      }
+
+      // Decide whether to schedule process.
+      if (!cpu_account_schedule_process_decision(&cpu, p)) {
+        continue;
+      }
 
       // Increment scheduled.
       ++scheduled;
@@ -480,10 +502,23 @@ scheduler(void)
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
+
+      // Switch to user page table.
       switchuvm(p);
+
+      // Change process state to running.
       p->state = RUNNING;
 
+      // Before process schedule callback.
+      cpu_account_before_process_schedule(&cpu, p);
+
+      // Switch to process.
       swtch(&(c->scheduler), p->context);
+
+      // After process schedule callback.
+      cpu_account_after_process_schedule(&cpu, p);
+
+      // Switch to kernel page table.
       switchkvm();
 
       // Process is done running for now.
@@ -498,7 +533,9 @@ scheduler(void)
     }
 
     // No processes were scheduled, go to sleep.
+    cpu_account_before_hlt(&cpu);
     hlt();
+    cpu_account_after_hlt(&cpu);
   }
 }
 
