@@ -288,21 +288,27 @@ fork(void)
   return pid;
 }
 
-// Pass p's abandoned children to init.
-void reparent(struct proc *p) {
+// Pass p's abandoned children to init. p and p's parent
+// are locked.
+void reparent(struct proc *p, struct proc *parent) {
   struct proc *pp;
 
   for(pp = ptable.proc; pp < &ptable.proc[NPROC]; pp++){
-    acquire(&pp->lock);
-    if(pp->parent == p){
-      pp->parent = initproc;
-      if(pp->state == ZOMBIE) {
+    if (pp != p && pp != parent) {
+      acquire(&pp->lock);
+      if(pp->parent == p){
+        pp->parent = initproc;
+        if(pp->state == ZOMBIE) {
+          acquire(&initproc->lock);
           wakeup1(initproc);
+          release(&initproc->lock);
+        }
       }
+      release(&pp->lock);
     }
-    release(&pp->lock);
   }
 }
+
 
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
@@ -331,18 +337,19 @@ exit(void)
   iput(cwd);
   end_op();
 
-  reparent(p);
-  
   acquire(&p->parent->lock);
     
   acquire(&p->lock);
+
+  reparent(p, p->parent);
+
   p->cwd = 0;
   p->state = ZOMBIE;
 
-  release(&p->parent->lock);
-
   // Parent might be sleeping in wait().
   wakeup1(p->parent);
+
+  release(&p->parent->lock);
 
   // Jump into the scheduler, never to return.
   sched();
@@ -529,7 +536,8 @@ sleep(void *chan, struct spinlock *lk)
 }
 
 //PAGEBREAK!
-// Wake up locked parent, used by exit()
+// Wake up p, used by exit()
+// Caller should lock p.
 static void
 wakeup1(struct proc *p)
 {
