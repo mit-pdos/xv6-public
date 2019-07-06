@@ -43,6 +43,12 @@ cpuid() {
   return mycpu()-cpus;
 }
 
+// Halt the processor.
+static void hlt()
+{
+    asm("hlt");
+}
+
 // Must be called with interrupts disabled to avoid the caller being
 // rescheduled between reading lapicid and running through the loop.
 struct cpu*
@@ -385,14 +391,23 @@ scheduler(void)
   c->proc = 0;
   
   for(;;){
+    // The amount of processes that have been scheduled in this run.
+    unsigned int scheduled = 0;
+
     // Enable interrupts on this processor.
     sti();
 
-    // Loop over process table looking for process to run.
+    // Take the ptable lock.
     acquire(&ptable.lock);
+
+    // Loop over process table looking for process to run.
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      // If process not runnable, continue.
       if(p->state != RUNNABLE)
         continue;
+
+      // Increment scheduled.
+      ++scheduled;
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -410,6 +425,13 @@ scheduler(void)
     }
     release(&ptable.lock);
 
+    // If a process was scheduled, continue.
+    if (scheduled) {
+      continue;
+    }
+
+    // No processes were scheduled, go to sleep.
+    hlt();
   }
 }
 
