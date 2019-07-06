@@ -25,3 +25,4 @@
 #define SYS_printmounts  24
 #define SYS_printdevices  25
 #define SYS_unshare 26
+#define SYS_usleep 27

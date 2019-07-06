@@ -27,6 +27,7 @@ int dup(int);
 int getpid(void);
 char* sbrk(int);
 int sleep(int);
+int usleep(unsigned int);
 int uptime(void);
 
 int mount(const char*, const char*, const char *);

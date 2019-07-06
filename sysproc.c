@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "steady_clock.h"
 
 int
 sys_fork(void)
@@ -75,6 +76,26 @@ sys_sleep(void)
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
+    if(myproc()->killed){
+      release(&tickslock);
+      return -1;
+    }
+    sleep(&ticks, &tickslock);
+  }
+  release(&tickslock);
+  return 0;
+}
+
+int
+sys_usleep(void)
+{
+  int n;
+
+  if(argint(0, &n) < 0)
+    return -1;
+  unsigned int start = steady_clock_now();
+  acquire(&tickslock);
+  while(steady_clock_now() - start < (unsigned int)n){
     if(myproc()->killed){
       release(&tickslock);
       return -1;
