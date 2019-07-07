@@ -292,6 +292,7 @@ fork(void)
 // are locked.
 void reparent(struct proc *p, struct proc *parent) {
   struct proc *pp;
+  int init_is_my_parent = (p->parent == initproc);
 
   for(pp = ptable.proc; pp < &ptable.proc[NPROC]; pp++){
     if (pp != p && pp != parent) {
@@ -299,9 +300,11 @@ void reparent(struct proc *p, struct proc *parent) {
       if(pp->parent == p){
         pp->parent = initproc;
         if(pp->state == ZOMBIE) {
-          acquire(&initproc->lock);
+          if(!init_is_my_parent)
+            acquire(&initproc->lock);
           wakeup1(initproc);
-          release(&initproc->lock);
+          if(!init_is_my_parent)
+            release(&initproc->lock);
         }
       }
       release(&pp->lock);
