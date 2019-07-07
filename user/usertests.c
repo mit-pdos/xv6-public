@@ -507,6 +507,40 @@ twochildren(void)
 }
 
 void
+forkforkfork(void)
+{
+  printf(1, "forkforkfork test\n");
+
+  unlink("stopforking");
+
+  int pid = fork();
+  if(pid < 0){
+    printf(1, "fork failed");
+    exit();
+  }
+  if(pid == 0){
+    while(1){
+      int fd = open("stopforking", 0);
+      if(fd >= 0){
+        exit();
+      }
+      if(fork() < 0){
+        close(open("stopforking", O_CREATE|O_RDWR));
+      }
+    }
+
+    exit();
+  }
+
+  sleep(2);
+  close(open("stopforking", O_CREATE|O_RDWR));
+  wait();
+  sleep(1);
+
+  printf(1, "forkforkfork ok\n");
+}
+
+void
 mem(void)
 {
   void *m1, *m2;
@@ -1824,6 +1858,7 @@ main(int argc, char *argv[])
 
   reparent();
   twochildren();
+  forkforkfork();
   
   argptest();
   createdelete();
