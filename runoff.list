@@ -9,6 +9,7 @@ kernel/date.h
 
 # entering xv6
 kernel/entry.S
+kernel/start.c
 kernel/main.c
 
 # locks
@@ -24,6 +25,7 @@ kernel/kalloc.c
 
 # system calls
 user/usys.pl
+kernel/kernelvec.S
 kernel/trap.c
 kernel/syscall.h
 kernel/syscall.c
