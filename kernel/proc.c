@@ -75,8 +75,7 @@ allocpid() {
 
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
-// If found, change state to EMBRYO, initialize
-// state required to run in the kernel,
+// If found, initialize state required to run in the kernel,
 // and return with p->lock held.
 // Otherwise return 0.
 static struct proc*
@@ -95,18 +94,17 @@ allocproc(void)
   return 0;
 
 found:
-  p->state = EMBRYO;
   p->pid = allocpid();
 
   // Allocate a page for the kernel stack.
   if((p->kstack = kalloc()) == 0){
-    p->state = UNUSED;
     return 0;
   }
 
   // Allocate a trapframe page.
   if((p->tf = (struct trapframe *)kalloc()) == 0){
-    p->state = UNUSED;
+    kfree(p->kstack);
+    p->kstack = 0;
     return 0;
   }
 
@@ -208,7 +206,7 @@ userinit(void)
   uvminit(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
-  // prepare for the very first kernel->user.
+  // prepare for the very first "return" from kernel to user.
   p->tf->epc = 0;
   p->tf->sp = PGSIZE;
 
@@ -336,11 +334,10 @@ exit(void)
     }
   }
 
-  struct inode *cwd = p->cwd;
-
   begin_op();
-  iput(cwd);
+  iput(p->cwd);
   end_op();
+  p->cwd = 0;
 
   acquire(&p->parent->lock);
     
@@ -348,7 +345,6 @@ exit(void)
 
   reparent(p, p->parent);
 
-  p->cwd = 0;
   p->state = ZOMBIE;
 
   // Parent might be sleeping in wait().
@@ -627,7 +623,6 @@ procdump(void)
 {
   static char *states[] = {
   [UNUSED]    "unused",
-  [EMBRYO]    "embryo",
   [SLEEPING]  "sleep ",
   [RUNNABLE]  "runble",
   [RUNNING]   "run   ",
