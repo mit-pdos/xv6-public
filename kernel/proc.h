@@ -78,10 +78,11 @@ struct trapframe {
   /* 280 */ uint64 t6;
 };
 
-enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
+  struct spinlock lock;
   char *kstack;                // Bottom of kernel stack for this process
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // Page table
