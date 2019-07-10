@@ -18,8 +18,6 @@ initlock(struct spinlock *lk, char *name)
 
 // Acquire the lock.
 // Loops (spins) until the lock is acquired.
-// Holding a lock for a long time may cause
-// other CPUs to waste time spinning to acquire it.
 void
 acquire(struct spinlock *lk)
 {
@@ -81,7 +79,7 @@ holding(struct spinlock *lk)
 }
 
 // push_off/pop_off are like intr_off()/intr_on() except that they are matched:
-// it takes two pop_off to undo two push_off.  Also, if interrupts
+// it takes two pop_off()s to undo two push_off()s.  Also, if interrupts
 // are initially off, then push_off, pop_off leaves them off.
 
 void

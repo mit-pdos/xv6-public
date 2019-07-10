@@ -64,8 +64,10 @@ allocpid() {
   int pid;
   
   acquire(&pid_lock);
-  pid = nextpid++;
+  pid = nextpid;
+  nextpid = nextpid + 1;
   release(&pid_lock);
+
   return pid;
 }
 
