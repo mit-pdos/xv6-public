@@ -163,8 +163,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 };
 
-static void
-dosyscall(void)
+void
+syscall(void)
 {
   int num;
   struct proc *p = myproc();
@@ -180,15 +180,3 @@ dosyscall(void)
     p->tf->a0 = -1;
   }
 }
-
-void
-syscall()
-{
-    if(myproc()->killed)
-      exit();
-    dosyscall();
-    if(myproc()->killed)
-      exit();
-    return;
-}
-

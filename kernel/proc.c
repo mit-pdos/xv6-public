@@ -367,19 +367,24 @@ wait(void)
     // Scan through table looking for exited children.
     havekids = 0;
     for(np = proc; np < &proc[NPROC]; np++){
-      if(np->parent != p)
-        continue;
-      acquire(&np->lock);
-      havekids = 1;
-      if(np->state == ZOMBIE){
-        // Found one.
-        pid = np->pid;
-        freeproc(np);
+      // this code uses np->parent without holding np->lock.
+      // acquiring the lock first would cause a deadlock,
+      // since np might be an ancestor, and we already hold p->lock.
+      if(np->parent == p){
+        // np->parent can't change here because only the parent
+        // changes it, and we're the parent.
+        acquire(&np->lock);
+        havekids = 1;
+        if(np->state == ZOMBIE){
+          // Found one.
+          pid = np->pid;
+          freeproc(np);
+          release(&np->lock);
+          release(&p->lock);
+          return pid;
+        }
         release(&np->lock);
-        release(&p->lock);
-        return pid;
       }
-      release(&np->lock);
     }
 
     // No point waiting if we don't have any children.
@@ -397,10 +402,10 @@ wait(void)
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
-//  - choose a process to run
-//  - swtch to start running that process
+//  - choose a process to run.
+//  - swtch to start running that process.
 //  - eventually that process transfers control
-//      via swtch back to the scheduler.
+//    via swtch back to the scheduler.
 void
 scheduler(void)
 {
@@ -409,7 +414,7 @@ scheduler(void)
   
   c->proc = 0;
   for(;;){
-    // Enable interrupts on this processor.
+    // Give devices a brief chance to interrupt.
     intr_on();
 
     for(p = proc; p < &proc[NPROC]; p++) {
@@ -508,7 +513,7 @@ sleep(void *chan, struct spinlock *lk)
   // change p->state and then call sched.
   // Once we hold p->lock, we can be
   // guaranteed that we won't miss any wakeup
-  // (wakeup runs with p->lock locked),
+  // (wakeup locks p->lock),
   // so it's okay to release lk.
   if(lk != &p->lock){  //DOC: sleeplock0
     acquire(&p->lock);  //DOC: sleeplock1
@@ -559,24 +564,24 @@ wakeup(void *chan)
 
 // Kill the process with the given pid.
 // Process won't exit until it returns
-// to user space (see trap in trap.c).
+// to user space (see usertrap() in trap.c).
 int
 kill(int pid)
 {
   struct proc *p;
 
   for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
     if(p->pid == pid){
-      acquire(&p->lock);
-      if(p->pid != pid)
-        panic("kill");
       p->killed = 1;
-      // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
+      if(p->state == SLEEPING){
+        // Wake process from sleep().
         p->state = RUNNABLE;
+      }
       release(&p->lock);
       return 0;
     }
+    release(&p->lock);
   }
   return -1;
 }
