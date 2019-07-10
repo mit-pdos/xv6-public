@@ -6,20 +6,16 @@
 #include "proc.h"
 #include "defs.h"
 
-struct proc proc[NPROC];
-
 struct cpu cpus[NCPU];
+
+struct proc proc[NPROC];
 
 struct proc *initproc;
 
-struct spinlock pid_lock;
 int nextpid = 1;
+struct spinlock pid_lock;
 
 extern void forkret(void);
-
-// for returning  out of the kernel
-extern void sysexit(void);
-
 static void wakeup1(struct proc *chan);
 
 extern char trampout[]; // trampoline.S
@@ -287,8 +283,8 @@ fork(void)
   return pid;
 }
 
-// Pass p's abandoned children to init. p and p's parent
-// are locked.
+// Pass p's abandoned children to init.
+// Caller must hold p->lock and parent->lock.
 void
 reparent(struct proc *p, struct proc *parent) {
   struct proc *pp;
@@ -536,7 +532,7 @@ sleep(void *chan, struct spinlock *lk)
 
 //PAGEBREAK!
 // Wake up p, used by exit()
-// Caller should lock p.
+// Caller must hold p->lock.
 static void
 wakeup1(struct proc *p)
 {
@@ -545,8 +541,8 @@ wakeup1(struct proc *p)
   }
 }
 
-// Wake up all processes sleeping on chan. Never
-// called when holding a p->lock
+// Wake up all processes sleeping on chan.
+// Must be called without any p->lock.
 void
 wakeup(void *chan)
 {
