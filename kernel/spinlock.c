@@ -25,7 +25,7 @@ acquire(struct spinlock *lk)
   if(holding(lk))
     panic("acquire");
 
-  // On RISC-V, this turns into an atomic swap:
+  // On RISC-V, sync_lock_test_and_set turns into an atomic swap:
   //   a5 = 1
   //   s1 = &lk->locked
   //   amoswap.w.aq a5, a5, (s1)
@@ -57,9 +57,10 @@ release(struct spinlock *lk)
   __sync_synchronize();
 
   // Release the lock, equivalent to lk->locked = 0.
-  // This code can't use a C assignment, since it might
-  // not be atomic.
-  // On RISC-V, this turns into an atomic swap:
+  // This code doesn't use a C assignment, since the C standard
+  // implies that an assignment might be implemented with
+  // multiple store instructions.
+  // On RISC-V, sync_lock_release turns into an atomic swap:
   //   s1 = &lk->locked
   //   amoswap.w zero, zero, (s1)
   __sync_lock_release(&lk->locked);

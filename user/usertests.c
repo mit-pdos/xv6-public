@@ -506,6 +506,44 @@ twochildren(void)
   printf(1, "twochildren ok\n");
 }
 
+// concurrent forks to try to expose locking bugs.
+void
+forkfork(void)
+{
+  int ppid = getpid();
+  
+  printf(1, "forkfork test\n");
+
+  for(int i = 0; i < 2; i++){
+    int pid = fork();
+    if(pid < 0){
+      printf(1, "fork failed");
+      exit();
+    }
+    if(pid == 0){
+      for(int j = 0; j < 200; j++){
+        int pid1 = fork();
+        if(pid1 < 0){
+          printf(1, "fork failed\n");
+          kill(ppid);
+          exit();
+        }
+        if(pid1 == 0){
+          exit();
+        }
+        wait();
+      }
+      exit();
+    }
+  }
+
+  for(int i = 0; i < 2; i++){
+    wait();
+  }
+
+  printf(1, "forkfork ok\n");
+}
+
 void
 forkforkfork(void)
 {
@@ -1858,6 +1896,7 @@ main(int argc, char *argv[])
 
   reparent();
   twochildren();
+  forkfork();
   forkforkfork();
   
   argptest();
