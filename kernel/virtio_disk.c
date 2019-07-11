@@ -20,7 +20,7 @@
 // the address of virtio mmio register r.
 #define R(r) ((volatile uint32 *)(VIRTIO0 + (r)))
 
-struct spinlock virtio_disk_lock;
+struct spinlock vdisk_lock;
 
 // memory for virtio descriptors &c for queue 0.
 // this is a global instead of allocated because it has
@@ -49,7 +49,7 @@ virtio_disk_init(void)
 {
   uint32 status = 0;
 
-  initlock(&virtio_disk_lock, "virtio_disk");
+  initlock(&vdisk_lock, "virtio_disk");
 
   if(*R(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 ||
      *R(VIRTIO_MMIO_VERSION) != 1 ||
@@ -168,7 +168,7 @@ virtio_disk_rw(struct buf *b)
 {
   uint64 sector = b->blockno * (BSIZE / 512);
 
-  acquire(&virtio_disk_lock);
+  acquire(&vdisk_lock);
 
   // the spec says that legacy block operations use three
   // descriptors: one for type/reserved/sector, one for
@@ -180,7 +180,7 @@ virtio_disk_rw(struct buf *b)
     if(alloc3_desc(idx) == 0) {
       break;
     }
-    sleep(&free[0], &virtio_disk_lock);
+    sleep(&free[0], &vdisk_lock);
   }
   
   // format the three descriptors.
@@ -234,16 +234,16 @@ virtio_disk_rw(struct buf *b)
 
   // Wait for virtio_disk_intr() to say request has finished.
   while((b->flags & (B_VALID|B_DIRTY)) != B_VALID){
-    sleep(b, &virtio_disk_lock);
+    sleep(b, &vdisk_lock);
   }
 
-  release(&virtio_disk_lock);
+  release(&vdisk_lock);
 }
 
 void
 virtio_disk_intr()
 {
-  acquire(&virtio_disk_lock);
+  acquire(&vdisk_lock);
 
   while((used_idx % NUM) != (used->id % NUM)){
     int id = used->elems[used_idx].id;
@@ -262,5 +262,5 @@ virtio_disk_intr()
     used_idx = (used_idx + 1) % NUM;
   }
 
-  release(&virtio_disk_lock);
+  release(&vdisk_lock);
 }
