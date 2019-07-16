@@ -544,7 +544,7 @@ sleep(void *chan, struct spinlock *lk)
 }
 
 //PAGEBREAK!
-// Wake up p, used by exit().
+// Wake up p if it is sleeping in wait(); used by exit().
 // Caller must hold p->lock.
 static void
 wakeup1(struct proc *p)

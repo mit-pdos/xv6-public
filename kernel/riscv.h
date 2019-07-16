@@ -312,6 +312,17 @@ r_ra()
   return x;
 }
 
+// tell the machine to finish any previous writes to
+// PTEs, so that a subsequent use of a virtual
+// address or load of the SATP will see those writes.
+// perhaps this also flushes the TLB.
+static inline void
+sfence_vma()
+{
+  // the zero, zero means flush all TLB entries.
+  asm volatile("sfence.vma zero, zero");
+}
+
 
 #define PGSIZE 4096 // bytes per page
 #define PGSHIFT 12  // bits of offset within a page
