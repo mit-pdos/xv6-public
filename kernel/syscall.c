@@ -7,12 +7,6 @@
 #include "syscall.h"
 #include "defs.h"
 
-// User code makes a system call with INT T_SYSCALL.
-// System call number in %eax.
-// Arguments on the stack, from the user call to the C
-// library system call function. The saved user %esp points
-// to a saved program counter, and then the first argument.
-
 // Fetch the int at addr from the current process.
 int
 fetchint(uint64 addr, int *ip)
