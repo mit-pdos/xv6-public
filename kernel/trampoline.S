@@ -17,7 +17,8 @@ trampout:
 	# a0: p->tf in user page table
         # a1: new value for satp, for user page table
 
-        # switch to user page table
+	# switch to user page table.
+	sfence.vma zero, zero
         csrw satp, a1
 
         # put the saved user a0 in sscratch, so we
@@ -120,7 +121,7 @@ trampin:
         # restore kernel stack pointer from p->tf->kernel_sp
         ld sp, 8(a0)
 
-        # make tp hold the current hartid, from p->tf->hartid
+        # make tp hold the current hartid, from p->tf->kernel_hartid
         ld tp, 32(a0)
 
         # remember the address of usertrap(), p->tf->kernel_trap
@@ -128,6 +129,7 @@ trampin:
 
         # restore kernel page table from p->tf->kernel_satp
         ld t1, 0(a0)
+	sfence.vma zero, zero
         csrw satp, t1
 
         # a0 is no longer valid, since the kernel page

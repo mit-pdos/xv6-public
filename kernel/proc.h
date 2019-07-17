@@ -18,33 +18,37 @@ struct context {
   uint64 s11;
 };
 
-// Per-CPU state
+// Per-CPU state.
 struct cpu {
-  struct proc *proc;           // The process running on this cpu or null
-  struct context scheduler;   // swtch() here to enter scheduler
-  int noff;                    // Depth of push_off() nesting.
-  int intena;                  // Were interrupts enabled before push_off()?
+  struct proc *proc;          // The process running on this cpu, or null.
+  struct context scheduler;   // swtch() here to enter scheduler().
+  int noff;                   // Depth of push_off() nesting.
+  int intena;                 // Were interrupts enabled before push_off()?
 };
 
 extern struct cpu cpus[NCPU];
 
 //PAGEBREAK: 17
 
-// per-process data for the early trap handling code in trampoline.S.
+// per-process data for the trap handling code in trampoline.S.
 // sits in a page by itself just under the trampoline page in the
 // user page table. not specially mapped in the kernel page table.
 // the sscratch register points here.
-// trampoline.S saves user registers, then restores kernel_sp and
-// kernel_satp.
-// includes callee-saved registers like s0-s11 because the
+// trampin in trampoline.S saves user registers in the trapframe,
+// then initializes registers from the trapframe's
+// kernel_sp, kernel_hartid, kernel_satp, and jumps to kernel_trap.
+// usertrapret() and trampout in trampoline.S set up
+// the trapframe's kernel_*, restore user registers from the
+// trapframe, switch to the user page table, and enter user space.
+// the trapframe includes callee-saved user registers like s0-s11 because the
 // return-to-user path via usertrapret() doesn't return through
 // the entire kernel call stack.
 struct trapframe {
-  /*   0 */ uint64 kernel_satp;
-  /*   8 */ uint64 kernel_sp;
-  /*  16 */ uint64 kernel_trap; // usertrap()
-  /*  24 */ uint64 epc; // saved user program counter
-  /*  32 */ uint64 hartid;
+  /*   0 */ uint64 kernel_satp;   // kernel page table
+  /*   8 */ uint64 kernel_sp;     // top of process's kernel stack
+  /*  16 */ uint64 kernel_trap;   // usertrap()
+  /*  24 */ uint64 epc;           // saved user program counter
+  /*  32 */ uint64 kernel_hartid; // saved kernel tp
   /*  40 */ uint64 ra;
   /*  48 */ uint64 sp;
   /*  56 */ uint64 gp;
@@ -83,16 +87,20 @@ enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 // Per-process state
 struct proc {
   struct spinlock lock;
+
+  // p->lock must be held when using these:
+  enum procstate state;        // Process state
+  struct proc *parent;         // Parent process
+  void *chan;                  // If non-zero, sleeping on chan
+  int killed;                  // If non-zero, have been killed
+  int pid;                     // Process ID
+
+  // these are private to the process, so p->lock need not be held.
   char *kstack;                // Bottom of kernel stack for this process
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // Page table
-  enum procstate state;        // Process state
-  int pid;                     // Process ID
-  struct proc *parent;         // Parent process
   struct trapframe *tf;        // data page for trampoline.S
   struct context context;      // swtch() here to run process
-  void *chan;                  // If non-zero, sleeping on chan
-  int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)

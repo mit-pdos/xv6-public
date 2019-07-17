@@ -61,6 +61,7 @@ kvminit()
 void
 kvminithart()
 {
+  sfence_vma();
   w_satp(MAKE_SATP(kernel_pagetable));
 }
 
