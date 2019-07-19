@@ -90,7 +90,6 @@ machinevec:
         sd a1, 0(a0)
         sd a2, 8(a0)
         sd a3, 16(a0)
-        sd a4, 24(a0)
 
         # add another second to mtimecmp0.
         ld a1, 32(a0) # CLINT_MTIMECMP(hart)
@@ -103,7 +102,6 @@ machinevec:
 	li a1, 2
         csrw sip, a1
 
-        ld a4, 24(a0)
         ld a3, 16(a0)
         ld a2, 8(a0)
         ld a1, 0(a0)
