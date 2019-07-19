@@ -26,6 +26,27 @@ struct file {
     struct {
       struct cgroup *cgp;
       char cgfilename[MAX_CGROUP_FILE_NAME_LENGTH];
+      union {
+        // cpu
+        union {
+          struct {
+            char active;
+            int usage_usec;
+            int user_usec;
+            int system_usec;
+            int nr_periods;
+            int nr_throttled;
+            int throttled_usec;
+          } stat;
+          struct {
+            int weight;
+          } weight;
+          struct {
+            int max;
+            int period;
+          } max;
+        } cpu;
+      };
     };
   };
 };
