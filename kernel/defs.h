@@ -193,6 +193,8 @@ uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max);
+char*           map_kstack();
+uint64          kernelpa(uint64);
 
 // plic.c
 void            plicinit(void);

@@ -199,7 +199,7 @@ virtio_disk_rw(struct buf *b)
   buf0.reserved = 0;
   buf0.sector = sector;
 
-  desc[idx[0]].addr = (uint64) &buf0;
+  desc[idx[0]].addr = (uint64) kernelpa((uint64) &buf0);
   desc[idx[0]].len = sizeof(buf0);
   desc[idx[0]].flags = VRING_DESC_F_NEXT;
   desc[idx[0]].next = idx[1];

@@ -404,3 +404,34 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+char *map_kstack(uint64 kstack)
+{
+  char *k = kalloc();
+  if(k == 0) {
+    return 0;
+  }
+  if (mappages(kernel_pagetable, (uint64) kstack, PGSIZE,
+               (uint64) k, PTE_R | PTE_W) == 0) {
+    kvminithart();
+    return (char *) kstack;
+  }
+  kfree(k);
+  return 0;
+}
+
+// assumes va is page aligned
+uint64
+kernelpa(uint64 va) {
+  uint64 off = va % PGSIZE;
+  pte_t *pte;
+  uint64 pa;
+  
+  pte = walk(kernel_pagetable, va, 0);
+  if(pte == 0)
+    panic("kernelpa");
+  if((*pte & PTE_V) == 0)
+    panic("kernelpa");
+  pa = PTE2PA(*pte);
+  return pa+off;
+}
