@@ -510,12 +510,6 @@ sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
   
-  if(p == 0)
-    panic("sleep");
-
-  if(lk == 0)
-    panic("sleep without lk");
-
   // Must acquire p->lock in order to
   // change p->state and then call sched.
   // Once we hold p->lock, we can be
@@ -543,17 +537,6 @@ sleep(void *chan, struct spinlock *lk)
   }
 }
 
-//PAGEBREAK!
-// Wake up p if it is sleeping in wait(); used by exit().
-// Caller must hold p->lock.
-static void
-wakeup1(struct proc *p)
-{
-  if(p->chan == p && p->state == SLEEPING) {
-    p->state = RUNNABLE;
-  }
-}
-
 // Wake up all processes sleeping on chan.
 // Must be called without any p->lock.
 void
@@ -567,6 +550,16 @@ wakeup(void *chan)
       p->state = RUNNABLE;
     }
     release(&p->lock);
+  }
+}
+
+// Wake up p if it is sleeping in wait(); used by exit().
+// Caller must hold p->lock.
+static void
+wakeup1(struct proc *p)
+{
+  if(p->chan == p && p->state == SLEEPING) {
+    p->state = RUNNABLE;
   }
 }
 
