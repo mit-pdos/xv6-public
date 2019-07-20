@@ -461,6 +461,7 @@ int unsafe_disable_cpu_controller(struct cgroup * cgroup)
 
     // Set cpu controller to enabled.
     cgroup->cpu_controller_enabled = 0;
+
     // Set cpu controller to unavalible in all child cgroups.
     for (int i = 1;
          i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
