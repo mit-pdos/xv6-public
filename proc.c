@@ -245,8 +245,6 @@ fork(void)
 
     np->pids[i].pid = pid_ns_next_pid(cur);
     np->pids[i].pid_ns = cur;
-    cprintf("%s - i = %d, pid = %d, pid_ns = %p\n", __func__, i,
-        np->pids[i].pid, np->pids[i].pid_ns);
     i++;
     cur = cur->parent;
   }
@@ -256,7 +254,6 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = get_pid_for_ns(np, curproc->nsproxy->pid_ns);
-  cprintf("%s - unshare - %d, pid4parent = %d\n", __func__, np->ns_pid, pid);
 
   acquire(&ptable.lock);
 
