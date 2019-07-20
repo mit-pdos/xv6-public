@@ -24,6 +24,10 @@ int get_pid_for_ns(struct proc* proc, struct pid_ns* pid_ns) {
   return 0;
 }
 
+int proc_pid(struct proc* proc) {
+    return get_pid_for_ns(proc, myproc()->nsproxy->pid_ns);
+}
+
 static struct proc *initproc;
 
 extern void forkret(void);
