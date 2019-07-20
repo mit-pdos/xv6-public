@@ -1,3 +1,9 @@
+#ifndef XV6_FILE_H
+#define XV6_FILE_H
+
+#include "fs.h"
+#include "sleeplock.h"
+
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE } type;
   int ref; // reference count
@@ -36,3 +42,5 @@ struct devsw {
 extern struct devsw devsw[];
 
 #define CONSOLE 1
+
+#endif
