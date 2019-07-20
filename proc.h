@@ -70,6 +70,16 @@ struct proc {
  */
 int proc_pid(struct proc * proc);
 
+/**
+ * Locks the process table.
+ */
+void proc_lock();
+
+/**
+ * Unlocks the process table.
+ */
+void proc_unlock();
+
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss

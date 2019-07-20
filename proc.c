@@ -657,3 +657,13 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+void proc_lock()
+{
+    acquire(&ptable.lock);
+}
+
+void proc_unlock()
+{
+    release(&ptable.lock);
+}
