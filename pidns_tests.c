@@ -79,6 +79,12 @@ static void read_all(int fd, unsigned char *buf, size_t len) {
 
 typedef int (*test_func_t)(void);
 
+/* Verify that we can create process in child pid namespace
+  - Unshare pid ns
+  - Fork
+  - Child process fork
+  - Verify that the pid is correct
+*/
 int test_simple_pidns_fork() {
   check(unshare(CLONE_NEWPID), "failed to unshare");
 
@@ -108,6 +114,11 @@ int test_simple_pidns_fork() {
   return 0;
 }
 
+/* Verify simple pid namespace works
+  - Unshare pid ns
+  - Fork
+  - Verify pid is correct from parent and child views
+*/
 int test_simple_pidns() {
   check(unshare(CLONE_NEWPID), "failed to unshare");
 
@@ -127,6 +138,13 @@ int test_simple_pidns() {
   return 0;
 }
 
+/* Verify that we can create a pid namespace within pid namespace
+  - Unshare pid ns
+  - Fork
+  - Child process unshare pid ns
+  - Child process fork
+  - Verify pid is correct from parent and children views
+*/
 int test_nested_pidns_create() {
   check(unshare(CLONE_NEWPID), "failed to unshare");
 
@@ -141,6 +159,7 @@ int test_nested_pidns_create() {
   return 0;
 }
 
+/* support function to create multiple children */
 void create_children(int n, pid_t *child_pids, test_func_t func) {
   for (int i = 0; i < n; i++) {
     int ret = check(fork(), "failed to fork in create_children");
@@ -154,6 +173,7 @@ void create_children(int n, pid_t *child_pids, test_func_t func) {
   }
 }
 
+/* support function to wait on multiple children */
 void reap_children(int n, pid_t *child_pids) {
   int count = 0;
   int wstatus = 0;
@@ -176,18 +196,30 @@ void reap_children(int n, pid_t *child_pids) {
   }
 }
 
+/* support function to busy wait forever */
 int loop_forever() {
   while (1) {
   }
   return 0;
 }
 
+/* support function to busy wait about 1 secound */
 int sleep_1s() {
   // TODO: find a better way to sync the destruction
   sleep(100);
   return 0;
 }
 
+/* Verify that when non init process in the namespace dies it’s children are reaped by init pid within the namespace
+  - Unshare pid ns
+  - Fork (1)
+  - Fork (2)
+  - Child (2) process fork (3)
+  - Child (2) process fork (4)
+  - Child (2) process dies
+  - Grandchildren (3) & (4) dies
+  - Verify that wait returns with correct pids for (2) and grandchildren (3) & (4)
+*/
 int test_children_reaped_by_nspid1() {
   check(unshare(CLONE_NEWPID), "failed to unshare");
   int ret = check(fork(), "failed to fork");
@@ -230,6 +262,14 @@ int test_children_reaped_by_nspid1() {
   return 0;
 }
 
+/*Verify that when init process within the namespace dies all children are killed
+  - Unshare pid ns
+  - Fork (1)
+  - Child process fork (2)
+  - Child process fork (3)
+  - Child process dies
+  - Verify that (2) & (3) are dead
+*/
 int test_all_children_kill_when_nspid1_dies() {
   check(unshare(CLONE_NEWPID), "failed to unshare");
 
@@ -253,7 +293,12 @@ int test_all_children_kill_when_nspid1_dies() {
   assert_msg(status == 0, "child process failed");
   return 0;
 }
-
+/* Verify that calling unshare -> fork -> (child dies) -> fork fails
+  - Unshare pid ns
+  - Fork (1)
+  - Child (1) dies
+  - Fork fails
+*/
 int test_calling_fork_after_nspid1_dies_fails() {
   check(unshare(CLONE_NEWPID), "failed to unshare");
 
@@ -279,6 +324,16 @@ int test_calling_fork_after_nspid1_dies_fails() {
 
 int MAX_RECURSION = 4;
 
+/* Verify that there’s recursive limit to nesting pid namespace
+  - Unshare
+  - Fork (1)
+  - Unshare (1)
+  - Fork (2)
+  - Unshare (2)
+  - Fork (3)
+  - Unshare (3)
+  - Verify that will fail Fork (4)
+*/
 int _test_unshare_recrusive_limit(int count) {
   if (count == 0) {
     assert_msg(unshare(CLONE_NEWPID) < 0, "unshare didn't fail as expected");
@@ -312,6 +367,11 @@ int test_unshare_recrusive_limit() {
   return 0; 
 }
 
+/* Verify that a process can call unshare PID only once
+  - Unshare
+  - Unshare
+  - Verify the last Unshare failed
+*/
 int unshare_twice() {
   // first call should succeed
   int ret = unshare(CLONE_NEWPID);
