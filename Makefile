@@ -39,6 +39,7 @@ OBJS = \
 	udiv.o\
 	steady_clock.o\
 	klib.o\
+	cgfs.o\
 	cgroup.o\
 
 # Cross-compiling (e.g., on Mac OS X)

@@ -169,6 +169,7 @@ void            userinit(void);
 int             wait(int*);
 void            wakeup(void*);
 void            yield(void);
+int             cgroup_move_proc(struct cgroup * cgroup, int pid);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -241,6 +242,7 @@ void            cginit(void);
 
 // klib.c
 int             atoi(char * str);
+int             itoa(char * buf, int n);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

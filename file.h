@@ -3,6 +3,7 @@
 
 #include "fs.h"
 #include "sleeplock.h"
+#include "cgfs.h"
 
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_CG } type;
@@ -18,6 +19,12 @@ struct file {
     struct {
       struct inode *ip;
       struct mount *mnt;
+    };
+
+    // FD_CG
+    struct {
+      struct cgroup *cgp;
+      char cgfilename[MAX_CGROUP_FILE_NAME_LENGTH];
     };
   };
 };

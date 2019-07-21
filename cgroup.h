@@ -244,4 +244,22 @@ void format_path(char * buf, char * path);
  */
 void decrement_nr_dying_descendants(struct cgroup * cgroup);
 
+/**
+ * Safe implementation of cgfs.c functions. (Implementation with locks)
+ */
+
+int opencgfile(char * filename, struct cgroup * cgp, int omode);
+
+int opencgdirectory(struct cgroup * cgp, int omode);
+
+int readcgfile(struct file * f, char * addr, int n);
+
+int readcgdirectory(struct file * f, char * addr, int n);
+
+int writecgfile(struct file * f, char * addr, int n);
+
+int closecgfileordir(struct file * file);
+
+int cgstat(struct file * f, struct stat * st);
+
 #endif

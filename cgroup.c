@@ -1,9 +1,9 @@
 #include "cgroup.h"
+#include "cgfs.h"
 #include "spinlock.h"
 
 #define MAX_DES_DEF "64"
 #define MAX_DEP_DEF "64"
-#define MAX_CGROUP_FILE_NAME_LENGTH 64
 
 struct
 {
@@ -174,35 +174,6 @@ void format_path(char * buf, char * path)
     if (bufp - 1 > buf && *(bufp - 1) == '/')
         *(bufp - 1) = 0;
     *bufp = 0;
-}
-
-int get_cg_file_dir_path_and_file_name(char * path,
-                                       char * dir_path,
-                                       char * file_name)
-{
-    char * file_name_temp = path;
-    char * temp = path;
-    while (*temp != '\0') {
-        if (*temp == '/')
-            file_name_temp = temp;
-        temp++;
-    }
-
-    if (file_name_temp == path || file_name_temp == path + 1)
-        return -1;
-
-    temp = file_name_temp + 1;
-    while (*temp != '\0')
-        *file_name++ = *temp++;
-
-    temp = path;
-    while (temp < file_name_temp)
-        *dir_path++ = *temp++;
-
-    *file_name = 0;
-    *dir_path = 0;
-
-    return 0;
 }
 
 struct cgroup * cgroup_root(void)
@@ -606,4 +577,60 @@ void decrement_nr_dying_descendants(struct cgroup * cgroup)
         decrement_num_string(cgroup->nr_dying_descendants);
         cgroup = cgroup->parent;
     }
+}
+
+int opencgfile(char * filename, struct cgroup * cgp, int omode)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_opencgfile(filename, cgp, omode);
+    release(&cgtable.lock);
+    return res;
+}
+
+int opencgdirectory(struct cgroup * cgp, int omode)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_opencgdirectory(cgp, omode);
+    release(&cgtable.lock);
+    return res;
+}
+
+int readcgfile(struct file * f, char * addr, int n)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_readcgfile(f, addr, n);
+    release(&cgtable.lock);
+    return res;
+}
+
+int readcgdirectory(struct file * f, char * addr, int n)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_readcgdirectory(f, addr, n);
+    release(&cgtable.lock);
+    return res;
+}
+
+int writecgfile(struct file * f, char * addr, int n)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_writecgfile(f, addr, n);
+    release(&cgtable.lock);
+    return res;
+}
+
+int closecgfileordir(struct file * file)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_closecgfileordir(file);
+    release(&cgtable.lock);
+    return res;
+}
+
+int cgstat(struct file * f, struct stat * st)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_cgstat(f, st);
+    release(&cgtable.lock);
+    return res;
 }
