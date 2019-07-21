@@ -200,6 +200,7 @@ UPROGS=\
 	_umount\
 	_timer\
 	_cpu\
+	_cgroupstests\
 
 INTERNAL_DEV=\
 	internal_fs_a\
@@ -279,7 +280,7 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 EXTRA=\
 	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c kill.c\
 	ln.c ls.c mkdir.c mounttest.c rm.c stressfs.c usertests.c pidns_tests.c wc.c zombie.c\
-	printf.c umalloc.c mount.c umount.c timer.c cpu.c \
+	printf.c umalloc.c mount.c umount.c timer.c cpu.c cgroupstests.c \
 	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
 	.gdbinit.tmpl gdbutil\
 

@@ -13,7 +13,9 @@ set qemu_command $expect_out(buffer)
 spawn qemu-system-i386 -nographic -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp 2 -m 512
 expect "$ "
 
-# run usertests and log the output
+# run cgroupstests and usertests and log the output
+send "cgroupstests\n"
+expect "$ "
 send "usertests\n"
 log_file -noappend [lindex $argv 0]
 expect {

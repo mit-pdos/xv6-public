@@ -51,5 +51,6 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+int itoa(char *, int);
 
 #endif

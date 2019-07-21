@@ -104,3 +104,32 @@ memmove(void *vdst, const void *vsrc, int n)
     *dst++ = *src++;
   return vdst;
 }
+
+/*
+ * Set buf to string representation of number in int.
+ */
+int itoa(char * buf, int n)
+{
+    int i = n;
+    int length = 0;
+
+    while (i > 0) {
+        length++;
+        i /= 10;
+    }
+
+    char revbuf[length];
+
+    if (n == 0) {
+        *buf++ = '0';
+    }
+    for (i = 0; n > 0 && i < length; i++) {
+        revbuf[i] = (n % 10) + '0';
+        n /= 10;
+    }
+    while (--i >= 0) {
+        *buf++ = revbuf[i];
+    }
+    *buf = '\0';
+    return length;
+}
