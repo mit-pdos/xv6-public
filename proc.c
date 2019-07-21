@@ -133,6 +133,9 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  // Set cgroup to none.
+  p->cgroup = 0;
+
   return p;
 }
 
@@ -143,6 +146,9 @@ userinit(void)
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
+
+  // Initialize the root cgroup.
+  cgroup_initialize(cgroup_root(), 0, 0);
 
   p = allocproc();
   
@@ -162,6 +168,7 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = initprocessroot(&p->cwdmount);
+  safestrcpy(p->cwdp, "/", sizeof(p->cwdp));
   p->nsproxy = emptynsproxy();
 
   p->ns_pid = pid_ns_next_pid(p->nsproxy->pid_ns);
@@ -175,6 +182,11 @@ userinit(void)
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
 
+  // Associate with the root cgroup, can discard return value because
+  // this fails only if there is no room.
+  cgroup_insert(cgroup_root(), p);
+
+  // Set state to runnable.
   p->state = RUNNABLE;
 
   release(&ptable.lock);
@@ -238,6 +250,7 @@ fork(void)
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
+  safestrcpy(np->cwdp, curproc->cwdp, sizeof(curproc->cwdp));
   np->cwdmount = mntdup(curproc->cwdmount);
 
   struct pid_ns* cur = curproc->child_pid_ns;
@@ -271,6 +284,12 @@ fork(void)
 
   acquire(&ptable.lock);
 
+  // Associate the new process with the current process cgroup.
+  // can discard return value because this fails only if there is no room
+  // which is checked earlier by allocproc.
+  cgroup_insert(curproc->cgroup, np);
+
+  // Set new process to runnable.
   np->state = RUNNABLE;
 
   release(&ptable.lock);
@@ -321,6 +340,7 @@ exit(int status)
 
   mntput(curproc->cwdmount);
   curproc->cwdmount = 0;
+  *curproc->cwdp = 0;
   curproc->cwd = 0;
   
   // In the new namespace world, init could be another process than the
@@ -361,6 +381,9 @@ exit(int status)
       }
     }
   }
+
+  // Remove the process cgroup.
+  cgroup_erase(curproc->cgroup, curproc);
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;

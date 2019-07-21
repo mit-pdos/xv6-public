@@ -588,6 +588,22 @@ int opencgfile(char * filename, struct cgroup * cgp, int omode)
     return res;
 }
 
+int cg_sys_open(char * path, int omode)
+{
+    struct cgroup *cgp;
+
+    if((cgp = get_cgroup_by_path(path)))
+        return opencgdirectory(cgp, omode);
+
+    char dir_path[MAX_PATH_LENGTH];
+    char file_name[MAX_PATH_LENGTH];
+
+    if(get_cg_file_dir_path_and_file_name(path, dir_path, file_name) == 0 && (cgp = get_cgroup_by_path(dir_path)))
+        return opencgfile(file_name, cgp, omode);
+
+    return -1;
+}
+
 int opencgdirectory(struct cgroup * cgp, int omode)
 {
     acquire(&cgtable.lock);

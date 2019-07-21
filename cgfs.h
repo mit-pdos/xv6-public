@@ -6,8 +6,6 @@
 #include "cgroup.h"
 #include "stat.h"
 
-#define MAX_CGROUP_FILE_NAME_LENGTH 64
-
 /**
  * This function opens a cgroup filesystem file.
  * Receives string parameter "filename", cgroup struct pointer parameter "cgp", int parameter "omode".

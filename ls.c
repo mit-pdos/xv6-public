@@ -2,6 +2,7 @@
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
+#include "param.h"
 
 char*
 fmtname(char *path)
@@ -29,6 +30,7 @@ ls(char *path)
   int fd;
   struct dirent de;
   struct stat st;
+  char cg_file_name[MAX_CGROUP_FILE_NAME_LENGTH];
 
   if((fd = open(path, 0)) < 0){
     printf(2, "ls: cannot open %s\n", path);
@@ -64,6 +66,34 @@ ls(char *path)
         continue;
       }
       printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+    }
+    break;
+
+  case T_CGFILE:
+    printf(1, "%s %d %d\n", fmtname(path), st.type, st.size);
+    break;
+
+  case T_CGDIR:
+    if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
+      printf(1, "ls: path too long\n");
+      break;
+    }
+    strcpy(buf, path);
+    p = buf + strlen(buf);
+    *p++ = '/';
+    while(read(fd, cg_file_name, sizeof(cg_file_name)) == MAX_CGROUP_FILE_NAME_LENGTH && cg_file_name[0] != ' '){
+      memmove(p, cg_file_name, MAX_CGROUP_FILE_NAME_LENGTH);
+      p[MAX_CGROUP_FILE_NAME_LENGTH] = 0;
+      int i = MAX_CGROUP_FILE_NAME_LENGTH - 1;
+      while (p[i] == ' ')
+          i--;
+      p[i + 1] = 0;
+      if(stat(buf, &st) < 0){
+        printf(1, "ls: cannot stat %s\n", buf);
+        continue;
+      }
+      p[i + 1] = ' ';
+      printf(1, "%s %d %d\n", fmtname(buf), st.type, st.size);
     }
     break;
   }

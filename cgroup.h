@@ -262,4 +262,15 @@ int closecgfileordir(struct file * file);
 
 int cgstat(struct file * f, struct stat * st);
 
+/**
+ * This function opens cgroup file or directory. Meant to be called in sys_open().
+ * Receives string parameter "path", integer parameter "omode".
+ * "path" is string of directory names separated by '/'s, the path of the file to open.
+ * "omode" is the opening mode. Same as with regular files.
+ * Return values:
+ * -1 on failure.
+ * file descriptor of the new open file or directory on success.
+ */
+int cg_sys_open(char * path, int omode);
+
 #endif
