@@ -76,6 +76,14 @@ emptynsproxy(void)
     return result;
 }
 
+struct nsproxy*
+namespace_replace_pid_ns(struct nsproxy* oldns, struct pid_ns* pid_ns) {
+    struct nsproxy* nsproxy = allocnsproxyinternal();
+    nsproxy->mount_ns = mount_nsdup(oldns->mount_ns);
+    nsproxy->pid_ns = pid_ns_dup(pid_ns);
+    return nsproxy;
+}
+
 int
 unshare(int nstype)
 {
@@ -98,13 +106,11 @@ unshare(int nstype)
             }
         case PID_NS:
             {
-              if (myproc()->child_pid_ns) {
+              if (myproc()->child_pid_ns || pid_ns_is_max_depth(myproc()->nsproxy->pid_ns)) {
                 return -1;
               }
 
               myproc()->child_pid_ns = pid_ns_new(myproc()->nsproxy->pid_ns);
-              cprintf("child_pid_ns = %p, my_ns = %p\n", myproc()->child_pid_ns,
-                  myproc()->nsproxy->pid_ns);
               return 0;
             }
         default:

@@ -27,6 +27,9 @@ void pid_ns_init()
 void pid_ns_put(struct pid_ns* pid_ns)
 {
   acquire(&pidnstable.lock);
+  if (!pid_ns->ref) {
+      panic("pid_ns_put: ref == 0");
+  }
   pid_ns->ref--;
   release(&pidnstable.lock);
 }
@@ -72,4 +75,13 @@ int pid_ns_next_pid(struct pid_ns* pid_ns) {
   int pid = pid_ns->next_pid++;
   release(&pid_ns->lock);
   return pid;
+}
+
+int pid_ns_is_max_depth(struct pid_ns* pid_ns) {
+  int depth = 0;
+  while (pid_ns) {
+    depth++;
+    pid_ns = pid_ns->parent;
+  }
+  return depth >= MAX_PID_NS_DEPTH;
 }

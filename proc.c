@@ -226,13 +226,13 @@ fork(void)
   np->cwd = idup(curproc->cwd);
   np->cwdmount = mntdup(curproc->cwdmount);
 
-  np->nsproxy = namespacedup(curproc->nsproxy);
-  struct pid_ns* cur = np->nsproxy->pid_ns;
-  if (curproc->child_pid_ns) {
-    pid_ns_put(cur);
-
+  struct pid_ns* cur = curproc->child_pid_ns;
+  if (cur) {
     cur = curproc->child_pid_ns;
-    pid_ns_get(cur);
+    np->nsproxy = namespace_replace_pid_ns(curproc->nsproxy, cur);
+  } else {
+    np->nsproxy = namespacedup(curproc->nsproxy);
+    cur = np->nsproxy->pid_ns;
   }
 
 
@@ -245,8 +245,6 @@ fork(void)
 
     np->pids[i].pid = pid_ns_next_pid(cur);
     np->pids[i].pid_ns = cur;
-    cprintf("%s - i = %d, pid = %d, pid_ns = %p\n", __func__, i,
-        np->pids[i].pid, np->pids[i].pid_ns);
     i++;
     cur = cur->parent;
   }
@@ -256,7 +254,6 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = get_pid_for_ns(np, curproc->nsproxy->pid_ns);
-  cprintf("%s - unshare - %d, pid4parent = %d\n", __func__, np->ns_pid, pid);
 
   acquire(&ptable.lock);
 
@@ -265,6 +262,20 @@ fork(void)
   release(&ptable.lock);
 
   return pid;
+}
+
+void kill_recursively(struct proc* proc) {
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->parent == proc){
+      p->killed = 1;
+      // Wake process from sleep if necessary.
+      if(p->state == SLEEPING)
+        p->state = RUNNABLE;
+      kill_recursively(p);
+      p->parent = initproc;
+    }
+  }
 }
 
 // Exit the current process.  Does not return.
@@ -297,21 +308,42 @@ exit(int status)
   mntput(curproc->cwdmount);
   curproc->cwdmount = 0;
   curproc->cwd = 0;
+  
+  // In the new namespace world, init could be another process than the
+  // initproc 
+  struct proc* procpid1 = 0;
+
+  acquire(&ptable.lock);
+
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(get_pid_for_ns(p, curproc->nsproxy->pid_ns) == 1){
+      procpid1 = p;
+      break;
+    }
+  }
+
+  if (!procpid1) {
+    panic("coundn't find pid 1");
+  }
+
 
   namespaceput(curproc->nsproxy);
-  acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
 
-  // TODO: handle pid 1 logic namespace
-
-  // Pass abandoned children to init.
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == curproc){
-      p->parent = initproc;
-      if(p->state == ZOMBIE)
-        wakeup1(initproc);
+  // If pid1 dies, all of it's children must be killed as well
+  if (curproc == procpid1) {
+    // find parent procpid1
+    kill_recursively(procpid1);
+  } else {
+    // Pass abandoned children to init.
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent == curproc){
+        p->parent = procpid1;
+        if(p->state == ZOMBIE)
+          wakeup1(initproc);
+      }
     }
   }
 

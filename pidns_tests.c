@@ -114,14 +114,12 @@ int test_simple_pidns() {
   int ret = check(fork(), "failed to fork");
   // child
   if (ret == 0) {
-    printf(1, "getpid = %d\n", getpid());
     assert_msg(getpid() == 1, "pid not equal to 1");
     exit(0);
   }
 
   // flaky test because pid can recycle. However strictly speaking pid should be
   // increasing
-  printf(1, "getpid = %d, ret = %d\n", getpid(), ret);
   assert_msg(getpid() < ret, "wrong pid");
 
   int status = child_exit_status(ret);
@@ -186,7 +184,7 @@ int loop_forever() {
 
 int sleep_1s() {
   // TODO: find a better way to sync the destruction
-  sleep(1);
+  sleep(100);
   return 0;
 }
 
@@ -279,7 +277,7 @@ int test_calling_fork_after_nspid1_dies_fails() {
   return 0;
 }
 
-int MAX_RECURSION = 32;
+int MAX_RECURSION = 4;
 
 int _test_unshare_recrusive_limit(int count) {
   if (count == 0) {
@@ -309,7 +307,8 @@ int _test_unshare_recrusive_limit(int count) {
 }
 
 int test_unshare_recrusive_limit() { 
-  _test_unshare_recrusive_limit(MAX_RECURSION);
+  // there's an init namespace so we start counting from 1
+  _test_unshare_recrusive_limit(MAX_RECURSION-1);
   return 0; 
 }
 
@@ -351,14 +350,14 @@ int main() {
   run_test(unshare_twice, "unshare_twice");
   run_test(test_simple_pidns, "test_simple_pidns");
   run_test(test_simple_pidns_fork, "test_simple_pidns_fork");
-  /* run_test(test_nested_pidns_create, "test_nested_pidns_create"); */
-  /* run_test(test_children_reaped_by_nspid1, "test_children_reaped_by_nspid1"); */
-  /* run_test(test_all_children_kill_when_nspid1_dies, */
-  /*          "test_all_children_kill_when_nspid1_dies"); */
+  run_test(test_nested_pidns_create, "test_nested_pidns_create");
+  run_test(test_children_reaped_by_nspid1, "test_children_reaped_by_nspid1");
+  run_test(test_all_children_kill_when_nspid1_dies,
+           "test_all_children_kill_when_nspid1_dies");
   /* run_test(test_calling_fork_after_nspid1_dies_fails, "test_calling_fork_after_nspid1_dies_fails"); */
   // run_test(test_calling_fork_recursive_after_nspid1_dies_fails, "test_calling_fork_recursive_after_nspid1_dies_fails");
  
-  /* run_test(test_unshare_recrusive_limit, "test_unshare_recrusive_limit"); */
+  run_test(test_unshare_recrusive_limit, "test_unshare_recrusive_limit");
 
   exit(0);
 }
