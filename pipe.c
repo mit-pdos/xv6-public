@@ -39,12 +39,10 @@ pipealloc(struct file **f0, struct file **f1)
   (*f0)->readable = 1;
   (*f0)->writable = 0;
   (*f0)->pipe = p;
-  (*f0)->mnt = 0;
   (*f1)->type = FD_PIPE;
   (*f1)->readable = 0;
   (*f1)->writable = 1;
   (*f1)->pipe = p;
-  (*f1)->mnt = 0;
   return 0;
 
 //PAGEBREAK: 20

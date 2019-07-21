@@ -3,10 +3,17 @@ struct file {
   int ref; // reference count
   char readable;
   char writable;
-  struct pipe *pipe;
-  struct inode *ip;
   uint off;
-  struct mount *mnt;
+  union {
+    // FD_PIPE
+    struct pipe *pipe;
+
+    // FD_INODE
+    struct {
+      struct inode *ip;
+      struct mount *mnt;
+    };
+  };
 };
 
 
