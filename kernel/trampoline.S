@@ -75,7 +75,7 @@ trampin:
         # user page table.
         #
         # sscratch points to where the process's p->tf is
-        # mapped into user space (TRAMPOLINE - 4096).
+        # mapped into user space, at TRAPFRAME.
         #
         
 	# swap a0 and sscratch
