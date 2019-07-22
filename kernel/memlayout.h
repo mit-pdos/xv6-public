@@ -53,3 +53,4 @@
 // map the trampoline page to the highest address,
 // in both user and kernel space.
 #define TRAMPOLINE (MAXVA - PGSIZE)
+#define KSTACK(p) ((TRAMPOLINE-PGSIZE)-p*2*PGSIZE)
