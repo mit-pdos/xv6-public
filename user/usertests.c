@@ -6,6 +6,7 @@
 #include "kernel/fcntl.h"
 #include "kernel/syscall.h"
 #include "kernel/memlayout.h"
+#include "kernel/riscv.h"
 
 char buf[8192];
 char name[3];
@@ -1883,6 +1884,28 @@ rand()
   return randstate;
 }
 
+void
+stacktest()
+{
+  int pid;
+  
+  printf(1, "stack test\n");
+  pid = fork();
+  if(pid == 0) {
+    char *sp = (char *) r_sp();
+    printf(1, "%p\n", sp);
+    sp -= 4096;
+    printf(1, "stacktest: read below stack %p\n", *sp);
+    printf(1, "stacktest: test FAILED\n");
+    exit();
+  } else if(pid < 0){
+    printf (1, "fork failed\n");
+    exit();
+  }
+  wait();
+  printf(1, "stack test done\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1912,7 +1935,8 @@ main(int argc, char *argv[])
   bsstest();
   sbrktest();
   validatetest();
-
+  stacktest();
+  
   opentest();
   writetest();
   writetest1();
