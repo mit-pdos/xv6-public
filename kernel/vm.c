@@ -405,8 +405,8 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   }
 }
 
-char
-*map_kstack(uint64 kstack)
+char *
+map_kstack(uint64 kstack)
 {
   char *k = kalloc();
   if(k == 0) {
