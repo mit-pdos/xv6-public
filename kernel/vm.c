@@ -406,13 +406,13 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 }
 
 char *
-map_kstack(uint64 kstack)
+mapkstack(uint64 kstack)
 {
   char *k = kalloc();
   if(k == 0) {
     return 0;
   }
-  if (mappages(kernel_pagetable, (uint64) kstack, PGSIZE,
+  if (mappages(kernel_pagetable, kstack, PGSIZE,
                (uint64) k, PTE_R | PTE_W) == 0) {
     kvminithart();
     return (char *) kstack;

@@ -29,8 +29,8 @@ procinit(void)
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       // Allocate a page for the kernel stack.
-      char *kstack = (char *) KSTACK((int) (p - proc));
-      if((p->kstack = map_kstack(kstack)) == 0) {
+      uint64 kstack = KSTACK((int) (p - proc));
+      if((p->kstack = mapkstack(kstack)) == 0) {
         panic("procinit");
       }
   }
