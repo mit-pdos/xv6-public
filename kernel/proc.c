@@ -46,7 +46,7 @@ cpuid()
   return id;
 }
 
-// Return this core's cpu struct.
+// Return this CPU's cpu struct.
 // Interrupts must be disabled.
 struct cpu*
 mycpu(void) {
