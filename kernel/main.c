@@ -6,9 +6,7 @@
 
 volatile static int started = 0;
 
-// Bootstrap processor starts running C code here.
-// Allocate a real stack and switch to it, first
-// doing some setup required for memory allocator to work.
+// start() jumps here in supervisor mode on all CPUs.
 void
 main()
 {

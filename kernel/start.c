@@ -17,7 +17,7 @@ extern void machinevec();
 
 // entry.S jumps here in machine mode on stack0.
 void
-mstart()
+start()
 {
   // set M Previous Privilege mode to Supervisor, for mret.
   unsigned long x = r_mstatus();
