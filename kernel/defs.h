@@ -193,7 +193,7 @@ uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
-char*           mapkstack(uint64);
+void            kmap(uint64, uint64, uint64, int);
 uint64          kernelpa(uint64);
 void            clearpteu(pagetable_t, uint64);
 

@@ -101,7 +101,7 @@ usertrapret(void)
   // set up values that trampoline.S will need when
   // the process next re-enters the kernel.
   p->tf->kernel_satp = r_satp();
-  p->tf->kernel_sp = (uint64)p->kstack + PGSIZE;
+  p->tf->kernel_sp = p->kstack + PGSIZE;
   p->tf->kernel_trap = (uint64)usertrap;
   p->tf->kernel_hartid = r_tp();
 

@@ -1884,26 +1884,30 @@ rand()
   return randstate;
 }
 
+// check that there's an invalid page beneath
+// the user stack, to catch stack overflow.
 void
 stacktest()
 {
   int pid;
+  int ppid = getpid();
   
-  printf(1, "stack test\n");
+  printf(1, "stack guard test\n");
   pid = fork();
   if(pid == 0) {
     char *sp = (char *) r_sp();
-    printf(1, "%p\n", sp);
     sp -= 4096;
+    // the *sp should cause a trap.
     printf(1, "stacktest: read below stack %p\n", *sp);
     printf(1, "stacktest: test FAILED\n");
+    kill(ppid);
     exit();
   } else if(pid < 0){
     printf (1, "fork failed\n");
     exit();
   }
   wait();
-  printf(1, "stack test done\n");
+  printf(1, "stack guard test ok\n");
 }
 
 int
