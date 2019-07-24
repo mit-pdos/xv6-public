@@ -1,6 +1,6 @@
-// Physical memory allocator, intended to allocate
-// memory for user processes, kernel stacks, page-table pages,
-// and pipe buffers. Allocates 4096-byte pages.
+// Physical memory allocator, for user processes,
+// kernel stacks, page-table pages,
+// and pipe buffers. Allocates whole 4096-byte pages.
 
 #include "types.h"
 #include "param.h"
@@ -11,8 +11,8 @@
 
 void freerange(void *pa_start, void *pa_end);
 
-extern char end[]; // first address after kernel loaded from ELF file
-                   // defined by the kernel linker script in kernel.ld
+extern char end[]; // first address after kernel.
+                   // defined by kernel.ld.
 
 struct run {
   struct run *next;
