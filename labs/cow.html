@@ -1,0 +1,99 @@
+<h2>Programming Assignment: Copy-on-Write Fork for xv6</h2>
+
+<p>
+Your task is implement copy-on-write fork in the xv6 kernel. You are
+done if your modified kernel executes both the cow and usertests
+programs successfully.
+
+<h3>The problem</h3>
+
+The fork() system call in xv6 copies all of the parent process's
+user-space memory into the child. If the parent is large, copying can
+take a long time. In addition, the copies often waste memory; in many
+cases neither the parent nor the child modifies a page, so that in
+principle they could share the same physical memory. The inefficiency
+is particularly clear if the child calls exec(), since then most of
+the copied pages are thrown away without ever being used. Of course,
+sometimes both child and parent modify memory at the same virtual
+address after a fork(), so for some pages the copying is truly needed.
+
+<h3>The solution</h3>
+
+The goal of copy-on-write (COW) fork() is to defer allocating and
+copying physical memory pages for the child until they are actually
+needed, in the hope that they may never be needed.
+
+<p>
+COW fork() creates just a pagetable for the child, with PTEs for user
+memory pointing to the parent's physical pages. COW fork() marks all
+the user PTEs in both parent and child as read-only. When either
+process tries to write one of these COW pages, the CPU will force a
+page fault. The kernel page-fault handler detects this case, allocates
+a page of physical memory for the faulting process, copies the
+original page into the new page, and modifies the relevant PTE in the
+faulting process to refer to the new page, this time with the PTE
+marked writeable. When the page fault handler returns, the user
+process will be able to write its copy of the page.
+
+<p>
+COW fork() makes freeing of the physical pages that implement user
+memory a little trickier. A given physical page may be referred to by
+multiple processes' page tables, and should be freed when the last
+reference disappears.
+
+<h3>The cow test program</h3>
+
+To help you test your implementation, we've provided an xv6 program
+called cow (source in user/cow.c). cow runs various tests, but
+even the first will fail on unmodified xv6. Thus, initially, you
+will see:
+
+<pre>
+$ cow
+simple: fork() failed
+$ 
+</pre>
+
+The "simple" test allocates more than half of available physical
+memory, and then fork()s. The fork fails because there is not enough
+free physical memory to give the child a complete copy of the parent.
+
+<p>
+When you are done, your kernel should be able to run both cow and
+usertests. That is:
+
+<pre>
+$ cow
+simple: ok
+simple: ok
+three: zombie!
+ok
+three: zombie!
+ok
+three: zombie!
+ok
+file: ok
+ALL COW TESTS PASSED
+$ usertests
+...
+ALL TESTS PASSED
+$
+</pre>
+
+<h3>Hints</h3>
+
+Here's one reasonable plan of attack. Modify uvmcopy() to map the
+parent's physical pages into the child, instead of allocating new
+pages, and clear PTE_W in the PTEs of both child and parent.
+Modify usertrap() to recognize a page fault. When a page fault occurs
+on a COW page, allocate a new page with kalloc(), copy the old page to
+the new page, and install the new page in the PTE with PTE_W set.
+Next, ensure that each physical page is freed when the last PTE
+reference to it goes away (but not before!), perhaps by implementing
+reference counts in kalloc.c. Finally, modify copyout() to use the
+same scheme as page faults when it encounters a COW page.
+
+<p>
+It may be useful to have a way to record, for each PTE, whether it is
+a COW mapping. You can use the RSW (reserved for software) bits in
+the RISC-V PTE for this.
