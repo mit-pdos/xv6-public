@@ -1,0 +1,132 @@
+<html>
+<head>
+<title>Lab: xv6 lazy page allocation</title>
+<link rel="stylesheet" href="homework.css" type="text/css" />
+</head>
+<body>
+
+<h1>Lab: xv6 lazy page allocation</h1>
+
+<p>
+One of the many neat tricks an O/S can play with page table hardware
+is lazy allocation of heap memory. Xv6 applications ask the kernel for
+heap memory using the sbrk() system call. In the kernel we've given
+you, sbrk() allocates physical memory and maps it into the process's
+virtual address space. There are programs that allocate memory but
+never use it, for example to implement large sparse arrays.
+Sophisticated kernels delay allocation of each page of memory until
+the application tries to use that page -- as signaled by a page fault.
+You'll add this lazy allocation feature to xv6 in this lab.
+
+<h2>Part One: Eliminate allocation from sbrk()</h2>
+
+Your first task is to delete page allocation from the sbrk(n) system
+call implementation, which is the function sys_sbrk() in sysproc.c. The
+sbrk(n) system call grows the process's memory size by n bytes, and
+then returns the start of the newly allocated region (i.e., the old
+size). Your new sbrk(n) should just increment the process's size
+(myproc()->sz) by n and return the old size. It should not allocate memory
+-- so you should delete the call to growproc() (but you still need to
+increase the process's size!).
+
+<p>
+Try to guess what the result of this modification will be: what will
+break?
+
+<p>
+Make this modification, boot xv6, and type <tt>echo hi</tt> to the shell.
+You should see something like this:
+
+<pre>
+init: starting sh
+$ echo hi
+usertrap(): unexpected scause 0x000000000000000f pid=3
+            sepc=0x00000000000011dc stval=0x0000000000004008
+va=0x0000000000004000 pte=0x0000000000000000
+panic: unmappages: not mapped
+</pre>
+
+The "usertrap(): ..." message is from the user trap handler in trap.c;
+it has caught an exception that it does not know how to handle. Make
+sure you understand why this page fault occurs. The "stval=0x0..04008"
+indicates that the virtual address that caused the page fault is
+0x4008.
+
+<h2>Part Two: Lazy allocation</h2>
+
+Modify the code in trap.c to respond to a page fault from user space
+by mapping a newly-allocated page of physical memory at the faulting
+address, and then returning back to user space to let the process
+continue executing. You should add your code just before
+the <tt>printf</tt> call that produced the "usertrap(): ..."
+message.
+
+<p>
+Hint: look at the printf arguments to see how to find the virtual
+address that caused the page fault.
+
+<p>
+Hint: steal code from allocuvm() in vm.c, which is what sbrk()
+calls (via growproc()).
+
+<p>
+Hint: use PGROUNDDOWN(va) to round the faulting virtual address
+down to a page boundary.
+
+<p>
+Hint: <tt>usertrapret()</tt> in order to avoid
+the <tt>printf</tt> and the <tt>myproc()->killed&nbsp;=&nbsp;1</tt>.
+
+<p>
+Hint: you'll need to call mappages().
+  
+<p>Hint: you can check whether a fault is a page fault by r_scause()
+  is 13 or 15 in trap().
+
+<p>Hint: modify unmappages() to not free pages that aren't mapped.
+
+<p>Hint: if the kernel crashes, look up sepc in kernel/kernel.asm
+
+<p>Hint: if you see the error "imcomplete type proc", include "proc.h"
+  (and "spinlock.h").
+
+<p>Hint: the first test in sbrk() allocates something large, this
+  should succeed now.
+
+<p>
+If all goes well, your lazy allocation code should result in <tt>echo
+hi</tt> working. You should get at least one page fault (and thus lazy
+allocation) in the shell, and perhaps two.
+
+<p>If you have the basics working, now turn your implementation into
+  one that handles the corner cases too.  
+
+<ul>
+
+  <li> Handle negative sbrk() arguments.  sbrktest() in usertests will
+  tests this.
+
+  <li> Handle fork correctly. sbrktst() will test this.
+
+  <li> Make sure that kernel use of not-yet-allocated user addresses
+     works; for example, if a program passes an sbrk()-allocated
+    address to write().  sbrktest() will test this.
+
+  <li> Handle out of memory correctly.  sbrktst() will test this.
+
+  <li> Handle faults on the invalid page below the stack.  stacktest()
+  in usertests will tests this.
+
+</ul>
+  
+<p>Run all tests in usertests() to make sure your solution doesn't
+break other tests.
+
+<p>
+<div class="question">
+<p><b>Submit</b>: The code that you added to trap.c in a file named <em>hwN.c</em> where <em>N</em> is the homework number as listed on the schedule.
+</div>
+
+
+</body>
+</html>

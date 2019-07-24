@@ -1577,6 +1577,8 @@ sbrktest(void)
   int i, fds[2], pids[10], pid, ppid;
   char *c, *oldbrk, scratch, *a, *b, *lastaddr, *p;
   uint64 amt;
+  int fd;
+  int n;
   #define BIG (100*1024*1024)
 
   printf(stdout, "sbrk test\n");
@@ -1706,6 +1708,50 @@ sbrktest(void)
     printf(stdout, "failed sbrk leaked memory\n");
     exit();
   }
+
+  // test running fork with the above allocated page 
+  ppid = getpid();
+  pid = fork();
+  if(pid < 0){
+    printf(stdout, "fork failed\n");
+    exit();
+  }
+
+  // test out of memory during sbrk
+  if(pid == 0){
+    // allocate a lot of memory
+    a = sbrk(0);
+    sbrk(10*BIG);
+    int n = 0;
+    for (i = 0; i < 10*BIG; i += 4096) {
+      n += *(a+i);
+    }
+    printf(stdout, "allocate a lot of memory succeeded %d\n", n);
+    kill(ppid);
+    exit();
+  }
+  wait();
+
+  // test reads from allocated memory
+  a = sbrk(4096);
+  fd = open("sbrk", O_CREATE|O_WRONLY);
+  unlink("sbrk");
+  if(fd < 0)  {
+    printf(stdout, "open sbrk failed\n");
+    exit();
+  }
+  if ((n = write(fd, a, 10)) < 0) {
+    printf(stdout, "write sbrk failed\n");
+    exit();
+  }
+  close(fd);
+
+  // test writes to allocated memory
+  a = sbrk(4096);
+  if(pipe((int *) a) != 0){
+    printf(1, "pipe() failed\n");
+    exit();
+  } 
 
   if(sbrk(0) > oldbrk)
     sbrk(-(sbrk(0) - oldbrk));
