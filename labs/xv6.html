@@ -144,18 +144,29 @@ initial file system.  You just ran one of them: <tt>ls</tt>.
 <h2>find</h2>
 
 <p>Write a simple version of the UNIX find program: find all the files
-  in a directory tree that contain a user-specified string.
+  in a directory tree whose name matches a string.  For example if the
+  file system contains a file <tt>a/b</tt>, then running find as
+  follows should produce:
+  <pre>
+    $ find . b
+    ./a/b
+    $
+  </pre>
   
 <p>Some hints:
   <ul>
     <li>Look at user/ls.c to see how to read directories.
-  </ul>  
+    <li>Use recursion to run find in sub-directories.
+    <li>Don't recurse into "." and "..".
+  </ul>
 
-<h2>Optional: modify shell</h2>
+<h2>Optional: modify the shell</h2>
   
 <p>Modify the shell to support lists of commands, separated by ";"
 
-<p>Modify the shell to support sub-shells by implementing "(" and ")" 
+<p>Modify the shell to support sub-shells by implementing "(" and ")"
+
+<p>Modify the shell to allow users to edit the command line
   
 </body>
 </html>
