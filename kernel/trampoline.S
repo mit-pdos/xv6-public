@@ -12,6 +12,7 @@
 	.section trampoline
 .globl trampout
 trampout:
+        # trampout(trapframe, pagetable)
         # switch from kernel to user.
         # usertrapret() calls here.
 	# a0: p->tf in user page table

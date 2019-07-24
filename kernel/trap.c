@@ -117,7 +117,7 @@ usertrapret(void)
   // set S Exception Program Counter to the saved user pc.
   w_sepc(p->tf->epc);
 
-  // tell trampline.S the user page table to switch to.
+  // tell trampoline.S the user page table to switch to.
   uint64 satp = MAKE_SATP(p->pagetable);
 
   // jump to trampoline.S at the top of memory, which 
