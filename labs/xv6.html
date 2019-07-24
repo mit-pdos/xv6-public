@@ -82,8 +82,8 @@ initial file system.  You just ran one of them: <tt>ls</tt>.
 
 <h2>sleep</h2>
 
-<p>Write a program that sleeps for a user-specified number of seconds,
-  compile it, and run it.
+<p>Implement the UNIX program sleep, which sleeps for a user-specified
+  number of ticks.
 
 <p>Some hints:
   <ul>
@@ -94,7 +94,7 @@ initial file system.  You just ran one of them: <tt>ls</tt>.
     <li>The argument is passed as a string; you can convert it to an
       integer using <tt>atoi</tt> (see user/ulib.c).
 
-    <li>Use the system call <tt>sleep</tt> (see user/usys.S).
+    <li>Use the system call <tt>sleep</tt> (see user/usys.S and kernel/sysproc.c).
 
     <li>Make sure <tt>main</tt> calls <tt>exit()</tt> in order to exit
     your program.
@@ -142,6 +142,14 @@ initial file system.  You just ran one of them: <tt>ls</tt>.
   </ul>
 
 <h2>find</h2>
+
+<p>Write a simple version of the UNIX find program: find all the files
+  in a directory tree that contain a user-specified string.
+  
+<p>Some hints:
+  <ul>
+    <li>Look at user/ls.c to see how to read directories.
+  </ul>  
 
 <h2>Optional: modify shell</h2>
   
