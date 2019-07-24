@@ -186,7 +186,6 @@ iinit(int dev)
 
 static struct inode* iget(uint dev, uint inum);
 
-//PAGEBREAK!
 // Allocate an inode on device dev.
 // Mark it as allocated by  giving it type type.
 // Returns an unlocked but allocated and referenced inode.
@@ -363,7 +362,6 @@ iunlockput(struct inode *ip)
   iput(ip);
 }
 
-//PAGEBREAK!
 // Inode content
 //
 // The content (data) associated with each inode is stored
@@ -450,7 +448,6 @@ stati(struct inode *ip, struct stat *st)
   st->size = ip->size;
 }
 
-//PAGEBREAK!
 // Read data from inode.
 // Caller must hold ip->lock.
 // If user_dst==1, then dst is a user virtual address;
@@ -476,7 +473,6 @@ readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)
   return n;
 }
 
-// PAGEBREAK!
 // Write data to inode.
 // Caller must hold ip->lock.
 // If user_src==1, then src is a user virtual address;
@@ -508,7 +504,6 @@ writei(struct inode *ip, int user_src, uint64 src, uint off, uint n)
   return n;
 }
 
-//PAGEBREAK!
 // Directories
 
 int
@@ -575,7 +570,6 @@ dirlink(struct inode *dp, char *name, uint inum)
   return 0;
 }
 
-//PAGEBREAK!
 // Paths
 
 // Copy the next path element from path into name.

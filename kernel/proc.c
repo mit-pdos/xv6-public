@@ -83,7 +83,6 @@ allocpid() {
   return pid;
 }
 
-//PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
@@ -192,7 +191,6 @@ uchar initcode[] = {
   0x00, 0x00, 0x00
 };
 
-//PAGEBREAK: 32
 // Set up first user process.
 void
 userinit(void)
@@ -405,7 +403,6 @@ wait(void)
   }
 }
 
-//PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:

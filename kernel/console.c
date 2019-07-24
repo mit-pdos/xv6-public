@@ -59,9 +59,6 @@ printptr(uint64 x) {
     consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
-
-//PAGEBREAK: 50
-
 // Print to the console. only understands %d, %x, %p, %s.
 void
 printf(char *fmt, ...)

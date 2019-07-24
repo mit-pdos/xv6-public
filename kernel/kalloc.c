@@ -1,5 +1,5 @@
 // Physical memory allocator, intended to allocate
-// memory for user processes, kernel stacks, page table pages,
+// memory for user processes, kernel stacks, page-table pages,
 // and pipe buffers. Allocates 4096-byte pages.
 
 #include "types.h"
@@ -39,7 +39,7 @@ freerange(void *pa_start, void *pa_end)
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
     kfree(p);
 }
-//PAGEBREAK: 21
+
 // Free the page of physical memory pointed at by v,
 // which normally should have been returned by a
 // call to kalloc().  (The exception is when
