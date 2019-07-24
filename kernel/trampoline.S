@@ -2,8 +2,8 @@
         # code to switch between user and kernel space.
         #
         # this code is mapped at the same virtual address
-        # in user and kernel space so that it can switch
-        # page tables.
+        # in user and kernel space so that it continues
+        # to work when it switches page tables.
 	#
 	# kernel.ld causes trampout to be aligned
         # to a page boundary.
@@ -18,7 +18,7 @@ trampout:
 	# a0: p->tf in user page table
         # a1: new value for satp, for user page table
 
-	# switch to user page table.
+	# switch to the user page table.
 	sfence.vma zero, zero
         csrw satp, a1
 
@@ -59,11 +59,11 @@ trampout:
         ld t5, 272(a0)
         ld t6, 280(a0)
 
-	# restore user a0, and save p->tf
+	# restore user a0, and save p->tf in sscratch
         csrrw a0, sscratch, a0
         
         # return to user mode and user pc.
-        # caller has set up sstatus and sepc.
+        # usertrapret() set up sstatus and sepc.
         sret
 
 .align 4
