@@ -37,16 +37,26 @@ start()
   w_mideleg(0xffff);
 
   // set up to receive timer interrupts in machine mode,
-  // for pre-emptive switching and (on hart 0) to drive time.
+  // which arrive at machinevec in kernelvec.S,
+  // which turns them into software interrupts for
+  // devintr() in trap.c.
   int id = r_mhartid();
-  uint64 *scratch = &mscratch0[32 * id];
+  // ask the CLINT for a timer interrupt 10,000 cycles from now.
   *(uint64*)CLINT_MTIMECMP(id) = *(uint64*)CLINT_MTIME + 10000;
+  // prepare information in scratch[] for machinevec.
+  // scratch[0..3] : space for machinevec to save registers.
+  // scratch[4] : address of CLINT MTIMECMP register.
+  // scratch[5] : desired interval (in cycles) between timer interrupts.
+  uint64 *scratch = &mscratch0[32 * id];
   scratch[4] = CLINT_MTIMECMP(id);
   scratch[5] = 10000000;
   w_mscratch((uint64)scratch);
+  // set the machine-mode trap handler.
   w_mtvec((uint64)machinevec);
+  // enable machine-mode interrupts.
   w_mstatus(r_mstatus() | MSTATUS_MIE);
-  w_mie(r_mie() |  MIE_MTIE);
+  // enable machine-mode timer interrupts.
+  w_mie(r_mie() | MIE_MTIE);
 
   // keep each CPU's hartid in its tp register, for cpuid().
   w_tp(id);

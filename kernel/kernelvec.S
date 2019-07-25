@@ -86,6 +86,11 @@ kernelvec:
 .globl machinevec
 .align 4
 machinevec:
+        # start.c has set up the memory that mscratch points to:
+        # scratch[0,8,16] : register save area.
+        # scratch[32] : address of CLINT's MTIMECMP register.
+        # scratch[40] : desired interval between interrupts.
+        
         csrrw a0, mscratch, a0
         sd a1, 0(a0)
         sd a2, 8(a0)

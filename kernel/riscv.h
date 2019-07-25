@@ -9,11 +9,11 @@ r_mhartid()
 
 // Machine Status Register, mstatus
 
-#define MSTATUS_MPP_MASK (3L << 11)
+#define MSTATUS_MPP_MASK (3L << 11) // previous mode.
 #define MSTATUS_MPP_M (3L << 11)
 #define MSTATUS_MPP_S (1L << 11)
 #define MSTATUS_MPP_U (0L << 11)
-#define MSTATUS_MIE (1L << 3)
+#define MSTATUS_MIE (1L << 3)    // machine-mode interrupt enable.
 
 static inline uint64
 r_mstatus()
@@ -95,8 +95,8 @@ w_sie(uint64 x)
 
 // Machine-mode Interrupt Enable
 #define MIE_MEIE (1L << 11) // external
-#define MIE_MTIE (1L << 7) // timer
-#define MIE_MSIE (1L << 3) // software
+#define MIE_MTIE (1L << 7)  // timer
+#define MIE_MSIE (1L << 3)  // software
 static inline uint64
 r_mie()
 {
