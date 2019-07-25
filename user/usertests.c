@@ -448,7 +448,7 @@ reparent(void)
   
   printf(1, "reparent test\n");
 
-  for(int i = 0; i < 100; i++){
+  for(int i = 0; i < 200; i++){
     int pid = fork();
     if(pid < 0){
       printf(1, "fork failed\n");
@@ -571,10 +571,10 @@ forkforkfork(void)
     exit();
   }
 
-  sleep(2);
+  sleep(20); // two seconds
   close(open("stopforking", O_CREATE|O_RDWR));
   wait();
-  sleep(1);
+  sleep(10); // one second
 
   printf(1, "forkforkfork ok\n");
 }

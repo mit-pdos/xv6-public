@@ -41,15 +41,16 @@ start()
   // which turns them into software interrupts for
   // devintr() in trap.c.
   int id = r_mhartid();
-  // ask the CLINT for a timer interrupt 10,000 cycles from now.
-  *(uint64*)CLINT_MTIMECMP(id) = *(uint64*)CLINT_MTIME + 10000;
+  // ask the CLINT for a timer interrupt.
+  int interval = 1000000; // cycles; about 1/10th second in qemu.
+  *(uint64*)CLINT_MTIMECMP(id) = *(uint64*)CLINT_MTIME + interval;
   // prepare information in scratch[] for machinevec.
   // scratch[0..3] : space for machinevec to save registers.
   // scratch[4] : address of CLINT MTIMECMP register.
   // scratch[5] : desired interval (in cycles) between timer interrupts.
   uint64 *scratch = &mscratch0[32 * id];
   scratch[4] = CLINT_MTIMECMP(id);
-  scratch[5] = 10000000;
+  scratch[5] = interval;
   w_mscratch((uint64)scratch);
   // set the machine-mode trap handler.
   w_mtvec((uint64)machinevec);
@@ -61,6 +62,6 @@ start()
   // keep each CPU's hartid in its tp register, for cpuid().
   w_tp(id);
 
-  // call main() in supervisor mode.
+  // switch to supervisor mode and jump to main().
   asm volatile("mret");
 }

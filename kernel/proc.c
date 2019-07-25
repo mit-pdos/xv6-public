@@ -294,17 +294,21 @@ reparent(struct proc *p, struct proc *parent) {
   int child_of_init = (p->parent == initproc);
 
   for(pp = proc; pp < &proc[NPROC]; pp++){
-    if (pp != p && pp != parent) {
+    // this code uses pp->parent without holding pp->lock.
+    // acquiring the lock first could cause a deadlock
+    // if pp or a child of pp were also in exit()
+    // and about to try to lock p.
+    if(pp->parent == p){
+      // pp->parent can't change between the check and the acquire()
+      // because only the parent changes it, and we're the parent.
       acquire(&pp->lock);
-      if(pp->parent == p){
-        pp->parent = initproc;
-        if(pp->state == ZOMBIE) {
-          if(!child_of_init)
-            acquire(&initproc->lock);
-          wakeup1(initproc);
-          if(!child_of_init)
-            release(&initproc->lock);
-        }
+      pp->parent = initproc;
+      if(pp->state == ZOMBIE) {
+        if(!child_of_init)
+          acquire(&initproc->lock);
+        wakeup1(initproc);
+        if(!child_of_init)
+          release(&initproc->lock);
       }
       release(&pp->lock);
     }
