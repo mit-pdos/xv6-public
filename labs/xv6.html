@@ -215,17 +215,58 @@ initial file system.  You just ran one of them: <tt>ls</tt>.
     to declare an argv.
   </ul>
 
+<h2>System call tracing</h2>
 
+<p>In this exercise you will modify the xv6 kernel to print out a line
+for each system call invocation. It is enough to print the name of the
+system call and the return value; you don't need to print the system
+call arguments.
+
+<p>
+When you're done, you should see output like this when booting
+xv6:
+
+<pre>
+...
+fork -> 2
+exec -> 0
+open -> 3
+close -> 0
+$write -> 1
+ write -> 1
+</pre>
+
+<p>
+That's init forking and execing sh, sh making sure only two file descriptors are
+open, and sh writing the $ prompt.  (Note: the output of the shell and the
+system call trace are intermixed, because the shell uses the write syscall to
+print its output.)
+
+<p> Hint: modify the syscall() function in kernel/syscall.c.
+
+<p>Run the programs you wrote in the previous exercises and inspect
+  the system call trace.  Are there many system calls?  Which systems
+  calls correspond to code in the applications you wrote above?
+    
+<p>Optional: print the system call arguments.
+  
 <h2>Optional: modify the shell</h2>
 
-<p>Modify the shell to support wait.
-  
-<p>Modify the shell to support lists of commands, separated by ";"
+There are endless ways in which the shell could be extended. Here are
+some suggestions:
 
-<p>Modify the shell to support sub-shells by implementing "(" and ")"
-
-<p>Modify the shell to allow users to edit the command line
+<ul>
   
+<li>Modify the shell to support wait.
+  
+<li>Modify the shell to support lists of commands, separated by ";"
+
+<li>Modify the shell to support sub-shells by implementing "(" and ")"
+
+<li>Modify the shell to allow users to edit the command line
+
+</ul>
+
 </body>
 </html>
 
