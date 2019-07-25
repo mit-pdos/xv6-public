@@ -4,12 +4,10 @@ struct file;
 struct inode;
 struct pipe;
 struct proc;
-struct rtcdate;
 struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
-struct sysframe;
 
 // bio.c
 void            binit(void);
@@ -59,41 +57,16 @@ void            ramdiskinit(void);
 void            ramdiskintr(void);
 void            ramdiskrw(struct buf*);
 
-// ioapic.c
-void            ioapicenable(int irq, int cpu);
-extern uchar    ioapicid;
-void            ioapicinit(void);
-
 // kalloc.c
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit();
-
-// kbd.c
-void            kbdintr(void);
-
-// lapic.c
-void            cmostime(struct rtcdate *r);
-int             lapicid(void);
-extern volatile uint*    lapic;
-void            lapiceoi(void);
-void            lapicinit(void);
-void            lapicstartap(uchar, uint);
-void            microdelay(int);
 
 // log.c
 void            initlog(int dev);
 void            log_write(struct buf*);
 void            begin_op();
 void            end_op();
-
-// mp.c
-extern int      ismp;
-void            mpinit(void);
-
-// picirq.c
-void            picenable(int);
-void            picinit(void);
 
 // pipe.c
 int             pipealloc(struct file**, struct file**);
@@ -160,9 +133,6 @@ int             fetchint(uint64, int*);
 int             fetchstr(uint64, char*, int);
 int             fetchaddr(uint64, uint64*);
 void            syscall();
-
-// timer.c
-void            timerinit(void);
 
 // trap.c
 extern uint     ticks;
