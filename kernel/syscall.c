@@ -7,19 +7,6 @@
 #include "syscall.h"
 #include "defs.h"
 
-// Fetch the int at addr from the current process.
-int
-fetchint(uint64 addr, int *ip)
-{
-  struct proc *p = myproc();
-
-  if(addr >= p->sz || addr+4 > p->sz)
-    return -1;
-  if(copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
-    return -1;
-  return 0;
-}
-
 // Fetch the uint64 at addr from the current process.
 int
 fetchaddr(uint64 addr, uint64 *ip)
