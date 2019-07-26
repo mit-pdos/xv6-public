@@ -10,7 +10,9 @@
 This lab makes you familiar with the implementation of system calls.
 In particular, you will implement a new system call: <tt>alarm</tt>.
 
-  
+<b>Note: before this lab, it would be good to have recitation section
+  on gdb</b>
+
 <h2>Warmup: system call tracing</h2>
 
 <p>In this exercise you will modify the xv6 kernel to print out a line
@@ -46,6 +48,56 @@ print its output.)
     
 <p>Optional: print the system call arguments.
 
+<h2>RISC-V assembly</h2>
+
+<p>For the alarm system call it will be important to understand RISC-V
+assembly.  Since in later labs you will also read and write assembly,
+it is important that you familiarize yourself with RISC_V assembly.
+
+<p>Add a file user/call.c with the following content, modify the
+  Makefile to add the program to the user programs, and compile (make
+  fs.img).  The Makefile also produces a binary and a readable
+  assembly a version of the program in the file user/call.asm.
+<pre>
+#include "kernel/param.h"
+#include "kernel/types.h"
+#include "kernel/stat.h"
+#include "user/user.h"
+
+int g(int x) {
+  return x+3;
+}
+
+int f(int x) {
+  return g(x);
+}
+
+void main(void) {
+  printf(1, "%d %d\n", f(8)+1, 13);
+  exit();
+}
+</pre>
+
+<p>Since you will be reading and writing RISC-V assembly code for xv6,
+  you should read through call.asm and understand it.  The instruction
+  manual for RISC-V is in the doc directory (doc/riscv-spec-v2.2.pdf).
+  Here are some questions that you should answer for yourself:
+
+  <ul>
+    <li>Which registers contain arguments to functions?  Which
+    register holds 13 in the call to <tt>printf</tt>?  Which register
+    holds the second one? Which register holds the second one?  Etc.
+
+    <li>Where is the function call to <tt>f</tt> and <tt>g</tt>
+      in <tt>main</tt>?  (Hint: compiler may inline functions.)
+
+    <li>At what address is the function <tt>printf</tt> located?
+
+    <li>What value is in the register <tt>ra</tt> in the <tt>jalr</tt>
+    to <tt>printf</tt> in <tt>main</tt>?
+  </ul>
+
+  
 <h2>alarm</h2>
 
 <p>
@@ -70,25 +122,37 @@ interrupts.
 <p>
 You should put the following example program in <tt>user/alarmtest.c</tt>:
 
+<b>XXX Insert the final program here</b>
 <pre>
 #include "kernel/param.h"
 #include "kernel/types.h"
 #include "kernel/stat.h"
+#include "kernel/riscv.h"
 #include "user/user.h"
 
+void test0();
+void test1();
 void periodic();
 
 int
 main(int argc, char *argv[])
 {
+  test0();
+  test1();
+  exit();
+}
+
+void test0()
+{
   int i;
-  printf(1, "alarmtest starting\n");
-  alarm(10, periodic);
-  for(i = 0; i < 25*500000; i++){
+  printf(1, "test0 start\n");
+  alarm(2, periodic);
+  for(i = 0; i < 1000*500000; i++){
     if((i % 250000) == 0)
       write(2, ".", 1);
   }
-  exit();
+  alarm(0, 0);
+  printf(1, "test0 done\n");
 }
 
 void
@@ -96,13 +160,37 @@ periodic()
 {
   printf(1, "alarm!\n");
 }
+
+void __attribute__ ((noinline)) foo(int i, int *j) {
+  if((i % 2500000) == 0) {
+    write(2, ".", 1);
+  }
+  *j += 1;
+}
+
+void test1() {
+  int i;
+  int j;
+
+  printf(1, "test1 start\n");
+  j = 0;
+  alarm(2, periodic);
+  for(i = 0; i < 1000*500000; i++){
+    foo(i, &j);
+  }
+  if(i != j) {
+    printf(2, "i %d should = j %d\n", i, j);
+    exit();
+  }
+  printf(1, "test1 done\n");
+}
 </pre>
 
-The program calls <tt>alarm(10, periodic)</tt> to ask the kernel to
+The program calls <tt>alarm(2, periodic1)</tt> in test0 to ask the kernel to
 force a call to <tt>periodic()</tt> every 10 ticks, and then spins for
 a while.
 After you have implemented the <tt>alarm()</tt> system call in the kernel,
-<tt>alarmtest</tt> should produce output like this:
+<tt>alarmtest</tt> should produce output like this for test0:
 
 <pre>
 $ alarmtest
@@ -125,7 +213,26 @@ alarmtest starting
 (If you only see one "alarm!", try increasing the number of iterations in
 <tt>alarmtest.c</tt> by 10x.)
 
-Here are some hints:
+<p>The main challenge will be to arrange that the handler is invoked
+  when the process's alarm interval expires.  In your usertrap, when a
+  process's alarm interval expires, you'll want to cause it to execute
+  its handler. How can you do that?  You will need to understand in
+  details how system calls work (i.e., the code in kernel/trampoline.S
+  and kernel/trap.c). Which register contains the address where
+  systems calls return to?
+
+<p>Your solution will be few lines of code, but it will be tricky to
+  write the right lines of code.  Common failure scenarios are: the
+  user program crashes or doesn't terminate.  You can see the assembly
+  code for the alarmtest program in alarmtest.asm, which will be handy
+  for debugging.
+
+<h2>Test0</h2>
+
+<p>To get started, the best strategy is to first pass test0, which
+  will force you to handle the main challenge above. Here are some
+  hints how to pass test0:
+  
 <ul>
 
 <li>You'll need to modify the Makefile to cause <tt>alarmtest.c</tt>
@@ -159,19 +266,13 @@ is handled in <tt>usertrap()</tt>; you should add some code here.
   You only want to manipulate a process's alarm ticks if there's a
   a timer interrupt; you want something like
 <pre>
-    if(which_dev == 2) ..
+    if(which_dev == 2) ...
 </pre>
 
-<p>
-In your usertrap, when a process's alarm interval expires,
-you'll want to cause it to execute its handler. How can you do that?
-
-<li>
-You need to arrange things so that, when the handler returns,
-the process resumes executing where it left off. How can you do that?
-
-<li>
-You can see the assembly code for the alarmtest program in alarmtest.asm.
+<li>Don't invoke the process's alarm function, if the processor
+  doesn't have a timer outstanding.  Note that the address of the
+  user's alarm function might be 0 (e.g., in
+  alarmtest.asm, <tt>period</tt> is at address 0).
 
 <li>
 It will be easier to look at traps with gdb if you tell qemu to use
@@ -180,17 +281,32 @@ only one CPU, which you can do by running
     make CPUS=1 qemu
 </pre>
 
-<li>
-It's OK if your solution doesn't save the caller-saved user registers
-when calling the handler.
+</ul>
 
-<ul>
+<h2>test1()</h2>
 
+<p>Test0 doesn't stress whether the handler returns correctly to
+  interrupted instruction in test0.  If you didn't get this right, it
+  is likely that test1 will fail (the program crashes or the program
+  goes into an infinite loop).
+
+<p>A main challenge is to arrange that when the handler returns, it
+  returns to the instruction where the program was interrupted.  Which
+  register contains the return address of a function?  When the kernel
+  receives an interrupt, which register contains the address of the
+  interrupted instruction?
+
+<p>Your solution is likely to require you to save and restore a
+  register.  There are several ways to do this. It is ok to change the
+  API of alarm() and have an alarm stub in user space that cooperates
+  with the kernel.
+  
 <p>
-Optional challenges: 1) Save and restore the caller-saved user registers around the
-call to handler. 2) Prevent re-entrant calls to the handler -- if a handler
-hasn't returned yet, don't call it again. 3) Assuming your code doesn't
-check that <tt>tf->esp</tt> is valid, implement a security attack on the
-kernel that exploits your alarm handler calling code.
+Optional challenges: Prevent re-entrant calls to the handler----if a
+  handler hasn't returned yet, don't call it again.
+
+
+
+  
 
   
