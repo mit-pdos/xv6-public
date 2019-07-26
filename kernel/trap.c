@@ -9,7 +9,7 @@
 struct spinlock tickslock;
 uint ticks;
 
-extern char trampout[], trampin[];
+extern char trampoline[], uservec[];
 
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
@@ -96,7 +96,7 @@ usertrapret(void)
   intr_off();
 
   // send interrupts and exceptions to trampoline.S
-  w_stvec(TRAMPOLINE + (trampin - trampout));
+  w_stvec(TRAMPOLINE + (uservec - trampoline));
 
   // set up values that trampoline.S will need when
   // the process next re-enters the kernel.

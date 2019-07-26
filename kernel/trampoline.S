@@ -5,14 +5,15 @@
         # in user and kernel space so that it continues
         # to work when it switches page tables.
 	#
-	# kernel.ld causes trampout to be aligned
+	# kernel.ld causes userret to be aligned
         # to a page boundary.
         #
-.globl usertrap
-	.section trampoline
-.globl trampout
-trampout:
-        # trampout(trapframe, pagetable)
+	.section trampsec
+.globl trampoline
+trampoline:
+.globl userret
+userret:
+        # userret(trapframe, pagetable)
         # switch from kernel to user.
         # usertrapret() calls here.
 	# a0: p->tf in user page table
@@ -67,8 +68,8 @@ trampout:
         sret
 
 .align 4
-.globl trampin
-trampin:    
+.globl uservec
+uservec:    
 	#
         # trap.c set stvec to point here, so
         # user interrupts and exceptions start here,

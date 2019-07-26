@@ -12,7 +12,7 @@ SECTIONS
   {
     *(.text)
     . = ALIGN(0x1000);
-    *(trampoline)
+    *(trampsec)
   }
 
   . = ALIGN(0x1000);
