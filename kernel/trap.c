@@ -9,7 +9,7 @@
 struct spinlock tickslock;
 uint ticks;
 
-extern char trampoline[], uservec[];
+extern char trampoline[], uservec[], userret[];
 
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
@@ -123,7 +123,8 @@ usertrapret(void)
   // jump to trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.
-  ((void (*)(uint64,uint64))TRAMPOLINE)(TRAPFRAME, satp);
+  uint64 fn = TRAMPOLINE + (userret - trampoline);
+  ((void (*)(uint64,uint64))fn)(TRAPFRAME, satp);
 }
 
 // interrupts and exceptions from kernel code go here via kernelvec,

@@ -8,8 +8,10 @@
 .globl kernelvec
 .align 4
 kernelvec:
+        // make room to save registers.
         addi sp, sp, -256
 
+        // save the registers.
         sd ra, 0(sp)
         sd sp, 8(sp)
         sd gp, 16(sp)
@@ -42,8 +44,10 @@ kernelvec:
         sd t5, 232(sp)
         sd t6, 240(sp)
 
+	// call the C trap handler in trap.c
         call kerneltrap
 
+        // restore registers.
         ld ra, 0(sp)
         ld sp, 8(sp)
         ld gp, 16(sp)
@@ -78,6 +82,7 @@ kernelvec:
 
         addi sp, sp, 256
 
+        // return to whatever we were doing in the kernel.
         sret
 
         #
