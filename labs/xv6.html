@@ -109,7 +109,7 @@ initial file system.  You just ran one of them: <tt>ls</tt>.
       $ make qemu
       ...
       init: starting sh
-      $ sleep 5
+      $ sleep 10
       (waits for a little while)
       $
     </pre>
@@ -178,16 +178,60 @@ initial file system.  You just ran one of them: <tt>ls</tt>.
     <li>Don't recurse into "." and "..".
   </ul>
 
+<p>Optional: support regular expressions in name matching.  Grep has some
+  primitive support for regular expressions.
+  
+<h2>xargs</h2>
+
+<p>Write a simple version of the UNIX xargs program: read lines from
+  standard in and run a command for each line, supplying the line as
+  arguments to the command.  The following example illustrates xarg's
+  behavior:
+  <pre>
+    $ xargs echo bye
+    hello too
+    bye hello too
+    <ctrl-d>
+    $
+  </pre>
+  Note that the command here is "echo bye" and the additional
+  arguments are "hello too", making the command "echo bye hello too",
+  which outputs "bye hello too".
+  
+<p>xargs and find combine well:
+  <pre>
+    find . b | xargs grep hello
+  </pre>
+  will run "grep hello" on each file named b in the directories below ".".
+
+<p>Some hints:
+  <ul>
+    <li>Use <tt>fork</tt> and <tt>exec</tt> system call to invoke the
+      command on each line of input.  Use <tt>wait</tt> in the parent
+      to wait for the child to complete running the command.
+    <li>Read from stdin a character at the time until the newline
+      character ('\n').
+    <li>kernel/param.h declares MAXARG, which may be useful if you need
+    to declare an argv.
+  </ul>
+
 <h2>Optional: modify the shell</h2>
 
-<p>Modify the shell to support wait.
-  
-<p>Modify the shell to support lists of commands, separated by ";"
+There are endless ways in which the shell could be extended. Here are
+some suggestions:
 
-<p>Modify the shell to support sub-shells by implementing "(" and ")"
-
-<p>Modify the shell to allow users to edit the command line
+<ul>
   
+<li>Modify the shell to support wait.
+  
+<li>Modify the shell to support lists of commands, separated by ";"
+
+<li>Modify the shell to support sub-shells by implementing "(" and ")"
+
+<li>Modify the shell to allow users to edit the command line
+
+</ul>
+
 </body>
 </html>
 

@@ -1,0 +1,196 @@
+<html>
+<head>
+<title>Lab: system calls</title>
+<link rel="stylesheet" href="homework.css" type="text/css" />
+</head>
+<body>
+
+<h1>Lab: system calls</h1>
+
+This lab makes you familiar with the implementation of system calls.
+In particular, you will implement a new system call: <tt>alarm</tt>.
+
+  
+<h2>Warmup: system call tracing</h2>
+
+<p>In this exercise you will modify the xv6 kernel to print out a line
+for each system call invocation. It is enough to print the name of the
+system call and the return value; you don't need to print the system
+call arguments.
+
+<p>
+When you're done, you should see output like this when booting
+xv6:
+
+<pre>
+...
+fork -> 2
+exec -> 0
+open -> 3
+close -> 0
+$write -> 1
+ write -> 1
+</pre>
+
+<p>
+That's init forking and execing sh, sh making sure only two file descriptors are
+open, and sh writing the $ prompt.  (Note: the output of the shell and the
+system call trace are intermixed, because the shell uses the write syscall to
+print its output.)
+
+<p> Hint: modify the syscall() function in kernel/syscall.c.
+
+<p>Run the programs you wrote in the lab and inspect the system call
+  trace.  Are there many system calls?  Which systems calls correspond
+  to code in the applications you wrote above?
+    
+<p>Optional: print the system call arguments.
+
+<h2>alarm</h2>
+
+<p>
+In this exercise you'll add a feature to xv6 that periodically alerts
+a process as it uses CPU time. This might be useful for compute-bound
+processes that want to limit how much CPU time they chew up, or for
+processes that want to compute but also want to take some periodic
+action. More generally, you'll be implementing a primitive form of
+user-level interrupt/fault handlers; you could use something similar
+to handle page faults in the application, for example.
+
+<p>
+You should add a new <tt>alarm(interval, handler)</tt> system call.
+If an application calls <tt>alarm(n, fn)</tt>, then after every
+<tt>n</tt> "ticks" of CPU time that the program consumes, the kernel
+will cause application function
+<tt>fn</tt> to be called. When <tt>fn</tt> returns, the application
+will resume where it left off. A tick is a fairly arbitrary unit of
+time in xv6, determined by how often a hardware timer generates
+interrupts.
+
+<p>
+You should put the following example program in <tt>user/alarmtest.c</tt>:
+
+<pre>
+#include "kernel/param.h"
+#include "kernel/types.h"
+#include "kernel/stat.h"
+#include "user/user.h"
+
+void periodic();
+
+int
+main(int argc, char *argv[])
+{
+  int i;
+  printf(1, "alarmtest starting\n");
+  alarm(10, periodic);
+  for(i = 0; i < 25*500000; i++){
+    if((i % 250000) == 0)
+      write(2, ".", 1);
+  }
+  exit();
+}
+
+void
+periodic()
+{
+  printf(1, "alarm!\n");
+}
+</pre>
+
+The program calls <tt>alarm(10, periodic)</tt> to ask the kernel to
+force a call to <tt>periodic()</tt> every 10 ticks, and then spins for
+a while.
+After you have implemented the <tt>alarm()</tt> system call in the kernel,
+<tt>alarmtest</tt> should produce output like this:
+
+<pre>
+$ alarmtest
+alarmtest starting
+.....alarm!
+....alarm!
+.....alarm!
+......alarm!
+.....alarm!
+....alarm!
+....alarm!
+......alarm!
+.....alarm!
+...alarm!
+...$ 
+</pre>
+<p>
+
+<p>
+(If you only see one "alarm!", try increasing the number of iterations in
+<tt>alarmtest.c</tt> by 10x.)
+
+Here are some hints:
+<ul>
+
+<li>You'll need to modify the Makefile to cause <tt>alarmtest.c</tt>
+to be compiled as an xv6 user program.
+
+<li>The right declaration to put in <tt>user/user.h</tt> is:
+<pre>
+    int alarm(int ticks, void (*handler)());
+</pre>
+
+<li>Update <tt>kernel/syscall.h</tt> and <tt>user/usys.S</tt> to
+allow <tt>alarmtest</tt> to invoke the alarm system call.
+
+<li>Your <tt>sys_alarm()</tt> should store the alarm interval and the
+pointer to the handler function in new fields in the <tt>proc</tt>
+structure; see <tt>kernel/proc.h</tt>.
+
+<li>
+You'll need to keep track of how many ticks have passed since
+the last call
+(or are left until the next call) to a process's alarm handler;
+you'll need a new field in <tt>struct&nbsp;proc</tt> for this too.
+You can initialize <tt>proc</tt> fields in <tt>allocproc()</tt>
+in <tt>proc.c</tt>.
+
+<li>
+Every tick, the hardware clock forces an interrupt, which
+is handled in <tt>usertrap()</tt>; you should add some code here.
+
+<li>
+  You only want to manipulate a process's alarm ticks if there's a
+  a timer interrupt; you want something like
+<pre>
+    if(which_dev == 2) ..
+</pre>
+
+<p>
+In your usertrap, when a process's alarm interval expires,
+you'll want to cause it to execute its handler. How can you do that?
+
+<li>
+You need to arrange things so that, when the handler returns,
+the process resumes executing where it left off. How can you do that?
+
+<li>
+You can see the assembly code for the alarmtest program in alarmtest.asm.
+
+<li>
+It will be easier to look at traps with gdb if you tell qemu to use
+only one CPU, which you can do by running
+<pre>
+    make CPUS=1 qemu
+</pre>
+
+<li>
+It's OK if your solution doesn't save the caller-saved user registers
+when calling the handler.
+
+<ul>
+
+<p>
+Optional challenges: 1) Save and restore the caller-saved user registers around the
+call to handler. 2) Prevent re-entrant calls to the handler -- if a handler
+hasn't returned yet, don't call it again. 3) Assuming your code doesn't
+check that <tt>tf->esp</tt> is valid, implement a security attack on the
+kernel that exploits your alarm handler calling code.
+
+  
