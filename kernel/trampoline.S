@@ -25,10 +25,10 @@ uservec:
         #
         
 	# swap a0 and sscratch
-        # so that a0 is p->tf
+        # so that a0 is TRAPFRAME
         csrrw a0, sscratch, a0
 
-        # save the user registers in p->tf
+        # save the user registers in TRAPFRAME
         sd ra, 40(a0)
         sd sp, 48(a0)
         sd gp, 56(a0)
@@ -86,22 +86,22 @@ uservec:
 
 .globl userret
 userret:
-        # userret(trapframe, pagetable)
+        # userret(TRAPFRAME, pagetable)
         # switch from kernel to user.
         # usertrapret() calls here.
-	# a0: p->tf in user page table
-        # a1: new value for satp, for user page table
+	# a0: TRAPFRAME, in user page table
+        # a1: user page table, for satp
 
 	# switch to the user page table.
 	sfence.vma zero, zero
         csrw satp, a1
 
         # put the saved user a0 in sscratch, so we
-        # can swap it with our a0 (p->tf) in the last step.
+        # can swap it with our a0 (TRAPFRAME) in the last step.
         ld t0, 112(a0)
         csrw sscratch, t0
 
-        # restore all but a0 from p->tf
+        # restore all but a0 from TRAPFRAME
         ld ra, 40(a0)
         ld sp, 48(a0)
         ld gp, 56(a0)
@@ -133,7 +133,7 @@ userret:
         ld t5, 272(a0)
         ld t6, 280(a0)
 
-	# restore user a0, and save p->tf in sscratch
+	# restore user a0, and save TRAPFRAME in sscratch
         csrrw a0, sscratch, a0
         
         # return to user mode and user pc.

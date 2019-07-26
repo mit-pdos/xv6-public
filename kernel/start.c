@@ -12,8 +12,8 @@ __attribute__ ((aligned (16))) char stack0[4096 * NCPU];
 // scratch area for timer interrupt, one per CPU.
 uint64 mscratch0[NCPU * 32];
 
-// assembly code in kernelvec for machine-mode timer interrupt.
-extern void machinevec();
+// assembly code in kernelvec.S for machine-mode timer interrupt.
+extern void timervec();
 
 // entry.S jumps here in machine mode on stack0.
 void
@@ -36,16 +36,17 @@ start()
   w_medeleg(0xffff);
   w_mideleg(0xffff);
 
+  int id = r_mhartid();
+
   // set up to receive timer interrupts in machine mode,
-  // which arrive at machinevec in kernelvec.S,
+  // which arrive at timervec in kernelvec.S,
   // which turns them into software interrupts for
   // devintr() in trap.c.
-  int id = r_mhartid();
   // ask the CLINT for a timer interrupt.
   int interval = 1000000; // cycles; about 1/10th second in qemu.
   *(uint64*)CLINT_MTIMECMP(id) = *(uint64*)CLINT_MTIME + interval;
-  // prepare information in scratch[] for machinevec.
-  // scratch[0..3] : space for machinevec to save registers.
+  // prepare information in scratch[] for timervec.
+  // scratch[0..3] : space for timervec to save registers.
   // scratch[4] : address of CLINT MTIMECMP register.
   // scratch[5] : desired interval (in cycles) between timer interrupts.
   uint64 *scratch = &mscratch0[32 * id];
@@ -53,7 +54,7 @@ start()
   scratch[5] = interval;
   w_mscratch((uint64)scratch);
   // set the machine-mode trap handler.
-  w_mtvec((uint64)machinevec);
+  w_mtvec((uint64)timervec);
   // enable machine-mode interrupts.
   w_mstatus(r_mstatus() | MSTATUS_MIE);
   // enable machine-mode timer interrupts.

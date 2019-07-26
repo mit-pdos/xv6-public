@@ -257,7 +257,7 @@ r_time()
   return x;
 }
 
-// enable interrupts
+// enable device interrupts
 static inline void
 intr_on()
 {
@@ -265,14 +265,14 @@ intr_on()
   w_sstatus(r_sstatus() | SSTATUS_SIE);
 }
 
-// disable interrupts
+// disable device interrupts
 static inline void
 intr_off()
 {
   w_sstatus(r_sstatus() & ~SSTATUS_SIE);
 }
 
-// are interrupts enabled?
+// are device interrupts enabled?
 static inline int
 intr_get()
 {

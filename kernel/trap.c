@@ -98,12 +98,12 @@ usertrapret(void)
   // send interrupts and exceptions to trampoline.S
   w_stvec(TRAMPOLINE + (uservec - trampoline));
 
-  // set up values that trampoline.S will need when
+  // set up values that uservec will need when
   // the process next re-enters the kernel.
-  p->tf->kernel_satp = r_satp();
-  p->tf->kernel_sp = p->kstack + PGSIZE;
+  p->tf->kernel_satp = r_satp();         // kernel page table
+  p->tf->kernel_sp = p->kstack + PGSIZE; // process's kernel stack
   p->tf->kernel_trap = (uint64)usertrap;
-  p->tf->kernel_hartid = r_tp();
+  p->tf->kernel_hartid = r_tp();         // hartid for cpuid()
 
   // set up the registers that trampoline.S's sret will use
   // to get to user space.
@@ -193,7 +193,7 @@ devintr()
     return 1;
   } else if(scause == 0x8000000000000001){
     // software interrupt from a machine-mode timer interrupt,
-    // forwarded by machinevec in kernelvec.S.
+    // forwarded by timervec in kernelvec.S.
 
     if(cpuid() == 0){
       clockintr();
