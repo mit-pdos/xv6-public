@@ -192,6 +192,8 @@ consoleinit(void)
 
   uartinit();
 
-  devsw[CONSOLE].write = consolewrite;
+  // connect read and write system calls
+  // to consoleread and consolewrite.
   devsw[CONSOLE].read = consoleread;
+  devsw[CONSOLE].write = consolewrite;
 }
