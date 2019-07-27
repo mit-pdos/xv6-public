@@ -43,6 +43,7 @@ uartinit(void)
   *R(1) = 0x01;
 }
 
+// write one output character to the UART.
 void
 uartputc(int c)
 {
@@ -52,6 +53,8 @@ uartputc(int c)
   *R(0) = c;
 }
 
+// read one input character from the UART.
+// return -1 if none is waiting.
 int
 uartgetc(void)
 {
@@ -63,6 +66,7 @@ uartgetc(void)
   }
 }
 
+// trap.c calls here when the uart interrupts.
 void
 uartintr(void)
 {
