@@ -1,6 +1,7 @@
-// Console input and output.
-// Input is from the keyboard or serial port.
-// Output is written to the screen and serial port.
+//
+// Console input and output, to the uart.
+// Implements erase/kill processing.
+//
 
 #include <stdarg.h>
 
@@ -15,122 +16,13 @@
 #include "defs.h"
 #include "proc.h"
 
-static void consputc(int);
-
-static volatile int panicked = 0;
-
-static struct {
-  struct spinlock lock;
-  int locking;
-} cons;
-
-static char digits[] = "0123456789abcdef";
-
-static void
-printint(int xx, int base, int sign)
-{
-  char buf[16];
-  int i;
-  uint x;
-
-  if(sign && (sign = xx < 0))
-    x = -xx;
-  else
-    x = xx;
-
-  i = 0;
-  do{
-    buf[i++] = digits[x % base];
-  }while((x /= base) != 0);
-
-  if(sign)
-    buf[i++] = '-';
-
-  while(--i >= 0)
-    consputc(buf[i]);
-}
-
-static void
-printptr(uint64 x) {
-  int i;
-  consputc('0');
-  consputc('x');
-  for (i = 0; i < (sizeof(uint64) * 2); i++, x <<= 4)
-    consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
-}
-
-// Print to the console. only understands %d, %x, %p, %s.
-void
-printf(char *fmt, ...)
-{
-  va_list ap;
-  int i, c, locking;
-  char *s;
-
-  locking = cons.locking;
-  if(locking)
-    acquire(&cons.lock);
-
-  if (fmt == 0)
-    panic("null fmt");
-
-  va_start(ap, fmt);
-  for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
-    if(c != '%'){
-      consputc(c);
-      continue;
-    }
-    c = fmt[++i] & 0xff;
-    if(c == 0)
-      break;
-    switch(c){
-    case 'd':
-      printint(va_arg(ap, int), 10, 1);
-      break;
-    case 'x':
-      printint(va_arg(ap, int), 16, 1);
-      break;
-    case 'p':
-      printptr(va_arg(ap, uint64));
-      break;
-    case 's':
-      if((s = va_arg(ap, char*)) == 0)
-        s = "(null)";
-      for(; *s; s++)
-        consputc(*s);
-      break;
-    case '%':
-      consputc('%');
-      break;
-    default:
-      // Print unknown % sequence to draw attention.
-      consputc('%');
-      consputc(c);
-      break;
-    }
-  }
-
-  if(locking)
-    release(&cons.lock);
-}
-
-void
-panic(char *s)
-{
-  cons.locking = 0;
-  printf("panic: ");
-  printf(s);
-  printf("\n");
-  panicked = 1; // freeze other CPU
-  for(;;)
-    ;
-}
-
 #define BACKSPACE 0x100
 
 void
 consputc(int c)
 {
+  extern volatile int panicked; // from printf.c
+
   if(panicked){
     for(;;)
       ;
@@ -142,13 +34,16 @@ consputc(int c)
     uartputc(c);
 }
 
-#define INPUT_BUF 128
 struct {
+  struct spinlock lock;
+  
+  // input
+#define INPUT_BUF 128
   char buf[INPUT_BUF];
   uint r;  // Read index
   uint w;  // Write index
   uint e;  // Edit index
-} input;
+} cons;
 
 #define C(x)  ((x)-'@')  // Contro
 
@@ -162,19 +57,19 @@ consoleread(int user_dst, uint64 dst, int n)
   target = n;
   acquire(&cons.lock);
   while(n > 0){
-    while(input.r == input.w){
+    while(cons.r == cons.w){
       if(myproc()->killed){
         release(&cons.lock);
         return -1;
       }
-      sleep(&input.r, &cons.lock);
+      sleep(&cons.r, &cons.lock);
     }
-    c = input.buf[input.r++ % INPUT_BUF];
+    c = cons.buf[cons.r++ % INPUT_BUF];
     if(c == C('D')){  // EOF
       if(n < target){
         // Save ^D for next time, to make sure
         // caller gets a 0-byte result.
-        input.r--;
+        cons.r--;
       }
       break;
     }
@@ -221,26 +116,26 @@ consoleintr(int c)
     doprocdump = 1;
     break;
   case C('U'):  // Kill line.
-    while(input.e != input.w &&
-          input.buf[(input.e-1) % INPUT_BUF] != '\n'){
-      input.e--;
+    while(cons.e != cons.w &&
+          cons.buf[(cons.e-1) % INPUT_BUF] != '\n'){
+      cons.e--;
       consputc(BACKSPACE);
     }
     break;
   case C('H'): case '\x7f':  // Backspace
-    if(input.e != input.w){
-      input.e--;
+    if(cons.e != cons.w){
+      cons.e--;
       consputc(BACKSPACE);
     }
     break;
   default:
-    if(c != 0 && input.e-input.r < INPUT_BUF){
+    if(c != 0 && cons.e-cons.r < INPUT_BUF){
       c = (c == '\r') ? '\n' : c;
-      input.buf[input.e++ % INPUT_BUF] = c;
+      cons.buf[cons.e++ % INPUT_BUF] = c;
       consputc(c);
-      if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
-        input.w = input.e;
-        wakeup(&input.r);
+      if(c == '\n' || c == C('D') || cons.e == cons.r+INPUT_BUF){
+        cons.w = cons.e;
+        wakeup(&cons.r);
       }
     }
     break;
@@ -255,9 +150,8 @@ consoleintr(int c)
 void
 consoleinit(void)
 {
-  initlock(&cons.lock, "console");
+  initlock(&cons.lock, "cons");
 
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;
-  cons.locking = 1;
 }

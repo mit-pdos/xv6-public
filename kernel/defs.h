@@ -17,9 +17,8 @@ void            bwrite(struct buf*);
 
 // console.c
 void            consoleinit(void);
-void            printf(char*, ...);
 void            consoleintr(int);
-void            panic(char*) __attribute__((noreturn));
+void            consputc(int);
 
 // exec.c
 int             exec(char*, char**);
@@ -73,6 +72,11 @@ int             pipealloc(struct file**, struct file**);
 void            pipeclose(struct pipe*, int);
 int             piperead(struct pipe*, uint64, int);
 int             pipewrite(struct pipe*, uint64, int);
+
+// printf.c
+void            printf(char*, ...);
+void            panic(char*) __attribute__((noreturn));
+void            printfinit(void);
 
 // proc.c
 int             cpuid(void);
