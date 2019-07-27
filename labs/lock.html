@@ -1,0 +1,81 @@
+<html>
+<head>
+<title>Lab: locks</title>
+<link rel="stylesheet" href="homework.css" type="text/css" />
+</head>
+<body>
+
+<h1>Lab: locks</h1>
+
+<p>In this lab you will try to avoid lock contention for certain
+workloads.
+
+<h2>lock contention</h2>
+
+<p>The program user/kalloctest stresses xv6's memory allocator: three
+  processes grow and shrink there address space, which will results in
+  many calls to <tt>kalloc</tt> and <tt>kfree</tt>,
+  respectively.  <tt>kalloc</tt> and <tt>kfree</tt>
+  obtain <tt>kmem.lock</tt>.  To see if there is lock contention for
+  <tt>kmem.lock</tt> replace the call to <tt>acquire</tt>
+  in <tt>kalloc</tt> with the following code:
+
+  <pre>
+    while(!tryacquire(&kmem.lock)) {
+      printf("!");
+    }
+  </pre>
+
+<p><tt>tryacquire</tt> tries to acquire <tt>kmem.lock</tt>: if the
+  lock is taking it returns false (0); otherwise, it returns true (1)
+  and with the lock acquired.  Your first job is to
+  implement <tt>tryacquire</tt> in kernel/spinlock.c.
+
+<p>A few hints:
+  <ul>
+    <li>look at <tt>acquire</tt>.
+    <li>don't forget to restore interrupts when acquision fails
+    <li>Add tryacquire's signature to defs.h.
+  </ul>
+
+<p>Run usertests to see if you didn't break anything.  Note that
+  usertests never prints "!"; there is never contention
+  for <tt>kmem.lock</tt>.  The caller is always able to immediately
+  acquire the lock and never has to wait because some other process
+  has the lock.
+
+<p>Now run kalloctest.  You should see quite a number of "!" on the
+  console.  kalloctest causes many processes to contend on
+  the <tt>kmem.lock</tt>.  This lock contention is a bit artificial,
+  because qemu is simulating 3 processors, but it is likely on real
+  hardware, there would be contention too.
+  
+<h2>Removing lock contention</h2>
+
+<p>The root cause of lock contention in kalloctest is that there is a
+  single free list, protected by a single lock.  To remove lock
+  contention, you will have to redesign the memory allocator to avoid
+  a single lock and list.  The basic idea is to maintain a free list
+  per CPU, each list with its own lock. Allocations and frees on each
+  CPU can run in parallel, because each CPU will operate on a
+  different list.
+  
+<p> The main challenge will be to deal with the case that one CPU runs
+  out of memory, but another CPU has still free memory; in that case,
+  the one CPU must "steal" part of the other CPU's free list.
+  Stealing may introduce lock contention, but that may be acceptable
+  because it may happen infrequently.
+
+<p>Your job is to implement per-CPU freelists and stealing when one
+  CPU is out of memory.  Run kalloctest() to see if your
+  implementation has removed lock contention.
+
+<p>Some hints:
+  <ul>
+    <li>Initially divide the free memory equally among the different CPUs.
+  </ul>
+
+<p>Run usertests to see if you don't break anything.
+  
+</body>
+</html>
