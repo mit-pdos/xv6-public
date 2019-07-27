@@ -8,10 +8,10 @@
 <h1>Lab: system calls</h1>
 
 This lab makes you familiar with the implementation of system calls.
-In particular, you will implement a new system call: <tt>alarm</tt>.
+In particular, you will implement a new system
+calls: <tt>sigalarm</tt> and <tt>sigreturn</tt>.
 
-<b>Note: before this lab, it would be good to have recitation section
-  on gdb</b>
+<b>Note: before this lab, it would be good to have recitation section on gdb and understanding assembly</b>
 
 <h2>Warmup: system call tracing</h2>
 
@@ -78,10 +78,9 @@ void main(void) {
 }
 </pre>
 
-<p>Since you will be reading and writing RISC-V assembly code for xv6,
-  you should read through call.asm and understand it.  The instruction
-  manual for RISC-V is in the doc directory (doc/riscv-spec-v2.2.pdf).
-  Here are some questions that you should answer for yourself:
+<p>Read through call.asm and understand it.  The instruction manual
+  for RISC-V is in the doc directory (doc/riscv-spec-v2.2.pdf).  Here
+  are some questions that you should answer for yourself:
 
   <ul>
     <li>Which registers contain arguments to functions?  Which
@@ -110,8 +109,8 @@ user-level interrupt/fault handlers; you could use something similar
 to handle page faults in the application, for example.
 
 <p>
-You should add a new <tt>alarm(interval, handler)</tt> system call.
-If an application calls <tt>alarm(n, fn)</tt>, then after every
+You should add a new <tt>sigalarm(interval, handler)</tt> system call.
+If an application calls <tt>sigalarm(n, fn)</tt>, then after every
 <tt>n</tt> "ticks" of CPU time that the program consumes, the kernel
 will cause application function
 <tt>fn</tt> to be called. When <tt>fn</tt> returns, the application
@@ -186,12 +185,13 @@ void test1() {
 }
 </pre>
 
-The program calls <tt>alarm(2, periodic1)</tt> in test0 to ask the kernel to
-force a call to <tt>periodic()</tt> every 10 ticks, and then spins for
-a while.
-After you have implemented the <tt>alarm()</tt> system call in the kernel,
-<tt>alarmtest</tt> should produce output like this for test0:
+The program calls <tt>sigalarm(2, periodic1)</tt> in <tt>test0</tt> to
+ask the kernel to force a call to <tt>periodic()</tt> every 2 ticks,
+and then spins for a while.  After you have implemented
+the <tt>sigalarm()</tt> system call in the kernel,
+<tt>alarmtest</tt> should produce output like this for <tt>test0</tt>:
 
+<b>Update output for final usertests.c</b>
 <pre>
 $ alarmtest
 alarmtest starting
@@ -227,7 +227,7 @@ alarmtest starting
   code for the alarmtest program in alarmtest.asm, which will be handy
   for debugging.
 
-<h2>Test0</h2>
+<h2>Test0: invoke handler</h2>
 
 <p>To get started, the best strategy is to first pass test0, which
   will force you to handle the main challenge above. Here are some
@@ -240,52 +240,48 @@ to be compiled as an xv6 user program.
 
 <li>The right declaration to put in <tt>user/user.h</tt> is:
 <pre>
-    int alarm(int ticks, void (*handler)());
+    int sigalarm(int ticks, void (*handler)());
 </pre>
 
-<li>Update <tt>kernel/syscall.h</tt> and <tt>user/usys.S</tt> to
-allow <tt>alarmtest</tt> to invoke the alarm system call.
+<li>Update kernel/syscall.h and user/usys.S (update usys.pl to update
+  usys.S) to allow <tt>alarmtest</tt> to invoke the sigalarm system
+  call.
 
-<li>Your <tt>sys_alarm()</tt> should store the alarm interval and the
-pointer to the handler function in new fields in the <tt>proc</tt>
+<li>Your <tt>sys_sigalarm()</tt> should store the alarm interval and
+the pointer to the handler function in new fields in the <tt>proc</tt>
 structure; see <tt>kernel/proc.h</tt>.
 
-<li>
-You'll need to keep track of how many ticks have passed since
-the last call
-(or are left until the next call) to a process's alarm handler;
-you'll need a new field in <tt>struct&nbsp;proc</tt> for this too.
-You can initialize <tt>proc</tt> fields in <tt>allocproc()</tt>
+<li>You'll need to keep track of how many ticks have passed since the
+last call (or are left until the next call) to a process's alarm
+handler; you'll need a new field in <tt>struct&nbsp;proc</tt> for this
+too.  You can initialize <tt>proc</tt> fields in <tt>allocproc()</tt>
 in <tt>proc.c</tt>.
 
-<li>
-Every tick, the hardware clock forces an interrupt, which
-is handled in <tt>usertrap()</tt>; you should add some code here.
+<li>Every tick, the hardware clock forces an interrupt, which is handled
+in <tt>usertrap()</tt>; you should add some code here.
 
-<li>
-  You only want to manipulate a process's alarm ticks if there's a
-  a timer interrupt; you want something like
+<li>You only want to manipulate a process's alarm ticks if there's a a
+  timer interrupt; you want something like
 <pre>
     if(which_dev == 2) ...
 </pre>
 
-<li>Don't invoke the process's alarm function, if the processor
-  doesn't have a timer outstanding.  Note that the address of the
-  user's alarm function might be 0 (e.g., in
-  alarmtest.asm, <tt>period</tt> is at address 0).
+<li>Only invoke the process's alarm function, if the process has a
+  timer outstanding.  Note that the address of the user's alarm
+  function might be 0 (e.g., in alarmtest.asm, <tt>periodic</tt> is at
+  address 0).
 
-<li>
-It will be easier to look at traps with gdb if you tell qemu to use
-only one CPU, which you can do by running
+<li>It will be easier to look at traps with gdb if you tell qemu to
+use only one CPU, which you can do by running
 <pre>
     make CPUS=1 qemu
 </pre>
 
 </ul>
 
-<h2>test1()</h2>
+<h2>test1(): resume interrupted code</h2>
 
-<p>Test0 doesn't stress whether the handler returns correctly to
+<p>Test0 doesn't tests whether the handler returns correctly to
   interrupted instruction in test0.  If you didn't get this right, it
   is likely that test1 will fail (the program crashes or the program
   goes into an infinite loop).
@@ -296,16 +292,30 @@ only one CPU, which you can do by running
   receives an interrupt, which register contains the address of the
   interrupted instruction?
 
-<p>Your solution is likely to require you to save and restore a
-  register.  There are several ways to do this. It is ok to change the
-  API of alarm() and have an alarm stub in user space that cooperates
-  with the kernel.
+<p>Your solution is likely to require you to save and restore
+  registers---what registers do you need to save and restore to resume
+  the interrupted code correctly? (Hint: it will be many).  There are
+  several ways to do this, but one convenient way is to add another
+  system call <tt>sigreturn</tt> that the handler calls when it is
+  done. Your job is to arrange that <tt>sigreturn</tt> returns to the
+  interrupted code.
+
+  Some hints:
+  <ul>
+    <li>Add the <tt>sigreturn</tt> system call, following the changes
+      you made to support <tt>sigalarm</tt>.
+      
+    <li>Save enough state when the timer goes in the <tt>struct
+      proc</tt> so that <tt>sigreturn</tt> can return to the
+      interrupted code.
+
+    <li>Prevent re-entrant calls to the handler----if a handler hasn't
+      returned yet, don't call it again.
+  <ul>
   
-<p>
-Optional challenges: Prevent re-entrant calls to the handler----if a
-  handler hasn't returned yet, don't call it again.
-
-
+<p>Once you pass <tt>test0</tt> and <tt>test1</tt>, run usertests to
+  make sure you didn't break any other parts of the kernel.
+  
 
   
 
