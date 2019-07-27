@@ -1,6 +1,12 @@
 //
 // Console input and output, to the uart.
-// Implements erase/kill processing.
+// Reads are line at a time.
+// Implements special input characters:
+//   newline -- end of line
+//   control-h -- backspace
+//   control-u -- kill line
+//   control-d -- end of file
+//   control-p -- print process list
 //
 
 #include <stdarg.h>
@@ -17,7 +23,11 @@
 #include "proc.h"
 
 #define BACKSPACE 0x100
+#define C(x)  ((x)-'@')  // Control-x
 
+//
+// send one character to the uart.
+//
 void
 consputc(int c)
 {
@@ -29,9 +39,11 @@ consputc(int c)
   }
 
   if(c == BACKSPACE){
+    // if the user typed backspace, erase the character.
     uartputc('\b'); uartputc(' '); uartputc('\b');
-  } else
+  } else {
     uartputc(c);
+  }
 }
 
 struct {
@@ -45,47 +57,9 @@ struct {
   uint e;  // Edit index
 } cons;
 
-#define C(x)  ((x)-'@')  // Contro
-
-int
-consoleread(int user_dst, uint64 dst, int n)
-{
-  uint target;
-  int c;
-  char buf[1];
-
-  target = n;
-  acquire(&cons.lock);
-  while(n > 0){
-    while(cons.r == cons.w){
-      if(myproc()->killed){
-        release(&cons.lock);
-        return -1;
-      }
-      sleep(&cons.r, &cons.lock);
-    }
-    c = cons.buf[cons.r++ % INPUT_BUF];
-    if(c == C('D')){  // EOF
-      if(n < target){
-        // Save ^D for next time, to make sure
-        // caller gets a 0-byte result.
-        cons.r--;
-      }
-      break;
-    }
-    buf[0] = c;
-    if(either_copyout(user_dst, dst, &buf[0], 1) == -1)
-      break;
-    dst++;
-    --n;
-    if(c == '\n')
-      break;
-  }
-  release(&cons.lock);
-
-  return target - n;
-}
-
+//
+// user write()s to the console go here.
+//
 int
 consolewrite(int user_src, uint64 src, int n)
 {
@@ -103,17 +77,76 @@ consolewrite(int user_src, uint64 src, int n)
   return n;
 }
 
+//
+// user read()s from the console go here.
+// copy (up to) a whole input line to dst.
+// user_dist indicates whether dst is a user
+// or kernel address.
+//
+int
+consoleread(int user_dst, uint64 dst, int n)
+{
+  uint target;
+  int c;
+  char cbuf;
+
+  target = n;
+  acquire(&cons.lock);
+  while(n > 0){
+    // wait until interrupt handler has put some
+    // input into cons.buffer.
+    while(cons.r == cons.w){
+      if(myproc()->killed){
+        release(&cons.lock);
+        return -1;
+      }
+      sleep(&cons.r, &cons.lock);
+    }
+
+    c = cons.buf[cons.r++ % INPUT_BUF];
+
+    if(c == C('D')){  // end-of-file
+      if(n < target){
+        // Save ^D for next time, to make sure
+        // caller gets a 0-byte result.
+        cons.r--;
+      }
+      break;
+    }
+
+    // copy the input byte to the user-space buffer.
+    cbuf = c;
+    if(either_copyout(user_dst, dst, &cbuf, 1) == -1)
+      break;
+
+    dst++;
+    --n;
+
+    if(c == '\n'){
+      // a whole line has arrived, return to
+      // the user-level read().
+      break;
+    }
+  }
+  release(&cons.lock);
+
+  return target - n;
+}
+
+//
+// the uart interrupt handler, uartintr(), calls this
+// for each input character. do erase/kill processing,
+// append to cons.buf, wake up reader if a whole
+// line has arrived.
+//
 void
 consoleintr(int c)
 {
-  int doprocdump = 0;
-  
   acquire(&cons.lock);
 
   switch(c){
-  case C('P'):  // Process list.
-    // procdump() locks cons.lock indirectly; invoke later
-    doprocdump = 1;
+  case C('P'):  // Print process list.
+    procdump();
     break;
   case C('U'):  // Kill line.
     while(cons.e != cons.w &&
@@ -122,7 +155,8 @@ consoleintr(int c)
       consputc(BACKSPACE);
     }
     break;
-  case C('H'): case '\x7f':  // Backspace
+  case C('H'): // Backspace
+  case '\x7f':
     if(cons.e != cons.w){
       cons.e--;
       consputc(BACKSPACE);
@@ -142,15 +176,14 @@ consoleintr(int c)
   }
   
   release(&cons.lock);
-
-  if(doprocdump)
-    procdump();
 }
 
 void
 consoleinit(void)
 {
   initlock(&cons.lock, "cons");
+
+  uartinit();
 
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;

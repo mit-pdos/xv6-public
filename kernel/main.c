@@ -11,7 +11,6 @@ void
 main()
 {
   if(cpuid() == 0){
-    uartinit();      // serial port
     consoleinit();
     printfinit();
     printf("hart %d starting\n", cpuid());

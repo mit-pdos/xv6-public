@@ -634,6 +634,7 @@ procdump(void)
   struct proc *p;
   char *state;
 
+  printf("\n");
   for(p = proc; p < &proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
