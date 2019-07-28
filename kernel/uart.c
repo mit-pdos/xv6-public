@@ -15,8 +15,9 @@
 // address of one of the registers.
 #define Reg(reg) ((volatile unsigned char *)(UART0 + reg))
 
-// the registers. some have different meanings for
-// read and write.
+// the UART control registers.
+// some have different meanings for
+// read vs write.
 // http://byterunner.com/16550.html
 #define RHR 0 // receive holding register (for input bytes)
 #define THR 0 // transmit holding register (for output bytes)
