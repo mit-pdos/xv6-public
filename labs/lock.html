@@ -81,6 +81,15 @@ workloads.
   </ul>
 
 <p>Run usertests to see if you don't break anything.
+
+<h2>Lock-free bcache lookup</h2>
+
+<p>Modify <tt>bget</tt> so that succesful lookups don't need to
+  acquire <tt>bcache.lock</tt>.  The challenge is
+  concurrent <tt>brelse</tt>, which modify the list that <tt>bget</tt>
+  traverses.  (Hint: there is no need for <tt>bget</tt> to use the
+  list.)
+  
   
 </body>
 </html>
