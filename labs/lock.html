@@ -72,7 +72,12 @@ workloads.
 
 <p>Some hints:
   <ul>
-    <li>Initially divide the free memory equally among the different CPUs.
+    <li>You can use the constant <tt>NCPU</tt> in kernel/param.h
+    <li>Let <tt>freerange</tt> give all free memory to the CPU
+      running <tt>freerange</tt>.
+    <li>The function <tt>cpuid</tt> returns the current core, but note
+    that you can use it when interrupts are turned off and so you will
+    need to turn on/off interrupts in your solution.
   </ul>
 
 <p>Run usertests to see if you don't break anything.
