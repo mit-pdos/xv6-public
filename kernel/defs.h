@@ -130,7 +130,6 @@ char*           strncpy(char*, const char*, int);
 
 // syscall.c
 int             argint(int, int*);
-int             argptr(int, uint64*, int);
 int             argstr(int, char*, int);
 int             argaddr(int, uint64 *);
 int             fetchstr(uint64, char*, int);
