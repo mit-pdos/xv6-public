@@ -84,12 +84,47 @@ workloads.
 
 <h2>Lock-free bcache lookup</h2>
 
-<p>Modify <tt>bget</tt> so that succesful lookups don't need to
-  acquire <tt>bcache.lock</tt>.  The challenge is
-  concurrent <tt>brelse</tt>, which modify the list that <tt>bget</tt>
-  traverses.  (Hint: there is no need for <tt>bget</tt> to use the
-  list.)
+
+<p>Several processes reading different files repeatedly will
+  bottleneck in the buffer cache, bcache, in bio.c.  Replace the
+  acquire in <tt>bget</tt> with
   
+  <pre>
+    while(!tryacquire(&bcache.lock)) {
+      printf("!");
+    }
+  </pre>
+
+  and run test0 from bcachetest and you will see "!"s.
+
+<p>Modify <tt>bget</tt> so that a lookup for a buffer that is in the
+  bcache doesn't need to acquire <tt>bcache.lock</tt>.  This more
+  tricky than the kalloc assignment, because bcache buffers are truly
+  shared among processes. You must maintain the invariant that a
+  buffer is only once in memory.
+
+<p> There are several races that <tt>bcache.lock</tt> protects
+against, including:
+  <ul>
+    <li>A <tt>brelse</tt> may set <tt>b->ref</tt> to 0,
+      while concurrent <tt>bget</tt> is incrementing it.
+    <li>Two <tt>bget</tt> may see <tt>b->ref = 0</tt> and one may re-use
+    the buffer, while the other may replaces it with another block.
+    <li>A concurrent <tt>brelse</tt> modifies the list
+      that <tt>bget</tt> traverses.
+  </ul>
+
+<p>A challenge is testing whether you code is still correct.  One way
+  to do is to artificially delay certain operations
+  using <tt>sleepticks</tt>.
+
+<p>Here are some hints:
+  <ul>
+    <li> Use an atomic increment instruction for incrementing and
+      decrementing <tt>b->ref</tt> (see <tt>__sync_fetch_and_add() and
+	related primitives</tt>)
+    <li>Don't walk the <tt>bcache.head</tt> list to find a buffer
+  </ul>
   
 </body>
 </html>
