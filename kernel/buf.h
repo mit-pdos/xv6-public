@@ -1,5 +1,5 @@
 struct buf {
-  int flags;
+  int valid;   // has data been read from disk?
   uint dev;
   uint blockno;
   struct sleeplock lock;
@@ -9,6 +9,4 @@ struct buf {
   struct buf *qnext; // disk queue
   uchar data[BSIZE];
 };
-#define B_VALID 0x2  // buffer has been read from disk
-#define B_DIRTY 0x4  // buffer needs to be written to disk
 
