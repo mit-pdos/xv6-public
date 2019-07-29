@@ -5,6 +5,7 @@
 #include "defs.h"
 
 void main();
+void timerinit();
 
 // entry.S needs one stack per CPU.
 __attribute__ ((aligned (16))) char stack0[4096 * NCPU];
@@ -36,15 +37,31 @@ start()
   w_medeleg(0xffff);
   w_mideleg(0xffff);
 
+  // ask for clock interrupts.
+  timerinit();
+
+  // keep each CPU's hartid in its tp register, for cpuid().
+  int id = r_mhartid();
+  w_tp(id);
+
+  // switch to supervisor mode and jump to main().
+  asm volatile("mret");
+}
+
+// set up to receive timer interrupts in machine mode,
+// which arrive at timervec in kernelvec.S,
+// which turns them into software interrupts for
+// devintr() in trap.c.
+void
+timerinit()
+{
+  // each CPU has a separate source of timer interrupts.
   int id = r_mhartid();
 
-  // set up to receive timer interrupts in machine mode,
-  // which arrive at timervec in kernelvec.S,
-  // which turns them into software interrupts for
-  // devintr() in trap.c.
   // ask the CLINT for a timer interrupt.
   int interval = 1000000; // cycles; about 1/10th second in qemu.
   *(uint64*)CLINT_MTIMECMP(id) = *(uint64*)CLINT_MTIME + interval;
+
   // prepare information in scratch[] for timervec.
   // scratch[0..3] : space for timervec to save registers.
   // scratch[4] : address of CLINT MTIMECMP register.
@@ -53,16 +70,13 @@ start()
   scratch[4] = CLINT_MTIMECMP(id);
   scratch[5] = interval;
   w_mscratch((uint64)scratch);
+
   // set the machine-mode trap handler.
   w_mtvec((uint64)timervec);
+
   // enable machine-mode interrupts.
   w_mstatus(r_mstatus() | MSTATUS_MIE);
+
   // enable machine-mode timer interrupts.
   w_mie(r_mie() | MIE_MTIE);
-
-  // keep each CPU's hartid in its tp register, for cpuid().
-  w_tp(id);
-
-  // switch to supervisor mode and jump to main().
-  asm volatile("mret");
 }
