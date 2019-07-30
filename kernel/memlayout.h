@@ -10,7 +10,6 @@
 // 10001000 -- virtio disk 
 // 80000000 -- boot ROM jumps here in machine mode
 //             -kernel loads the kernel here
-// 88000000 -- -initrd fs.img ramdisk image.
 // unused RAM after 80000000.
 
 // the kernel uses physical memory thus:
@@ -41,8 +40,6 @@
 #define PLIC_SPRIORITY(hart) (PLIC + 0x201000 + (hart)*0x2000)
 #define PLIC_MCLAIM(hart) (PLIC + 0x200004 + (hart)*0x2000)
 #define PLIC_SCLAIM(hart) (PLIC + 0x201004 + (hart)*0x2000)
-
-#define RAMDISK 0x88000000L
 
 // the kernel expects there to be RAM
 // for use by the kernel and user pages
