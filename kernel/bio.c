@@ -133,3 +133,19 @@ brelse(struct buf *b)
   
   release(&bcache.lock);
 }
+
+void
+bpin(struct buf *b) {
+  acquire(&bcache.lock);
+  b->refcnt++;
+  release(&bcache.lock);
+}
+
+void
+bunpin(struct buf *b) {
+  acquire(&bcache.lock);
+  b->refcnt--;
+  release(&bcache.lock);
+}
+
+
