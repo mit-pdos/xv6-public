@@ -222,6 +222,7 @@ virtio_disk_rw(struct buf *b, int write)
   desc[idx[2]].next = 0;
 
   // record struct buf for virtio_disk_intr().
+  b->disk = 1;
   info[idx[0]].b = b;
 
   // avail[0] is flags
@@ -235,7 +236,7 @@ virtio_disk_rw(struct buf *b, int write)
   *R(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
 
   // Wait for virtio_disk_intr() to say request has finished.
-  while(info[idx[0]].status == 0) {
+  while(b->disk == 1) {
     sleep(b, &vdisk_lock);
   }
 
@@ -255,8 +256,8 @@ virtio_disk_intr()
 
     if(info[id].status != 0)
       panic("virtio_disk_intr status");
-
-    info[id].status = 1;
+    
+    info[id].b->disk = 0;   // disk is done with buf
     wakeup(info[id].b);
 
     used_idx = (used_idx + 1) % NUM;
