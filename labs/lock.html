@@ -82,7 +82,7 @@ workloads.
 
 <p>Run usertests to see if you don't break anything.
 
-<h2>Lock-free bcache lookup</h2>
+<h2>More scalabale bcache lookup</h2>
 
 
 <p>Several processes reading different files repeatedly will
@@ -116,15 +116,19 @@ against, including:
 
 <p>A challenge is testing whether you code is still correct.  One way
   to do is to artificially delay certain operations
-  using <tt>sleepticks</tt>.
+  using <tt>sleepticks</tt>.  <tt>test1</tt> trashes the buffer cache
+  and exercises more code paths.
 
 <p>Here are some hints:
   <ul>
-    <li> Use an atomic increment instruction for incrementing and
-      decrementing <tt>b->ref</tt> (see <tt>__sync_fetch_and_add() and
-	related primitives</tt>)
-    <li>Don't walk the <tt>bcache.head</tt> list to find a buffer
+    <li>Use a simple design: i.e., don't design a lock-free implementation.
+    <li>Use a simple hash table with locks per bucket
   </ul>
-  
+
+<p>Check that your implementation has less contention
+  on <tt>test0</tt>
+
+<p>Make sure your implementation passes bcachetest and usertests.
+
 </body>
 </html>
