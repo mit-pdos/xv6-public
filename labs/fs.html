@@ -1,0 +1,145 @@
+<html>
+<head>
+<title>Lab: file system</title>
+<link rel="stylesheet" href="homework.css" type="text/css" />
+</head>
+<body>
+
+<h1>Lab: file system</h1>
+
+<p>In this lab you will add large files and <tt>mmap</tt> to the xv6 file system.
+
+<h2>Large files</h2>
+
+<p>In this assignment you'll increase the maximum size of an xv6
+file. Currently xv6 files are limited to 268 blocks, or 268*BSIZE
+bytes (BSIZE is 1024 in xv6). This limit comes from the fact that an
+xv6 inode contains 12 "direct" block numbers and one "singly-indirect"
+block number, which refers to a block that holds up to 256 more block
+numbers, for a total of 12+256=268. You'll change the xv6 file system
+code to support a "doubly-indirect" block in each inode, containing
+256 addresses of singly-indirect blocks, each of which can contain up
+to 256 addresses of data blocks. The result will be that a file will
+be able to consist of up to 256*256+256+11 blocks (11 instead of 12,
+because we will sacrifice one of the direct block numbers for the
+double-indirect block).
+
+<h3>Preliminaries</h3>
+  
+<p>Modify your Makefile's <tt>CPUS</tt> definition so that it reads:
+<pre>
+CPUS := 1
+</pre>
+
+<b>XXX doesn't seem to speedup things</b>
+<p>Add
+<pre>
+QEMUEXTRA = -snapshot
+</pre>
+right before
+<tt>QEMUOPTS</tt>
+<p>
+The above two steps speed up qemu tremendously when xv6
+creates large files.
+
+<p><tt>mkfs</tt> initializes the file system to have fewer
+than 1000 free data blocks, too few to show off the changes
+you'll make. Modify <tt>param.h</tt> to 
+set <tt>FSSIZE</tt> to:
+<pre>
+    #define FSSIZE       20000  // size of file system in blocks
+</pre>
+
+<p>Download <a href="big.c">big.c</a> into your xv6 directory,
+add it to the UPROGS list, start up xv6, and run <tt>big</tt>.
+It creates as big a file as xv6 will let
+it, and reports the resulting size. It should say 140 sectors.
+
+<h3>What to Look At</h3>
+
+The format of an on-disk inode is defined by <tt>struct dinode</tt>
+in <tt>fs.h</tt>. You're particularly interested in <tt>NDIRECT</tt>,
+<tt>NINDIRECT</tt>, <tt>MAXFILE</tt>, and the <tt>addrs[]</tt> element
+of <tt>struct dinode</tt>. Look Figure 7.3 in the xv6 text for a
+diagram of the standard xv6 inode.
+
+<p>
+The code that finds a file's data on disk is in <tt>bmap()</tt>
+in <tt>fs.c</tt>. Have a look at it and make sure you understand
+what it's doing. <tt>bmap()</tt> is called both when reading and
+writing a file. When writing, <tt>bmap()</tt> allocates new
+blocks as needed to hold file content, as well as allocating
+an indirect block if needed to hold block addresses.
+
+<p>
+<tt>bmap()</tt> deals with two kinds of block numbers. The <tt>bn</tt>
+argument is a "logical block" -- a block number relative to the start
+of the file. The block numbers in <tt>ip->addrs[]</tt>, and the
+argument to <tt>bread()</tt>, are disk block numbers.
+You can view <tt>bmap()</tt> as mapping a file's logical
+block numbers into disk block numbers.
+
+<h3>Your Job</h3>
+
+Modify <tt>bmap()</tt> so that it implements a doubly-indirect
+block, in addition to direct blocks and a singly-indirect block.
+You'll have to have only 11 direct blocks, rather than 12,
+to make room for your new doubly-indirect block; you're
+not allowed to change the size of an on-disk inode.
+The first 11 elements of <tt>ip->addrs[]</tt> should be
+direct blocks; the 12th should be a singly-indirect block
+(just like the current one); the 13th should be your new
+doubly-indirect block.
+
+<p>
+You don't have to modify xv6 to handle deletion of files with
+doubly-indirect blocks.
+
+<p>
+If all goes well, <tt>big</tt> will now report that it
+can write  sectors. It will take <tt>big</tt> minutes
+to finish.
+
+<b>XXX this runs for a while!</b>
+
+<h3>Hints</h3>
+
+<p>
+Make sure you understand <tt>bmap()</tt>. Write out a diagram of the
+relationships between <tt>ip->addrs[]</tt>, the indirect block, the
+doubly-indirect block and the singly-indirect blocks it points to, and
+data blocks. Make sure you understand why adding a doubly-indirect
+block increases the maximum file size by 256*256 blocks (really -1),
+since you have to decrease the number of direct blocks by one).
+
+<p>
+Think about how you'll index the doubly-indirect block, and
+the indirect blocks it points to, with the logical block
+number.
+
+<p>If you change the definition of <tt>NDIRECT</tt>, you'll
+probably have to change the size of <tt>addrs[]</tt>
+in <tt>struct inode</tt> in <tt>file.h</tt>. Make sure that
+<tt>struct inode</tt> and <tt>struct dinode</tt> have the
+same number of elements in their <tt>addrs[]</tt> arrays.
+
+<p>If you change the definition of <tt>NDIRECT</tt>, make sure to create a
+new <tt>fs.img</tt>, since <tt>mkfs</tt> uses <tt>NDIRECT</tt> too to build the
+initial file systems.  If you delete <tt>fs.img</tt>, <tt>make</tt> on Unix (not
+xv6) will build a new one for you.
+
+<p>If your file system gets into a bad state, perhaps by crashing,
+delete <tt>fs.img</tt> (do this from Unix, not xv6).  <tt>make</tt> will build a
+new clean file system image for you.
+
+<p>Don't forget to <tt>brelse()</tt> each block that you
+<tt>bread()</tt>.
+
+<p>You should allocate indirect blocks and doubly-indirect
+blocks only as needed, like the original <tt>bmap()</tt>.
+
+<h2>Memory-mapped files</h2>
+
+  
+</body>
+</html>
