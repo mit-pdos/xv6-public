@@ -14,6 +14,8 @@ void            binit(void);
 struct buf*     bread(uint, uint);
 void            brelse(struct buf*);
 void            bwrite(struct buf*);
+void            bpin(struct buf*);
+void            bunpin(struct buf*);
 
 // console.c
 void            consoleinit(void);
@@ -177,7 +179,7 @@ void            plic_complete(int);
 
 // virtio_disk.c
 void            virtio_disk_init(void);
-void            virtio_disk_rw(struct buf *);
+void            virtio_disk_rw(struct buf *, int);
 void            virtio_disk_intr();
 
 // number of elements in fixed-size array

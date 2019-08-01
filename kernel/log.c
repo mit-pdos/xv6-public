@@ -77,6 +77,7 @@ install_trans(void)
     struct buf *dbuf = bread(log.dev, log.lh.block[tail]); // read dst
     memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
     bwrite(dbuf);  // write dst to disk
+    bunpin(dbuf);
     brelse(lbuf);
     brelse(dbuf);
   }
@@ -203,7 +204,7 @@ commit()
 }
 
 // Caller has modified b->data and is done with the buffer.
-// Record the block number and pin in the cache with B_DIRTY.
+// Record the block number and pin in the cache by increasing refcnt.
 // commit()/write_log() will do the disk write.
 //
 // log_write() replaces bwrite(); a typical use is:
@@ -227,9 +228,10 @@ log_write(struct buf *b)
       break;
   }
   log.lh.block[i] = b->blockno;
-  if (i == log.lh.n)
+  if (i == log.lh.n) {  // Add new block to log?
+    bpin(b);
     log.lh.n++;
-  b->flags |= B_DIRTY; // prevent eviction
+  }
   release(&log.lock);
 }
 

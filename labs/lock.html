@@ -82,7 +82,7 @@ workloads.
 
 <p>Run usertests to see if you don't break anything.
 
-<h2>Lock-free bcache lookup</h2>
+<h2>More scalabale bcache lookup</h2>
 
 
 <p>Several processes reading different files repeatedly will
@@ -98,7 +98,7 @@ workloads.
   and run test0 from bcachetest and you will see "!"s.
 
 <p>Modify <tt>bget</tt> so that a lookup for a buffer that is in the
-  bcache doesn't need to acquire <tt>bcache.lock</tt>.  This more
+  bcache doesn't need to acquire <tt>bcache.lock</tt>.  This is more
   tricky than the kalloc assignment, because bcache buffers are truly
   shared among processes. You must maintain the invariant that a
   buffer is only once in memory.
@@ -116,15 +116,33 @@ against, including:
 
 <p>A challenge is testing whether you code is still correct.  One way
   to do is to artificially delay certain operations
-  using <tt>sleepticks</tt>.
+  using <tt>sleepticks</tt>.  <tt>test1</tt> trashes the buffer cache
+  and exercises more code paths.
 
 <p>Here are some hints:
   <ul>
-    <li> Use an atomic increment instruction for incrementing and
-      decrementing <tt>b->ref</tt> (see <tt>__sync_fetch_and_add() and
-	related primitives</tt>)
-    <li>Don't walk the <tt>bcache.head</tt> list to find a buffer
+    <li>Read the description of buffer cache in the xv6 book (Section 7.2).
+    <li>Use a simple design: i.e., don't design a lock-free implementation.
+    <li>Use a simple hash table with locks per bucket.
+    <li>Searching in hash table for a buffer and allocating an entry
+      for that buffer when the buffer is not found must be atomic.
+    <li>It is fine to acquire <tt>bcache.lock</tt> in <tt>brelse</tt>
+      to update the LRU/MRU list.
   </ul>
+
+<p>Check that your implementation has less contention
+  on <tt>test0</tt>
+
+<p>Make sure your implementation passes bcachetest and usertests.
+
+<p>Optional:
+  <ul>
+  <li>make the buffer cache more scalable (e.g., avoid taking
+  out <tt>bcache.lock</tt> on <tt>brelse</tt>).
+  <li>make lookup lock-free (Hint: use gcc's <tt>__sync_*</tt>
+    functions.) How do you convince yourself that your implementation is correct?
+  </ul>
+  
   
 </body>
 </html>

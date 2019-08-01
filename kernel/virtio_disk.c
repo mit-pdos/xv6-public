@@ -164,7 +164,7 @@ alloc3_desc(int *idx)
 }
 
 void
-virtio_disk_rw(struct buf *b)
+virtio_disk_rw(struct buf *b, int write)
 {
   uint64 sector = b->blockno * (BSIZE / 512);
 
@@ -192,7 +192,7 @@ virtio_disk_rw(struct buf *b)
     uint64 sector;
   } buf0;
 
-  if(b->flags & B_DIRTY)
+  if(write)
     buf0.type = VIRTIO_BLK_T_OUT; // write the disk
   else
     buf0.type = VIRTIO_BLK_T_IN; // read the disk
@@ -208,7 +208,7 @@ virtio_disk_rw(struct buf *b)
 
   desc[idx[1]].addr = (uint64) b->data;
   desc[idx[1]].len = BSIZE;
-  if(b->flags & B_DIRTY)
+  if(write)
     desc[idx[1]].flags = 0; // device reads b->data
   else
     desc[idx[1]].flags = VRING_DESC_F_WRITE; // device writes b->data
@@ -222,6 +222,7 @@ virtio_disk_rw(struct buf *b)
   desc[idx[2]].next = 0;
 
   // record struct buf for virtio_disk_intr().
+  b->disk = 1;
   info[idx[0]].b = b;
 
   // avail[0] is flags
@@ -235,9 +236,12 @@ virtio_disk_rw(struct buf *b)
   *R(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
 
   // Wait for virtio_disk_intr() to say request has finished.
-  while((b->flags & (B_VALID|B_DIRTY)) != B_VALID){
+  while(b->disk == 1) {
     sleep(b, &vdisk_lock);
   }
+
+  info[idx[0]].b = 0;
+  free_chain(idx[0]);
 
   release(&vdisk_lock);
 }
@@ -252,14 +256,9 @@ virtio_disk_intr()
 
     if(info[id].status != 0)
       panic("virtio_disk_intr status");
-
-    info[id].b->flags |= B_VALID;
-    info[id].b->flags &= ~B_DIRTY;
-
+    
+    info[id].b->disk = 0;   // disk is done with buf
     wakeup(info[id].b);
-
-    info[id].b = 0;
-    free_chain(id);
 
     used_idx = (used_idx + 1) % NUM;
   }

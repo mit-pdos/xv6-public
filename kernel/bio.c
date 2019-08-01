@@ -12,11 +12,7 @@
 // * Do not use the buffer after calling brelse.
 // * Only one process at a time can use a buffer,
 //     so do not keep them longer than necessary.
-//
-// The implementation uses two state flags internally:
-// * B_VALID: the buffer data has been read from the disk.
-// * B_DIRTY: the buffer data has been modified
-//     and needs to be written to disk.
+
 
 #include "types.h"
 #include "param.h"
@@ -76,13 +72,11 @@ bget(uint dev, uint blockno)
   }
 
   // Not cached; recycle an unused buffer.
-  // Even if refcnt==0, B_DIRTY indicates a buffer is in use
-  // because log.c has modified it but not yet committed it.
   for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
-    if(b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
+    if(b->refcnt == 0) {
       b->dev = dev;
       b->blockno = blockno;
-      b->flags = 0;
+      b->valid = 0;
       b->refcnt = 1;
       release(&bcache.lock);
       acquiresleep(&b->lock);
@@ -99,8 +93,9 @@ bread(uint dev, uint blockno)
   struct buf *b;
 
   b = bget(dev, blockno);
-  if((b->flags & B_VALID) == 0) {
-    virtio_disk_rw(b);
+  if(!b->valid) {
+    virtio_disk_rw(b, 0);
+    b->valid = 1;
   }
   return b;
 }
@@ -111,8 +106,7 @@ bwrite(struct buf *b)
 {
   if(!holdingsleep(&b->lock))
     panic("bwrite");
-  b->flags |= B_DIRTY;
-  virtio_disk_rw(b);
+  virtio_disk_rw(b, 1);
 }
 
 // Release a locked buffer.
@@ -139,3 +133,19 @@ brelse(struct buf *b)
   
   release(&bcache.lock);
 }
+
+void
+bpin(struct buf *b) {
+  acquire(&bcache.lock);
+  b->refcnt++;
+  release(&bcache.lock);
+}
+
+void
+bunpin(struct buf *b) {
+  acquire(&bcache.lock);
+  b->refcnt--;
+  release(&bcache.lock);
+}
+
+
