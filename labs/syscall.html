@@ -143,12 +143,12 @@ void test0()
 {
   int i;
   printf(1, "test0 start\n");
-  sigalarm(2, periodic);
+  alarm(2, periodic);
   for(i = 0; i < 1000*500000; i++){
     if((i % 250000) == 0)
       write(2, ".", 1);
   }
-  sigalarm(0, 0);
+  alarm(0, 0);
   printf(1, "test0 done\n");
 }
 
@@ -171,7 +171,7 @@ void test1() {
 
   printf(1, "test1 start\n");
   j = 0;
-  sigalarm(2, periodic);
+  alarm(2, periodic);
   for(i = 0; i < 1000*500000; i++){
     foo(i, &j);
   }
