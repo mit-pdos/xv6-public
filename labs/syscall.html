@@ -231,13 +231,15 @@ alarmtest starting
 <p>To get started, the best strategy is to first pass test0, which
   will force you to handle the main challenge above. Here are some
   hints how to pass test0:
+
+<p><b>XXX alarm() needs to be defined somewhere.</b><br>
   
 <ul>
 
 <li>You'll need to modify the Makefile to cause <tt>alarmtest.c</tt>
 to be compiled as an xv6 user program.
 
-<li>The right declarations to put in <tt>user/user.h</tt> is:
+<li>The right declaration to put in <tt>user/user.h</tt> is:
 <pre>
     int sigalarm(int ticks, void (*handler)());
 </pre>
@@ -249,7 +251,7 @@ to be compiled as an xv6 user program.
 
 <li>Your <tt>sys_sigalarm()</tt> should store the alarm interval and
 the pointer to the handler function in new fields in the <tt>proc</tt>
-structure; see <tt>kernel/proc.h</tt>.
+structure, defined in <tt>kernel/proc.h</tt>.
 
 <li>You'll need to keep track of how many ticks have passed since the
 last call (or are left until the next call) to a process's alarm
@@ -277,12 +279,29 @@ use only one CPU, which you can do by running
     make CPUS=1 qemu
 </pre>
 
+<li><b>XXX we need to somehow convey what it is they don't
+       need to do here, i.e. what part is to be left to
+       the next section.</b>
+
+<li><b>XXX it's not clear how they can tell whether they
+are passing test0(), and should proceed to the next section.
+do they need to make sure at this point that they see multiple
+alarm! printouts? or is it OK if they see one alarm! and
+then a crash?</b>
+
 </ul>
 
 <h3>test1(): resume interrupted code</h3>
 
-<p>Test0 doesn't tests whether the handler returns correctly to
-  interrupted instruction in test0.  If you didn't get this right, it
+<p><b>XXX it is surprising that test0() appears to work
+perfectly, even though something is seriously wrong
+with the way periodic() returns. we should recognize
+that something odd is happening, maybe ask them to think
+about it, and hint or say why they are not done even though
+test0() works.</b>
+
+<p>Test0 doesn't test whether the handler returns correctly to
+  the interrupted instruction.  If you didn't get this right, it
   is likely that test1 will fail (the program crashes or the program
   goes into an infinite loop).
 
