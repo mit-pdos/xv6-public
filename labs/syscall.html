@@ -143,12 +143,12 @@ void test0()
 {
   int i;
   printf(1, "test0 start\n");
-  alarm(2, periodic);
+  sigalarm(2, periodic);
   for(i = 0; i < 1000*500000; i++){
     if((i % 250000) == 0)
       write(2, ".", 1);
   }
-  alarm(0, 0);
+  sigalarm(0, 0);
   printf(1, "test0 done\n");
 }
 
@@ -171,7 +171,7 @@ void test1() {
 
   printf(1, "test1 start\n");
   j = 0;
-  alarm(2, periodic);
+  sigalarm(2, periodic);
   for(i = 0; i < 1000*500000; i++){
     foo(i, &j);
   }
@@ -237,13 +237,14 @@ alarmtest starting
 <li>You'll need to modify the Makefile to cause <tt>alarmtest.c</tt>
 to be compiled as an xv6 user program.
 
-<li>The right declaration to put in <tt>user/user.h</tt> is:
+<li>The right declarations to put in <tt>user/user.h</tt> is:
 <pre>
     int sigalarm(int ticks, void (*handler)());
 </pre>
 
-<li>Update kernel/syscall.h and user/usys.S (update usys.pl to update
-  usys.S) to allow <tt>alarmtest</tt> to invoke the sigalarm system
+<li>Update user/sys.pl (which generates user/usys.S),
+    kernel/syscall.h, and kernel/syscall.c 
+   to allow <tt>alarmtest</tt> to invoke the sigalarm system
   call.
 
 <li>Your <tt>sys_sigalarm()</tt> should store the alarm interval and
