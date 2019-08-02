@@ -1,58 +1,20 @@
 <html>
 <head>
-<title>Lab: system calls</title>
+<title>Lab: Alarm and uthread</title>
 <link rel="stylesheet" href="homework.css" type="text/css" />
 </head>
 <body>
 
-<h1>Lab: system calls</h1>
+<h1>Lab: Alarm and uthread</h1>
 
-This lab makes you familiar with the implementation of system calls.
-In particular, you will implement a new system
-calls: <tt>sigalarm</tt> and <tt>sigreturn</tt>.
-
-<b>Note: before this lab, it would be good to have recitation section on gdb and understanding assembly</b>
-
-<h2>Warmup: system call tracing</h2>
-
-<p>In this exercise you will modify the xv6 kernel to print out a line
-for each system call invocation. It is enough to print the name of the
-system call and the return value; you don't need to print the system
-call arguments.
-
-<p>
-When you're done, you should see output like this when booting
-xv6:
-
-<pre>
-...
-fork -> 2
-exec -> 0
-open -> 3
-close -> 0
-$write -> 1
- write -> 1
-</pre>
-
-<p>
-That's init forking and execing sh, sh making sure only two file descriptors are
-open, and sh writing the $ prompt.  (Note: the output of the shell and the
-system call trace are intermixed, because the shell uses the write syscall to
-print its output.)
-
-<p> Hint: modify the syscall() function in kernel/syscall.c.
-
-<p>Run the programs you wrote in the lab and inspect the system call
-  trace.  Are there many system calls?  Which systems calls correspond
-  to code in the applications you wrote above?
-    
-<p>Optional: print the system call arguments.
+This lab makes you familiar with the implementation of system calls
+and switching between threads of execution.  In particular, you will
+implement new system calls (<tt>sigalarm</tt> and <tt>sigreturn</tt>)
+and switching between threads of a user-level thread package.
 
 <h2>RISC-V assembly</h2>
 
-<p>For the alarm system call it will be important to understand RISC-V
-assembly.  Since in later labs you will also read and write assembly,
-it is important that you familiarize yourself with RISC_V assembly.
+<p>For this lab it will be important to understand RISC-V assembly.
 
 <p>Add a file user/call.c with the following content, modify the
   Makefile to add the program to the user programs, and compile (make
@@ -96,8 +58,43 @@ void main(void) {
     to <tt>printf</tt> in <tt>main</tt>?
   </ul>
 
+<h2>Warmup: system call tracing</h2>
+
+<p>In this exercise you will modify the xv6 kernel to print out a line
+for each system call invocation. It is enough to print the name of the
+system call and the return value; you don't need to print the system
+call arguments.
+
+<p>
+When you're done, you should see output like this when booting
+xv6:
+
+<pre>
+...
+fork -> 2
+exec -> 0
+open -> 3
+close -> 0
+$write -> 1
+ write -> 1
+</pre>
+
+<p>
+That's init forking and execing sh, sh making sure only two file descriptors are
+open, and sh writing the $ prompt.  (Note: the output of the shell and the
+system call trace are intermixed, because the shell uses the write syscall to
+print its output.)
+
+<p> Hint: modify the syscall() function in kernel/syscall.c.
+
+<p>Run the programs you wrote in the lab and inspect the system call
+  trace.  Are there many system calls?  Which systems calls correspond
+  to code in the applications you wrote above?
+    
+<p>Optional: print the system call arguments.
+
   
-<h2>alarm</h2>
+<h2>Alarm</h2>
 
 <p>
 In this exercise you'll add a feature to xv6 that periodically alerts
@@ -227,7 +224,7 @@ alarmtest starting
   code for the alarmtest program in alarmtest.asm, which will be handy
   for debugging.
 
-<h2>Test0: invoke handler</h2>
+<h3>Test0: invoke handler</h3>
 
 <p>To get started, the best strategy is to first pass test0, which
   will force you to handle the main challenge above. Here are some
@@ -279,7 +276,7 @@ use only one CPU, which you can do by running
 
 </ul>
 
-<h2>test1(): resume interrupted code</h2>
+<h3>test1(): resume interrupted code</h3>
 
 <p>Test0 doesn't tests whether the handler returns correctly to
   interrupted instruction in test0.  If you didn't get this right, it
@@ -311,16 +308,182 @@ use only one CPU, which you can do by running
 
     <li>Prevent re-entrant calls to the handler----if a handler hasn't
       returned yet, don't call it again.
-  <ul>
+  </ul>
   
 <p>Once you pass <tt>test0</tt> and <tt>test1</tt>, run usertests to
   make sure you didn't break any other parts of the kernel.
 
+<h2>Uthread: switching between threads</h2>
   
+<p>Download <a href="uthread.c">uthread.c</a> and <a
+ href="uthread_switch.S">uthread_switch.S</a> into your xv6 directory.
+Make sure <tt>uthread_switch.S</tt> ends with <tt>.S</tt>, not
+<tt>.s</tt>.  Add the
+following rule to the xv6 Makefile after the _forktest rule:
+
+<pre>
+$U/_uthread: $U/uthread.o $U/uthread_switch.o
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $U/_uthread $U/uthread.o $U/uthread_switch.o $(ULIB)
+	$(OBJDUMP) -S $U/_uthread > $U/uthread.asm
+</pre>
+Make sure that the blank space at the start of each line is a tab,
+not spaces.
+
+<p>
+Add <tt>_uthread</tt> in the Makefile to the list of user programs defined by UPROGS.
+
+<p>Run xv6, then run <tt>uthread</tt> from the xv6 shell. The xv6 kernel will print an error message about <tt>uthread</tt> encountering a page fault.
+
+<p>Your job is to complete <tt>uthread_switch.S</tt>, so that you see output similar to
+this (make sure to run with CPUS=1):
+<pre>
+~/classes/6828/xv6$ make CPUS=1 qemu
+...
+$ uthread
+my thread running
+my thread 0x0000000000002A30
+my thread running
+my thread 0x0000000000004A40
+my thread 0x0000000000002A30
+my thread 0x0000000000004A40
+my thread 0x0000000000002A30
+my thread 0x0000000000004A40
+my thread 0x0000000000002A30
+my thread 0x0000000000004A40
+my thread 0x0000000000002A30
+...
+my thread 0x0000000000002A88
+my thread 0x0000000000004A98
+my thread: exit
+my thread: exit
+thread_schedule: no runnable threads
+$
+</pre>
+
+<p><tt>uthread</tt> creates two threads and switches back and forth between
+them. Each thread prints "my thread ..." and then yields to give the other
+thread a chance to run. 
+
+<p>To observe the above output, you need to complete <tt>uthread_switch.S</tt>, but before
+jumping into <tt>uthread_switch.S</tt>, first understand how <tt>uthread.c</tt>
+uses <tt>uthread_switch</tt>.  <tt>uthread.c</tt> has two global variables
+<tt>current_thread</tt> and <tt>next_thread</tt>.  Each is a pointer to a
+<tt>thread</tt> structure.  The thread structure has a stack for a thread and a
+saved stack pointer (<tt>sp</tt>, which points into the thread's stack).  The
+job of <tt>uthread_switch</tt> is to save the current thread state into the
+structure pointed to by <tt>current_thread</tt>, restore <tt>next_thread</tt>'s
+state, and make <tt>current_thread</tt> point to where <tt>next_thread</tt> was
+pointing to, so that when <tt>uthread_switch</tt> returns <tt>next_thread</tt>
+is running and is the <tt>current_thread</tt>.
+
+<p>You should study <tt>thread_create</tt>, which sets up the initial stack for
+a new thread. It provides hints about what <tt>uthread_switch</tt> should do.
+Note that <tt>thread_create</tt> simulates saving all callee-save registers
+on a new thread's stack.
+
+<p>To write the assembly in <tt>thread_switch</tt>, you need to know how the C
+compiler lays out <tt>struct thread</tt> in memory, which is as
+follows:
+
+<pre>
+    --------------------
+    | 4 bytes for state|
+    --------------------
+    | stack size bytes |
+    | for stack        |
+    --------------------
+    | 8 bytes for sp   |
+    --------------------  <--- current_thread
+         ......
+
+         ......
+    --------------------
+    | 4 bytes for state|
+    --------------------
+    | stack size bytes |
+    | for stack        |
+    --------------------
+    | 8 bytes for sp   |
+    --------------------  <--- next_thread
+</pre>
+
+The variables <tt>&next_thread</tt> and <tt>&current_thread</tt> each
+contain the address of a pointer to <tt>struct thread</tt>, and are
+passed to <tt>thread_switch</tt>.  The following fragment of assembly
+will be useful:
+
+<pre>
+   ld t0, 0(a0)
+   sd sp, 0(t0)
+</pre>
+
+This saves <tt>sp</tt> in <tt>current_thread->sp</tt>.  This works because
+<tt>sp</tt> is at
+offset 0 in the struct.
+You can study the assembly the compiler generates for
+<tt>uthread.c</tt> by looking at <tt>uthread.asm</tt>.
+
+<p>To test your code it might be helpful to single step through your
+<tt>uthread_switch</tt> using <tt>riscv64-linux-gnu-gdb</tt>.  You can get started in this way:
+
+<pre>
+(gdb) file user/_uthread
+Reading symbols from user/_uthread...
+(gdb) b *0x230
+
+</pre>
+0x230 is the address of uthread_switch (see uthread.asm). When you
+compile it may be at a different address, so check uthread_asm.
+You may also be able to type "b uthread_switch".  <b>XXX This doesn't work
+  for me; why?</b>
+
+<p>The breakpoint may (or may not) be triggered before you even run
+<tt>uthread</tt>. How could that happen?
+
+<p>Once your xv6 shell runs, type "uthread", and gdb will break at
+<tt>thread_switch</tt>.  Now you can type commands like the following to inspect
+the state of <tt>uthread</tt>:
+
+<pre>
+  (gdb) p/x *next_thread
+  $1 = {sp = 0x4a28, stack = {0x0 (repeats 8088 times),
+      0x68, 0x1, 0x0 <repeats 102 times>}, state = 0x1}
+</pre>
+What address is <tt>0x168</tt>, which sits on the bottom of the stack
+of <tt>next_thread</tt>?
+
+With "x", you can examine the content of a memory location
+<pre>
+  (gdb) x/x next_thread->sp
+  0x4a28 <all_thread+16304>:      0x00000168
+</pre>
+Why does that print <tt>0x168</tt>?
+
+<h3>Optional challenges</h3>
+
+<p>The user-level thread package interacts badly with the operating system in
+several ways.  For example, if one user-level thread blocks in a system call,
+another user-level thread won't run, because the user-level threads scheduler
+doesn't know that one of its threads has been descheduled by the xv6 scheduler.  As
+another example, two user-level threads will not run concurrently on different
+cores, because the xv6 scheduler isn't aware that there are multiple
+threads that could run in parallel.  Note that if two user-level threads were to
+run truly in parallel, this implementation won't work because of several races
+(e.g., two threads on different processors could call <tt>thread_schedule</tt>
+concurrently, select the same runnable thread, and both run it on different
+processors.)
+
+<p>There are several ways of addressing these problems.  One is
+ using <a href="http://en.wikipedia.org/wiki/Scheduler_activations">scheduler
+ activations</a> and another is to use one kernel thread per
+ user-level thread (as Linux kernels do).  Implement one of these ways
+ in xv6.  This is not easy to get right; for example, you will need to
+ implement TLB shootdown when updating a page table for a
+ multithreaded user process.
+
+<p>Add locks, condition variables, barriers,
+etc. to your thread package.
+    
 </body>
 </html>
 
-
-  
-
-  
