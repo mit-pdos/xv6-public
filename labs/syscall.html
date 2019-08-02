@@ -287,7 +287,7 @@ use only one CPU, which you can do by running
 are passing test0(), and should proceed to the next section.
 do they need to make sure at this point that they see multiple
 alarm! printouts? or is it OK if they see one alarm! and
-then a crash?</b>
+then a crash? may need to fix the sample ...alarm! output shown above</b>
 
 </ul>
 
@@ -301,35 +301,33 @@ about it, and hint or say why they are not done even though
 test0() works.</b>
 
 <p>Test0 doesn't test whether the handler returns correctly to
-  the interrupted instruction.  If you didn't get this right, it
-  is likely that test1 will fail (the program crashes or the program
+  the user instruction that was interrupted by the timer.
+  The previous section didn't require you to get this right.
+  If you didn't, test0 will probably succeed anyway, but
+  test1 will likely fail (the program crashes or the program
   goes into an infinite loop).
-
-<p>A main challenge is to arrange that when the handler returns, it
-  returns to the instruction where the program was interrupted.  Which
-  register contains the return address of a function?  When the kernel
-  receives an interrupt, which register contains the address of the
-  interrupted instruction?
+  Another challenge is that the register contents need to be
+  correct when control returns to the interrupted user instruction.
 
 <p>Your solution is likely to require you to save and restore
   registers---what registers do you need to save and restore to resume
   the interrupted code correctly? (Hint: it will be many).  There are
-  several ways to do this, but one convenient way is to add another
+  several ways to restore the registers; one convenient plan is to add another
   system call <tt>sigreturn</tt> that the handler calls when it is
-  done. Your job is to arrange that <tt>sigreturn</tt> returns to the
-  interrupted code.
+  done, and which restores registers and returns to the original
+  interrupted user instruction.
 
   Some hints:
   <ul>
-    <li>Add the <tt>sigreturn</tt> system call, following the changes
-      you made to support <tt>sigalarm</tt>.
+    <li>Add a new <tt>sigreturn</tt> system call.
       
-    <li>Save enough state when the timer goes in the <tt>struct
-      proc</tt> so that <tt>sigreturn</tt> can return to the
+    <li>Have <tt>usertrap</tt> save enough state in
+      <tt>struct proc</tt> when the timer goes off
+      that <tt>sigreturn</tt> can correctly return to the
       interrupted code.
 
     <li>Prevent re-entrant calls to the handler----if a handler hasn't
-      returned yet, don't call it again.
+      returned yet, the kernel shouldn't call it again.
   </ul>
   
 <p>Once you pass <tt>test0</tt> and <tt>test1</tt>, run usertests to
