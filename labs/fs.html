@@ -1,4 +1,4 @@
-q<html>
+<html>
 <head>
 <title>Lab: file system</title>
 <link rel="stylesheet" href="homework.css" type="text/css" />
@@ -136,114 +136,220 @@ new clean file system image for you.
 <tt>bread()</tt>.
 
 <p>You should allocate indirect blocks and doubly-indirect
-blocks only as needed, like the original <tt>bmap()</tt>.
+  blocks only as needed, like the original <tt>bmap()</tt>.
 
-<h2>Memory-mapped files</h2>
+<p>Optional challenge: support triple-indirect blocks.
 
-<p>In this assignment you will implement the core of the systems
-  calls <tt>mmap</tt> and <tt>munmap</tt>; see the man pages for an
-  explanation what they do (run <tt>man 2 mmap</tt> in your terminal).
-  The test program <tt>mmaptest</tt> tells you what should work.
+<h2>Writing with a Log</h2>
 
-<p>Here are some hints about how you might go about this assignment:
+Insert a print statement in bwrite (in bio.c) so that you get a
+print every time a block is written to disk:
 
-  <ul>
-    <li>Start with adding the two systems calls to the kernel, as you
-      done for other systems calls (e.g., <tt>sigalarm</tt>), but
-      don't implement them yet; just return an
-      error. run <tt>mmaptest</tt> to observe the error.
-      
-    <li>Keep track for each process what <tt>mmap</tt> has mapped.
-      You will need to allocate a <tt>struct vma</tt> to record the
-      address, length, permissions, etc. for each virtual memory area
-      (VMA) that maps a file.  Since the xv6 kernel doesn't have a
-      memory allocator in the kernel, you can use the same approach has
-      for <tt>struct file</tt>: have a global array of <tt>struct
-	vma</tt>s and have for each process a fixed-sized array of VMAs
-      (like the file descriptor array).
+<pre>
+  printf("bwrite block %d\n", b->blockno);
+</pre>
 
-    <li>Implement <tt>mmap</tt>: allocate a VMA, add it to the process's
-      table of VMAs, fill in the VMA, and find a hole in the process's
-      address space where you will map the file.  You can assume that no
-      file will be bigger than 1GB.  The VMA will contain a pointer to
-      a <tt>struct file</tt> for the file being mapped; you will need to
-      increase the file's reference count so that the structure doesn't
-      disappear when the file is closed (hint:
-      see <tt>filedup</tt>). You don't have worry about overlapping
-      VMAs.  Run <tt>mmaptest</tt>: the first <tt>mmap</tt> should
-      succeed, but the first access to the mmaped- memory will fail,
-      because you haven't updated the page fault handler.
+Build and boot a new kernel and run this:
+<pre>
+  $ rm README
+</pre>
 
-    <li>Modify the page-fault handler from the lazy-allocation and COW
-      labs to call a VMA function that handles page faults in VMAs.
-      This function allocates a page, reads a 4KB from the mmap-ed
-      file into the page, and maps the page into the address space of
-      the process.  To read the page, you can use <tt>readi</tt>,
-      which allows you to specify an offset from where to read in the
-      file (but you will have to lock/unlock the inode passed
-      to <tt>readi</tt>).  Don't forget to set the permissions correctly
-      on the page.  Run <tt>mmaptest</tt>; you should get to the
-      first <tt>munmap</tt>.
-      
-    <li>Implement <tt>munmap</tt>: find the <tt>struct vma</tt> for
-      the address and unmap the specified pages (hint:
-      use <tt>uvmunmap</tt>). If <tt>munmap</tt> removes all pages
-      from a VMA, you will have to free the VMA (don't forget to
-      decrement the reference count of the VMA's <tt>struct
-      file</tt>); otherwise, you may have to shrink the VMA.  You can
-      assume that <tt>munmap</tt> will not split a VMA into two VMAs;
-      that is, we don't unmap a few pages in the middle of a VMA.  If
-      an unmapped page has been modified and the file is
-      mapped <tt>MAP_SHARED</tt>, you will have to write the page back
-      to the file. RISC-V has a dirty bit (<tt>D</tt>) in a PTE to
-      record whether a page has ever been written too; add the
-      declaration to kernel/riscv.h and use it.  Modify <tt>exit</tt>
-      to call <tt>munmap</tt> for the process's open VMAs.
-      Run <tt>mmaptest</tt>; you should <tt>mmaptest</tt>, but
-      probably not <tt>forktest</tt>.
+<p>You should see a sequence of bwrite prints after the <tt>rm</tt>.</p>
 
-    <li>Modify <tt>fork</tt> to copy VMAs from parent to child.  Don't
-    forget to increment reference count for a VMA's <tt>struct
-    file</tt>.  In the page fault handler of the child, it is OK to
-    allocate a new page instead of sharing the page with the
-    parent. The latter would be cooler, but it would require more
-    implementation work.  Run <tt>mmaptest</tt>; make sure you pass
-    both <tt>mmaptest</tt> and <tt>forktest</tt>.
-          
-  </ul>
-  
-<p>Run usertests to make sure you didn't break anything.
+<div class="question">
+<ol>
+<li>Annotate the bwrite lines with the kind of information that is
+being written to the disk (e.g., "README's inode", "allocation
+bitmap"). If the log is being written, note both that the log is being
+written and also what kind of information is being written to the log.
+<li>Mark with an arrow the first point at which, if a
+crash occured, README would be missing after a reboot
+(after the call to <tt>recover_from_log()</tt>).
+</ol>
+</p>
+</div>
 
-<p>Optional challenges:
-  <ul>
-    
-    <li>If two processes have the same file mmap-ed (as
-      in <tt>forktest</tt>), share their physical pages. You will need
-      reference counts on physical pages.
 
-    <li>The solution above allocates a new physical page for each page
-    read from the mmap-ed file, even though the data is also in kernel
-    memory in the buffer cache.  Modify your implementation to mmap
-    that memory, instead of allocating a new page.  This requires that
-    file blocks be the same size as pages (set <tt>BSIZE</tt> to
-    4096).  You will need to pin mmap-ed blocks into the buffer cache.
-    You will need worry about reference counts.
+<h2>Crash safety</h2>
 
-    <li>Remove redundancy between your implementation for lazy
-    allocation and your implementation of mmapp-ed files.  (Hint:
-    create an VMA for the lazy allocation area.)
+<p>This assignment explores the xv6 log in two parts.
+First, you'll artificially create a crash which illustrates
+why logging is needed. Second, you'll remove one
+inefficiency in the xv6 logging system.
 
-    <li>Modify <tt>exec</tt> to use a VMA for different sections of
-    the binary so that you get on-demand-paged executables. This will
-    make starting programs faster, because <tt>exec</tt> will not have
-      to read any data from the file system.
+<p>
+Submit your solution before the beginning of the next lecture
+to <a href="https://6828.scripts.mit.edu/2018/handin.py/">the submission
+web site</a>.
 
-    <li>Implement on-demand paging: don't keep a process in memory,
-    but let the kernel move some parts of processes to disk when
-    physical memory is low.  Then, page in the paged-out memory when
-    the process references it.
-      
-  </ul>
+<h3>Creating a Problem</h3>
+
+<p>
+The point of the xv6 log is to cause all the disk updates of a
+filesystem operation to be atomic with respect to crashes.
+For example, file creation involves both adding a new entry
+to a directory and marking the new file's inode as in-use.
+A crash that happened after one but before the other would
+leave the file system in an incorrect state after a reboot,
+if there were no log.
+
+<p>
+The following steps will break the logging code in a way that
+leaves a file partially created.
+
+<p>
+First, replace <tt>commit()</tt> in <tt>log.c</tt> with
+this code:
+<pre>
+#include "kernel/proc.h"
+void
+commit(void)
+{
+  int pid = myproc()->pid;
+  if (log.lh.n > 0) {
+    write_log();
+    write_head();
+    if(pid > 1)            // AAA
+      log.lh.block[0] = 0; // BBB
+    install_trans();
+    if(pid > 1)            // AAA
+      panic("commit mimicking crash"); // CCC
+    log.lh.n = 0; 
+    write_head();
+  }
+}
+</pre>
+
+<p>
+The BBB line causes the first block in the log to be written to
+block zero, rather than wherever it should be written. During file
+creation, the first block in the log is the new file's inode updated
+to have non-zero <tt>type</tt>.
+Line BBB causes the block
+with the updated inode to be written to block 0 (whence
+it will never be read), leaving the on-disk inode still marked
+unallocated. The CCC line forces a crash.
+The AAA lines suppress this buggy behavior for <tt>init</tt>,
+which creates files before the shell starts.
+
+<p>
+Second, replace <tt>recover_from_log()</tt> in <tt>log.c</tt>
+with this code:
+<pre>
+static void
+recover_from_log(void)
+{
+  read_head();      
+  printf("recovery: n=%d but ignoring\n", log.lh.n);
+  // install_trans();
+  log.lh.n = 0;
+  // write_head();
+}
+</pre>
+
+<p>
+This modification suppresses log recovery (which would repair
+the damage caused by your change to <tt>commit()</tt>).
+
+<p>
+Finally, remove the <tt>-snapshot</tt> option from the definition
+of <tt>QEMUEXTRA</tt> in your Makefile so that the disk image will see the
+changes.
+
+<p>
+Now remove <tt>fs.img</tt> and run xv6:
+<pre>
+  % rm fs.img ; make qemu
+</pre>
+<p>
+Tell the xv6 shell to create a file:
+<pre>
+  $ echo hi > a
+</pre>
+
+<p>
+You should see the panic from <tt>commit()</tt>. So far
+it is as if a crash occurred in a non-logging system in the middle
+of creating a file.
+
+<p>
+Now re-start xv6, keeping the same <tt>fs.img</tt>:
+<pre>
+  % make qemu
+</pre>
+
+<p>
+And look at file <tt>a</tt>:
+<pre>
+  $ cat a
+</pre>
+
+<p>
+  You should see <tt>panic: ilock: no type</tt>. Make sure you understand what happened.
+Which of the file creation's modifications were written to the disk
+before the crash, and which were not?
+
+<h3>Solving the Problem</h3>
+
+Now fix <tt>recover_from_log()</tt>:
+<pre>
+static void
+recover_from_log(void)
+{
+  read_head();
+  cprintf("recovery: n=%d\n", log.lh.n);
+  install_trans();
+  log.lh.n = 0;
+  write_head();
+}
+</pre>
+
+<p>
+Run xv6 (keeping the same <tt>fs.img</tt>) and read <tt>a</tt> again:
+<pre>
+  $ cat a
+</pre>
+
+<p>
+This time there should be no crash. Make sure you understand why
+the file system now works.
+
+<p>
+Why was the file empty, even though you created
+it with <tt>echo&nbsp;hi&nbsp;>&nbsp;a</tt>?
+
+<p>
+Now remove your modifications to <tt>commit()</tt>
+(the if's and the AAA and BBB lines), so that logging works again,
+and remove <tt>fs.img</tt>.
+
+<h3>Streamlining Commit</h3>
+
+<p>
+Suppose the file system code wants to update an inode in block 33.
+The file system code will call <tt>bp=bread(block 33)</tt> and update the
+buffer data. <tt>write_log()</tt> in <tt>commit()</tt>
+will copy the data to a block in the log on disk, for example block 3.
+A bit later in <tt>commit</tt>, <tt>install_trans()</tt> reads
+block 3 from the log (containing block 33), copies its contents into the in-memory
+buffer for block 33, and then writes that buffer to block 33 on the disk.
+
+<p>
+However, in <tt>install_trans()</tt>, it turns out that the modified
+block 33 is guaranteed to be still in the buffer cache, where the
+file system code left it. Make sure you understand why it would be a
+mistake for the buffer cache to evict block 33 from the buffer cache
+before the commit.
+
+<p>
+Since the modified block 33 is guaranteed to already be in the buffer
+cache, there's no need for <tt>install_trans()</tt> to read block
+33 from the log. Your job: modify <tt>log.c</tt> so that, when
+<tt>install_trans()</tt> is called from <tt>commit()</tt>,
+<tt>install_trans()</tt> does not perform the needless read from the log.
+
+<p>To test your changes, create a file in xv6, restart, and
+make sure the file is still there.
   
 </body>
 </html>
