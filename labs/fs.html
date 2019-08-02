@@ -348,8 +348,13 @@ cache, there's no need for <tt>install_trans()</tt> to read block
 <tt>install_trans()</tt> is called from <tt>commit()</tt>,
 <tt>install_trans()</tt> does not perform the needless read from the log.
 
-<p>To test your changes, create a file in xv6, restart, and
-make sure the file is still there.
+<p>To test your changes, create a file in xv6, restart, and make sure
+the file is still there.
+
+<b>XXX Does this speedup bigfile?</b>
+
+<b>XXX Maybe support lseek and modify shell to append to a file?</b>
+  
   
 </body>
 </html>
