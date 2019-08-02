@@ -82,16 +82,16 @@ initial file system.  You just ran one of them: <tt>ls</tt>.
 
 <h2>sleep</h2>
 
-<p>Implement the UNIX program sleep, which sleeps for a user-specified
-  number of ticks.
+<p>Implement the UNIX program sleep for xv6; your sleep should pause
+  for a user-specified number of ticks.
 
 <p>Some hints:
   <ul>
     <li>Look at some of the other programs in <tt>user/</tt> to see
-    how you can obtain the arguments passed to a program.  If the user
+    how you can obtain the command-line arguments passed to a program.  If the user
     forgets to pass an argument, sleep should print an error message.
 
-    <li>The argument is passed as a string; you can convert it to an
+    <li>The command-line argument is passed as a string; you can convert it to an
       integer using <tt>atoi</tt> (see user/ulib.c).
 
     <li>Use the system call <tt>sleep</tt> (see user/usys.S and kernel/sysproc.c).

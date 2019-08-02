@@ -12,9 +12,9 @@ and switching between threads of execution.  In particular, you will
 implement new system calls (<tt>sigalarm</tt> and <tt>sigreturn</tt>)
 and switching between threads of a user-level thread package.
 
-<h2>RISC-V assembly</h2>
+<h2>Warmup: RISC-V assembly</h2>
 
-<p>For this lab it will be important to understand RISC-V assembly.
+<p>For this lab it will be important to understand a bit of RISC-V assembly.
 
 <p>Add a file user/call.c with the following content, modify the
   Makefile to add the program to the user programs, and compile (make
@@ -40,21 +40,22 @@ void main(void) {
 }
 </pre>
 
-<p>Read through call.asm and understand it.  The instruction manual
+<p>Read through user/call.asm and understand it.  The instruction manual
   for RISC-V is in the doc directory (doc/riscv-spec-v2.2.pdf).  Here
   are some questions that you should answer for yourself:
 
   <ul>
     <li>Which registers contain arguments to functions?  Which
     register holds 13 in the call to <tt>printf</tt>?  Which register
-    holds the second one? Which register holds the second one?  Etc.
+    holds the second argument? Which register holds the third one?  Etc.
 
-    <li>Where is the function call to <tt>f</tt> and <tt>g</tt>
-      in <tt>main</tt>?  (Hint: compiler may inline functions.)
+    <li>Where is the function call to <tt>f</tt> from main? Where
+        is the call to <tt>g</tt>?
+        (Hint: the compiler may inline functions.)
 
     <li>At what address is the function <tt>printf</tt> located?
 
-    <li>What value is in the register <tt>ra</tt> in the <tt>jalr</tt>
+    <li>What value is in the register <tt>ra</tt> just after the <tt>jalr</tt>
     to <tt>printf</tt> in <tt>main</tt>?
   </ul>
 
@@ -87,9 +88,9 @@ print its output.)
 
 <p> Hint: modify the syscall() function in kernel/syscall.c.
 
-<p>Run the programs you wrote in the lab and inspect the system call
-  trace.  Are there many system calls?  Which systems calls correspond
-  to code in the applications you wrote above?
+<p>Run the xv6 programs you wrote in earlier labs and inspect the system call
+  trace.  Are there many system calls?  Which system calls correspond
+  to code in the applications you wrote?
     
 <p>Optional: print the system call arguments.
 
@@ -109,14 +110,14 @@ to handle page faults in the application, for example.
 You should add a new <tt>sigalarm(interval, handler)</tt> system call.
 If an application calls <tt>sigalarm(n, fn)</tt>, then after every
 <tt>n</tt> "ticks" of CPU time that the program consumes, the kernel
-will cause application function
+should cause application function
 <tt>fn</tt> to be called. When <tt>fn</tt> returns, the application
-will resume where it left off. A tick is a fairly arbitrary unit of
+should resume where it left off. A tick is a fairly arbitrary unit of
 time in xv6, determined by how often a hardware timer generates
 interrupts.
 
 <p>
-You should put the following example program in <tt>user/alarmtest.c</tt>:
+You should put the following test program in <tt>user/alarmtest.c</tt>:
 
 <b>XXX Insert the final program here; maybe just give the code in the repo</b>
 <pre>
@@ -211,15 +212,16 @@ alarmtest starting
 <tt>alarmtest.c</tt> by 10x.)
 
 <p>The main challenge will be to arrange that the handler is invoked
-  when the process's alarm interval expires.  In your usertrap, when a
-  process's alarm interval expires, you'll want to cause it to execute
-  its handler. How can you do that?  You will need to understand in
-  details how system calls work (i.e., the code in kernel/trampoline.S
+  when the process's alarm interval expires.  You'll need to modify
+  usertrap() in kernel/trap.c so that when a
+  process's alarm interval expires, the process executes
+  the handler. How can you do that?  You will need to understand in
+  detail how system calls work (i.e., the code in kernel/trampoline.S
   and kernel/trap.c). Which register contains the address where
-  systems calls return to?
+  system calls return to?
 
 <p>Your solution will be few lines of code, but it will be tricky to
-  write the right lines of code.  Common failure scenarios are: the
+  write the right lines of code.  The most common failure scenario is that the
   user program crashes or doesn't terminate.  You can see the assembly
   code for the alarmtest program in alarmtest.asm, which will be handy
   for debugging.
