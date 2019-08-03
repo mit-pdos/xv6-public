@@ -7,10 +7,10 @@
 
 <h1>Lab: Alarm and uthread</h1>
 
-This lab makes you familiar with the implementation of system calls
+This lab will familiarize you with the implementation of system calls
 and switching between threads of execution.  In particular, you will
 implement new system calls (<tt>sigalarm</tt> and <tt>sigreturn</tt>)
-and switching between threads of a user-level thread package.
+and switching between threads in a user-level thread package.
 
 <h2>Warmup: RISC-V assembly</h2>
 
@@ -119,7 +119,6 @@ interrupts.
 <p>
 You should put the following test program in <tt>user/alarmtest.c</tt>:
 
-<b>XXX Insert the final program here; maybe just give the code in the repo</b>
 <pre>
 #include "kernel/param.h"
 #include "kernel/types.h"
@@ -143,12 +142,12 @@ void test0()
 {
   int i;
   printf(1, "test0 start\n");
-  alarm(2, periodic);
+  sigalarm(2, periodic);
   for(i = 0; i < 1000*500000; i++){
     if((i % 250000) == 0)
       write(2, ".", 1);
   }
-  alarm(0, 0);
+  sigalarm(0, 0);
   printf(1, "test0 done\n");
 }
 
@@ -171,7 +170,7 @@ void test1() {
 
   printf(1, "test1 start\n");
   j = 0;
-  alarm(2, periodic);
+  sigalarm(2, periodic);
   for(i = 0; i < 1000*500000; i++){
     foo(i, &j);
   }
@@ -185,55 +184,53 @@ void test1() {
 
 The program calls <tt>sigalarm(2, periodic1)</tt> in <tt>test0</tt> to
 ask the kernel to force a call to <tt>periodic()</tt> every 2 ticks,
-and then spins for a while.  After you have implemented
-the <tt>sigalarm()</tt> system call in the kernel,
-<tt>alarmtest</tt> should produce output like this for <tt>test0</tt>:
+and then spins for a while.
+You can see the assembly
+code for alarmtest in user/alarmtest.asm, which may be handy
+for debugging.
+When you've finished the lab,
+<tt>alarmtest</tt> should produce output like this:
 
-<b>Update output for final usertests.c</b>
 <pre>
 $ alarmtest
-alarmtest starting
-.....alarm!
-....alarm!
-.....alarm!
-......alarm!
-.....alarm!
-....alarm!
-....alarm!
-......alarm!
-.....alarm!
-...alarm!
-...$ 
+test0 start
+...................................................alarm!
+.............................................................alarm!
+(repeated many times)
+test0 done
+test1 start
+..alarm!
+..alarm!
+..alarm!
+(repeated many times)
+test1 done
+$
 </pre>
-<p>
 
 <p>
-(If you only see one "alarm!", try increasing the number of iterations in
-<tt>alarmtest.c</tt> by 10x.)
+At first, however, you'll see that alarmtest only prints periods,
+and doesn't print "alarm!".
+
 
 <p>The main challenge will be to arrange that the handler is invoked
   when the process's alarm interval expires.  You'll need to modify
   usertrap() in kernel/trap.c so that when a
   process's alarm interval expires, the process executes
-  the handler. How can you do that?  You will need to understand in
-  detail how system calls work (i.e., the code in kernel/trampoline.S
-  and kernel/trap.c). Which register contains the address where
-  system calls return to?
+  the handler. How can you do that?  You will need to understand 
+  how system calls work (i.e., the code in kernel/trampoline.S
+  and kernel/trap.c). Which register contains the address to which
+  system calls return?
 
-<p>Your solution will be few lines of code, but it will be tricky to
-  write the right lines of code.  The most common failure scenario is that the
-  user program crashes or doesn't terminate.  You can see the assembly
-  code for the alarmtest program in alarmtest.asm, which will be handy
-  for debugging.
+<p>Your solution will be only a few lines of code, but it may be tricky to
+  get it right.
 
-<h3>Test0: invoke handler</h3>
+<h3>test0: invoke handler</h3>
 
-<p>To get started, the best strategy is to first pass test0, which
-  will force you to handle the main challenge above. Here are some
-  hints how to pass test0:
+<p>Get started by modifying the kernel to jump to the alarm handler in
+user space, which will cause test0 to print "alarm!". Don't worry yet
+what happens after the "alarm!" output; it's OK for now if your
+program crashes after printing "alarm!". Here are some hints:
 
-<p><b>XXX alarm() needs to be defined somewhere.</b><br>
-  
 <ul>
 
 <li>You'll need to modify the Makefile to cause <tt>alarmtest.c</tt>
@@ -268,7 +265,7 @@ in <tt>usertrap()</tt>; you should add some code here.
     if(which_dev == 2) ...
 </pre>
 
-<li>Only invoke the process's alarm function, if the process has a
+<li>Only invoke the alarm function if the process has a
   timer outstanding.  Note that the address of the user's alarm
   function might be 0 (e.g., in alarmtest.asm, <tt>periodic</tt> is at
   address 0).
@@ -279,41 +276,32 @@ use only one CPU, which you can do by running
     make CPUS=1 qemu
 </pre>
 
-<li><b>XXX we need to somehow convey what it is they don't
-       need to do here, i.e. what part is to be left to
-       the next section.</b>
-
-<li><b>XXX it's not clear how they can tell whether they
-are passing test0(), and should proceed to the next section.
-do they need to make sure at this point that they see multiple
-alarm! printouts? or is it OK if they see one alarm! and
-then a crash? may need to fix the sample ...alarm! output shown above</b>
+<li>You've succeeded if alarmtest prints "alarm!".
 
 </ul>
 
 <h3>test1(): resume interrupted code</h3>
 
-<p><b>XXX it is surprising that test0() appears to work
-perfectly, even though something is seriously wrong
-with the way periodic() returns. we should recognize
-that something odd is happening, maybe ask them to think
-about it, and hint or say why they are not done even though
-test0() works.</b>
+Chances are that alarmtest crashes at some point after it prints
+"alarm!". Depending on how your solution works, that point may be in
+test0, or it may be in test1. Crashes are likely caused
+by the alarm handler (<tt>periodic</tt> in alarmtest.c) returning
+to the wrong point in the user program.
 
-<p>Test0 doesn't test whether the handler returns correctly to
-  the user instruction that was interrupted by the timer.
-  The previous section didn't require you to get this right.
-  If you didn't, test0 will probably succeed anyway, but
-  test1 will likely fail (the program crashes or the program
-  goes into an infinite loop).
-  Another challenge is that the register contents need to be
-  correct when control returns to the interrupted user instruction.
+<p>
+Your job now is to ensure that, when the alarm handler is done,
+control returns to
+the instruction at which the user program was originally
+interrupted by the timer interrupt. You must also ensure that
+the register contents are restored to values they held
+at the time of the interrupt, so that the user program
+can continue undisturbed after the alarm.
 
 <p>Your solution is likely to require you to save and restore
   registers---what registers do you need to save and restore to resume
-  the interrupted code correctly? (Hint: it will be many).  There are
-  several ways to restore the registers; one convenient plan is to add another
-  system call <tt>sigreturn</tt> that the handler calls when it is
+  the interrupted code correctly? (Hint: it will be many).
+  Several approaches are possible; one convenient plan is to add another
+  system call <tt>sigreturn</tt> that the user-space alarm handler calls when it is
   done, and which restores registers and returns to the original
   interrupted user instruction.
 
@@ -324,7 +312,7 @@ test0() works.</b>
     <li>Have <tt>usertrap</tt> save enough state in
       <tt>struct proc</tt> when the timer goes off
       that <tt>sigreturn</tt> can correctly return to the
-      interrupted code.
+      interrupted user code.
 
     <li>Prevent re-entrant calls to the handler----if a handler hasn't
       returned yet, the kernel shouldn't call it again.
