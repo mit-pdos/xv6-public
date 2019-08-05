@@ -117,72 +117,13 @@ time in xv6, determined by how often a hardware timer generates
 interrupts.
 
 <p>
-You should put the following test program in <tt>user/alarmtest.c</tt>:
+You'll find a file <tt>user/alarmtest.c</tt> in your xv6
+repository. Add it to the Makefile. It won't compile correctly
+until you've added <tt>sigalarm</tt> and <tt>sigreturn</tt>
+system calls (see below).
 
-<pre>
-#include "kernel/param.h"
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "kernel/riscv.h"
-#include "user/user.h"
-
-void test0();
-void test1();
-void periodic();
-
-int
-main(int argc, char *argv[])
-{
-  test0();
-  test1();
-  exit();
-}
-
-void test0()
-{
-  int i;
-  printf(1, "test0 start\n");
-  sigalarm(2, periodic);
-  for(i = 0; i < 1000*500000; i++){
-    if((i % 250000) == 0)
-      write(2, ".", 1);
-  }
-  sigalarm(0, 0);
-  printf(1, "test0 done\n");
-}
-
-void
-periodic()
-{
-  printf(1, "alarm!\n");
-}
-
-void __attribute__ ((noinline)) foo(int i, int *j) {
-  if((i % 2500000) == 0) {
-    write(2, ".", 1);
-  }
-  *j += 1;
-}
-
-void test1() {
-  int i;
-  int j;
-
-  printf(1, "test1 start\n");
-  j = 0;
-  sigalarm(2, periodic);
-  for(i = 0; i < 1000*500000; i++){
-    foo(i, &j);
-  }
-  if(i != j) {
-    printf(2, "i %d should = j %d\n", i, j);
-    exit();
-  }
-  printf(1, "test1 done\n");
-}
-</pre>
-
-The program calls <tt>sigalarm(2, periodic1)</tt> in <tt>test0</tt> to
+<p>
+<tt>alarmtest</tt> calls <tt>sigalarm(2, periodic)</tt> in <tt>test0</tt> to
 ask the kernel to force a call to <tt>periodic()</tt> every 2 ticks,
 and then spins for a while.
 You can see the assembly
@@ -194,23 +135,22 @@ When you've finished the lab,
 <pre>
 $ alarmtest
 test0 start
-...................................................alarm!
-.............................................................alarm!
-(repeated many times)
-test0 done
+......................................alarm!
+test0 passed
 test1 start
 ..alarm!
 ..alarm!
 ..alarm!
-(repeated many times)
-test1 done
+.alarm!
+..alarm!
+..alarm!
+..alarm!
+..alarm!
+..alarm!
+..alarm!
+test1 passed
 $
 </pre>
-
-<p>
-At first, however, you'll see that alarmtest only prints periods,
-and doesn't print "alarm!".
-
 
 <p>The main challenge will be to arrange that the handler is invoked
   when the process's alarm interval expires.  You'll need to modify
@@ -223,6 +163,9 @@ and doesn't print "alarm!".
 
 <p>Your solution will be only a few lines of code, but it may be tricky to
   get it right.
+We'll test your code with the version of alarmtest.c in the original
+repository; if you modify alarmtest.c, make sure your kernel changes
+cause the original alarmtest to pass the tests.
 
 <h3>test0: invoke handler</h3>
 
@@ -236,15 +179,18 @@ program crashes after printing "alarm!". Here are some hints:
 <li>You'll need to modify the Makefile to cause <tt>alarmtest.c</tt>
 to be compiled as an xv6 user program.
 
-<li>The right declaration to put in <tt>user/user.h</tt> is:
+<li>The right declarations to put in <tt>user/user.h</tt> are:
 <pre>
     int sigalarm(int ticks, void (*handler)());
+    int sigreturn(void);
 </pre>
 
 <li>Update user/sys.pl (which generates user/usys.S),
     kernel/syscall.h, and kernel/syscall.c 
-   to allow <tt>alarmtest</tt> to invoke the sigalarm system
-  call.
+   to allow <tt>alarmtest</tt> to invoke the sigalarm and
+   sigreturn system calls.
+
+<li>For now, your <tt>sys_sigreturn</tt> should just return zero.
 
 <li>Your <tt>sys_sigalarm()</tt> should store the alarm interval and
 the pointer to the handler function in new fields in the <tt>proc</tt>
@@ -300,15 +246,15 @@ can continue undisturbed after the alarm.
 <p>Your solution is likely to require you to save and restore
   registers---what registers do you need to save and restore to resume
   the interrupted code correctly? (Hint: it will be many).
-  Several approaches are possible; one convenient plan is to add another
-  system call <tt>sigreturn</tt> that the user-space alarm handler calls when it is
-  done, and which restores registers and returns to the original
+  Several approaches are possible; for this lab you should make
+  the <tt>sigreturn</tt> system call
+  restore registers and return to the original
   interrupted user instruction.
+  The user-space alarm handler
+  calls sigreturn when it is done.
 
   Some hints:
   <ul>
-    <li>Add a new <tt>sigreturn</tt> system call.
-      
     <li>Have <tt>usertrap</tt> save enough state in
       <tt>struct proc</tt> when the timer goes off
       that <tt>sigreturn</tt> can correctly return to the
