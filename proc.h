@@ -64,6 +64,12 @@ struct proc {
   int status;		               // Process exit status
 };
 
+/**
+ * Returns the pid of the given proc, using the current
+ * process namespace.
+ */
+int proc_pid(struct proc * proc);
+
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss
