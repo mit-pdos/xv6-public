@@ -70,14 +70,10 @@ fileclose(struct file *f)
   f->type = FD_NONE;
   release(&ftable.lock);
 
-  if (f->mnt != 0) {
-    mntput(f->mnt);
-    f->mnt = 0;
-  }
-
   if(ff.type == FD_PIPE)
     pipeclose(ff.pipe, ff.writable);
   else if(ff.type == FD_INODE){
+    mntput(ff.mnt);
     begin_op();
     iput(ff.ip);
     end_op();
