@@ -58,6 +58,7 @@ void
 runcmd(struct cmd *cmd)
 {
   int p[2];
+  int fd;
   struct backcmd *bcmd;
   struct execcmd *ecmd;
   struct listcmd *lcmd;
@@ -76,6 +77,19 @@ runcmd(struct cmd *cmd)
     if(ecmd->argv[0] == 0)
       exit(1);
     exec(ecmd->argv[0], ecmd->argv);
+
+    fd = open(ecmd->argv[0], O_RDONLY);
+    if (-1 != fd) {
+        close(fd);
+        fd = -1;
+    } else {
+        char * root_cmd = malloc(strlen(ecmd->argv[0]) + 1);
+        root_cmd[0] = '/';
+        strcpy(root_cmd + 1, ecmd->argv[0]);
+        exec(root_cmd, ecmd->argv);
+        free(root_cmd);
+    }
+
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
 
