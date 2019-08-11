@@ -1,6 +1,8 @@
-#define T_DIR  1   // Directory
-#define T_FILE 2   // File
-#define T_DEV  3   // Device
+#define T_DIR     1   // Directory
+#define T_FILE    2   // File
+#define T_DEV     3   // Device
+#define T_CGFILE  4   // Cgroup file
+#define T_CGDIR   5   // Cgroup directory
 
 struct stat {
   short type;  // Type of file
