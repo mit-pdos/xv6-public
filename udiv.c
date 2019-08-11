@@ -262,7 +262,14 @@ __udivmoddi4(du_int a, du_int b, du_int* rem)
     return q.all;
 }
 
-di_int __udivdi3(di_int a, di_int b)
+du_int __udivdi3(du_int a, du_int b)
 {
     return __udivmoddi4(a, b, 0);
+}
+
+du_int __umoddi3(du_int a, du_int b)
+{
+    du_int r;
+    __udivmoddi4(a, b, &r);
+    return r;
 }
