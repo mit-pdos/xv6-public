@@ -103,7 +103,7 @@ testfile(char *path) {
 static int
 mounta(void) {
   mkdir("a");
-  int res = mount("internal_fs_a", "a");
+  int res = mount("internal_fs_a", "a", 0);
   if (res != 0) {
     printf(1, "mounta: mount returned %d\n", res);
     return -1;
@@ -175,7 +175,7 @@ writefiletest(void) {
 
 static void
 invalidpathtest(void) {
-  int res = mount("internal_fs_a", "AAA");
+  int res = mount("internal_fs_a", "AAA", 0);
   if (res != -1) {
     printf(1, "invalidpathtest: mount did not fail as expected %d\n", res);
     return;
@@ -212,7 +212,7 @@ doublemounttest(void) {
   }
 
   mkdir("b");
-  int res = mount("internal_fs_a", "b");
+  int res = mount("internal_fs_a", "b", 0);
   if (res != 0) {
     printf(1, "doublemounttest: mount returned %d\n", res);
     return;
@@ -237,7 +237,7 @@ samedirectorytest(void) {
     return;
   }
 
-  int res = mount("internal_fs_b", "a");
+  int res = mount("internal_fs_b", "a", 0);
   if (res != -1) {
     printf(1, "samedirectorytest: mount did not fail as expected %d\n", res);
     return;
@@ -275,7 +275,7 @@ nestedmounttest(void) {
   }
 
   mkdir("a/b");
-  int res = mount("internal_fs_b", "a/b");
+  int res = mount("internal_fs_b", "a/b", 0);
   if (res != 0) {
     printf(1, "nestedmounttest: mount returned %d\n", res);
     return;
@@ -319,7 +319,7 @@ devicefilestoretest(void) {
   }
 
   mkdir("ccc");
-  int res = mount("internal_fs_a", "ccc");
+  int res = mount("internal_fs_a", "ccc", 0);
   if (res != 0) {
     printf(1, "devicefilestoretest: mount returned %d\n", res);
     return;
@@ -425,7 +425,7 @@ namespacefiletest(void) {
   if (pid == 0) {
     unshare(MOUNT_NS);
     mkdir("b");
-    int res = mount("internal_fs_b", "b");
+    int res = mount("internal_fs_b", "b", 0);
     if (res != 0) {
       printf(1, "namespacefiletest: mount returned %d\n", res);
       return;
@@ -444,7 +444,7 @@ namespacefiletest(void) {
       return;
     }
 
-    int res = mount("internal_fs_b", "b");
+    int res = mount("internal_fs_b", "b", 0);
     if (res != 0) {
       printf(1, "namespacefiletest: mount returned %d\n", res);
       return;

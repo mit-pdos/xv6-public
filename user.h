@@ -29,7 +29,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 
-int mount(const char*, const char*);
+int mount(const char*, const char*, const char *);
 int umount(const char*);
 int printmounts(void);
 int printdevices(void);
