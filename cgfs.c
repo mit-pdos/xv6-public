@@ -509,6 +509,64 @@ int unsafe_writecgfile(struct file * f, char * addr, int n)
                 addr,
                 sizeof(f->cgp->max_descendants_value));
         r = n;
+    } else if (strcmp(f->cgfilename, "cpu.max") == 0 &&
+               f->cgp->cpu_controller_enabled) {
+        char max_string[32] = {0};
+        char period_string[32] = {0};
+        int i = 0;
+        int j = 0;
+        int max = -1;
+        int period = -1;
+
+        // Copy the max string part.
+        for (i = 0; i < n && i < sizeof(max_string) - 1 && addr[i] != ' ';
+             ++i) {
+            max_string[i] = addr[i];
+        }
+
+        // If more than max string size, fail.
+        if (i >= sizeof(max_string) - 1) {
+            return -1;
+        }
+
+        // Skip spaces.
+        for (; i < n; ++i) {
+            if (addr[i] != ' ') {
+                break;
+            }
+        }
+
+        // Copy the period string part.
+        for (j = 0; i < n && j < sizeof(period_string) - 1; ++i, ++j) {
+            period_string[j] = addr[i];
+        }
+
+        // If more than period string size, fail.
+        if (j >= sizeof(period_string) - 1) {
+            return -1;
+        }
+
+        // Update max.
+        max = atoi(max_string);
+        if (-1 == max) {
+            return -1;
+        }
+
+        // Update period.
+        if (period_string[0]) {
+            period = atoi(period_string);
+            if (-1 == period) {
+                return -1;
+            }
+
+            // Update period fields.
+            f->cgp->cpu_account_period = period;
+            f->cpu.max.period = period;
+        }
+
+        // Update max fields.
+        f->cgp->cpu_time_limit = max;
+        f->cpu.max.max = max;
     }
 
     return r;
