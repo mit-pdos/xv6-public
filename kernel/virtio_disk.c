@@ -20,36 +20,38 @@
 // the address of virtio mmio register r.
 #define R(r) ((volatile uint32 *)(VIRTIO0 + (r)))
 
-struct spinlock vdisk_lock;
+static struct disk {
+ // memory for virtio descriptors &c for queue 0.
+ // this is a global instead of allocated because it must
+ // be multiple contiguous pages, which kalloc()
+ // doesn't support, and page aligned.
+  char pages[2*PGSIZE];
+  struct VRingDesc *desc;
+  uint16 *avail;
+  struct UsedArea *used;
 
-// memory for virtio descriptors &c for queue 0.
-// this is a global instead of allocated because it has
-// to be multiple contiguous pages, which kalloc()
-// doesn't support.
-__attribute__ ((aligned (PGSIZE)))
-static char pages[2*PGSIZE];
-static struct VRingDesc *desc;
-static uint16 *avail;
-static struct UsedArea *used;
+  // our own book-keeping.
+  char free[NUM];  // is a descriptor free?
+  uint16 used_idx; // we've looked this far in used[2..NUM].
 
-// our own book-keeping.
-static char free[NUM];  // is a descriptor free?
-static uint16 used_idx; // we've looked this far in used[2..NUM].
-
-// track info about in-flight operations,
-// for use when completion interrupt arrives.
-// indexed by first descriptor index of chain.
-static struct {
-  struct buf *b;
-  char status;
-} info[NUM];
+  // track info about in-flight operations,
+  // for use when completion interrupt arrives.
+  // indexed by first descriptor index of chain.
+  struct {
+    struct buf *b;
+    char status;
+  } info[NUM];
+  
+  struct spinlock vdisk_lock;
+  
+} __attribute__ ((aligned (PGSIZE))) disk;
 
 void
 virtio_disk_init(void)
 {
   uint32 status = 0;
 
-  initlock(&vdisk_lock, "virtio_disk");
+  initlock(&disk.vdisk_lock, "virtio_disk");
 
   if(*R(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 ||
      *R(VIRTIO_MMIO_VERSION) != 1 ||
@@ -93,19 +95,19 @@ virtio_disk_init(void)
   if(max < NUM)
     panic("virtio disk max queue too short");
   *R(VIRTIO_MMIO_QUEUE_NUM) = NUM;
-  memset(pages, 0, sizeof(pages));
-  *R(VIRTIO_MMIO_QUEUE_PFN) = ((uint64)pages) >> PGSHIFT;
+  memset(disk.pages, 0, sizeof(disk.pages));
+  *R(VIRTIO_MMIO_QUEUE_PFN) = ((uint64)disk.pages) >> PGSHIFT;
 
   // desc = pages -- num * VRingDesc
   // avail = pages + 0x40 -- 2 * uint16, then num * uint16
   // used = pages + 4096 -- 2 * uint16, then num * vRingUsedElem
 
-  desc = (struct VRingDesc *) pages;
-  avail = (uint16*)(((char*)desc) + NUM*sizeof(struct VRingDesc));
-  used = (struct UsedArea *) (pages + PGSIZE);
+  disk.desc = (struct VRingDesc *) disk.pages;
+  disk.avail = (uint16*)(((char*)disk.desc) + NUM*sizeof(struct VRingDesc));
+  disk.used = (struct UsedArea *) (disk.pages + PGSIZE);
 
   for(int i = 0; i < NUM; i++)
-    free[i] = 1;
+    disk.free[i] = 1;
 
   // plic.c and trap.c arrange for interrupts from VIRTIO0_IRQ.
 }
@@ -115,8 +117,8 @@ static int
 alloc_desc()
 {
   for(int i = 0; i < NUM; i++){
-    if(free[i]){
-      free[i] = 0;
+    if(disk.free[i]){
+      disk.free[i] = 0;
       return i;
     }
   }
@@ -129,11 +131,11 @@ free_desc(int i)
 {
   if(i >= NUM)
     panic("virtio_disk_intr 1");
-  if(free[i])
+  if(disk.free[i])
     panic("virtio_disk_intr 2");
-  desc[i].addr = 0;
-  free[i] = 1;
-  wakeup(&free[0]);
+  disk.desc[i].addr = 0;
+  disk.free[i] = 1;
+  wakeup(&disk.free[0]);
 }
 
 // free a chain of descriptors.
@@ -142,8 +144,8 @@ free_chain(int i)
 {
   while(1){
     free_desc(i);
-    if(desc[i].flags & VRING_DESC_F_NEXT)
-      i = desc[i].next;
+    if(disk.desc[i].flags & VRING_DESC_F_NEXT)
+      i = disk.desc[i].next;
     else
       break;
   }
@@ -168,7 +170,7 @@ virtio_disk_rw(struct buf *b, int write)
 {
   uint64 sector = b->blockno * (BSIZE / 512);
 
-  acquire(&vdisk_lock);
+  acquire(&disk.vdisk_lock);
 
   // the spec says that legacy block operations use three
   // descriptors: one for type/reserved/sector, one for
@@ -180,7 +182,7 @@ virtio_disk_rw(struct buf *b, int write)
     if(alloc3_desc(idx) == 0) {
       break;
     }
-    sleep(&free[0], &vdisk_lock);
+    sleep(&disk.free[0], &disk.vdisk_lock);
   }
   
   // format the three descriptors.
@@ -201,67 +203,67 @@ virtio_disk_rw(struct buf *b, int write)
 
   // buf0 is on a kernel stack, which is not direct mapped,
   // thus the call to kvmpa().
-  desc[idx[0]].addr = (uint64) kvmpa((uint64) &buf0);
-  desc[idx[0]].len = sizeof(buf0);
-  desc[idx[0]].flags = VRING_DESC_F_NEXT;
-  desc[idx[0]].next = idx[1];
+  disk.desc[idx[0]].addr = (uint64) kvmpa((uint64) &buf0);
+  disk.desc[idx[0]].len = sizeof(buf0);
+  disk.desc[idx[0]].flags = VRING_DESC_F_NEXT;
+  disk.desc[idx[0]].next = idx[1];
 
-  desc[idx[1]].addr = (uint64) b->data;
-  desc[idx[1]].len = BSIZE;
+  disk.desc[idx[1]].addr = (uint64) b->data;
+  disk.desc[idx[1]].len = BSIZE;
   if(write)
-    desc[idx[1]].flags = 0; // device reads b->data
+    disk.desc[idx[1]].flags = 0; // device reads b->data
   else
-    desc[idx[1]].flags = VRING_DESC_F_WRITE; // device writes b->data
-  desc[idx[1]].flags |= VRING_DESC_F_NEXT;
-  desc[idx[1]].next = idx[2];
+    disk.desc[idx[1]].flags = VRING_DESC_F_WRITE; // device writes b->data
+  disk.desc[idx[1]].flags |= VRING_DESC_F_NEXT;
+  disk.desc[idx[1]].next = idx[2];
 
-  info[idx[0]].status = 0;
-  desc[idx[2]].addr = (uint64) &info[idx[0]].status;
-  desc[idx[2]].len = 1;
-  desc[idx[2]].flags = VRING_DESC_F_WRITE; // device writes the status
-  desc[idx[2]].next = 0;
+  disk.info[idx[0]].status = 0;
+  disk.desc[idx[2]].addr = (uint64) &disk.info[idx[0]].status;
+  disk.desc[idx[2]].len = 1;
+  disk.desc[idx[2]].flags = VRING_DESC_F_WRITE; // device writes the status
+  disk.desc[idx[2]].next = 0;
 
   // record struct buf for virtio_disk_intr().
   b->disk = 1;
-  info[idx[0]].b = b;
+  disk.info[idx[0]].b = b;
 
   // avail[0] is flags
   // avail[1] tells the device how far to look in avail[2...].
   // avail[2...] are desc[] indices the device should process.
   // we only tell device the first index in our chain of descriptors.
-  avail[2 + (avail[1] % NUM)] = idx[0];
+  disk.avail[2 + (disk.avail[1] % NUM)] = idx[0];
   __sync_synchronize();
-  avail[1] = avail[1] + 1;
+  disk.avail[1] = disk.avail[1] + 1;
 
   *R(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
 
   // Wait for virtio_disk_intr() to say request has finished.
   while(b->disk == 1) {
-    sleep(b, &vdisk_lock);
+    sleep(b, &disk.vdisk_lock);
   }
 
-  info[idx[0]].b = 0;
+  disk.info[idx[0]].b = 0;
   free_chain(idx[0]);
 
-  release(&vdisk_lock);
+  release(&disk.vdisk_lock);
 }
 
 void
 virtio_disk_intr()
 {
-  acquire(&vdisk_lock);
+  acquire(&disk.vdisk_lock);
 
-  while((used_idx % NUM) != (used->id % NUM)){
-    int id = used->elems[used_idx].id;
+  while((disk.used_idx % NUM) != (disk.used->id % NUM)){
+    int id = disk.used->elems[disk.used_idx].id;
 
-    if(info[id].status != 0)
+    if(disk.info[id].status != 0)
       panic("virtio_disk_intr status");
     
-    info[id].b->disk = 0;   // disk is done with buf
-    wakeup(info[id].b);
+    disk.info[id].b->disk = 0;   // disk is done with buf
+    wakeup(disk.info[id].b);
 
-    used_idx = (used_idx + 1) % NUM;
+    disk.used_idx = (disk.used_idx + 1) % NUM;
   }
 
-  release(&vdisk_lock);
+  release(&disk.vdisk_lock);
 }
