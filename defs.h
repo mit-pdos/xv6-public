@@ -13,6 +13,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct cgroup;
 
 // bio.c
 void            binit(void);
@@ -194,6 +195,7 @@ void*           memset(void*, int, uint);
 char*           safestrcpy(char*, const char*, int);
 int             strlen(const char*);
 int             strncmp(const char*, const char*, uint);
+int             strcmp(const char * p, const char * q);
 char*           strncpy(char*, const char*, int);
 
 // syscall.c
@@ -233,6 +235,12 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+
+// cgroup.c
+void            cginit(void);
+
+// klib.c
+int             atoi(char * str);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

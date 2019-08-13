@@ -37,7 +37,9 @@ OBJS = \
 	vectors.o\
 	vm.o\
 	udiv.o\
-	steady_clock.o
+	steady_clock.o\
+	klib.o\
+	cgroup.o\
 
 # Cross-compiling (e.g., on Mac OS X)
 # TOOLPREFIX = i386-jos-elf

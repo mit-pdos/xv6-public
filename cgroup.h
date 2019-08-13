@@ -1,0 +1,247 @@
+#include "param.h"
+#include "proc.h"
+#include "defs.h"
+
+#ifndef XV6_CGROUP_H
+#define XV6_CGROUP_H
+
+#define MAX_DECS_SIZE 3       // Max length of string representation of descendants number. (the value is a number of at most two digits + null terminator)
+#define MAX_DEPTH_SIZE 3      // Max length of string representation of depth number. (the value is a number of at most two digits + null terminator)
+
+#define MAX_CONTROLLER_NAME_LENGTH 16  // Max length allowed for controller names
+
+/**
+ * Control group, contains up to NPROC processes.
+ */
+struct cgroup
+{
+    char cgroup_dir_path[MAX_PATH_LENGTH]; /* Path of the cgroup
+                                              directory.*/
+
+    int ref_count; /* Reference count.*/
+
+    struct proc * proc[NPROC]; /* Array of all processes in the cgroup.*/
+    int num_of_procs;          /* Number of processes in the cgroup subtree
+                                  (including processes in this cgroup).*/
+
+    struct cgroup * parent; /* The parent cgroup.*/
+
+    char cpu_controller_avalible; /* Is 1 if cpu controller may be enabled,
+                                     otherwise 0.*/
+    char cpu_controller_enabled;  /* Is 1 if cpu controller is enabled,
+                                     otherwise 0.*/
+
+    char populated; /* Is 1 if subtree has at least one process in it,
+                       otherise 0.*/
+
+    char max_descendants_value
+        [MAX_DECS_SIZE]; /*String with the number of maximum descendant
+                                cgroups allowed in subtree.*/
+
+    char max_depth_value[MAX_DEPTH_SIZE]; /*String with the number of
+                                                 maximum depth allowed in
+                                                 subtree.*/
+
+    char depth[MAX_DEPTH_SIZE]; /*String with the current depth of the
+                                       subtree.*/
+
+    char nr_descendants[MAX_DECS_SIZE]; /*String with the current number
+                                              of descendant cgroups.*/
+    char nr_dying_descendants
+        [MAX_DECS_SIZE]; /*String with the current number of dying descendant cgroups.*/
+};
+
+/**
+ * This funciton returns the root cgroup.
+ * Receives void.
+ * Return value is a pointer to root cgroup, &cgroups[0].
+ */
+struct cgroup * cgroup_root(void);
+
+/**
+ * This function creates a new cgroup and initializes it at the given path.
+ * Checks that cgroup has parent. 
+ * Checks that the limits set in ancestors are not exceeded.
+ * Checks if we have avalible slot in the table.
+ * Updates number of descendants for ancestors.
+ * Receives string parameter "path".
+ * "path" is string of directory names separated by '/'s.
+ * Return value is pointer to the newly created cgroup. 
+ * On failure returns 0.
+ */
+struct cgroup * cgroup_create(char * path);
+
+/**
+ * This function deletes a cgroup, removes directory (when called with type unlink) or unmounts the cgroup filesystem (when called on root cgroup with type umount).
+ * If the reference count is not 0, the cgroup becomes dying.
+ * Receives string parameter "path", string parameter "type".
+ * "path" is string of directory names separated by '/'s.
+ * "type" is string with value "umount" or "unlink".
+ * Type must be "umount" when called from umount systemcall.
+ * Type must be "unlink" when called from unlink systemcall.
+ * Return values:
+ * - 0 when deleted successfully.
+ * - -1 when path is not a cgroup directory.
+ * - -2 when cannot delete cgroup.
+ */
+int cgroup_delete(char * path, char * type);
+
+/**
+ * This function initializes a cgroup. (sets default starting values of new cgroups)
+ * Receives cgroup pointer parameter "cgroup", string parameter "path", cgroup pointer parameter "parent_cgroup".
+ * "cgroup" is pointer to the cgroup to be initialized.
+ * "path" is string of directory names separated by '/'s.
+ * "parent_cgroup" is pointer to the parent cgroup ("cgroup" will be initialized as the child of this cgroup). Must be valid cgroup, the function does not check validity.
+ * Return value is void.
+ */
+void cgroup_initialize(struct cgroup * cgroup,
+                       char * path,
+                       struct cgroup * parent_cgroup);
+
+/**
+ * These functions insert a process into a cgroup (associates process with cgroup).
+ * They erase the process from the previously associated cgroup.
+ * Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+ * Receive cgroup pointer parameter "cgroup", proc pointer parameter "proc".
+ * "cgroup" is pointer to the cgroup into which we insert the process. Must be valid cgroup.
+ * "proc" is a pointer to the process to be inserted into the cgroup. Must be valid process.
+ * Return values:
+ * - 0 on success.
+ * - -1 if no space.
+ */
+int unsafe_cgroup_insert(struct cgroup * cgroup, struct proc * proc);
+int cgroup_insert(struct cgroup * cgroup, struct proc * proc);
+
+/**
+ * This function removes a process from a cgroup.
+ * Process is dissociated with cgroup.
+ * Receives cgroup pointer parameter "cgroup", proc pointer parameter "proc".
+ * "cgroup" is pointer to the cgroup from which we remove the process. Must be valid cgroup.
+ * "proc" is a pointer to the process to be removed from the cgroup. Must be valid process.
+ * Return value is void.
+ */
+void cgroup_erase(struct cgroup * cgroup, struct proc * proc);
+
+/**
+ * These functions enable the cpu controller of a cgroup.
+ * Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+ * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup in which we enable the controller. Must be valid cgroup.
+ * Return values:
+ * - 0 on success.
+ * - -1 on failure.
+ */
+int unsafe_enable_cpu_controller(struct cgroup * cgroup);
+int enable_cpu_controller(struct cgroup * cgroup);
+
+/**
+ * These functions disable the cpu controller of a cgroup.
+ * Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+ * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup in which we disable the controller. Must be valid cgroup.
+ * Return values:
+ * - 0 on success.
+ * - -1 on failure.
+ */
+int unsafe_disable_cpu_controller(struct cgroup * cgroup);
+int disable_cpu_controller(struct cgroup * cgroup);
+
+/**
+ * This function sets the cgroup_dir_path field of a cgroup.
+ * Receives cgroup pointer parameter "cgroup", string parameter "path".
+ * "cgroup" is pointer to the cgroup in which we set the field.
+ * "path" is string of directory names separated by '/'s. We set the cgroup_dir_path field to this path.
+ * Return value is void.
+ */
+void set_cgroup_dir_path(struct cgroup * cgroup, char * path);
+
+/**
+ * This function gets the cgroup that is located at a given path.
+ * Receives string parameter "path".
+ * "path" is string of directory names separated by '/'s.
+ * Return value is pointer to the cgroup located at the path "path". 
+ * On failure returns 0.
+ */
+struct cgroup * get_cgroup_by_path(char * path);
+
+/**
+ * This function sets the max_descendants_value field of a cgroup.
+ * Receives cgroup pointer parameter "cgroup", string parameter "value".
+ * "cgroup" is pointer to the cgroup in which we set the field.
+ * "value" is string containing the new value to set. We set the max_descendants_value field to this value.
+ * Return value is void.
+ */
+void set_max_descendants_value(struct cgroup * cgroup, char * value);
+
+/**
+ * This function sets the max_depth_value field of a cgroup.
+ * Receives cgroup pointer parameter "cgroup", string parameter "value".
+ * "cgroup" is pointer to the cgroup in which we set the field.
+ * "value" is string containing the new value to set. We set the max_depth_value field to this value.
+ * Return value is void.
+ */
+void set_max_depth_value(struct cgroup * cgroup, char * value);
+
+/**
+ * This function sets the nr_descendants field of a cgroup.
+ * Receives cgroup pointer parameter "cgroup", string parameter "value".
+ * "cgroup" is pointer to the cgroup in which we set the field.
+ * "value" is string containing the new value to set. We set the nr_descendants field to this value.
+ * Return value is void.
+ */
+void set_nr_descendants(struct cgroup * cgroup, char * value);
+
+/**
+ * This function sets the nr_dying_descendants field of a cgroup.
+ * Receives cgroup pointer parameter "cgroup", string parameter "value".
+ * "cgroup" is pointer to the cgroup in which we set the field.
+ * "value" is string containing the new value to set. We set the nr_dying_descendants field to this value.
+ * Return value is void.
+ */
+void set_nr_dying_descendants(struct cgroup * cgroup, char * value);
+
+/**
+ * This function gets all names of children cgroup of cgroup at a path.
+ * Receives string parameter "buf", string parameter "path".
+ * "buf" is string to be set to the names of all chilren cgroup of cgroup located at the path. "buf" must be big enough to fit all of them.
+ * "path" is string of directory names separated by '/'s. The function gets the names of children of the cgroup located at this path.
+ * Return value is void.
+ */
+void get_cgroup_names_at_path(char * buf, char * path);
+
+/**
+ * This function gets number of cgroup's immidiate children.
+ * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup of which we count the children.
+ * Return value is the number of immidiate children of the cgroup.
+ * On falure returns -1.
+ */
+int cgorup_num_of_immidiate_children(struct cgroup * cgroup);
+
+/**
+ * This function formats a path.
+ * Receives string parameter "buf", string parameter "path".
+ * "buf" is string to be set the formatted path. "buf" must be big enough to fit it.
+ * "path" is string of directory names separated by '/'s.
+ * Return value is void.
+ * The function does the following:
+ * 1) If "path" does not start with '/' then it copies the current working directory to the buffer,
+ * 2) Copies "path" to buffer while changing "/.." and "/." to the appropriate paths.
+ * 3) '/'-es at the end of "path" are not copied.
+ * 4) If the buffer ends with '/' then it is deleted.
+ *
+ * Example:
+ * for given path = "b/./c/d/../e/////" and cwd = "/a"
+ * buf will be set to : "a/b/c/e"
+ */
+void format_path(char * buf, char * path);
+
+/**
+ * This function decrements number of dying descendants for a cgroup and every ancestor.
+ * * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup of which number of dying descendants we decrement.
+ * Return value is void.
+ */
+void decrement_nr_dying_descendants(struct cgroup * cgroup);
+
+#endif
