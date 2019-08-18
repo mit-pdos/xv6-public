@@ -493,12 +493,11 @@ forkret(void)
   release(&myproc()->lock);
 
   if (first) {
-    // Some initialization functions must be run in the context
-    // of a regular process (e.g., they call sleep), and thus cannot
+    // File system initialization must be run in the context of a
+    // regular process (e.g., because it calls sleep), and thus cannot
     // be run from main().
     first = 0;
-    iinit(ROOTDEV);
-    initlog(ROOTDEV);
+    fsinit(ROOTDEV);
   }
 
   usertrapret();

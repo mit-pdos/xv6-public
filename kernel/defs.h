@@ -35,12 +35,12 @@ int             filestat(struct file*, uint64 addr);
 int             filewrite(struct file*, uint64, int n);
 
 // fs.c
-void            readsb(int dev, struct superblock *sb);
+void            fsinit(int);
 int             dirlink(struct inode*, char*, uint);
 struct inode*   dirlookup(struct inode*, char*, uint*);
 struct inode*   ialloc(uint, short);
 struct inode*   idup(struct inode*);
-void            iinit(int dev);
+void            iinit();
 void            ilock(struct inode*);
 void            iput(struct inode*);
 void            iunlock(struct inode*);
@@ -64,7 +64,7 @@ void            kfree(void *);
 void            kinit();
 
 // log.c
-void            initlog(int dev);
+void            initlog(int, struct superblock*);
 void            log_write(struct buf*);
 void            begin_op();
 void            end_op();
