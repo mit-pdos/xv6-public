@@ -476,7 +476,7 @@ void
 yield(void)
 {
   struct proc *p = myproc();
-  acquire(&p->lock);  //DOC: yieldlock
+  acquire(&p->lock);
   p->state = RUNNABLE;
   sched();
   release(&p->lock);
@@ -531,7 +531,7 @@ sleep(void *chan, struct spinlock *lk)
   p->chan = 0;
 
   // Reacquire original lock.
-  if(lk != &p->lock){  //DOC: sleeplock2
+  if(lk != &p->lock){
     release(&p->lock);
     acquire(lk);
   }

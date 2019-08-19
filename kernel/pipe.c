@@ -88,13 +88,13 @@ pipewrite(struct pipe *pi, uint64 addr, int n)
         return -1;
       }
       wakeup(&pi->nread);
-      sleep(&pi->nwrite, &pi->lock);  //DOC: pipewrite-sleep
+      sleep(&pi->nwrite, &pi->lock);
     }
     if(copyin(pr->pagetable, &ch, addr + i, 1) == -1)
       break;
     pi->data[pi->nwrite++ % PIPESIZE] = ch;
   }
-  wakeup(&pi->nread);  //DOC: pipewrite-wakeup1
+  wakeup(&pi->nread);
   release(&pi->lock);
   return n;
 }
