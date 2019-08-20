@@ -1773,39 +1773,15 @@ sbrktest(void)
 }
 
 void
-validateint(int *p)
-{
-  /* XXX int res;
-  asm("mov %%esp, %%ebx\n\t"
-      "mov %3, %%esp\n\t"
-      "int %2\n\t"
-      "mov %%ebx, %%esp" :
-      "=a" (res) :
-      "a" (SYS_sleep), "n" (T_SYSCALL), "c" (p) :
-      "ebx");
-  */
-}
-
-void
 validatetest(void)
 {
-  int hi, pid;
+  int hi;
   uint64 p;
 
   printf(stdout, "validate test\n");
   hi = 1100*1024;
 
   for(p = 0; p <= (uint)hi; p += PGSIZE){
-    if((pid = fork()) == 0){
-      // try to crash the kernel by passing in a badly placed integer
-      validateint((int*)p);
-      exit();
-    }
-    sleep(0);
-    sleep(0);
-    kill(pid);
-    wait();
-
     // try to crash the kernel by passing in a bad string pointer
     if(link("nosuchfile", (char*)p) != -1){
       printf(stdout, "link should not succeed\n");
