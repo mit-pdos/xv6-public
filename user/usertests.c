@@ -8,7 +8,9 @@
 #include "kernel/memlayout.h"
 #include "kernel/riscv.h"
 
-char buf[8192];
+#define BUFSZ  (MAXOPBLOCKS+2)*BSIZE
+
+char buf[BUFSZ];
 char name[3];
 char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
 int stdout = 1;
@@ -140,7 +142,8 @@ writetest(void)
 {
   int fd;
   int i;
-
+  enum { N=100, SZ=10 };
+  
   printf(stdout, "small file test\n");
   fd = open("small", O_CREATE|O_RDWR);
   if(fd >= 0){
@@ -149,12 +152,12 @@ writetest(void)
     printf(stdout, "error: creat small failed!\n");
     exit();
   }
-  for(i = 0; i < 100; i++){
-    if(write(fd, "aaaaaaaaaa", 10) != 10){
+  for(i = 0; i < N; i++){
+    if(write(fd, "aaaaaaaaaa", SZ) != SZ){
       printf(stdout, "error: write aa %d new file failed\n", i);
       exit();
     }
-    if(write(fd, "bbbbbbbbbb", 10) != 10){
+    if(write(fd, "bbbbbbbbbb", SZ) != SZ){
       printf(stdout, "error: write bb %d new file failed\n", i);
       exit();
     }
@@ -168,8 +171,8 @@ writetest(void)
     printf(stdout, "error: open small failed!\n");
     exit();
   }
-  i = read(fd, buf, 2000);
-  if(i == 2000){
+  i = read(fd, buf, N*SZ*2);
+  if(i == N*SZ*2){
     printf(stdout, "read succeeded ok\n");
   } else {
     printf(stdout, "read failed\n");
@@ -199,7 +202,7 @@ writetest1(void)
 
   for(i = 0; i < MAXFILE; i++){
     ((int*)buf)[0] = i;
-    if(write(fd, buf, 512) != 512){
+    if(write(fd, buf, BSIZE) != BSIZE){
       printf(stdout, "error: write big file failed\n", i);
       exit();
     }
@@ -215,14 +218,14 @@ writetest1(void)
 
   n = 0;
   for(;;){
-    i = read(fd, buf, 512);
+    i = read(fd, buf, BSIZE);
     if(i == 0){
       if(n == MAXFILE - 1){
         printf(stdout, "read only %d blocks from big", n);
         exit();
       }
       break;
-    } else if(i != 512){
+    } else if(i != BSIZE){
       printf(stdout, "read failed %d\n", i);
       exit();
     }
@@ -245,19 +248,20 @@ void
 createtest(void)
 {
   int i, fd;
-
+  enum { N=52 };
+  
   printf(stdout, "many creates, followed by unlink test\n");
 
   name[0] = 'a';
   name[2] = '\0';
-  for(i = 0; i < 52; i++){
+  for(i = 0; i < N; i++){
     name[1] = '0' + i;
     fd = open(name, O_CREATE|O_RDWR);
     close(fd);
   }
   name[0] = 'a';
   name[2] = '\0';
-  for(i = 0; i < 52; i++){
+  for(i = 0; i < N; i++){
     name[1] = '0' + i;
     unlink(name);
   }
@@ -307,7 +311,8 @@ pipe1(void)
 {
   int fds[2], pid;
   int seq, i, n, cc, total;
-
+  enum { N=5, SZ=1033 };
+  
   if(pipe(fds) != 0){
     printf(1, "pipe() failed\n");
     exit();
@@ -316,10 +321,10 @@ pipe1(void)
   seq = 0;
   if(pid == 0){
     close(fds[0]);
-    for(n = 0; n < 5; n++){
-      for(i = 0; i < 1033; i++)
+    for(n = 0; n < N; n++){
+      for(i = 0; i < SZ; i++)
         buf[i] = seq++;
-      if(write(fds[1], buf, 1033) != 1033){
+      if(write(fds[1], buf, SZ) != SZ){
         printf(1, "pipe1 oops 1\n");
         exit();
       }
@@ -341,7 +346,7 @@ pipe1(void)
       if(cc > sizeof(buf))
         cc = sizeof(buf);
     }
-    if(total != 5 * 1033){
+    if(total != N * SZ){
       printf(1, "pipe1 oops 3 total %d\n", total);
       exit();
     }
@@ -512,10 +517,11 @@ void
 forkfork(void)
 {
   int ppid = getpid();
+  enum { N=2 };
   
   printf(1, "forkfork test\n");
 
-  for(int i = 0; i < 2; i++){
+  for(int i = 0; i < N; i++){
     int pid = fork();
     if(pid < 0){
       printf(1, "fork failed");
@@ -538,7 +544,7 @@ forkfork(void)
     }
   }
 
-  for(int i = 0; i < 2; i++){
+  for(int i = 0; i < N; i++){
     wait();
   }
 
@@ -620,7 +626,8 @@ void
 sharedfd(void)
 {
   int fd, pid, i, n, nc, np;
-  char buf[10];
+  enum { N = 1000, SZ=10};
+  char buf[SZ];
 
   printf(1, "sharedfd test\n");
 
@@ -632,7 +639,7 @@ sharedfd(void)
   }
   pid = fork();
   memset(buf, pid==0?'c':'p', sizeof(buf));
-  for(i = 0; i < 1000; i++){
+  for(i = 0; i < N; i++){
     if(write(fd, buf, sizeof(buf)) != sizeof(buf)){
       printf(1, "fstests: write sharedfd failed\n");
       break;
@@ -659,7 +666,7 @@ sharedfd(void)
   }
   close(fd);
   unlink("sharedfd");
-  if(nc == 10000 && np == 10000){
+  if(nc == N*SZ && np == N*SZ){
     printf(1, "sharedfd ok\n");
   } else {
     printf(1, "sharedfd oops %d %d\n", nc, np);
@@ -675,10 +682,11 @@ fourfiles(void)
   int fd, pid, i, j, n, total, pi;
   char *names[] = { "f0", "f1", "f2", "f3" };
   char *fname;
-
+  enum { N=12, NCHILD=4, SZ=500 };
+  
   printf(1, "fourfiles test\n");
 
-  for(pi = 0; pi < 4; pi++){
+  for(pi = 0; pi < NCHILD; pi++){
     fname = names[pi];
     unlink(fname);
 
@@ -695,9 +703,9 @@ fourfiles(void)
         exit();
       }
 
-      memset(buf, '0'+pi, 512);
-      for(i = 0; i < 12; i++){
-        if((n = write(fd, buf, 500)) != 500){
+      memset(buf, '0'+pi, SZ);
+      for(i = 0; i < N; i++){
+        if((n = write(fd, buf, SZ)) != SZ){
           printf(1, "write failed %d\n", n);
           exit();
         }
@@ -706,11 +714,11 @@ fourfiles(void)
     }
   }
 
-  for(pi = 0; pi < 4; pi++){
+  for(pi = 0; pi < NCHILD; pi++){
     wait();
   }
 
-  for(i = 0; i < 2; i++){
+  for(i = 0; i < NCHILD; i++){
     fname = names[i];
     fd = open(fname, 0);
     total = 0;
@@ -724,7 +732,7 @@ fourfiles(void)
       total += n;
     }
     close(fd);
-    if(total != 12*500){
+    if(total != N*SZ){
       printf(1, "wrong length %d\n", total);
       exit();
     }
@@ -811,6 +819,7 @@ createdelete(void)
 void
 unlinkread(void)
 {
+  enum { SZ = 5 };
   int fd, fd1;
 
   printf(1, "unlinkread test\n");
@@ -819,7 +828,7 @@ unlinkread(void)
     printf(1, "create unlinkread failed\n");
     exit();
   }
-  write(fd, "hello", 5);
+  write(fd, "hello", SZ);
   close(fd);
 
   fd = open("unlinkread", O_RDWR);
@@ -836,7 +845,7 @@ unlinkread(void)
   write(fd1, "yyy", 3);
   close(fd1);
 
-  if(read(fd, buf, sizeof(buf)) != 5){
+  if(read(fd, buf, sizeof(buf)) != SZ){
     printf(1, "unlinkread read failed");
     exit();
   }
@@ -856,6 +865,7 @@ unlinkread(void)
 void
 linktest(void)
 {
+  enum { SZ = 5 };
   int fd;
 
   printf(1, "linktest\n");
@@ -868,7 +878,7 @@ linktest(void)
     printf(1, "create lf1 failed\n");
     exit();
   }
-  if(write(fd, "hello", 5) != 5){
+  if(write(fd, "hello", SZ) != SZ){
     printf(1, "write lf1 failed\n");
     exit();
   }
@@ -890,7 +900,7 @@ linktest(void)
     printf(1, "open lf2 failed\n");
     exit();
   }
-  if(read(fd, buf, sizeof(buf)) != 5){
+  if(read(fd, buf, sizeof(buf)) != SZ){
     printf(1, "read lf2 failed\n");
     exit();
   }
@@ -919,18 +929,19 @@ linktest(void)
 void
 concreate(void)
 {
+  enum { N = 40 };
   char file[3];
   int i, pid, n, fd;
-  char fa[40];
+  char fa[N];
   struct {
     ushort inum;
-    char name[14];
+    char name[DIRSIZ];
   } de;
 
   printf(1, "concreate test\n");
   file[0] = 'C';
   file[2] = '\0';
-  for(i = 0; i < 40; i++){
+  for(i = 0; i < N; i++){
     file[1] = '0' + i;
     unlink(file);
     pid = fork();
@@ -974,12 +985,12 @@ concreate(void)
   }
   close(fd);
 
-  if(n != 40){
+  if(n != N){
     printf(1, "concreate not enough files in directory listing\n");
     exit();
   }
 
-  for(i = 0; i < 40; i++){
+  for(i = 0; i < N; i++){
     file[1] = '0' + i;
     pid = fork();
     if(pid < 0){
@@ -1047,6 +1058,7 @@ linkunlink()
 void
 bigdir(void)
 {
+  enum { N = 500 };
   int i, fd;
   char name[10];
 
@@ -1060,7 +1072,7 @@ bigdir(void)
   }
   close(fd);
 
-  for(i = 0; i < 500; i++){
+  for(i = 0; i < N; i++){
     name[0] = 'x';
     name[1] = '0' + (i / 64);
     name[2] = '0' + (i % 64);
@@ -1072,7 +1084,7 @@ bigdir(void)
   }
 
   unlink("bd");
-  for(i = 0; i < 500; i++){
+  for(i = 0; i < N; i++){
     name[0] = 'x';
     name[1] = '0' + (i / 64);
     name[2] = '0' + (i % 64);
@@ -1278,7 +1290,7 @@ bigwrite(void)
   printf(1, "bigwrite test\n");
 
   unlink("bigwrite");
-  for(sz = 499; sz < 12*512; sz += 471){
+  for(sz = 499; sz < (MAXOPBLOCKS+2)*BSIZE; sz += 471){
     fd = open("bigwrite", O_CREATE | O_RDWR);
     if(fd < 0){
       printf(1, "cannot create bigwrite\n");
@@ -1302,6 +1314,7 @@ bigwrite(void)
 void
 bigfile(void)
 {
+  enum { N = 20, SZ=600 };
   int fd, i, total, cc;
 
   printf(1, "bigfile test\n");
@@ -1312,9 +1325,9 @@ bigfile(void)
     printf(1, "cannot create bigfile");
     exit();
   }
-  for(i = 0; i < 20; i++){
-    memset(buf, i, 600);
-    if(write(fd, buf, 600) != 600){
+  for(i = 0; i < N; i++){
+    memset(buf, i, SZ);
+    if(write(fd, buf, SZ) != SZ){
       printf(1, "write bigfile failed\n");
       exit();
     }
@@ -1328,25 +1341,25 @@ bigfile(void)
   }
   total = 0;
   for(i = 0; ; i++){
-    cc = read(fd, buf, 300);
+    cc = read(fd, buf, SZ/2);
     if(cc < 0){
       printf(1, "read bigfile failed\n");
       exit();
     }
     if(cc == 0)
       break;
-    if(cc != 300){
+    if(cc != SZ/2){
       printf(1, "short read bigfile\n");
       exit();
     }
-    if(buf[0] != i/2 || buf[299] != i/2){
+    if(buf[0] != i/2 || buf[SZ/2-1] != i/2){
       printf(1, "read bigfile wrong data\n");
       exit();
     }
     total += cc;
   }
   close(fd);
-  if(total != 20*600){
+  if(total != N*SZ){
     printf(1, "read bigfile wrong total\n");
     exit();
   }
@@ -1502,8 +1515,7 @@ iref(void)
 
   printf(1, "empty file name\n");
 
-  // the 50 is NINODE
-  for(i = 0; i < 50 + 1; i++){
+  for(i = 0; i < NINODE + 1; i++){
     if(mkdir("irefd") != 0){
       printf(1, "mkdir irefd failed\n");
       exit();
@@ -1534,11 +1546,12 @@ iref(void)
 void
 forktest(void)
 {
+  enum{ N = 1000 };
   int n, pid;
 
   printf(1, "fork test\n");
 
-  for(n=0; n<1000; n++){
+  for(n=0; n<N; n++){
     pid = fork();
     if(pid < 0)
       break;
@@ -1551,7 +1564,7 @@ forktest(void)
     exit();
   }
 
-  if(n == 1000){
+  if(n == N){
     printf(1, "fork claimed to work 1000 times!\n");
     exit();
   }
@@ -1574,18 +1587,18 @@ forktest(void)
 void
 sbrktest(void)
 {
+  enum { BIG=100*1024*1024, TOOMUCH=1024*1024*1024};
   int i, fds[2], pids[10], pid, ppid;
   char *c, *oldbrk, scratch, *a, *b, *lastaddr, *p;
   uint64 amt;
   int fd;
   int n;
-  #define BIG (100*1024*1024)
 
   printf(stdout, "sbrk test\n");
   oldbrk = sbrk(0);
 
   // does sbrk() return the expected failure value?
-  a = sbrk(1024*1024*1024);
+  a = sbrk(TOOMUCH);
   if(a != (char*)0xffffffffffffffffL){
     printf(stdout, "sbrk(<toomuch>) returned %p\n", a);
     exit();
@@ -1630,21 +1643,21 @@ sbrktest(void)
 
   // can one de-allocate?
   a = sbrk(0);
-  c = sbrk(-4096);
+  c = sbrk(-PGSIZE);
   if(c == (char*)0xffffffffffffffffL){
     printf(stdout, "sbrk could not deallocate\n");
     exit();
   }
   c = sbrk(0);
-  if(c != a - 4096){
+  if(c != a - PGSIZE){
     printf(stdout, "sbrk deallocation produced wrong address, a %x c %x\n", a, c);
     exit();
   }
 
   // can one re-allocate that page?
   a = sbrk(0);
-  c = sbrk(4096);
-  if(c != a || sbrk(0) != a + 4096){
+  c = sbrk(PGSIZE);
+  if(c != a || sbrk(0) != a + PGSIZE){
     printf(stdout, "sbrk re-allocation failed, a %x c %x\n", a, c);
     exit();
   }
@@ -1697,7 +1710,7 @@ sbrktest(void)
 
   // if those failed allocations freed up the pages they did allocate,
   // we'll be able to allocate here
-  c = sbrk(4096);
+  c = sbrk(PGSIZE);
   for(i = 0; i < sizeof(pids)/sizeof(pids[0]); i++){
     if(pids[i] == -1)
       continue;
@@ -1723,7 +1736,7 @@ sbrktest(void)
     a = sbrk(0);
     sbrk(10*BIG);
     int n = 0;
-    for (i = 0; i < 10*BIG; i += 4096) {
+    for (i = 0; i < 10*BIG; i += PGSIZE) {
       n += *(a+i);
     }
     printf(stdout, "allocate a lot of memory succeeded %d\n", n);
@@ -1733,7 +1746,7 @@ sbrktest(void)
   wait();
 
   // test reads from allocated memory
-  a = sbrk(4096);
+  a = sbrk(PGSIZE);
   fd = open("sbrk", O_CREATE|O_WRONLY);
   unlink("sbrk");
   if(fd < 0)  {
@@ -1747,7 +1760,7 @@ sbrktest(void)
   close(fd);
 
   // test writes to allocated memory
-  a = sbrk(4096);
+  a = sbrk(PGSIZE);
   if(pipe((int *) a) != 0){
     printf(1, "pipe() failed\n");
     exit();
@@ -1782,7 +1795,7 @@ validatetest(void)
   printf(stdout, "validate test\n");
   hi = 1100*1024;
 
-  for(p = 0; p <= (uint)hi; p += 4096){
+  for(p = 0; p <= (uint)hi; p += PGSIZE){
     if((pid = fork()) == 0){
       // try to crash the kernel by passing in a badly placed integer
       validateint((int*)p);
@@ -1882,8 +1895,8 @@ fsfull()
     }
     int total = 0;
     while(1){
-      int cc = write(fd, buf, 512);
-      if(cc < 512)
+      int cc = write(fd, buf, BSIZE);
+      if(cc < BSIZE)
         break;
       total += cc;
       fsblocks++;
@@ -1942,7 +1955,7 @@ stacktest()
   pid = fork();
   if(pid == 0) {
     char *sp = (char *) r_sp();
-    sp -= 4096;
+    sp -= PGSIZE;
     // the *sp should cause a trap.
     printf(1, "stacktest: read below stack %p\n", *sp);
     printf(1, "stacktest: test FAILED\n");
