@@ -160,7 +160,7 @@ lcr3(addr_t val)
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
 struct trapframe {
-   uint64 rax;      
+   uint64 rax;
    uint64 rbx;
    uint64 rcx;
    uint64 rdx;
@@ -175,13 +175,13 @@ struct trapframe {
    uint64 r13;
    uint64 r14;
    uint64 r15;
- 
+
    uint64 trapno;
    uint64 err;
- 
-   uint64 rip;     
+
+   uint64 rip;
    uint64 cs;
-   uint64 rflags;  
-   uint64 rsp;     
-   uint64 ss;      
+   uint64 rflags;
+   uint64 rsp;
+   uint64 ss;
 };
