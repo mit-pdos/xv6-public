@@ -58,7 +58,7 @@ gets(char *buf, int max)
   for(i=0; i+1 < max; ){
     cc = read(0, &c, 1);
     if(cc < 1)
-      break;
+      continue;
     buf[i++] = c;
     if(c == '\n' || c == '\r')
       break;
@@ -132,4 +132,18 @@ int itoa(char * buf, int n)
     }
     *buf = '\0';
     return length;
+}
+
+char* strcat(char* dest, const char* source)
+{
+        int i, j;
+
+        for (i = 0; dest[i] != '\0'; i++);
+
+        for (j = 0; source[j] != '\0'; j++)
+                dest[i + j] = source[j];
+
+        dest[i + j] = '\0';
+
+        return dest;
 }

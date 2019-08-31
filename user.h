@@ -31,6 +31,7 @@ int sleep(int);
 int usleep(unsigned int);
 int uptime(void);
 int ioctl(int fd, unsigned long request, ...);
+int getppid(void);
 
 int mount(const char*, const char*, const char *);
 int umount(const char*);
@@ -52,5 +53,14 @@ void* malloc(uint);
 void free(void*);
 int atoi(const char*);
 int itoa(char *, int);
+char* strcat(char* dest, const char* source);
+
+int attach_tty(int tty_fd);
+int detach_tty(int tty_fd);
+int connect_tty(int tty_fd);
+int is_attached_tty(int tty_fd);
+int disconnect_tty(int tty_fd);
+int is_connected_tty(int tty_fd);
+
 
 #endif

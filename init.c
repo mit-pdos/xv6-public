@@ -19,6 +19,10 @@ main(void)
   dup(0);  // stdout
   dup(0);  // stderr
 
+  mknod("tty0", 2, 2);
+  mknod("tty1", 3, 3);
+  mknod("tty2", 4, 4);
+
   for(;;){
     printf(1, "init: starting sh\n");
     pid = fork();

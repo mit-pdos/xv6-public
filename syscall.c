@@ -110,6 +110,7 @@ extern int sys_printdevices(void);
 extern int sys_unshare(void);
 extern int sys_usleep(void);
 extern int sys_ioctl(void);
+extern int sys_getppid(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -140,6 +141,7 @@ static int (*syscalls[])(void) = {
 [SYS_unshare] sys_unshare,
 [SYS_usleep] sys_usleep,
 [SYS_ioctl] sys_ioctl,
+[SYS_getppid] sys_getppid,
 };
 
 void

@@ -73,6 +73,7 @@ struct inode {
 struct devsw {
   int (*read)(struct inode*, char*, int);
   int (*write)(struct inode*, char*, int);
+  int flags;
 };
 
 extern struct devsw devsw[];

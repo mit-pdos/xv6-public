@@ -23,7 +23,9 @@ void            bwrite(struct buf*);
 void            invalidateblocks(uint);
 
 // console.c
+void            consoleclear(void);
 void            consoleinit(void);
+void		ttyinit(void);
 void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
@@ -206,6 +208,7 @@ int             argstr(int, char**);
 int             fetchint(uint, int*);
 int             fetchstr(uint, char**);
 void            syscall(void);
+int             getppid(void);
 
 // timer.c
 void            timerinit(void);

@@ -27,3 +27,4 @@
 #define SYS_unshare 26
 #define SYS_usleep 27
 #define SYS_ioctl 28
+#define SYS_getppid 29

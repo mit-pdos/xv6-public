@@ -15,15 +15,31 @@
 #include "pid_ns.h"
 #include "proc.h"
 #include "x86.h"
+#include "fcntl.h"
+
+//PAGEBREAK: 50
+#define BACKSPACE 0x100
+#define CRTPORT 0x3d4
+static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
+static int panicked = 0;
+
+typedef struct device_lock {
+  struct spinlock lock;
+  int locking;
+} device_lock;
+
+static device_lock cons;
 
 static void consputc(int);
 
-static int panicked = 0;
-
-static struct {
-  struct spinlock lock;
-  int locking;
-} cons;
+static inline void update_pos(int pos) 
+{
+  outb(CRTPORT, 14);
+  outb(CRTPORT+1, pos>>8);
+  outb(CRTPORT, 15);
+  outb(CRTPORT+1, pos);
+  crt[pos] = ' ' | 0x0700;
+}
 
 static void
 printint(int xx, int base, int sign)
@@ -124,11 +140,6 @@ panic(char *s)
     ;
 }
 
-//PAGEBREAK: 50
-#define BACKSPACE 0x100
-#define CRTPORT 0x3d4
-static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
-
 static void
 cgaputc(int c)
 {
@@ -156,11 +167,13 @@ cgaputc(int c)
     memset(crt+pos, 0, sizeof(crt[0])*(24*80 - pos));
   }
 
-  outb(CRTPORT, 14);
-  outb(CRTPORT+1, pos>>8);
-  outb(CRTPORT, 15);
-  outb(CRTPORT+1, pos);
-  crt[pos] = ' ' | 0x0700;
+  update_pos(pos);
+}
+
+void consoleclear(void){
+  int pos = 0;
+  memset(crt, 0, sizeof(crt[0])*(24*80));
+  update_pos(pos);
 }
 
 void
@@ -272,6 +285,15 @@ consoleread(struct inode *ip, char *dst, int n)
 }
 
 int
+ttyread(struct inode *ip, char *dst, int n)
+{
+  if(devsw[ip->major].flags & DEV_CONNECT){
+    return consoleread(ip,dst,n);
+  }
+  return -1;
+}
+
+int
 consolewrite(struct inode *ip, char *buf, int n)
 {
   int i;
@@ -286,15 +308,42 @@ consolewrite(struct inode *ip, char *buf, int n)
   return n;
 }
 
+int
+ttywrite(struct inode *ip, char *buf, int n)
+{
+  if(devsw[ip->major].flags & DEV_CONNECT){
+    return consolewrite(ip,buf,n);
+  }
+  //2DO: should return -1 when write to tty fails - filewrite panics.
+  return n;
+}
+
 void
 consoleinit(void)
 {
   initlock(&cons.lock, "console");
 
-  devsw[CONSOLE].write = consolewrite;
-  devsw[CONSOLE].read = consoleread;
+  devsw[CONSOLE].write = ttywrite;
+  devsw[CONSOLE].read = ttyread;
+  devsw[CONSOLE].flags = DEV_CONNECT;
+
   cons.locking = 1;
 
   ioapicenable(IRQ_KBD, 0);
 }
+
+void
+ttyinit(void)
+{
+  int i;
+  for(i = CONSOLE+1; i <= CONSOLE+NTTY; i++){
+     devsw[i].write = ttywrite;
+     devsw[i].read = ttyread;
+     devsw[i].flags = 0;
+     ioapicenable(IRQ_KBD, 0);
+  }
+
+}
+
+
 

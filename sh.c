@@ -65,8 +65,11 @@ runcmd(struct cmd *cmd)
   struct pipecmd *pcmd;
   struct redircmd *rcmd;
 
-  if(cmd == 0)
-    exit(1);
+  if(cmd == 0){
+      exit(1);
+    }
+
+
 
   switch(cmd->type){
   default:
@@ -74,8 +77,10 @@ runcmd(struct cmd *cmd)
 
   case EXEC:
     ecmd = (struct execcmd*)cmd;
-    if(ecmd->argv[0] == 0)
+    if(ecmd->argv[0] == 0){
       exit(1);
+    }
+
     exec(ecmd->argv[0], ecmd->argv);
 
     fd = open(ecmd->argv[0], O_RDONLY);
@@ -141,6 +146,7 @@ runcmd(struct cmd *cmd)
       runcmd(bcmd->cmd);
     break;
   }
+
   exit(0);
 }
 
@@ -153,6 +159,81 @@ getcmd(char *buf, int nbuf)
   if(buf[0] == 0) // EOF
     return -1;
   return 0;
+}
+
+int 
+runinternal(char* buf){
+    if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
+      // Chdir must be called by the parent, not the child.
+      buf[strlen(buf)-1] = 0;  // chop \n
+      if(chdir(buf+3) < 0)
+        printf(2, "cannot cd %s\n", buf+3);
+      return 0;
+    }
+
+    if(buf[0] == 'e' && buf[1] == 'x' && buf[2] == 'i' && buf[3] == 't' && buf[4] == '\n'){
+      // exit must be called by the parent, not the child.
+      disconnect_tty(0);
+      exit(0);
+    }
+
+    //Connect tty
+    if(buf[0] == 'c' && buf[1] == 'o' && buf[2] == 'n' && buf[3] == 'n' && buf[4] == 'e' && buf[5] == 'c' && buf[6] == 't' &&  buf[7] == ' ' &&  buf[8] == 't' &&  buf[9] == 't' &&  buf[10] == 'y' &&  buf[12] == '\n'){
+      int tty_fd;
+
+      buf[strlen(buf)-1] = 0;
+
+      tty_fd = open(buf+8, O_RDWR);
+      if(tty_fd < 0){
+	    printf(2, "exec connect tty failed\n");
+	    return -1;
+      }
+
+      if(connect_tty(tty_fd) < 0){
+	close(tty_fd);
+	return -1;
+      }
+
+      close(tty_fd);
+      return 0;
+    }
+
+    //Disconnect tty
+    if(buf[0] == 'd' && buf[1] == 'i' && buf[2] == 's' && buf[3] == 'c' && buf[4] == 'o' && buf[5] == 'n' && buf[6] == 'n' &&  buf[7] == 'e' &&  buf[8] == 'c'  &&  buf[9] == 't' &&  buf[10] == '\n'){
+     buf[strlen(buf)-1] = 0;
+     disconnect_tty(0);
+     sleep(100);
+     return 0;
+    }
+
+    if(buf[0] == 'a' && buf[1] == 't' && buf[2] == 't' && buf[3] == 'a' && buf[4] == 'c' && buf[5] == 'h' && buf[6] == ' ' && buf[7] == 't' && buf[8] == 't' && buf[9] == 'y' && buf[11] == '\n'){
+      int tty_fd;
+
+      buf[strlen(buf)-1] = 0;
+      tty_fd = open(buf+7, O_RDWR);
+      if(tty_fd < 0){
+	    printf(2, "exec attach tty failed\n");
+	    return 0;
+      }
+
+      if(attach_tty(tty_fd) < 0){
+	    printf(2, "exec attach tty failed 2\n");
+	    close(tty_fd);
+	    return 0;
+      }
+
+      ioctl(tty_fd, TTYSETS, DEV_CONNECT);
+      close(tty_fd);
+      printf(2, "%s attached\n",buf+7);
+      return 0;
+    }
+
+    if(buf[0] == 'p' && buf[1] == 'i' && buf[2] == 'd' && buf[3] == '\n'){
+	printf(2, "PID: %d\n",getpid());
+        return 0;
+    }
+
+   return -1;
 }
 
 int
@@ -171,13 +252,9 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
-    if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
-      // Chdir must be called by the parent, not the child.
-      buf[strlen(buf)-1] = 0;  // chop \n
-      if(chdir(buf+3) < 0)
-        printf(2, "cannot cd %s\n", buf+3);
+    if(runinternal(buf) == 0)
       continue;
-    }
+
     if(fork1() == 0)
       runcmd(parsecmd(buf));
     wait(0);
