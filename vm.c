@@ -15,24 +15,19 @@ __thread struct proc *proc;
 static pde_t *kpml4;
 static pde_t *kpdpt;
 
-static void
-tss_set_rsp(uint *tss, uint n, uint64 rsp) {
-  // https://wiki.osdev.org/Task_State_Segment
-  tss[n*2 + 1] = rsp;
-  tss[n*2 + 2] = rsp >> 32;
-}
-
 void
 syscallinit(void)
 {
   // the MSR/SYSRET wants the segment for 32-bit user data
   // next up is 64-bit user data, then code
-  wrmsr( MSR_STAR,
+  // This is simply the way the sysret instruction
+  // is designed to work (it assumes they follow).
+  wrmsr(MSR_STAR,
     ((((uint64)SEG_UCODE32 << 3) << 48) | ((uint64)KERNEL_CS << 32)));
-  wrmsr( MSR_LSTAR, (addr_t)syscall_entry );
-  wrmsr( MSR_CSTAR, (addr_t)ignore_sysret );
+  wrmsr(MSR_LSTAR, (addr_t)syscall_entry);
+  wrmsr(MSR_CSTAR, (addr_t)ignore_sysret);
 
-  wrmsr( MSR_SFMASK, FL_TF|FL_DF|FL_IF|FL_IOPL_3|FL_AC|FL_NT);
+  wrmsr(MSR_SFMASK, FL_TF|FL_DF|FL_IF|FL_IOPL_3|FL_AC|FL_NT);
 }
 
 // Set up CPU's kernel segment descriptors.
@@ -67,10 +62,11 @@ seginit(void)
   gdt[0] =  (struct segdesc) {};
 
   gdt[SEG_KCODE] = SEG((STA_X|STA_R), 0, 0, APP_SEG, !DPL_USER, 1);
-  gdt[SEG_UCODE] = SEG((STA_X|STA_R), 0, 0, APP_SEG, DPL_USER, 1);
   gdt[SEG_KDATA] = SEG(STA_W, 0, 0, APP_SEG, !DPL_USER, 0);
-  gdt[SEG_KCPU]  = (struct segdesc) {};
+  gdt[SEG_UCODE32] = (struct segdesc) {}; // unused
   gdt[SEG_UDATA] = SEG(STA_W, 0, 0, APP_SEG, DPL_USER, 0);
+  gdt[SEG_UCODE] = SEG((STA_X|STA_R), 0, 0, APP_SEG, DPL_USER, 1);
+  gdt[SEG_KCPU]  = (struct segdesc) {};
   gdt[SEG_TSS]   = SEG(STS_T64A, 0xb, addr, !APP_SEG, DPL_USER, 0);
   gdt[SEG_TSS+1] = SEG(0, addr >> 32, addr >> 48, 0, 0, 0);
 
@@ -148,12 +144,14 @@ switchkvm(void)
 void
 switchuvm(struct proc *p)
 {
-  uint *tss;
   pushcli();
   if(p->pgdir == 0)
     panic("switchuvm: no pgdir");
-  tss = (uint*) (((char*) cpu->local) + 1024);
-  tss_set_rsp(tss, 0, (addr_t)proc->kstack + KSTACKSIZE);
+  uint *tss = (uint*) (((char*) cpu->local) + 1024);
+  const addr_t pkstacktop = (addr_t)p->kstack + KSTACKSIZE;
+  // https://wiki.osdev.org/Task_State_Segment
+  tss[1] = (uint)pkstacktop;
+  tss[2] = (uint)(pkstacktop >> 32);
   lcr3(v2p(p->pgdir));
   popcli();
 }

@@ -3,13 +3,12 @@
 #include "syscall.h"
 #include "traps.h"
 
-
 # exec(init, argv)
 .globl start
 start:
   mov $init, %rdi
   mov $argv, %rsi
-  mov $SYS_exec, %rax  
+  mov $SYS_exec, %rax
   syscall
 
 # for(;;) exit();
@@ -27,4 +26,3 @@ init:
 argv:
   .quad init
   .quad 0
-
