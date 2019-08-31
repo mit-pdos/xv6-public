@@ -1,11 +1,11 @@
 # Context switch
 #
 #   void swtch(struct context **old, struct context *new);
-# 
+#
 # Save current register context in old
 # and then load register context from new.
 
-.globl swtch
+.global swtch
 swtch:
   # Save old callee-save registers
   push %rbp

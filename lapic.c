@@ -102,7 +102,7 @@ int
 cpunum(void)
 {
   int apicid, i;
-  
+
   // Cannot call cpu when interrupts are enabled:
   // result not guaranteed to last long enough to be used!
   // Would prefer to panic but even printing is chancy here:

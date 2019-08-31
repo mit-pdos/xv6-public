@@ -75,25 +75,13 @@ getcallerpcs(void *v, addr_t pcs[])
 
   asm volatile("mov %%rbp, %0" : "=r" (ebp));
   getstackpcs(ebp, pcs);
-
-  /*int i;
-
-  ebp = (uint*)v - 2;
-  for(i = 0; i < 10; i++){
-    if(ebp == 0 || ebp < (uint*)KERNBASE || ebp == (uint*)0xffffffff)
-      break;
-    pcs[i] = ebp[1];     // saved %eip
-    ebp = (uint*)ebp[0]; // saved %ebp
-  }
-  for(; i < 10; i++)
-    pcs[i] = 0;*/
 }
 
 void
 getstackpcs(addr_t *ebp, addr_t pcs[])
 {
   int i;
-  
+
   for(i = 0; i < 10; i++){
     if(ebp == 0 || ebp < (addr_t*)KERNBASE || ebp == (addr_t*)0xffffffff)
       break;
@@ -114,7 +102,6 @@ holding(struct spinlock *lock)
 // Pushcli/popcli are like cli/sti except that they are matched:
 // it takes two popcli to undo two pushcli.  Also, if interrupts
 // are off, then pushcli, popcli leaves them off.
-
 void
 pushcli(void)
 {
@@ -137,4 +124,3 @@ popcli(void)
   if(cpu->ncli == 0 && cpu->intena)
     sti();
 }
-

@@ -1,7 +1,7 @@
 #include "asm.h"
 #include "memlayout.h"
 #include "mmu.h"
-	
+
 # Each non-boot CPU ("AP") is started up in response to a STARTUP
 # IPI from the boot CPU.  Section B.4.2 of the Multi-Processor
 # Specification says that the AP will start in real mode with CS:IP
@@ -21,10 +21,10 @@
 #   - it does not need to enable A20
 #   - it uses the address at start-4, start-8, and start-12
 
-.code16           
-.globl start
+.code16
+.global start
 start:
-  cli            
+  cli
 
   xorw    %ax,%ax
   movw    %ax,%ds
@@ -76,4 +76,3 @@ gdt:
 gdtdesc:
   .word   (gdtdesc - gdt - 1)
   .long   gdt
-

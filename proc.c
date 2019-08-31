@@ -20,8 +20,6 @@ extern void syscall_trapret(void);
 
 static void wakeup1(void *chan);
 
-//#define NPROC 64
-
 void
 pinit(void)
 {
@@ -83,11 +81,10 @@ found:
 void
 userinit(void)
 {
-
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -99,13 +96,10 @@ userinit(void)
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ss = (SEG_UDATA << 3) | DPL_USER;
 
-//  p->tf->eflags = FL_IF;   // with SYSRET, EFLAGS is in R11
-  p->tf->r11 = FL_IF;
+  p->tf->r11 = FL_IF;  // with SYSRET, EFLAGS is in R11
   p->tf->rsp = PGSIZE;
+  p->tf->rcx = 0;  // with SYSRET, RIP is in RCX
 
-//  p->tf->rip = 0;   // with SYSRET, RIP is in RCX
-  p->tf->rcx = 0;
-  
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
@@ -114,9 +108,7 @@ userinit(void)
   // writes to be visible, and the lock is also needed
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
-
   p->state = RUNNABLE;
-
   release(&ptable.lock);
 }
 
@@ -151,9 +143,8 @@ fork(void)
   struct proc *np;
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if((np = allocproc()) == 0)
     return -1;
-  }
 
   // Copy process state from p.
   if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
@@ -179,9 +170,7 @@ fork(void)
   pid = np->pid;
 
   acquire(&ptable.lock);
-
   np->state = RUNNABLE;
-
   release(&ptable.lock);
 
   return pid;

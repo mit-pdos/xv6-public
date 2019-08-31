@@ -17,6 +17,7 @@ static pde_t *kpdpt;
 
 static void
 tss_set_rsp(uint *tss, uint n, uint64 rsp) {
+  // https://wiki.osdev.org/Task_State_Segment
   tss[n*2 + 1] = rsp;
   tss[n*2 + 2] = rsp >> 32;
 }
@@ -39,7 +40,6 @@ syscallinit(void)
 void
 seginit(void)
 {
-  //uint64 *gdt;
   struct segdesc *gdt;
   uint *tss;
   uint64 addr;
@@ -50,7 +50,6 @@ seginit(void)
   local = kalloc();
   memset(local, 0, PGSIZE);
 
-  //gdt = (uint64*) local;
   gdt = (struct segdesc*) local;
   tss = (uint*) (((char*) local) + 1024);
   tss[16] = 0x00680000; // IO Map Base = End of TSS
@@ -65,18 +64,15 @@ seginit(void)
   proc = 0;
 
   addr = (uint64) tss;
-  gdt[0] =  (struct segdesc) {0};
+  gdt[0] =  (struct segdesc) {};
 
-  gdt[SEG_KCODE] = SEG((STA_X | STA_R),0, 0, APP_SEG, !DPL_USER, 1);
-  gdt[SEG_UCODE] = SEG((STA_X | STA_R),0, 0, APP_SEG, DPL_USER, 1);
-  gdt[SEG_KDATA] = SEG(STA_W,0, 0, APP_SEG, !DPL_USER, 0);
-  gdt[SEG_KCPU]  = (struct segdesc) {0};
-  gdt[SEG_UDATA] = SEG(STA_W,0, 0, APP_SEG, DPL_USER, 0);
-  gdt[SEG_TSS+0] = SEG(STS_T64A, 0xb, addr, !APP_SEG, DPL_USER, 0);
-  gdt[SEG_TSS+1] = SEG(0,addr >> 32, addr >> 48, 0, 0, 0);
-
-//  struct gatedesc *gdtcg =(struct gatedesc*) &gdt[CALL_GATE];
-//  SETCALLGATE(gdtcg,0,0,1);
+  gdt[SEG_KCODE] = SEG((STA_X|STA_R), 0, 0, APP_SEG, !DPL_USER, 1);
+  gdt[SEG_UCODE] = SEG((STA_X|STA_R), 0, 0, APP_SEG, DPL_USER, 1);
+  gdt[SEG_KDATA] = SEG(STA_W, 0, 0, APP_SEG, !DPL_USER, 0);
+  gdt[SEG_KCPU]  = (struct segdesc) {};
+  gdt[SEG_UDATA] = SEG(STA_W, 0, 0, APP_SEG, DPL_USER, 0);
+  gdt[SEG_TSS]   = SEG(STS_T64A, 0xb, addr, !APP_SEG, DPL_USER, 0);
+  gdt[SEG_TSS+1] = SEG(0, addr >> 32, addr >> 48, 0, 0, 0);
 
   lgdt((void*) gdt, (NSEGS+1) * sizeof(struct segdesc));
 
@@ -137,8 +133,8 @@ kvmalloc(void)
 
   // direct map 4th GB of physical addresses to KERNBASE+3GB
   // this is a very lazy way to map IO memory (for lapic and ioapic)
-  // PTE_PWT and PTE_PCD for memory mapped I/O correctness. 
-  kpdpt[3] = 0xC0000000 | PTE_PS | PTE_P | PTE_W | PTE_PWT | PTE_PCD;  
+  // PTE_PWT and PTE_PCD for memory mapped I/O correctness.
+  kpdpt[3] = 0xC0000000 | PTE_PS | PTE_P | PTE_W | PTE_PWT | PTE_PCD;
 
   switchkvm();
 }
@@ -160,7 +156,6 @@ switchuvm(struct proc *p)
   tss_set_rsp(tss, 0, (addr_t)proc->kstack + KSTACKSIZE);
   lcr3(v2p(p->pgdir));
   popcli();
-
 }
 
 // Return the address of the PTE in page table pgdir
@@ -180,12 +175,11 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
   pde_t *pde;
   pde_t *pd;
   pte_t *pgtab;
-  
 
   // from the PML4, find or allocate the appropriate PDP table
   pml4e = &pml4[PMX(va)];
   if(*pml4e & PTE_P)
-    pdp = (pdpe_t*)P2V(PTE_ADDR(*pml4e));  
+    pdp = (pdpe_t*)P2V(PTE_ADDR(*pml4e));
   else {
     if(!alloc || (pdp = (pdpe_t*)kalloc()) == 0)
       return 0;
@@ -194,8 +188,8 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
   }
 
   //from the PDP, find or allocate the appropriate PD (page directory)
-  pdpe = &pdp[PDPX(va)];  
-  if(*pdpe & PTE_P) 
+  pdpe = &pdp[PDPX(va)];
+  if(*pdpe & PTE_P)
     pd = (pde_t*)P2V(PTE_ADDR(*pdpe));
   else {
     if(!alloc || (pd = (pde_t*)kalloc()) == 0)//allocate page table
@@ -204,8 +198,8 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
     *pdpe = V2P(pd) | PTE_P | PTE_W | PTE_U;
   }
 
-  // from the PD, find or allocate the appropriate page table 
-  pde = &pd[PDX(va)]; 
+  // from the PD, find or allocate the appropriate page table
+  pde = &pd[PDX(va)];
   if(*pde & PTE_P)
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   else {
@@ -214,7 +208,7 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
     memset(pgtab, 0, PGSIZE);
     *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
   }
-  
+
   return &pgtab[PTX(va)];
 }
 

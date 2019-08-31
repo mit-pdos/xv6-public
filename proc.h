@@ -3,16 +3,12 @@ struct cpu {
   uchar id;
   uchar apicid;                // Local APIC ID
   struct context *scheduler;   // swtch() here to enter scheduler
-  struct taskstate ts;         // Used by x86 to find stack for interrupt
-  struct segdesc gdt[NSEGS];   // x86 global descriptor table
   volatile uint started;       // Has the CPU started?
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
 
-  // Cpu-local storage variables; see below
+  // Cpu-local storage variables; see seginit()
   void *local;
-  //struct cpu *cpu;
-  //struct proc *proc;           // The currently-running process.
 };
 
 extern struct cpu cpus[NCPU];
@@ -28,9 +24,6 @@ extern int ncpu;
 // in thread libraries such as Linux pthreads.
 extern __thread struct cpu *cpu;
 extern __thread struct proc *proc;
-
-//extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
-//extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
 
 //PAGEBREAK: 17
 // Saved registers for kernel context switches.
@@ -52,14 +45,13 @@ struct context {
   addr_t rbx;
   addr_t ebp; //rbp
   addr_t eip; //rip;
-
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
-  addr_t sz;                     // Size of process memory (bytes)
+  addr_t sz;                   // Size of process memory (bytes)
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state

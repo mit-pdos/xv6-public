@@ -232,7 +232,7 @@ then
 fi
 if [ -f ../$nicefont ]
 then
-	echo nicefont
+	echo $nicefont
 	(sed 1q all.ps; cat ../$nicefont; sed "1d; s/Courier/$nicefont/" all.ps) >allf.ps
 else
 	echo ugly font!

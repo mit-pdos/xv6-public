@@ -1,5 +1,5 @@
 # vectors.S sends all traps here.
-.globl alltraps
+.global alltraps
 alltraps:
   # Build trap frame.
   push %r15
@@ -22,7 +22,7 @@ alltraps:
   call trap
 
 # Return falls through to trapret...
-.globl trapret
+.global trapret
 trapret:
   pop %rax
   pop %rbx
@@ -45,7 +45,7 @@ trapret:
 #PAGEBREAK!
 
 # syscall_entry jumps here after syscall instruction
-.globl syscall_trap
+.global syscall_trap
 syscall_trap:  # Build trap frame.
   push %r15
   push %r14
@@ -69,7 +69,7 @@ syscall_trap:  # Build trap frame.
 #PAGEBREAK!
 
 # Return falls through to trapret...
-.globl syscall_trapret
+.global syscall_trapret
 syscall_trapret:
   pop %rax
   pop %rbx

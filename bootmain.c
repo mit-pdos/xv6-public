@@ -1,5 +1,5 @@
 // Boot loader.
-// 
+//
 // Part of the boot sector, along with bootasm.S, which calls bootmain().
 // bootasm.S has put the processor into protected 32-bit mode.
 // bootmain() loads a multiboot kernel image from the disk starting at

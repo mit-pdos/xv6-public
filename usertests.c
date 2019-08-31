@@ -1714,7 +1714,7 @@ uio()
     asm volatile("outb %0,%1"::"a"(val), "d" (port));
     port = RTC_DATA;
     asm volatile("inb %1,%0" : "=a" (val) : "d" (port));
-    printf(1, "uio: uio succeeded; test FAILED\n");
+    printf(1, "uio: uio succeeded\n");
     exit();
   } else if(pid < 0){
     printf (1, "fork failed\n");

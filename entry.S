@@ -1,7 +1,7 @@
-/* entry.S 
+/* entry.S
  *
  * Copyright (c) 2013 Brian Swetland
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -12,7 +12,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -46,10 +46,10 @@ mboot_entry:
 # zero 2 pages for our bootstrap page tables
   xor %eax, %eax
   mov $0x1000, %edi
-  mov $0x2000, %ecx  
+  mov $0x2000, %ecx
   rep stosb
 
-# map both virtual address 0 and KERNBASE to the same PDPT	
+# map both virtual address 0 and KERNBASE to the same PDPT
 # P4ML[0] -> 0x2000 (PDPT)
 # P4ML[256] -> 0x2000 (PDPT)
   mov $(0x2000 | PTE_P | PTE_W ), %eax
@@ -77,7 +77,7 @@ entry32mp:
 
 # Enable PAE - CR4.PAE=1
   mov %cr4, %eax
-  bts $5, %eax	
+  bts $5, %eax
   mov %eax, %cr4
 
 # access EFER Model specific register
@@ -128,7 +128,7 @@ entry64high:
   mov %ax, %fs
   mov %ax, %gs
 
-  # this would enable floating point instructions	
+  # this would enable floating point instructions
   # mov %cr4, %rax
   # or $(CR4_PAE | CR4_OSXFSR | CR4_OSXMMEXCPT) , %rax
   # mov %rax, %cr4

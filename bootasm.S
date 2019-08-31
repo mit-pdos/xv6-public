@@ -8,7 +8,7 @@
 # with %cs=0 %ip=7c00.
 
 .code16                       # Assemble for 16-bit mode
-.globl start
+.global start
 start:
   cli                         # BIOS enabled interrupts; disable
 
@@ -19,7 +19,7 @@ start:
   movw    %ax,%ss             # -> Stack Segment
 
 
-  # Physical address line A20 is tied to zero so that the first PCs 
+  # Physical address line A20 is tied to zero so that the first PCs
   # with 2 MB would run software that assumed 1 MB.  Undo that.
 seta20.1:
   inb     $0x64,%al               # Wait for not busy

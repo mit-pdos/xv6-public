@@ -45,7 +45,7 @@
 // Model specific registers
 #define MSR_EFER	0xC0000080	// extended feature enable register
 #define MSR_STAR 	0xC0000081	// stores ring 0's and ring 3's segment bases
-#define MSR_LSTAR	0xC0000082	// stores syscall's entry rip 
+#define MSR_LSTAR	0xC0000082	// stores syscall's entry rip
 #define MSR_CSTAR	0xC0000083	// for compatiblity mode (not used)
 #define MSR_SFMASK	0xC0000084	// syscall flag mask
 
@@ -173,48 +173,6 @@ struct segdesc {
 #ifndef __ASSEMBLER__
 typedef addr_t pte_t;
 
-// Task state segment format.
-// This is only used to specify the new stack address after interrupt
-
-struct taskstate {
-  uint link;         // Old ts selector
-  uint esp0;         // Stack pointers and segment selectors
-  ushort ss0;        //   after an increase in privilege level
-  ushort padding1;
-  uint *esp1;
-  ushort ss1;
-  ushort padding2;
-  uint *esp2;
-  ushort ss2;
-  ushort padding3;
-  void *cr3;         // Page directory base
-  uint *eip;         // Saved state from last task switch
-  uint eflags;
-  uint eax;          // More saved state (registers)
-  uint ecx;
-  uint edx;
-  uint ebx;
-  uint *esp;
-  uint *ebp;
-  uint esi;
-  uint edi;
-  ushort es;         // Even more saved state (segment selectors)
-  ushort padding4;
-  ushort cs;
-  ushort padding5;
-  ushort ss;
-  ushort padding6;
-  ushort ds;
-  ushort padding7;
-  ushort fs;
-  ushort padding8;
-  ushort gs;
-  ushort padding9;
-  ushort ldt;
-  ushort padding10;
-  ushort t;          // Trap on task switch
-  ushort iomb;       // I/O map base address
-};
 
 // PAGEBREAK: 12
 // Gate descriptors for interrupts and traps
@@ -232,26 +190,4 @@ struct gatedesc {
   uint32 rsv2;
 };
 
-// Set up a normal interrupt/trap gate descriptor.
-// - istrap: 1 for a trap (= exception) gate, 0 for an interrupt gate.
-//   interrupt gate clears FL_IF, trap gate leaves FL_IF alone
-// - sel: Code segment selector for interrupt/trap handler
-// - off: Offset in code segment for interrupt/trap handler
-// - dpl: Descriptor Privilege Level -
-//        the privilege level required for software to invoke
-//        this interrupt/trap gate explicitly using an int instruction.
-#define SETCALLGATE(gate, cs, off, d)   \
-{                                                         \
-  (gate)->off_15_0 = (uint32)(off) & 0xffff;                \
-  (gate)->cs = (cs);                                      \
-  (gate)->args = 0;                                        \
-  (gate)->rsv1 = 0;                                        \
-  (gate)->type = STS_CG64;                                 \
-  (gate)->s = 0;                                           \
-  (gate)->dpl = (d);                                       \
-  (gate)->p = 1;                                           \
-  (gate)->off_31_16 = ((uint)(off) >> 16) & 0xffff;        \
-  (gate)->off_63_32 = ((uint)(off) >> 32) & 0xffffffff;    \
-  (gate)->rsv2 = 0;					  \
-};
 #endif
