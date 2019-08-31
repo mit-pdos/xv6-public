@@ -4,7 +4,7 @@
 #include "traps.h"
 
 # exec(init, argv)
-.globl start
+.global start
 start:
   mov $init, %rdi
   mov $argv, %rsi

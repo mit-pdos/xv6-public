@@ -136,22 +136,15 @@ kvmalloc(void)
 }
 
 void
-switchkvm(void)
-{
-  lcr3(v2p(kpml4));
-}
-
-void
 switchuvm(struct proc *p)
 {
   pushcli();
   if(p->pgdir == 0)
     panic("switchuvm: no pgdir");
   uint *tss = (uint*) (((char*) cpu->local) + 1024);
-  const addr_t pkstacktop = (addr_t)p->kstack + KSTACKSIZE;
-  // https://wiki.osdev.org/Task_State_Segment
-  tss[1] = (uint)pkstacktop;
-  tss[2] = (uint)(pkstacktop >> 32);
+  const addr_t stktop = (addr_t)p->kstack + KSTACKSIZE;
+  tss[1] = (uint)stktop; // https://wiki.osdev.org/Task_State_Segment
+  tss[2] = (uint)(stktop >> 32);
   lcr3(v2p(p->pgdir));
   popcli();
 }
@@ -163,16 +156,12 @@ switchuvm(struct proc *p)
 // In 64-bit mode, the page table has four levels: PML4, PDPT, PD and PT
 // For each level, we dereference the correct entry, or allocate and
 // initialize entry if the PTE_P bit is not set
-
 static pte_t *
 walkpgdir(pde_t *pml4, const void *va, int alloc)
 {
   pml4e_t *pml4e;
-  pdpe_t *pdp;
-  pdpe_t *pdpe;
-  pde_t *pde;
-  pde_t *pd;
-  pte_t *pgtab;
+  pdpe_t *pdp, *pdpe;
+  pde_t *pde, *pd, *pgtab;
 
   // from the PML4, find or allocate the appropriate PDP table
   pml4e = &pml4[PMX(va)];
@@ -210,6 +199,11 @@ walkpgdir(pde_t *pml4, const void *va, int alloc)
   return &pgtab[PTX(va)];
 }
 
+void
+switchkvm(void)
+{
+  lcr3(v2p(kpml4));
+}
 
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
@@ -432,7 +426,6 @@ bad:
   return 0;
 }
 
-//PAGEBREAK!
 // Map user virtual address to kernel address.
 char*
 uva2ka(pde_t *pgdir, char *uva)

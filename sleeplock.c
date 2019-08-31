@@ -23,9 +23,8 @@ void
 acquiresleep(struct sleeplock *lk)
 {
   acquire(&lk->lk);
-  while (lk->locked) {
+  while (lk->locked)
     sleep(lk, &lk->lk);
-  }
   lk->locked = 1;
   lk->pid = proc->pid;
   release(&lk->lk);
@@ -44,10 +43,8 @@ releasesleep(struct sleeplock *lk)
 int
 holdingsleep(struct sleeplock *lk)
 {
-  int r;
-
   acquire(&lk->lk);
-  r = lk->locked;
+  int r = lk->locked;
   release(&lk->lk);
   return r;
 }

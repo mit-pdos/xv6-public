@@ -31,9 +31,7 @@ struct superblock sb;
 void
 readsb(int dev, struct superblock *sb)
 {
-  struct buf *bp;
-
-  bp = bread(dev, 1);
+  struct buf *bp = bread(dev, 1);
   memmove(sb, bp->data, sizeof(*sb));
   brelse(bp);
 }
@@ -42,9 +40,7 @@ readsb(int dev, struct superblock *sb)
 static void
 bzero(int dev, int bno)
 {
-  struct buf *bp;
-
-  bp = bread(dev, bno);
+  struct buf *bp = bread(dev, bno);
   memset(bp->data, 0, BSIZE);
   log_write(bp);
   brelse(bp);
@@ -57,9 +53,7 @@ static uint
 balloc(uint dev)
 {
   int b, bi, m;
-  struct buf *bp;
-
-  bp = 0;
+  struct buf *bp = NULL;
   for(b = 0; b < sb.size; b += BPB){
     bp = bread(dev, BBLOCK(b, sb));
     for(bi = 0; bi < BPB && b + bi < sb.size; bi++){
@@ -81,11 +75,10 @@ balloc(uint dev)
 static void
 bfree(int dev, uint b)
 {
-  struct buf *bp;
   int bi, m;
 
   readsb(dev, &sb);
-  bp = bread(dev, BBLOCK(b, sb));
+  struct buf *bp = bread(dev, BBLOCK(b, sb));
   bi = b % BPB;
   m = 1 << (bi % 8);
   if((bp->data[bi/8] & m) == 0)
@@ -242,7 +235,7 @@ iget(uint dev, uint inum)
       release(&icache.lock);
       return ip;
     }
-    if(empty == 0 && ip->ref == 0)    // Remember empty slot.
+    if(empty == 0 && ip->ref == 0) // Remember empty slot.
       empty = ip;
   }
 
@@ -450,13 +443,6 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
     m = min(n - tot, BSIZE - off%BSIZE);
-    /*
-    cprintf("data off %d:\n", off);
-    for (int j = 0; j < min(m, 10); j++) {
-      cprintf("%x ", bp->data[off%BSIZE+j]);
-    }
-    cprintf("\n");
-    */
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
   }

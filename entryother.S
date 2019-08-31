@@ -36,8 +36,8 @@ start:
   orl     $CR0_PE, %eax
   movl    %eax, %cr0
 
-//PAGEBREAK!
   ljmpl    $(SEG_KCODE<<3), $(start32)
+//PAGEBREAK!
 
 .code32
 start32:

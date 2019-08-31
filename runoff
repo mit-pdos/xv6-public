@@ -143,9 +143,12 @@ perl -e '
 		}
 		
 		if(/^^([0-9]+) \.globl ([a-zA-Z0-9_]+)/){
-			$isglobl{$2} = 1;
+			$isglobal{$2} = 1;
 		}
-		if(/^^([0-9]+) ([a-zA-Z0-9_]+):$/ && $isglobl{$2}){
+		if(/^^([0-9]+) \.global ([a-zA-Z0-9_]+)/){
+			$isglobal{$2} = 1;
+		}
+		if(/^^([0-9]+) ([a-zA-Z0-9_]+):$/ && $isglobal{$2}){
 			print "$1 $2\n";
 		}
 		

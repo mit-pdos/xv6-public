@@ -8,6 +8,10 @@ asm.h
 mmu.h
 elf.h
 
+# bootloader
+bootasm.S
+bootmain.c
+
 # entering xv6
 entry.S
 entryother.S
@@ -33,6 +37,16 @@ syscall.h
 syscall.c
 sysproc.c
 
+# low-level hardware
+mp.h
+mp.c
+lapic.c
+ioapic.c
+kbd.h
+kbd.c
+console.c
+uart.c
+
 # file system
 buf.h
 sleeplock.h
@@ -55,23 +69,8 @@ pipe.c
 # string operations
 string.c
 
-# low-level hardware
-mp.h
-mp.c
-lapic.c
-ioapic.c
-kbd.h
-kbd.c
-console.c
-uart.c
-
 # user-level
 initcode.S
 usys.S
 init.c
 sh.c
-
-# bootloader
-bootasm.S
-bootmain.c
-

@@ -2,7 +2,7 @@
 #include "traps.h"
 
 #define SYSCALL(name) \
-  .globl name; \
+  .global name; \
   name: \
     mov $SYS_ ## name, %rax; \
     syscall		  ;\
