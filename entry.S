@@ -173,13 +173,13 @@ syscall_entry:
   # this is a kernel resposibility
   # store %rsp on the top of proc->kstack,
 
-  mov     %rax, %fs:(-24)    # save %rax at a tmp location
+  mov     %rax, %fs:(0)      # save %rax above __thread vars
   mov     %fs:(-8), %rax     # %fs:(-8) is proc (the last __thread)
-  mov     0x10(%rax), %rax   # get proc->kstack
-  add     $4080, %rax        # %r8 points to kstacktop-16
-  mov     %rsp, (%rax)       # store user stack pointer on kstack
+  mov     0x10(%rax), %rax   # get proc->kstack (see struct proc)
+  add     $4080, %rax        # %rax points to kstacktop-16
+  mov     %rsp, (%rax)       # store user %rsp on kstack
   mov     %rax, %rsp         # switch to the kstack
-  mov     %fs:(-24), %rax    # restore %rax
+  mov     %fs:(0), %rax      # restore %rax
 
   push    %r11         # rflags
   push    $USER_CS     # cs
