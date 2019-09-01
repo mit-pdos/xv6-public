@@ -57,7 +57,7 @@ stosl(void *addr, int data, int cnt)
                "memory", "cc");
 }
 
-#ifndef __i386__ // surpress warning for bootmain
+#ifndef __i386__ // suppress warning for bootmain
 struct segdesc;
 
 static inline void
