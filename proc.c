@@ -103,16 +103,10 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-  // this assignment to p->state lets other cores
-  // run this process. the acquire forces the above
-  // writes to be visible, and the lock is also needed
-  // because the assignment might not be atomic.
-  acquire(&ptable.lock);
+  __sync_synchronize();
   p->state = RUNNABLE;
-  release(&ptable.lock);
 }
 
-//PAGEBREAK!
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
 int
@@ -132,8 +126,8 @@ growproc(int n)
   switchuvm(proc);
   return 0;
 }
-
 //PAGEBREAK!
+
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.

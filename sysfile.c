@@ -112,6 +112,21 @@ sys_fstat(void)
   return filestat(f, st);
 }
 
+static int
+isdirempty(struct inode *dp)
+{
+  int off;
+  struct dirent de;
+  // Is the directory dp empty except for "." and ".." ?
+  for(off=2*sizeof(de); off<dp->size; off+=sizeof(de)){
+    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+      panic("isdirempty: readi");
+    if(de.inum != 0)
+      return 0;
+  }
+  return 1;
+}
+
 // Create the path new as a link to the same inode as old.
 int
 sys_link(void)
@@ -161,24 +176,8 @@ bad:
   end_op();
   return -1;
 }
-
-// Is the directory dp empty except for "." and ".." ?
-static int
-isdirempty(struct inode *dp)
-{
-  int off;
-  struct dirent de;
-
-  for(off=2*sizeof(de); off<dp->size; off+=sizeof(de)){
-    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-      panic("isdirempty: readi");
-    if(de.inum != 0)
-      return 0;
-  }
-  return 1;
-}
-
 //PAGEBREAK!
+
 int
 sys_unlink(void)
 {

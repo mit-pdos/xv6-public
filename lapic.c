@@ -24,11 +24,9 @@
   #define STARTUP    0x00000600   // Startup IPI
   #define DELIVS     0x00001000   // Delivery status
   #define ASSERT     0x00004000   // Assert interrupt (vs deassert)
-  #define DEASSERT   0x00000000
   #define LEVEL      0x00008000   // Level triggered
   #define BCAST      0x00080000   // Send to all APICs, including self.
   #define BUSY       0x00001000
-  #define FIXED      0x00000000
 #define ICRHI   (0x0310/4)   // Interrupt Command [63:32]
 #define TIMER   (0x0320/4)   // Local Vector Table 0 (TIMER)
   #define X1         0x0000000B   // divide counts by 1
@@ -50,7 +48,6 @@ lapicw(int index, int value)
   lapic[index] = value;
   lapic[ID];  // wait for write to finish, by reading
 }
-//PAGEBREAK!
 
 void
 lapicinit(void)
