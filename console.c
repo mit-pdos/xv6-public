@@ -116,6 +116,7 @@ cprintf(char *fmt, ...)
     release(&cons.lock);
 }
 
+__attribute__((noreturn))
 void
 panic(char *s)
 {

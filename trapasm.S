@@ -64,9 +64,7 @@ syscall_trap:  # Build trap frame.
   push %rax
 
   mov  %rsp, %rdi  # frame in arg1
-
   call trap
-#PAGEBREAK!
 
 # Return falls through to trapret...
 .global syscall_trapret
@@ -92,9 +90,6 @@ syscall_trapret:
   # to make sure we don't get any interrupts on the user stack while in
   # supervisor mode this is actually slightly unsafe still,
   # since some interrupts are nonmaskable.
-  # see the intel manual for SYSRET for more info
   cli
-
-  mov (%rsp),%rsp  # restore the user stack
-
+  mov (%rsp), %rsp  # restore the user stack
   sysretq

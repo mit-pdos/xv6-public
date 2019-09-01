@@ -7,12 +7,6 @@
 #include "x86.h"
 #include "syscall.h"
 
-// User code makes a system call with INT T_SYSCALL.
-// System call number in %rax.
-// Arguments on the stack, from the user call to the C
-// library system call function. The saved user %esp points
-// to a saved program counter, and then the first argument.
-
 // Fetch the int at addr from the current process.
 int
 fetchint(addr_t addr, int *ip)
@@ -50,7 +44,6 @@ fetchstr(addr_t addr, char **pp)
   return -1;
 }
 
-// arguments passed in registers on x64
 static addr_t
 fetcharg(int n)
 {
@@ -63,7 +56,6 @@ fetcharg(int n)
   case 5: return proc->tf->r9;
   }
   panic("failed fetch");
-  return -1;
 }
 
 int
@@ -79,7 +71,6 @@ argaddr(int n, addr_t *ip)
   *ip = fetcharg(n);
   return 0;
 }
-
 
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size bytes.  Check that the pointer
