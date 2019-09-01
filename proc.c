@@ -71,7 +71,7 @@ found:
   sp -= sizeof *p->context;
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
-  p->context->eip = (addr_t)forkret;
+  p->context->rip = (addr_t)forkret;
 
   return p;
 }
@@ -477,7 +477,7 @@ procdump(void)
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
     if(p->state == SLEEPING){
-      getstackpcs((addr_t*)p->context->ebp+2, pc);
+      getstackpcs((addr_t*)p->context->rbp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
     }

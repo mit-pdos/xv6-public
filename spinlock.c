@@ -67,26 +67,26 @@ release(struct spinlock *lk)
   popcli();
 }
 
-// Record the current call stack in pcs[] by following the %ebp chain.
+// Record the current call stack in pcs[] by following the %rbp chain.
 void
 getcallerpcs(void *v, addr_t pcs[])
 {
-  addr_t *ebp;
+  addr_t *rbp;
 
-  asm volatile("mov %%rbp, %0" : "=r" (ebp));
-  getstackpcs(ebp, pcs);
+  asm volatile("mov %%rbp, %0" : "=r" (rbp));
+  getstackpcs(rbp, pcs);
 }
 
 void
-getstackpcs(addr_t *ebp, addr_t pcs[])
+getstackpcs(addr_t *rbp, addr_t pcs[])
 {
   int i;
 
   for(i = 0; i < 10; i++){
-    if(ebp == 0 || ebp < (addr_t*)KERNBASE || ebp == (addr_t*)0xffffffff)
+    if(rbp == 0 || rbp < (addr_t*)KERNBASE || rbp == (addr_t*)0xffffffff)
       break;
-    pcs[i] = ebp[1];     // saved %eip
-    ebp = (addr_t*)ebp[0]; // saved %ebp
+    pcs[i] = rbp[1];     // saved %rip
+    rbp = (addr_t*)rbp[0]; // saved %rbp
   }
   for(; i < 10; i++)
     pcs[i] = 0;
