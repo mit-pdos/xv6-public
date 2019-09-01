@@ -53,7 +53,7 @@ static uint
 balloc(uint dev)
 {
   int b, bi, m;
-  struct buf *bp = NULL;
+  struct buf *bp;
   for(b = 0; b < sb.size; b += BPB){
     bp = bread(dev, BBLOCK(b, sb));
     for(bi = 0; bi < BPB && b + bi < sb.size; bi++){

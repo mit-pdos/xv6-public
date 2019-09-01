@@ -57,6 +57,7 @@ stosl(void *addr, int data, int cnt)
                "memory", "cc");
 }
 
+#ifndef __i386__ // surpress warning for bootmain
 struct segdesc;
 
 static inline void
@@ -80,15 +81,17 @@ static inline void
 lidt(struct gatedesc *p, int size)
 {
   volatile ushort pd[5];
+  addr_t addr = (addr_t)p;
 
   pd[0] = size-1;
-  pd[1] = (addr_t)p;
-  pd[2] = (addr_t)p >> 16;
-  pd[3] = (addr_t)p >> 32;
-  pd[4] = (addr_t)p >> 48;
+  pd[1] = addr;
+  pd[2] = addr >> 16;
+  pd[3] = addr >> 32;
+  pd[4] = addr >> 48;
 
   asm volatile("lidt (%0)" : : "r" (pd));
 }
+#endif // ndef __i386__
 
 static inline void
 ltr(ushort sel)

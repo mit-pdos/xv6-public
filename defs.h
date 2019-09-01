@@ -11,9 +11,9 @@ struct stat;
 struct superblock;
 
 //entry.S
-void wrmsr(uint msr, uint64 val);
-void syscall_entry(void);
-void ignore_sysret(void);
+void            wrmsr(uint msr, uint64 val);
+void            syscall_entry(void);
+void            ignore_sysret(void);
 
 // bio.c
 void            binit(void);
@@ -124,7 +124,7 @@ void            swtch(struct context**, struct context*);
 // spinlock.c
 void            acquire(struct spinlock*);
 void            getcallerpcs(void*, addr_t*);
-void		getstackpcs(addr_t*, addr_t*);
+void            getstackpcs(addr_t*, addr_t*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
@@ -147,8 +147,8 @@ int             strncmp(const char*, const char*, uint);
 char*           strncpy(char*, const char*, int);
 
 // syscall.c
-void		syscall(void);
-void    syscallinit(void);
+void            syscall(void);
+void            syscallinit(void);
 int             argint(int, int*);
 int             argptr(int, char**, int);
 int             argstr(int, char**);
@@ -156,7 +156,7 @@ int             argaddr(int, addr_t*);
 int             fetchaddr(addr_t, addr_t*);
 int             fetchstr(addr_t, char**);
 void            syscall(void);
-int		fetchint(addr_t, int*);
+int             fetchint(addr_t, int*);
 
 // trap.c
 void            idtinit(void);
@@ -165,7 +165,7 @@ void            tvinit(void);
 extern struct spinlock tickslock;
 
 // uart.c
-void		uartearlyinit(void);
+void            uartearlyinit(void);
 void            uartinit(void);
 void            uartintr(void);
 void            uartputc(int);
