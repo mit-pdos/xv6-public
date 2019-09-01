@@ -172,26 +172,19 @@ syscall_entry:
   # switch to kernel stack. With the syscall instruction,
   # this is a kernel resposibility
   # store %rsp on the top of proc->kstack,
-  # then move proc->kstack+8 to %rsp this takes a little
-  # extra doing because the %rax must be preserved
 
-  mov     %rax,-8(%rsp)
-  mov     $0xfffffffffffffff8,%rax
-  mov     %fs:(%rax), %rax
-  mov     0x10(%rax), %rax
-  add     $0x1000,%rax
+  mov     %rax, %fs:(-24)    # save %rax at a tmp location
+  mov     %fs:(-8), %rax     # %fs:(-8) is proc (the last __thread)
+  mov     0x10(%rax), %rax   # get proc->kstack
+  add     $4080, %rax        # %r8 points to kstacktop-16
+  mov     %rsp, (%rax)       # store user stack pointer on kstack
+  mov     %rax, %rsp         # switch to the kstack
+  mov     %fs:(-24), %rax    # restore %rax
 
-  sub     $16,%rax
-  mov     %rsp,(%rax) # store user stack pointer on kernel stack
-  mov     %rax, %rsp  # switch to the kernel stack
+  push    %r11         # rflags
+  push    $USER_CS     # cs
+  push    %rcx         # rip (next user insn)
 
-  mov     (%rax),%rax  # user stack pointer back into %rax
-  mov     -8(%rax),%rax  # old rax value off user stack
-
-  push    %r11
-  push    $USER_CS
-  push    %rcx
-
-  push    $0
-  push    $64
+  push    $0           # err
+  push    $64          # trapno T_SYSCALL
   jmp     syscall_trap

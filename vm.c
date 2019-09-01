@@ -9,8 +9,8 @@
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 
-__thread struct cpu *cpu;
-__thread struct proc *proc;
+__thread struct cpu *cpu;         // %fs:(-16)
+__thread struct proc *proc;       // %fs:(-8)
 
 static pde_t *kpml4;
 static pde_t *kpdpt;
@@ -50,7 +50,7 @@ seginit(void)
   tss[16] = 0x00680000; // IO Map Base = End of TSS
 
   // point FS smack in the middle of our local storage page
-  wrmsr(0xC0000100, ((uint64) local) + (PGSIZE / 2));
+  wrmsr(0xC0000100, ((uint64) local) + 2048);
 
   c = &cpus[cpunum()];
   c->local = local;

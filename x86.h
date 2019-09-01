@@ -108,12 +108,6 @@ readeflags(void)
 }
 
 static inline void
-loadgs(ushort v)
-{
-  asm volatile("movw %0, %%gs" : : "r" (v));
-}
-
-static inline void
 cli(void)
 {
   asm volatile("cli");
