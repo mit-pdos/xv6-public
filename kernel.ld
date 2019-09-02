@@ -13,7 +13,7 @@ SECTIONS
 {
 	/* Link the kernel at this address: "." means the current address */
         /* Must be equal to KERNLINK */
-	 . = 0xFFFF800000100000; 
+	 . = 0xFFFF800000100000;
 
 	PROVIDE(begin = .);
 
@@ -59,7 +59,6 @@ SECTIONS
 	/DISCARD/ : {
 		*(.eh_frame .rela.eh_frame .note.GNU-stack)
 	}
-   	 
 }
 
 mboot_load_end = mboot_load_addr + (edata - begin);

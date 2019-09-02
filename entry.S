@@ -44,21 +44,21 @@ mboot_header:
 .code32
 mboot_entry:
 # zero 2 pages for our bootstrap page tables
-  xor     %eax, %eax
-  mov     $0x1000, %edi
-  mov     $0x2000, %ecx
-  rep     stosb
+  xor     %eax, %eax    # value=0
+  mov     $0x1000, %edi # starting at 4096
+  mov     $0x2000, %ecx # size=8192
+  rep     stosb         # memset(4096, 0, 8192)
 
 # map both virtual address 0 and KERNBASE to the same PDPT
-# P4ML[0] -> 0x2000 (PDPT)
-# P4ML[256] -> 0x2000 (PDPT)
-  mov     $(0x2000 | PTE_P | PTE_W ), %eax
-  mov     %eax, 0x1000
-  mov     %eax, 0x1800
+# PML4T[0] -> 0x2000 (PDPT)
+# PML4T[256] -> 0x2000 (PDPT)
+  mov     $(0x2000 | PTE_P | PTE_W), %eax
+  mov     %eax, 0x1000  # PML4T[0]
+  mov     %eax, 0x1800  # PML4T[512]
 
 # PDPT[0] -> 0x0 (1 GB flat map page)
-  mov     $(0x0 | PTE_P | PTE_PS | PTE_W ), %eax
-  mov     %eax, 0x2000
+  mov     $(0x0 | PTE_P | PTE_PS | PTE_W), %eax
+  mov     %eax, 0x2000  # PDPT[0]
 
 # Clear ebx for initial processor boot.
 # When secondary processors boot, they'll call through
@@ -68,13 +68,13 @@ mboot_entry:
 
 .global entry32mp
 entry32mp:
-# CR3 -> 0x1000 (P4ML)
+# CR3 -> 0x1000 (PML4T)
   mov     $0x1000, %eax
   mov     %eax, %cr3
 
   lgdt    (gdtr64 - mboot_header + mboot_load_addr)
 
-# Enable PAE - CR4.PAE=1
+# PAE is required for 64-bit paging: CR4.PAE=1
   mov     %cr4, %eax
   bts     $5, %eax
   mov     %eax, %cr4
@@ -134,13 +134,13 @@ entry64high:
 
 # check to see if we're booting a secondary core
   test    %ebx, %ebx
-  jnz     entry64mp
+  jnz     entry64mp  # jump if booting a secondary code
 # setup initial stack
   movabs  $0xFFFF800000010000, %rax
   mov     %rax, %rsp
 
 # enter main()
-  jmp     main
+  jmp     main  # end of initial (the first) core ASM
 
 .global __deadloop
 __deadloop:
@@ -151,7 +151,7 @@ entry64mp:
 # obtain kstack from data block before entryother
   mov     $0x7000, %rax
   mov     -16(%rax), %rsp
-  jmp     mpenter
+  jmp     mpenter  # end of secondary code ASM
 
 .global wrmsr
 wrmsr:

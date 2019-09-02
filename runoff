@@ -141,7 +141,6 @@ perl -e '
 		elsif (/^([0-9]+) #define +([A-Za-z0-9_]+)/) {
 			print "$1 $2\n";
 		}
-		
 		if(/^^([0-9]+) \.globl ([a-zA-Z0-9_]+)/){
 			$isglobal{$2} = 1;
 		}
@@ -151,7 +150,6 @@ perl -e '
 		if(/^^([0-9]+) ([a-zA-Z0-9_]+):$/ && $isglobal{$2}){
 			print "$1 $2\n";
 		}
-		
 		if (/\(/) {
 			next;
 		}
@@ -159,8 +157,7 @@ perl -e '
 		if (/^([0-9]+) (((static|struct|extern|union|enum) +)*([A-Za-z0-9_]+))( .*)? +([A-Za-z_][A-Za-z0-9_]*)(,|;|=| =)/) {
 			print "$1 $7\n";
 		}
-		
-		elsif(/^([0-9]+) (enum|struct|union) +([A-Za-z0-9_]+) +{/){ 
+		elsif(/^([0-9]+) (enum|struct|union) +([A-Za-z0-9_]+) +{/){
 			print "$1 $3\n";
 		}
 		# TODO: enum members
@@ -217,7 +214,7 @@ awk '
 	# pr -t -2 t.defs | ../pr.pl -h "definitions" | pad
 	pr -t -l50 -2 refs | ../pr.pl -h "cross-references" | pad
 	# pr.pl -h "definitions" -2 t.defs | pad
-	# pr.pl -h "cross-references" -2 refs | pad 
+	# pr.pl -h "cross-references" -2 refs | pad
 	for i in $files
 	do
 		../pr.pl -h "xv6/$i" $i
