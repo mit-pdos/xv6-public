@@ -3,7 +3,7 @@ Version 6 (v6).  xv6 loosely follows the structure and style of v6,
 but is implemented for a modern x86-based multiprocessor using ANSI C.
 
 xv6-64 is a 64-bit port of MIT's xv6, by Anthony Shelton and
-Jakob Eriksson, for use in UIC's Operating Systems curriculum. 
+Jakob Eriksson, for use in UIC's Operating Systems curriculum.
 
 ACKNOWLEDGMENTS
 
@@ -20,7 +20,7 @@ xv6 borrows code from the following sources:
 
 The following people have made contributions: Russ Cox (context switching,
 locking), Cliff Frey (MP), Xiao Yu (MP), Nickolai Zeldovich, Austin
-Clements, Anthony Shelton and Jakob Eriksson (64-bit).
+Clements, Anthony Shelton (x64), Jakob Eriksson (x64), and Xingbo Wu (x64).
 
 The code in the files that constitute xv6 is Copyright 2006-2017
 Frans Kaashoek, Robert Morris, Russ Cox, Anthony Shelton and Jakob Eriksson.
@@ -37,11 +37,11 @@ etc.
 
 BUILDING AND RUNNING XV6
 
-To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run "make".
+To build xv6-64 on an x86_64 ELF machine (like Linux or FreeBSD), run "make".
 On non-x86 or non-ELF machines (like OS X, even on x86), you will
 need to install a cross-compiler gcc suite capable of producing x86 ELF
 binaries.  See http://pdos.csail.mit.edu/6.828/2016/tools.html.
-Then run "make TOOLPREFIX=i386-jos-elf-".
+Then run "make TOOLPREFIX=<your-tool-prefix>".
 
 To run xv6, install the QEMU PC simulators.  To run in QEMU, run "make qemu".
 
