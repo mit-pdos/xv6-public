@@ -10,7 +10,6 @@ swtch:
   # Save old callee-save registers
   push %rbp
   push %rbx
-  push %r11
   push %r12
   push %r13
   push %r14
@@ -25,7 +24,6 @@ swtch:
   pop %r14
   pop %r13
   pop %r12
-  pop %r11
   pop %rbx
   pop %rbp
 

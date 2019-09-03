@@ -39,7 +39,6 @@ struct context {
   addr_t r14;
   addr_t r13;
   addr_t r12;
-  addr_t r11;
   addr_t rbx;
   addr_t rbp;
   addr_t rip;
