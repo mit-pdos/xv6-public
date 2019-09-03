@@ -75,8 +75,8 @@ uservec:
 
         # restore kernel page table from p->tf->kernel_satp
         ld t1, 0(a0)
-	sfence.vma zero, zero
         csrw satp, t1
+        sfence.vma zero, zero
 
         # a0 is no longer valid, since the kernel page
         # table does not specially map p->td.
@@ -89,12 +89,12 @@ userret:
         # userret(TRAPFRAME, pagetable)
         # switch from kernel to user.
         # usertrapret() calls here.
-	# a0: TRAPFRAME, in user page table
+        # a0: TRAPFRAME, in user page table
         # a1: user page table, for satp
 
-	# switch to the user page table.
-	sfence.vma zero, zero
+        # switch to the user page table.
         csrw satp, a1
+        sfence.vma zero, zero
 
         # put the saved user a0 in sscratch, so we
         # can swap it with our a0 (TRAPFRAME) in the last step.
