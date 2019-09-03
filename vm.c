@@ -63,10 +63,11 @@ seginit(void)
 
   gdt[SEG_KCODE] = SEG((STA_X|STA_R), 0, 0, APP_SEG, !DPL_USER, 1);
   gdt[SEG_KDATA] = SEG(STA_W, 0, 0, APP_SEG, !DPL_USER, 0);
-  gdt[SEG_UCODE32] = (struct segdesc) {}; // unused
+  gdt[SEG_UCODE32] = (struct segdesc) {}; // required by syscall/sysret
   gdt[SEG_UDATA] = SEG(STA_W, 0, 0, APP_SEG, DPL_USER, 0);
   gdt[SEG_UCODE] = SEG((STA_X|STA_R), 0, 0, APP_SEG, DPL_USER, 1);
   gdt[SEG_KCPU]  = (struct segdesc) {};
+  // TSS: See IA32 SDM Figure 7-4
   gdt[SEG_TSS]   = SEG(STS_T64A, 0xb, addr, !APP_SEG, DPL_USER, 0);
   gdt[SEG_TSS+1] = SEG(0, addr >> 32, addr >> 48, 0, 0, 0);
 
