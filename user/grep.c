@@ -26,8 +26,6 @@ grep(char *pattern, int fd)
       }
       p = q+1;
     }
-    if(p == buf)
-      m = 0;
     if(m > 0){
       m -= p - buf;
       memmove(buf, p, m);
