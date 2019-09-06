@@ -91,12 +91,12 @@ userinit(void)
 
   inituvm(p->pgdir, _binary_initcode_start,
           (addr_t)_binary_initcode_size);
-  p->sz = PGSIZE;
+  p->sz = PGSIZE * 2;
   memset(p->tf, 0, sizeof(*p->tf));
 
   p->tf->r11 = FL_IF;  // with SYSRET, EFLAGS is in R11
-  p->tf->rsp = PGSIZE;
-  p->tf->rcx = 0;  // with SYSRET, RIP is in RCX
+  p->tf->rsp = p->sz;
+  p->tf->rcx = PGSIZE;  // with SYSRET, RIP is in RCX
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
