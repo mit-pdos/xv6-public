@@ -2,7 +2,7 @@
 #include "x86.h"
 
 void*
-memset(void *dst, int c, uint n)
+memset(void *dst, int c, uint64 n)
 {
   if ((addr_t)dst%4 == 0 && n%4 == 0){
     c &= 0xFF;

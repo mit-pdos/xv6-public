@@ -106,7 +106,7 @@ int             pipewrite(struct pipe*, char*, int);
 // proc.c
 void            exit(void);
 int             fork(void);
-int             growproc(int);
+int             growproc(int64);
 int             kill(int);
 void            pinit(void);
 void            procdump(void);
@@ -175,15 +175,15 @@ void            seginit(void);
 void            kvmalloc(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
-int             allocuvm(pde_t*, uint, uint);
-int             deallocuvm(pde_t*, uint64, uint64);
+addr_t          allocuvm(pde_t*, uint64, uint64);
+addr_t          deallocuvm(pde_t*, uint64, uint64);
 void            freevm(pde_t*);
 void            inituvm(pde_t*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
 pde_t*          copyuvm(pde_t*, uint);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
-int             copyout(pde_t*, addr_t, void*, uint);
+int             copyout(pde_t*, addr_t, void*, uint64);
 void            clearpteu(pde_t *pgdir, char *uva);
 
 // number of elements in fixed-size array
