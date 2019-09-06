@@ -64,9 +64,9 @@
 // The CS values for user and kernel space
 #define USER_CS   ((SEG_UCODE<<3)|DPL_USER)
 #define USER_DS   ((SEG_UDATA<<3)|DPL_USER)
+#define USER32_CS ((SEG_UCODE32<<3)|DPL_USER)
 #define KERNEL_CS (SEG_KCODE<<3)
 
-//PAGEBREAK!
 #ifndef __ASSEMBLER__
 // Segment Descriptor
 struct segdesc {
@@ -96,6 +96,7 @@ struct segdesc {
   ((addr_t)(base) >> 16) & 0xff, type, 1, dpl, 1,     \
   (addr_t)(lim) >> 16, 0, 0, 1, 0, (addr_t)(base) >> 24 }
 #endif
+//PAGEBREAK!
 
 #define DPL_USER    0x3     // User DPL
 #define APP_SEG     0x1
@@ -121,6 +122,7 @@ struct segdesc {
 #define STS_CG64    0xC     // 64-bit Call Gate
 #define STS_IG64    0xE     // 64-bit Interrupt Gate
 #define STS_TG64    0xF     // 64-bit Trap Gate
+//PAGEBREAK!
 
 // A virtual address 'la' has a six-part structure as follows:
 //
@@ -167,27 +169,8 @@ struct segdesc {
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)   ((addr_t)(pte) & ~0xFFF)
 #define PTE_FLAGS(pte)  ((addr_t)(pte) &  0xFFF)
-
-#define TRAP_GATE 0x100 // trap gate if one, interrupt gate if zero
-
 #ifndef __ASSEMBLER__
 typedef addr_t pte_t;
-
-
-// PAGEBREAK: 12
-// Gate descriptors for interrupts and traps
-struct gatedesc {
-  uint off_15_0 : 16;   // low 16 bits of offset in segment
-  uint cs : 16;         // code segment selector
-  uint args : 5;        // # args, 0 for interrupt/trap gates
-  uint rsv1 : 3;        // reserved(should be zero I guess)
-  uint type : 4;        // type(STS_{TG,IG32,TG32})
-  uint s : 1;           // must be 0 (system)
-  uint dpl : 2;         // descriptor(meaning new) privilege level
-  uint p : 1;           // Present
-  uint off_31_16 : 16;  // high bits of offset in segment
-  uint32 off_63_32;
-  uint32 rsv2;
-};
-
 #endif
+
+#define TRAP_GATE 0x100 // trap gate if one, interrupt gate if zero

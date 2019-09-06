@@ -18,7 +18,6 @@ start:
   movw    %ax, %es            # -> Extra Segment
   movw    %ax, %ss            # -> Stack Segment
 
-
   # Physical address line A20 is tied to zero so that the first PCs
   # with 2 MB would run software that assumed 1 MB.  Undo that.
 seta20.1:
@@ -37,7 +36,7 @@ seta20.2:
   movb    $0xdf, %al          # 0xdf -> port 0x60
   outb    %al, $0x60
 
-  # Switch from real to protected mode.  Use a bootstrap GDT that makes
+  # Switch from real to protected mode. Use a bootstrap GDT that makes
   # virtual addresses map directly to physical addresses so that the
   # effective memory map doesn't change during the transition.
   lgdt    gdtdesc
@@ -45,9 +44,8 @@ seta20.2:
   orl     $CR0_PE, %eax
   movl    %eax, %cr0
 
-//PAGEBREAK!
   # Complete the transition to 32-bit protected mode by using a long jmp
-  # to reload %cs and %eip.  The segment descriptors are set up with no
+  # to reload %cs and %eip. The segment descriptors are set up with no
   # translation, so that the mapping is still the identity mapping.
   ljmp    $(SEG_KCODE<<3), $start32
 
@@ -66,13 +64,7 @@ start32:
   movl    $start, %esp
   call    bootmain
 
-  # If bootmain returns (it shouldn't), trigger a Bochs
-  # breakpoint if running under Bochs, then loop.
-  movw    $0x8a00, %ax            # 0x8a00 -> port 0x8a00
-  movw    %ax, %dx
-  outw    %ax, %dx
-  movw    $0x8ae0, %ax            # 0x8ae0 -> port 0x8a00
-  outw    %ax, %dx
+  # If bootmain returns (it shouldn't), spin.
 spin:
   jmp     spin
 

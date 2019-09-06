@@ -166,25 +166,3 @@ wrmsr:
 ignore_sysret: #return error code 38, meaning function unimplemented
   mov     $-38, %rax
   sysret
-
-.global syscall_entry
-syscall_entry:
-  # switch to kernel stack. With the syscall instruction,
-  # this is a kernel resposibility
-  # store %rsp on the top of proc->kstack,
-
-  mov     %rax, %fs:(0)      # save %rax above __thread vars
-  mov     %fs:(-8), %rax     # %fs:(-8) is proc (the last __thread)
-  mov     0x10(%rax), %rax   # get proc->kstack (see struct proc)
-  add     $4080, %rax        # %rax points to kstacktop-16
-  mov     %rsp, (%rax)       # store user %rsp on kstack
-  mov     %rax, %rsp         # switch to the kstack
-  mov     %fs:(0), %rax      # restore %rax
-
-  push    %r11         # rflags
-  push    $USER_CS     # cs
-  push    %rcx         # rip (next user insn)
-
-  push    $0           # err
-  push    $64          # trapno T_SYSCALL
-  jmp     syscall_trap

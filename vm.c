@@ -23,7 +23,7 @@ syscallinit(void)
   // This is simply the way the sysret instruction
   // is designed to work (it assumes they follow).
   wrmsr(MSR_STAR,
-    ((((uint64)SEG_UCODE32 << 3) << 48) | ((uint64)KERNEL_CS << 32)));
+    ((((uint64)USER32_CS) << 48) | ((uint64)KERNEL_CS << 32)));
   wrmsr(MSR_LSTAR, (addr_t)syscall_entry);
   wrmsr(MSR_CSTAR, (addr_t)ignore_sysret);
 
@@ -240,6 +240,7 @@ inituvm(pde_t *pgdir, char *init, uint sz)
 
   if(sz >= PGSIZE)
     panic("inituvm: more than a page");
+
   mem = kalloc();
   memset(mem, 0, PGSIZE);
   mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_W|PTE_U);
@@ -445,14 +446,14 @@ uva2ka(pde_t *pgdir, char *uva)
 // Most useful when pgdir is not the current page table.
 // uva2ka ensures this only works for PTE_U pages.
 int
-copyout(pde_t *pgdir, uint va, void *p, uint len)
+copyout(pde_t *pgdir, addr_t va, void *p, uint len)
 {
   char *buf, *pa0;
   addr_t n, va0;
 
   buf = (char*)p;
   while(len > 0){
-    va0 = (uint)PGROUNDDOWN(va);
+    va0 = PGROUNDDOWN(va);
     pa0 = uva2ka(pgdir, (char*)va0);
     if(pa0 == 0)
       return -1;

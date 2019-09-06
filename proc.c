@@ -93,8 +93,6 @@ userinit(void)
           (addr_t)_binary_initcode_size);
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
-  p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
-  p->tf->ss = (SEG_UDATA << 3) | DPL_USER;
 
   p->tf->r11 = FL_IF;  // with SYSRET, EFLAGS is in R11
   p->tf->rsp = PGSIZE;

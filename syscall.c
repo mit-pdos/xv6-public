@@ -123,6 +123,7 @@ extern addr_t sys_wait(void);
 extern addr_t sys_write(void);
 extern addr_t sys_uptime(void);
 
+// PAGEBREAK!
 static addr_t (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
@@ -150,9 +151,7 @@ static addr_t (*syscalls[])(void) = {
 void
 syscall(void)
 {
-  int num;
-
-  num = proc->tf->rax;
+  uint64 num = proc->tf->rax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     proc->tf->rax = syscalls[num]();
   } else {

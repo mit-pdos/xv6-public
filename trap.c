@@ -41,8 +41,6 @@ void tvinit(void) {
   mkgate(idt, T_SYSCALL, vectors[T_SYSCALL], DPL_USER, 1);
 }
 
-
-
 //PAGEBREAK: 41
 void
 trap(struct trapframe *tf)

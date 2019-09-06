@@ -2,94 +2,113 @@
 .global alltraps
 alltraps:
   # Build trap frame.
-  push %r15
-  push %r14
-  push %r13
-  push %r12
-  push %r11
-  push %r10
-  push %r9
-  push %r8
-  push %rdi
-  push %rsi
-  push %rbp
-  push %rdx
-  push %rcx
-  push %rbx
-  push %rax
+  pushq   %r15
+  pushq   %r14
+  pushq   %r13
+  pushq   %r12
+  pushq   %r11
+  pushq   %r10
+  pushq   %r9
+  pushq   %r8
+  pushq   %rdi
+  pushq   %rsi
+  pushq   %rbp
+  pushq   %rdx
+  pushq   %rcx
+  pushq   %rbx
+  pushq   %rax
 
-  mov  %rsp, %rdi  # frame in arg1
-  call trap
-
+  movq    %rsp, %rdi  # frame in arg1
+  callq   trap
 # Return falls through to trapret...
+
 .global trapret
 trapret:
-  pop %rax
-  pop %rbx
-  pop %rcx
-  pop %rdx
-  pop %rbp
-  pop %rsi
-  pop %rdi
-  pop %r8
-  pop %r9
-  pop %r10
-  pop %r11
-  pop %r12
-  pop %r13
-  pop %r14
-  pop %r15
+  popq    %rax
+  popq    %rbx
+  popq    %rcx
+  popq    %rdx
+  popq    %rbp
+  popq    %rsi
+  popq    %rdi
+  popq    %r8
+  popq    %r9
+  popq    %r10
+  popq    %r11
+  popq    %r12
+  popq    %r13
+  popq    %r14
+  popq    %r15
 
-  add $16, %rsp  # discard trapnum and errorcode
+  addq    $16, %rsp  # discard trapnum and errorcode
   iretq
 #PAGEBREAK!
 
-# syscall_entry jumps here after syscall instruction
-.global syscall_trap
-syscall_trap:  # Build trap frame.
-  push %r15
-  push %r14
-  push %r13
-  push %r12
-  push %r11
-  push %r10
-  push %r9
-  push %r8
-  push %rdi
-  push %rsi
-  push %rbp
-  push %rdx
-  push %rcx
-  push %rbx
-  push %rax
+.global syscall_entry
+syscall_entry:
+  # switch to kernel stack. With the syscall instruction,
+  # this is a kernel resposibility
+  # store %rsp on the top of proc->kstack,
+  movq    %rax, %fs:(0)      # save %rax above __thread vars
+  movq    %fs:(-8), %rax     # %fs:(-8) is proc (the last __thread)
+  movq    0x10(%rax), %rax   # get proc->kstack (see struct proc)
+  addq    $(4096-16), %rax   # %rax points to tf->rsp
+  movq    %rsp, (%rax)       # save user rsp to tf->rsp
+  movq    %rax, %rsp         # switch to the kstack
+  movq    %fs:(0), %rax      # restore %rax
 
-  mov  %rsp, %rdi  # frame in arg1
-  call trap
+  pushq   %r11         # rflags
+  pushq   $0           # cs is ignored
+  pushq   %rcx         # rip (next user insn)
 
-# Return falls through to trapret...
+  pushq   $0           # err
+  pushq   $64          # trapno T_SYSCALL
+
+  pushq   %r15
+  pushq   %r14
+  pushq   %r13
+  pushq   %r12
+  pushq   %r11
+  pushq   %r10
+  pushq   %r9
+  pushq   %r8
+  pushq   %rdi
+  pushq   %rsi
+  pushq   %rbp
+  pushq   %rdx
+  pushq   %rcx
+  pushq   %rbx
+  pushq   %rax
+
+  movq    %rsp, %rdi  # frame in arg1
+  callq   trap
+# Return falls through to syscall_trapret...
+#PAGEBREAK!
+
 .global syscall_trapret
 syscall_trapret:
-  pop %rax
-  pop %rbx
-  pop %rcx
-  pop %rdx
-  pop %rbp
-  pop %rsi
-  pop %rdi
-  pop %r8
-  pop %r9
-  pop %r10
-  pop %r11
-  pop %r12
-  pop %r13
-  pop %r14
-  pop %r15
+  popq    %rax
+  popq    %rbx
+  popq    %rcx
+  popq    %rdx
+  popq    %rbp
+  popq    %rsi
+  popq    %rdi
+  popq    %r8
+  popq    %r9
+  popq    %r10
+  popq    %r11
+  popq    %r12
+  popq    %r13
+  popq    %r14
+  popq    %r15
 
-  add $40, %rsp  # discard trapnum, errorcode, rip, cs and rflags
+  addq    $40, %rsp  # discard trapnum, errorcode, rip, cs and rflags
 
   # to make sure we don't get any interrupts on the user stack while in
-  # supervisor mode this is actually slightly unsafe still,
+  # supervisor mode. this is actually slightly unsafe still,
   # since some interrupts are nonmaskable.
+  # See https://www.felixcloutier.com/x86/sysret
   cli
-  mov (%rsp), %rsp  # restore the user stack
+  movq    (%rsp), %rsp  # restore the user stack
   sysretq

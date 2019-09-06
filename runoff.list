@@ -36,6 +36,7 @@ trap.c
 syscall.h
 syscall.c
 sysproc.c
+exec.c
 
 # low-level hardware
 mp.h
@@ -47,23 +48,20 @@ kbd.c
 console.c
 uart.c
 
-# file system
+# file system and I/O
 buf.h
-sleeplock.h
 fcntl.h
 stat.h
-fs.h
-file.h
 ide.c
 bio.c
+sleeplock.h
 sleeplock.c
 log.c
+fs.h
 fs.c
+file.h
 file.c
 sysfile.c
-exec.c
-
-# pipes
 pipe.c
 
 # string operations
