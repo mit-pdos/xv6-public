@@ -27,6 +27,7 @@ OBJS = \
 	uart.o\
 	vectors.o\
 	vm.o\
+#
 
 # Cross-compiling (e.g., on Mac OS X)
 # TOOLPREFIX = i386-jos-elf
@@ -46,7 +47,7 @@ OPT ?= -O0
 XFLAGS = -m64 -DX64 -mcmodel=large -mtls-direct-seg-refs -mno-red-zone
 
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -fno-omit-frame-pointer
-CFLAGS += -ffreestanding -fno-common -nostdlib -Iinclude -gdwarf-2 $(XFLAGS) $(OPT)
+CFLAGS += -ffreestanding -fno-common -nostdlib $(XFLAGS) $(OPT)
 
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
@@ -149,7 +150,7 @@ UPROGS=\
 	_usertests\
 	_wc\
 	_zombie\
-  _nullp\
+#
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
