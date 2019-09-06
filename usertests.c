@@ -281,6 +281,23 @@ exectest(void)
   printf(1, "exec test ok\n");
 }
 
+void
+nullptr(void)
+{
+  printf(1, "null pointer test\n");
+  printf(1, "expect one killed process\n");
+  int ppid = getpid();
+  if (fork() == 0) {
+    *(addr_t *)(0) = 10;
+    printf(1, "can write to unmapped page 0, failed");
+    kill(ppid);
+    exit();
+  } else {
+    wait();
+  }
+  printf(1, "null pointer test ok\n");
+}
+
 // simple fork and pipe read/write
 
 void
@@ -1631,6 +1648,7 @@ main(int argc, char *argv[])
   pipe1();
   preempt();
   exitwait();
+  nullptr();
 
   rmdot();
   fourteen();
@@ -1642,10 +1660,9 @@ main(int argc, char *argv[])
   iref();
   forktest();
   bigdir(); // slow
-
   uio();
 
-  exectest();
+  exectest(); // will exit
 
   exit();
 }
