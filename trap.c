@@ -19,7 +19,7 @@ mkgate(uint *idt, uint n, addr_t kva, uint pl, uint trap) {
   uint64 addr = (uint64) kva;
 
   n *= 4;
-  idt[n+0] = (addr & 0xFFFF) | ((SEG_KCODE << 3) << 16);
+  idt[n+0] = (addr & 0xFFFF) | (KERNEL_CS << 16);
   idt[n+1] = (addr & 0xFFFF0000) | 0x8E00 | ((pl & 3) << 13);
   if(trap)
     idt[n+1] |= TRAP_GATE;

@@ -16,6 +16,7 @@ bootmain.c
 entry.S
 entryother.S
 main.c
+kernel.ld
 
 # locks
 spinlock.h
