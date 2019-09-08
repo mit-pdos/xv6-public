@@ -1,18 +1,10 @@
-#if you would like to use gdb in 32bit mode, comment out lines 8 and 15, then uncomment
-#the lines after. Note this will only work properly until 64bit mode is enabled in entry.S
+# i386, i8086
+set arch i386:x86-64
+# 1234 will be replaced (see Makefile)
+target remote localhost:1234
+sym kernel
+# debugging mbr: b *0x7c00
+b _start
+c
 
-python
-gdb.execute("set architecture i386:x86-64:intel")
-gdb.execute("target remote localhost:26000")
-gdb.execute("symbol-file kernel")
-gdb.execute("break _start")
-#gdb.execute("break *0x7c00")
-try:
-  gdb.execute("continue")
-except: 
-  pass
-gdb.execute("disconnect")
-gdb.execute("set architecture i386:x86-64")
-#gdb.execute("set architecture i386")
-gdb.execute("target remote localhost:26000")
-gdb.execute("delete break 1")
+## Workaround is removed (2019): https://wiki.osdev.org/QEMU_and_GDB_in_long_mode
