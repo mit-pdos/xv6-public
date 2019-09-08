@@ -15,47 +15,36 @@ struct spinlock tickslock;
 uint ticks;
 
 static void
-mkgate(uint *idt, uint n, addr_t kva, uint pl, uint trap) {
+mkgate(uint *idt, uint n, addr_t kva, uint pl)
+{
   uint64 addr = (uint64) kva;
 
   n *= 4;
   idt[n+0] = (addr & 0xFFFF) | (KERNEL_CS << 16);
   idt[n+1] = (addr & 0xFFFF0000) | 0x8E00 | ((pl & 3) << 13);
-  if(trap)
-    idt[n+1] |= TRAP_GATE;
   idt[n+2] = addr >> 32;
   idt[n+3] = 0;
 }
 
-void idtinit(void) {
+void idtinit(void)
+{
   lidt((void*) idt, PGSIZE);
 }
 
-void tvinit(void) {
+void tvinit(void)
+{
   int n;
   idt = (uint*) kalloc();
   memset(idt, 0, PGSIZE);
 
   for (n = 0; n < 256; n++)
-    mkgate(idt, n, vectors[n], 0, 0);
-  mkgate(idt, T_SYSCALL, vectors[T_SYSCALL], DPL_USER, 1);
+    mkgate(idt, n, vectors[n], 0);
 }
 
 //PAGEBREAK: 41
 void
 trap(struct trapframe *tf)
 {
-  if(tf->trapno == T_SYSCALL){
-    if(proc->killed)
-      exit();
-    proc->tf = tf;
-
-    syscall();
-    if(proc->killed)
-      exit();
-    return;
-  }
-
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpunum() == 0){

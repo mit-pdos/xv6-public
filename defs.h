@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct trapframe;
 
 //entry.S
 void            wrmsr(uint msr, uint64 val);
@@ -147,7 +148,7 @@ int             strncmp(const char*, const char*, uint);
 char*           strncpy(char*, const char*, int);
 
 // syscall.c
-void            syscall(void);
+void            syscall(struct trapframe *);
 void            syscallinit(void);
 int             argint(int, int*);
 int             argptr(int, char**, int);
@@ -155,7 +156,6 @@ int             argstr(int, char**);
 int             argaddr(int, addr_t*);
 int             fetchaddr(addr_t, addr_t*);
 int             fetchstr(addr_t, char**);
-void            syscall(void);
 int             fetchint(addr_t, int*);
 
 // trap.c

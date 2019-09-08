@@ -62,7 +62,7 @@ syscall_entry:
   pushq   %rcx         # rip (next user insn)
 
   pushq   $0           # err
-  pushq   $64          # trapno T_SYSCALL
+  pushq   $0           # trapno ignored
 
   pushq   %r15
   pushq   %r14
@@ -81,7 +81,7 @@ syscall_entry:
   pushq   %rax
 
   movq    %rsp, %rdi  # frame in arg1
-  callq   trap
+  callq   syscall
 # Return falls through to syscall_trapret...
 #PAGEBREAK!
 

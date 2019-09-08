@@ -149,14 +149,19 @@ static addr_t (*syscalls[])(void) = {
 };
 
 void
-syscall(void)
+syscall(struct trapframe *tf)
 {
+  if (proc->killed)
+    exit();
+  proc->tf = tf;
   uint64 num = proc->tf->rax;
-  if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    proc->tf->rax = syscalls[num]();
+  if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    tf->rax = syscalls[num]();
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             proc->pid, proc->name, num);
-    proc->tf->rax = -1;
+    tf->rax = -1;
   }
+  if (proc->killed)
+    exit();
 }
