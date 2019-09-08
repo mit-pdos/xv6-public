@@ -26,7 +26,7 @@ SECTIONS
   }
   .bss : {
     *(.bss)
-    PROVIDE(end = .);
+    *(.sbss*)
+     PROVIDE(end = .);
   }
-
 }
