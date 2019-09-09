@@ -15,14 +15,14 @@
 
 extern uchar _binary_fs_img_start[], _binary_fs_img_size[];
 
-static int disksize;
+static uint disksize;
 static uchar *memdisk;
 
 void
 ideinit(void)
 {
   memdisk = _binary_fs_img_start;
-  disksize = (uint)_binary_fs_img_size/BSIZE;
+  disksize = (uint)(addr_t)_binary_fs_img_size/BSIZE;
 }
 
 // Interrupt handler.
