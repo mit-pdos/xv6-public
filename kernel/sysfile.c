@@ -246,6 +246,7 @@ create(char *path, short type, short major, short minor)
 
   if((dp = nameiparent(path, name)) == 0)
     return 0;
+
   ilock(dp);
 
   if((ip = dirlookup(dp, name, 0)) != 0){
@@ -289,8 +290,9 @@ sys_open(void)
   int fd, omode;
   struct file *f;
   struct inode *ip;
+  int n;
 
-  if(argstr(0, path, MAXPATH) < 0 || argint(1, &omode) < 0)
+  if((n = argstr(0, path, MAXPATH)) < 0 || argint(1, &omode) < 0)
     return -1;
 
   begin_op();
