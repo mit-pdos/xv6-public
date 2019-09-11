@@ -30,19 +30,19 @@ forktest(void)
 
   if(n == N){
     print("fork claimed to work N times!\n");
-    exit(-1);
+    exit(1);
   }
 
   for(; n > 0; n--){
     if(wait(0) < 0){
       print("wait stopped early\n");
-      exit(-1);
+      exit(1);
     }
   }
 
   if(wait(0) != -1){
     print("wait got too many\n");
-    exit(-1);
+    exit(1);
   }
 
   print("fork test OK\n");
