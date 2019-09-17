@@ -95,10 +95,10 @@ usertrapret(void)
   // now from kerneltrap() to usertrap().
   intr_off();
 
-  // send interrupts and exceptions to trampoline.S
+  // send syscalls, interrupts, and exceptions to trampoline.S
   w_stvec(TRAMPOLINE + (uservec - trampoline));
 
-  // set up values that uservec will need when
+  // set up trapframe values that uservec will need when
   // the process next re-enters the kernel.
   p->tf->kernel_satp = r_satp();         // kernel page table
   p->tf->kernel_sp = p->kstack + PGSIZE; // process's kernel stack
