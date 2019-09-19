@@ -598,6 +598,7 @@ forkforkfork(char *s)
   sleep(10); // one second
 }
 
+// allocate all mem, free it, and allocate again
 void
 mem(char *s)
 {
@@ -1907,7 +1908,8 @@ stacktest(char *s)
     exit(xstatus);
 }
 
-// 1 if successful
+// run each test in its own process. run returns 1 if child's exit()
+// indicates success.
 int
 run(void f(char *), char *s) {
   int pid;
