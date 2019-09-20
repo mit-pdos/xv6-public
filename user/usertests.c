@@ -1923,6 +1923,45 @@ pgbug(char *s)
   exit(0);
 }
 
+// does the kernel panic if a process sbrk()s its size to be less than
+// a page, or zero?
+void
+zerosize(char *s)
+{
+  int pid = fork();
+  if(pid < 0){
+    printf("fork failed\n");
+    exit(1);
+  }
+  if(pid == 0){
+    int sz = (uint64) sbrk(0);
+    // free all user memory; there used to be a bug that
+    // would not adjust p->sz correctly in this case,
+    // causing exit() to panic.
+    sbrk(-sz);
+    // user page fault here.
+    exit(0);
+  }
+  wait(0);
+
+  pid = fork();
+  if(pid < 0){
+    printf("fork failed\n");
+    exit(1);
+  }
+  if(pid == 0){
+    int sz = (uint64) sbrk(0);
+    // set the break to somewhere in the very first
+    // page; there used to be a bug that would incorrectly
+    // free the first page.
+    sbrk(-(sz - 3500));
+    exit(0);
+  }
+  wait(0);
+
+  exit(0);
+}
+
 // run each test in its own process. run returns 1 if child's exit()
 // indicates success.
 int
@@ -1961,6 +2000,7 @@ main(int argc, char *argv[])
     char *s;
   } tests[] = {
     {pgbug, "pgbug" },
+    {zerosize, "zerosize" },
     {reparent, "reparent" },
     {twochildren, "twochildren"},
     {forkfork, "forkfork"},

@@ -232,9 +232,7 @@ growproc(int n)
       return -1;
     }
   } else if(n < 0){
-    if((sz = uvmdealloc(p->pagetable, sz, sz + n)) == 0) {
-      return -1;
-    }
+    sz = uvmdealloc(p->pagetable, sz, sz + n);
   }
   p->sz = sz;
   return 0;
