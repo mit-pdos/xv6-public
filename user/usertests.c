@@ -1981,6 +1981,44 @@ sbrkbugs(char *s)
   exit(0);
 }
 
+// does write() with an invalid buffer pointer cause
+// a block to be allocated for a file that is then
+// not freed when the file is deleted? if the kernel
+// has this bug, it will panic: balloc: out of blocks. 
+// assumed_free may need to be raised to be
+// more than the number of free blocks.
+void
+badwrite(char *s)
+{
+  int assumed_free = 600;
+  
+  unlink("junk");
+  for(int i = 0; i < assumed_free; i++){
+    int fd = open("junk", O_CREATE|O_WRONLY);
+    if(fd < 0){
+      printf("open junk failed\n");
+      exit(1);
+    }
+    write(fd, (char*)0xffffffffffL, 1);
+    close(fd);
+    unlink("junk");
+  }
+
+  int fd = open("junk", O_CREATE|O_WRONLY);
+  if(fd < 0){
+    printf("open junk failed\n");
+    exit(1);
+  }
+  if(write(fd, "x", 1) != 1){
+    printf("write failed\n");
+    exit(1);
+  }
+  close(fd);
+  unlink("junk");
+
+  exit(0);
+}
+
 // run each test in its own process. run returns 1 if child's exit()
 // indicates success.
 int
@@ -2020,6 +2058,7 @@ main(int argc, char *argv[])
   } tests[] = {
     {pgbug, "pgbug" },
     {sbrkbugs, "sbrkbugs" },
+    {badwrite, "badwrite" },
     {reparent, "reparent" },
     {twochildren, "twochildren"},
     {forkfork, "forkfork"},

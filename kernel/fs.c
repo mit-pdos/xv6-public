@@ -505,10 +505,15 @@ writei(struct inode *ip, int user_src, uint64 src, uint off, uint n)
     brelse(bp);
   }
 
-  if(n > 0 && off > ip->size){
-    ip->size = off;
+  if(n > 0){
+    if(off > ip->size)
+      ip->size = off;
+    // write the i-node back to disk even if the size didn't change
+    // because the loop above might have called bmap() and added a new
+    // block to ip->addrs[].
     iupdate(ip);
   }
+
   return n;
 }
 
