@@ -99,6 +99,9 @@ walkaddr(pagetable_t pagetable, uint64 va)
   pte_t *pte;
   uint64 pa;
 
+  if(va >= MAXVA)
+    return 0;
+
   pte = walk(pagetable, va, 0);
   if(pte == 0)
     return 0;
@@ -408,7 +411,7 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   int got_null = 0;
 
   while(got_null == 0 && max > 0){
-    va0 = (uint)PGROUNDDOWN(srcva);
+    va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
