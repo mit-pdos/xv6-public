@@ -1558,16 +1558,11 @@ forktest(char *s)
 }
 
 void
-sbrktest(char *s)
+sbrkbasic(char *s)
 {
-  enum { BIG=100*1024*1024, TOOMUCH=1024*1024*1024};
-  int i, fds[2], pids[10], pid, ppid;
-  char *c, *oldbrk, scratch, *a, *b, *lastaddr, *p;
-  uint64 amt;
-  int fd;
-  int n;
-
-  oldbrk = sbrk(0);
+  enum { TOOMUCH=1024*1024*1024};
+  int i, pid, xstatus;
+  char *c, *a, *b;
 
   // does sbrk() return the expected failure value?
   a = sbrk(TOOMUCH);
@@ -1600,7 +1595,21 @@ sbrktest(char *s)
   }
   if(pid == 0)
     exit(0);
-  wait(0);
+  wait(&xstatus);
+  exit(xstatus);
+}
+
+void
+sbrkmuch(char *s)
+{
+  enum { BIG=100*1024*1024, TOOMUCH=1024*1024*1024};
+  int i, fds[2], pids[10], pid, ppid;
+  char *c, *oldbrk, scratch, *a, *lastaddr, *p;
+  uint64 amt;
+  int fd;
+  int n;
+
+  oldbrk = sbrk(0);
 
   // can one grow address space to something big?
   a = sbrk(0);
@@ -2076,7 +2085,8 @@ main(int argc, char *argv[])
     {bigargtest, "bigargtest"},
     {bigwrite, "bigwrite"},
     {bsstest, "bsstest"},
-    {sbrktest, "sbrktest"},
+    {sbrkbasic, "sbrkbasic"},
+    {sbrkmuch, "sbrkmuch"},
     {validatetest, "validatetest"},
     {stacktest, "stacktest"},
     {opentest, "opentest"},
