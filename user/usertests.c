@@ -1924,9 +1924,10 @@ pgbug(char *s)
 }
 
 // does the kernel panic if a process sbrk()s its size to be less than
-// a page, or zero?
+// a page, or zero, or reduces the break by an amount too small to
+// cause a page to be freed?
 void
-zerosize(char *s)
+sbrkbugs(char *s)
 {
   int pid = fork();
   if(pid < 0){
@@ -1955,6 +1956,24 @@ zerosize(char *s)
     // page; there used to be a bug that would incorrectly
     // free the first page.
     sbrk(-(sz - 3500));
+    exit(0);
+  }
+  wait(0);
+
+  pid = fork();
+  if(pid < 0){
+    printf("fork failed\n");
+    exit(1);
+  }
+  if(pid == 0){
+    // set the break in the middle of a page.
+    sbrk((10*4096 + 2048) - (uint64)sbrk(0));
+
+    // reduce the break a bit, but not enough to
+    // cause a page to be freed. this used to cause
+    // a panic.
+    sbrk(-10);
+
     exit(0);
   }
   wait(0);
@@ -2000,7 +2019,7 @@ main(int argc, char *argv[])
     char *s;
   } tests[] = {
     {pgbug, "pgbug" },
-    {zerosize, "zerosize" },
+    {sbrkbugs, "sbrkbugs" },
     {reparent, "reparent" },
     {twochildren, "twochildren"},
     {forkfork, "forkfork"},
