@@ -1757,7 +1757,7 @@ sbrkarg(char *s)
     printf("%s: open sbrk failed\n", s);
     exit(1);
   }
-  if ((n = write(fd, a, 10)) < 0) {
+  if ((n = write(fd, a, PGSIZE)) < 0) {
     printf("%s: write sbrk failed\n", s);
     exit(1);
   }
