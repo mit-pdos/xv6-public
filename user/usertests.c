@@ -1602,12 +1602,9 @@ sbrkbasic(char *s)
 void
 sbrkmuch(char *s)
 {
-  enum { BIG=100*1024*1024, TOOMUCH=1024*1024*1024};
-  int i, fds[2], pids[10], pid, ppid;
-  char *c, *oldbrk, scratch, *a, *lastaddr, *p;
+  enum { BIG=100*1024*1024 };
+  char *c, *oldbrk, *a, *lastaddr, *p;
   uint64 amt;
-  int fd;
-  int n;
 
   oldbrk = sbrk(0);
 
@@ -1654,10 +1651,16 @@ sbrkmuch(char *s)
     printf("%s: sbrk downsize failed, a %x c %x\n", a, c);
     exit(1);
   }
+}
 
-  // can we read the kernel's memory?
+// can we read the kernel's memory?
+void
+kernmem(char *s)
+{
+  char *a;
+  int pid;
+
   for(a = (char*)(KERNBASE); a < (char*) (KERNBASE+2000000); a += 50000){
-    ppid = getpid();
     pid = fork();
     if(pid < 0){
       printf("%s: fork failed\n", s);
@@ -1665,14 +1668,28 @@ sbrkmuch(char *s)
     }
     if(pid == 0){
       printf("%s: oops could read %x = %x\n", a, *a);
-      kill(ppid);
       exit(1);
     }
-    wait(0);
+    int xstatus;
+    wait(&xstatus);
+    if(xstatus != -1)  // did kernel kill child?
+      exit(1);
   }
-    
-  // if we run the system out of memory, does it clean up the last
-  // failed allocation?
+}
+
+// if we run the system out of memory, does it clean up the last
+// failed allocation?
+void
+sbrkfail(char *s)
+{
+  enum { BIG=100*1024*1024 };
+  int i, xstatus;
+  int fds[2];
+  char scratch;
+  char *c, *a;
+  int pids[10];
+  int pid;
+ 
   if(pipe(fds) != 0){
     printf("%s: pipe() failed\n", s);
     exit(1);
@@ -1704,14 +1721,11 @@ sbrkmuch(char *s)
   }
 
   // test running fork with the above allocated page 
-  ppid = getpid();
   pid = fork();
   if(pid < 0){
     printf("%s: fork failed\n", s);
     exit(1);
   }
-
-  // test out of memory during sbrk
   if(pid == 0){
     // allocate a lot of memory
     a = sbrk(0);
@@ -1721,12 +1735,21 @@ sbrkmuch(char *s)
       n += *(a+i);
     }
     printf("%s: allocate a lot of memory succeeded %d\n", n);
-    kill(ppid);
     exit(1);
   }
-  wait(0);
+  wait(&xstatus);
+  if(xstatus != -1)
+    exit(1);
+}
 
-  // test reads from allocated memory
+  
+// test reads/writes from/to allocated memory
+void
+sbrkarg(char *s)
+{
+  char *a;
+  int fd, n;
+
   a = sbrk(PGSIZE);
   fd = open("sbrk", O_CREATE|O_WRONLY);
   unlink("sbrk");
@@ -1746,9 +1769,6 @@ sbrkmuch(char *s)
     printf("%s: pipe() failed\n", s);
     exit(1);
   } 
-
-  if(sbrk(0) > oldbrk)
-    sbrk(-(sbrk(0) - oldbrk));
 }
 
 void
@@ -2087,6 +2107,9 @@ main(int argc, char *argv[])
     {bsstest, "bsstest"},
     {sbrkbasic, "sbrkbasic"},
     {sbrkmuch, "sbrkmuch"},
+    {kernmem, "kernmem"},
+    {sbrkfail, "sbrkfail"},
+    {sbrkarg, "sbrkarg"},
     {validatetest, "validatetest"},
     {stacktest, "stacktest"},
     {opentest, "opentest"},
