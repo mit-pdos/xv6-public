@@ -336,18 +336,21 @@ exit(int status)
   end_op();
   p->cwd = 0;
 
-  // we might re-parent a child to init. we can't be precise
-  // about waking up init, since we can't acquire its lock once
-  // we've acquired any other proc lock. so wake up init whether
-  // that's necessary or not. init may miss this wakeup,
-  // that that seems harmless.
+  // we might re-parent a child to init. we can't be precise about
+  // waking up init, since we can't acquire its lock once we've
+  // acquired any other proc lock. so wake up init whether that's
+  // necessary or not. init may miss this wakeup, but that seems
+  // harmless.
   acquire(&initproc->lock);
   wakeup1(initproc);
   release(&initproc->lock);
 
-  // grab a copy of p->parent, to ensure that we unlock the
-  // same parent we locked. in case our parent gives us away
-  // to init while we're waiting for the parent lock.
+  // grab a copy of p->parent, to ensure that we unlock the same
+  // parent we locked. in case our parent gives us away to init while
+  // we're waiting for the parent lock. we may then race with an
+  // exiting parent, but the result will be a harmless spurious wakeup
+  // to a dead or wrong process; proc structs are never re-allocated
+  // as anything else.
   acquire(&p->lock);
   struct proc *original_parent = p->parent;
   release(&p->lock);
