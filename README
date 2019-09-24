@@ -35,10 +35,8 @@ Copyright 2006-2018 Frans Kaashoek, Robert Morris, and Russ Cox.
 
 ERROR REPORTS
 
-Please send errors and suggestions to Frans Kaashoek and Robert Morris
-(kaashoek,rtm@mit.edu). The main purpose of xv6 is as a teaching
-operating system for MIT's 6.828, so we are more interested in
-simplifications and clarifications than new features.
+We switched our focus to xv6 on RISC-V; see the mit-pdos/xv6-riscv.git
+repository on github.com.
 
 BUILDING AND RUNNING XV6
 
