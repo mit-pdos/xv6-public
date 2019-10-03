@@ -28,20 +28,6 @@ plicinithart(void)
   *(uint32*)PLIC_SPRIORITY(hart) = 0;
 }
 
-// return a bitmap of which IRQs are waiting
-// to be served.
-uint64
-plic_pending(void)
-{
-  uint64 mask;
-
-  //mask = *(uint32*)(PLIC + 0x1000);
-  //mask |= (uint64)*(uint32*)(PLIC + 0x1004) << 32;
-  mask = *(uint64*)PLIC_PENDING;
-
-  return mask;
-}
-
 // ask the PLIC what interrupt we should serve.
 int
 plic_claim(void)
