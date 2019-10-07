@@ -89,3 +89,10 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// TAREFA 4: Syscall para alterar a prioridade de processos
+int
+sys_set_prio(int prio)
+{
+  return set_prio(prio);
+}

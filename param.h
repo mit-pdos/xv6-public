@@ -12,3 +12,5 @@
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       1000  // size of file system in blocks
 
+// TAREFA 3: Intervalo de escalonamento em ticks
+#define INTERV       5     // Scheduling preemptive interval in ticks

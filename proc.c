@@ -26,6 +26,11 @@ pinit(void)
   initlock(&ptable.lock, "ptable");
 }
 
+// TAREFA 4: Alterar prioridade de um processo
+int set_prio(int prio){
+  //TODO: Setar prioridade
+}
+
 // Must be called with interrupts disabled
 int
 cpuid() {
@@ -88,6 +93,11 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+
+  p->ctime  = ticks;
+  p->stime  = 0;
+  p->retime = 0;
+  p->rutime = 0;
 
   release(&ptable.lock);
 

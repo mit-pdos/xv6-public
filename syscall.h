@@ -20,3 +20,6 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+
+// TAREFA 4: Syscall para alterar a prioridade de um processo
+#define SYS_set_prio 22
