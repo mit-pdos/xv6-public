@@ -103,8 +103,15 @@ memmove(void *vdst, const void *vsrc, int n)
 
   dst = vdst;
   src = vsrc;
-  while(n-- > 0)
-    *dst++ = *src++;
+  if (src > dst) {
+    while(n-- > 0)
+      *dst++ = *src++;
+  } else {
+    dst += n;
+    src += n;
+    while(n-- > 0)
+      *--dst = *--src;
+  }
   return vdst;
 }
 
