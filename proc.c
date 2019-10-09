@@ -382,7 +382,7 @@ scheduler(void)
     acquire(&ptable.lock);
 
     // Para cada nivel de prioridade
-    for(prio = 3; prio >= 1 ; prio--){
+    for(int prio = 3; prio >= 1 ; prio--){
 
       // Procure um processo pronto e com o nivel correto
       // de prioridade
