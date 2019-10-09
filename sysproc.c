@@ -92,7 +92,8 @@ sys_uptime(void)
 
 // TAREFA 4: Syscall para alterar a prioridade de processos
 int
-sys_set_prio(int prio)
+sys_set_prio(int priority)
 {
-  return set_prio(prio);
+  argint(0, &priority);
+  return set_prio(priority);
 }

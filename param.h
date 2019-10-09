@@ -14,3 +14,6 @@
 
 // TAREFA 3: Intervalo de escalonamento em ticks
 #define INTERV       5     // Scheduling preemptive interval in ticks
+
+#define ONE_TWO      5   //Tempo WAITING até promover a prioridade do processo de 1 para 2
+#define TWO_THREE    5   //Tempo WAITING até promover a prioridade do processo de 2 para 3

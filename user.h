@@ -23,7 +23,9 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int set_prio(int prio);
+
+// TAREFA 4: Syscall para alterar a prioridade de um processo
+int set_prio(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

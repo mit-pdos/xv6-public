@@ -34,6 +34,9 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+// TAREFA 4: Prioridade para os processos
+enum priority {LOW = 1, MED = 2, HIGH = 3};
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -53,7 +56,7 @@ struct proc {
   // TAREFA 4: Prioridade para os processos
   int priority;
 
-  // TAREFA 5: Testes
+  // TAREFA 5: Valores para teste de processo
   uint ctime; // Tempo quando o processo foi criado
   int stime;  // Tempo SLEEPING
   int retime; // Tempo READY(RUNNABLE) time

@@ -122,7 +122,7 @@ void            wakeup(void*);
 void            yield(void);
 
 //TAREFA 4: Syscall para alterar a prioridade de um processo
-int             set_prio(int priority);
+int             set_prio(int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

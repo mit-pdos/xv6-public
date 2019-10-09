@@ -26,11 +26,6 @@ pinit(void)
   initlock(&ptable.lock, "ptable");
 }
 
-// TAREFA 4: Alterar prioridade de um processo
-int set_prio(int prio){
-  //TODO: Setar prioridade
-}
-
 // Must be called with interrupts disabled
 int
 cpuid() {
@@ -94,6 +89,10 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
+  //TAREFA 4: Prioridade padrão de um novo processo
+  p->priority = MED;
+
+  // TAREFA 5: Testes
   p->ctime  = ticks;
   p->stime  = 0;
   p->retime = 0;
@@ -585,4 +584,26 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+// TAREFA 4: Syscall para alterar a prioridade de um processo
+// Chamada apenas quando um processo ceder a CPU para o escalonador
+int set_prio(int priority) {
+  
+  struct proc *p;
+
+  acquire(&ptable.lock);
+    
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      
+      if(p->state == RUNNING){
+        p->priority = priority;
+        break;
+      } 
+      
+    }
+
+  release(&ptable.lock);
+
+  return 1;
 }
