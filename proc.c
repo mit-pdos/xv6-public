@@ -408,6 +408,44 @@ scheduler(void)
   }
 }
 
+// Loops through ptable, updating each process' execution time/sleep time/ ready time
+void updateProcs(){
+  
+  struct proc *p;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+         switch(p->state){
+           case RUNNING:
+            p->rutime++;
+
+            //TAREFA 4: Mecanismo de aging
+            if(p->priority == LOW && p->retime >= ONE_TWO){
+              set_prio(MED);
+            }
+            if(p->priority == MED && p->retime >= TWO_THREE){
+              set_prio(HIGH);
+            }
+
+            break;
+
+           case RUNNABLE:            
+            p->retime++;
+            break;
+            
+           case SLEEPING:
+            p->stime++;
+            break;
+           default:
+            continue;
+         }
+       } 
+
+  release(&ptable.lock);
+}
+
+
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this

@@ -53,9 +53,9 @@ trap(struct trapframe *tf)
       ticks++;
       
       //Tarefa 5: Alterar valores de teste do processo a cada tick
-      if (myproc() != 0 && myproc()->state == RUNNING){
-        myproc()->rutime++;
-      }
+      // if (myproc() != 0 && myproc()->state == RUNNING){
+      //   myproc()->rutime++;
+      // }
       
       wakeup(&ticks);
       release(&tickslock);
@@ -110,6 +110,9 @@ trap(struct trapframe *tf)
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
      tf->trapno == T_IRQ0+IRQ_TIMER){
+       // TAREFA 5: A cada tick, atualizar os atributos dos processos
+       updateProcs();
+       
        // TAREFA 3
        if(ticks % INTERV == 0)
         yield();
