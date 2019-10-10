@@ -61,9 +61,13 @@ struct proc {
 
   // TAREFA 5: Valores para teste de processo
   uint ctime;                  // Tempo quando o processo foi criado
-  int stime;                   // Tempo SLEEPING
-  int retime;                  // Tempo READY(RUNNABLE) time
-  int rutime;                  // Tempo executando (RUNNING)
+  int stime;                   // Tempo total SLEEPING
+  
+  int retime;                  // Tempo total em READY(RUNNABLE)
+  int prev_retime;             // Usado para calcular quanto tempo o processo esteve em WAITING desde a última execução
+
+
+  int rutime;                  // Tempo total executando (RUNNING)
 
   int ticks;
 };

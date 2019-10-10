@@ -96,6 +96,7 @@ found:
   p->ctime  = ticks;
   p->stime  = 0;
   p->retime = 0;
+  p->prev_retime = 0;
   p->rutime = 0;
 
   release(&ptable.lock);
@@ -421,12 +422,17 @@ void updateProcs(){
             p->rutime++;
 
             //TAREFA 4: Mecanismo de aging
-            if(p->priority == LOW && p->retime >= ONE_TWO){
-              set_prio(MED);
-            }
-            if(p->priority == MED && p->retime >= TWO_THREE){
+            if(p->priority == MED && p->retime - p->prev_retime >= TWO_THREE){
+              // Increase priority and update prev_retime
               set_prio(HIGH);
+              p->prev_retime = p->retime;
             }
+            else{
+              if(p->priority == LOW && p->retime - p->prev_retime >= ONE_TWO){
+                set_prio(MED);
+                p->prev_retime = p->retime;
+              }
+            }    
 
             break;
 
