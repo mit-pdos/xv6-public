@@ -9,7 +9,7 @@ enum ticks_types {RETIME, RUTIME, STIME};
 int main(int argc, char *argv[]) {
   int n;
   int pid, child_pid;
-  int retime, rutime, stime;
+  int retime = 0, rutime = 0, stime = 0;
   double cpu_ticks[3] = {0}, 
          s_ticks[3] = {0}, 
          io_ticks[3] = {0};
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
             for(int l = 0; l < 1000000; l++) {
               //Do nothing
             }
-            yield();
+            //yield();
           }
           break;
 
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
   for(int i = 0; i < 3*n; i++) {
   
     //Wait for a child to end
-    pid = wait2(&retime, &rutime, &stime);
+    //pid = wait2(&retime, &rutime, &stime);
     switch(pid % 3) {
       case 0:
         printf(1, "Process pid: %i, type: CPU-Bound, retime: %i, rutime: %i, stime: %i", pid, retime, rutime, stime);

@@ -88,16 +88,14 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-
-  // TAREFA 5: Testes
-  p->ctime  = ticks;
-  p->stime  = 0;
-  p->retime = 0;
-  p->prev_retime = 0;
-  p->rutime = 0;
   
   //TAREFA 4: Prioridade padrão de um novo processo
   p->priority = MED;
+  p->ctime  = ticks;
+  p->stime  = 0;
+  p->retime = 0;
+  p->rutime = 0;
+  p->prev_retime = 0;
 
   release(&ptable.lock);
 
@@ -372,7 +370,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -406,46 +404,6 @@ scheduler(void)
     }
     release(&ptable.lock);
   }
-}
-
-// Loops through ptable, updating each process' execution time/sleep time/ ready time
-void updateProcs(){
-  
-  struct proc *p;
-
-  acquire(&ptable.lock);
-
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-         switch(p->state){
-           case RUNNING:
-            p->rutime++;
-
-            //TAREFA 4: Mecanismo de aging
-            if(p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO){
-              // Increase priority and update prev_retime
-              set_prio(MED);
-              p->prev_retime = p->retime;
-            }
-            else if(p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE){
-              // Increase priority and update prev_retime
-              set_prio(HIGH);
-              p->prev_retime = p->retime;
-            }    
-            break;
-
-           case RUNNABLE:            
-            p->retime++;
-            break;
-            
-           case SLEEPING:
-            p->stime++;
-            break;
-           default:
-            continue;
-         }
-       } 
-
-  release(&ptable.lock);
 }
 
 
@@ -630,21 +588,64 @@ procdump(void)
 // TAREFA 4: Syscall para alterar a prioridade de um processo
 // Chamada apenas quando um processo ceder a CPU para o escalonador
 int set_prio(int priority) {
-  
+
   struct proc *p;
 
   acquire(&ptable.lock);
-    
+
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      
+
       if(p->state == RUNNING){
         p->priority = priority;
         break;
       } 
-      
+
     }
 
   release(&ptable.lock);
 
   return 1;
 }
+
+// Loops through ptable, updating each process' execution time/sleep time/ ready time
+void updateProcs(){
+
+  struct proc *p;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+         switch(p->state){
+           case RUNNING:
+            p->rutime++;
+            break;
+
+           case RUNNABLE:            
+            p->retime++;
+
+            //TAREFA 4: Mecanismo de aging
+            if(p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE){
+              // Increase priority and update prev_retime
+              p->priority = HIGH;
+              p->prev_retime = p->retime;
+            }
+            else{
+              if(p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO){
+                p->priority = MED;
+                p->prev_retime = p->retime;
+              }
+            }
+               
+            break;
+
+           case SLEEPING:
+            p->stime++;
+            break;
+           default:
+            continue;
+         }
+       } 
+
+  release(&ptable.lock);
+}
+

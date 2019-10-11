@@ -96,4 +96,4 @@ sys_set_prio(int priority)
 {
   argint(0, &priority);
   return set_prio(priority);
-}
+} 

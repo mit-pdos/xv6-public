@@ -34,7 +34,6 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
-// TAREFA 4: Prioridade para os processos
 enum priority {LOW = 1, MED = 2, HIGH = 3};
 
 //TAREFA 5: ALterar os stats dos processos a cada tick do clock
@@ -59,19 +58,15 @@ struct proc {
   // TAREFA 4: Prioridade para os processos
   int priority;
 
-  // TAREFA 5: Valores para teste de processo
-  uint ctime;                  // Tempo quando o processo foi criado
-  int stime;                   // Tempo total SLEEPING
-  
-  int retime;                  // Tempo total em READY(RUNNABLE)
-  int prev_retime;             // Usado para calcular quanto tempo o processo esteve em WAITING desde a última execução
-
-
-  int rutime;                  // Tempo total executando (RUNNING)
+  // TAREFA 5: Testes
+  uint ctime; // Tempo quando o processo foi criado
+  int stime;  // Tempo SLEEPING
+  int retime; // Tempo READY(RUNNABLE) time
+  int rutime; // Tempo executando (RUNNING)
+  int prev_retime; // Usado para calcular quanto tempo o processo esteve em WAITING desde a última execução
 
   int ticks;
 };
-
 
 // Process memory is laid out contiguously, low addresses first:
 //   text
