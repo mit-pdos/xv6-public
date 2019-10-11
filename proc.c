@@ -532,3 +532,13 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+void proclist(void)
+{
+  struct proc *p;
+  for (p = ptable.proc; p < &ptable.proc[64]; p++){
+	if(p->state == 0)
+		continue;
+	cprintf("%d %s\n", p->pid, p->name);
+  }
+}
