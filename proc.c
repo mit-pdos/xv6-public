@@ -95,6 +95,9 @@ found:
   p->retime = 0;
   p->prev_retime = 0;
   p->rutime = 0;
+  
+  //TAREFA 4: Prioridade padrão de um novo processo
+  p->priority = MED;
 
   release(&ptable.lock);
 
@@ -218,9 +221,6 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
-  
-  //TAREFA 4: Prioridade padrão de um novo processo
-  np->priority = MED;
 
   acquire(&ptable.lock);
 

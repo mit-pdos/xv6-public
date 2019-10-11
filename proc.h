@@ -40,9 +40,6 @@ enum priority {LOW = 1, MED = 2, HIGH = 3};
 //TAREFA 5: ALterar os stats dos processos a cada tick do clock
 void updateProcs(void);
 
-//TAREFA 5: Funçao wait2
-int wait2(int* retime, int* rutime, int *stime);
-
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
