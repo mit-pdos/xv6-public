@@ -89,9 +89,6 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
-  //TAREFA 4: Prioridade padrão de um novo processo
-  p->priority = MED;
-
   // TAREFA 5: Testes
   p->ctime  = ticks;
   p->stime  = 0;
@@ -221,7 +218,9 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
-  // Inicializar Prioridade
+  
+  //TAREFA 4: Prioridade padrão de um novo processo
+  np->priority = MED;
 
   acquire(&ptable.lock);
 
@@ -422,18 +421,16 @@ void updateProcs(){
             p->rutime++;
 
             //TAREFA 4: Mecanismo de aging
-            if(p->priority == MED && p->retime - p->prev_retime >= TWO_THREE){
+            if(p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO){
+              // Increase priority and update prev_retime
+              set_prio(MED);
+              p->prev_retime = p->retime;
+            }
+            else if(p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE){
               // Increase priority and update prev_retime
               set_prio(HIGH);
               p->prev_retime = p->retime;
-            }
-            else{
-              if(p->priority == LOW && p->retime - p->prev_retime >= ONE_TWO){
-                set_prio(MED);
-                p->prev_retime = p->retime;
-              }
             }    
-
             break;
 
            case RUNNABLE:            
