@@ -6,13 +6,6 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
-extern int proclist(void);
-
-int
-sys_proclist(void)
-{
-  return proclist();
-}
 
 int
 sys_fork(void)

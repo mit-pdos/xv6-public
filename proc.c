@@ -533,12 +533,61 @@ procdump(void)
   }
 }
 
-void proclist(void)
+char *strcat(char* destination, const char* source)
+{
+  // make ptr point to the end of destination string
+  char* ptr = destination + strlen(destination);
+  
+  // Appends characters of source to the destination string
+  while (*source != '\0')
+    *ptr++ = *source++;
+  *ptr = '\0';
+  return destination;
+}
+
+char *itoa(int xx)
+{
+  static char digits[] = "0123456789abcdef";
+  char buf[16];
+  char outbuf[16];
+  char *retbuf = outbuf;
+  int i;
+  uint x;
+
+/*  if(xx < 0)
+    {
+    strcat(buf, "-");
+    x = -xx;
+    }
+  else*/
+    x = xx;
+
+  i = 0;
+  do{
+    buf[i++] = digits[x % 10];
+  }while((x /= 10) != 0);
+  buf[i++] = '\0';
+  // bug: this has to be called to keep buf from being weird
+  strlen(buf);
+  while(--i >= 0)
+	retbuf[i] = buf[i];
+  return retbuf;
+}
+
+
+
+int sys_proclist()
 {
   struct proc *p;
+  char *pl;
+  argptr(0, (void*)&pl, sizeof(*pl));
   for (p = ptable.proc; p < &ptable.proc[64]; p++){
 	if(p->state == 0)
 		continue;
-	cprintf("%d %s\n", p->pid, p->name);
+	strcat(pl, itoa(p->pid));
+	strcat(pl, " ");
+	strcat(pl, p->name);
+	strcat(pl, "\n");
   }
+  return 0;
 }
