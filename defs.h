@@ -124,6 +124,10 @@ void            yield(void);
 //TAREFA 4: Syscall para alterar a prioridade de um processo
 int             set_prio(int);
 
+// TAREFA 5: Testes
+int             wait2(int*, int*, int*);
+int             proc_yield(void);
+
 // swtch.S
 void            swtch(struct context**, struct context*);
 

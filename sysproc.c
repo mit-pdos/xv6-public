@@ -90,10 +90,39 @@ sys_uptime(void)
   return xticks;
 }
 
-// TAREFA 4: Syscall para alterar a prioridade de processos
+// TAREFA 4: Syscall para alterar a prioridade de um processo
 int
-sys_set_prio(int priority)
+sys_set_prio(void)
 {
-  argint(0, &priority);
+  int priority;
+
+  if(argint(0,&priority)<0)
+    return -1;
+  
   return set_prio(priority);
 } 
+
+// TAREFA 5: Testes
+int
+sys_wait2(void){
+  
+  int* retime;
+  int* rutime;
+  int* stime;
+
+  if(argptr(0,(void*)&retime, sizeof(*retime))<0)
+    return -1;
+
+  if(argptr(1,(void*)&rutime, sizeof(*rutime))<0)
+    return -1;
+
+  if(argptr(2,(void*)&stime, sizeof(*stime))<0)
+    return -1;
+
+  return wait2(retime, rutime, stime);
+}
+
+int
+sys_proc_yield(void){
+  return proc_yield();
+}

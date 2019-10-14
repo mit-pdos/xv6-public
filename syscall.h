@@ -23,3 +23,7 @@
 
 // TAREFA 4: Syscall para alterar a prioridade de um processo
 #define SYS_set_prio 22
+
+// TAREFA 5: Testes
+#define SYS_wait2 23
+#define SYS_proc_yield 24

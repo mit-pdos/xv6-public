@@ -30,4 +30,6 @@ SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
 SYSCALL(set_prio)
+SYSCALL(wait2)
+SYSCALL(proc_yield)
 

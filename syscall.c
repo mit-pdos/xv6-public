@@ -107,6 +107,10 @@ extern int sys_uptime(void);
 // TAREFA 4: syscall para alterar prioridade de um processo
 extern int sys_set_prio(void);
 
+// TAREFA 5: testes
+extern int sys_wait2(void);
+extern int sys_proc_yield(void);
+
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
@@ -129,7 +133,9 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_set_prio] sys_set_prio
+[SYS_set_prio]sys_set_prio,
+[SYS_wait2]   sys_wait2,
+[SYS_proc_yield]sys_proc_yield
 
 };
 
