@@ -638,8 +638,6 @@ int set_prio(int priority) {
 
   struct proc *p;
 
-  acquire(&ptable.lock);
-
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 
       if(p->state == RUNNING){
@@ -651,8 +649,6 @@ int set_prio(int priority) {
       } 
 
     }
-
-  release(&ptable.lock);
 
   return 1;
 }
@@ -675,24 +671,25 @@ void updateProcs(){
          switch(p->state){
            case RUNNING:
             p->rutime++;
+
+            //TAREFA 4: Mecanismo de aging
+            if(p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE){
+              // Increase priority and update prev_retime
+              set_prio(HIGH);
+              p->prev_retime = p->retime;
+            }
+            else{
+              if(p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO){
+                set_prio(MED);
+                p->prev_retime = p->retime;
+              }
+            }
+
             break;
 
            case RUNNABLE:            
             p->retime++;
 
-            //TAREFA 4: Mecanismo de aging
-            if(p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE){
-              // Increase priority and update prev_retime
-              p->priority = HIGH;
-              p->prev_retime = p->retime;
-            }
-            else{
-              if(p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO){
-                p->priority = MED;
-                p->prev_retime = p->retime;
-              }
-            }
-               
             break;
 
            case SLEEPING:
