@@ -5,6 +5,8 @@ int main(int argc, char *argv[]) {
   int n;
   int pid, child_pid;
   int prio;
+  int *ordem_entrada;
+  int *ordem_saida;
 
   if(argc != 2) {
     printf(1, "Numero de argumentos errados!\n");
@@ -12,19 +14,20 @@ int main(int argc, char *argv[]) {
   }
 
   n = atoi(argv[1]);
+  ordem_saida = malloc(n*__SIZEOF_INT__);
+  ordem_entrada = malloc(n*__SIZEOF_INT__);
   
   for(int i = 0; i < n; i++) {
     pid = fork();
     if(pid < 0) {
-        break;
+      printf(1, "Fork falhou!\n");  
+      break;
     }
-    printf(1, "Criou filho!\n");
     //Child process
     if(pid == 0) {
         child_pid = getpid();
         prio = (child_pid % 3) + 1;
         set_prio(prio);
-        printf(1, "Processo %d com prioridade %d comecou!\n", child_pid, prio);
 
         //CPU-Bound process    
         for(int k = 0; k < 100; k++) {
@@ -33,15 +36,37 @@ int main(int argc, char *argv[]) {
             }
         }
         //Child process ends here
-        printf(1, "Processo %d com prioridade %d terminado!\n", child_pid, prio);
         exit();
+    }else{
+
+      //Seta ordem que os processos começam
+      ordem_entrada[i] = (pid % 3) + 1;
+
+      //Continua a criar processos filhos
+      continue;
     }
-    printf(1, "Criou prox filho!\n");
-    //Keeps creating children
-    continue;
   }
+
   for(int i = 0; i < n; i++){
-      wait();
+      //Espera os filhos terminarem
+      pid = wait();
+      //Seta a ordem que os processos terminam
+      ordem_saida[i] = (pid % 3) + 1;
   }
+  
+  printf(1, "Ordem de entrada: ");
+  for(int i = 0; i < n; i++){
+    printf(1, "%d ", ordem_entrada[i]);
+  }
+  printf(1, "\n");
+
+  printf(1, "Ordem de saida:   ");
+  for(int i = 0; i < n; i++){
+    printf(1, "%d ", ordem_saida[i]);
+  }
+  printf(1, "\n");
+
+  free(ordem_saida);
+  free(ordem_entrada);
   exit();
 }
