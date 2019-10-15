@@ -76,7 +76,7 @@ spin:
   jmp     spin
 
 # Bootstrap GDT
-.p2align 2                                # force 4 byte alignment
+.p2align 3                                # force 8 byte alignment
 gdt:
   SEG_NULLASM                             # null seg
   SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg
