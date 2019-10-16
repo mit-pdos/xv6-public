@@ -20,12 +20,13 @@ int main(int argc, char *argv[]) {
   for(int i = 0; i < n; i++) {
     pid = fork();
     if(pid < 0) {
-      printf(1, "Fork falhou!\n");  
+      printf(1,"Fork falhou!\n");  
       break;
     }
     //Child process
     if(pid == 0) {
         child_pid = getpid();
+        printf(1,"processo %d iniciou\n",child_pid);
         prio = (child_pid % 3) + 1;
         set_prio(prio);
 
@@ -50,8 +51,7 @@ int main(int argc, char *argv[]) {
   for(int i = 0; i < n; i++){
       //Espera os filhos terminarem
       pid = wait();
-      //Seta a ordem que os processos terminam
-      ordem_saida[i] = (pid % 3) + 1;
+      printf(1,"Processo %d terminou\n", pid);
   }
   
   printf(1, "Ordem de entrada: ");

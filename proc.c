@@ -89,8 +89,7 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
   
-  //TAREFA 4: Prioridade padrão de um novo processo
-  p->priority = MED;
+  p->priority = 1;  
   p->ctime  = ticks;
   p->stime  = 0;
   p->retime = 0;
@@ -218,9 +217,13 @@ fork(void)
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
-  pid = np->pid;
+  // TAREFA 4: Atribuir a prioridade 2 a partir de fork()
+  np->priority = MED;
 
+  pid = np->pid;
+  
   acquire(&ptable.lock);
+
 
   np->state = RUNNABLE;
 
@@ -350,6 +353,14 @@ wait2(int *retime, int *rutime, int *stime)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+
+        p->ctime = 0;
+        p->retime = 0;
+        p->rutime = 0;
+        p->stime = 0;
+        p->priority = 0;
+
+        
         release(&ptable.lock);
         return pid;
       }
@@ -426,11 +437,25 @@ scheduler(void)
     acquire(&ptable.lock);
 
     // Para cada nivel de prioridade
-    for(int prio = 3; prio >= 1 ; prio--){
+    for(int prio = HIGH; prio >= LOW ; prio--){
 
       // Procure um processo pronto e com o nivel correto
       // de prioridade
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        // Antes de escalonar, verifique se algum processo deve ser promovido
+
+        if(p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE){
+              // Increase priority and update prev_retime
+              p->priority = HIGH;
+              p->prev_retime = p->retime;
+            }
+            else{
+              if(p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO){
+                p->priority = MED;
+                p->prev_retime = p->retime;
+              }
+            }
+        
         if(p->state != RUNNABLE || p->priority != prio)
           continue;
 
@@ -636,20 +661,7 @@ procdump(void)
 // Chamada apenas quando um processo ceder a CPU para o escalonador
 int set_prio(int priority) {
 
-  struct proc *p;
-
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-
-      if(p->state == RUNNING){
-        
-        cprintf("Process %d changed to priority %d\n", p->pid, p->priority);
-        
-        p->priority = priority;
-        break;
-      } 
-
-    }
-
+  myproc()->priority = priority;
   return 1;
 }
 
@@ -684,19 +696,7 @@ void updateProcs(){
             default:
               continue;
         }
-
-        //TAREFA 4: Mecanismo de aging
-            if(p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE){
-              // Increase priority and update prev_retime
-              p->priority = HIGH;
-              p->prev_retime = p->retime;
-            }
-            else{
-              if(p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO){
-                p->priority = MED;
-                p->prev_retime = p->retime;
-              }
-            }
+            
   } 
 
   release(&ptable.lock);

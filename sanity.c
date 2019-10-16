@@ -23,13 +23,15 @@ int main(int argc, char *argv[]) {
     
     //Child process
     if(pid == 0) {
+      
       child_pid = getpid();
-      switch(child_pid % 3) {
+      printf(1,"P%d iniciou\n",child_pid);
+      switch((child_pid - 4) % 3) {
         
         //CPU-Bound process
         case 0:
-          for(int k = 0; k < 100; k++) {
-            for(int l = 0; l < 1000000; l++) {
+          for(double k = 0; k < 100.0; k+= 1.0) {
+            for(double l = 0; l < 1000000.0; l+= 1.0) {
               //Do nothing
             }
           }
@@ -68,10 +70,11 @@ int main(int argc, char *argv[]) {
     // TAREFA 5: testes
     //Wait for a child to end
     pid = wait2(&retime, &rutime, &stime);
+    printf(1,"P%d terminou\n",pid);
 
     switch(pid % 3) {
       case 0:
-        printf(1, "Process pid: %d, type: CPU-Bound, retime: %d, rutime: %d, stime: %d\n", pid, retime, rutime, stime);
+        //printf(1, "Process pid: %d, type: CPU-Bound, retime: %d, rutime: %d, stime: %d\n", pid, retime, rutime, stime);
         cpu_ticks[RETIME] += retime;
         cpu_ticks[RUTIME] += rutime;
         cpu_ticks[STIME] += stime;
@@ -85,7 +88,7 @@ int main(int argc, char *argv[]) {
         break;
 
       case 2:
-        printf(1, "Process pid: %d, type: IO-Bound, retime: %d, rutime: %d, stime: %d\n", pid, retime, rutime, stime);
+        //printf(1, "Process pid: %d, type: IO-Bound, retime: %d, rutime: %d, stime: %d\n", pid, retime, rutime, stime);
         io_ticks[RETIME] += retime;
         io_ticks[RUTIME] += rutime;
         io_ticks[STIME] += stime;

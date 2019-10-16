@@ -51,7 +51,9 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
+      //TAREFA 5: a cada tick, alterar os valores retime,rutime e stime dos processos
       updateProcs();
+
       wakeup(&ticks);
       release(&tickslock);
     }
@@ -105,7 +107,7 @@ trap(struct trapframe *tf)
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
      tf->trapno == T_IRQ0+IRQ_TIMER){
-     
+
      if(ticks % INTERV == 0)
        yield();
   }
