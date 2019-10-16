@@ -669,36 +669,35 @@ void updateProcs(){
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
          switch(p->state){
-           case RUNNING:
-            p->rutime++;
+            case RUNNING:
+              p->rutime++;
+              break;
 
-            //TAREFA 4: Mecanismo de aging
+            case RUNNABLE:            
+              p->retime++;
+              break;
+
+            case SLEEPING:
+              p->stime++;
+              break;
+
+            default:
+              continue;
+        }
+
+        //TAREFA 4: Mecanismo de aging
             if(p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE){
               // Increase priority and update prev_retime
-              set_prio(HIGH);
+              p->priority = HIGH;
               p->prev_retime = p->retime;
             }
             else{
               if(p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO){
-                set_prio(MED);
+                p->priority = MED;
                 p->prev_retime = p->retime;
               }
             }
-
-            break;
-
-           case RUNNABLE:            
-            p->retime++;
-
-            break;
-
-           case SLEEPING:
-            p->stime++;
-            break;
-           default:
-            continue;
-         }
-       } 
+  } 
 
   release(&ptable.lock);
 }
