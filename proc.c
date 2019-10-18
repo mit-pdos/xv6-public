@@ -428,56 +428,51 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
+  struct proc *p1;
 
-  for(;;){
+  for (;;)
+  {
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
-    // Para cada nivel de prioridade
-    for(int prio = HIGH; prio >= LOW ; prio--){
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if (p->state != RUNNABLE)
+        continue;
+      //Achou um p pronto para executar
 
-      // Procure um processo pronto e com o nivel correto
-      // de prioridade
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        // Antes de escalonar, verifique se algum processo deve ser promovido
-
-        if(p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE){
-              // Increase priority and update prev_retime
-              p->priority = HIGH;
-              p->prev_retime = p->retime;
-            }
-            else{
-              if(p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO){
-                p->priority = MED;
-                p->prev_retime = p->retime;
-              }
-            }
-        
-        if(p->state != RUNNABLE || p->priority != prio)
-          continue;
-
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
-
-        swtch(&(c->scheduler), p->context);
-        switchkvm();
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
+      //Acha o processo com a maior prioridade possivel que esteja RUNNABLE
+      for(p1 = ptable.proc; p1 < &ptable.proc[NPROC]; p1++)
+      {
+        //Promove p1 se necessario
+        age(p1);
+        if (p1->state = RUNNABLE && p1->priority > p->priority)
+        {
+          //p agora eh o processo com maior proridade
+          p = p1;
+        }
       }
-    }
-    release(&ptable.lock);
-  }
-}
 
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+    }
+  }
+  release(&ptable.lock);
+}
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
@@ -702,3 +697,20 @@ void updateProcs(){
   release(&ptable.lock);
 }
 
+void age(struct proc *p)
+{
+  if (p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE)
+  {
+    // Increase priority and update prev_retime
+    p->priority = HIGH;
+    p->prev_retime = p->retime;
+  }
+  else
+  {
+    if (p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO)
+    {
+      p->priority = MED;
+      p->prev_retime = p->retime;
+    }
+  }
+}
