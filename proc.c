@@ -440,8 +440,7 @@ scheduler(void)
 }*/
 
 //TAREFA 5
-void
-scheduler(void)
+void scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
@@ -465,7 +464,7 @@ scheduler(void)
       //Achou um p pronto para executar
 
       //Acha o processo com a maior prioridade possivel que esteja RUNNABLE
-      for(p1 = p; p1 < &ptable.proc[NPROC]; p1++)
+      for (p1 = p; p1 < &ptable.proc[NPROC]; p1++)
       {
         //Promove p1 se necessario
         age(p1);
@@ -493,8 +492,8 @@ scheduler(void)
       //Break pra começar a escalonar processos do inicio da tabela
       break;
     }
+    release(&ptable.lock);
   }
-  release(&ptable.lock);
 }
 
 // Enter scheduler.  Must hold only ptable.lock
