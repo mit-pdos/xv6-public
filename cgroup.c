@@ -2,8 +2,9 @@
 #include "cgfs.h"
 #include "spinlock.h"
 
-#define MAX_DES_DEF "64"
-#define MAX_DEP_DEF "64"
+#define MAX_DES_DEF 64
+#define MAX_DEP_DEF 64
+#define MAX_CGROUP_FILE_NAME_LENGTH 64
 
 struct
 {
@@ -24,65 +25,6 @@ void cgroup_lock()
 void cgroup_unlock()
 {
     release(&cgtable.lock);
-}
-
-/*Raise the value of the number located in the string num by 1.*/
-static void increment_num_string(char * num)
-{
-    int i;
-    for (i = 0; num[i + 1] != '\0'; i++)
-        ;
-    if (num[i] == '9')
-        for (; i >= 0 && num[i] == '9'; i--)
-            num[i] = '0';
-    if (i >= 0)
-        num[i]++;
-    if (num[0] == '0') {
-        for (i = 0; num[i] != '\0'; i++)
-            ;
-        num[i] = '0';
-        num[i + 1] = '\0';
-        num[0] = '1';
-    }
-}
-
-/*Lower the value of the number located in the string num by 1.*/
-static void decrement_num_string(char * num)
-{
-    if (*num == '0')
-        return;
-    int i;
-    for (i = 0; num[i + 1] != '\0'; i++)
-        ;
-    if (num[i] == '0')
-        for (; i >= 0 && num[i] == '0'; i--)
-            num[i] = '9';
-    num[i]--;
-    if (num[0] == '0') {
-        for (i = 0; num[i] == '0'; i++)
-            ;
-        if (num[i] != '\0') {
-            for (int j = 0; num[i] != '\0'; j++) {
-                num[j] = num[i];
-                i++;
-            }
-            num[i - 1] = '\0';
-        }
-    }
-}
-
-static void initialize_cgroup_depth(struct cgroup * cgroup)
-{
-    char * depth = cgroup->depth;
-    char * parentdepth = cgroup->parent->depth;
-    /*Copy parents depth into the cgroup's depth field.*/
-    if (*parentdepth != 0)
-        for (int i = 0;
-             i < MAX_DEPTH_SIZE && (*depth++ = *parentdepth++) != 0;
-             i++)
-            ;
-    /*Increment the copied depth by 1.*/
-    increment_num_string(cgroup->depth);
 }
 
 static struct cgroup * unsafe_get_cgroup_by_path(char * path)
@@ -217,12 +159,11 @@ struct cgroup * cgroup_create(char * path)
      * or maximum subtree depth.*/
     struct cgroup * parent_cgp_temp = parent_cgp;
     for (int i = 0; parent_cgp_temp != 0; i++) {
-        if (atoi(parent_cgp_temp->max_depth_value) <= i) {
+        if (parent_cgp_temp->max_depth_value <= i) {
             release(&cgtable.lock);
             panic("cgroup_create: max depth allowed reached");
         }
-        if (strcmp(parent_cgp_temp->max_descendants_value,
-                   parent_cgp_temp->nr_descendants) == 0) {
+        if (parent_cgp_temp->max_descendants_value == parent_cgp_temp->nr_descendants) {
             release(&cgtable.lock);
             panic("cgroup_create: max number of descendants allowed "
                   "reached");
@@ -252,7 +193,7 @@ struct cgroup * cgroup_create(char * path)
 
     /*Update number of descendant cgroups for each ancestor.*/
     while (parent_cgp != 0) {
-        increment_num_string(parent_cgp->nr_descendants);
+        parent_cgp->nr_descendants++;
         parent_cgp = parent_cgp->parent;
     }
 
@@ -283,7 +224,7 @@ int cgroup_delete(char * path, char * type)
 
     /*Check if we are allowed to delete the cgroup. Check if the cgroup has
      * descendants or processes in it.*/
-    if (*(cgp->nr_descendants) != '0' ||
+    if (cgp->nr_descendants ||
         (cgp->num_of_procs && cgp != cgroup_root())) {
         release(&cgtable.lock);
         return -2;
@@ -299,9 +240,9 @@ int cgroup_delete(char * path, char * type)
     /*Update number of descendant cgroups for each ancestor.*/
     cgp = cgp->parent;
     while (cgp != 0) {
-        decrement_num_string(cgp->nr_descendants);
+        cgp->nr_descendants--;
         if (increase_num_dying_desc)
-            increment_num_string(cgp->nr_dying_descendants);
+            cgp->nr_dying_descendants++;
         cgp = cgp->parent;
     }
     release(&cgtable.lock);
@@ -316,7 +257,7 @@ void cgroup_initialize(struct cgroup * cgroup,
     if (parent_cgroup == 0) {
         cgroup->cpu_controller_avalible = 1;
         cgroup->cpu_controller_enabled = 1;
-        *(cgroup->depth) = '0';
+        cgroup->depth = 0;
         *(cgroup->cgroup_dir_path) = 0;
         cgroup->parent = 0;
     } else {
@@ -330,7 +271,7 @@ void cgroup_initialize(struct cgroup * cgroup,
             cgroup->cpu_controller_avalible = 0;
 
         cgroup->cpu_controller_enabled = 0;
-        initialize_cgroup_depth(cgroup);
+        cgroup->depth = cgroup->parent->depth + 1;
         unsafe_set_cgroup_dir_path(cgroup, path);
     }
 
@@ -339,8 +280,8 @@ void cgroup_initialize(struct cgroup * cgroup,
     cgroup->populated = 0;
     set_max_descendants_value(cgroup, MAX_DES_DEF);
     set_max_depth_value(cgroup, MAX_DEP_DEF);
-    set_nr_descendants(cgroup, "0");
-    set_nr_dying_descendants(cgroup, "0");
+    set_nr_descendants(cgroup, 0);
+    set_nr_dying_descendants(cgroup, 0);
 
     cgroup->cpu_account_frame = 0;
     cgroup->cpu_percent = 0;
@@ -516,44 +457,28 @@ struct cgroup * get_cgroup_by_path(char * path)
     return cgp;
 }
 
-void set_max_descendants_value(struct cgroup * cgroup, char * value)
+void set_max_descendants_value(struct cgroup * cgroup, int value)
 {
-    char * max_descendants_value = cgroup->max_descendants_value;
-    if (*value != 0)
-        for (int i = 0; i < MAX_DECS_SIZE &&
-                        (*max_descendants_value++ = *value++) != 0;
-             i++)
-            ;
+    if (value >= 0)
+        cgroup->max_descendants_value = value;
 }
 
-void set_max_depth_value(struct cgroup * cgroup, char * value)
+void set_max_depth_value(struct cgroup * cgroup, int value)
 {
-    char * max_depth_value = cgroup->max_depth_value;
-    if (*value != 0)
-        for (int i = 0; i < MAX_DEPTH_SIZE &&
-                        (*max_depth_value++ = *value++) != 0;
-             i++)
-            ;
+    if (value >= 0)
+        cgroup->max_depth_value = value;
 }
 
-void set_nr_descendants(struct cgroup * cgroup, char * value)
+void set_nr_descendants(struct cgroup * cgroup, int value)
 {
-    char * nr_descendants = cgroup->nr_descendants;
-    if (*value != 0)
-        for (int i = 0;
-             i < MAX_DECS_SIZE && (*nr_descendants++ = *value++) != 0;
-             i++)
-            ;
+    if (value >= 0)
+        cgroup->nr_descendants = value;
 }
 
-void set_nr_dying_descendants(struct cgroup * cgroup, char * value)
+void set_nr_dying_descendants(struct cgroup * cgroup, int value)
 {
-    char * nr_dying_descendants = cgroup->nr_dying_descendants;
-    if (*value != 0)
-        for (int i = 0; i < MAX_DECS_SIZE &&
-                        (*nr_dying_descendants++ = *value++) != 0;
-             i++)
-            ;
+    if (value >= 0)
+        cgroup->nr_dying_descendants = value;
 }
 
 void get_cgroup_names_at_path(char * buf, char * path)
@@ -596,7 +521,7 @@ int cgorup_num_of_immidiate_children(struct cgroup * cgroup)
 void decrement_nr_dying_descendants(struct cgroup * cgroup)
 {
     while (cgroup != 0) {
-        decrement_num_string(cgroup->nr_dying_descendants);
+        cgroup->nr_dying_descendants--;
         cgroup = cgroup->parent;
     }
 }

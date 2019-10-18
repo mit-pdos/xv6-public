@@ -223,41 +223,49 @@ int unsafe_readcgfile(struct file * f, char * addr, int n)
                (*addr++ = eventstext[r++ + f->off]) != 0)
             ;
     } else if (strcmp(f->cgfilename, "cgroup.max.descendants") == 0) {
+        char buf[MAX_DECS_SIZE];
+        itoa(buf, f->cgp->max_descendants_value);
         while (r < n &&
-               (r + f->off) < sizeof(f->cgp->max_descendants_value)) {
-            if (!f->cgp->max_descendants_value[r + f->off]) {
+               (r + f->off) < sizeof(buf)) {
+            if (!buf[r + f->off]) {
                 *addr++ = '\n';
                 ++r;
                 break;
             }
 
-            *addr++ = f->cgp->max_descendants_value[r + f->off];
+            *addr++ = buf[r + f->off];
             ++r;
         }
     } else if (strcmp(f->cgfilename, "cgroup.max.depth") == 0) {
-        while (r < n && (r + f->off) < sizeof(f->cgp->max_depth_value)) {
-            if (!f->cgp->max_depth_value[r + f->off]) {
+        char buf[MAX_DEPTH_SIZE];
+        itoa(buf, f->cgp->max_depth_value);
+        while (r < n && (r + f->off) < sizeof(buf)) {
+            if (!buf[r + f->off]) {
                 *addr++ = '\n';
                 ++r;
                 break;
             }
 
-            *addr++ = f->cgp->max_depth_value[r + f->off];
+            *addr++ = buf[r + f->off];
             ++r;
         }
     } else if (strcmp(f->cgfilename, "cgroup.stat") == 0) {
+        char nr_descendants_buf[MAX_DECS_SIZE];
+        itoa(nr_descendants_buf, f->cgp->nr_descendants);
+        char nr_dying_descendants_buf[MAX_DECS_SIZE];
+        itoa(nr_dying_descendants_buf, f->cgp->nr_dying_descendants);
         char stattext[strlen("nr_descendants - ") +
-                      strlen(f->cgp->nr_descendants) + strlen("\n") +
+                      strlen(nr_descendants_buf) + strlen("\n") +
                       strlen("nr_dying_descendants - ") +
-                      strlen(f->cgp->nr_dying_descendants) + 2];
+                      strlen(nr_dying_descendants_buf) + 2];
         char * stattextp = stattext;
         strncpy(
             stattextp, "nr_descendants - ", sizeof("nr_descendants - "));
         stattextp += strlen("nr_descendants - ");
         strncpy(stattextp,
-                f->cgp->nr_descendants,
-                sizeof(f->cgp->nr_descendants));
-        stattextp += strlen(f->cgp->nr_descendants);
+                nr_descendants_buf,
+                sizeof(nr_descendants_buf));
+        stattextp += strlen(nr_descendants_buf);
         strncpy(stattextp, "\n", sizeof("\n"));
         stattextp += strlen("\n");
         strncpy(stattextp,
@@ -265,8 +273,8 @@ int unsafe_readcgfile(struct file * f, char * addr, int n)
                 sizeof("nr_dying_descendants - "));
         stattextp += strlen("nr_dying_descendants - ");
         strncpy(stattextp,
-                f->cgp->nr_dying_descendants,
-                sizeof(f->cgp->nr_dying_descendants));
+                nr_dying_descendants_buf,
+                sizeof(nr_dying_descendants_buf));
         stattext[sizeof(stattext) - 1] = '\n';
 
         while (r < n && (r + f->off) < sizeof(stattext) &&
@@ -498,16 +506,12 @@ int unsafe_writecgfile(struct file * f, char * addr, int n)
     } else if (strcmp(f->cgfilename, "cgroup.max.descendants") == 0) {
         if (atoi(addr) < 0 || strlen(addr) > 2)
             return -1;
-        strncpy(f->cgp->max_descendants_value,
-                addr,
-                sizeof(f->cgp->max_descendants_value));
+        f->cgp->max_descendants_value = atoi(addr);
         r = n;
     } else if (strcmp(f->cgfilename, "cgroup.max.depth") == 0) {
         if (atoi(addr) < 0 || strlen(addr) > 2)
             return -1;
-        strncpy(f->cgp->max_depth_value,
-                addr,
-                sizeof(f->cgp->max_descendants_value));
+        f->cgp->max_depth_value = atoi(addr);
         r = n;
     } else if (strcmp(f->cgfilename, "cpu.max") == 0 &&
                f->cgp->cpu_controller_enabled) {
@@ -640,14 +644,14 @@ static int cgfilesize(struct file * f)
     } else if (strcmp(f->cgfilename, "cgroup.events") == 0) {
         size += strlen("populated - 0");
     } else if (strcmp(f->cgfilename, "cgroup.max.descendants") == 0) {
-        size += strlen(f->cgp->max_descendants_value);
+        size += intlen(f->cgp->max_descendants_value);
     } else if (strcmp(f->cgfilename, "cgroup.max.depth") == 0) {
-        size += strlen(f->cgp->max_depth_value);
+        size += intlen(f->cgp->max_depth_value);
     } else if (strcmp(f->cgfilename, "cgroup.stat") == 0) {
         size += strlen("nr_descendants - ") +
-                strlen(f->cgp->nr_descendants) + strlen("\n") +
+                intlen(f->cgp->nr_descendants) + strlen("\n") +
                 strlen("nr_dying_descendants - ") +
-                strlen(f->cgp->nr_dying_descendants);
+                intlen(f->cgp->nr_dying_descendants);
     }
 
     return size;

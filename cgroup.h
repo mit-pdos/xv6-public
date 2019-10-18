@@ -34,22 +34,16 @@ struct cgroup
     char populated; /* Is 1 if subtree has at least one process in it,
                        otherise 0.*/
 
-    char max_descendants_value
-        [MAX_DECS_SIZE]; /*String with the number of maximum descendant
-                                cgroups allowed in subtree.*/
+    int max_descendants_value; /* Number of maximum descendant
+                                  cgroups allowed in subtree.*/
 
-    char max_depth_value[MAX_DEPTH_SIZE]; /*String with the number of
-                                                 maximum depth allowed in
-                                                 subtree.*/
+    int max_depth_value; /*Number of maximum depth allowed in subtree.*/
 
-    char depth[MAX_DEPTH_SIZE]; /*String with the current depth of the
-                                       subtree.*/
+    int depth; /*Current depth of the cgroup.*/
 
-    char nr_descendants[MAX_DECS_SIZE]; /*String with the current number
-                                              of descendant cgroups.*/
+    int nr_descendants; /* Current number of descendant cgroups.*/
 
-    char nr_dying_descendants
-        [MAX_DECS_SIZE]; /*String with the current number of dying descendant cgroups.*/
+    int nr_dying_descendants; /*Current number of dying descendant cgroups.*/
 
     unsigned long long cpu_time;
     unsigned int cpu_period_time;
@@ -188,39 +182,39 @@ struct cgroup * get_cgroup_by_path(char * path);
 
 /**
  * This function sets the max_descendants_value field of a cgroup.
- * Receives cgroup pointer parameter "cgroup", string parameter "value".
+ * Receives cgroup pointer parameter "cgroup", int parameter "value".
  * "cgroup" is pointer to the cgroup in which we set the field.
- * "value" is string containing the new value to set. We set the max_descendants_value field to this value.
+ * "value" is an integer containing the new value to set. We set the max_descendants_value field to this value.
  * Return value is void.
  */
-void set_max_descendants_value(struct cgroup * cgroup, char * value);
+void set_max_descendants_value(struct cgroup * cgroup, int value);
 
 /**
  * This function sets the max_depth_value field of a cgroup.
  * Receives cgroup pointer parameter "cgroup", string parameter "value".
  * "cgroup" is pointer to the cgroup in which we set the field.
- * "value" is string containing the new value to set. We set the max_depth_value field to this value.
+ * "value" is an integer containing the new value to set. We set the max_depth_value field to this value.
  * Return value is void.
  */
-void set_max_depth_value(struct cgroup * cgroup, char * value);
+void set_max_depth_value(struct cgroup * cgroup, int value);
 
 /**
  * This function sets the nr_descendants field of a cgroup.
  * Receives cgroup pointer parameter "cgroup", string parameter "value".
  * "cgroup" is pointer to the cgroup in which we set the field.
- * "value" is string containing the new value to set. We set the nr_descendants field to this value.
+ * "value" is an integer containing the new value to set. We set the nr_descendants field to this value.
  * Return value is void.
  */
-void set_nr_descendants(struct cgroup * cgroup, char * value);
+void set_nr_descendants(struct cgroup * cgroup, int value);
 
 /**
  * This function sets the nr_dying_descendants field of a cgroup.
  * Receives cgroup pointer parameter "cgroup", string parameter "value".
  * "cgroup" is pointer to the cgroup in which we set the field.
- * "value" is string containing the new value to set. We set the nr_dying_descendants field to this value.
+ * "value" is an integer containing the new value to set. We set the nr_dying_descendants field to this value.
  * Return value is void.
  */
-void set_nr_dying_descendants(struct cgroup * cgroup, char * value);
+void set_nr_dying_descendants(struct cgroup * cgroup, int value);
 
 /**
  * This function gets all names of children cgroup of cgroup at a path.

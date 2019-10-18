@@ -75,3 +75,16 @@ int utoa(char * buf, unsigned int n)
     *buf = '\0';
     return length;
 }
+
+/*
+ * Returns the number of digits in the integer.
+ */
+int intlen(int n)
+{
+    int len = 1;
+    while(n/10 != 0){
+        n /= 10;
+        len++;
+    }
+    return len;
+}
