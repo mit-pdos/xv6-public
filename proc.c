@@ -440,12 +440,14 @@ scheduler(void)
 
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
+      //Promove p se necessario
+      age(p);
       if (p->state != RUNNABLE)
         continue;
       //Achou um p pronto para executar
 
       //Acha o processo com a maior prioridade possivel que esteja RUNNABLE
-      for(p1 = ptable.proc; p1 < &ptable.proc[NPROC]; p1++)
+      for(p1 = p; p1 < &ptable.proc[NPROC]; p1++)
       {
         //Promove p1 se necessario
         age(p1);
@@ -469,6 +471,9 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
+
+      //Break pra começar a escalonar processos do inicio da tabela
+      break;
     }
   }
   release(&ptable.lock);
