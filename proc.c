@@ -20,6 +20,24 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+void age(struct proc *p)
+{
+  if (p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE)
+  {
+    // Increase priority and update prev_retime
+    p->priority = HIGH;
+    p->prev_retime = p->retime;
+  }
+  else
+  {
+    if (p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO)
+    {
+      p->priority = MED;
+      p->prev_retime = p->retime;
+    }
+  }
+}
+
 void
 pinit(void)
 {
@@ -451,7 +469,7 @@ scheduler(void)
       {
         //Promove p1 se necessario
         age(p1);
-        if (p1->state = RUNNABLE && p1->priority > p->priority)
+        if (p1->state == RUNNABLE && p1->priority > p->priority)
         {
           //p agora eh o processo com maior proridade
           p = p1;
@@ -702,20 +720,4 @@ void updateProcs(){
   release(&ptable.lock);
 }
 
-void age(struct proc *p)
-{
-  if (p->priority == MED && (p->retime - p->prev_retime) >= TWO_THREE)
-  {
-    // Increase priority and update prev_retime
-    p->priority = HIGH;
-    p->prev_retime = p->retime;
-  }
-  else
-  {
-    if (p->priority == LOW && (p->retime - p->prev_retime) >= ONE_TWO)
-    {
-      p->priority = MED;
-      p->prev_retime = p->retime;
-    }
-  }
-}
+
