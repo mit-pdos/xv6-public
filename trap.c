@@ -50,9 +50,11 @@ trap(struct trapframe *tf)
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
       acquire(&tickslock);
-      ticks++;
+
       //TAREFA 5: a cada tick, alterar os valores retime,rutime e stime dos processos
       updateProcs();
+      ticks++;
+      
 
       wakeup(&ticks);
       release(&tickslock);

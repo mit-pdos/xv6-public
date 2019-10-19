@@ -26,7 +26,6 @@ int main(int argc, char *argv[]) {
     //Child process
     if(pid == 0) {
         child_pid = getpid();
-        printf(1,"processo %d iniciou\n",child_pid);
         prio = (child_pid % 3) + 1;
         set_prio(prio);
 
@@ -41,7 +40,7 @@ int main(int argc, char *argv[]) {
     }else{
 
       //Seta ordem que os processos começam
-      ordem_entrada[i] = (pid % 3) + 1;
+      ordem_entrada[i] = pid;
 
       //Continua a criar processos filhos
       continue;
@@ -51,6 +50,7 @@ int main(int argc, char *argv[]) {
   for(int i = 0; i < n; i++){
       //Espera os filhos terminarem
       pid = wait();
+      ordem_saida[i] = pid;
       printf(1,"Processo %d terminou\n", pid);
   }
   
