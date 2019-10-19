@@ -2,8 +2,9 @@
 #include "user.h"
 
 int main(int argc, char *argv[]) {
-  int pid, child_pid;
+  int pid;
   int prio;
+  int n_process = 0;
   int *ordem_entrada;
   int *ordem_saida;
 
@@ -13,10 +14,6 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < 15; i++)
   {
-    //A cada 5 processos criados, aumenta a prioridade
-    if ((i + 1) % 5 == 0)
-      prio++;
-
     pid = fork();
     if (pid < 0)
     {
@@ -27,7 +24,6 @@ int main(int argc, char *argv[]) {
     //Child process
     if (pid == 0)
     {
-      child_pid = getpid();
      //printf(1, "processo %d iniciou\n", child_pid);
       set_prio(prio);
 
@@ -40,13 +36,19 @@ int main(int argc, char *argv[]) {
         }
       }
       //Child process ends here
-      ordem_saida[i] = prio;
       exit();
     }
     else
     {
+      //A cada 5 processos criados, aumenta a prioridade
+      n_process++;
+      if(n_process == 5) {
+        prio++;
+        n_process = 0;
+      }
+
       //Seta ordem que os processos começam
-      ordem_entrada[i] = prio;
+      ordem_entrada[i] = pid;
 
       //Continua a criar processos filhos
       continue;
@@ -56,6 +58,7 @@ int main(int argc, char *argv[]) {
   for(int i = 0; i < 15; i++){
       //Espera os filhos terminarem
       pid = wait();
+      ordem_saida[i] = pid;
       //printf(1,"Processo %d terminou\n", pid);
   }
   
