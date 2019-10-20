@@ -10,6 +10,8 @@
 
 #define MAX_CONTROLLER_NAME_LENGTH 16  // Max length allowed for controller names
 
+typedef enum { CG_FILE, CG_DIR } cg_file_type;
+
 /**
  * Control group, contains up to NPROC processes.
  */
@@ -260,23 +262,35 @@ void format_path(char * buf, char * path);
  */
 void decrement_nr_dying_descendants(struct cgroup * cgroup);
 
+
 /**
- * Safe implementation of cgfs.c functions. (Implementation with locks)
+ * Safe implementation of cgroup file manipulation functions defined in cgfs.c. (Implementation with locks)
  */
 
-int opencgfile(char * filename, struct cgroup * cgp, int omode);
+/**
+ * This function is a lock protected version of the corresponding unsafe function unsafe_cg_open() defined in cgfs.h.
+ */
+int cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int omode);
 
-int opencgdirectory(struct cgroup * cgp, int omode);
+/**
+ * This function is a lock protected version of the corresponding unsafe function unsafe_cg_read() defined in cgfs.h.
+ */
+int cg_read(cg_file_type type, struct file * f, char * addr, int n);
 
-int readcgfile(struct file * f, char * addr, int n);
+/**
+ * This function is a lock protected version of the corresponding unsafe function unsafe_cg_write() defined in cgfs.h.
+ */
+int cg_write(struct file * f, char * addr, int n);
 
-int readcgdirectory(struct file * f, char * addr, int n);
+/**
+ * This function is a lock protected version of the corresponding unsafe function unsafe_cg_close() defined in cgfs.h.
+ */
+int cg_close(struct file * file);
 
-int writecgfile(struct file * f, char * addr, int n);
-
-int closecgfileordir(struct file * file);
-
-int cgstat(struct file * f, struct stat * st);
+/**
+ * This function is a lock protected version of the corresponding unsafe function unsafe_cg_stat() defined in cgfs.h.
+ */
+int cg_stat(struct file * f, struct stat * st);
 
 /**
  * This function opens cgroup file or directory. Meant to be called in sys_open().

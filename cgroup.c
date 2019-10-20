@@ -141,8 +141,7 @@ struct cgroup * cgroup_create(char * path)
     char parent_path[MAX_PATH_LENGTH];
     char new_dir_name[MAX_PATH_LENGTH];
 
-    if (get_cg_file_dir_path_and_file_name(
-            fpath, parent_path, new_dir_name) < 0)
+    if (get_dir_name(fpath, parent_path) < 0 || get_base_name(fpath, new_dir_name) < 0)
         return 0;
 
     acquire(&cgtable.lock);
@@ -527,10 +526,10 @@ void decrement_nr_dying_descendants(struct cgroup * cgroup)
     }
 }
 
-int opencgfile(char * filename, struct cgroup * cgp, int omode)
+int cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int omode)
 {
     acquire(&cgtable.lock);
-    int res = unsafe_opencgfile(filename, cgp, omode);
+    int res = unsafe_cg_open(type, filename, cgp, omode);
     release(&cgtable.lock);
     return res;
 }
@@ -540,61 +539,45 @@ int cg_sys_open(char * path, int omode)
     struct cgroup *cgp;
 
     if((cgp = get_cgroup_by_path(path)))
-        return opencgdirectory(cgp, omode);
+        return cg_open(CG_DIR, 0, cgp, omode);
 
     char dir_path[MAX_PATH_LENGTH];
     char file_name[MAX_PATH_LENGTH];
 
-    if(get_cg_file_dir_path_and_file_name(path, dir_path, file_name) == 0 && (cgp = get_cgroup_by_path(dir_path)))
-        return opencgfile(file_name, cgp, omode);
+    if(get_dir_name(path, dir_path) == 0 && get_base_name(path, file_name) == 0 && (cgp = get_cgroup_by_path(dir_path)))
+        return cg_open(CG_FILE, file_name, cgp, omode);
 
     return -1;
 }
 
-int opencgdirectory(struct cgroup * cgp, int omode)
+int cg_read(cg_file_type type, struct file * f, char * addr, int n)
 {
     acquire(&cgtable.lock);
-    int res = unsafe_opencgdirectory(cgp, omode);
+    int res = unsafe_cg_read(type, f, addr, n);
     release(&cgtable.lock);
     return res;
 }
 
-int readcgfile(struct file * f, char * addr, int n)
+int cg_write(struct file * f, char * addr, int n)
 {
     acquire(&cgtable.lock);
-    int res = unsafe_readcgfile(f, addr, n);
+    int res = unsafe_cg_write(f, addr, n);
     release(&cgtable.lock);
     return res;
 }
 
-int readcgdirectory(struct file * f, char * addr, int n)
+int cg_close(struct file * file)
 {
     acquire(&cgtable.lock);
-    int res = unsafe_readcgdirectory(f, addr, n);
+    int res = unsafe_cg_close(file);
     release(&cgtable.lock);
     return res;
 }
 
-int writecgfile(struct file * f, char * addr, int n)
+int cg_stat(struct file * f, struct stat * st)
 {
     acquire(&cgtable.lock);
-    int res = unsafe_writecgfile(f, addr, n);
-    release(&cgtable.lock);
-    return res;
-}
-
-int closecgfileordir(struct file * file)
-{
-    acquire(&cgtable.lock);
-    int res = unsafe_closecgfileordir(file);
-    release(&cgtable.lock);
-    return res;
-}
-
-int cgstat(struct file * f, struct stat * st)
-{
-    acquire(&cgtable.lock);
-    int res = unsafe_cgstat(f, st);
+    int res = unsafe_cg_stat(f, st);
     release(&cgtable.lock);
     return res;
 }

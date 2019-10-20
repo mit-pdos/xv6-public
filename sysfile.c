@@ -79,9 +79,9 @@ sys_read(void)
 
   if(f->type == FD_CG){
     if(*f->cgfilename == 0)
-      return readcgdirectory(f, p, n);
+      return cg_read(CG_DIR, f, p, n);
     else
-      return readcgfile(f, p, n);
+      return cg_read(CG_FILE, f, p, n);
   }
 
   else
@@ -99,7 +99,7 @@ sys_write(void)
     return -1;
 
   if(f->type == FD_CG)
-    return writecgfile(f, p, n);
+    return cg_write(f, p, n);
   else
     return filewrite(f, p, n);
 }
@@ -114,7 +114,7 @@ sys_close(void)
     return -1;
   myproc()->ofile[fd] = 0;
   if(f->type == FD_CG)
-      closecgfileordir(f);
+      cg_close(f);
   else
       fileclose(f);
   return 0;
@@ -130,7 +130,7 @@ sys_fstat(void)
     return -1;
 
   if(f->type == FD_CG)
-      return cgstat(f, st);
+      return cg_stat(f, st);
 
   return filestat(f, st);
 }
@@ -218,46 +218,46 @@ sys_unlink(void)
   int delete_cgroup_res = cgroup_delete(path, "unlink");
   if(delete_cgroup_res == -1)
   {
-    if((dp = nameiparent(path, name)) == 0){
+      if((dp = nameiparent(path, name)) == 0){
         end_op();
         return -1;
-    }
+      }
 
-    ilock(dp);
+      ilock(dp);
 
-    // Cannot unlink "." or "..".
-    if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
+      // Cannot unlink "." or "..".
+      if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
         goto bad;
 
-    if((ip = dirlookup(dp, name, &off)) == 0)
+      if((ip = dirlookup(dp, name, &off)) == 0)
         goto bad;
 
-    ilock(ip);
+      ilock(ip);
 
-    if(ip->nlink < 1)
+      if(ip->nlink < 1)
         panic("unlink: nlink < 1");
-    if(ip->type == T_DIR && !isdirempty(ip)){
+      if(ip->type == T_DIR && !isdirempty(ip)){
         iunlockput(ip);
         goto bad;
-    }
+      }
 
-    if (doesbackdevice(ip) == 1) {
+      if (doesbackdevice(ip) == 1) {
         iunlockput(ip);
         goto bad;
-    }
+      }
 
-    memset(&de, 0, sizeof(de));
-    if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+      memset(&de, 0, sizeof(de));
+      if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
         panic("unlink: writei");
-    if(ip->type == T_DIR){
+      if(ip->type == T_DIR){
         dp->nlink--;
         iupdate(dp);
-    }
-    iunlockput(dp);
+      }
+      iunlockput(dp);
 
-    ip->nlink--;
-    iupdate(ip);
-    iunlockput(ip);
+      ip->nlink--;
+      iupdate(ip);
+      iunlockput(ip);
   }
   if(delete_cgroup_res == -2){
       end_op();
