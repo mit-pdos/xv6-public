@@ -2,42 +2,50 @@
 #include "user.h"
 
 int main(int argc, char *argv[]) {
-  int n;
-  int pid, child_pid;
+  int pid;
   int prio;
+  int n_process = 0;
   int *ordem_entrada;
   int *ordem_saida;
 
-  if(argc != 2) {
-    printf(1, "Numero de argumentos errados!\n");
-    return -1;
-  }
+  ordem_saida = malloc(15*__SIZEOF_INT__);
+  ordem_entrada = malloc(15*__SIZEOF_INT__);
+  prio = 1;
 
-  n = atoi(argv[1]);
-  ordem_saida = malloc(n*__SIZEOF_INT__);
-  ordem_entrada = malloc(n*__SIZEOF_INT__);
-  
-  for(int i = 0; i < n; i++) {
+  for (int i = 0; i < 15; i++)
+  {
     pid = fork();
-    if(pid < 0) {
-      printf(1,"Fork falhou!\n");  
+    if (pid < 0)
+    {
+      printf(1, "Fork falhou!\n");
       break;
     }
-    //Child process
-    if(pid == 0) {
-        child_pid = getpid();
-        prio = (child_pid % 3) + 1;
-        set_prio(prio);
 
-        //CPU-Bound process    
-        for(int k = 0; k < 100; k++) {
-            for(int l = 0; l < 1000000; l++) {
-                //Do nothing
-            }
+    //Child process
+    if (pid == 0)
+    {
+     //printf(1, "processo %d iniciou\n", child_pid);
+      set_prio(prio);
+
+      //CPU-Bound process
+      for (int k = 0; k < 100; k++)
+      {
+        for (int l = 0; l < 1000000; l++)
+        {
+          //Do nothing
         }
-        //Child process ends here
-        exit();
-    }else{
+      }
+      //Child process ends here
+      exit();
+    }
+    else
+    {
+      //A cada 5 processos criados, aumenta a prioridade
+      n_process++;
+      if(n_process == 5) {
+        prio++;
+        n_process = 0;
+      }
 
       //Seta ordem que os processos começam
       ordem_entrada[i] = pid;
@@ -47,21 +55,21 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  for(int i = 0; i < n; i++){
+  for(int i = 0; i < 15; i++){
       //Espera os filhos terminarem
       pid = wait();
       ordem_saida[i] = pid;
-      printf(1,"Processo %d terminou\n", pid);
+      //printf(1,"Processo %d terminou\n", pid);
   }
   
   printf(1, "Ordem de entrada: ");
-  for(int i = 0; i < n; i++){
+  for(int i = 0; i < 15; i++){
     printf(1, "%d ", ordem_entrada[i]);
   }
   printf(1, "\n");
 
   printf(1, "Ordem de saida:   ");
-  for(int i = 0; i < n; i++){
+  for(int i = 0; i < 15; i++){
     printf(1, "%d ", ordem_saida[i]);
   }
   printf(1, "\n");
