@@ -14,6 +14,9 @@ indent_size = 2
 [*.S]
 indent_size = 8
 
+[*.ld]
+indent_size = 2
+
 [Makefile]
 indent_style = tab
 indent_size = 8
