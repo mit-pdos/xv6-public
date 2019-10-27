@@ -129,7 +129,6 @@ usertrapret(void)
 
 // interrupts and exceptions from kernel code go here via kernelvec,
 // on whatever the current kernel stack is.
-// must be 4-byte aligned to fit in stvec.
 void 
 kerneltrap()
 {
@@ -189,9 +188,13 @@ devintr()
       uartintr();
     } else if(irq == VIRTIO0_IRQ){
       virtio_disk_intr();
+    } else if(irq){
+      printf("unexpected interrupt irq=%d\n", irq);
     }
 
-    plic_complete(irq);
+    if(irq)
+      plic_complete(irq);
+
     return 1;
   } else if(scause == 0x8000000000000001L){
     // software interrupt from a machine-mode timer interrupt,

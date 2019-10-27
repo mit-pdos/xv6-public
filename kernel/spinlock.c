@@ -72,13 +72,12 @@ release(struct spinlock *lk)
 }
 
 // Check whether this cpu is holding the lock.
+// Interrupts must be off.
 int
 holding(struct spinlock *lk)
 {
   int r;
-  push_off();
   r = (lk->locked && lk->cpu == mycpu());
-  pop_off();
   return r;
 }
 
@@ -103,9 +102,9 @@ pop_off(void)
   struct cpu *c = mycpu();
   if(intr_get())
     panic("pop_off - interruptible");
-  c->noff -= 1;
-  if(c->noff < 0)
+  if(c->noff < 1)
     panic("pop_off");
+  c->noff -= 1;
   if(c->noff == 0 && c->intena)
     intr_on();
 }
