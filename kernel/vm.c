@@ -301,7 +301,8 @@ freewalk(pagetable_t pagetable)
 void
 uvmfree(pagetable_t pagetable, uint64 sz)
 {
-  uvmunmap(pagetable, 0, sz, 1);
+  if(sz > 0)
+    uvmunmap(pagetable, 0, sz, 1);
   freewalk(pagetable);
 }
 
