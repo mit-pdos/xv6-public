@@ -271,6 +271,7 @@ scheduler(void)
 {
   int i = 0;
   struct proc *p;
+  int skipped = 0;
   for(;;){
     ++i;
     // Enable interrupts on this processor.
@@ -278,8 +279,11 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      if(p->state != RUNNABLE) {
+        skipped++;
         continue;
+      }
+      skipped = 0;
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -295,6 +299,10 @@ scheduler(void)
       proc = 0;
     }
     release(&ptable.lock);
+    if (skipped > (2*NPROC)) {
+      asm volatile("hlt":::"memory");
+      skipped = 0;
+    }
   }
 }
 
