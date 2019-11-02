@@ -25,6 +25,25 @@ sys_wait(void)
 {
   return wait();
 }
+//BVK assignment 5 Q1
+//Adding the sys-waitx call for loading parameters and calling waitx
+
+int 
+sys_waitx(void)
+{
+  
+  int *rtime;       //For run time of the process
+  int *wtime;       //For wait time of the process
+  
+  if(argptr(0, (char**)&rtime, sizeof(int)) < 0)
+    return -1;
+  
+  if(argptr(0, (char**)&rtime, sizeof(int)) < 0)
+    return -1;
+  
+  return waitx(wtime,rtime);
+  
+}
 
 int
 sys_kill(void)
