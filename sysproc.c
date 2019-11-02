@@ -27,6 +27,11 @@ sys_wait(void)
 }
 //BVK assignment 5 Q1
 //Adding the sys-waitx call for loading parameters and calling waitx
+//Just for reference:
+//All about argptr that is used in the below function: Defined in syscall.h
+// Fetch the nth word-sized system call argument as a pointer
+// to a block of memory of size n bytes.  Check that the pointer
+// lies within the process address space.
 
 int 
 sys_waitx(void)
