@@ -32,7 +32,7 @@ sys_wait(void)
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size n bytes.  Check that the pointer
 // lies within the process address space.
-
+//function syntax: argptr(int n, char **pp, int size);
 int 
 sys_waitx(void)
 {
