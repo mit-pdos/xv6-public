@@ -3,7 +3,7 @@
 #include "user.h"
 #include "fs.h"
 
-main(int argc, char *argv[]){
+int main(int argc, char *argv[]){
   int pid;
   int status, wtime, rtime;
   pid = fork();
@@ -15,7 +15,7 @@ main(int argc, char *argv[]){
   
   else{
     status = waitx(&wtime, &rtime);
-    }
+    } 
     
     printf(1,"Wait Time = %d\n",wtime);
     printf(1,"Run Time = %d\n",rtime);
