@@ -17,9 +17,9 @@ main(int argc, char *argv[]){
     status = waitx(&wtime, &rtime);
     }
     
-    printf("Wait Time = %d\n",wtime);
-    printf("Run Time = %d\n",rtime);
-    printf("Status: %d\n",status);
+    printf(1,"Wait Time = %d\n",wtime);
+    printf(1,"Run Time = %d\n",rtime);
+    printf(1,"Status: %d\n",status);
     exit();
     
 }
