@@ -323,7 +323,7 @@ wait(void)
 }
 
 int
-waitx(int *wait_time , int *rtime)
+waitx(int *wait_time , int *running_time)
 {
   struct proc *p;
   int havekids, pid;
@@ -341,7 +341,7 @@ waitx(int *wait_time , int *rtime)
         // Found one.
         // Update the Time Variables:
         *wait_time = p->end_time - p->start_time - p->running_time - p->io_time;time
-        
+        *running_time = p->running_time;
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
