@@ -3,11 +3,11 @@
 #include "user.h"
 #include "fs.h"
 
-int main(int argc, char *argv[]){
+main(int argc, char *argv[]){
   int pid;
   int status, wtime, rtime;
   pid = fork();
-  if(pid == 0
+  if(pid == 0)
   {
     exec(argv[1],argv);
     printf(1,"exec %s failed\n",argv[1]);
