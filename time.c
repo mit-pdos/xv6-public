@@ -20,6 +20,6 @@ int main(int argc, char *argv[]){
     printf(1,"Wait Time = %d\n",wtime);
     printf(1,"Run Time = %d\n",rtime);
     printf(1,"Status: %d\n",status);
-    exit(0);
+    exit();
     
 }
