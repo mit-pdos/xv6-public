@@ -58,12 +58,12 @@ trap(struct trapframe *tf)
         if(myproc()->state == RUNNING)
         {
           myproc()->running_time++;
-          cprintf("Updated rtime\n");
+          cprintf("\nUpdated rtime %d\n",myproc()->running_time);
         }
         else if(myproc()->state == SLEEPING)
         {
           myproc()->io_time++;
-          cprintf("Updated iotime\n");
+          cprintf("\nUpdated iotime: %d\n",myproc()->io_time);
         }
      
       }
