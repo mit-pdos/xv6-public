@@ -118,6 +118,7 @@ void            setproc(struct proc*);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
+int             waitx(int *,int *);   //BVK addition Assignment 5 Q1
 void            wakeup(void*);
 void            yield(void);
 
