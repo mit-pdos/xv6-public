@@ -51,7 +51,14 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
-      updatestatistics();
+      if(myproc())
+      {
+        if(myproc()->state == RUNNING)
+        {
+          myproc()->runtime = myproc()->runtime + 1;
+        }
+      }
+//       updatestatistics();
       wakeup(&ticks);
       release(&tickslock);
   //BVK Assignment 5 Addition for waitx    
