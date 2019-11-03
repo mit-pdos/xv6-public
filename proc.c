@@ -331,7 +331,7 @@ wait(void)
 }
 
 int
-waitx(int *wait_time , int *running_time)
+waitx(int *wait_time , int *run_time)
 {
   struct proc *p;
   int havekids, pid;
@@ -361,7 +361,7 @@ waitx(int *wait_time , int *running_time)
         p->state = UNUSED;
         
         *wait_time = p->endtime - p->cputime - p->runtime; // Waiting_time = End_time - Creation_time - Run_time
-        *rtime = p->rtime;                       // Run time
+        *run_time = p->rtime;                       // Run time
 
         p->cputime = 0; // Reinitialising creation time of process
         p->endtime = 0; // Reinitialising end time of process
