@@ -88,7 +88,12 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-
+  
+  //BVK Commit
+  p->cputime = ticks;
+  p->runtime = 0;
+  
+  //End of BVK Commit
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -115,10 +120,10 @@ found:
   //BVK - Assignmment 5 Addition:
   
   //Initializing our time variables;
-  p->start_time = ticks;
-  p->end_time = 0;
-  p->io_time = 0;
-  p->running_time = 0;
+//   p->start_time = ticks;
+//   p->end_time = 0;
+//   p->io_time = 0;
+//   p->running_time = 0;
   return p;
 }
 
@@ -253,7 +258,7 @@ exit(void)
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
-
+  curproc->endtime = ticks;
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -270,8 +275,8 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
-  //BVK Assignment 5 Q1 Commit.
-  curproc->end_time = ticks;     //Updating the end time at exit.
+//   //BVK Assignment 5 Q1 Commit.
+//   curproc->end_time = ticks;     //Updating the end time at exit.
   sched();
   panic("zombie exit");
 }
@@ -303,6 +308,11 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+        //BVK Commit
+        p->cputime = 0;
+        p->endtime = 0;
+        p->runtime = 0;
+        //BVK Commit
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;
@@ -338,8 +348,8 @@ waitx(int *wait_time , int *running_time)
       if(p->state == ZOMBIE){
         // Found one.
         // Update the Time Variables:
-        *wait_time = p->end_time - p->start_time - p->running_time - p->io_time;
-        *running_time = p->running_time;
+//         *wait_time = p->end_time - p->start_time - p->running_time - p->io_time;
+//         *running_time = p->running_time;
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -349,6 +359,16 @@ waitx(int *wait_time , int *running_time)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        
+        *wait_time = p->endtime - p->cputime - p->runtime; // Waiting_time = End_time - Creation_time - Run_time
+        *rtime = p->rtime;                       // Run time
+
+        p->cputime = 0; // Reinitialising creation time of process
+        p->endtime = 0; // Reinitialising end time of process
+        p->runtime = 0; // Reinitialising run time of process
+        
+        
+        
         release(&ptable.lock);
         return pid;
       }
@@ -589,24 +609,24 @@ procdump(void)
 }
 
 //BVK Commit
-void updatestatistics() {
-  struct proc *p;
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    switch(p->state) {
-      case SLEEPING:
-        p->io_time++;
-        break;
-//       case RUNNABLE:
-//         p->retime++;
+// void updatestatistics() {
+//   struct proc *p;
+//   acquire(&ptable.lock);
+//   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+//     switch(p->state) {
+//       case SLEEPING:
+//         p->io_time++;
 //         break;
-      case RUNNING:
-        p->running_time++;
-//         cprintf("Updated Running Time\n");
-        break;
-      default:
-        ;
-    }
-  }
-  release(&ptable.lock);
-}
+// //       case RUNNABLE:
+// //         p->retime++;
+// //         break;
+//       case RUNNING:
+//         p->running_time++;
+// //         cprintf("Updated Running Time\n");
+//         break;
+//       default:
+//         ;
+//     }
+//   }
+//   release(&ptable.lock);
+// }
