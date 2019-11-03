@@ -6,9 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#include "stat.h"
-#include "user.h"
-#include "fs.h"
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
