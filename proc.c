@@ -587,3 +587,25 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+//BVK Commit
+void updatestatistics() {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    switch(p->state) {
+      case SLEEPING:
+        p->io_time++;
+        break;
+//       case RUNNABLE:
+//         p->retime++;
+//         break;
+      case RUNNING:
+        p->running_time++;
+        break;
+      default:
+        ;
+    }
+  }
+  release(&ptable.lock);
+}
