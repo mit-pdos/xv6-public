@@ -114,9 +114,7 @@ found:
   
   //BVK - Assignmment 5 Addition:
   
-  //Initializing 
-  
-  fields;
+  //Initializing our time variables;
   p->start_time = ticks;
   p->end_time = 0;
   p->io_time = 0;
