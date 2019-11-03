@@ -361,7 +361,7 @@ waitx(int *wait_time , int *run_time)
         p->state = UNUSED;
         
         *wait_time = p->endtime - p->cputime - p->runtime; // Waiting_time = End_time - Creation_time - Run_time
-        *run_time = p->rtime;                       // Run time
+        *run_time = p->runtime;                       // Run time
 
         p->cputime = 0; // Reinitialising creation time of process
         p->endtime = 0; // Reinitialising end time of process
