@@ -53,7 +53,15 @@ trap(struct trapframe *tf)
       ticks++;
       wakeup(&ticks);
       release(&tickslock);
-    }
+  //BVK Assignment 5 Addition for waitx    
+      if(myproc()){
+        if(myproc()->state == RUNNING)
+          myproc()->running_time++;
+        else if(myproc()->state == SLEEPING)
+          myproc()->io_time++;
+      }
+      // End
+    }  
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:
