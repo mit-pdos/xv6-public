@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]){
   int pid;
-  int status, wtime, rtime;
+  int wtime, rtime;
   pid = fork();
   if(pid == 0)
   {
