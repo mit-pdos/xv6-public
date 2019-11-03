@@ -13,10 +13,10 @@ int main(int argc, char *argv[]){
     printf(1,"exec %s failed\n",argv[1]);
   }
   
-  else{
-    status = waitx(&wtime, &rtime);
-    printf(1,"Status: %d\n",status);
-    } 
+//   else{
+    waitx(&wtime, &rtime);
+//     printf(1,"Status: %d\n",status);
+//     } 
     
     printf(1,"Wait Time = %d\n",wtime);
     printf(1,"Run Time = %d\n",rtime);
