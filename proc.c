@@ -338,7 +338,7 @@ waitx(int *wait_time , int *running_time)
       if(p->state == ZOMBIE){
         // Found one.
         // Update the Time Variables:
-        *wait_time = p->end_time - p->start_time - p->running_time - p->io_time;time
+        *wait_time = p->end_time - p->start_time - p->running_time - p->io_time;
         *running_time = p->running_time;
         pid = p->pid;
         kfree(p->kstack);
