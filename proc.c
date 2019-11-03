@@ -273,7 +273,7 @@ exit(void)
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
   //BVK Assignment 5 Q1 Commit.
-  proc->end_time = ticks;     //Updating the end time at exit.
+  curproc->end_time = ticks;     //Updating the end time at exit.
   sched();
   panic("zombie exit");
 }
