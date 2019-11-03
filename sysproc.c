@@ -37,16 +37,16 @@ int
 sys_waitx(void)
 {
   
-  int *rtime;       //For run time of the process
-  int *wtime;       //For wait time of the process
+  int *run_time;       //For run time of the process
+  int *wait_time;       //For wait time of the process
   
-  if(argptr(0, (char**)&rtime, sizeof(int)) < 0)
+  if(argptr(0, (char**)&wait_time, sizeof(int)) < 0)
     return -1;
   
-  if(argptr(0, (char**)&rtime, sizeof(int)) < 0)
+  if(argptr(0, (char**)&run_time, sizeof(int)) < 0)
     return -1;
   
-  return waitx(wtime,rtime);
+  return waitx(wait_time, run_time);
   
 }
 
