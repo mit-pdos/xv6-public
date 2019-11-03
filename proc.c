@@ -602,6 +602,7 @@ void updatestatistics() {
 //         break;
       case RUNNING:
         p->running_time++;
+        cprintf("Updated Running Time\n");
         break;
       default:
         ;
