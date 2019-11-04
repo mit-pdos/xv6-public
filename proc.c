@@ -258,7 +258,9 @@ exit(void)
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
+  //BVK Assignment 5 Additon
   curproc->endtime = ticks;
+  //
   cprintf("End Time: %d and Run Time of Process: %d \n",curproc->endtime,curproc->runtime);
   acquire(&ptable.lock);
 
