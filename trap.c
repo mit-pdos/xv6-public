@@ -53,11 +53,7 @@ trap(struct trapframe *tf)
       ticks++;
       
       //BVK Commit;
-      if(myproc()!=0 && myproc()->state == RUNNING)
-      {
-        myproc()->run_time = myproc()->run_time+1
-        
-      }
+      updatestatistics();
       wakeup(&ticks);
       release(&tickslock);
     }  
