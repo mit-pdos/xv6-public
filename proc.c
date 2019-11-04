@@ -90,8 +90,8 @@ found:
   p->pid = nextpid++;
   
   //BVK Commit
-  p->cputime = ticks;
-  p->runtime = 0;
+  p->start_time = ticks;
+  p->run_time = 0;
   
   //End of BVK Commit
   release(&ptable.lock);
@@ -259,7 +259,7 @@ exit(void)
   end_op();
   curproc->cwd = 0;
   //BVK Assignment 5 Additon
-  curproc->endtime = ticks;
+  curproc->end_time = ticks;
   //
   cprintf("End Time: %d and Run Time of Process: %d \n",curproc->endtime,curproc->runtime);
   acquire(&ptable.lock);
@@ -351,8 +351,8 @@ waitx(int *wait_time , int *run_time)
       if(p->state == ZOMBIE){
         // Found one.
         // Update the Time Variables:
-//         *wait_time = p->end_time - p->start_time - p->running_time - p->io_time;
-//         *running_time = p->running_time;
+        *wait_time = p->end_time - p->start_time - p->run_time;
+        *run_time = p->run_time;
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -362,18 +362,6 @@ waitx(int *wait_time , int *run_time)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        
-        *wait_time = ((p->endtime) - (p->cputime) - (p->runtime)); // Waiting_time = End_time - Creation_time - Run_time
-        *run_time = p->runtime;
-        cprintf("%d\n",*wait_time);
-        cprintf("Run Time : waitx: %d\n",*run_time);
-        cprintf("Wait Time : waitx: %d\n",*wait_time);
-      
-        
-        
-        
-        
-        
         release(&ptable.lock);
         return pid;
       }
