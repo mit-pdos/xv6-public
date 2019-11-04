@@ -38,10 +38,10 @@ struct cpu*
 mycpu(void)
 {
   int apicid, i;
-  
+
   if(readeflags()&FL_IF)
     panic("mycpu called with interrupts enabled\n");
-  
+
   apicid = lapicid();
   // APIC IDs are not guaranteed to be contiguous. Maybe we should have
   // a reverse map, or reserve a register to store &cpus[i].
@@ -88,11 +88,11 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  
+
   //BVK Commit
   p->start_time = ticks;
   p->run_time = 0;
-  
+  cprintf("Process start_time : %d\n",p->start_time);
   //End of BVK Commit
   release(&ptable.lock);
 
@@ -116,9 +116,9 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-  
+
   //BVK - Assignmment 5 Addition:
-  
+
   //Initializing our time variables;
 //   p->start_time = ticks;
 //   p->end_time = 0;
@@ -136,7 +136,7 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -293,7 +293,7 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -340,7 +340,7 @@ waitx(int *wait_time , int *run_time)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -352,8 +352,12 @@ waitx(int *wait_time , int *run_time)
       if(p->state == ZOMBIE){
         // Found one.
         // Update the Time Variables:
-        *wait_time = p->end_time - p->start_time - p->run_time;
+        cprintf("%d\n",p->run_time);
+        *wait_time = 0;
         *run_time = p->run_time;
+        cprintf("wait_time: variable: %d\n",*wait_time);
+        cprintf("wait_time-actual %d\n",p->end_time - p->start_time - p->run_time);
+        cprintf("Run-time: %d and start_time: %d\n",p->run_time,p->start_time);
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -365,14 +369,14 @@ waitx(int *wait_time , int *run_time)
         p->start_time = 0;
         p->end_time = 0;
         p->run_time = 0;
-        
+
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;
       }
     }
 
- // No point waiting if we don't have any children. 
+ // No point waiting if we don't have any children.
     if(!havekids || curproc->killed){
       release(&ptable.lock);
       return -1;
@@ -398,7 +402,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -491,7 +495,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   if(p == 0)
     panic("sleep");
 
@@ -619,7 +623,6 @@ void updatestatistics() {
 //         break;
       case RUNNING:
         p->run_time++;
-//         cprintf("Updated Running Time\n");
         break;
       default:
         ;
