@@ -24,10 +24,10 @@ int main(int argc, char *argv[])
 
     waitx(&wtime,&rtime);
 
-    cprintf("Waiting time: %d\n", wtime);
-    cprintf("Running time: %d\n", rtime);
-    cprintf("Address of Wtime %ld",&wtime);
-    cprintf("Address of Rtime %ld",&rtime);
+    printf(1,"Waiting time: %d\n", wtime);
+    printf(1,"Running time: %d\n", rtime);
+    printf(1,"Address of Wtime %ld",&wtime);
+    printf(1,"Address of Rtime %ld",&rtime);
 
     exit();
 
