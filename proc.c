@@ -369,8 +369,8 @@ waitx(int *wait_time , int *run_time)
         cprintf("Wait Time : waitx: %d\n",((p->endtime) - (p->cputime) - (p->runtime)));
         cprintf("Wait Time : waitx: %d\n",*wait_time);
         cprintf("Run Time : waitx: %d\n",*run_time);
-        cprintf("Address of Wtime in proc.c %ld",wait_time);
-        cprintf("Address of Rtime %ld",&run_time);
+        
+        
         p->cputime = 0; // Reinitialising creation time of process
         p->endtime = 0; // Reinitialising end time of process
         p->runtime = 0; // Reinitialising run time of process
