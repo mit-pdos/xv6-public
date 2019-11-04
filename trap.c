@@ -55,25 +55,11 @@ trap(struct trapframe *tf)
       //BVK Commit;
       if(myproc()!=0 && myproc()->state == RUNNING)
       {
-        myproc()->runtime++;
+        myproc()->run_time = myproc()->run_time+1
         
       }
-//       updatestatistics();
       wakeup(&ticks);
       release(&tickslock);
-  //BVK Assignment 5 Addition for waitx    
-//       if(myproc()){
-//         if(myproc()->state == RUNNING)
-//         {
-//           myproc()->running_time++;
-//         }
-//         else if(myproc()->state == SLEEPING)
-//         {
-//           myproc()->io_time++;
-//         }
-     
-//       }
-      // End
     }  
     lapiceoi();
     break;
