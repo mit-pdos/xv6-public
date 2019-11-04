@@ -373,9 +373,6 @@ waitx(int *wait_time , int *run_time)
         cprintf("Run Time : waitx: %d\n",*run_time);
         
         
-        p->cputime = 0; // Reinitialising creation time of process
-        p->endtime = 0; // Reinitialising end time of process
-        p->runtime = 0; // Reinitialising run time of process
         
         
         
@@ -384,7 +381,9 @@ waitx(int *wait_time , int *run_time)
       }
     }
 
-    // No point waiting if we don't have any children.
+    // No point 
+    
+    ing if we don't have any children.
     if(!havekids || curproc->killed){
       release(&ptable.lock);
       return -1;
