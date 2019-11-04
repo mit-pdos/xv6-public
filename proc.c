@@ -602,24 +602,23 @@ procdump(void)
 }
 
 //BVK Commit
-// void updatestatistics() {
-//   struct proc *p;
-//   acquire(&ptable.lock);
-//   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-//     switch(p->state) {
+void updatestatistics() {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    switch(p->state) {
 //       case SLEEPING:
-//         p->io_time++;
 //         break;
-// //       case RUNNABLE:
-// //         p->retime++;
-// //         break;
-//       case RUNNING:
-//         p->running_time++;
-// //         cprintf("Updated Running Time\n");
+//       case RUNNABLE:
+//         p->retime++;
 //         break;
-//       default:
-//         ;
-//     }
-//   }
-//   release(&ptable.lock);
-// }
+      case RUNNING:
+        p->run_time++;
+//         cprintf("Updated Running Time\n");
+        break;
+      default:
+        ;
+    }
+  }
+  release(&ptable.lock);
+}
