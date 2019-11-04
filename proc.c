@@ -233,7 +233,7 @@ fork(void)
   return pid;
 }
 
-// Exit the current process.  Does not return.
+// the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
 void
@@ -259,6 +259,7 @@ exit(void)
   end_op();
   curproc->cwd = 0;
   curproc->endtime = ticks;
+  cprintf("End Time: %d and Run Time of Process: %d \n",curproc->endtime,curproc->runtime);
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
