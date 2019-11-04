@@ -311,11 +311,11 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-        //BVK Commit
-        p->cputime = 0;
-        p->endtime = 0;
-        p->runtime = 0;
-        //BVK Commit
+//         //BVK Commit
+//         p->cputime = 0;
+//         p->endtime = 0;
+//         p->runtime = 0;
+//         //BVK Commit
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;
