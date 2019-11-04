@@ -56,7 +56,7 @@ trap(struct trapframe *tf)
       if(myproc()!=0 && myproc()->state == RUNNING)
       {
         myproc()->runtime++;
-        cprintf("Run Time: %d\n",myproc()->runtime);
+        
       }
 //       updatestatistics();
       wakeup(&ticks);
