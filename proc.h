@@ -49,9 +49,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  int cputime;              // Process Start Time - waitx
-  int endtime;                // Process End Time - waitx
-  int runtime;            // Process Running Time - waitx
+  unsigned int cputime;              // Process Start Time - waitx
+  unsigned int endtime;                // Process End Time - waitx
+  unsigned int runtime;            // Process Running Time - waitx
 //   int io_time;                  // Process I/O Time - waitx
 };
 
