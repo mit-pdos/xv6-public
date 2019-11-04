@@ -26,8 +26,7 @@ int main(int argc, char *argv[])
 
     printf(1,"Waiting time: %d\n", wtime);
     printf(1,"Running time: %d\n", rtime);
-    printf(1,"Address of Wtime %ld",&wtime);
-    printf(1,"Address of Rtime %ld",&rtime);
+   
 
     exit();
 
