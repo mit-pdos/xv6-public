@@ -381,9 +381,7 @@ waitx(int *wait_time , int *run_time)
       }
     }
 
-    // No point 
-    
-    ing if we don't have any children.
+ // No point waiting if we don't have any children. 
     if(!havekids || curproc->killed){
       release(&ptable.lock);
       return -1;
