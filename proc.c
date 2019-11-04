@@ -353,7 +353,6 @@ waitx(int *wait_time , int *run_time)
         // Found one.
         // Update the Time Variables:
         cprintf("%d\n",p->run_time);
-        *wait_time = 0;
         *run_time = p->run_time;
         cprintf("wait_time: variable: %d\n",*wait_time);
         cprintf("wait_time-actual %d\n",p->end_time - p->start_time - p->run_time);
@@ -616,11 +615,6 @@ void updatestatistics() {
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     switch(p->state) {
-//       case SLEEPING:
-//         break;
-//       case RUNNABLE:
-//         p->retime++;
-//         break;
       case RUNNING:
         p->run_time++;
         break;

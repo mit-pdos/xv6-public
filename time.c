@@ -10,8 +10,7 @@
 
 int main(int argc, char *argv[])
 {
-    int wtime;
-    int rtime;
+    int wtime, rtime;
 
     printf(1, "Testing waitx()...\n");
 
@@ -19,14 +18,14 @@ int main(int argc, char *argv[])
     if(pid == 0) //child process
     {
       exec(argv[1], argv + 1);
-      exit();      
+      exit();
     }
 
     waitx(&wtime,&rtime);
 
-    printf(1,"Waiting time: %d\n", wtime);
-    printf(1,"Running time: %d\n", rtime);
-   
+    printf(1,"Waiting time: %d\n", *wtime);
+    printf(1,"Running time: %d\n", *rtime);
+
 
     exit();
 
