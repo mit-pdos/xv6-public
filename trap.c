@@ -51,12 +51,12 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
-      if(myproc())
+      
+      //BVK Commit;
+      if(myproc()!=0 && myproc()->state == RUNNING)
       {
-        if(myproc()->state == RUNNING)
-        {
-          myproc()->runtime = myproc()->runtime + 1;
-        }
+        myproc()->runtime++;
+        cprintf("Run Time: %d\n",myproc()->runtime);
       }
 //       updatestatistics();
       wakeup(&ticks);
