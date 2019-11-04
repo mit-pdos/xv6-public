@@ -366,7 +366,7 @@ waitx(int *wait_time , int *run_time)
         *run_time = p->runtime;                       // Run time
         cprintf("End Time : waitx: %d\n",p->endtime);
         cprintf("CPU Time : waitx: %d\n",p->cputime);
-        
+        cprintf("Wait Time : waitx: %d\n",((p->endtime) - (p->cputime) - (p->runtime)));
         cprintf("Wait Time : waitx: %d\n",*wait_time);
         cprintf("Run Time : waitx: %d\n",*run_time);
         p->cputime = 0; // Reinitialising creation time of process
