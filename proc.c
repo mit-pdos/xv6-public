@@ -364,14 +364,11 @@ waitx(int *wait_time , int *run_time)
         p->state = UNUSED;
         
         *wait_time = ((p->endtime) - (p->cputime) - (p->runtime)); // Waiting_time = End_time - Creation_time - Run_time
+        *run_time = p->runtime;
         cprintf("%d\n",*wait_time);
-        cprintf("Run Time : waitx: %d\n",p->runtime);
-        *run_time = p->runtime;                       // Run time
-        cprintf("End Time : waitx: %d\n",p->endtime);
-        cprintf("CPU Time : waitx: %d\n",p->cputime);
-        cprintf("Wait Time : waitx: %d\n",((p->endtime) - (p->cputime) - (p->runtime)));
+        cprintf("Run Time : waitx: %d\n",*run_time)
         cprintf("Wait Time : waitx: %d\n",*wait_time);
-        cprintf("Run Time : waitx: %d\n",*run_time);
+      
         
         
         
