@@ -142,6 +142,7 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
+  p->start_time = ticks;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -261,7 +262,7 @@ exit(void)
   //BVK Assignment 5 Additon
   curproc->end_time = ticks;
   //
-  cprintf("End Time: %d and Run Time of Process: %d \n",curproc->endtime,curproc->runtime);
+//   cprintf("End Time: %d and Run Time of Process: %d \n",curproc->endtime,curproc->runtime);
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -312,9 +313,9 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
 //         //BVK Commit
-//         p->cputime = 0;
-//         p->endtime = 0;
-//         p->runtime = 0;
+        p->start_time = 0;
+        p->end_time = 0;
+        p->run_time = 0;
 //         //BVK Commit
         p->state = UNUSED;
         release(&ptable.lock);
@@ -361,6 +362,10 @@ waitx(int *wait_time , int *run_time)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+        p->start_time = 0;
+        p->end_time = 0;
+        p->run_time = 0;
+        
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;
