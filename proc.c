@@ -92,7 +92,7 @@ found:
   //BVK Commit
   p->start_time = ticks;
   p->run_time = 0;
-  cprintf("Process start_time : %d\n",p->start_time);
+  // cprintf("Process start_time : %d\n",p->start_time);
   //End of BVK Commit
   release(&ptable.lock);
 
@@ -281,6 +281,7 @@ exit(void)
   curproc->state = ZOMBIE;
 //   //BVK Assignment 5 Q1 Commit.
 //   curproc->end_time = ticks;     //Updating the end time at exit.
+  cprintf("Exited Process with pid %d\n",myproc()->pid);
   sched();
   panic("zombie exit");
 }
@@ -352,11 +353,9 @@ waitx(int *wait_time , int *run_time)
       if(p->state == ZOMBIE){
         // Found one.
         // Update the Time Variables:
-        cprintf("%d\n",p->run_time);
+        *wait_time  = p->end_time-p->start_time-p->run_time;
+        // cprintf("%d\n",p->end_time-p->start_time-p->run_time);
         *run_time = p->run_time;
-        cprintf("wait_time: variable: %d\n",*wait_time);
-        cprintf("wait_time-actual %d\n",p->end_time - p->start_time - p->run_time);
-        cprintf("Run-time: %d and start_time: %d\n",p->run_time,p->start_time);
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -365,10 +364,11 @@ waitx(int *wait_time , int *run_time)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+        //BVK Commit
         p->start_time = 0;
         p->end_time = 0;
         p->run_time = 0;
-
+        // BVK Commit end
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;
@@ -395,42 +395,71 @@ waitx(int *wait_time , int *run_time)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+#ifdef FCFS
 void
 scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-
+  // int p1 = 0;
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
+    struct proc *min_start_time_process = 0;
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+
+        // cprintf("Hello\n");
+        if(p->state != RUNNABLE)
+          continue;
+
+        if(p->pid > 0)
+        {
+          // This code is meant to find out the process with minimum time;
+          if(min_start_time_process != 0)
+          {
+            if(p->start_time < min_start_time_process->start_time)
+            {
+              min_start_time_process = p;
+            }
+          }
+          else
+          {
+            min_start_time_process = p;
+          }
+        }
+    }
+
+      if(min_start_time_process!=0 && min_start_time_process->state == RUNNABLE)
+      {
+        p = min_start_time_process;
+      }
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+      if(p!=0 && p->state==RUNNABLE ){
+        c->proc = p;
+        cprintf("\nSwitching to process with pid: %d which has arrival time %d\n",p->pid,p->start_time);
+        switchuvm(p);
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+        p->state = RUNNING;
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&ptable.lock);
     }
-    release(&ptable.lock);
-
-  }
 }
-
+#endif
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
@@ -461,6 +490,8 @@ sched(void)
 void
 yield(void)
 {
+  // cprintf("I have been yielded!\n");
+
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
   sched();
@@ -607,20 +638,4 @@ procdump(void)
     }
     cprintf("\n");
   }
-}
-
-//BVK Commit
-void updatestatistics() {
-  struct proc *p;
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    switch(p->state) {
-      case RUNNING:
-        p->run_time++;
-        break;
-      default:
-        ;
-    }
-  }
-  release(&ptable.lock);
 }

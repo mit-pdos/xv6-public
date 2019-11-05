@@ -7,12 +7,14 @@
 #include "syscall.h"
 #include "traps.h"
 #include "memlayout.h"
+// #include "defs.h"
+
 
 int main(int argc, char *argv[])
 {
     int wtime, rtime;
 
-    printf(1, "Testing waitx()...\n");
+    printf(1,"Testing waitx()...\n");
 
     int pid = fork();
     if(pid == 0) //child process
@@ -23,8 +25,8 @@ int main(int argc, char *argv[])
 
     waitx(&wtime,&rtime);
 
-    printf(1,"Waiting time: %d\n", *wtime);
-    printf(1,"Running time: %d\n", *rtime);
+    printf(1,"Waiting time: %d\n", wtime);
+    printf(1,"Running time: %d\n", rtime);
 
 
     exit();

@@ -33,21 +33,21 @@ sys_wait(void)
 // to a block of memory of size n bytes.  Check that the pointer
 // lies within the process address space.
 //function syntax: int argptr(int n, char **pp, int size);
-int 
+int
 sys_waitx(void)
 {
-  
+
   int *run_time;       //For run time of the process
   int *wait_time;       //For wait time of the process
-  
+
   if(argptr(0, (char**)&wait_time, sizeof(int)) < 0)
     return -1;
-  
-  if(argptr(0, (char**)&run_time, sizeof(int)) < 0)
+
+  if(argptr(1, (char**)&run_time, sizeof(int)) < 0)
     return -1;
-  
+
   return waitx(wait_time, run_time);
-  
+
 }
 
 int
