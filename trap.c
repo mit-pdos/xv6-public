@@ -72,7 +72,7 @@ trap(struct trapframe *tf)
     break;
   case T_IRQ0 + 7:
   case T_IRQ0 + IRQ_SPURIOUS:
-    cprintf("cpu%d: spurious interrupt at %x:%x\n",
+    cprintf("cpu%d: spurious interrupt at %p:%p\n",
             cpunum(), tf->cs, tf->rip);
     lapiceoi();
     break;
@@ -81,7 +81,7 @@ trap(struct trapframe *tf)
   default:
     if(proc == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.
-      cprintf("unexpected trap %d from cpu %d rip %x (cr2=0x%x)\n",
+      cprintf("unexpected trap %d from cpu %d rip %p (cr2=0x%p)\n",
               tf->trapno, cpunum(), tf->rip, rcr2());
       if (proc)
         cprintf("proc id: %d\n", proc->pid);
@@ -89,7 +89,7 @@ trap(struct trapframe *tf)
     }
     // In user space, assume process misbehaved.
     cprintf("pid %d %s: trap %d err %d on cpu %d "
-            "rip 0x%x addr 0x%x--kill proc\n",
+            "rip 0x%p addr 0x%p--kill proc\n",
             proc->pid, proc->name, tf->trapno, tf->err, cpunum(), tf->rip,
             rcr2());
     proc->killed = 1;

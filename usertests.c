@@ -1323,7 +1323,7 @@ sbrktest(void)
   for(i = 0; i < 5000; i++){
     b = sbrk(1);
     if(b != a){
-      printf(1, "sbrk test failed %d %x %x\n", i, a, b);
+      printf(1, "sbrk test failed %d %p %p\n", i, a, b);
       exit();
     }
     *b = 1;
@@ -1361,7 +1361,7 @@ sbrktest(void)
   }
   c = sbrk(0);
   if(c != a - 4096){
-    printf(1, "sbrk deallocation produced wrong address, a %x c %x\n", a, c);
+    printf(1, "sbrk deallocation produced wrong address, a %p c %p\n", a, c);
     exit();
   }
 
@@ -1369,7 +1369,7 @@ sbrktest(void)
   a = sbrk(0);
   c = sbrk(4096);
   if(c != a || sbrk(0) != a + 4096){
-    printf(1, "sbrk re-allocation failed, a %x c %x\n", a, c);
+    printf(1, "sbrk re-allocation failed, a %p c %p\n", a, c);
     exit();
   }
   if(*lastaddr == 99){
@@ -1380,7 +1380,7 @@ sbrktest(void)
   a = sbrk(0);
   c = sbrk(-(sbrk(0) - oldbrk));
   if(c != a){
-    printf(1, "sbrk downsize failed, a %x c %x\n", a, c);
+    printf(1, "sbrk downsize failed, a %p c %p\n", a, c);
     exit();
   }
 
@@ -1393,7 +1393,7 @@ sbrktest(void)
       failexit("fork");
     }
     if(pid == 0){
-      printf(1, "oops could read %x = %x\n", a, *a);
+      printf(1, "oops could read %p = %c\n", a, *a);
       kill(ppid);
       exit();
     }

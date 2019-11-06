@@ -300,7 +300,7 @@ scheduler(void)
     }
     release(&ptable.lock);
     if (skipped > (2*NPROC)) {
-      asm volatile("hlt":::"memory");
+      hlt();
       skipped = 0;
     }
   }
