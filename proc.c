@@ -97,7 +97,7 @@ found:
   p->last_response_time = 0;
   if(p->pid>2){
   p->priority = 60;
-  cprintf("%d\n",p->priority);
+  // cprintf("%d\n",p->priority);
   }
   else{
     p->priority = 0;
@@ -293,7 +293,7 @@ exit(void)
   curproc->state = ZOMBIE;
 //   //BVK Assignment 5 Q1 Commit.
 //   curproc->end_time = ticks;     //Updating the end time at exit.
-  cprintf("Exited Process with pid %d\n",myproc()->pid);
+  // cprintf("Exited Process with pid %d\n",myproc()->pid);
   sched();
   panic("zombie exit");
 }

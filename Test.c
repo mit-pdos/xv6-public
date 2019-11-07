@@ -27,11 +27,12 @@ int main(int argc, char* argv[]){
     }
     // For child process:
     else if(pid == 0){
-      for(i=0;i<10000000;i+=0.1){
-        uselessvariable+=i;
+      for(i=0;i<1000000000;i+=1){
+        uselessvariable = uselessvariable+3.14*2.687;
+
         // sleep(10);
       }
-
+      exit();
     }
 
   }
