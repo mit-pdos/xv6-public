@@ -58,6 +58,21 @@ sys_ps(void)
 }
 
 int
+sys_getpinfo(void)
+{
+  int pid;
+  struct pstat *Pstat;
+  if(argint(0,&pid) < 0 ){
+    return -1;
+  }
+
+  if(argptr(1, (void*)&Pstat, sizeof(struct pstat *)) < 0){
+    return -1;
+  }
+
+  return getpinfo(pid,Pstat);
+}
+int
 sys_chprty(void)
 {
   int pid, priority;

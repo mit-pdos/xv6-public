@@ -106,6 +106,7 @@ extern int sys_uptime(void);
 extern int sys_waitx(void);     //BVK Commit to Assignment 5 Q1.
 extern int sys_chprty(void);
 extern int sys_ps(void);
+extern int sys_getpinfo(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -132,6 +133,7 @@ static int (*syscalls[])(void) = {
 [SYS_waitx]   sys_waitx,      //BVK Commit to Assignment 5 Q1.
 [SYS_chprty]  sys_chprty,
 [SYS_ps]      sys_ps,
+[SYS_getpinfo] sys_getpinfo,
 };
 
 void

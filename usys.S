@@ -32,3 +32,4 @@ SYSCALL(uptime)
 SYSCALL(waitx)      //BVK Commit Assignment 5 Q1
 SYSCALL(chprty)
 SYSCALL(ps)
+SYSCALL(getpinfo)

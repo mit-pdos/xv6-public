@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "proc_stat.h"
 
 struct {
   struct spinlock lock;
@@ -780,4 +781,41 @@ void ps(){
     }
   }
   release(&ptable.lock);
+}
+
+
+//getpinfo Function:
+
+int
+getpinfo(int pid, struct pstat *procstat)
+{
+  // int pid = pid;
+  cprintf("Inside getpinfo\n");
+  acquire(&ptable.lock);
+  struct proc *proc;
+  if(pid < 0)
+  {
+    return -1;
+  }
+  int found = 0;
+  for(proc = ptable.proc; proc < &ptable.proc[NPROC]; proc++)
+  {
+    if(proc->pid == pid)
+    {
+      procstat->pid = proc->pid;
+      procstat->run_time = proc->run_time;
+      cprintf("Assigned Run time value in the function is: %d\n",proc->run_time);
+      found++;
+      break;
+    }
+
+  }
+  release(&ptable.lock);
+  if(found <= 0)
+  {
+    cprintf("Process with pid %d does not exist\n");
+    return -1;
+  }
+  return 0;
+
 }

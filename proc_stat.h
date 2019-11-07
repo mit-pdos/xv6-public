@@ -1,6 +1,6 @@
 //Proc stat structure addition:
 
-struct proc_stat{
+struct pstat{
   int pid;  //pid of processes
   int run_time; //Run time of the process
   // int num_runs; // Number of times the process is executed

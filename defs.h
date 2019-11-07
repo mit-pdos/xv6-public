@@ -9,12 +9,14 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct pstat;
 
+//Definitions:
+typedef unsigned int   uint;
+typedef unsigned short ushort;
+typedef unsigned char  uchar;
 
-//Definitions: typedef unsigned int   uint;
-// typedef unsigned short ushort;
-// typedef unsigned char  uchar;
-// typedef uint pde_t;
+typedef uint pde_t;
 
 // bio.c
 void            binit(void);
@@ -129,6 +131,7 @@ int             chprty(int, int);
 void            wakeup(void*);
 void            yield(void);
 void            ps(void);
+int             getpinfo(int, struct pstat *);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

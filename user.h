@@ -4,6 +4,7 @@ struct spinlock;
 typedef unsigned int   uint;
 typedef unsigned short ushort;
 typedef unsigned char  uchar;
+struct pstat;
 // system calls
 int fork(void);
 int exit(void) __attribute__((noreturn));
@@ -29,6 +30,7 @@ int uptime(void);
 int waitx(int *wait_time, int *run_time);
 int chprty(int , int);
 void ps(void);
+int getpinfo(int, struct pstat *);
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);
