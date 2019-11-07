@@ -754,7 +754,9 @@ void ps(){
     {
       cprintf("%d               ",proc->pid);
       if(proc->state == RUNNING){
-        cprintf("RUNNING                 %d\n",proc->priority);
+        // cprinft(" _______");
+        cprintf("|RUNNING|                 %d\n",proc->priority);
+        // cprintf("---------");
       }
       else if(proc->state == RUNNABLE){
         cprintf("RUNNABLE                %d\n",proc->priority);

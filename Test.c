@@ -13,8 +13,9 @@ int main(int argc, char* argv[]){
     printf(1,"FCFS\n");
   #endif
 
-  int pid,k,i;
-  int uselessvariable =0;
+  int pid,k;
+  float i;
+  float uselessvariable =0;
 
   for(k = 0; k< 5; k++){
 
@@ -27,7 +28,8 @@ int main(int argc, char* argv[]){
     // For child process:
     else if(pid == 0){
       for(i=0;i<10000000;i+=0.1){
-        uselessvariable++;
+        uselessvariable+=i;
+        // sleep(10);
       }
 
     }
