@@ -1,3 +1,4 @@
+
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -110,7 +111,7 @@ trap(struct trapframe *tf)
 
   if(myproc() && myproc()->state == RUNNING &&
      tf->trapno == T_IRQ0+IRQ_TIMER)
-  #ifdef DEFAULT
+  #ifdef PBS
     yield();
   #else
   #ifndef FCFS

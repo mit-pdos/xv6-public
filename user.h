@@ -1,7 +1,9 @@
 struct stat;
 struct rtcdate;
 struct spinlock;
-
+typedef unsigned int   uint;
+typedef unsigned short ushort;
+typedef unsigned char  uchar;
 // system calls
 int fork(void);
 int exit(void) __attribute__((noreturn));
@@ -25,6 +27,8 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int waitx(int *wait_time, int *run_time);
+int chprty(int , int);
+void ps(void);
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);
@@ -41,3 +45,4 @@ int atoi(const char*);
 
 void acquire(struct spinlock*);
 void cprintf(char*, ...);
+// void chprty(int , int);

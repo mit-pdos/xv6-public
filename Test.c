@@ -13,10 +13,10 @@ int main(int argc, char* argv[]){
     printf(1,"FCFS\n");
   #endif
 
-  int pid,k;
+  int pid,k,i;
   int uselessvariable =0;
 
-  for(k = 0; k< 10; k++){
+  for(k = 0; k< 5; k++){
 
     pid = fork();
     // Error Check
@@ -26,15 +26,10 @@ int main(int argc, char* argv[]){
     }
     // For child process:
     else if(pid == 0){
-      // printf(1,"PID: %d\n",getpid());
-      // for(i=0;i<10000000;i+=1){
-      //   uselessvariable++;
-        // sleep(5);
+      for(i=0;i<10000000;i+=0.1){
+        uselessvariable++;
+      }
 
-      // }
-      exec(argv[1],argv+1);
-      printf(1,"%d\n",uselessvariable);
-      exit();
     }
 
   }

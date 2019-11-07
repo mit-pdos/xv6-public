@@ -90,8 +90,20 @@ found:
   p->pid = nextpid++;
 
   //BVK Commit
+
   p->start_time = ticks;
   p->run_time = 0;
+  // #ifndef PBS
+  p->last_response_time = 0;
+  if(p->pid>2){
+  p->priority = 60;
+  cprintf("%d\n",p->priority);
+  }
+  else{
+    p->priority = 0;
+  }
+
+  // #endif
   // cprintf("Process start_time : %d\n",p->start_time);
   //End of BVK Commit
   release(&ptable.lock);
@@ -414,7 +426,7 @@ scheduler(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
 
-        // cprintf("Hello\n");
+        // cprintf("Inside loop with pid %d\n",p->pid);
         if(p->state != RUNNABLE)
           continue;
 
@@ -460,6 +472,72 @@ scheduler(void)
     }
 }
 #endif
+
+#ifdef PBS
+void
+scheduler(void)
+{
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+  // int p1 = 0;
+  cprintf("PBS:\n");
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+
+    // Loop over process table looking for process to run.
+    struct proc *highest_priority_proc = 0;
+    // Note: Highest priority process is defined as the process that has a lowest value of the p->priority variable;
+    acquire(&ptable.lock);
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      // cprintf("Inside Loop pid : %d\n",p->pid);
+        // cprintf("Hello\n");
+        if(p->state != RUNNABLE)
+          continue;
+
+          if(highest_priority_proc != 0)
+          {
+            if(p->priority < highest_priority_proc->priority)
+            {
+              highest_priority_proc = p;
+            }
+            else if(p->priority == highest_priority_proc->priority && p->last_response_time < highest_priority_proc->last_response_time){
+              highest_priority_proc = p;
+            }
+          }
+          else
+          {
+            highest_priority_proc = p;
+          }
+        //}
+    }
+    if(highest_priority_proc!=0 && highest_priority_proc->state == RUNNABLE)
+    {
+      p = highest_priority_proc;
+    }
+      if(p!=0 && p->state==RUNNABLE )
+      {
+        c->proc = p;
+        // cprintf("\nSwitching to process with pid: %d which has arrival time %d\n",p->pid,p->start_time);
+        // cprintf("before switching uvm to process with pid : %d\n",p->pid);
+        switchuvm(p);
+
+        p->state = RUNNING;
+        p->last_response_time = ticks;
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+        // cprintf("569\n");
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&ptable.lock);
+    }
+}
+#endif
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
@@ -493,6 +571,7 @@ yield(void)
   // cprintf("I have been yielded!\n");
 
   acquire(&ptable.lock);  //DOC: yieldlock
+
   myproc()->state = RUNNABLE;
   sched();
   release(&ptable.lock);
@@ -638,4 +717,65 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+//BVK Commit
+
+int
+chprty(int pid, int priority){
+  cprintf("In chprty function\n");
+  if(priority < 0 || priority > 100){
+    cprintf("Priority shld be between 0 and 100\n");
+    exit();
+  }
+  struct proc * p;
+  int old_prty = -1;      // Since
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p< &ptable.proc[NPROC];p++){
+    if(p->pid == pid){
+      old_prty = p->priority;
+      p->priority = priority;
+      break;
+    }
+  }
+  release(&ptable.lock);
+  return old_prty;
+}
+// Various states are:
+// UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE
+void ps(){
+  cprintf("Printing from the ps function\n");
+  struct proc *proc;
+  acquire(&ptable.lock);
+  cprintf("PID:               State                 Priority\n");
+  for(proc = ptable.proc; proc < &ptable.proc[NPROC]; proc++)
+  {
+    if(proc!=0 && proc->state!=UNUSED)
+    {
+      cprintf("%d               ",proc->pid);
+      if(proc->state == RUNNING){
+        cprintf("RUNNING                 %d\n",proc->priority);
+      }
+      else if(proc->state == RUNNABLE){
+        cprintf("RUNNABLE                %d\n",proc->priority);
+      }
+      else if(proc->state == ZOMBIE){
+        cprintf("ZOMBIE                  %d\n",proc->priority);
+      }
+      else if(proc->state == SLEEPING){
+        cprintf("SLEEPING                %d\n",proc->priority);
+      }
+      else if(proc->state == EMBRYO){
+        cprintf("EMBRYO                  %d\n",proc->priority);
+      }
+      // else if(proc->state == UNUSED){
+      //   cprintf("UNUSED                  %d\n",proc->priority);
+      // }
+      else{
+        cprintf("DON'T KNOW!\n");
+      }
+
+    }
+  }
+  release(&ptable.lock);
 }

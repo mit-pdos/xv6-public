@@ -51,8 +51,10 @@ struct proc {
   char name[16];               // Process name (debugging)
    int start_time;              // Process Start Time - waitx
    int end_time;                // Process End Time - waitx
-   int run_time;            // Process Running Time - waitx
+   int run_time;                // Process Running Time - waitx
 //   int io_time;                  // Process I/O Time - waitx
+  int priority;                 // Priority for Priority Based Scheduler
+  int last_response_time;       //For priority based scheduler -- Useful for implementing round robing abong processes of same priority;
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -60,4 +62,3 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
-void updatestatistics();

@@ -10,6 +10,12 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+
+//Definitions: typedef unsigned int   uint;
+// typedef unsigned short ushort;
+// typedef unsigned char  uchar;
+// typedef uint pde_t;
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -119,8 +125,10 @@ void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
 int             waitx(int *,int *);   //BVK addition Assignment 5 Q1
+int             chprty(int, int);
 void            wakeup(void*);
 void            yield(void);
+void            ps(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -187,5 +195,7 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
+
+//Functions defined by BVK for assignment 05:
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

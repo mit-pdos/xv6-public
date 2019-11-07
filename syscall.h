@@ -21,3 +21,5 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_waitx  22     //BVK Commit - Assignment 5 Q1
+#define SYS_chprty 23
+#define SYS_ps     24
