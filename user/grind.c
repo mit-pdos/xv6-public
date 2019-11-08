@@ -214,7 +214,7 @@ go(int which_child)
         printf("fstat reports wrong size %d\n", (int)st.size);
         exit(1);
       }
-      if(st.ino > 50){
+      if(st.ino > 200){
         printf("fstat reports crazy i-number %d\n", st.ino);
         exit(1);
       }
