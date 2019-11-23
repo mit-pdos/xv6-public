@@ -1,4 +1,4 @@
-This is a fork from mit-xv6 for operating system project
+This is a fork from mit-xv6 for operating system course project
 You can find main repo in https://github.com/mit-pdos/xv6-public
 
 ** How to Run
@@ -6,10 +6,10 @@ As you know there are several ways to compile and run an O.S. but I strongly rec
 
 1-Clone into this repo ($ git clone https://github.com/Farbodxrs/xv6-public.git)  
 2-Pull image from docker hub ($ docker pull grantbot/xv6:latest) // you can use other images as well or make yours, but this one works fine.
-3-Run your container ($ docker run -v /{Path to local xv6 folder}:/home/a/xv6/ -it grantbot/xv6
+3-Run your container ($ docker run -v '/{Path to local xv6 folder}':/home/a/xv6/ -it --name xv6 --rm grantbot/xv6 bash )
 4-Now you are in the container, you should go into project ($ cd /home/a/xv6)
 Its time to compile and run xv6 O.S., qemu seems fine but feel free to try new ones. docs at https://www.qemu.org/documentation/
-5-As I dont have VGA console, I can use both ($ make qemu-nox) and ($ make qemu-nox-gdb). //TODO : tell difference.
+5-As I dont have VGA console in container, I use make qemu-nox. (There is 'make qemu-nox-gdb' option which lets you to open a GDB port! whats gdb? =>https://sourceware.org/gdb/onlinedocs/gdb/Server.html) 
 
 
 
