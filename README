@@ -12,4 +12,6 @@ Its time to compile and run xv6 O.S., qemu seems fine but feel free to try new o
 5-As I dont have VGA console in container, I use make qemu-nox. (There is 'make qemu-nox-gdb' option which lets you to open a GDB port! whats gdb? =>https://sourceware.org/gdb/onlinedocs/gdb/Server.html) 
 
 
-
+*How to exit qemu :))
+press ctrl+a => c
+now you can exec in qemu, press q then enter to exit. 
