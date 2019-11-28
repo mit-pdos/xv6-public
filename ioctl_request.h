@@ -7,4 +7,4 @@ typedef enum ioctl_request {
     IOCTL_GET_PROCESS_CPU_PERCENT,
 } ioctl_request;
 
-#endif 
+#endif

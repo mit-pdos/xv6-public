@@ -34,7 +34,7 @@ int cpu_account_schedule_process_decision(struct cpu_account * cpu,
 {
     // The cpu account frame according to the cgroup account period.
     unsigned int cgroup_cpu_account_frame;
-    
+
     // Whether to schedule or not.
     char schedule = 1;
 

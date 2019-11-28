@@ -5,6 +5,7 @@
 #define MAX_DES_DEF 64
 #define MAX_DEP_DEF 64
 #define MAX_CGROUP_FILE_NAME_LENGTH 64
+#define CGROUP_ACCOUNT_PERIOD_100MS (100 * 1000)
 
 struct
 {
@@ -288,7 +289,7 @@ void cgroup_initialize(struct cgroup * cgroup,
     cgroup->cpu_time = 0;
     cgroup->cpu_period_time = 0;
     cgroup->cpu_time_limit = ~0;
-    cgroup->cpu_account_period = 1 * 100 * 1000;
+    cgroup->cpu_account_period = CGROUP_ACCOUNT_PERIOD_100MS;
     cgroup->cpu_nr_periods = 0;
     cgroup->cpu_nr_throttled = 0;
     cgroup->cpu_throttled_usec = 0;
@@ -457,25 +458,25 @@ struct cgroup * get_cgroup_by_path(char * path)
     return cgp;
 }
 
-void set_max_descendants_value(struct cgroup * cgroup, int value)
+void set_max_descendants_value(struct cgroup * cgroup, unsigned int value)
 {
     if (value >= 0)
         cgroup->max_descendants_value = value;
 }
 
-void set_max_depth_value(struct cgroup * cgroup, int value)
+void set_max_depth_value(struct cgroup * cgroup, unsigned int value)
 {
     if (value >= 0)
         cgroup->max_depth_value = value;
 }
 
-void set_nr_descendants(struct cgroup * cgroup, int value)
+void set_nr_descendants(struct cgroup * cgroup, unsigned int value)
 {
     if (value >= 0)
         cgroup->nr_descendants = value;
 }
 
-void set_nr_dying_descendants(struct cgroup * cgroup, int value)
+void set_nr_dying_descendants(struct cgroup * cgroup, unsigned int value)
 {
     if (value >= 0)
         cgroup->nr_dying_descendants = value;
