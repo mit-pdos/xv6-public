@@ -209,7 +209,7 @@ sys_ioctl(void)
        }
     break;
   case TTYGETS:
-    ret = devsw[ip->major].flags & command;
+    ret = (devsw[ip->major].flags & command ? 1 : 0);
     iunlock(ip);
     return ret;
   default:

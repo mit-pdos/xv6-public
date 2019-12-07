@@ -36,17 +36,18 @@ static int pouch_limit_cgroup(char* container_name, char* cgroup_state_obj, char
     int cont_fd = open(container_name, 0);
     if(cont_fd < 0){
        printf(stderr, "There is no container: %s in a started stage\n", container_name);
-       return -1;
-     }
+       exit(1);
+    }
     int cpu_max_fd = open(cg_limit_cname, O_RDWR);
     if(cpu_max_fd < 0){
-        printf(stderr, "Incorrect cgroup object-state provided. Not applied.\n", container_name);
-        return -1;
+       printf(stderr, "Incorrect cgroup object-state provided. Not applied.\n", container_name);
+       exit(1);
     }
     if(write(cpu_max_fd, limitation, sizeof(limitation)) < 0)
-        return -1;
+       return -1;
     if(close(cpu_max_fd) < 0)
-        return -1;
+       return -1;
+    printf(1, "Pouch: %s cgroup applied \n",container_name);
     return 0;
 }
 
@@ -84,29 +85,53 @@ static int pouch_cmd(char* container_name, enum p_cmd cmd){
             return 0;
         }
 
-        if(cmd == DESTROY && pid != 0){
-           if(kill(pid) < 0){
-                return -1;
-           }
-           if(unlink(container_name))
-               return -1;
-           if(prepare_cgroup_cname(container_name,cg_cname))
-               return -1;
-           if(unlink(cg_cname))
-               return -1;
-           if(remove_from_pconf(tty_name) < 0)
-               return -1;
-           return 0;
-        }
-
         if((tty_fd = open(tty_name, O_RDWR)) < 0){
            printf(stderr, "cannot open tty: %s\n",tty_name);
            return -1;
         }
 
+        if(cmd == DESTROY && pid != 0){
+
+            // Return the process to root cgroup.
+            char cur_pid_buf[3];
+            int cgroup_procs_fd = open("/cgroup/cgroup.procs", O_RDWR);
+            itoa(cur_pid_buf, pid);
+            if(write(cgroup_procs_fd, cur_pid_buf, sizeof(cur_pid_buf)) < 0)
+                return -1;
+            if(close(cgroup_procs_fd) < 0)
+                return -1;
+
+           if(kill(pid) < 0){
+                return -1;
+           }
+           if(unlink(container_name) < 0)
+               return -1;
+
+           prepare_cgroup_cname(container_name,cg_cname);
+
+           if(unlink(cg_cname) < 0){
+               return -1;
+           }
+           if(remove_from_pconf(tty_name) < 0)
+               return -1;
+
+           if(is_connected_tty(tty_fd)){
+               if(disconnect_tty(tty_fd) < 0)
+                   return -1;
+           }
+           if(detach_tty(tty_fd) < 0)
+               return -1;
+           if(close(tty_fd) < 0)
+               return -1;
+
+           printf(1, "Pouch: %s destroyed\n",container_name);
+           return 0;
+        }
+
+
+
         if(cmd == CONNECT){
             if(!is_connected_tty(tty_fd)){
-                printf(1, "Pouch: %s connecting\n",container_name);
                 if(connect_tty(tty_fd) < 0){
                      close(tty_fd);
                      printf(stderr, "cannot connect to the tty\n");
@@ -282,7 +307,7 @@ static int read_from_cconf(char* container_name, char* tty_name, int* pid){
    int cont_fd = open(container_name, 0);
    if(cont_fd < 0){
       printf(stderr, "There is no container: %s in a started stage\n", container_name);
-      return -1;
+      exit(1);
     }
 
    if(read(cont_fd, buf, 5) <= 0) {
@@ -332,16 +357,24 @@ static int pouch_fork(char* container_name){
    char cg_cname[256];
    int daemonize = 1;
 
+   //Find tty name
+   if(find_tty(tty_name) < 0){
+      printf(1, "Pouch: cannot create more containers\n");
+      exit(1);
+   }
+
+   int cont_fd = open(container_name, 0);
+   if(cont_fd < 0){
+      printf(1, "Pouch: %s starting\n",container_name);
+   }else{
+      printf(stderr, "Pouch: %s container is already started\n", container_name);
+      exit(1);
+   }
+
    //Prepare cgroup name for container
    prepare_cgroup_cname(container_name,cg_cname);
    if(create_pouch_cgroup(cg_cname, container_name) <0)
       exit(1);
-
-   //Find tty name
-   if(find_tty(tty_name) < 0){
-      printf(1, "Cannot find tty\n");
-      exit(1);
-   }
 
    //update cname in pouch conf
    write_to_pconf(tty_name,container_name);
@@ -351,15 +384,7 @@ static int pouch_fork(char* container_name){
       return -1;
    }
 
-   int cont_fd = open(container_name, 0);
-   if(cont_fd < 0){
-      printf(1, "Pouch: %s starting\n",container_name);
-   }else{
-      printf(stderr, "%s container is already started\n", container_name);
-      return -1;
-   }
-
-    //Parent process forking child process
+   //Parent process forking child process
    if(!daemonize || (daemonize && (pid2 = fork()) == 0)){
       //Set up pid namespace before fork
       if(unshare(PID_NS) != 0){
@@ -408,15 +433,8 @@ static int pouch_fork(char* container_name){
         if(write_to_cconf(container_name, tty_name, pid) >= 0)
            wait(0);
 
-        if(is_connected_tty(tty_fd)){
-            if(disconnect_tty(tty_fd) < 0)
-                return -1;
-        }
-        if(detach_tty(tty_fd) < 0)
-            return -1;
-        if(close(tty_fd) , 0)
-            return -1;
-        printf(stderr,"Exiting container\n");
+
+
         exit(0);
       }
     }
@@ -596,21 +614,17 @@ main(int argc, char *argv[])
         cmd = CONNECT;
      }else if((strcmp(argv[1],"disconnect")) == 0){
         cmd = DISCONNECT;
-        if(ppid == 1)
-            printf(1, "Pouch: %s disconnecting\n",container_name);
-        else{
+        if(ppid != 1){
             printf(1, "Pouch: no container is connected\n");
             exit(1);
         }
      }else if((strcmp(argv[1],"destroy")) == 0){
         cmd = DESTROY;
-        printf(1, "Pouch: %s destroying\n",container_name);
      }else if((strcmp(argv[1],"cgroup")) == 0 && argc == 5){
         cmd = LIMIT;
-        printf(1, "Pouch: %s cgroup applying \n",container_name);
      }else if((strcmp(argv[1],"info")) == 0 ){
         cmd = INFO;
-     }else if((strcmp(argv[1],"list")) == 0 ){
+     }else if((strcmp(argv[1],"list")) == 0 && (strcmp(argv[2],"all")) == 0 ){
         cmd = LIST;
      }else{
         if(ppid == 1)
