@@ -89,3 +89,14 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_halt()
+{
+  cprintf("tracing halt syscall: sys_halt\n");
+  // Incantation from Redox OS
+  outw(0x604, 0x2000);
+  cprintf("sys_halt failed\n");
+  while(1);
+  return 0;
+}
