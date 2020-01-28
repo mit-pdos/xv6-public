@@ -65,17 +65,16 @@ static int find_procs_offsets(int * procoff, int * pidoff, struct file * f)
     return 0;
 }
 
-static int copy_until_space(char * s, char * t, int n)
+static int copy_until_char(char * s, char * t, char ch, int n)
 {
     int len = 0;
-
-    while (*t != ' ' && *t != '\0' && (n--) > 0) {
+    while (*t != ch && *t != '\0' && (n--) > 0) {
         *s++ = *t++;
         len++;
     }
 
     *s = 0;
-    if (*t == ' ')
+    if (*t == ch)
         len++;
 
     return len;
@@ -530,13 +529,13 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
     } else if (filename_const == CGROUP_SUBTREE_CONTROL) {
         char cpucontroller = 0; // change to 1 if need to enable, 2 if need
                                 // to disable, 0 if nothing to change
-
+        char ch =' ';
         while (*addr != '\0' && n > 0) {
             if (*addr != '+' && *addr != '-')
                 return -1;
 
             char buf[MAX_CONTROLLER_NAME_LENGTH];
-            int len = copy_until_space(buf, addr + 1, n - 1);
+            int len = copy_until_char(buf, addr + 1,ch, n - 1);
             if (strcmp(buf, "cpu") == 0) {
                 if (*addr == '+')
                     cpucontroller = 1;
@@ -569,38 +568,28 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
                f->cgp->cpu_controller_enabled) {
         char max_string[32] = {0};
         char period_string[32] = {0};
-        int i = 0;
-        int j = 0;
         int max = -1;
         int period = -1;
+        int i = 0;
 
-        // Copy the max string part.
-        for (i = 0; i < n && i < sizeof(max_string) - 1 && addr[i] != ' ';
-             ++i) {
-            max_string[i] = addr[i];
-        }
+        //sh.c doesn't treat space inside for example: "1000 20000" as a single argument
+        //so we will use special format, this also allows to parse zeroes inside a value
 
-        // If more than max string size, fail.
-        if (i >= sizeof(max_string) - 1) {
-            return -1;
+        while (*addr && *addr != ',' &&  *addr != '\0' && i < sizeof(max_string)) {
+            max_string[i] = *addr;
+            i++;
+            addr++;
         }
+        max_string[i] = '\0';
+        i=0;
+        addr++;
 
-        // Skip spaces.
-        for (; i < n; ++i) {
-            if (addr[i] != ' ') {
-                break;
-            }
+        while (*addr && *addr != '\0' && i < sizeof(period_string)) {
+            period_string[i] = *addr;
+            i++;
+            addr++;
         }
-
-        // Copy the period string part.
-        for (j = 0; i < n && j < sizeof(period_string) - 1; ++i, ++j) {
-            period_string[j] = addr[i];
-        }
-
-        // If more than period string size, fail.
-        if (j >= sizeof(period_string) - 1) {
-            return -1;
-        }
+        period_string[i] = '\0';
 
         // Update max.
         max = atoi(max_string);
@@ -623,6 +612,8 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
         // Update max fields.
         f->cgp->cpu_time_limit = max;
         f->cpu.max.max = max;
+
+        r = n;
     }
 
     return r;

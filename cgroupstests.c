@@ -72,10 +72,14 @@ void test_opening_and_closing_cgroup_files()
         open("/cgroup/test1/cgroup.max.depth", O_RDWR);
     int cgroup_stat_fd = open("/cgroup/test1/cgroup.stat", O_RDWR);
 
+    int cpu_max_fd = open("/cgroup/test1/cpu.max", O_RDWR);
+    int cpu_weight_fd = open("/cgroup/test1/cpu.weight", O_RDWR);
+    int cpu_stat_fd = open("/cgroup/test1/cpu.stat", O_RDWR);
+
     if (cgroup_procs_fd < 0 || cgroup_controllers_fd < 0 ||
         cgroup_subtree_control_fd < 0 || cgroup_events_fd < 0 ||
         cgroup_max_descendants_fd < 0 || cgroup_max_depth_fd < 0 ||
-        cgroup_stat_fd < 0){
+        cgroup_stat_fd < 0 || cpu_max_fd < 0 || cpu_weight_fd < 0 || cpu_stat_fd<0){
         printf(1, "FAIL.\n");
         exit(1);
     } else
@@ -87,7 +91,8 @@ void test_opening_and_closing_cgroup_files()
         close(cgroup_subtree_control_fd) != 0 ||
         close(cgroup_events_fd) != 0 ||
         close(cgroup_max_descendants_fd) != 0 ||
-        close(cgroup_max_depth_fd) != 0 || close(cgroup_stat_fd) != 0){
+        close(cgroup_max_depth_fd) != 0 || close(cgroup_stat_fd) != 0
+            || close(cpu_max_fd) !=0 || close(cpu_weight_fd)!= 0 || close(cpu_stat_fd)!=0){
         printf(1, "FAIL.\n");
         exit(1);
     } else
@@ -112,10 +117,15 @@ void test_reading_cgroup_files()
         open("/cgroup/test1/cgroup.max.depth", O_RDWR);
     int cgroup_stat_fd = open("/cgroup/test1/cgroup.stat", O_RDWR);
 
+    int cpu_max_fd = open("/cgroup/test1/cpu.max", O_RDWR);
+    int cpu_weight_fd = open("/cgroup/test1/cpu.weight", O_RDWR);
+    int cpu_stat_fd = open("/cgroup/test1/cpu.stat", O_RDWR);
+
+
     result &= cgroup_procs_fd >= 0 && cgroup_controllers_fd >= 0 &&
               cgroup_subtree_control_fd >= 0 && cgroup_events_fd >= 0 &&
               cgroup_max_descendants_fd >= 0 && cgroup_max_depth_fd >= 0 &&
-              cgroup_stat_fd >= 0;
+              cgroup_stat_fd >= 0 && cpu_max_fd >= 0 && cpu_weight_fd >=0 && cpu_stat_fd >=0;
 
     printf(
         1,
@@ -146,13 +156,23 @@ void test_reading_cgroup_files()
     empty_string(buf, sizeof(buf));
     result &= read(cgroup_stat_fd, buf, sizeof(buf)) >= 0;
     printf(1, "Contents of /cgroup/test1/cgroup.stat:\n%s\n", buf);
+    empty_string(buf, sizeof(buf));
+    result &= read(cpu_max_fd, buf, sizeof(buf)) >= 0;
+    printf(1, "Contents of /cgroup/test1/cpu.max:\n%s\n", buf);
+    empty_string(buf, sizeof(buf));
+    result &= read(cpu_weight_fd, buf, sizeof(buf)) >= 0;
+    printf(1, "Contents of /cgroup/test1/cpu.weight:\n%s\n", buf);
+    empty_string(buf, sizeof(buf));
+    result &= read(cpu_stat_fd, buf, sizeof(buf)) >= 0;
+    printf(1, "Contents of /cgroup/test1/cpu.stat:\n%s\n", buf);
 
     result &=
         close(cgroup_procs_fd) == 0 && close(cgroup_controllers_fd) == 0 &&
         close(cgroup_subtree_control_fd) == 0 &&
         close(cgroup_events_fd) == 0 &&
         close(cgroup_max_descendants_fd) == 0 &&
-        close(cgroup_max_depth_fd) == 0 && close(cgroup_stat_fd) == 0;
+        close(cgroup_max_depth_fd) == 0 && close(cgroup_stat_fd) == 0 && close(cpu_max_fd) == 0
+            && close(cpu_weight_fd) == 0 && close(cpu_stat_fd) == 0;
 
     printf(1, "\nReading cgroup files test result: ");
 
@@ -162,6 +182,60 @@ void test_reading_cgroup_files()
         printf(1, "FAIL.\n");
         exit(1);
     }
+}
+
+void test_limiting_cpu_max_and_period()
+{
+    printf(1, "Testing limiting cpu with max and period: ");
+    char buf[256];
+    char result = 1;
+
+    int cgroup_subtree_control_fd =
+        open("/cgroup/test1/cgroup.subtree_control", O_RDWR);
+    result &= cgroup_subtree_control_fd >= 0;
+
+    // Enable cpu controller
+    empty_string(buf, sizeof(buf));
+    strcpy(buf, "+cpu");
+    result &= write(cgroup_subtree_control_fd, buf, sizeof(buf)) > 0;
+    close(cgroup_subtree_control_fd);
+    int cpu_max_fd = open("/cgroup/test1/cpu.max", O_RDWR);
+    result &= cpu_max_fd >= 0;
+
+    // Update only max
+    empty_string(buf, strlen(buf));
+    strcpy(buf, "5000");
+    result &= write(cpu_max_fd, buf, sizeof(buf)) > 0;
+    result &= close(cpu_max_fd) == 0;
+
+    // Check changes
+    cpu_max_fd = open("/cgroup/test1/cpu.max", O_RDWR);
+    result &= cpu_max_fd >=0;
+    empty_string(buf, sizeof(buf));
+    result &= read(cpu_max_fd, buf, sizeof(buf)) >= 0;
+    result &= strcmp(buf, "max - 5000\nperiod - 100000\n") == 0;
+
+    // Update max & period
+    empty_string(buf, strlen(buf));
+    strcpy(buf, "1000,20000");
+    result &= write(cpu_max_fd, buf, sizeof(buf)) > 0;
+    result &= close(cpu_max_fd) == 0;
+
+    // Check changes
+    cpu_max_fd = open("/cgroup/test1/cpu.max", O_RDWR);
+    result &= cpu_max_fd >=0;
+    empty_string(buf, sizeof(buf));
+    result &= read(cpu_max_fd, buf, sizeof(buf)) >= 0;
+    result &= strcmp(buf, "max - 1000\nperiod - 20000\n") == 0;
+    result &= close(cpu_max_fd) == 0;
+
+    if (result)
+        printf(1, "OK.\n");
+    else{
+        printf(1, "FAIL.\n");
+        exit(1);
+    }
+
 }
 
 void test_moving_process()
@@ -327,8 +401,9 @@ int main(int argc, char * argv[])
     test_creating_cgroups();
     test_opening_and_closing_cgroup_files();
     test_reading_cgroup_files();
-    test_moving_process();
     test_enabling_and_disabling_cpu_controller();
+    test_limiting_cpu_max_and_period();
+    test_moving_process();
     test_setting_max_descendants_and_max_depth();
     test_deleting_cgroups();
     test_umount_cgroup_fs();
