@@ -9,14 +9,18 @@ include(CheckCCompilerFlag)
 # first, apply needed compiler flags from toolchain file (must do this _before_ the project() statement so CMake sees it when scanning compiler configuration)
 include(cmake/X86Toolchain.cmake)
 
+# control build type
+set(CMAKE_BUILD_TYPE "DEBUG" CACHE STRING "Build type, Debug or Release")
+
+# Set the possible values of build type for cmake-gui
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "DEBUG" "RELEASE")
+
 # now, enable languages and verify we have the right compiler
 enable_language(C ASM ASM-ATT)
-message("After Enable Languages CMAKE_C_FLAGS: \"${CMAKE_C_FLAGS}\"")
 include(cmake/CheckCompilerConfig.cmake)
 
 # get rest of compiler flags
 include(cmake/CompilerFlags.cmake)
-message("After Set Flags CMAKE_C_FLAGS: \"${CMAKE_C_FLAGS}\"")
 
 # set up dir structure
 set(USER_FS_DIR ${CMAKE_CURRENT_BINARY_DIR}/user_exes)
@@ -25,10 +29,6 @@ set(SYM_DUMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/symbol_dumps)
 set(HOST_EXE_DIR ${CMAKE_CURRENT_BINARY_DIR}/host)
 
 file(MAKE_DIRECTORY ${USER_FS_DIR} ${ASM_DUMP_DIR} ${SYM_DUMP_DIR} ${HOST_EXE_DIR})
-
-# control build type
-set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type, Debug or Release")
-message(STATUS "Current build type: ${CMAKE_BUILD_TYPE}")
 
 # utility functions
 # ---------------------------------------------------------------------------
@@ -80,12 +80,7 @@ set(USER_EXECUTABLES
 	stressfs
 	usertests
 	wc
-	zombie
-	mutextest1
-	mutextest2
-	threadtest1
-	threadtest2
-	threadtest3)
+	zombie)
 
 # list of all executable output names
 set(USER_EXECUTABLE_OUTPUT_NAMES "")
@@ -159,7 +154,6 @@ set(KERNEL_SOURCES
 	ioapic.c
 	kalloc.c
 	kbd.c
-	kernelthreads.c
 	lapic.c
 	log.c
 	main.c
@@ -167,7 +161,7 @@ set(KERNEL_SOURCES
 	picirq.c
 	pipe.c
 	proc.c
-	timer.c
+	sleeplock.c
 	spinlock.c
 	string.c
 	swtch.S
@@ -313,7 +307,7 @@ message(STATUS "")
 message(STATUS "C Compiler: ${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION} (${CMAKE_C_COMPILER})")
 message(STATUS "C Flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}")
 message(STATUS "")
-message(STATUS "ASM Compiler: ${CMAKE_ASM_COMPILER_ID} (${CMAKE_ASM_COMPILER})")
+message(STATUS "ASM Compiler: ${CMAKE_ASM_COMPILER_ID} (${CMAKE_ASM-ATT_COMPILER})")
 message(STATUS "ASM Flags: ${CMAKE_ASM_FLAGS} ${CMAKE_ASM_FLAGS_${CMAKE_BUILD_TYPE}}")
 message(STATUS "")
 message(STATUS "Linker Flags: ${CMAKE_EXE_LINKER_FLAGS}")

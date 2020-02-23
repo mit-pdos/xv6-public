@@ -8,7 +8,7 @@ if(NOT QEMU_I386)
     message(WARNING "QEMU was not found.  QEMU simulation targets will not be available.  Use -DQEMU_I386=/path/to/qemu-system-i386 to set a custom location.")
 endif()
 
-set(QEMU_PROCESSORS 1 CACHE STRING "Number of processors to use in the QEMU simulation")
+set(QEMU_PROCESSORS 2 CACHE STRING "Number of processors to use in the QEMU simulation")
 
 if(QEMU_I386)
     # add standard QEMU targets
