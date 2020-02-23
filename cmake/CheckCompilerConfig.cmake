@@ -17,10 +17,9 @@ endif()
 if(NOT "${OBJDUMP_OUTPUT}" MATCHES "elf32-i386")
 	message(FATAL_ERROR 
 "Couldn't find an i386-*-elf version of GCC/binutils. 
-Is the directory with i386-jos-elf-gcc in your PATH?
-If your i386-*-elf toolchain is installed with a command
-prefix other than 'i386-jos-elf-', define CMAKE_C_COMPILER to point to
-the gcc to use.  Then delete your build directory and run cmake again.")
+Please clear your build directory, then rerun cmake
+with CMAKE_C_COMPILER defined to point to
+the gcc executable to use.")
 endif()
 
 # all done!
