@@ -1,0 +1,5 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="xv6 Kernel Debug" type="CLion_Remote" factoryName="GDB Remote Debug" singleton="false" remoteCommand="localhost:5072" symbolFile="$PROJECT_DIR$/cmake-build-debug/kernel" sysroot="">
+    <method />
+  </configuration>
+</component>
