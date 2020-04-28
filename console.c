@@ -125,6 +125,8 @@ panic(char *s)
 
 //PAGEBREAK: 50
 #define BACKSPACE 0x100
+#define REG_RIGHT 229
+#define REG_LEFT 228
 #define CRTPORT 0x3d4
 static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
 
@@ -141,9 +143,11 @@ cgaputc(int c)
 
   if(c == '\n')
     pos += 80 - pos%80;
-  else if(c == BACKSPACE){
+  else if(c == BACKSPACE || c == REG_LEFT){                 //MODIFIED
     if(pos > 0) --pos;
-  } else
+  } else if(c == REG_RIGHT){
+    if (pos < 25*80) ++pos;                               // MODIFIED
+  }else
     crt[pos++] = (c&0xff) | 0x0700;  // black on white
 
   if(pos < 0 || pos > 25*80)
@@ -159,11 +163,12 @@ cgaputc(int c)
   outb(CRTPORT+1, pos>>8);
   outb(CRTPORT, 15);
   outb(CRTPORT+1, pos);
-  crt[pos] = ' ' | 0x0700;
+  if (c != REG_LEFT && c != REG_RIGHT)                                //MODIFIED
+    crt[pos] = ' ' | 0x0700;
 }
 
 void
-consputc(int c)
+consputc(int c)																		 // MODIFIED
 {
   if(panicked){
     cli();
@@ -172,10 +177,14 @@ consputc(int c)
   }
 
   if(c == BACKSPACE){
-    uartputc('\b'); uartputc(' '); uartputc('\b');
-  } else
+    uartputc('\b'); uartputc(' '); uartputc('\b'); cgaputc(c);
+  }else if(c == REG_LEFT){
+    uartputc('\b');
+    cgaputc(REG_LEFT);
+  } else{
     uartputc(c);
-  cgaputc(c);
+    cgaputc(c);
+  }
 }
 
 #define INPUT_BUF 128
@@ -184,6 +193,7 @@ struct {
   uint r;  // Read index
   uint w;  // Write index
   uint e;  // Edit index
+  uint cPos;
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
@@ -192,7 +202,6 @@ void
 consoleintr(int (*getc)(void))
 {
   int c, doprocdump = 0;
-
   acquire(&cons.lock);
   while((c = getc()) >= 0){
     switch(c){
@@ -208,18 +217,49 @@ consoleintr(int (*getc)(void))
       }
       break;
     case C('H'): case '\x7f':  // Backspace
-      if(input.e != input.w){
+      if(input.e != input.w && input.cPos != input.w){											 // MODIFIED
         input.e--;
+        input.cPos--;
         consputc(BACKSPACE);
+      }
+      break;
+    case REG_RIGHT:																			 // MODIFIED
+      if(input.cPos < input.e){
+        consputc(REG_RIGHT);
+        input.cPos++;
+      }
+      break;
+    case REG_LEFT:																		 // MODIFIED
+      if(input.cPos != input.w){
+        input.cPos--;
+        consputc(REG_LEFT);
       }
       break;
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
-        input.buf[input.e++ % INPUT_BUF] = c;
-        consputc(c);
+
+        if(input.e - input.cPos > 0 && c != '\n'){
+          for(int posDistance = 0; posDistance < input.e - input.cPos; posDistance++){
+            input.buf[(input.e - posDistance) % INPUT_BUF] = input.buf[(input.e - posDistance -1) % INPUT_BUF];  // MODIFIED
+          }
+          input.buf[input.cPos % INPUT_BUF] = c;
+          for(int i = input.cPos; i <= input.e; i++){
+              consputc(input.buf[(i) % INPUT_BUF]);
+            }
+          for(int i = input.cPos; i < input.e; i++){
+              consputc(REG_LEFT);
+            }
+          input.e++;
+        }
+        else{
+          input.buf[input.e++ % INPUT_BUF] = c;
+          consputc(c);
+        }
+        input.cPos++;
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
           input.w = input.e;
+          input.cPos = input.e;																	 // MODIFIED
           wakeup(&input.r);
         }
       }
