@@ -275,11 +275,14 @@ int test_all_children_kill_when_nspid1_dies() {
 
   int ret = check(fork(), "failed to fork");
   if (ret == 0) {
+    pid_t child_pids[2];
 
     // child is pid 1
     assert_msg(getpid() == 1, "pid not equal to 1");
 
-    create_children(2, NULL, loop_forever);
+    //create_children(2, NULL, loop_forever);
+
+    create_children(ARRAY_SIZE(child_pids), child_pids, loop_forever);
 
     // pid 1 exits
     exit(0);
@@ -361,10 +364,10 @@ int _test_unshare_recrusive_limit(int count) {
   return 0;
 }
 
-int test_unshare_recrusive_limit() { 
+int test_unshare_recrusive_limit() {
   // there's an init namespace so we start counting from 1
   _test_unshare_recrusive_limit(MAX_RECURSION-1);
-  return 0; 
+  return 0;
 }
 
 /* Verify that a process can call unshare PID only once
@@ -397,7 +400,7 @@ int test_calling_fork_twice_after_unshare() {
     // child is pid 1
     assert_msg(getpid() == 1, "pid not equal to 1");
 
-    sleep(1);
+    sleep(5); /*Changed to 5 to remove a zombie process appearing*/
 
     // pid 1 exits
     exit(0);
@@ -416,7 +419,7 @@ int test_calling_fork_twice_after_unshare() {
   // make sure it's dead
   int status = child_exit_status(ret2);
   assert_msg(status == 0, "child process failed");
-  
+
   // make sure it's dead
   status = child_exit_status(ret);
   assert_msg(status == 0, "child process failed");
@@ -424,25 +427,28 @@ int test_calling_fork_twice_after_unshare() {
   return 0;
 }
 
-int run_test(test_func_t func, const char *name) {
-  int status = 0;
+int testsPassed = 0; /*In case all tests passed, this value will remain 0, else
+it will become 1*/
+
+/*This function runs the test, if a test fails, it will print which test failed,
+and set the variable testsPassed to be 1*/
+void run_test(test_func_t func, const char *name) {
   int pid = -1;
 
-  printf(stderr, "running test - '%s'\n", name);
   int ret = check(fork(), "fork failed");
   if (ret == 0) {
     exit(func());
   }
 
   pid = ret;
-  if (child_exit_status(pid) != 0) {
+  if (child_exit_status(pid) != 0) { /*Test failed*/
     printf(stderr, "failed test - '%s'\n", name);
+    testsPassed = 1; /*Denotes some test has failed to pass*/
   }
-
-  return status;
 }
 
 int main() {
+  printf(stderr, "Running all pidns tests\n");
   run_test(unshare_twice, "unshare_twice");
   run_test(test_simple_pidns, "test_simple_pidns");
   run_test(test_simple_pidns_fork, "test_simple_pidns_fork");
@@ -454,5 +460,12 @@ int main() {
   run_test(test_calling_fork_after_nspid1_dies_fails, "test_calling_fork_after_nspid1_dies_fails");
   run_test(test_unshare_recrusive_limit, "test_unshare_recrusive_limit");
 
-  exit(0);
+  if (testsPassed == 0) {
+    printf(stderr, "Pidns tests passed successfully\n");
+    exit(0);
+  }
+  else {
+    printf(stderr, "Pidns tests failed to pass, \n");
+    exit(1);
+  }
 }
