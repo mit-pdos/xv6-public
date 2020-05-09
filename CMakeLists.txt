@@ -185,7 +185,7 @@ add_library(kernel_obj OBJECT ${KERNEL_SOURCES})
 add_executable(kernel $<TARGET_OBJECTS:kernel_obj> ${KERNEL_IDE_FS_SOURCES})
 
 # NOTE: the binary blobs HAVE to be relative paths because that's how ld determines their symbol name
-set_property(TARGET kernel PROPERTY LINK_FLAGS "-Wl,-T,${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -Wl,-b,binary,entryother,initcode -Wl,-b,elf32-i386")
+set_property(TARGET kernel PROPERTY LINK_FLAGS "-Wl,-T,\"${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld\" -Wl,-b,binary,entryother,initcode -Wl,-b,elf32-i386")
 
 # make sure binary blocks are built before kernel
 add_dependencies(kernel entryother_bin initcode_bin)
@@ -270,7 +270,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fs.img
 add_executable(kernelmemfs $<TARGET_OBJECTS:kernel_obj> ${KERNEL_MEM_FS_SOURCES})
 
 # NOTE: the binary blobs HAVE to be relative paths because that's how ld determines their symbol name
-set_property(TARGET kernelmemfs PROPERTY LINK_FLAGS "-Wl,-T,${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -Wl,-b,binary,entryother,initcode,fs.img -Wl,-b,elf32-i386")
+set_property(TARGET kernelmemfs PROPERTY LINK_FLAGS "-Wl,-T,\"${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld\" -Wl,-b,binary,entryother,initcode,fs.img -Wl,-b,elf32-i386")
 
 # make sure binary blocks are built before kernel
 add_dependencies(kernelmemfs entryother_bin initcode_bin fs_img)
