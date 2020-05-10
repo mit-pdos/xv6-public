@@ -8,4 +8,4 @@ set(CMAKE_C_FLAGS_RELEASE_INIT "-O2 -ggdb")
 set(CMAKE_ASM_FLAGS_INIT "-m32 -gdwarf-2 -Wa,-divide")
 
 # set linker flags
-set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS} -nostdlib -Wl,-m,elf_i386 -Wl,--build-id=none")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-nostdlib -Wl,-m,elf_i386 -Wl,--build-id=none")
