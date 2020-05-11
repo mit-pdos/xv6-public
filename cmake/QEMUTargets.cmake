@@ -34,6 +34,13 @@ if(QEMU_I386)
 
     # add GDB targets
     # ---------------------------------------------------------------------------
+
+    # x86_64 qemu does not work reliably with GDB.
+    # more info here: https://wiki.osdev.org/QEMU_and_GDB_in_long_mode
+    if("${QEMU_I386}" MATCHES "qemu-system-x86_64")
+        message(WARNING "xv6 was only able to find qemu-system-x86_64 on your system, not qemu-system-i386.  This may cause debugging to fail with the error 'Remote g packet reply is too long'.  It is recommended to switch to qemu-machine-i386 for best results.  Set the qemu path with the -DQEMU_I386=<path> cmake option.")
+    endif()
+    
     set(GDB_PORT 5072 CACHE STRING "Port to run QEMU GDB server on")
 
     set(QEMU_GDB_ARGS
