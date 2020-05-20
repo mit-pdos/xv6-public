@@ -222,7 +222,9 @@ sys_unlink(void)
     dp->nlink--;
     iupdate(dp);
   }
+  iunlock(ip);
   iunlockput(dp);
+  ilock(ip);
 
   ip->nlink--;
   iupdate(ip);
@@ -277,7 +279,9 @@ create(char *path, short type, short major, short minor)
   if(dirlink(dp, name, ip->inum) < 0)
     panic("create: dirlink");
 
+  iunlock(ip);
   iunlockput(dp);
+  ilock(ip);
 
   return ip;
 }
