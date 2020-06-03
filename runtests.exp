@@ -349,6 +349,18 @@ proc cgroupstests {argv} {
     }
 }
 
+# - xv6 pidns tests
+# @argv - file name for logging
+proc pidns_tests {argv} {
+
+    set timeout -1
+    send "pidns_tests\n"
+    log_file -noappend [lindex $argv 0]
+    expect {
+       "Pidns tests passed successfully"
+    }
+}
+
 #-------------------------------------------------------------------------
 #-MAIN--------------------------------------------------------------------
 #-------------------------------------------------------------------------
@@ -386,8 +398,9 @@ set running [pouch_list_test $argv]
 set running [pouch_disconnect_outside_container_test $argv]
 set running [pouch_info_container_test $argv]
 set running [pouch_cgroup_limit_test $argv]
-
 set running [usertests $argv]
+
+set running [pidns_tests $argv]
 
 log_file
 # just in case
