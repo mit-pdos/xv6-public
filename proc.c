@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "proc_info.h"
 
 struct {
   struct spinlock lock;
@@ -531,4 +532,34 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int get_process_infos(struct proc_info *infos)
+{
+  struct proc *p;
+  int count = 0;
+
+  acquire(&ptable.lock);
+
+  int ind = 0;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+     if (p -> pid == 0) break;
+     infos[ind].pid = p -> pid;
+     strncpy(infos[ind].name, p -> name, strlen(p -> name));
+     ind++;
+     /*
+     if(p->state != UNUSED)
+     {
+	struct proc_info info = {count, 0};
+	infos[count] = &info; 
+        count++;
+     }
+     */
+  }
+
+  release(&ptable.lock);
+
+ return count;
 }

@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "proc_info.h"
 
 int
 sys_fork(void)
@@ -93,11 +94,12 @@ sys_uptime(void)
 int
 sys_rnps(void)
 {
-  struct proc_info **p_infos;
+  struct proc_info *p_infos;
 
   if (argptr(0, (void*)&p_infos, sizeof(*p_infos)) < -1)
     return -1;
 
-  cprintf("\n\nrnps system call, there was no issue getting the argument hello \n\n");
+  get_process_infos(p_infos);
+  //cprintf("\n\nrnps system call, there was no issue getting the argument hello \n\n");
   return 0;
 }
