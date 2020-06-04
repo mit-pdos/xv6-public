@@ -1,3 +1,4 @@
+struct proc_info;
 struct stat;
 struct rtcdate;
 
@@ -23,7 +24,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int rnps(void);
+int rnps(struct proc_info**);
 
 // ulib.c
 int stat(const char*, struct stat*);

@@ -93,6 +93,11 @@ sys_uptime(void)
 int
 sys_rnps(void)
 {
-  cprintf("\n\nrnps system call, TODO: replace this with process info later\n\n");
+  struct proc_info **p_infos;
+
+  if (argptr(0, (void*)&p_infos, sizeof(*p_infos)) < -1)
+    return -1;
+
+  cprintf("\n\nrnps system call, there was no issue getting the argument hello \n\n");
   return 0;
 }
