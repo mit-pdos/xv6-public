@@ -89,3 +89,10 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_rnps(void)
+{
+  cprintf("rnps system call, TODO: replace this with process info later");
+  return 0;
+}
