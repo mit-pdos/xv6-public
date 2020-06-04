@@ -546,6 +546,8 @@ int get_process_infos(struct proc_info *infos)
   {
      if (p -> pid == 0) break; //no more processes in the system
 
+     if (p -> state != RUNNING && p -> state != RUNNABLE) continue;
+
      infos[ind].pid = p -> pid; // set process id
      strncpy(infos[ind].name, p -> name, strlen(p -> name)); // set process name
      infos[ind].memsize = p -> sz; //set process size
