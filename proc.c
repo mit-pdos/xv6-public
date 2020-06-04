@@ -545,8 +545,11 @@ int get_process_infos(struct proc_info *infos)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
      if (p -> pid == 0) break;
-     infos[ind].pid = p -> pid;
-     strncpy(infos[ind].name, p -> name, strlen(p -> name));
+
+     infos[ind].pid = p -> pid; // set process id
+     strncpy(infos[ind].name, p -> name, strlen(p -> name)); // set process name
+     infos[ind].memsize = p -> sz; //set process size
+
      ind++;
   }
 
