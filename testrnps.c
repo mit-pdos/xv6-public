@@ -20,7 +20,7 @@ int main(void)
     for (int i = 0; i < 100; i++)
     {
       if (p[i].pid == 0) break; //A zero pid indicates the end of process list
-      printf(0, "\n\nprocess => pid : %d, name : %s\n\n", p[i].pid, p[i].name);
+      printf(0, "\nprocess => pid : %d, name : %s\n", p[i].pid, p[i].name);
     }
   } else
   {

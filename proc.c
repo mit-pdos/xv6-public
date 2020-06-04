@@ -537,7 +537,6 @@ procdump(void)
 int get_process_infos(struct proc_info *infos)
 {
   struct proc *p;
-  int count = 0;
 
   acquire(&ptable.lock);
 
@@ -549,17 +548,8 @@ int get_process_infos(struct proc_info *infos)
      infos[ind].pid = p -> pid;
      strncpy(infos[ind].name, p -> name, strlen(p -> name));
      ind++;
-     /*
-     if(p->state != UNUSED)
-     {
-	struct proc_info info = {count, 0};
-	infos[count] = &info; 
-        count++;
-     }
-     */
   }
 
   release(&ptable.lock);
-
- return count;
+  return 0;
 }
