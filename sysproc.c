@@ -94,7 +94,7 @@ sys_uptime(void)
 int
 sys_rnps(void)
 {
-  struct proc_info *p_infos;
+  struct proc_info *p_infos; //array of process info structs (could also use array of pointers)
 
   if (argptr(0, (void*)&p_infos, sizeof(*p_infos)) < -1)
     return -1;

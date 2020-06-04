@@ -538,13 +538,13 @@ int get_process_infos(struct proc_info *infos)
 {
   struct proc *p;
 
-  acquire(&ptable.lock);
+  acquire(&ptable.lock); //acquire mutex to prevent other processes from accessing the process table
 
   int ind = 0;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-     if (p -> pid == 0) break;
+     if (p -> pid == 0) break; //no more processes in the system
 
      infos[ind].pid = p -> pid; // set process id
      strncpy(infos[ind].name, p -> name, strlen(p -> name)); // set process name
