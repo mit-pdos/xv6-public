@@ -93,6 +93,6 @@ sys_uptime(void)
 int
 sys_rnps(void)
 {
-  cprintf("rnps system call, TODO: replace this with process info later");
+  cprintf("\n\nrnps system call, TODO: replace this with process info later\n\n");
   return 0;
 }
