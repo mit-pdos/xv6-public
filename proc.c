@@ -534,6 +534,23 @@ procdump(void)
   }
 }
 
+//selection sort process infos (ascending)
+void sort_by_size(struct proc_info *infos, int len)
+{
+  for (int i = 0; i < len; i++)
+  {
+    int mn_size = 1000000000, mn_ind = -1; //Note: Didn't use __INT_MAX__ because of compatibility issues in different compilers
+
+    for (int j = i; j < len; j++)
+    {
+      if (infos[j].memsize < mn_size) { mn_size = infos[j].memsize; mn_ind = j;}
+    }
+    struct proc_info tmp = infos[i];
+    infos[i] = infos[mn_ind];
+    infos[mn_ind] = tmp;
+  }
+}
+
 int get_process_infos(struct proc_info *infos)
 {
   struct proc *p;
@@ -555,6 +572,7 @@ int get_process_infos(struct proc_info *infos)
      ind++;
   }
 
+  sort_by_size(infos, ind);
   release(&ptable.lock);
   return 0;
 }

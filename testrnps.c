@@ -10,7 +10,7 @@ void print_proc(struct proc_info *info) {
 
 void print_processes(struct proc_info *p) 
 {
-    printf(0, "\nList of processes that are RUNNING or RUNNABLE");
+    printf(0, "\nList of processes that are RUNNING or RUNNABLE sorted by memsize:");
     for (int i = 0; i < 100; i++)
     {
       if (p[i].pid == 0) break; //A zero pid indicates the end of process list
