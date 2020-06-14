@@ -9,6 +9,7 @@
 #include "spinlock.h"
 #include "sleeplock.h"
 #include "file.h"
+#include "fcntl.h"
 
 struct devsw devsw[NDEV];
 struct {
@@ -90,6 +91,39 @@ filestat(struct file *f, struct stat *st)
     return 0;
   }
   return -1;
+}
+
+//seek to the given position in the file
+int
+fileseek(struct file *f, int offset, int seek_mode)
+{
+	//seeking directly
+	if(seek_mode ==  SEEK_SET){
+		if(offset < 0)
+			return -1;
+		return (f->off = offset);
+	}
+
+	//seeking from the current location
+	else if(seek_mode == SEEK_CUR){
+		if(f->off + offset < 0)
+			return -1;
+		return (f->off += offset);
+	}
+
+	//seeking from the end of the file
+	else if(seek_mode == SEEK_END){
+		ilock(f->ip);
+		if(f->ip->size + offset < 0) {
+			iunlock(f->ip);
+			return -1;
+		}
+		f->off = f->ip->size + offset;
+		iunlock(f->ip);
+		return f->off;
+	}
+	panic("fileseek");	
+	return -1;	
 }
 
 // Read from file f.

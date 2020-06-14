@@ -283,6 +283,19 @@ create(char *path, short type, short major, short minor)
 }
 
 int
+sys_lseek(void)
+{
+	struct file *f;
+	int seek_mode;
+	int offset;
+
+	if(argfd(0, 0, &f) < 0 || argint(1, &offset) < 0 || argint(2, &seek_mode) < 0)
+		return -1;
+
+	return fileseek(f, offset, seek_mode);
+}
+
+int
 sys_open(void)
 {
   char *path;
