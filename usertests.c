@@ -1589,7 +1589,7 @@ validatetest(void)
   printf(stdout, "validate ok\n");
 }
 
-// does unintialized data start out zero?
+// does uninitialized data start out zero?
 char uninit[10000];
 void
 bsstest(void)
