@@ -12,12 +12,12 @@ int main(void)
   if (pid == 0)
   {
     printf(0, "Start sleep in child\n");
-    sleep(500);
+    sleep(400);
     printf(0, "Done sleep in child\n");
   } else if (pid > 0)
   {
     printf(0, "Start wait in parent\n");
-    wait();
+    waitx(&wtime, &rtime);
     printf(0, "Done parent\n");
     printf(0, "wtime=%d, rtime=%d\n", wtime, rtime);
   } else

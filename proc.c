@@ -112,7 +112,12 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
+  //No need for using the extern tickslock here, because we're only reading 
+  p->stime = ticks;
+  //Set time stamps for the new process
+  p->rtime = 0;
+  p->etime = -1;
+  p->iotime = 0; 
   return p;
 }
 
@@ -264,6 +269,7 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
+  curproc->etime = ticks;
   sched();
   panic("zombie exit");
 }
@@ -602,6 +608,8 @@ int waitx(int *wtime, int *rtime)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+	*wtime = (p->etime - p->stime);
+	*rtime = p->rtime;
         release(&ptable.lock);
         return pid;
       }
