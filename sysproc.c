@@ -103,3 +103,9 @@ sys_rnps(void)
   //cprintf("\n\nrnps system call, there was no issue getting the argument hello \n\n");
   return 0;
 }
+
+int
+sys_waitx(void)
+{
+  return 0;
+}
