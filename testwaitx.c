@@ -12,12 +12,14 @@ int main(void)
   if (pid == 0)
   {
     printf(0, "Start sleep in child\n");
-    sleep(5000);
+    sleep(500);
     printf(0, "Done sleep in child\n");
   } else if (pid > 0)
   {
-    waitx(&wtime, &rtime);
+    printf(0, "Start wait in parent\n");
+    wait();
     printf(0, "Done parent\n");
+    printf(0, "wtime=%d, rtime=%d\n", wtime, rtime);
   } else
   {
     printf(0, "Error: fork error in main");
