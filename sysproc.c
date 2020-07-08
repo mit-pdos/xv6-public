@@ -118,5 +118,10 @@ sys_waitx(void)
 int
 sys_spri(void)
 {
+  int priority;
+  if (argptr(0, (void*)&priority, sizeof(int)) < 0)
+  {
+    return -1;
+  }
   return 0;
 }
