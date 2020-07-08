@@ -638,3 +638,9 @@ int waitx(int *wtime, int *rtime)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+
+int set_priority(int new_priority)
+{
+  return 0;
+}
+

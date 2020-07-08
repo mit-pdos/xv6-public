@@ -123,5 +123,5 @@ sys_spri(void)
   {
     return -1;
   }
-  return 0;
+  return set_priority(priority); 
 }
