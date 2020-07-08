@@ -89,3 +89,12 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// call the implemented pinfo function for process information
+int
+sys_pinfo(void)
+{
+  struct proc_info *pi;
+  argptr (0, (void*)&pi, sizeof(*pi));
+  return pinfo(pi);
+}

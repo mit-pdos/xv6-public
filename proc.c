@@ -532,3 +532,27 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+int
+pinfo(struct proc_info* pi)
+{
+  struct proc *p;
+  uint size = 0;
+
+  sti();
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; ++p)
+  {
+    if(p->state == RUNNING || p->state == RUNNABLE)
+    {
+      pi[size].pid = p->pid;
+      pi[size].memsize = p->sz;
+    }
+  }
+
+  release(&ptable.lock);
+  return 22;
+}
+
