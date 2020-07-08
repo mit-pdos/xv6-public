@@ -641,6 +641,11 @@ int waitx(int *wtime, int *rtime)
 
 int set_priority(int new_priority)
 {
-  return 0;
+  struct proc *current_proc = myproc();
+  int prev = current_proc->priority;
+  current_proc->priority = new_priority;
+
+  if (new_priority < prev) yield();
+  return prev;
 }
 
