@@ -114,3 +114,9 @@ sys_waitx(void)
   }
   return waitx(wtime, rtime);
 }
+
+int
+sys_spri(void)
+{
+  return 0;
+}
