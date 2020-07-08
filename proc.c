@@ -117,7 +117,8 @@ found:
   //Set time stamps for the new process
   p->rtime = 0;
   p->etime = -1;
-  p->iotime = 0; 
+  p->iotime = 0;
+  p->priority = 60;
   return p;
 }
 
@@ -332,8 +333,11 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+ 
   for(;;){
+  
+    int high_priority = 1000;
+    struct proc *candidate = 0;
     // Enable interrupts on this processor.
     sti();
 
@@ -346,11 +350,20 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+      if (p->priority < high_priority) {
+        candidate = p;
+	high_priority = p->priority;
+      }
+    }
 
-      swtch(&(c->scheduler), p->context);
+    //To ensure that least one RUNNABLE processes was found
+    if (candidate != 0)
+    {
+      c->proc = candidate;
+      switchuvm(candidate);
+      candidate->state = RUNNING;
+
+      swtch(&(c->scheduler), candidate->context);
       switchkvm();
 
       // Process is done running for now.
