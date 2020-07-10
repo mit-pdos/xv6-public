@@ -58,6 +58,7 @@ struct pid_ns* pid_ns_alloc() {
 void pid_ns_init_ns(struct pid_ns* pid_ns, struct pid_ns* parent) {
   pid_ns->parent = parent;
   pid_ns->next_pid = 1;
+  pid_ns->pid1_ns_killed = 0;
 }
 struct pid_ns* pid_ns_dup(struct pid_ns* pid_ns) {
   pid_ns_get(pid_ns);

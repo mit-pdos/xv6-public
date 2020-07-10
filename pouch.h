@@ -9,7 +9,6 @@ typedef enum p_cmd {START, CONNECT, DISCONNECT, DESTROY, LIMIT, INFO, LIST} p_cm
 #define CNTNAMESIZE 100
 #define CNTARGSIZE 30
 char *argv[] = { "sh", 0 };
-int stderr = 2;
 
 /*
 *   Pouch cmd:

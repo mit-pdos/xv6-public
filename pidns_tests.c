@@ -2,7 +2,7 @@
 #include "syscall.h"
 #include "types.h"
 #include "user.h"
-#include "wstatus.h"
+#include "tester.h"	
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
@@ -12,34 +12,12 @@
 typedef   signed int          pid_t;
 typedef   signed int          size_t;
 
-int stderr = 2;
-
-int check(int r, const char *msg) {
-  if (r < 0) {
-    printf(stderr, "%s\n", (char *)msg);
-    exit(1);
-  }
-
-  return r;
-}
-
 void assert_msg(int r, const char *msg) {
   if (r) {
     return;
   }
   printf(stderr, "%s\n", (char *)msg);
   exit(1);
-}
-
-static int child_exit_status(int pid) {
-  int changed_pid = -1;
-  int wstatus;
-  do {
-    changed_pid = check(wait(&wstatus), "failed to waitpid");
-  } while (changed_pid != pid);
-
-  // TODO: there is no exit status in xv6
-  return WEXITSTATUS(wstatus);
 }
 
 static void write_all(int fd, unsigned char *buf, size_t len) {
@@ -427,26 +405,6 @@ int test_calling_fork_twice_after_unshare() {
   return 0;
 }
 
-int testsPassed = 0; /*In case all tests passed, this value will remain 0, else
-it will become 1*/
-
-/*This function runs the test, if a test fails, it will print which test failed,
-and set the variable testsPassed to be 1*/
-void run_test(test_func_t func, const char *name) {
-  int pid = -1;
-
-  int ret = check(fork(), "fork failed");
-  if (ret == 0) {
-    exit(func());
-  }
-
-  pid = ret;
-  if (child_exit_status(pid) != 0) { /*Test failed*/
-    printf(stderr, "failed test - '%s'\n", name);
-    testsPassed = 1; /*Denotes some test has failed to pass*/
-  }
-}
-
 int main() {
   printf(stderr, "Running all pidns tests\n");
   run_test(unshare_twice, "unshare_twice");
@@ -454,8 +412,7 @@ int main() {
   run_test(test_simple_pidns_fork, "test_simple_pidns_fork");
   run_test(test_nested_pidns_create, "test_nested_pidns_create");
   run_test(test_children_reaped_by_nspid1, "test_children_reaped_by_nspid1");
-  run_test(test_all_children_kill_when_nspid1_dies,
-           "test_all_children_kill_when_nspid1_dies");
+  run_test(test_all_children_kill_when_nspid1_dies, "test_all_children_kill_when_nspid1_dies");
   run_test(test_calling_fork_twice_after_unshare, "test_calling_fork_twice_after_unshare");
   run_test(test_calling_fork_after_nspid1_dies_fails, "test_calling_fork_after_nspid1_dies_fails");
   run_test(test_unshare_recrusive_limit, "test_unshare_recrusive_limit");
@@ -465,7 +422,7 @@ int main() {
     exit(0);
   }
   else {
-    printf(stderr, "Pidns tests failed to pass, \n");
+    printf(stderr, "Pidns tests failed to pass\n");
     exit(1);
   }
 }
