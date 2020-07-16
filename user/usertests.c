@@ -22,6 +22,141 @@
 char buf[BUFSZ];
 char name[3];
 
+// test O_TRUNC.
+void
+truncate1(char *s)
+{
+  char buf[32];
+  
+  unlink("truncfile");
+  int fd1 = open("truncfile", O_CREATE|O_WRONLY|O_TRUNC);
+  write(fd1, "abcd", 4);
+  close(fd1);
+
+  int fd2 = open("truncfile", O_RDONLY);
+  int n = read(fd2, buf, sizeof(buf));
+  if(n != 4){
+    printf("%s: read %d bytes, wanted 4\n", s, n);
+    exit(1);
+  }
+
+  fd1 = open("truncfile", O_WRONLY|O_TRUNC);
+
+  int fd3 = open("truncfile", O_RDONLY);
+  n = read(fd3, buf, sizeof(buf));
+  if(n != 0){
+    printf("aaa fd3=%d\n", fd3);
+    printf("%s: read %d bytes, wanted 0\n", s, n);
+    exit(1);
+  }
+
+  n = read(fd2, buf, sizeof(buf));
+  if(n != 0){
+    printf("bbb fd2=%d\n", fd2);
+    printf("%s: read %d bytes, wanted 0\n", s, n);
+    exit(1);
+  }
+  
+  write(fd1, "abcdef", 6);
+
+  n = read(fd3, buf, sizeof(buf));
+  if(n != 6){
+    printf("%s: read %d bytes, wanted 6\n", s, n);
+    exit(1);
+  }
+
+  n = read(fd2, buf, sizeof(buf));
+  if(n != 2){
+    printf("%s: read %d bytes, wanted 2\n", s, n);
+    exit(1);
+  }
+
+  unlink("truncfile");
+
+  close(fd1);
+  close(fd2);
+  close(fd3);
+}
+
+// write to an open FD whose file has just been truncated.
+// this causes a write at an offset beyond the end of the file.
+// such writes fail on xv6 (unlike POSIX) but at least
+// they don't crash.
+void
+truncate2(char *s)
+{
+  unlink("truncfile");
+
+  int fd1 = open("truncfile", O_CREATE|O_TRUNC|O_WRONLY);
+  write(fd1, "abcd", 4);
+
+  int fd2 = open("truncfile", O_TRUNC|O_WRONLY);
+
+  int n = write(fd1, "x", 1);
+  if(n != -1){
+    printf("%s: write returned %d, expected -1\n", s, n);
+    exit(1);
+  }
+
+  unlink("truncfile");
+  close(fd1);
+  close(fd2);
+}
+
+void
+truncate3(char *s)
+{
+  int pid, xstatus;
+
+  close(open("truncfile", O_CREATE|O_TRUNC|O_WRONLY));
+  
+  pid = fork();
+  if(pid < 0){
+    printf("%s: fork failed\n", s);
+    exit(1);
+  }
+
+  if(pid == 0){
+    for(int i = 0; i < 100; i++){
+      char buf[32];
+      int fd = open("truncfile", O_WRONLY);
+      if(fd < 0){
+        printf("%s: open failed\n", s);
+        exit(1);
+      }
+      int n = write(fd, "1234567890", 10);
+      if(n != 10){
+        printf("%s: write got %d, expected 10\n", s, n);
+        exit(1);
+      }
+      close(fd);
+      fd = open("truncfile", O_RDONLY);
+      read(fd, buf, sizeof(buf));
+      close(fd);
+    }
+    exit(0);
+  }
+
+  for(int i = 0; i < 150; i++){
+    int fd = open("truncfile", O_CREATE|O_WRONLY|O_TRUNC);
+    if(fd < 0){
+      printf("%s: open failed\n", s);
+      exit(1);
+    }
+    int n = write(fd, "xxx", 3);
+    if(n != 3){
+      printf("%s: write got %d, expected 3\n", s, n);
+      exit(1);
+    }
+    close(fd);
+  }
+
+  wait(&xstatus);
+  unlink("truncfile");
+  exit(xstatus);
+}
+  
+
 // does chdir() call iput(p->cwd) in a transaction?
 void
 iputtest(char *s)
@@ -2169,6 +2304,9 @@ main(int argc, char *argv[])
     void (*f)(char *);
     char *s;
   } tests[] = {
+    {truncate1, "truncate1"},
+    {truncate2, "truncate2"},
+    {truncate3, "truncate3"},
     {reparent2, "reparent2"},
     {pgbug, "pgbug" },
     {sbrkbugs, "sbrkbugs" },
