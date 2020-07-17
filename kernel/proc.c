@@ -456,7 +456,7 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
-        swtch(&c->scheduler, &p->context);
+        swtch(&c->context, &p->context);
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
@@ -490,7 +490,7 @@ sched(void)
     panic("sched interruptible");
 
   intena = mycpu()->intena;
-  swtch(&p->context, &mycpu()->scheduler);
+  swtch(&p->context, &mycpu()->context);
   mycpu()->intena = intena;
 }
 
