@@ -91,8 +91,9 @@ usertrapret(void)
 {
   struct proc *p = myproc();
 
-  // turn off interrupts, since we're switching
-  // now from kerneltrap() to usertrap().
+  // we're about to switch the destination of traps from
+  // kerneltrap() to usertrap(), so turn off interrupts until
+  // we're back in user space, where usertrap() is correct.
   intr_off();
 
   // send syscalls, interrupts, and exceptions to trampoline.S
@@ -192,6 +193,9 @@ devintr()
       printf("unexpected interrupt irq=%d\n", irq);
     }
 
+    // the PLIC allows each device to raise at most one
+    // interrupt at a time; tell the PLIC the device is
+    // now allowed to interrupt again.
     if(irq)
       plic_complete(irq);
 

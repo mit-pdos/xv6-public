@@ -33,7 +33,6 @@ int
 plic_claim(void)
 {
   int hart = cpuid();
-  //int irq = *(uint32*)(PLIC + 0x201004);
   int irq = *(uint32*)PLIC_SCLAIM(hart);
   return irq;
 }
@@ -43,6 +42,5 @@ void
 plic_complete(int irq)
 {
   int hart = cpuid();
-  //*(uint32*)(PLIC + 0x201004) = irq;
   *(uint32*)PLIC_SCLAIM(hart) = irq;
 }
