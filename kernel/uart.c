@@ -69,33 +69,19 @@ uartinit(void)
 
 // add a character to the output buffer and tell the
 // UART to start sending if it isn't already.
-//
-// usually called from the top-half -- by a process
-// calling write(). can also be called from a uart
-// interrupt to echo a received character, or by printf
-// or panic from anywhere in the kernel.
-//
-// the block argument controls what happens if the
-// buffer is full. for write(), block is 1, and the
-// process waits. for kernel printf's and echoed
-// characters, block is 0, and the character is
-// discarded; this is necessary since sleep() is
-// not possible in interrupts.
+// blocks if the output buffer is full.
+// because it may block, it can't be called
+// from interrupts; it's only suitable for use
+// by write().
 void
-uartputc(int c, int block)
+uartputc(int c)
 {
   acquire(&uart_tx_lock);
   while(1){
     if(((uart_tx_w + 1) % UART_TX_BUF_SIZE) == uart_tx_r){
       // buffer is full.
-      if(block){
-        // wait for uartstart() to open up space in the buffer.
-        sleep(&uart_tx_r, &uart_tx_lock);
-      } else {
-        // caller does not want us to wait.
-        release(&uart_tx_lock);
-        return;
-      }
+      // wait for uartstart() to open up space in the buffer.
+      sleep(&uart_tx_r, &uart_tx_lock);
     } else {
       uart_tx_buf[uart_tx_w] = c;
       uart_tx_w = (uart_tx_w + 1) % UART_TX_BUF_SIZE;
@@ -104,6 +90,23 @@ uartputc(int c, int block)
       return;
     }
   }
+}
+
+// alternate version of uartputc() that doesn't 
+// use interrupts, for use by kernel printf() and
+// to echo characters. it spins waiting for the uart's
+// output register to be empty.
+void
+uartputc_sync(int c)
+{
+  push_off();
+
+  // wait for Transmit Holding Empty to be set in LSR.
+  while((ReadReg(LSR) & (1 << 5)) == 0)
+    ;
+  WriteReg(THR, c);
+
+  pop_off();
 }
 
 // if the UART is idle, and a character is waiting
