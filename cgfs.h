@@ -98,21 +98,6 @@ int get_base_name(char * path, char * base_name);
  */
 int get_dir_name(char * path, char * dir_name);
 
-
-/**
- * This function extracts the directory path and the file name from a given path.
- * Receives string parameter "path", string parameter "dir_path", string parameter "file_name".
- * "path" is the string containing the path.
- * "dir_path" is the string into which we write the directory of the file.
- * "file_name" is the string into which we write the file name.
- * Return values:
- * -1 on failure.
- * 0 on success.
- */
-int get_cg_file_dir_path_and_file_name(char * path,
-                                       char * dir_path,
-                                       char * file_name);
-
 /**
  * This function gets stats of cgorup file or directory.
  * Receives file struct pointer parameter "f", stat struct pointer parameter "st".
