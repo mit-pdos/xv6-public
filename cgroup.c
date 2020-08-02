@@ -1,10 +1,10 @@
-#include "cgroup.h"
 #include "cgfs.h"
+#include "cgroup.h"
+#include "param.h"
 #include "spinlock.h"
 
 #define MAX_DES_DEF 64
 #define MAX_DEP_DEF 64
-#define MAX_CGROUP_FILE_NAME_LENGTH 64
 #define CGROUP_ACCOUNT_PERIOD_100MS (100 * 1000)
 
 struct
