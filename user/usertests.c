@@ -23,88 +23,100 @@ char buf[BUFSZ];
 char name[3];
 
 void
-copyin1(char *s)
+copyin(char *s)
 {
-  int fd = open("copyin1", O_CREATE|O_WRONLY);
-  if(fd < 0){
-    printf("open(copyin1) failed\n");
-    exit(1);
-  }
-  int n = write(fd, (void*)0x80000000LL, 8192);
-  if(n >= 0){
-    printf("write(fd, 0x80000000LL, 8192) did not fail!\n");
-    exit(1);
-  }
-  close(fd);
-  unlink("copyin1");
-}
+  uint64 addrs[] = { 0x80000000LL, 0xffffffffffffffff };
 
-void
-copyin2(char *s)
-{
-  int fd = open("copyin2", O_CREATE|O_WRONLY);
-  if(fd < 0){
-    printf("open(copyin2) failed\n");
-    exit(1);
-  }
-  int n = write(fd, (void*)0xffffffffffffffffLL, 8192);
-  if(n >= 0){
-    printf("write(fd, 0xffffffffffffffffLL, 8192) did not fail!\n");
-    exit(1);
-  }
-  close(fd);
-  unlink("copyin2");
-}
-
-void
-copyout1(char *s)
-{
-  int fd = open("README", 0);
-  if(fd < 0){
-    printf("open(README) failed\n");
-    exit(1);
-  }
-  int n = read(fd, (void*)0x80000000LL, 8192);
-  if(n >= 0){
-    printf("read(fd, 0x80000000LL, 8192) returned %d, not -1\n", n);
-    exit(1);
-  }
-  close(fd);
-}
-
-void
-copyout2(char *s)
-{
-  int fd = open("README", 0);
-  if(fd < 0){
-    printf("open(README) failed\n");
-    exit(1);
-  }
-  int n = read(fd, (void*)0xffffffffffffffffLL, 8192);
-  if(n >= 0){
-    printf("read(fd, 0xffffffffffffffff, 8192) returned %d, not -1\n", n);
-    exit(1);
-  }
-  close(fd);
-}
-
-void
-copyinstr1(char *s)
-{
-  int fd = open((char *)0x80000000LL, O_CREATE|O_WRONLY);
-  if(fd >= 0){
-    printf("open(0x80000000) returned %d, not -1\n", fd);
-    exit(1);
+  for(int ai = 0; ai < 2; ai++){
+    uint64 addr = addrs[ai];
+    
+    int fd = open("copyin1", O_CREATE|O_WRONLY);
+    if(fd < 0){
+      printf("open(copyin1) failed\n");
+      exit(1);
+    }
+    int n = write(fd, (void*)addr, 8192);
+    if(n >= 0){
+      printf("write(fd, %p, 8192) returned %d, not -1\n", addr, n);
+      exit(1);
+    }
+    close(fd);
+    unlink("copyin1");
+    
+    n = write(1, (char*)addr, 8192);
+    if(n > 0){
+      printf("write(1, %p, 8192) returned %d, not -1 or 0\n", addr, n);
+      exit(1);
+    }
+    
+    int fds[2];
+    if(pipe(fds) < 0){
+      printf("pipe() failed\n");
+      exit(1);
+    }
+    n = write(fds[1], (char*)addr, 8192);
+    if(n > 0){
+      printf("write(pipe, %p, 8192) returned %d, not -1 or 0\n", addr, n);
+      exit(1);
+    }
+    close(fds[0]);
+    close(fds[1]);
   }
 }
 
 void
-copyinstr2(char *s)
+copyout(char *s)
 {
-  int fd = open((char *)0xffffffffffffffff, O_CREATE|O_WRONLY);
-  if(fd >= 0){
-    printf("open(0xffffffffffffffff) returned %d, not -1\n", fd);
-    exit(1);
+  uint64 addrs[] = { 0x80000000LL, 0xffffffffffffffff };
+
+  for(int ai = 0; ai < 2; ai++){
+    uint64 addr = addrs[ai];
+
+    int fd = open("README", 0);
+    if(fd < 0){
+      printf("open(README) failed\n");
+      exit(1);
+    }
+    int n = read(fd, (void*)addr, 8192);
+    if(n > 0){
+      printf("read(fd, %p, 8192) returned %d, not -1 or 0\n", addr, n);
+      exit(1);
+    }
+    close(fd);
+
+    int fds[2];
+    if(pipe(fds) < 0){
+      printf("pipe() failed\n");
+      exit(1);
+    }
+    n = write(fds[1], "x", 1);
+    if(n != 1){
+      printf("pipe write failed\n");
+      exit(1);
+    }
+    n = read(fds[0], (void*)addr, 8192);
+    if(n > 0){
+      printf("read(pipe, %p, 8192) returned %d, not -1 or 0\n", addr, n);
+      exit(1);
+    }
+    close(fds[0]);
+    close(fds[1]);
+  }
+}
+
+void
+copyinstr(char *s)
+{
+  uint64 addrs[] = { 0x80000000LL, 0xffffffffffffffff };
+
+  for(int ai = 0; ai < 2; ai++){
+    uint64 addr = addrs[ai];
+
+    int fd = open((char *)addr, O_CREATE|O_WRONLY);
+    if(fd >= 0){
+      printf("open(%p) returned %d, not -1\n", addr, fd);
+      exit(1);
+    }
   }
 }
 
@@ -2393,12 +2405,9 @@ main(int argc, char *argv[])
     void (*f)(char *);
     char *s;
   } tests[] = {
-    {copyin1, "copyin1"},
-    {copyin2, "copyin2"},
-    {copyout1, "copyout1"},
-    {copyout2, "copyout2"},
-    {copyinstr1, "copyinstr1"},
-    {copyinstr2, "copyinstr2"},
+    {copyin, "copyin"},
+    {copyout, "copyout"},
+    {copyinstr, "copyinstr"},
     {truncate1, "truncate1"},
     {truncate2, "truncate2"},
     {truncate3, "truncate3"},
