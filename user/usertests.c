@@ -105,7 +105,7 @@ copyout(char *s)
 }
 
 void
-copyinstr(char *s)
+copyinstr1(char *s)
 {
   uint64 addrs[] = { 0x80000000LL, 0xffffffffffffffff };
 
@@ -117,6 +117,67 @@ copyinstr(char *s)
       printf("open(%p) returned %d, not -1\n", addr, fd);
       exit(1);
     }
+  }
+}
+
+void
+copyinstr2(char *s)
+{
+  char b[MAXPATH+1];
+
+  for(int i = 0; i < MAXPATH; i++)
+    b[i] = 'x';
+  b[MAXPATH] = '\0';
+  
+  int ret = unlink(b);
+  if(ret != -1){
+    printf("unlink(%s) returned %d, not -1\n", b, ret);
+    exit(1);
+  }
+
+  int fd = open(b, O_CREATE | O_WRONLY);
+  if(fd != -1){
+    printf("open(%s) returned %d, not -1\n", b, fd);
+    exit(1);
+  }
+
+  ret = link(b, b);
+  if(ret != -1){
+    printf("link(%s, %s) returned %d, not -1\n", b, b, ret);
+    exit(1);
+  }
+
+  char *args[] = { "xx", 0 };
+  ret = exec(b, args);
+  if(ret != -1){
+    printf("exec(%s) returned %d, not -1\n", b, fd);
+    exit(1);
+  }
+
+  int pid = fork();
+  if(pid < 0){
+    printf("fork failed\n");
+    exit(1);
+  }
+  if(pid == 0){
+    static char big[PGSIZE+1];
+    for(int i = 0; i < PGSIZE; i++)
+      big[i] = 'x';
+    big[PGSIZE] = '\0';
+    char *args2[] = { big, big, big, 0 };
+    ret = exec("echo", args2);
+    if(ret != -1){
+      printf("exec(echo, BIG) returned %d, not -1\n", fd);
+      exit(1);
+    }
+    exit(747); // OK
+  }
+
+  int st = 0;
+  wait(&st);
+  if(st != 747){
+    printf("exec(echo, BIG) succeeded, should have failed\n");
+    exit(1);
   }
 }
 
@@ -2407,7 +2468,8 @@ main(int argc, char *argv[])
   } tests[] = {
     {copyin, "copyin"},
     {copyout, "copyout"},
-    {copyinstr, "copyinstr"},
+    {copyinstr1, "copyinstr1"},
+    {copyinstr2, "copyinstr2"},
     {truncate1, "truncate1"},
     {truncate2, "truncate2"},
     {truncate3, "truncate3"},
