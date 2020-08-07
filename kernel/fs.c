@@ -472,7 +472,7 @@ readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)
     }
     brelse(bp);
   }
-  return n;
+  return tot;
 }
 
 // Write data to inode.

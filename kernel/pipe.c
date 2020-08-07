@@ -96,7 +96,7 @@ pipewrite(struct pipe *pi, uint64 addr, int n)
   }
   wakeup(&pi->nread);
   release(&pi->lock);
-  return n;
+  return i;
 }
 
 int
