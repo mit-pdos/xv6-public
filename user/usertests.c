@@ -22,6 +22,8 @@
 char buf[BUFSZ];
 char name[3];
 
+// what if you pass ridiculous pointers to system calls
+// that read user memory with copyin?
 void
 copyin(char *s)
 {
@@ -64,6 +66,8 @@ copyin(char *s)
   }
 }
 
+// what if you pass ridiculous pointers to system calls
+// that write user memory with copyout?
 void
 copyout(char *s)
 {
@@ -104,6 +108,7 @@ copyout(char *s)
   }
 }
 
+// what if you pass ridiculous string pointers to system calls?
 void
 copyinstr1(char *s)
 {
@@ -120,6 +125,9 @@ copyinstr1(char *s)
   }
 }
 
+// what if a string system call argument is exactly the size
+// of the kernel buffer it is copied into, so that the null
+// would fall just beyond the end of the kernel buffer?
 void
 copyinstr2(char *s)
 {
@@ -177,6 +185,50 @@ copyinstr2(char *s)
   wait(&st);
   if(st != 747){
     printf("exec(echo, BIG) succeeded, should have failed\n");
+    exit(1);
+  }
+}
+
+// what if a string argument crosses over the end of last user page?
+void
+copyinstr3(char *s)
+{
+  sbrk(8192);
+  uint64 top = (uint64) sbrk(0);
+  if((top % PGSIZE) != 0){
+    sbrk(PGSIZE - (top % PGSIZE));
+  }
+  top = (uint64) sbrk(0);
+  if(top % PGSIZE){
+    printf("oops\n");
+    exit(1);
+  }
+
+  char *b = (char *) (top - 1);
+  *b = 'x';
+
+  int ret = unlink(b);
+  if(ret != -1){
+    printf("unlink(%s) returned %d, not -1\n", b, ret);
+    exit(1);
+  }
+
+  int fd = open(b, O_CREATE | O_WRONLY);
+  if(fd != -1){
+    printf("open(%s) returned %d, not -1\n", b, fd);
+    exit(1);
+  }
+
+  ret = link(b, b);
+  if(ret != -1){
+    printf("link(%s, %s) returned %d, not -1\n", b, b, ret);
+    exit(1);
+  }
+
+  char *args[] = { "xx", 0 };
+  ret = exec(b, args);
+  if(ret != -1){
+    printf("exec(%s) returned %d, not -1\n", b, fd);
     exit(1);
   }
 }
@@ -2470,6 +2522,7 @@ main(int argc, char *argv[])
     {copyout, "copyout"},
     {copyinstr1, "copyinstr1"},
     {copyinstr2, "copyinstr2"},
+    {copyinstr3, "copyinstr3"},
     {truncate1, "truncate1"},
     {truncate2, "truncate2"},
     {truncate3, "truncate3"},
