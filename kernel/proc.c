@@ -20,6 +20,7 @@ static void wakeup1(struct proc *chan);
 
 extern char trampoline[]; // trampoline.S
 
+// initialize the proc table at boot time.
 void
 procinit(void)
 {
@@ -145,8 +146,8 @@ freeproc(struct proc *p)
   p->state = UNUSED;
 }
 
-// Create a page table for a given process,
-// with no user pages, but with trampoline pages.
+// Create a user page table for a given process,
+// with no user memory, but with trampoline pages.
 pagetable_t
 proc_pagetable(struct proc *p)
 {

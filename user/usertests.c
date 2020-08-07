@@ -2251,9 +2251,12 @@ countfree()
   int n = 0;
 
   while(1){
-    if((uint64)sbrk(4096) == 0xffffffffffffffff){
+    uint64 a = (uint64) sbrk(4096);
+    if(a == 0xffffffffffffffff){
       break;
     }
+    // modify the memory to make sure it's really allocated.
+    *(char *)(a - 1) = 1;
     n += 1;
   }
   sbrk(-((uint64)sbrk(0) - sz0));
