@@ -1,7 +1,7 @@
 	# qemu -kernel starts at 0x1000. the instructions
         # there seem to be provided by qemu, as if it
         # were a ROM. the code at 0x1000 jumps to
-        # 0x8000000, the _start function here,
+        # 0x80000000, the _start function here,
         # in machine mode. each CPU starts here.
 .section .data
 .globl stack0
