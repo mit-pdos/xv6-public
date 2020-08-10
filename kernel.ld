@@ -26,16 +26,12 @@ SECTIONS
 		PROVIDE(__STAB_BEGIN__ = .);
 		*(.stab);
 		PROVIDE(__STAB_END__ = .);
-		BYTE(0)		/* Force the linker to allocate space
-				   for this section */
 	}
 
 	.stabstr : {
 		PROVIDE(__STABSTR_BEGIN__ = .);
 		*(.stabstr);
 		PROVIDE(__STABSTR_END__ = .);
-		BYTE(0)		/* Force the linker to allocate space
-				   for this section */
 	}
 
 	/* Adjust the address for the data segment to the next page */
