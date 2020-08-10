@@ -36,6 +36,7 @@ start()
   // delegate all interrupts and exceptions to supervisor mode.
   w_medeleg(0xffff);
   w_mideleg(0xffff);
+  w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
 
   // ask for clock interrupts.
   timerinit();
