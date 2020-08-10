@@ -77,7 +77,8 @@ emptynsproxy(void)
 }
 
 struct nsproxy*
-namespace_replace_pid_ns(struct nsproxy* oldns, struct pid_ns* pid_ns) {
+namespace_replace_pid_ns(struct nsproxy* oldns, struct pid_ns* pid_ns)
+{
     struct nsproxy* nsproxy = allocnsproxyinternal();
     nsproxy->mount_ns = mount_nsdup(oldns->mount_ns);
     nsproxy->pid_ns = pid_ns_dup(pid_ns);

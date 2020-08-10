@@ -69,7 +69,6 @@ struct proc {
   char name[16];               // Process name (debugging)
   struct nsproxy *nsproxy;     // Namespace proxy object
   struct pid_ns *child_pid_ns; // PID namespace for child procs
-  int child_pid_ns_destroyed;
   int status;                  // Process exit status
   char cwdp[MAX_PATH_LENGTH];  // Current directory path.
   struct cgroup * cgroup;      // The process control group.

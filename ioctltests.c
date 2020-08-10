@@ -4,7 +4,6 @@
 #include "ns_types.h"
 #include "user.h"
 
-int stderr = 2;
 /* Verify init
   - verify the creation of tty devices
   - on the init we are able to open all tty devices

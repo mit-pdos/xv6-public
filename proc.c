@@ -35,7 +35,6 @@ static struct proc *initproc;
 
 extern void forkret(void);
 extern void trapret(void);
-
 static void wakeup1(void *chan);
 
 void
@@ -111,7 +110,7 @@ allocproc(void)
 
 found:
   p->state = EMBRYO;
-
+  p->killed = 0; // Prevents process allocating with killed=1 flag. This behavior was exhibited as a bug and this prevents it.
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -231,17 +230,18 @@ fork(void)
   struct proc *np;
   struct proc *curproc = myproc();
 
-  if (curproc->child_pid_ns_destroyed) {
-      return -1;
+  // Check if the current process has a child pid namespace and if his pid1 was killed.
+  if (curproc->child_pid_ns && curproc->child_pid_ns->pid1_ns_killed) {
+    return -1;
   }
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if ((np = allocproc()) == 0) {
     return -1;
   }
 
   // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+  if ((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0) {
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
@@ -254,8 +254,8 @@ fork(void)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
-  for(i = 0; i < NOFILE; i++)
-    if(curproc->ofile[i])
+  for (i = 0; i < NOFILE; i++)
+    if (curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
   safestrcpy(np->cwdp, curproc->cwdp, sizeof(curproc->cwdp));
@@ -263,7 +263,6 @@ fork(void)
 
   struct pid_ns* cur = curproc->child_pid_ns;
   if (cur) {
-    cur = curproc->child_pid_ns;
     np->nsproxy = namespace_replace_pid_ns(curproc->nsproxy, cur);
   } else {
     np->nsproxy = namespacedup(curproc->nsproxy);
@@ -303,7 +302,6 @@ fork(void)
 
   return pid;
 }
-
 /*Kill the given process p, and set its parent to given process reaper*/
 void kill_proc(struct proc* p, struct proc* reaper) {
    p->killed = 1;
@@ -314,11 +312,11 @@ void kill_proc(struct proc* p, struct proc* reaper) {
 
 /*Kill all the processes inside the namespace of a given process, called parent
 reaper in this case becomes their parent process*/
-void kill_all_pid_ns(struct proc* parent, struct proc* reaper) {
+void kill_all_pid_ns(struct proc* parent, struct proc* reaper, struct pid_ns* curpidns) {
   struct proc *p;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     /*If the process is not the parent, and it is in the same namespace as parent, kill it*/
-    if(p != parent && p->nsproxy->pid_ns == parent->nsproxy->pid_ns) {
+    if(p != parent && p->nsproxy->pid_ns == curpidns) {
       kill_proc(p, reaper);
     }
   }
@@ -342,6 +340,7 @@ exit(int status)
 {
   struct proc *curproc = myproc();
   struct proc *p;
+  struct pid_ns *curpidns;
   int fd;
 
   curproc->status = status;
@@ -366,27 +365,32 @@ exit(int status)
   *curproc->cwdp = 0;
   curproc->cwd = 0;
 
+  struct proc* procpid1 = 0;
+  // Find process with pid 1 within namespace
+  procpid1 = get_pid1_for_ns(curproc->nsproxy->pid_ns);
+
+  // Here we could not find process with pid 1 inside the namespace, and pid 1 wasn't marked as killed
+  if (procpid1 == 0 && curproc->nsproxy->pid_ns->pid1_ns_killed == 0)
+    panic("couldn't find pid 1");
+  curpidns = curproc->nsproxy->pid_ns;
+
+  namespaceput(curproc->nsproxy);
+
   acquire(&ptable.lock);
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
 
-
-  /*If the current process holds pid=1 within its namespace, mark all child processes as killed*/
+  // If the current process holds pid 1 within its namespace, mark all child processes as killed
   if (curproc->ns_pid == 1) {
-    curproc->parent->child_pid_ns_destroyed = 1; /*Mark inside the parent process that the current
-    name space is gone*/
+    curpidns->pid1_ns_killed = 1; // Mark pid 1 process was killed
 
-    kill_all_pid_ns(curproc, curproc->parent); /*Documentation for this command see above*/
+    kill_all_pid_ns(curproc, curproc->parent, curpidns); // Documentation for this command see above
 
-  } else { /*The current process does not hold pid=1 within its namespace*/
+  } else { // The current process does not hold pid 1 within its namespace
 
-    struct proc* procpid1 = 0;
-    /*Pass the child processes of the current process to pid=1 process within the namespace*/
+    // Pass the child processes of the current process to pid 1 process within the namespace
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent == curproc){
-        procpid1 = get_pid1_for_ns(curproc->nsproxy->pid_ns); /*Find process with pid=1 within namespace*/
-        if (procpid1 == 0) /*Here we could not find process with pid 1 inside the namespace*/
-          panic("coundn't find pid 1");
         p->parent = procpid1;
         if(p->state == ZOMBIE) {
           wakeup1(initproc);
@@ -395,7 +399,6 @@ exit(int status)
     }
   }
 
-  namespaceput(curproc->nsproxy);
 
   if (curproc->child_pid_ns)
     pid_ns_put(curproc->child_pid_ns);
@@ -435,11 +438,10 @@ wait(int *wstatus)
         p->ns_pid = 0;
         memset(p->pids, 0, sizeof(p->pids));
         p->child_pid_ns = 0;
-        p->child_pid_ns_destroyed = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-	p->state = UNUSED;
+        p->state = UNUSED;
         if (wstatus != 0)
          *wstatus = W_STOPCODE(p->status);
         p->status = 0;

@@ -7,6 +7,8 @@
 struct stat;
 struct rtcdate;
 
+#define stderr 2
+
 // system calls
 int fork(void);
 int exit(int status) __attribute__((noreturn));

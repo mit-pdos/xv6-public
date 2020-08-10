@@ -5,6 +5,7 @@ struct pid_ns {
   struct pid_ns* parent;
   struct spinlock lock;
   int next_pid;
+  int pid1_ns_killed;  // Indicated whether the process with pid 1 in the namespace was killed or not
 };
 
 void pid_ns_init();
