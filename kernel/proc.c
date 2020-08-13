@@ -17,6 +17,7 @@ struct spinlock pid_lock;
 
 extern void forkret(void);
 static void wakeup1(struct proc *chan);
+static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
@@ -87,7 +88,7 @@ allocpid() {
 // Look in the process table for an UNUSED proc.
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
-// If there are no free procs, return 0.
+// If there are no free procs, or a memory allocation fails, return 0.
 static struct proc*
 allocproc(void)
 {
@@ -114,6 +115,11 @@ found:
 
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
+  if(p->pagetable == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -160,12 +166,19 @@ proc_pagetable(struct proc *p)
   // at the highest user virtual address.
   // only the supervisor uses it, on the way
   // to/from user space, so not PTE_U.
-  mappages(pagetable, TRAMPOLINE, PGSIZE,
-           (uint64)trampoline, PTE_R | PTE_X);
+  if(mappages(pagetable, TRAMPOLINE, PGSIZE,
+              (uint64)trampoline, PTE_R | PTE_X) < 0){
+    uvmfree(pagetable, 0);
+    return 0;
+  }
 
   // map the trapframe just below TRAMPOLINE, for trampoline.S.
-  mappages(pagetable, TRAPFRAME, PGSIZE,
-           (uint64)(p->trapframe), PTE_R | PTE_W);
+  if(mappages(pagetable, TRAPFRAME, PGSIZE,
+              (uint64)(p->trapframe), PTE_R | PTE_W) < 0){
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmfree(pagetable, 0);
+    return 0;
+  }
 
   return pagetable;
 }
