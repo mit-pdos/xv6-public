@@ -175,7 +175,6 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 size, int do_free)
 {
   uint64 a, last;
   pte_t *pte;
-  uint64 pa;
 
   a = PGROUNDDOWN(va);
   last = PGROUNDDOWN(va + size - 1);
@@ -189,14 +188,13 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 size, int do_free)
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){
-      pa = PTE2PA(*pte);
+      uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
     }
     *pte = 0;
     if(a == last)
       break;
     a += PGSIZE;
-    pa += PGSIZE;
   }
 }
 
