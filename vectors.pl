@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env -S perl -w
 
 # Generate vectors.S, the trap/interrupt entry points.
 # There has to be one entry point per interrupt number
