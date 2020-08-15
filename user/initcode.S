@@ -1,4 +1,4 @@
-# Initial process execs /init.
+# Initial process that execs /init.
 # This code runs in user space.
 
 #include "syscall.h"
