@@ -24,7 +24,11 @@
  *    5)    "cgroup.max.descendants"
  *    6)    "cgroup.max.depth"
  *    7)    "cgroup.stat"
- *    8)    cgroup directories
+ *    8)    "cpu.stat"
+ *    9)    "cpu.weight"
+ *    10)   "cpu.max"
+ *    11)   "pid.max"
+ *    12)   cgroup directories
  */
 int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int omode);
 
@@ -46,7 +50,11 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
  *    5)    "cgroup.max.descendants"
  *    6)    "cgroup.max.depth"
  *    7)    "cgroup.stat"
- *    8)    cgroup directories
+ *    8)    "cpu.stat"
+ *    9)    "cpu.weight"
+ *    10)   "cpu.max"
+ *    11)   "pid.max"
+ *    12)   cgroup directories
  */
 int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n);
 
@@ -64,6 +72,8 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n);
  *    2)    "cgroup.subree_control"
  *    3)    "cgroup.max.descendants"
  *    4)    "cgroup.max.depth"
+ *    5)    "cpu.max"
+ *    6)    "pid.max"
  */
 int unsafe_cg_write(struct file * f, char * addr, int n);
 

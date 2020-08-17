@@ -46,6 +46,13 @@ struct file {
             int period;
           } max;
         } cpu;
+        // pid
+        union {
+          struct {
+            char active;
+            int max;
+          } max;
+        } pid;
       };
     };
   };

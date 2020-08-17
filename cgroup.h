@@ -33,6 +33,11 @@ struct cgroup
     char cpu_controller_enabled;  /* Is 1 if cpu controller is enabled,
                                      otherwise 0.*/
 
+    char pid_controller_avalible; /* Is 1 if pid controller may be enabled,
+                                     otherwise 0.*/
+    char pid_controller_enabled;  /* Is 1 if pid controller is enabled,
+                                     otherwise 0.*/
+
     char populated; /* Is 1 if subtree has at least one process in it,
                        otherise 0.*/
 
@@ -46,6 +51,9 @@ struct cgroup
     unsigned int nr_descendants; /* Current number of descendant cgroups.*/
 
     unsigned int nr_dying_descendants; /*Current number of dying descendant cgroups.*/
+
+    int max_num_of_procs; /*The maximum number of processes that are allowed in the cgroup.
+                            Used by pid controller.*/
 
     unsigned long long cpu_time;
     unsigned int cpu_period_time;
@@ -302,5 +310,38 @@ int cg_stat(struct file * f, struct stat * st);
  * file descriptor of the new open file or directory on success.
  */
 int cg_sys_open(char * path, int omode);
+
+
+/**
+ *This function sets the maximum number of processes.
+ *Receives cgroup pointer parameter "cgroup" and integer "limit".
+ *Sets the number of maximum allowed processes in the cgroup to be "limit".
+ *Returns 1 upon successes, 0 if no action taken, -1 upon failure.
+ */
+int set_max_procs(struct cgroup * cgp, int limit);
+
+/**
+* These functions enables the pid controller of a cgroup.
+* Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+* Receives cgroup pointer parameter "cgroup".
+* "cgroup" is pointer to the cgroup in which we enable the controller. Must be valid cgroup.
+* Return values:
+* - 0 on success.
+* - -1 on failure.
+*/
+int unsafe_enable_pid_controller(struct cgroup *cgroup);
+int enable_pid_controller(struct cgroup * cgroup);
+
+/**
+* These functions disable the pid controller of a cgroup.
+* Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+* Receives cgroup pointer parameter "cgroup".
+* "cgroup" is pointer to the cgroup in which we disable the controller. Must be valid cgroup.
+* Return values:
+* - 0 on success.
+* - -1 on failure.
+*/
+int unsafe_disable_pid_controller(struct cgroup *cgroup);
+int disable_pid_controller(struct cgroup * cgroup);
 
 #endif

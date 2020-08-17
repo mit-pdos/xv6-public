@@ -230,10 +230,16 @@ fork(void)
   struct proc *np;
   struct proc *curproc = myproc();
 
-  // Check if the current process has a child pid namespace and if his pid1 was killed.
+  // Check if the current process has a child pid namespace and if its pid1 was killed.
   if (curproc->child_pid_ns && curproc->child_pid_ns->pid1_ns_killed) {
     return -1;
   }
+
+  // In case trying to fork new process and the cgroup reached its process limit,
+  // given pid controller is enabled, return failure
+  if ( curproc->cgroup->pid_controller_enabled &&
+       (curproc->cgroup->num_of_procs + 1) > curproc->cgroup->max_num_of_procs )
+           return -1;
 
   // Allocate process.
   if ((np = allocproc()) == 0) {

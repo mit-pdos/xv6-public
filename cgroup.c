@@ -1,10 +1,11 @@
-#include "cgfs.h"
 #include "cgroup.h"
-#include "param.h"
+#include "cgfs.h"
 #include "spinlock.h"
+#include "param.h"
 
 #define MAX_DES_DEF 64
 #define MAX_DEP_DEF 64
+#define MAX_CGROUP_FILE_NAME_LENGTH 64
 #define CGROUP_ACCOUNT_PERIOD_100MS (100 * 1000)
 
 struct
@@ -260,6 +261,9 @@ void cgroup_initialize(struct cgroup * cgroup,
         cgroup->depth = 0;
         *(cgroup->cgroup_dir_path) = 0;
         cgroup->parent = 0;
+        cgroup->pid_controller_avalible = 1;
+        cgroup->pid_controller_enabled = 1;
+
     } else {
         cgroup->parent = parent_cgroup;
 
@@ -269,6 +273,15 @@ void cgroup_initialize(struct cgroup * cgroup,
             cgroup->cpu_controller_avalible = 1;
         else
             cgroup->cpu_controller_avalible = 0;
+
+        /*Cgroup's pid controller avalible only when it is enabled in the
+         * parent.*/
+        if (parent_cgroup->pid_controller_enabled)
+            cgroup->pid_controller_avalible = 1;
+        else
+            cgroup->pid_controller_avalible = 0;
+
+        cgroup->pid_controller_enabled = 0;
 
         cgroup->cpu_controller_enabled = 0;
         cgroup->depth = cgroup->parent->depth + 1;
@@ -282,6 +295,8 @@ void cgroup_initialize(struct cgroup * cgroup,
     set_max_depth_value(cgroup, MAX_DEP_DEF);
     set_nr_descendants(cgroup, 0);
     set_nr_dying_descendants(cgroup, 0);
+    //Without any changes, set the maximum number of processes to max in system
+    set_max_procs(cgroup, NPROC);
 
     cgroup->cpu_account_frame = 0;
     cgroup->cpu_percent = 0;
@@ -305,6 +320,11 @@ int cgroup_insert(struct cgroup * cgroup, struct proc * proc)
 
 int unsafe_cgroup_insert(struct cgroup * cgroup, struct proc * proc)
 {
+    // If the number of processes in the cgroup is already at max allowed and pid controller enabled, return error
+    if (cgroup->pid_controller_enabled == 1 &&
+        (cgroup->num_of_procs + 1) > cgroup->max_num_of_procs)
+        return -1;
+
     // Whether a free slot was found.
     int found = 0;
 
@@ -578,6 +598,95 @@ int cg_stat(struct file * f, struct stat * st)
 {
     acquire(&cgtable.lock);
     int res = unsafe_cg_stat(f, st);
+    release(&cgtable.lock);
+    return res;
+}
+
+int set_max_procs(struct cgroup * cgroup, int limit) {
+    // If no cgroup found, return error.
+    if (cgroup == 0)
+        return -1;
+
+    // Set the limit if it is within allowed parameters.
+    // 0 is used for testing.
+    if (limit >= 0 && limit <= NPROC) {
+        cgroup->max_num_of_procs = limit;
+        return 1;
+    }
+
+    return 0;
+}
+
+int unsafe_enable_pid_controller(struct cgroup *cgroup) {
+    // If cgroup has processes in it, controllers can't be enabled.
+    if (cgroup == 0 || cgroup->populated == 1) {
+        return -1;
+    }
+
+    // If controller is enabled do nothing.
+    if (cgroup->pid_controller_enabled) {
+        return 0;
+    }
+
+    if (cgroup->pid_controller_avalible) {
+        // Set pid controller to enabled.
+        cgroup->pid_controller_enabled = 1;
+        // Set pid controller to avalible in all child cgroups.
+        for (int i = 1;
+                i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
+                i++)
+            if (cgtable.cgroups[i].parent == cgroup)
+                cgtable.cgroups[i].pid_controller_avalible = 1;
+    }
+
+    return 0;
+}
+
+int unsafe_disable_pid_controller(struct cgroup *cgroup) {
+    if (cgroup == 0) {
+        return -1;
+    }
+
+    // If controller is disabled do nothing.
+    if (cgroup->pid_controller_enabled == 0) {
+        return 0;
+    }
+
+    // Check that all child cgroups have pid controller disabled. (cannot
+    // disable controller when children have it enabled)
+    for (int i = 1;
+            i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
+            i++)
+        if (cgtable.cgroups[i].parent == cgroup &&
+                cgtable.cgroups[i].pid_controller_enabled) {
+            return -1;
+        }
+
+    // Set pid controller to disabled.
+    cgroup->pid_controller_enabled = 0;
+
+    // Set pid controller to unavalible in all child cgroups.
+    for (int i = 1;
+            i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
+            i++)
+        if (cgtable.cgroups[i].parent == cgroup)
+            cgtable.cgroups[i].pid_controller_avalible = 0;
+
+    return 0;
+}
+
+int enable_pid_controller(struct cgroup * cgroup)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_enable_pid_controller(cgroup);
+    release(&cgtable.lock);
+    return res;
+}
+
+int disable_pid_controller(struct cgroup * cgroup)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_disable_pid_controller(cgroup);
     release(&cgtable.lock);
     return res;
 }
