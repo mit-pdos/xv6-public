@@ -2006,6 +2006,12 @@ sbrkmuch(char *s)
     printf("%s: sbrk test failed to grow big address space; enough phys mem?\n", s);
     exit(1);
   }
+
+  // touch each page to make sure it exists.
+  char *eee = sbrk(0);
+  for(char *pp = a; pp < eee; pp += 4096)
+    *pp = 1;
+
   lastaddr = (char*) (BIG-1);
   *lastaddr = 99;
 
@@ -2087,7 +2093,12 @@ sbrkfail(char *s)
   for(i = 0; i < sizeof(pids)/sizeof(pids[0]); i++){
     if((pids[i] = fork()) == 0){
       // allocate a lot of memory
-      sbrk(BIG - (uint64)sbrk(0));
+      char *p0 = sbrk(BIG - (uint64)sbrk(0));
+      if((uint64)p0 != 0xffffffffffffffffLL){
+        char *p1 = sbrk(0);
+        for(char *p2 = p0; p2 < p1; p2 += 4096)
+          *p2 = 1;
+      }
       write(fds[1], "x", 1);
       // sit around until killed
       for(;;) sleep(1000);
@@ -2469,6 +2480,7 @@ execout(char *s)
         uint64 a = (uint64) sbrk(4096);
         if(a == 0xffffffffffffffffLL)
           break;
+        *(char*)(a + 4096 - 1) = 1;
       }
 
       // free a few pages, in order to let exec() make some
@@ -2503,7 +2515,7 @@ countfree()
       break;
     }
     // modify the memory to make sure it's really allocated.
-    *(char *)(a - 1) = 1;
+    *(char *)(a + 4096 - 1) = 1;
     n += 1;
   }
   sbrk(-((uint64)sbrk(0) - sz0));
