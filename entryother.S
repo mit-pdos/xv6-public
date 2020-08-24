@@ -80,7 +80,7 @@ start32:
 spin:
   jmp     spin
 
-.p2align 2
+.p2align 3
 gdt:
   SEG_NULLASM
   SEG_ASM(STA_X|STA_R, 0, 0xffffffff)
