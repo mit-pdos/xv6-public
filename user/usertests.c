@@ -2723,12 +2723,8 @@ main(int argc, char *argv[])
   }
 
   printf("usertests starting\n");
-#ifdef SOL_LAZY1
-  int free0 = 32*1024*1024;
-#else
   int free0 = countfree();
   int free1 = 0;
-#endif
   int fail = 0;
   for (struct test *t = tests; t->s != 0; t++) {
     if((justone == 0) || strcmp(t->s, justone) == 0) {
