@@ -28,7 +28,7 @@ static ObjectsTableEntry* table_entry(uint offset) {
 }
 
 
-static int id_cmp(const char* p, const char* q) {
+int obj_id_cmp(const char* p, const char* q) {
     uint i = 0;
     while(*p && *p == *q && i < OBJECT_ID_LENGTH) {
         p++;
@@ -39,7 +39,16 @@ static int id_cmp(const char* p, const char* q) {
 }
 
 
-int order_by_address(const void* left, const void* right) {
+uint obj_id_bytes(const char* object_id) {
+    uint bytes = strlen(object_id);
+    if (bytes < MAX_OBJECT_NAME_LENGTH) {
+        bytes++;  // null terminator as well.
+    }
+    return bytes;
+}
+
+
+static int order_by_address(const void* left, const void* right) {
     uint left_offset = table_entry(*(uint*)(left))->disk_offset;
     uint right_offset = table_entry(*(uint*)(right))->disk_offset;
     if (left_offset > right_offset) {
@@ -158,7 +167,7 @@ uint add_object(const void* object, uint size, const char* name) {
     }
     for (uint i = 0; i < max_objects(); ++i) {
         if (table_entry(i)->occupied &&
-            id_cmp(table_entry(i)->object_id, name) == 0) {
+            obj_id_cmp(table_entry(i)->object_id, name) == 0) {
             return OBJECT_EXISTS;
         }
     }
@@ -169,11 +178,7 @@ uint add_object(const void* object, uint size, const char* name) {
             if (!address) {
                 return NO_DISK_SPACE_FOUND;
             }
-            uint bytes_to_copy = strlen(name);
-            if (bytes_to_copy < MAX_OBJECT_NAME_LENGTH) {
-                bytes_to_copy++;  // null terminator as well.
-            }
-            memcpy(entry->object_id, name, bytes_to_copy);
+            memcpy(entry->object_id, name, obj_id_bytes(name));
             entry->disk_offset = address - (void*)memory_storage;
             entry->size = size;
             entry->occupied = 1;
@@ -195,7 +200,7 @@ uint rewrite_object(const void* object, uint size, const char* name) {
     for (uint i = 0; i < max_objects(); ++i) {
         ObjectsTableEntry* entry = table_entry(i);
         if (entry->occupied &&
-            id_cmp(entry->object_id, name) == 0) {
+            obj_id_cmp(entry->object_id, name) == 0) {
             super_block.bytes_occupied -= entry->size;
             if (table_entry(i)->size >= size) {
                 void* address =
@@ -231,7 +236,7 @@ uint object_size(const char* name, uint* output) {
     for (uint i = 0; i < max_objects(); ++i) {
         ObjectsTableEntry* entry = table_entry(i);
         if (entry->occupied &&
-            id_cmp(entry->object_id, name) == 0) {
+            obj_id_cmp(entry->object_id, name) == 0) {
             *output = entry->size;
             return NO_ERR;
         }
@@ -247,7 +252,7 @@ uint get_object(const char* name, void* output) {
     for (uint i = 0; i < max_objects(); ++i) {
         ObjectsTableEntry* entry = table_entry(i);
         if (entry->occupied &&
-            id_cmp(entry->object_id, name) == 0) {
+            obj_id_cmp(entry->object_id, name) == 0) {
             void* address = (void*)memory_storage + entry->disk_offset;
             memcpy(output, address, entry->size);
             return NO_ERR;
@@ -264,7 +269,7 @@ uint delete_object(const char* name) {
     for (uint i = 0; i < max_objects(); ++i) {
         ObjectsTableEntry* entry = table_entry(i);
         if (entry->occupied &&
-            id_cmp(entry->object_id, name) == 0) {
+            obj_id_cmp(entry->object_id, name) == 0) {
             entry->occupied = 0;
             super_block.occupied_objects -= 1;
             super_block.bytes_occupied -= entry->size;

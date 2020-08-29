@@ -2,10 +2,19 @@
 #include <string.h>
 
 #include "obj_disk.h"
+#include "obj_cache.h"
 #include "obj_fs_tests.h"
 
 
+/**
+ * Tests library variables
+ */
 int failed = 0;
+
+
+/**
+ * Disk layer tests
+ */
 
 
 const uint objects_table_bytes =
@@ -257,9 +266,132 @@ TEST(add_when_there_is_no_more_disk_left) {
 }
 
 
+/**
+ * The following tests validate the correctness of the cache layer.
+ * The tests use the `objects_cache_hits` and `objects_cache_misses` methods
+ * to check the cache behavior vs the expected flow.
+ */
+
+
+TEST(get_object_in_cache) {
+    char my_string[] = "my super amazing string";
+    const char* obj_name = "get_object_in_cache";
+    // inserting the object through the cache keeps it inside it
+    cache_add_object(my_string, strlen(my_string) + 1, obj_name);
+
+    uint misses_at_start = objects_cache_misses();
+    uint hits_at_start = objects_cache_hits();
+
+    // validate correctness
+    char actual[strlen(my_string) + 1];
+    ASSERT_NO_ERR(cache_get_object(name, actual));
+    ASSERT_UINT_EQ(0, strcmp(actual, my_string));
+
+    // valiadte hits and misses
+    EXPECT_UINT_EQ(0, objects_cache_misses() - misses_at_start);
+    EXPECT_UINT_EQ(1, objects_cache_hits() - hits_at_start);
+}
+
+
+TEST(get_object_not_in_cache) {
+    char my_string[] = "my super amazing string";
+    const char* obj_name = "object_no_cache_00";
+    // inserting the object WITHOUT going through the cache
+    add_object(my_string, strlen(my_string) + 1, obj_name);
+
+    uint misses_at_start = objects_cache_misses();
+    uint hits_at_start = objects_cache_hits();
+
+    // validate correctness
+    char actual[strlen(my_string) + 1];
+    ASSERT_NO_ERR(cache_get_object(obj_name, actual));
+    ASSERT_UINT_EQ(0, strcmp(actual, my_string));
+
+    // valiadte hits and misses
+    EXPECT_UINT_EQ(1, objects_cache_misses() - misses_at_start);
+    ASSERT_UINT_EQ(0, objects_cache_hits() - hits_at_start);
+
+    // re-accessing the object now set "hit" because it's in the cache from
+    // previous attempt.
+    ASSERT_NO_ERR(cache_get_object(obj_name, actual));
+    EXPECT_UINT_EQ(1, objects_cache_misses() - misses_at_start);
+    ASSERT_UINT_EQ(1, objects_cache_hits() - hits_at_start);
+}
+
+
+TEST(get_object_size_in_cache) {
+    char my_string[] = "my super amazing string";
+    const char* obj_name = "object_in_cache_01";
+    // inserting the object WITH going through the cache
+    cache_add_object(my_string, strlen(my_string) + 1, obj_name);
+
+    uint misses_at_start = objects_cache_misses();
+    uint hits_at_start = objects_cache_hits();
+
+    ASSERT_NO_ERR(cache_get_object(obj_name, my_string));
+
+    // valiadte hits and misses
+    EXPECT_UINT_EQ(0, objects_cache_misses() - misses_at_start);
+    ASSERT_UINT_EQ(1, objects_cache_hits() - hits_at_start);
+}
+
+
+TEST(get_object_size_not_in_cache_and_doesnt_add_to_cache) {
+    char my_string[] = "my super amazing string";
+    const char* obj_name = "object_no_cache_02";
+    // inserting the object WITHOUT going through the cache
+    add_object(my_string, strlen(my_string) + 1, obj_name);
+
+    uint misses_at_start = objects_cache_misses();
+    uint hits_at_start = objects_cache_hits();
+
+    // validate correctness
+    uint size;
+    ASSERT_NO_ERR(cache_object_size(obj_name, &size));
+    ASSERT_UINT_EQ(strlen(my_string) + 1, size);
+
+    // valiadte hits and misses
+    EXPECT_UINT_EQ(1, objects_cache_misses() - misses_at_start);
+    ASSERT_UINT_EQ(0, objects_cache_hits() - hits_at_start);
+
+    ASSERT_NO_ERR(cache_object_size(obj_name, &size));
+    EXPECT_UINT_EQ(2, objects_cache_misses() - misses_at_start);
+    ASSERT_UINT_EQ(0, objects_cache_hits() - hits_at_start);
+}
+
+
+TEST(object_too_large_not_inserted_to_cache) {
+    char large_data[cache_max_object_size() * 2];
+    const char* obj_name = "object_no_cache_03";
+
+    for (uint i = 0; i < sizeof(large_data); ++i) {
+        large_data[i] = i % 256;
+    }
+
+    uint misses_at_start = objects_cache_misses();
+    uint hits_at_start = objects_cache_hits();
+
+    cache_add_object(large_data, sizeof(large_data), obj_name);
+
+    // validate correctness
+    char actual[sizeof(large_data)];
+    ASSERT_NO_ERR(cache_get_object(obj_name, actual));
+    for (uint i = 0; i < sizeof(large_data); ++i) {
+        ASSERT_UINT_EQ(large_data[i], actual[i]);
+    }
+
+    // valiadte hits and misses
+    EXPECT_UINT_EQ(1, objects_cache_misses() - misses_at_start);
+    ASSERT_UINT_EQ(0, objects_cache_hits() - hits_at_start);
+}
+
+
 int main() {
     printf("[===========]\n");
     init_obj_fs();
+    init_objects_cache();
+
+    // Driver layer
     run_test(initialization);
     run_test(super_block_object);
     run_test(table_object);
@@ -274,6 +406,15 @@ int main() {
     run_test(add_to_full_table);
     run_test(reusing_freed_space);
     run_test(add_when_there_is_no_more_disk_left);
+
+    // Cache layer
+    run_test(get_object_in_cache);
+    run_test(get_object_not_in_cache);
+    run_test(get_object_size_in_cache);
+    run_test(get_object_size_not_in_cache_and_doesnt_add_to_cache);
+    run_test(object_too_large_not_inserted_to_cache);
+
+    // Summary
     printf("[===========]\n");
     if (failed) {
         printf("[  FAILED   ]\n");

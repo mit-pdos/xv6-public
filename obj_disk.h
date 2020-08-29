@@ -53,8 +53,8 @@
 
 // Other parameters:
 #define MAX_OBJECT_NAME_LENGTH 20
-#define SUPER_BLOCK_ID ""
-#define OBJECT_TABLE_ID "\x01"
+#define SUPER_BLOCK_ID "\x01"
+#define OBJECT_TABLE_ID "\x02"
 
 
 // In the future, this can be set the size of SHA256 digest.
@@ -82,6 +82,10 @@ typedef struct {
     uint bytes_occupied;
     uint occupied_objects;
 } SuperBlock;
+
+
+int obj_id_cmp(const char* p, const char* q);
+uint obj_id_bytes(const char* object_id);
 
 
 /**

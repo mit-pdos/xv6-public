@@ -56,6 +56,7 @@ The project specification document can be found here: [project specification](ht
 
 The project extensions are as follow:
 - The driver layer is implemented inside `obj_disk.h` and `obj_disk.c`.
+- The buffer layer is implemented inside `obj_cache.h` and `obj_cache.c`.
 
 
 ## Testing the object file system
