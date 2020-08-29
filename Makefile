@@ -354,3 +354,8 @@ windows_debugging_clean:
 
 .PHONY: dist-test dist windows_debugging windows_debugging_mkdir windows_debugging_clean
 
+# Object file system related files
+# TODO integrate with the rest of xv6 sources - would be done in later part.
+run-objfs-tests:
+	$(CC) $(CLAGS) obj_disk.c obj_fs_tests.c -DSTORAGE_DEVICE_SIZE=67108864 -DOBJECTS_TABLE_SIZE=200 -o tests
+	./tests

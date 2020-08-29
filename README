@@ -47,3 +47,22 @@ will need to install a cross-compiler gcc suite capable of producing
 x86 ELF binaries. See http://pdos.csail.mit.edu/6.828/2016/tools.html.
 Then run "make TOOLPREFIX=i386-jos-elf-". Now install the QEMU PC
 simulator and run "make qemu".
+
+# xv6 Object file system
+
+In this project, we implement an object file system over the basic xv6 operating system.
+
+The project specification document can be found here: [project specification](https://docs.google.com/document/d/1p8GKxLI8MVo4ND0PoggGx9n4QA1sabaNfr0jAo0FOGs/edit#heading=h.renznclxfaio)
+
+The project extensions are as follow:
+- The driver layer is implemented inside `obj_disk.h` and `obj_disk.c`.
+
+
+## Testing the object file system
+
+The tests are located inside `obj_fs_tests.cc` and can be run using `make run-objfs-tests` which both compile and run the tests.
+The lower level tests doesn't export their interface to the user space and can only be tested from inside the kernel. But the lower levels are stand alone (in their current form) and can be run without running the full operating system.
+Hence, they are currently separated from the rest of the tests.
+
+The tests are using a gtest look a like test library written inside `test.h`.
+

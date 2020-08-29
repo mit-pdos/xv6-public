@@ -1,0 +1,285 @@
+#include <stdlib.h>
+#include <string.h>
+
+#include "obj_disk.h"
+#include "obj_fs_tests.h"
+
+
+int failed = 0;
+
+
+const uint objects_table_bytes =
+    OBJECTS_TABLE_SIZE * sizeof(ObjectsTableEntry);
+
+
+/**
+ * Tests that the metadata values inside the super block are intiialized
+ * correctly by calling the get functions.
+ */
+TEST(initialization) {
+    EXPECT_UINT_EQ(OBJECTS_TABLE_SIZE, max_objects());
+    EXPECT_UINT_EQ(2, occupied_objects());
+    EXPECT_UINT_EQ(STORAGE_DEVICE_SIZE, device_size());
+    EXPECT_UINT_EQ(sizeof(SuperBlock) + objects_table_bytes,
+                   occupied_bytes());
+}
+
+
+/**
+ * Validates the correctness of getting the super block object.
+ */
+TEST(super_block_object) {
+    uint size;
+    ASSERT_NO_ERR(object_size(SUPER_BLOCK_ID, &size));
+    ASSERT_UINT_EQ(sizeof(SuperBlock), size);
+
+    SuperBlock sb;
+    ASSERT_NO_ERR(get_object(SUPER_BLOCK_ID, &sb));
+
+    EXPECT_UINT_EQ(STORAGE_DEVICE_SIZE, sb.storage_device_size);
+    EXPECT_UINT_EQ(sizeof(SuperBlock), sb.objects_table_offset);
+    EXPECT_UINT_EQ(OBJECTS_TABLE_SIZE, sb.objects_table_size);
+    EXPECT_UINT_EQ(2, sb.occupied_objects);
+    EXPECT_UINT_EQ(sizeof(SuperBlock) + objects_table_bytes,
+                  sb.bytes_occupied);
+}
+
+
+/**
+ * Validates the correctness of the objects table initial state by getting the
+ * objects table object. We don't check the entries themsels because they are
+ * checked by calling `get_object`. We only left the check that the rest of
+ * the table is empty.
+ */
+TEST(table_object) {
+    uint size;
+    ASSERT_NO_ERR(object_size(OBJECT_TABLE_ID, &size));
+    ASSERT_UINT_EQ(objects_table_bytes, size)
+
+    ObjectsTableEntry table[OBJECTS_TABLE_SIZE];
+    ASSERT_NO_ERR(get_object(OBJECT_TABLE_ID, &table));
+    for (size_t i = 3; i < OBJECTS_TABLE_SIZE; ++i) {
+        EXPECT_FALSE(table[i].occupied);
+    }
+
+    EXPECT_TRUE(table[0].occupied)
+    EXPECT_UINT_EQ(sizeof(SuperBlock), table[0].size)
+    EXPECT_TRUE(table[1].occupied)
+    EXPECT_UINT_EQ(objects_table_bytes, table[1].size)
+}
+
+
+TEST(get_object_with_name_too_long) {
+    uint size;
+    EXPECT_UINT_EQ(OBJECT_NAME_TOO_LONG,
+                   object_size("012345678901234567890123456789", &size));
+}
+
+
+TEST(get_non_existing_object) {
+    uint size;
+    EXPECT_UINT_EQ(OBJECT_NOT_EXISTS,
+                   object_size("non_existing", &size));
+}
+
+
+TEST(add_single_object) {
+    char my_string[] = "my super amazing string";
+    ASSERT_NO_ERR(add_object(
+        my_string, strlen(my_string) + 1, "simple_string"
+    ));
+    uint size;
+    ASSERT_NO_ERR(object_size("simple_string", &size));
+    ASSERT_UINT_EQ(strlen(my_string) + 1, size);
+    char actual[strlen(my_string) + 1];
+    ASSERT_NO_ERR(get_object("simple_string", actual));
+    ASSERT_UINT_EQ(0, strcmp(actual, my_string));
+}
+
+TEST(add_object_already_exist) {
+    uint placeholder;
+    ASSERT_NO_ERR(
+        add_object(&placeholder, sizeof(placeholder), "already_exist_0")
+    );
+    ASSERT_UINT_EQ(
+        OBJECT_EXISTS,
+        add_object(&placeholder, sizeof(placeholder), "already_exist_0")
+    );
+}
+
+
+TEST(delete_existing_object) {
+    uint placeholder;
+    ASSERT_NO_ERR(
+        add_object(&placeholder, sizeof(placeholder), "delete_0")
+    );
+    uint size;
+    ASSERT_NO_ERR(object_size("delete_0", &size));
+    ASSERT_NO_ERR(delete_object("delete_0"));
+    ASSERT_UINT_EQ(OBJECT_NOT_EXISTS, object_size("delete_0", &size));
+}
+
+
+TEST(delete_no_existing_object) {
+    ASSERT_UINT_EQ(OBJECT_NOT_EXISTS, delete_object("not_existing"));
+}
+
+
+TEST(rewrite_existing_object_with_shorter_data) {
+    char first_string[] = "0123456789";
+    char second_string[] = "0123456";
+    ASSERT_NO_ERR(add_object(
+        first_string, strlen(first_string) + 1, "rewrite_shorter"
+    ));
+
+    //sanity check
+    uint size;
+    ASSERT_NO_ERR(object_size("rewrite_shorter", &size));
+    ASSERT_UINT_EQ(strlen(first_string) + 1, size);
+
+    //rewrite
+    ASSERT_NO_ERR(rewrite_object(
+        second_string, strlen(second_string) + 1, "rewrite_shorter"
+    ));
+
+    //validate the new size and data
+    ASSERT_NO_ERR(object_size("rewrite_shorter", &size));
+    ASSERT_UINT_EQ(strlen(second_string) + 1, size);
+    char actual[strlen(second_string) + 1];
+    ASSERT_NO_ERR(get_object("rewrite_shorter", actual));
+    ASSERT_UINT_EQ(0, strcmp(actual, second_string));
+}
+
+
+TEST(rewrite_existing_object_with_longer_data) {
+    char first_string[] = "0123456789";
+    char second_string[] = "01234567890123456789";
+    ASSERT_NO_ERR(add_object(
+        first_string, strlen(first_string) + 1, "rewrite_longer"
+    ));
+
+    //sanity check
+    uint size;
+    ASSERT_NO_ERR(object_size("rewrite_longer", &size));
+    ASSERT_UINT_EQ(strlen(first_string) + 1, size);
+
+    //rewrite
+    ASSERT_NO_ERR(rewrite_object(
+        second_string, strlen(second_string) + 1, "rewrite_longer"
+    ));
+
+    //validate the new size and data
+    ASSERT_NO_ERR(object_size("rewrite_longer", &size));
+    ASSERT_UINT_EQ(strlen(second_string) + 1, size);
+    char actual[strlen(second_string) + 1];
+    ASSERT_NO_ERR(get_object("rewrite_longer", actual));
+    ASSERT_UINT_EQ(0, strcmp(actual, second_string));
+}
+
+
+TEST(writing_multiple_objects) {
+    const char* objects_data[3] = {
+        "first data",
+        "second data",
+        "third data"
+    };
+    const char* objects_name[3] = {
+        "writing multiple 1",
+        "writing multiple 2",
+        "writing multiple 3",
+    };
+    for (uint i = 0; i < 3; ++i) {
+        ASSERT_NO_ERR(add_object(
+            objects_data[i], strlen(objects_data[i]) + 1, objects_name[i]
+        ));
+    }
+    for (uint i = 0; i < 3; ++i) {
+        uint size;
+        ASSERT_NO_ERR(object_size(objects_name[i], &size));
+        ASSERT_UINT_EQ(strlen(objects_data[i]) + 1, size);
+        char actual_data[size];
+        ASSERT_NO_ERR(get_object(objects_name[i], actual_data));
+        ASSERT_TRUE(strcmp(objects_data[i], actual_data) == 0);
+    }
+}
+
+TEST(add_to_full_table) {
+    ObjectsTableEntry original[OBJECTS_TABLE_SIZE];
+    ObjectsTableEntry table[OBJECTS_TABLE_SIZE];
+    ASSERT_NO_ERR(get_object(OBJECT_TABLE_ID, &table));
+    memcpy(original, table, sizeof(table));
+    for (uint i = 0; i < OBJECTS_TABLE_SIZE; ++i) {
+        table[i].occupied = 1;
+    }
+    ASSERT_NO_ERR(rewrite_object(table, sizeof(table), OBJECT_TABLE_ID));
+
+    uint data;
+    ASSERT_UINT_EQ(
+        OBJECTS_TABLE_FULL,
+        add_object(&data, sizeof(data), "non existing object")
+    );
+    ASSERT_NO_ERR(rewrite_object(original, sizeof(original), OBJECT_TABLE_ID));
+}
+
+
+uint find_object_offset(const char* object_name) {
+    ObjectsTableEntry table[OBJECTS_TABLE_SIZE];
+    get_object(OBJECT_TABLE_ID, &table);
+    uint address = -1;
+    for (uint i = 0; i < OBJECTS_TABLE_SIZE; ++i) {
+        if (strcmp(table[i].object_id, object_name) == 0) {
+            address = table[i].disk_offset;
+            break;
+        }
+    }
+    return address;
+}
+
+
+TEST(reusing_freed_space) {
+    uint data;
+    ASSERT_NO_ERR(add_object(&data, sizeof(data), "reusing object 1"));
+    uint obj_1_offset = find_object_offset("reusing object 1");
+    ASSERT_TRUE(obj_1_offset != -1);
+
+    ASSERT_NO_ERR(delete_object("reusing object 1"));
+    ASSERT_NO_ERR(add_object(&data, sizeof(data), "reusing object 2"));
+    uint obj_2_offset = find_object_offset("reusing object 2");
+    ASSERT_UINT_EQ(obj_1_offset, obj_2_offset);
+}
+
+
+TEST(add_when_there_is_no_more_disk_left) {
+    ASSERT_UINT_EQ(
+        NO_DISK_SPACE_FOUND,
+        add_object(NULL, STORAGE_DEVICE_SIZE + 1, "object too large")
+    );
+}
+
+
+int main() {
+    printf("[===========]\n");
+    init_obj_fs();
+    run_test(initialization);
+    run_test(super_block_object);
+    run_test(table_object);
+    run_test(add_single_object);
+    run_test(add_object_already_exist);
+    run_test(delete_existing_object);
+    run_test(rewrite_existing_object_with_shorter_data);
+    run_test(rewrite_existing_object_with_longer_data);
+    run_test(writing_multiple_objects);
+    run_test(get_object_with_name_too_long);
+    run_test(get_non_existing_object);
+    run_test(add_to_full_table);
+    run_test(reusing_freed_space);
+    run_test(add_when_there_is_no_more_disk_left);
+    printf("[===========]\n");
+    if (failed) {
+        printf("[  FAILED   ]\n");
+    } else {
+        printf("[    PASS   ]\n");
+    }
+    printf("[===========]\n");
+    return failed;
+}
