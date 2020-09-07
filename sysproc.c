@@ -238,3 +238,11 @@ int
 sys_getppid(void){
     return myproc()->parent->ns_pid;
 }
+
+int
+sys_getcpu(void) {
+    cli();
+    int id = cpuid();
+    sti();
+    return id;
+}
