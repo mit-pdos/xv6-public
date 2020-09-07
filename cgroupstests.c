@@ -49,7 +49,7 @@ TEST(test_opening_and_closing_cgroup_files)
     ASSERT_TRUE(test_open_close(TEST_1_CPU_STAT));
     ASSERT_TRUE(test_open_close(TEST_1_PID_MAX));
     ASSERT_TRUE(test_open_close(TEST_1_PID_CURRENT));
-    //ASSERT_TRUE(test_open_close(TEST_1_SET_CPU));
+    ASSERT_TRUE(test_open_close(TEST_1_SET_CPU));
 }
 
 TEST(test_reading_cgroup_files)
@@ -66,7 +66,7 @@ TEST(test_reading_cgroup_files)
     ASSERT_TRUE(test_read(TEST_1_CPU_STAT, 1));
     ASSERT_TRUE(test_read(TEST_1_PID_MAX, 1));
     ASSERT_TRUE(test_read(TEST_1_PID_CURRENT, 1));
-    //ASSERT_TRUE(test_read(TEST_1_SET_CPU, 1));
+    ASSERT_TRUE(test_read(TEST_1_SET_CPU, 1));
 }
 
 char *build_activate_disable_activate(int controller_type)
@@ -289,7 +289,7 @@ TEST(test_setting_max_descendants_and_max_depth)
     ASSERT_FALSE(strcmp(test_read(TEST_1_CGROUP_MAX_DEPTH, 0), "20\n"));
 }
 
-/*
+
 TEST(test_enable_and_disable_set_controller)
 {
     // Enable cpu set controller.
@@ -304,9 +304,7 @@ TEST(test_enable_and_disable_set_controller)
     // Check that cpu set controller is really disabled.
     ASSERT_TRUE(test_verify_controller_disabled(SET_CNT));
 }
-*/
 
-/*
 TEST(test_setting_cpu_id)
 {
     // Enable cpu set controller.
@@ -317,6 +315,51 @@ TEST(test_setting_cpu_id)
 
     // Check changes.
     ASSERT_FALSE(strcmp(test_read(TEST_1_SET_CPU, 0), "use_cpu - 1\n"));
+
+    // Restore default cpu id.
+    ASSERT_TRUE(test_write(TEST_1_SET_CPU, "0"));
+
+    // Check changes.
+    ASSERT_FALSE(strcmp(test_read(TEST_1_SET_CPU, 0), "use_cpu - 0\n"));
+
+    // Disable cpu set controller.
+    ASSERT_TRUE(test_disable_controller(SET_CNT));
+}
+
+TEST(test_correct_cpu_running)
+{
+    // Enable cpu set controller.
+    ASSERT_TRUE(test_enable_controller(SET_CNT));
+
+    // Update cpu id.
+    ASSERT_TRUE(test_write(TEST_1_SET_CPU, "1"));
+
+    // Check changes.
+    ASSERT_FALSE(strcmp(test_read(TEST_1_SET_CPU, 0), "use_cpu - 1\n"));
+
+    // Move the current process to "/cgroup/test1" cgroup.
+    ASSERT_TRUE(test_move_proc(TEST_1_CGROUP_PROCS, getpid()));
+
+    // Check that the process we moved is really in "/cgroup/test1" cgroup.
+    ASSERT_TRUE(test_pid_in_group(TEST_1_CGROUP_PROCS, getpid()));
+
+    // Go to sleep in order to make the process is rescheduled.
+    sleep(5);
+
+    // Verify that the process is scheduled on the set cpu.
+    ASSERT_UINT_EQ(getcpu(), 1);
+
+    // Return the process to root cgroup.
+    ASSERT_TRUE(test_move_proc(ROOT_CGROUP_PROCS, getpid()));
+
+    // Check that the process we returned is really in root cgroup.
+    ASSERT_TRUE(test_pid_in_group(ROOT_CGROUP_PROCS, getpid()));
+
+    // Restore default cpu id.
+    ASSERT_TRUE(test_write(TEST_1_SET_CPU, "0"));
+
+    // Check changes.
+    ASSERT_FALSE(strcmp(test_read(TEST_1_SET_CPU, 0), "use_cpu - 0\n"));
 
     // Disable cpu set controller.
     ASSERT_TRUE(test_disable_controller(SET_CNT));
@@ -339,17 +382,21 @@ TEST(test_no_run)
     // Child
     if (pid == 0) {
         pidToMove = getpid();
+
         // Save the pid of child in temp file.
-        ASSERT_TRUE(test_temp_write(pidToMove));
+        test_temp_write(pidToMove);
+
         // Go to sleep for long period of time.
         sleep(20);
-        // At this point, the child process should already be inside the cgroup, therefore, the following operations
-        // should not be executed.
+
+        // At this point, the child process should already be inside the cgroup.
+        // Therefore, the following operations should not be executed right away.
         for (int i = 0; i < 10; i++) {
             sum += 1;
         }
+
         // Save sum into temp file.
-        ASSERT_TRUE(test_temp_write(sum));
+        test_temp_write(sum);
         exit(0);
     }
     // Father
@@ -381,7 +428,7 @@ TEST(test_no_run)
 
         // Wait for child to exit.
         wait(&wstatus);
-        ASSERT_FALSE(wstatus);
+        ASSERT_TRUE(wstatus);
 
         // Verify that child did execute the procudure.
         sum = test_temp_read(0);
@@ -393,10 +440,7 @@ TEST(test_no_run)
         // Disable cpu set controller.
         ASSERT_TRUE(test_disable_controller(SET_CNT));
     }
-
-    exit(1);
 }
-*/
 
 int main(int argc, char * argv[])
 {
@@ -413,8 +457,9 @@ int main(int argc, char * argv[])
     run_test(test_move_failure);
     run_test(test_fork_failure);
     run_test(test_pid_current);
-    //run_test(test_setting_cpu_id);
-    //run_test(test_no_run);
+    run_test(test_setting_cpu_id);
+    run_test(test_correct_cpu_running);
+    run_test(test_no_run);
     run_test(test_limiting_cpu_max_and_period);
     run_test(test_setting_max_descendants_and_max_depth);
     run_test(test_deleting_cgroups);

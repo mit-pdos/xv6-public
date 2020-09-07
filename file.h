@@ -53,6 +53,13 @@ struct file {
             int max;
           } max;
         } pid;
+        // cpu_set
+        union {
+          struct {
+            char active;
+            int cpu_id;
+            } set;
+        } cpu_s;
       };
     };
   };

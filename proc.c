@@ -16,7 +16,6 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
-
 /*Return the process id inside the given namespace, else returns zero*/
 int get_pid_for_ns(struct proc* proc, struct pid_ns* pid_ns) {
   for (int i = 0; i < MAX_PID_NS_DEPTH; i++) {
@@ -508,6 +507,15 @@ scheduler(void)
       // If process not runnable, continue.
       if (p->state != RUNNABLE) {
         continue;
+      }
+
+      // Cpu set controller is only defined on runnable processes which are not killed.
+      if (p->killed == 0) {
+          // If the cpu set controller enabled, and the cpu doesn't match the one that is supposed to run the process
+          // then don't let the process run on this cpu.
+          if (p->cgroup->set_controller_enabled && p->cgroup->cpu_to_use != c->apicid) {
+              continue;
+          }
       }
 
       // Decide whether to schedule process.

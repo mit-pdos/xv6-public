@@ -38,6 +38,11 @@ struct cgroup
     char pid_controller_enabled;  /* Is 1 if pid controller is enabled,
                                      otherwise 0.*/
 
+    char set_controller_avalible; /* Is 1 if cpu set controller may be enabled,
+                                     otherwise 0.*/
+    char set_controller_enabled;  /* Is 1 if cpu set controller is enabled,
+                                     otherwise 0.*/
+
     char populated; /* Is 1 if subtree has at least one process in it,
                        otherise 0.*/
 
@@ -54,6 +59,8 @@ struct cgroup
 
     int max_num_of_procs; /*The maximum number of processes that are allowed in the cgroup.
                             Used by pid controller.*/
+
+    uchar cpu_to_use; /*Which cpu id to use for cpu set controller*/
 
     unsigned long long cpu_time;
     unsigned int cpu_period_time;
@@ -86,13 +93,13 @@ void cgroup_unlock();
 
 /**
  * This function creates a new cgroup and initializes it at the given path.
- * Checks that cgroup has parent. 
+ * Checks that cgroup has parent.
  * Checks that the limits set in ancestors are not exceeded.
  * Checks if we have avalible slot in the table.
  * Updates number of descendants for ancestors.
  * Receives string parameter "path".
  * "path" is string of directory names separated by '/'s.
- * Return value is pointer to the newly created cgroup. 
+ * Return value is pointer to the newly created cgroup.
  * On failure returns 0.
  */
 struct cgroup * cgroup_create(char * path);
@@ -185,7 +192,7 @@ void set_cgroup_dir_path(struct cgroup * cgroup, char * path);
  * This function gets the cgroup that is located at a given path.
  * Receives string parameter "path".
  * "path" is string of directory names separated by '/'s.
- * Return value is pointer to the cgroup located at the path "path". 
+ * Return value is pointer to the cgroup located at the path "path".
  * On failure returns 0.
  */
 struct cgroup * get_cgroup_by_path(char * path);
@@ -321,27 +328,59 @@ int cg_sys_open(char * path, int omode);
 int set_max_procs(struct cgroup * cgp, int limit);
 
 /**
-* These functions enables the pid controller of a cgroup.
-* Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
-* Receives cgroup pointer parameter "cgroup".
-* "cgroup" is pointer to the cgroup in which we enable the controller. Must be valid cgroup.
-* Return values:
-* - 0 on success.
-* - -1 on failure.
-*/
+ * These functions enables the pid controller of a cgroup.
+ * Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+ * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup in which we enable the controller. Must be valid cgroup.
+ * Return values:
+ * - 0 on success.
+ * - -1 on failure.
+ */
 int unsafe_enable_pid_controller(struct cgroup *cgroup);
 int enable_pid_controller(struct cgroup * cgroup);
 
 /**
-* These functions disable the pid controller of a cgroup.
-* Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
-* Receives cgroup pointer parameter "cgroup".
-* "cgroup" is pointer to the cgroup in which we disable the controller. Must be valid cgroup.
-* Return values:
-* - 0 on success.
-* - -1 on failure.
-*/
+ * These functions disable the pid controller of a cgroup.
+ * Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+ * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup in which we disable the controller. Must be valid cgroup.
+ * Return values:
+ * - 0 on success.
+ * - -1 on failure.
+ */
 int unsafe_disable_pid_controller(struct cgroup *cgroup);
 int disable_pid_controller(struct cgroup * cgroup);
+
+/**
+ * This function sets the cpu id to use.
+ * Receives cgroup pointer parameter "cgroup" and integer "cpuid".
+ * Sets the cpu id to "cpuid" on which the cgroup has to run.
+ * Returns 1 upon successes, 0 if no action taken, -1 upon failure.
+ */
+int set_cpu_id(struct cgroup * cgroup, int cpuid);
+
+/**
+ * These functions enables the cpu id controller of a cgroup.
+ * Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+ * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup in which we enable the controller. Must be valid cgroup.
+ * Return values:
+ * - 0 on success.
+ * - -1 on failure.
+ */
+int unsafe_enable_set_controller(struct cgroup *cgroup);
+int enable_set_controller(struct cgroup * cgroup);
+
+/**
+ * These functions disable the cpu id controller of a cgroup.
+ * Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+ * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup in which we disable the controller. Must be valid cgroup.
+ * Return values:
+ * - 0 on success.
+ * - -1 on failure.
+ */
+int unsafe_disable_set_controller(struct cgroup *cgroup);
+int disable_set_controller(struct cgroup * cgroup);
 
 #endif

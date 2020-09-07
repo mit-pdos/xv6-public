@@ -23,6 +23,7 @@
 #define CPU_STAT 10
 #define PID_MAX 11
 #define PID_CUR 12
+#define SET_CPU 13
 
 #define min(x, y) (x) > (y) ? (y) : (x)
 
@@ -222,9 +223,10 @@ static int get_file_name_constant(char * filename)
         return CPU_STAT;
     else if (strcmp(filename, "pid.max") == 0)
         return PID_MAX;
-    else if (strcmp(filename, "pid.current") == 0) {
+    else if (strcmp(filename, "pid.current") == 0)
         return PID_CUR;
-    }
+    else if (strcmp(filename, "cpuset.cpus") == 0)
+        return SET_CPU;
 
     return -1;
 }
@@ -249,6 +251,7 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
             case CPU_WEIGHT:
             case CPU_MAX:
             case PID_MAX:
+            case SET_CPU:
                 writable = 1;
                 break;
 
@@ -303,6 +306,13 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
                     return -1;
                 f->pid.max.active = cgp->pid_controller_enabled;
                 f->pid.max.max = cgp->max_num_of_procs;
+                break;
+
+            case SET_CPU:
+                if (cgp == cgroup_root())
+                    return -1;
+                f->cpu_s.set.active = cgp->set_controller_enabled;
+                f->cpu_s.set.cpu_id = cgp->cpu_to_use;
                 break;
         }
 
@@ -389,9 +399,11 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             if (f->cgp->pid_controller_avalible) {
                 move_and_add(buf, "pid\n", &i);
             }
+            if (f->cgp->set_controller_avalible) {
+                move_and_add(buf, "set\n", &i);
+            }
 
             r = copy_buffer_up_to_end(buf + f->off, min(i, n), addr);
-
         } else if (filename_const == CGROUP_SUBTREE_CONTROL) {
             char buf[MAX_STR];
             int i = 0;
@@ -402,9 +414,11 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             if (f->cgp->pid_controller_enabled) {
                 move_and_add(buf, "pid\n", &i);
             }
+            if (f->cgp->set_controller_enabled) {
+                move_and_add(buf, "set\n", &i);
+            }
 
             r = copy_buffer_up_to_end(buf + f->off, min(i, n), addr);
-
         } else if (filename_const == CGROUP_EVENTS) {
             char eventstext[] = "populated - 0\n";
             if (f->cgp->populated)
@@ -442,7 +456,6 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
 
             r = copy_buffer_up_to_end(stattext + f->off, min(stattextp - stattext, n), addr);
-
         } else if (filename_const == CPU_STAT) {
             char usage_buf[11];
             char user_buf[11];
@@ -542,6 +555,16 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
 
             r = copy_buffer_up_to_end(stattext + f->off, min(sizeof(stattext), n), addr);
+        } else if (filename_const == SET_CPU) {
+            char cpu_buf[11];
+            char cputext[strlen("use_cpu - ") + itoa(cpu_buf, f->cpu_s.set.cpu_id) + 2];
+            char * cputextp = cputext;
+
+            copy_and_move_buffer(&cputextp, "use_cpu - ", strlen("use_cpu - "));
+            copy_and_move_buffer(&cputextp, cpu_buf, strlen(cpu_buf));
+            copy_and_move_buffer(&cputextp, "\n", strlen("\n"));
+
+            r = copy_buffer_up_to_end(cputext + f->off, min(cputextp - cputext, n), addr);
         }
 
         f->off += r;
@@ -590,6 +613,11 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             if (f->cgp->pid_controller_enabled) {
                 copy_and_move_buffer_max_len(&bufp, "pid.max");
             }
+
+            if (f->cgp->set_controller_enabled) {
+                copy_and_move_buffer_max_len(&bufp, "cpuset.cpus");
+            }
+
         }
 
         get_cgroup_names_at_path(bufp, f->cgp->cgroup_dir_path);
@@ -627,6 +655,7 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
         char cpucontroller = 0; // change to 1 if need to enable, 2 if need
                                 // to disable, 0 if nothing to change
         char pidcontroller = 0;
+        char setcontroller = 0;
         char ch = ' ';
         int len = 0;
         int total_len = 0;
@@ -645,6 +674,10 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
                 pidcontroller = return_new_controller_state(*addr);
                 addr += len + 1;
                 total_len += len + 1;
+            } else if (strcmp(buf, "set") == 0) {
+                setcontroller = return_new_controller_state(*addr);
+                addr += len + 1;
+                total_len += len + 1;
             } else
                 return -1;
         }
@@ -659,6 +692,12 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
             return -1;
         if (pidcontroller == 2 &&
                 unsafe_disable_pid_controller(f->cgp) < 0)
+            return -1;
+
+        if (setcontroller == 1 && unsafe_enable_set_controller(f->cgp) < 0)
+            return -1;
+        if (setcontroller == 2 &&
+            unsafe_disable_set_controller(f->cgp) < 0)
             return -1;
 
         r = n - total_len;
@@ -747,6 +786,34 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
         if (test == 0 || test == -1)
             return -1;
         f->pid.max.max = max;
+
+        r = n;
+    } else if (filename_const == SET_CPU &&
+        f->cgp->set_controller_enabled) {
+        char set_string[32] = { 0 };
+        int set = -1;
+        int i = 0;
+
+        while (*addr && *addr != ',' &&  *addr != '\0' && i < sizeof(set_string)) {
+            set_string[i] = *addr;
+            i++;
+            addr++;
+        }
+        set_string[i] = '\0';
+        i = 0;
+        addr++;
+
+        // Update set parameter.
+        set = atoi(set_string);
+        if (-1 == set) {
+            return -1;
+        }
+
+        // Update cpu id field if the paramter is within allowed values.
+        int test = set_cpu_id(f->cgp, set);
+        if (test == 0 || test == -1)
+            return -1;
+        f->cpu_s.set.cpu_id = set;
 
         r = n;
     }

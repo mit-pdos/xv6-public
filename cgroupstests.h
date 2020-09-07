@@ -20,7 +20,7 @@
 #define TEST_1_CPU_STAT                 "/cgroup/test1/cpu.stat"
 #define TEST_1_PID_MAX                  "/cgroup/test1/pid.max"
 #define TEST_1_PID_CURRENT              "/cgroup/test1/pid.current"
-#define TEST_1_SET_CPU                  "/cgroup/test1/set.cpu"
+#define TEST_1_SET_CPU                  "/cgroup/test1/cpuset.cpus"
 
 #define ROOT_CGROUP_PROCS               "/cgroup/cgroup.procs"
 

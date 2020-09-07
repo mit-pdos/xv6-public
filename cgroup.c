@@ -1,7 +1,6 @@
 #include "cgroup.h"
 #include "cgfs.h"
 #include "spinlock.h"
-#include "param.h"
 
 #define MAX_DES_DEF 64
 #define MAX_DEP_DEF 64
@@ -65,7 +64,7 @@ static void unsafe_cgroup_erase(struct cgroup * cgroup, struct proc * proc)
          ++i) {
         // If process was found, remove it from the cgroup.
         if (proc == cgroup->proc[i]) {
-            proc->cgroup = 0;
+            proc->cgroup = cgroup_root();
             cgroup->proc[i] = 0;
 
             // Update current number of processes in cgroup subtree for all
@@ -263,8 +262,10 @@ void cgroup_initialize(struct cgroup * cgroup,
         cgroup->parent = 0;
         cgroup->pid_controller_avalible = 1;
         cgroup->pid_controller_enabled = 1;
-
-    } else {
+        cgroup->set_controller_avalible = 1;
+        cgroup->set_controller_enabled = 0;
+    }
+    else {
         cgroup->parent = parent_cgroup;
 
         /*Cgroup's cpu controller avalible only when it is enabled in the
@@ -281,9 +282,20 @@ void cgroup_initialize(struct cgroup * cgroup,
         else
             cgroup->pid_controller_avalible = 0;
 
-        cgroup->pid_controller_enabled = 0;
+        /*Cgroup's set controller avalible only when it is enabled in the
+        * parent. Notice doesn't apply to root, it is not enabled in root*/
+        if (parent_cgroup == cgroup_root())
+            cgroup->set_controller_avalible = 1;
+        else {
+            if (parent_cgroup->set_controller_enabled)
+                cgroup->set_controller_avalible = 1;
+            else
+                cgroup->set_controller_avalible = 0;
+        }
 
+        cgroup->pid_controller_enabled = 0;
         cgroup->cpu_controller_enabled = 0;
+        cgroup->set_controller_enabled = 0;
         cgroup->depth = cgroup->parent->depth + 1;
         unsafe_set_cgroup_dir_path(cgroup, path);
     }
@@ -297,6 +309,8 @@ void cgroup_initialize(struct cgroup * cgroup,
     set_nr_dying_descendants(cgroup, 0);
     //Without any changes, set the maximum number of processes to max in system
     set_max_procs(cgroup, NPROC);
+    //Without any changes, set the default cpu id to be used as 0
+    set_cpu_id(cgroup, 0);
 
     cgroup->cpu_account_frame = 0;
     cgroup->cpu_percent = 0;
@@ -687,6 +701,95 @@ int disable_pid_controller(struct cgroup * cgroup)
 {
     acquire(&cgtable.lock);
     int res = unsafe_disable_pid_controller(cgroup);
+    release(&cgtable.lock);
+    return res;
+}
+
+int set_cpu_id(struct cgroup * cgroup, int cpuid) {
+    // If no cgroup found, return error.
+    if (cgroup == 0)
+        return -1;
+
+    // Set the cpu id if it is within allowed parameters.
+    // NCPU+1 is used for testing, since this cpu id can never be in the system.
+    if (cpuid >= 0 && cpuid <= NCPU + 1) {
+        cgroup->cpu_to_use = cpuid;
+        return 1;
+    }
+
+    return 0;
+}
+
+int unsafe_enable_set_controller(struct cgroup *cgroup) {
+    // If cgroup has processes in it, controllers can't be enabled.
+    if (cgroup == 0 || cgroup->populated == 1) {
+        return -1;
+    }
+
+    // If controller is enabled do nothing.
+    if (cgroup->set_controller_enabled) {
+        return 0;
+    }
+
+    if (cgroup->set_controller_avalible) {
+        // Set cpu set controller to enabled.
+        cgroup->set_controller_enabled = 1;
+        // Set cpu set controller to avalible in all child cgroups.
+        for (int i = 1;
+             i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
+             i++)
+            if (cgtable.cgroups[i].parent == cgroup)
+                cgtable.cgroups[i].set_controller_avalible = 1;
+    }
+
+    return 0;
+}
+
+int unsafe_disable_set_controller(struct cgroup *cgroup) {
+    if (cgroup == 0) {
+        return -1;
+    }
+
+    // If controller is disabled do nothing.
+    if (cgroup->set_controller_enabled == 0) {
+        return 0;
+    }
+
+    // Check that all child cgroups have cpu set controller disabled. (cannot
+    // disable controller when children have it enabled)
+    for (int i = 1;
+         i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
+         i++)
+        if (cgtable.cgroups[i].parent == cgroup &&
+            cgtable.cgroups[i].set_controller_enabled) {
+            return -1;
+        }
+
+    // Set cpu set controller to disabled.
+    cgroup->set_controller_enabled = 0;
+
+    // Set cpu set controller to unavalible in all child cgroups.
+    for (int i = 1;
+         i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
+         i++)
+        if (cgtable.cgroups[i].parent == cgroup)
+            cgtable.cgroups[i].set_controller_avalible = 0;
+
+    return 0;
+}
+
+int enable_set_controller(struct cgroup * cgroup)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_enable_set_controller(cgroup);
+    release(&cgtable.lock);
+    return res;
+}
+
+int disable_set_controller(struct cgroup * cgroup)
+{
+    acquire(&cgtable.lock);
+    int res = unsafe_disable_set_controller(cgroup);
     release(&cgtable.lock);
     return res;
 }
