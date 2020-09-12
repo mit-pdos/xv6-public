@@ -3,6 +3,7 @@
 
 #include "obj_disk.h"
 #include "obj_cache.h"
+#include "obj_log.h"
 #include "obj_fs_tests.h"
 
 
@@ -136,7 +137,7 @@ TEST(delete_no_existing_object) {
 
 TEST(rewrite_existing_object_with_shorter_data) {
     char first_string[] = "0123456789";
-    char second_string[] = "0123456";
+    char second_string[] = "abcdef";
     ASSERT_NO_ERR(add_object(
         first_string, strlen(first_string) + 1, "rewrite_shorter"
     ));
@@ -386,6 +387,63 @@ TEST(object_too_large_not_inserted_to_cache) {
 }
 
 
+/**
+ * Logbook layer tests
+ */
+
+
+TEST(logbook_add_object_regular_flow) {
+    const char* obj_name = "log_add_test_obj";
+    char my_string[] = "my super amazing string";
+    ASSERT_NO_ERR(log_add_object(
+        my_string, strlen(my_string) + 1, obj_name
+    ));
+    uint size;
+    ASSERT_NO_ERR(cache_object_size(obj_name, &size));
+    ASSERT_UINT_EQ(strlen(my_string) + 1, size);
+    char actual[strlen(my_string) + 1];
+    ASSERT_NO_ERR(cache_get_object(obj_name, actual));
+    ASSERT_UINT_EQ(0, strcmp(actual, my_string));
+}
+
+
+TEST(logbook_rewrite_object_regular_flow) {
+    const char* obj_name = "log_rw_test_obj";
+    char first_string[] = "0123456789";
+    char second_string[] = "abcdef";
+    ASSERT_NO_ERR(log_add_object(
+        first_string, strlen(first_string) + 1, obj_name
+    ));
+
+    uint before, after;
+    get_objects_table_index(obj_name, &before);
+    //rewrite
+    ASSERT_NO_ERR(log_rewrite_object(
+        second_string, strlen(second_string) + 1, obj_name
+    ));
+    get_objects_table_index(obj_name, &after);
+
+    //validate the new size and data
+    uint size;
+    ASSERT_NO_ERR(cache_object_size(obj_name, &size));
+    ASSERT_UINT_EQ(strlen(second_string) + 1, size);
+    char actual[strlen(second_string) + 1];
+    ASSERT_NO_ERR(cache_get_object(obj_name, actual));
+}
+
+
+TEST(logbook_delete_object_regular_flow) {
+    const char* object_name = "log delete obj";
+    uint placeholder;
+    ASSERT_NO_ERR(
+        log_add_object(&placeholder, sizeof(placeholder), object_name)
+    );
+    ASSERT_NO_ERR(log_delete_object(object_name));
+    uint size;
+    ASSERT_UINT_EQ(OBJECT_NOT_EXISTS, cache_object_size(object_name, &size));
+}
+
+
 int main() {
     printf("[===========]\n");
     init_obj_fs();
@@ -413,6 +471,11 @@ int main() {
     run_test(get_object_size_in_cache);
     run_test(get_object_size_not_in_cache_and_doesnt_add_to_cache);
     run_test(object_too_large_not_inserted_to_cache);
+
+    // Logbook layer
+    run_test(logbook_add_object_regular_flow);
+    run_test(logbook_rewrite_object_regular_flow);
+    run_test(logbook_delete_object_regular_flow);
 
     // Summary
     printf("[===========]\n");

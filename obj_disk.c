@@ -1,8 +1,13 @@
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #include "obj_disk.h"
+
+#ifndef KERNEL_TESTS
+#include "defs.h"  // import `panic`
+#else
+#include "obj_fs_tests_utilities.h"  // impot mock `panic`
+#endif
 
 
 #ifndef STORAGE_DEVICE_SIZE
@@ -19,12 +24,35 @@ SuperBlock super_block;
 
 char memory_storage[STORAGE_DEVICE_SIZE];
 
+uint get_objects_table_index(const char* name, uint* output) {
+    for (uint i = 0; i < max_objects(); ++i) {
+        ObjectsTableEntry* entry = objects_table_entry(i);
+        if (entry->occupied &&
+            obj_id_cmp(entry->object_id, name) == 0
+        ) {
+            *output = i;
+            return NO_ERR;
+        }
+    }
+    return OBJECT_NOT_EXISTS;
+}
 
-static ObjectsTableEntry* table_entry(uint offset) {
+
+ObjectsTableEntry* objects_table_entry(uint offset) {
     return (ObjectsTableEntry*)&memory_storage[
         super_block.objects_table_offset
         + offset * sizeof(ObjectsTableEntry)
     ];
+}
+
+
+uint flush_objects_table_entry(uint offset) {
+    /**
+     * Currently, because the implemntation is memory only, writing to the
+     * entry received by `objects_table_entry` changes the table itself.
+     * In the future, this method would write the specific bytes to the disk.
+     */
+    return NO_ERR;
 }
 
 
@@ -49,8 +77,8 @@ uint obj_id_bytes(const char* object_id) {
 
 
 static int order_by_address(const void* left, const void* right) {
-    uint left_offset = table_entry(*(uint*)(left))->disk_offset;
-    uint right_offset = table_entry(*(uint*)(right))->disk_offset;
+    uint left_offset = objects_table_entry(*(uint*)(left))->disk_offset;
+    uint right_offset = objects_table_entry(*(uint*)(right))->disk_offset;
     if (left_offset > right_offset) {
         return 1;
     }
@@ -80,18 +108,21 @@ static int order_by_address(const void* left, const void* right) {
 static void* find_empty_space(uint size) {
     uint entries_indices[super_block.occupied_objects];
     uint* current = entries_indices;
-    for (uint i = 0; i < super_block.occupied_objects; ++i) {
-        if (table_entry(i)->occupied) {
+    for (uint i = 0; i < max_objects(); ++i) {
+        if (objects_table_entry(i)->occupied) {
             *current = i;
             ++current;
+            if (current - entries_indices > super_block.occupied_objects) {
+                panic("found too much entries vs expected");
+            }
         }
     }
     qsort(entries_indices, super_block.occupied_objects, sizeof(uint),
           order_by_address);
 
     for (uint i = 0; i < super_block.occupied_objects - 1; ++i) {
-        ObjectsTableEntry* current_entry = table_entry(entries_indices[i]);
-        ObjectsTableEntry* next_entry = table_entry(entries_indices[i + 1]);
+        ObjectsTableEntry* current_entry = objects_table_entry(entries_indices[i]);
+        ObjectsTableEntry* next_entry = objects_table_entry(entries_indices[i + 1]);
         uint space_left = next_entry->disk_offset
                           - current_entry->disk_offset
                           - current_entry->size;
@@ -100,7 +131,7 @@ static void* find_empty_space(uint size) {
                                    + current_entry->size];
         }
     }
-    ObjectsTableEntry* last_entry = table_entry(
+    ObjectsTableEntry* last_entry = objects_table_entry(
         entries_indices[super_block.occupied_objects - 1]
     );
     uint space_left = device_size()
@@ -115,7 +146,7 @@ static void* find_empty_space(uint size) {
 
 
 static void initialize_super_block_entry() {
-    ObjectsTableEntry* entry = table_entry(0);
+    ObjectsTableEntry* entry = objects_table_entry(0);
     memcpy(entry->object_id, SUPER_BLOCK_ID, strlen(SUPER_BLOCK_ID) + 1);
     entry->disk_offset = 0;
     entry->size = sizeof(super_block);
@@ -123,8 +154,8 @@ static void initialize_super_block_entry() {
 }
 
 
-static void initialize_table_entry() {
-    ObjectsTableEntry* entry = table_entry(1);
+static void initialize_objects_table_entry() {
+    ObjectsTableEntry* entry = objects_table_entry(1);
     memcpy(entry->object_id, OBJECT_TABLE_ID, strlen(OBJECT_TABLE_ID) + 1);
     entry->disk_offset = super_block.objects_table_offset;
     entry->size = OBJECTS_TABLE_SIZE * sizeof(ObjectsTableEntry);
@@ -151,28 +182,21 @@ void init_obj_fs() {
     // table state. This part should be read from the device and be created
     // when initializing the disk.
     for (uint i = 0; i < max_objects(); ++i) {
-        table_entry(i)->occupied = 0;
+        objects_table_entry(i)->occupied = 0;
     }
     write_super_block();
     initialize_super_block_entry();
-    initialize_table_entry();
+    initialize_objects_table_entry();
 }
 
 
 uint add_object(const void* object, uint size, const char* name) {
-    // currently, because we don't use hash function, we must first scan the
-    // table and check if the object already exists.
-    if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
-        return OBJECT_NAME_TOO_LONG;
+    uint err = check_add_object_validality(size, name);
+    if (err != NO_ERR) {
+        return err;
     }
     for (uint i = 0; i < max_objects(); ++i) {
-        if (table_entry(i)->occupied &&
-            obj_id_cmp(table_entry(i)->object_id, name) == 0) {
-            return OBJECT_EXISTS;
-        }
-    }
-    for (uint i = 0; i < max_objects(); ++i) {
-        ObjectsTableEntry* entry = table_entry(i);
+        ObjectsTableEntry* entry = objects_table_entry(i);
         if (!entry->occupied) {
             void* address = find_empty_space(size);
             if (!address) {
@@ -181,8 +205,8 @@ uint add_object(const void* object, uint size, const char* name) {
             memcpy(entry->object_id, name, obj_id_bytes(name));
             entry->disk_offset = address - (void*)memory_storage;
             entry->size = size;
-            entry->occupied = 1;
             memcpy(address, object, size);
+            entry->occupied = 1;
             super_block.bytes_occupied += size;
             super_block.occupied_objects += 1;
             write_super_block();
@@ -194,38 +218,39 @@ uint add_object(const void* object, uint size, const char* name) {
 
 
 uint rewrite_object(const void* object, uint size, const char* name) {
-    if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
-        return OBJECT_NAME_TOO_LONG;
+    uint err;
+    err = check_rewrite_object_validality(size, name);
+    if (err != NO_ERR) {
+        return err;
     }
-    for (uint i = 0; i < max_objects(); ++i) {
-        ObjectsTableEntry* entry = table_entry(i);
-        if (entry->occupied &&
-            obj_id_cmp(entry->object_id, name) == 0) {
-            super_block.bytes_occupied -= entry->size;
-            if (table_entry(i)->size >= size) {
-                void* address =
-                    (void*)memory_storage + entry->disk_offset;
-                memcpy(address, object, size);
-                entry->size = size;
-            } else {
-                entry->occupied = 0;
-                super_block.occupied_objects -= 1;
-                void* address = find_empty_space(size);
-                entry->occupied = 1;
-                super_block.occupied_objects += 1;
-                if (!address) {
-                    return NO_DISK_SPACE_FOUND;
-                }
-                memcpy(address, object, size);
-                entry->size = size;
-                entry->disk_offset = address - (void*)memory_storage;
-            }
-            super_block.bytes_occupied += size;
-            write_super_block();
-            return NO_ERR;
+    uint i;
+    err = get_objects_table_index(name, &i);
+    if (err != NO_ERR) {
+        return err;
+    }
+    ObjectsTableEntry* entry = objects_table_entry(i);
+    super_block.bytes_occupied -= entry->size;
+    if (entry->size >= size) {
+        void* address =
+            (void*)memory_storage + entry->disk_offset;
+        memcpy(address, object, size);
+        entry->size = size;
+    } else {
+        entry->occupied = 0;
+        super_block.occupied_objects -= 1;
+        void* address = find_empty_space(size);
+        entry->occupied = 1;
+        super_block.occupied_objects += 1;
+        if (!address) {
+            return NO_DISK_SPACE_FOUND;
         }
+        memcpy(address, object, size);
+        entry->size = size;
+        entry->disk_offset = address - (void*)memory_storage;
     }
-    return OBJECT_NOT_EXISTS;
+    super_block.bytes_occupied += size;
+    write_super_block();
+    return NO_ERR;
 }
 
 
@@ -233,15 +258,14 @@ uint object_size(const char* name, uint* output) {
     if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
         return OBJECT_NAME_TOO_LONG;
     }
-    for (uint i = 0; i < max_objects(); ++i) {
-        ObjectsTableEntry* entry = table_entry(i);
-        if (entry->occupied &&
-            obj_id_cmp(entry->object_id, name) == 0) {
-            *output = entry->size;
-            return NO_ERR;
-        }
+    uint i;
+    uint err = get_objects_table_index(name, &i);
+    if (err != NO_ERR) {
+        return err;
     }
-    return OBJECT_NOT_EXISTS;
+    ObjectsTableEntry* entry = objects_table_entry(i);
+    *output = entry->size;
+    return NO_ERR;
 }
 
 
@@ -249,35 +273,66 @@ uint get_object(const char* name, void* output) {
     if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
         return OBJECT_NAME_TOO_LONG;
     }
-    for (uint i = 0; i < max_objects(); ++i) {
-        ObjectsTableEntry* entry = table_entry(i);
-        if (entry->occupied &&
-            obj_id_cmp(entry->object_id, name) == 0) {
-            void* address = (void*)memory_storage + entry->disk_offset;
-            memcpy(output, address, entry->size);
-            return NO_ERR;
-        }
+    uint i;
+    uint err = get_objects_table_index(name, &i);
+    if (err != NO_ERR) {
+        return err;
     }
-    return OBJECT_NOT_EXISTS;
+    ObjectsTableEntry* entry = objects_table_entry(i);
+    void* address = (void*)memory_storage + entry->disk_offset;
+    memcpy(output, address, entry->size);
+    return NO_ERR;
 }
 
 
 uint delete_object(const char* name) {
+    uint err = check_delete_object_validality(name);
+    if (err != NO_ERR) {
+        return err;
+    }
+    uint i;
+    err = get_objects_table_index(name, &i);
+    if (err != NO_ERR) {
+        return err;
+    }
+    ObjectsTableEntry* entry = objects_table_entry(i);
+    entry->occupied = 0;
+    super_block.occupied_objects -= 1;
+    super_block.bytes_occupied -= entry->size;
+    write_super_block();
+    return NO_ERR;
+}
+
+
+uint check_add_object_validality(uint size, const char* name) {
+    // currently, because we don't use hash function, we must first scan the
+    // table and check if the object already exists.
     if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
         return OBJECT_NAME_TOO_LONG;
     }
     for (uint i = 0; i < max_objects(); ++i) {
-        ObjectsTableEntry* entry = table_entry(i);
-        if (entry->occupied &&
-            obj_id_cmp(entry->object_id, name) == 0) {
-            entry->occupied = 0;
-            super_block.occupied_objects -= 1;
-            super_block.bytes_occupied -= entry->size;
-            write_super_block();
-            return NO_ERR;
+        if (objects_table_entry(i)->occupied &&
+            obj_id_cmp(objects_table_entry(i)->object_id, name) == 0) {
+            return OBJECT_EXISTS;
         }
     }
-    return OBJECT_NOT_EXISTS;
+    return NO_ERR;
+}
+
+
+uint check_rewrite_object_validality(uint size, const char* name) {
+    if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
+        return OBJECT_NAME_TOO_LONG;
+    }
+    return NO_ERR;
+}
+
+
+uint check_delete_object_validality(const char* name) {
+    if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
+        return OBJECT_NAME_TOO_LONG;
+    }
+    return NO_ERR;
 }
 
 
@@ -288,6 +343,12 @@ uint max_objects() {
 
 uint occupied_objects() {
     return super_block.occupied_objects;
+}
+
+
+void set_occupied_objects(uint value) {
+    super_block.occupied_objects = value;
+    write_super_block();
 }
 
 

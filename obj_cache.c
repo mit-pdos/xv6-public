@@ -1,11 +1,13 @@
 #include <string.h>
 
-#ifndef KERNEL_TESTS
-#include "defs.h"  // import `panic`
-#endif
-
 #include "obj_cache.h"
 #include "obj_disk.h"
+
+#ifndef KERNEL_TESTS
+#include "defs.h"  // import `panic`
+#else
+#include "obj_fs_tests_utilities.h"  // impot mock `panic`
+#endif
 
 
 // the default cache has 32 objects of 8KB each for total of 256KB.
@@ -37,16 +39,6 @@ struct {
   // head.next is most recently used. The head itself doesn't keep an object.
   struct obj_cache_entry head;
 } obj_cache;
-
-
-#ifdef KERNEL_TESTS
-#include <stdio.h>
-#include <stdlib.h>
-void panic(const char* msg) {
-    printf("kernel panic: %s\n", msg);
-    exit(1);
-}
-#endif
 
 
 void init_objects_cache() {
@@ -141,21 +133,16 @@ uint cache_delete_object(const char* name) {
     if (rv != NO_ERR) {
         return rv;
     }
-    // the object might be inside the cache and might not
-    for(struct obj_cache_entry* e = obj_cache.head.prev;
-        e != &obj_cache.head;
-        e = e->prev)
-    {
-        if (obj_id_cmp(name, e->object_id) == 0) {
-            move_to_back(e);
-            // "remove" the object from the cache - otherwise the assumption
-            // in `cache_add_objet` won't be valid.
-            e->object_id[0] = 0;
-            hits++;
-            return NO_ERR;
-        }
+    // "remove" the object from the cache - otherwise the assumption
+    // in `cache_add_objet` won't be valid.
+    rv = cache_free_from_cache(name);
+    if (rv == OBJECT_NOT_EXISTS) {
+        misses++;
+    } else if (rv == NO_ERR) {
+        hits++;
+    } else {
+        panic("unexpected error from cache_free_from_cache");
     }
-    misses++;
     return NO_ERR;
 }
 
@@ -207,6 +194,22 @@ uint cache_get_object(const char* name, void* output) {
     }
     memcpy(e->object_id, name, obj_id_bytes(name));
     return NO_ERR;
+}
+
+
+uint cache_free_from_cache(const char* name) {
+    // the object might be inside the cache and might not
+    for(struct obj_cache_entry* e = obj_cache.head.prev;
+        e != &obj_cache.head;
+        e = e->prev)
+    {
+        if (obj_id_cmp(name, e->object_id) == 0) {
+            move_to_back(e);
+            e->object_id[0] = 0;
+            return NO_ERR;
+        }
+    }
+    return OBJECT_NOT_EXISTS;
 }
 
 

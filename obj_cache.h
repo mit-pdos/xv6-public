@@ -79,6 +79,11 @@ uint cache_delete_object(const char* name);
 uint cache_object_size(const char* name, uint* output);
 uint cache_get_object(const char* name, void* output);
 
+/**
+ * Remove the object from the objects cache but not form the disk.
+ */
+uint cache_free_from_cache(const char* name);
+
 
 /**
  * The following methods provides statistics about the cache layer. They can
