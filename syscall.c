@@ -60,7 +60,7 @@ argptr(int n, char **pp, int size)
 {
   int i;
   struct proc *curproc = myproc();
- 
+
   if(argint(n, &i) < 0)
     return -1;
   if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
@@ -131,6 +131,8 @@ static int (*syscalls[])(void) = {
 void
 syscall(void)
 {
+  bool print;
+  print = true;
   int num;
   struct proc *curproc = myproc();
 
