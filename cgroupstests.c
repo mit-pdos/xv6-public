@@ -406,7 +406,7 @@ int main(int argc, char * argv[])
     run_test(test_mount_cgroup_fs);
     run_test(test_creating_cgroups);
     run_test(test_opening_and_closing_cgroup_files);
-    run_test(test_reading_cgroup_files);
+    run_test_break_msg(test_reading_cgroup_files);
     run_test(test_moving_process);
     run_test(test_enable_and_disable_all_controllers);
     run_test(test_limiting_pids);

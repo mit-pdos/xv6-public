@@ -20,7 +20,9 @@
 
 void print_error(const char* name, unsigned long int x, unsigned long int y,
                  const char* file, int line) {
-    printf(1, "[   FAILED  ] %s - expected %d but got %d (%s:%d)\n",
+    for (int i = 0; i < strlen(name) + strlen("[RUNNING] ");i++)
+        printf(1, "\b");
+    printf(1, "[FAILED] %s - expected %d but got %d (%s:%d)\n",
            name, x, y, file, line);
 }
 
@@ -30,10 +32,21 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
 
 
 #define run_test(test_name) \
-    printf(1, "[RUNNING    ] %s\n", #test_name);\
+    if (failed == 0)\
+        printf(1,"[RUNNING] %s", #test_name);\
     test_name(#test_name); \
-    printf(1, "[       DONE] %s\n", #test_name);
+    if (failed == 0) { \
+       for(int i=0; i < strlen(#test_name) + strlen("[RUNNING] ");i++)\
+           printf(1, "\b");\
+       printf(1, "[DONE] %s   \n", #test_name);\
+    }
 
+// Prints the exectuion message differently.
+#define run_test_break_msg(test_name) \
+    printf(1, "[RUNNING] %s\n", #test_name);\
+    test_name(#test_name); \
+    if (failed == 0)\
+        printf(1, "[DONE] %s\n", #test_name);
 
 /**
  * NUMERIC VALIDATIONS
@@ -59,7 +72,9 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
 
 #define ASSERT_TRUE(x) \
     if (!(x)) { \
-        printf(1, "[   FAILED  ] %s - expected true for " #x " (%s:%d)\n", \
+        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ");i++)\
+            printf(1, "\b");\
+        printf(1, "[FAILED] %s - expected true for " #x " (%s:%d)\n", \
                name, __FILE__, __LINE__);\
         failed = 1; \
         return; \
@@ -67,14 +82,18 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
 
 #define EXPECT_TRUE(x) \
     if (!(x)) { \
-        printf(1, "[   FAILED  ] %s - expected true for " #x " (%s:%d)\n", \
+        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ");i++)\
+            printf(1, "\b");\
+        printf(1, "[FAILED] %s - expected true for " #x " (%s:%d)\n", \
                name, __FILE__, __LINE__);\
         failed = 1; \
     }
 
 #define ASSERT_FALSE(x) \
     if (x) { \
-        printf(1, "[   FAILED  ] %s - expected false for " #x "(%s:%d)\n", \
+        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ");i++)\
+            printf(1, "\b");\
+        printf(1, "[FAILED] %s - expected false for " #x "(%s:%d)\n", \
                name, __FILE__, __LINE__);\
         failed = 1; \
         return; \
@@ -82,7 +101,9 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
 
 #define EXPECT_FALSE(x) \
     if (x) { \
-        printf(1, "[   FAILED  ] %s - expected false for " #x "(%s:%d)\n", \
+        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ");i++)\
+            printf(1, "\b");\
+        printf(1, "[FAILED] %s - expected false for " #x "(%s:%d)\n", \
                name, __FILE__, __LINE__);\
         failed = 1; \
     }
