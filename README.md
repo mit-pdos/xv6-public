@@ -7,9 +7,11 @@
     - near line 223, find `ShowSysCall` function call
     - change first argument `SHOW_SYS_FALSE` to `SHOW_SYS_TRUE`
     - alternatively, set the first argument to 1
+    - compile the kernal
 * To disable:
     - change first argument `SHOW_SYS_TRUE` to `SHOW_SYS_FALSE`
     - alternatively, set the first argument to 0
+    - compile the kernal
 
 ### Date System Call:
 * Files modified for creating `date` system call:
