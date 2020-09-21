@@ -160,7 +160,7 @@ char* callName(int num)
 void
 syscall(void)
 {
-  int print = 0;
+  int print = 1;
   int num;
   struct proc *curproc = myproc();
 

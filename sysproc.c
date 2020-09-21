@@ -91,8 +91,13 @@ sys_uptime(void)
 }
 
 int
-sys_date(struct rtcdate * r)
+sys_date(void)
 {
-  cmostime(r);
+  int r;
+  argint(0, &r);
+
+  acquire(&tickslock);
+  cmostime((struct rtcdate *)r);
+  release(&tickslock);
   return 0;
 }
