@@ -103,6 +103,7 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_date(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -126,19 +127,50 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_date]    sys_date,
 };
+
+char* callName(int num)
+{
+  if(num == SYS_fork) return "fork";
+  if(num==SYS_exit) return "exit";
+  if(num==SYS_wait) return "wait";
+  if(num==SYS_pipe) return "pipe";
+  if(num == SYS_read) return "read";
+  if(num == SYS_kill) return "kill";
+  if(num == SYS_exec) return "exec";
+  if(num == SYS_fstat) return "fstat";
+  if(num == SYS_chdir) return "chdir";
+  if(num == SYS_dup) return "dup";
+  if(num == SYS_getpid) return "getpid";
+  if(num == SYS_sbrk) return "sbrk";
+  if(num == SYS_sleep) return "sleep";
+  if(num == SYS_uptime) return "uptime";
+  if(num == SYS_open) return "open";
+  if(num == SYS_write) return "write";
+  if(num == SYS_mknod) return "mknod";
+  if(num == SYS_unlink) return "unlink";
+  if(num == SYS_link) return "link";
+  if(num == SYS_mkdir) return "mkdir";
+  if(num == SYS_close) return "close";
+  if(num == SYS_date) return "date";
+  else return "";
+}
 
 void
 syscall(void)
 {
-  bool print;
-  print = true;
+  int print = 0;
   int num;
   struct proc *curproc = myproc();
 
   num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     curproc->tf->eax = syscalls[num]();
+    if(print)
+    {
+        cprintf("%s -> %d\n", callName(num), curproc->tf->eax);
+    }
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             curproc->pid, curproc->name, num);
