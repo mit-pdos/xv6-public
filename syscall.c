@@ -112,6 +112,7 @@ extern int sys_usleep(void);
 extern int sys_ioctl(void);
 extern int sys_getppid(void);
 extern int sys_getcpu(void);
+extern int sys_getmem(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -144,6 +145,7 @@ static int (*syscalls[])(void) = {
 [SYS_ioctl] sys_ioctl,
 [SYS_getppid] sys_getppid,
 [SYS_getcpu] sys_getcpu,
+[SYS_getmem] sys_getmem,
 };
 
 void

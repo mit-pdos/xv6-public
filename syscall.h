@@ -29,3 +29,4 @@
 #define SYS_ioctl 28
 #define SYS_getppid 29
 #define SYS_getcpu 30
+#define SYS_getmem 31

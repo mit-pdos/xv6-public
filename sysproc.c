@@ -246,3 +246,10 @@ sys_getcpu(void) {
     sti();
     return id;
 }
+
+// This is our solution for what can be found at the /proc
+// virtual filesystem in linux.
+int
+sys_getmem(void) {
+  return myproc()->sz;
+}

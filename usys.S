@@ -38,3 +38,5 @@ SYSCALL(usleep)
 SYSCALL(ioctl)
 SYSCALL(getppid)
 SYSCALL(getcpu)
+SYSCALL(getmem)
+
