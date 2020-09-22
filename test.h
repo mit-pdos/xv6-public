@@ -18,9 +18,11 @@
 
 #include "user.h"
 
+#define REMOVE_2_ADDITIONAL_CHARS 2
+
 void print_error(const char* name, unsigned long int x, unsigned long int y,
                  const char* file, int line) {
-    for (int i = 0; i < strlen(name) + strlen("[RUNNING] ");i++)
+    for (int i = 0; i < strlen(name) + strlen("[RUNNING] ") + REMOVE_2_ADDITIONAL_CHARS; i++)
         printf(1, "\b");
     printf(1, "[FAILED] %s - expected %d but got %d (%s:%d)\n",
            name, x, y, file, line);
@@ -32,19 +34,22 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
 
 
 #define run_test(test_name) \
-    if (failed == 0)\
+    if (failed == 0) {\
         printf(1,"[RUNNING] %s", #test_name);\
-    test_name(#test_name); \
+        test_name(#test_name);\
+    } \
     if (failed == 0) { \
-       for(int i=0; i < strlen(#test_name) + strlen("[RUNNING] ");i++)\
+       for(int i=0; i < strlen(#test_name) + strlen("[RUNNING] ") + REMOVE_2_ADDITIONAL_CHARS; i++)\
            printf(1, "\b");\
        printf(1, "[DONE] %s   \n", #test_name);\
     }
 
 // Prints the exectuion message differently.
 #define run_test_break_msg(test_name) \
-    printf(1, "[RUNNING] %s\n", #test_name);\
-    test_name(#test_name); \
+    if (failed == 0) {\
+       printf(1, "[RUNNING] %s\n", #test_name);\
+       test_name(#test_name); \
+    } \
     if (failed == 0)\
         printf(1, "[DONE] %s\n", #test_name);
 
@@ -72,7 +77,7 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
 
 #define ASSERT_TRUE(x) \
     if (!(x)) { \
-        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ");i++)\
+        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ") + REMOVE_2_ADDITIONAL_CHARS; i++)\
             printf(1, "\b");\
         printf(1, "[FAILED] %s - expected true for " #x " (%s:%d)\n", \
                name, __FILE__, __LINE__);\
@@ -82,7 +87,7 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
 
 #define EXPECT_TRUE(x) \
     if (!(x)) { \
-        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ");i++)\
+        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ") + REMOVE_2_ADDITIONAL_CHARS; i++)\
             printf(1, "\b");\
         printf(1, "[FAILED] %s - expected true for " #x " (%s:%d)\n", \
                name, __FILE__, __LINE__);\
@@ -91,7 +96,7 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
 
 #define ASSERT_FALSE(x) \
     if (x) { \
-        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ");i++)\
+        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ") + REMOVE_2_ADDITIONAL_CHARS; i++)\
             printf(1, "\b");\
         printf(1, "[FAILED] %s - expected false for " #x "(%s:%d)\n", \
                name, __FILE__, __LINE__);\
@@ -101,7 +106,7 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
 
 #define EXPECT_FALSE(x) \
     if (x) { \
-        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ");i++)\
+        for(int i=0; i < strlen(#x) + strlen("[RUNNING] ") + REMOVE_2_ADDITIONAL_CHARS; i++)\
             printf(1, "\b");\
         printf(1, "[FAILED] %s - expected false for " #x "(%s:%d)\n", \
                name, __FILE__, __LINE__);\
