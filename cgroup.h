@@ -320,10 +320,10 @@ int cg_sys_open(char * path, int omode);
 
 
 /**
- *This function sets the maximum number of processes.
- *Receives cgroup pointer parameter "cgroup" and integer "limit".
- *Sets the number of maximum allowed processes in the cgroup to be "limit".
- *Returns 1 upon successes, 0 if no action taken, -1 upon failure.
+ * This function sets the maximum number of processes.
+ * Receives cgroup pointer parameter "cgroup" and integer "limit".
+ * Sets the number of maximum allowed processes in the cgroup to be "limit".
+ * Returns 1 upon successes, 0 if no action taken, -1 upon failure.
  */
 int set_max_procs(struct cgroup * cgp, int limit);
 

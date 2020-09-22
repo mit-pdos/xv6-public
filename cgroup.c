@@ -283,7 +283,7 @@ void cgroup_initialize(struct cgroup * cgroup,
             cgroup->pid_controller_avalible = 0;
 
         /*Cgroup's set controller avalible only when it is enabled in the
-        * parent. Notice doesn't apply to root, it is not enabled in root*/
+         * parent. Notice doesn't apply to root, it is not enabled in root*/
         if (parent_cgroup == cgroup_root())
             cgroup->set_controller_avalible = 1;
         else {
@@ -307,9 +307,9 @@ void cgroup_initialize(struct cgroup * cgroup,
     set_max_depth_value(cgroup, MAX_DEP_DEF);
     set_nr_descendants(cgroup, 0);
     set_nr_dying_descendants(cgroup, 0);
-    //Without any changes, set the maximum number of processes to max in system
+    // Without any changes, set the maximum number of processes to max in system
     set_max_procs(cgroup, NPROC);
-    //Without any changes, set the default cpu id to be used as 0
+    // Without any changes, set the default cpu id to be used as 0
     set_cpu_id(cgroup, 0);
 
     cgroup->cpu_account_frame = 0;
@@ -572,13 +572,13 @@ int cg_sys_open(char * path, int omode)
 {
     struct cgroup *cgp;
 
-    if((cgp = get_cgroup_by_path(path)))
+    if ((cgp = get_cgroup_by_path(path)))
         return cg_open(CG_DIR, 0, cgp, omode);
 
     char dir_path[MAX_PATH_LENGTH];
     char file_name[MAX_PATH_LENGTH];
 
-    if(get_dir_name(path, dir_path) == 0 && get_base_name(path, file_name) == 0 && (cgp = get_cgroup_by_path(dir_path)))
+    if (get_dir_name(path, dir_path) == 0 && get_base_name(path, file_name) == 0 && (cgp = get_cgroup_by_path(dir_path)))
         return cg_open(CG_FILE, file_name, cgp, omode);
 
     return -1;

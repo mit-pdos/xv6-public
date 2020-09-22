@@ -203,7 +203,7 @@ int test_pid_in_group(const char* file, int pid) {
     }
 
     if (suppress == 0) {
-        printf(1, "\nFailed to find pid %d in group %s\n", atoi(pid_buf), file);
+        printf(1, "Failed to find pid %d in group %s\n", atoi(pid_buf), file);
     }
 
     return 0;
@@ -236,7 +236,7 @@ int test_temp_read(int print) {
 // Delete the temporary file.
 int test_temp_delete() {
     if (unlink(TEMP_FILE)) {
-        printf(1, "\nFailed to delete temporary file\n");
+        printf(1, "Failed to delete temporary file\n");
         return 0;
     }
 
