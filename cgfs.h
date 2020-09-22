@@ -31,7 +31,9 @@
  *    12)   "pid.current"
  *    13)   "cpuset.cpus"
  *    14)   "cgroup.freeze"
- *    15)    cgroup directories
+ *    15)   "memory.current"
+ *    16)   "memory.max"
+ *    17)    cgroup directories
  */
 int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int omode);
 
@@ -60,7 +62,9 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
  *    12)   "pid.current"
  *    13)   "cpuset.cpus"
  *    14)   "cgroup.freeze"
- *    15)    cgroup directories
+ *    15)   "memory.current"
+ *    16)   "memory.max"
+ *    17)    cgroup directories
  */
 int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n);
 
@@ -82,6 +86,7 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n);
  *    6)    "pid.max"
  *    7)    "cpuset.cpus"
  *    8)    "cgroup.freeze"
+ *    9)    "memory.max"
  */
 int unsafe_cg_write(struct file * f, char * addr, int n);
 

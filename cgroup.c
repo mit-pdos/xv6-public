@@ -1,6 +1,7 @@
 #include "cgroup.h"
 #include "cgfs.h"
 #include "spinlock.h"
+#include "memlayout.h"
 
 #define MAX_DES_DEF 64
 #define MAX_DEP_DEF 64
@@ -71,6 +72,7 @@ static void unsafe_cgroup_erase(struct cgroup * cgroup, struct proc * proc)
             // ancestors.
             while (cgroup != 0) {
                 cgroup->num_of_procs--;
+                cgroup->current_mem -= proc->sz;
                 if (cgroup->num_of_procs == 0)
                     cgroup->populated = 0;
                 cgroup = cgroup->parent;
@@ -264,6 +266,8 @@ void cgroup_initialize(struct cgroup * cgroup,
         cgroup->pid_controller_enabled = 1;
         cgroup->set_controller_avalible = 1;
         cgroup->set_controller_enabled = 0;
+        cgroup->mem_controller_avalible = 1;
+        cgroup->mem_controller_enabled = 1;
     }
     else {
         cgroup->parent = parent_cgroup;
@@ -293,9 +297,17 @@ void cgroup_initialize(struct cgroup * cgroup,
                 cgroup->set_controller_avalible = 0;
         }
 
+        /*Cgroup's memory controller avalible only when it is enabled in the
+        * parent.*/
+        if (parent_cgroup->mem_controller_enabled)
+          cgroup->mem_controller_avalible = 1;
+        else
+          cgroup->mem_controller_avalible = 0;
+
         cgroup->pid_controller_enabled = 0;
         cgroup->cpu_controller_enabled = 0;
         cgroup->set_controller_enabled = 0;
+        cgroup->mem_controller_enabled = 0;
         cgroup->depth = cgroup->parent->depth + 1;
         unsafe_set_cgroup_dir_path(cgroup, path);
     }
@@ -303,6 +315,7 @@ void cgroup_initialize(struct cgroup * cgroup,
     cgroup->ref_count = 0;
     cgroup->num_of_procs = 0;
     cgroup->populated = 0;
+    cgroup->current_mem = 0;
     set_max_descendants_value(cgroup, MAX_DES_DEF);
     set_max_depth_value(cgroup, MAX_DEP_DEF);
     set_nr_descendants(cgroup, 0);
@@ -313,6 +326,8 @@ void cgroup_initialize(struct cgroup * cgroup,
     set_cpu_id(cgroup, 0);
     // By default a group is not frozen
     frz_grp(cgroup, 0);
+    // By default a group has limit of KERNBASE memory.
+    set_max_mem(cgroup, KERNBASE);
 
     cgroup->cpu_account_frame = 0;
     cgroup->cpu_percent = 0;
@@ -340,6 +355,11 @@ int unsafe_cgroup_insert(struct cgroup * cgroup, struct proc * proc)
     if (cgroup->pid_controller_enabled == 1 &&
         (cgroup->num_of_procs + 1) > cgroup->max_num_of_procs)
         return -1;
+
+    // If the process memory in addition to existing memory is over the limit and memory controller is enabled, return error.
+    if (cgroup->mem_controller_enabled == 1 &&
+      (cgroup->current_mem + proc->sz) > cgroup->max_mem)
+      return -1;
 
     // Whether a free slot was found.
     int found = 0;
@@ -386,6 +406,7 @@ int unsafe_cgroup_insert(struct cgroup * cgroup, struct proc * proc)
     while (cgroup != 0) {
         cgroup->num_of_procs++;
         cgroup->populated = 1;
+        cgroup->current_mem += proc->sz;
         cgroup = cgroup->parent;
     }
     return 0;
@@ -810,3 +831,91 @@ int frz_grp(struct cgroup * cgroup, int frz) {
     return 0;
 }
 
+int set_max_mem(struct cgroup* cgroup, unsigned int limit) {
+  // If no cgroup found, return error.
+  if (cgroup == 0)
+    return -1;
+
+  // Set the limit if it is within allowed parameters.
+  // 0 is used for testing.
+  if (limit >= 0 && limit <= KERNBASE) {
+    cgroup->max_mem = limit;
+    return 1;
+  }
+
+  return 0;
+}
+
+int unsafe_enable_mem_controller(struct cgroup* cgroup) {
+  // If cgroup has processes in it, controllers can't be enabled.
+  if (cgroup == 0 || cgroup->populated == 1) {
+    return -1;
+  }
+
+  // If controller is enabled do nothing.
+  if (cgroup->mem_controller_enabled) {
+    return 0;
+  }
+
+  if (cgroup->mem_controller_avalible) {
+    // Set memory controller to enabled.
+    cgroup->mem_controller_enabled = 1;
+    // Set memory controller to avalible in all child cgroups.
+    for (int i = 1;
+      i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
+      i++)
+      if (cgtable.cgroups[i].parent == cgroup)
+        cgtable.cgroups[i].mem_controller_avalible = 1;
+  }
+
+  return 0;
+}
+
+int unsafe_disable_mem_controller(struct cgroup* cgroup) {
+  if (cgroup == 0) {
+    return -1;
+  }
+
+  // If controller is disabled do nothing.
+  if (cgroup->mem_controller_enabled == 0) {
+    return 0;
+  }
+
+  // Check that all child cgroups have memory controller disabled. (cannot
+  // disable controller when children have it enabled)
+  for (int i = 1;
+    i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
+    i++)
+    if (cgtable.cgroups[i].parent == cgroup &&
+      cgtable.cgroups[i].mem_controller_enabled) {
+      return -1;
+    }
+
+  // Set memory controller to disabled.
+  cgroup->mem_controller_enabled = 0;
+
+  // Set memory controller to unavalible in all child cgroups.
+  for (int i = 1;
+    i < sizeof(cgtable.cgroups) / sizeof(cgtable.cgroups[0]);
+    i++)
+    if (cgtable.cgroups[i].parent == cgroup)
+      cgtable.cgroups[i].mem_controller_avalible = 0;
+
+  return 0;
+}
+
+int enable_mem_controller(struct cgroup* cgroup)
+{
+  acquire(&cgtable.lock);
+  int res = unsafe_enable_mem_controller(cgroup);
+  release(&cgtable.lock);
+  return res;
+}
+
+int disable_mem_controller(struct cgroup* cgroup)
+{
+  acquire(&cgtable.lock);
+  int res = unsafe_disable_mem_controller(cgroup);
+  release(&cgtable.lock);
+  return res;
+}

@@ -36,8 +36,8 @@ int test_temp_read(int print);
 int test_temp_delete();
 
 #define MAX_CONTROLLER_NAME_LENGTH      16
-#define CONTROLLER_COUNT                3
+#define CONTROLLER_COUNT                4
 
-enum controller_types {CPU_CNT, PID_CNT, SET_CNT};
+enum controller_types {CPU_CNT, PID_CNT, SET_CNT, MEM_CNT};
 
 #endif

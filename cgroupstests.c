@@ -51,6 +51,8 @@ TEST(test_opening_and_closing_cgroup_files)
     ASSERT_TRUE(test_open_close(TEST_1_PID_CURRENT));
     ASSERT_TRUE(test_open_close(TEST_1_SET_CPU));
     ASSERT_TRUE(test_open_close(TEST_1_SET_FRZ));
+    ASSERT_TRUE(test_open_close(TEST_1_MEM_CURRENT));
+    ASSERT_TRUE(test_open_close(TEST_1_MEM_MAX));
 }
 
 TEST(test_reading_cgroup_files)
@@ -69,6 +71,8 @@ TEST(test_reading_cgroup_files)
     ASSERT_TRUE(test_read(TEST_1_PID_CURRENT, 1));
     ASSERT_TRUE(test_read(TEST_1_SET_CPU, 1));
     ASSERT_TRUE(test_read(TEST_1_SET_FRZ, 1));
+    ASSERT_TRUE(test_read(TEST_1_MEM_CURRENT, 1));
+    ASSERT_TRUE(test_read(TEST_1_MEM_MAX, 1));
 }
 
 char *build_activate_disable_activate(int controller_type)
@@ -541,6 +545,227 @@ TEST(test_frozen_not_running)
     }
 }
 
+//In this following memory accounting tests we move only single process to "/cgroup/test1" in order to simplify the testing.
+TEST(test_mem_current) {
+  // Save current process memory size.
+  char proc_mem[10];
+  itoa(proc_mem, getmem());
+  strcat(proc_mem, "\n");
+  // Buffer to read contents from memory file.
+  char saved_mem[10];
+
+  // Move the current process to "/cgroup/test1" cgroup so we can
+  // compare it's memory usage to the controller's accounting.
+  ASSERT_TRUE(test_move_proc(TEST_1_CGROUP_PROCS, getpid()));
+
+  // Check that the process we moved is really in "/cgroup/test1" cgroup.
+  ASSERT_TRUE(test_pid_in_group(TEST_1_CGROUP_PROCS, getpid()));
+
+  // Read the contents of current memory file and convert it for comparison.
+  strcpy(saved_mem, test_read(TEST_1_MEM_CURRENT, 0));
+
+  // Check memory usaged updated correctly.
+  ASSERT_FALSE(strcmp(saved_mem, proc_mem));
+
+  // Return the process to root cgroup.
+  ASSERT_TRUE(test_move_proc(ROOT_CGROUP_PROCS, getpid()));
+
+  // Check that the process we returned is really in root cgroup.
+  ASSERT_TRUE(test_pid_in_group(ROOT_CGROUP_PROCS, getpid()));
+}
+
+TEST(test_correct_mem_account_of_growth_and_shrink) {
+  // Save current process memory size.
+  char proc_mem[10];
+  // Buffer to read contents from memory file.
+  char saved_mem[10];
+
+  // Move the current process to "/cgroup/test1" cgroup.
+  ASSERT_TRUE(test_move_proc(TEST_1_CGROUP_PROCS, getpid()));
+
+  // Check that the process we moved is really in "/cgroup/test1" cgroup.
+  ASSERT_TRUE(test_pid_in_group(TEST_1_CGROUP_PROCS, getpid()));
+
+  // Grow the current process by 100 bytes.
+  sbrk(100);
+
+  // Read the contents of current memory file and convert it for comparison.
+  strcpy(saved_mem, test_read(TEST_1_MEM_CURRENT, 0));
+
+  // Convert process memory to a string.
+  itoa(proc_mem, getmem());
+  strcat(proc_mem, "\n");
+
+  // Read the contents of current memory file and convert it for comparison.
+  strcpy(saved_mem, test_read(TEST_1_MEM_CURRENT, 0));
+
+  // Check that the memory accounting correctly updated after memory growth.
+  ASSERT_FALSE(strcmp(saved_mem, proc_mem));
+
+  // Decrease current proc by 100 bytes.
+  sbrk(-100);
+
+  // Read the contents of current memory file and convert it for comparison.
+  strcpy(saved_mem, test_read(TEST_1_MEM_CURRENT, 0));
+
+  // Convert process memory to a string.
+  itoa(proc_mem, getmem());
+  strcat(proc_mem, "\n");
+
+  // Read the contents of current memory file and convert it for comparison.
+  strcpy(saved_mem, test_read(TEST_1_MEM_CURRENT, 0));
+
+  // Check that the memory accounting correctly updated after memory growth.
+  ASSERT_FALSE(strcmp(saved_mem, proc_mem));
+
+  // Return the process to root cgroup.
+  ASSERT_TRUE(test_move_proc(ROOT_CGROUP_PROCS, getpid()));
+
+  // Check that the process we returned is really in root cgroup.
+  ASSERT_TRUE(test_pid_in_group(ROOT_CGROUP_PROCS, getpid()));
+}
+
+TEST(test_limiting_mem)
+{
+  // Buffer for saving current memory written in limit
+  char saved_mem[12];
+
+  // Enable memory controller
+  ASSERT_TRUE(test_enable_controller(MEM_CNT));
+
+  // Copy the current saved memory and remove newline at the end
+  strcpy(saved_mem, test_read(TEST_1_MEM_MAX, 0));
+  saved_mem[strlen(saved_mem) - 1] = '\0';
+
+  // Update memory limit
+  ASSERT_TRUE(test_write(TEST_1_MEM_MAX, "100"));
+
+  // Check changes
+  ASSERT_FALSE(strcmp(test_read(TEST_1_MEM_MAX, 0), "100\n"));
+
+  // Restore memory limit to original
+  ASSERT_TRUE(test_write(TEST_1_MEM_MAX, saved_mem));
+
+  // Check changes
+  ASSERT_FALSE(strncmp(test_read(TEST_1_MEM_MAX, 0), saved_mem, strlen(saved_mem)));
+
+  // Disable memory controller
+  ASSERT_TRUE(test_disable_controller(MEM_CNT));
+}
+
+TEST(test_cant_move_over_mem_limit)
+{
+  // Buffer for saving current memory written in limit
+  char saved_mem[12];
+
+  // Enable memory controller
+  ASSERT_TRUE(test_enable_controller(MEM_CNT));
+
+  // Copy the current saved memory and remove newline at the end
+  strcpy(saved_mem, test_read(TEST_1_MEM_MAX, 0));
+  saved_mem[strlen(saved_mem) - 1] = '\0';
+
+  // Update memory limit
+  ASSERT_TRUE(test_write(TEST_1_MEM_MAX, "0"));
+
+  // Check changes
+  ASSERT_FALSE(strcmp(test_read(TEST_1_MEM_MAX, 0), "0\n"));
+
+  // Attemp to move the current process to "/cgroup/test1" cgroup.
+  ASSERT_FALSE(test_move_proc(TEST_1_CGROUP_PROCS, getpid()));
+
+  // Check that the current process is not in "/cgroup/test1" cgroup.
+  ASSERT_FALSE(test_pid_in_group(TEST_1_CGROUP_PROCS, getpid()));
+
+  // Check that the current process is still in root group.
+  ASSERT_TRUE(test_pid_in_group(ROOT_CGROUP_PROCS, getpid()));
+
+  // Restore memory limit to original
+  ASSERT_TRUE(test_write(TEST_1_MEM_MAX, saved_mem));
+
+  // Check changes
+  ASSERT_FALSE(strncmp(test_read(TEST_1_MEM_MAX, 0), saved_mem, strlen(saved_mem)));
+
+  // Disable memory controller
+  ASSERT_TRUE(test_disable_controller(MEM_CNT));
+}
+
+TEST(test_cant_fork_over_mem_limit)
+{
+  // Save current process memory size.
+  char proc_mem[10];
+  itoa(proc_mem, getmem());
+  // Buffer to read contents from memory file.
+  char saved_mem[10];
+
+  // Enable memory controller
+  ASSERT_TRUE(test_enable_controller(MEM_CNT));
+
+  // Update memory limit
+  ASSERT_TRUE(test_write(TEST_1_MEM_MAX, proc_mem));
+
+  // Read the contents of limit file and convert it for comparison.
+  strcpy(saved_mem, test_read(TEST_1_MEM_MAX, 0));
+
+  strcat(proc_mem, "\n");
+
+  // Check changes
+  ASSERT_FALSE(strcmp(saved_mem, proc_mem));
+
+  // Move the current process to "/cgroup/test1" cgroup.
+  ASSERT_TRUE(test_move_proc(TEST_1_CGROUP_PROCS, getpid()));
+
+  // Attempt to fork, notice this operation should fail and return -1.
+  ASSERT_UINT_EQ(fork(), -1);
+
+  // Return the process to root cgroup.
+  ASSERT_TRUE(test_move_proc(ROOT_CGROUP_PROCS, getpid()));
+
+  // Check that the process we returned is really in root cgroup.
+  ASSERT_TRUE(test_pid_in_group(ROOT_CGROUP_PROCS, getpid()));
+
+  // Disable memory controller
+  ASSERT_TRUE(test_disable_controller(MEM_CNT));
+}
+
+TEST(test_cant_grow_over_mem_limit)
+{
+  // Save current process memory size.
+  char proc_mem[10];
+  itoa(proc_mem, getmem());
+  // Buffer to read contents from memory file.
+  char saved_mem[10];
+
+  // Enable memory controller
+  ASSERT_TRUE(test_enable_controller(MEM_CNT));
+
+  // Update memory limit
+  ASSERT_TRUE(test_write(TEST_1_MEM_MAX, proc_mem));
+
+  strcat(proc_mem, "\n");
+
+  // Read the contents of limit file and convert it for comparison.
+  strcpy(saved_mem, test_read(TEST_1_MEM_MAX, 0));
+
+  // Check changes
+  ASSERT_FALSE(strcmp(saved_mem, proc_mem));
+
+  // Move the current process to "/cgroup/test1" cgroup.
+  ASSERT_TRUE(test_move_proc(TEST_1_CGROUP_PROCS, getpid()));
+
+  // Attempt to grow process memory, notice this operation should fail and return -1.
+  ASSERT_UINT_EQ((int)sbrk(10), -1);
+
+  // Return the process to root cgroup.
+  ASSERT_TRUE(test_move_proc(ROOT_CGROUP_PROCS, getpid()));
+
+  // Check that the process we returned is really in root cgroup.
+  ASSERT_TRUE(test_pid_in_group(ROOT_CGROUP_PROCS, getpid()));
+
+  // Disable memory controller
+  ASSERT_TRUE(test_disable_controller(MEM_CNT));
+}
+
 int main(int argc, char * argv[])
 {
     // comment out for debug messages
@@ -561,6 +786,12 @@ int main(int argc, char * argv[])
     run_test(test_no_run);
     run_test(test_setting_freeze);
     run_test(test_frozen_not_running);
+    run_test(test_mem_current);
+    run_test(test_correct_mem_account_of_growth_and_shrink);
+    run_test(test_limiting_mem);
+    run_test(test_cant_move_over_mem_limit);
+    run_test(test_cant_fork_over_mem_limit);
+    run_test(test_cant_grow_over_mem_limit);
     run_test(test_limiting_cpu_max_and_period);
     run_test(test_setting_max_descendants_and_max_depth);
     run_test(test_deleting_cgroups);

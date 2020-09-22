@@ -5,7 +5,7 @@
 #include "cgroups_test_functions.h"
 
 char controller_names[CONTROLLER_COUNT][MAX_CONTROLLER_NAME_LENGTH] =
-    {"cpu", "pid", "set"};
+    {"cpu", "pid", "set", "mem"};
 
 char suppress = 0;
 

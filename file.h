@@ -66,6 +66,13 @@ struct file {
             int frozen;
           } freezer;
         } frz;
+        // memory
+        union {
+          struct {
+            char active;
+            unsigned int max;
+          } max;
+        } mem;
       };
     };
   };

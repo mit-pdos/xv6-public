@@ -25,6 +25,8 @@
 #define PID_CUR 12
 #define SET_CPU 13
 #define SET_FRZ 14
+#define MEM_CUR 15
+#define MEM_MAX 16
 
 #define min(x, y) (x) > (y) ? (y) : (x)
 
@@ -230,6 +232,10 @@ static int get_file_name_constant(char * filename)
         return SET_CPU;
     else if (strcmp(filename, "cgroup.freeze") == 0)
         return SET_FRZ;
+    else if (strcmp(filename, "memory.current") == 0)
+      return MEM_CUR;
+    else if (strcmp(filename, "memory.max") == 0)
+      return MEM_MAX;
 
     return -1;
 }
@@ -256,6 +262,7 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
             case PID_MAX:
             case SET_CPU:
             case SET_FRZ:
+            case MEM_MAX:
                 writable = 1;
                 break;
 
@@ -264,6 +271,7 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
             case CGROUP_STAT:
             case CPU_STAT:
             case PID_CUR:
+            case MEM_CUR:
                 writable = 0;
                 break;
 
@@ -324,6 +332,13 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
                     return -1;
                 f->frz.freezer.frozen = cgp->is_frozen;
                 break;
+
+            case MEM_MAX:
+              if (cgp == cgroup_root())
+                return -1;
+              f->mem.max.active = cgp->mem_controller_enabled;
+              f->mem.max.max = cgp->max_mem;
+              break;
         }
 
         f->type = FD_CG;
@@ -412,6 +427,9 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             if (f->cgp->set_controller_avalible) {
                 move_and_add(buf, "set\n", &i);
             }
+            if (f->cgp->mem_controller_avalible) {
+              move_and_add(buf, "mem\n", &i);
+            }
 
             r = copy_buffer_up_to_end(buf + f->off, min(i, n), addr);
         } else if (filename_const == CGROUP_SUBTREE_CONTROL) {
@@ -426,6 +444,9 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             }
             if (f->cgp->set_controller_enabled) {
                 move_and_add(buf, "set\n", &i);
+            }
+            if (f->cgp->mem_controller_enabled) {
+              move_and_add(buf, "mem\n", &i);
             }
 
             r = copy_buffer_up_to_end(buf + f->off, min(i, n), addr);
@@ -588,6 +609,26 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             copy_and_move_buffer(&frztextp, "\n", strlen("\n"));
 
             r = copy_buffer_up_to_end(frztext + f->off, min(frztextp - frztext, n), addr);
+        } else if (filename_const == MEM_CUR) {
+            char cur_mem_buf[10];
+            utoa(cur_mem_buf, f->cgp->current_mem);
+
+            char stattext[strlen(cur_mem_buf) + strlen("\n")];
+            char* stattextp = stattext;
+
+            copy_and_move_buffer(&stattextp, cur_mem_buf, strlen(cur_mem_buf));
+            copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
+
+            r = copy_buffer_up_to_end(stattext + f->off, min(sizeof(stattext), n), addr);
+        } else if (filename_const == MEM_MAX) {
+            char max_buf[10];
+            char maxtext[utoa(max_buf, f->mem.max.max) + 2];
+            char* maxtextp = maxtext;
+
+            copy_and_move_buffer(&maxtextp, max_buf, strlen(max_buf));
+            copy_and_move_buffer(&maxtextp, "\n", strlen("\n"));
+
+            r = copy_buffer_up_to_end(maxtext + f->off, min(maxtextp - maxtext, n), addr);
         }
 
         f->off += r;
@@ -625,6 +666,7 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
         copy_and_move_buffer_max_len(&bufp, "cgroup.max.depth");
         copy_and_move_buffer_max_len(&bufp, "cgroup.stat");
         copy_and_move_buffer_max_len(&bufp, "cgroup.current");
+        copy_and_move_buffer_max_len(&bufp, "memory.current");
 
         if (f->cgp != cgroup_root()) {
             copy_and_move_buffer_max_len(&bufp, "cpu.stat");
@@ -640,6 +682,10 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
 
             if (f->cgp->set_controller_enabled) {
                 copy_and_move_buffer_max_len(&bufp, "cpuset.cpus");
+            }
+
+            if (f->cgp->mem_controller_enabled) {
+              copy_and_move_buffer_max_len(&bufp, "memory.max");
             }
         }
 
@@ -679,6 +725,7 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
                                 // to disable, 0 if nothing to change
         char pidcontroller = 0;
         char setcontroller = 0;
+        char memcontroller = 0;
         char ch = ' ';
         int len = 0;
         int total_len = 0;
@@ -701,6 +748,10 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
                 setcontroller = return_new_controller_state(*addr);
                 addr += len + 1;
                 total_len += len + 1;
+            } else if (strcmp(buf, "mem") == 0) {
+              memcontroller = return_new_controller_state(*addr);
+              addr += len + 1;
+              total_len += len + 1;
             } else
                 return -1;
         }
@@ -722,6 +773,12 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
         if (setcontroller == 2 &&
             unsafe_disable_set_controller(f->cgp) < 0)
             return -1;
+
+        if (memcontroller == 1 && unsafe_enable_mem_controller(f->cgp) < 0)
+          return -1;
+        if (memcontroller == 2 &&
+          unsafe_disable_mem_controller(f->cgp) < 0)
+          return -1;
 
         r = n - total_len;
     } else if (filename_const == CGROUP_MAX_DESCENDANTS) {
@@ -866,6 +923,33 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
         f->frz.freezer.frozen = set_freeze;
 
         r = n;
+    } else if (filename_const == MEM_MAX &&
+               f->cgp->mem_controller_enabled) {
+        char max_string[32] = { 0 };
+        unsigned int max = -1;
+        int i = 0;
+
+        while (*addr && *addr != ',' && *addr != '\0' && i < sizeof(max_string)) {
+            max_string[i] = *addr;
+            i++;
+            addr++;
+        }
+        max_string[i] = '\0';
+        i = 0;
+
+        // Update max.
+        max = atoi(max_string);
+        if (-1 == max) {
+            return -1;
+        }
+
+        // Update max memory field if the paramter is within allowed values.
+        int test = set_max_mem(f->cgp, max);
+        if (test == 0 || test == -1)
+            return -1;
+        f->mem.max.max = max;
+
+        r = n;
     }
 
     return r;
@@ -976,6 +1060,9 @@ static int cg_file_size(struct file * f)
     } else if (filename_const == PID_CUR) {
         size += strlen("num_of_procs - ") +
             intlen(f->cgp->num_of_procs) + strlen("\n");
+    } else if (filename_const == MEM_CUR) {
+        size += strlen("cur_mem_in_bytes - ") +
+            intlen(f->cgp->current_mem) + strlen("\n");
     }
 
     return size;

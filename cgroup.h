@@ -43,6 +43,11 @@ struct cgroup
     char set_controller_enabled;  /* Is 1 if cpu set controller is enabled,
                                      otherwise 0.*/
 
+    char mem_controller_avalible; /* Is 1 if memory controller may be enabled,
+                              otherwise 0.*/
+    char mem_controller_enabled;  /* Is 1 if memory controller is enabled,
+                                  otherwise 0.*/
+
     char populated; /* Is 1 if subtree has at least one process in it,
                        otherise 0.*/
 
@@ -63,6 +68,10 @@ struct cgroup
     uchar cpu_to_use; /*Which cpu id to use for cpu set controller.*/
 
     int is_frozen; /*Indicates whether cgroup is frozen. */
+
+    unsigned int current_mem; /*The current amount of memory used by the group.*/
+
+    unsigned int max_mem; /*The maximum memory allowed for a group to use.*/
 
     unsigned long long cpu_time;
     unsigned int cpu_period_time;
@@ -392,5 +401,37 @@ int disable_set_controller(struct cgroup * cgroup);
  * Returns 1 upon successes, 0 if no action taken, -1 upon failure.
  */
 int frz_grp(struct cgroup * cgroup, int frz);
+
+/**
+ *This function sets the maximum amount of memory.
+ *Receives cgroup pointer parameter "cgroup" and integer "limit".
+ *Sets the number of maximum allowed amount of memory in the cgroup to be "limit".
+ *Returns 1 upon successes, 0 if no action taken, -1 upon failure.
+ */
+int set_max_mem(struct cgroup* cgp, unsigned int limit);
+
+/**
+ * These functions enables the memory controller of a cgroup.
+ * Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+ * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup in which we enable the controller. Must be valid cgroup.
+ * Return values:
+ * - 0 on success.
+ * - -1 on failure.
+ */
+int unsafe_enable_mem_controller(struct cgroup* cgroup);
+int enable_mem_controller(struct cgroup* cgroup);
+
+/**
+ * These functions disable the memory controller of a cgroup.
+ * Unsafe and safe versions of function (unsafe does not acquire cgroup table lock and safe does).
+ * Receives cgroup pointer parameter "cgroup".
+ * "cgroup" is pointer to the cgroup in which we disable the controller. Must be valid cgroup.
+ * Return values:
+ * - 0 on success.
+ * - -1 on failure.
+ */
+int unsafe_disable_mem_controller(struct cgroup* cgroup);
+int disable_mem_controller(struct cgroup* cgroup);
 
 #endif

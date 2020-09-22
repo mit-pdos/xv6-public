@@ -204,17 +204,33 @@ int
 growproc(int n)
 {
   uint sz;
-  struct proc *curproc = myproc();
+  struct proc* curproc = myproc();
+
+  // In case trying to grow process's memory over memory limit, and
+  // given memory controller is enabled, return failure
+  if (n > 0) {
+    if (curproc->cgroup->mem_controller_enabled &&
+      (curproc->cgroup->current_mem + n) > curproc->cgroup->max_mem)
+      return -1;
+  }
 
   sz = curproc->sz;
-  if(n > 0){
-    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
+  if (n > 0) {
+    if ((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
-  } else if(n < 0){
-    if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
+  }
+  else if (n < 0) {
+    if ((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
   }
   curproc->sz = sz;
+
+  // Update memory usage in cgroup and its ancestors
+  struct cgroup* cgroup = curproc->cgroup;
+  do {
+    cgroup->current_mem += n;
+  } while ((cgroup = cgroup->parent));
+
   switchuvm(curproc);
   return 0;
 }
@@ -239,6 +255,12 @@ fork(void)
   if ( curproc->cgroup->pid_controller_enabled &&
        (curproc->cgroup->num_of_procs + 1) > curproc->cgroup->max_num_of_procs )
            return -1;
+
+  // In case trying to fork a new process and the cgroup reached its memory limit,
+  // given memory controller is enabled, return failure
+  if (curproc->cgroup->mem_controller_enabled &&
+    (curproc->cgroup->current_mem + curproc->sz) > curproc->cgroup->max_mem)
+    return -1;
 
   // Allocate process.
   if ((np = allocproc()) == 0) {
