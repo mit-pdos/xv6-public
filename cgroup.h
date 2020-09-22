@@ -60,7 +60,9 @@ struct cgroup
     int max_num_of_procs; /*The maximum number of processes that are allowed in the cgroup.
                             Used by pid controller.*/
 
-    uchar cpu_to_use; /*Which cpu id to use for cpu set controller*/
+    uchar cpu_to_use; /*Which cpu id to use for cpu set controller.*/
+
+    int is_frozen; /*Indicates whether cgroup is frozen. */
 
     unsigned long long cpu_time;
     unsigned int cpu_period_time;
@@ -382,5 +384,13 @@ int enable_set_controller(struct cgroup * cgroup);
  */
 int unsafe_disable_set_controller(struct cgroup *cgroup);
 int disable_set_controller(struct cgroup * cgroup);
+
+/**
+ * This function freezes/unfreezes a cgroup.
+ * Receives cgroup pointer parameter "cgroup" and integer "frz".
+ * If frz=1 then freezes the group, otherwise, if 0 then unfreezes. All other values result in no action.
+ * Returns 1 upon successes, 0 if no action taken, -1 upon failure.
+ */
+int frz_grp(struct cgroup * cgroup, int frz);
 
 #endif

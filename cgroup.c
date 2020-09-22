@@ -311,6 +311,8 @@ void cgroup_initialize(struct cgroup * cgroup,
     set_max_procs(cgroup, NPROC);
     // Without any changes, set the default cpu id to be used as 0
     set_cpu_id(cgroup, 0);
+    // By default a group is not frozen
+    frz_grp(cgroup, 0);
 
     cgroup->cpu_account_frame = 0;
     cgroup->cpu_percent = 0;
@@ -793,3 +795,18 @@ int disable_set_controller(struct cgroup * cgroup)
     release(&cgtable.lock);
     return res;
 }
+
+int frz_grp(struct cgroup * cgroup, int frz) {
+    // If no cgroup found, return error.
+    if (cgroup == 0)
+        return -1;
+
+    // Freeze/unfreeze cgroup based on input.
+    if (frz == 1 || frz == 0) {
+        cgroup->is_frozen = frz;
+        return 1;
+    }
+
+    return 0;
+}
+

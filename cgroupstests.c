@@ -50,6 +50,7 @@ TEST(test_opening_and_closing_cgroup_files)
     ASSERT_TRUE(test_open_close(TEST_1_PID_MAX));
     ASSERT_TRUE(test_open_close(TEST_1_PID_CURRENT));
     ASSERT_TRUE(test_open_close(TEST_1_SET_CPU));
+    ASSERT_TRUE(test_open_close(TEST_1_SET_FRZ));
 }
 
 TEST(test_reading_cgroup_files)
@@ -67,6 +68,7 @@ TEST(test_reading_cgroup_files)
     ASSERT_TRUE(test_read(TEST_1_PID_MAX, 1));
     ASSERT_TRUE(test_read(TEST_1_PID_CURRENT, 1));
     ASSERT_TRUE(test_read(TEST_1_SET_CPU, 1));
+    ASSERT_TRUE(test_read(TEST_1_SET_FRZ, 1));
 }
 
 char *build_activate_disable_activate(int controller_type)
@@ -271,6 +273,9 @@ TEST(test_moving_process)
     // Check that the process we moved is really in "/cgroup/test1" cgroup.
     ASSERT_TRUE(test_pid_in_group(TEST_1_CGROUP_PROCS, getpid()));
 
+    // Check that events recorded it correctly.
+    ASSERT_FALSE(strcmp(test_read(TEST_1_CGROUP_EVENTS, 0), "populated - 1\nfrozen - 0\n"));
+
     // Return the process to root cgroup.
     ASSERT_TRUE(test_move_proc(ROOT_CGROUP_PROCS, getpid()));
 
@@ -442,6 +447,100 @@ TEST(test_no_run)
     }
 }
 
+TEST(test_setting_freeze)
+{
+    // Verify frozen start as 0.
+    ASSERT_FALSE(strcmp(test_read(TEST_1_CGROUP_EVENTS, 0), "populated - 0\nfrozen - 0\n"));
+
+    // Update frozen.
+    ASSERT_TRUE(test_write(TEST_1_SET_FRZ, "1"));
+
+    // Check changes.
+    ASSERT_FALSE(strcmp(test_read(TEST_1_SET_FRZ, 0), "1\n"));
+
+    // Check Evenets correctly recorded.
+    ASSERT_FALSE(strcmp(test_read(TEST_1_CGROUP_EVENTS, 0), "populated - 0\nfrozen - 1\n"));
+
+    // Restore frozen.
+    ASSERT_TRUE(test_write(TEST_1_SET_FRZ, "0"));
+
+    // Verify frozen is 0 again.
+    ASSERT_FALSE(strcmp(test_read(TEST_1_CGROUP_EVENTS, 0), "populated - 0\nfrozen - 0\n"));
+
+    // Check changes.
+    ASSERT_FALSE(strcmp(test_read(TEST_1_SET_FRZ, 0), "0\n"));
+}
+
+TEST(test_frozen_not_running)
+{
+    // Update frozen.
+    ASSERT_TRUE(test_write(TEST_1_SET_FRZ, "1"));
+
+    // Fork here since the process should not be running after we move it inside the cgroup.
+    int pid = fork();
+    int pidToMove = 0;
+    int sum = 0;
+    int wstatus;
+
+    // Child
+    if (pid == 0) {
+        pidToMove = getpid();
+        // Save the pid of child in temp file.
+        ASSERT_TRUE(test_temp_write(pidToMove));
+        // Go to sleep for long period of time.
+        sleep(20);
+        // At this point, the child process should already be inside the cgroup, therefore, the following operations
+        // should not be executed.
+        for (int i = 0; i < 10; i++) {
+            sum += 1;
+        }
+        // Save sum into temp file.
+        ASSERT_TRUE(test_temp_write(sum));
+        exit(0);
+    }
+    // Father
+    else {
+        sleep(5);
+        // Read the child pid from temp file.
+        pidToMove = test_temp_read(0);
+        // Update the temp file for further reading, since next sum will be read from it.
+        ASSERT_TRUE(test_temp_write(0));
+
+        // Move the child process to "/cgroup/test1" cgroup.
+        ASSERT_TRUE(test_move_proc(TEST_1_CGROUP_PROCS, pidToMove));
+
+        // Check that the process we moved is really in "/cgroup/test1" cgroup.
+        ASSERT_TRUE(test_pid_in_group(TEST_1_CGROUP_PROCS, pidToMove));
+
+        // Go to sleep to ensure the child process had a chance to be scheduled.
+        sleep(10);
+
+        // Verify that the child process have not ran
+        sum = test_temp_read(0);
+        ASSERT_UINT_EQ(sum, 0);
+
+        // Return the child to root cgroup.
+        ASSERT_TRUE(test_move_proc(ROOT_CGROUP_PROCS, pidToMove));
+
+        // Check that the child we returned is really in root cgroup.
+        ASSERT_TRUE(test_pid_in_group(ROOT_CGROUP_PROCS, pidToMove));
+
+        // Wait for child to exit.
+        wait(&wstatus);
+        ASSERT_TRUE(wstatus);
+
+        // Verify that child did execute the procudure.
+        sum = test_temp_read(0);
+        ASSERT_UINT_EQ(sum, 10);
+
+        // Remove the temp file.
+        ASSERT_TRUE(test_temp_delete());
+
+        // Update frozen.
+        ASSERT_TRUE(test_write(TEST_1_SET_FRZ, "0"));
+    }
+}
+
 int main(int argc, char * argv[])
 {
     // comment out for debug messages
@@ -460,6 +559,8 @@ int main(int argc, char * argv[])
     run_test(test_setting_cpu_id);
     run_test(test_correct_cpu_running);
     run_test(test_no_run);
+    run_test(test_setting_freeze);
+    run_test(test_frozen_not_running);
     run_test(test_limiting_cpu_max_and_period);
     run_test(test_setting_max_descendants_and_max_depth);
     run_test(test_deleting_cgroups);

@@ -21,6 +21,7 @@
 #define TEST_1_PID_MAX                  "/cgroup/test1/pid.max"
 #define TEST_1_PID_CURRENT              "/cgroup/test1/pid.current"
 #define TEST_1_SET_CPU                  "/cgroup/test1/cpuset.cpus"
+#define TEST_1_SET_FRZ                  "/cgroup/test1/cgroup.freeze"
 
 #define ROOT_CGROUP_PROCS               "/cgroup/cgroup.procs"
 

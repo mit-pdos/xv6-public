@@ -24,6 +24,7 @@
 #define PID_MAX 11
 #define PID_CUR 12
 #define SET_CPU 13
+#define SET_FRZ 14
 
 #define min(x, y) (x) > (y) ? (y) : (x)
 
@@ -227,6 +228,8 @@ static int get_file_name_constant(char * filename)
         return PID_CUR;
     else if (strcmp(filename, "cpuset.cpus") == 0)
         return SET_CPU;
+    else if (strcmp(filename, "cgroup.freeze") == 0)
+        return SET_FRZ;
 
     return -1;
 }
@@ -252,6 +255,7 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
             case CPU_MAX:
             case PID_MAX:
             case SET_CPU:
+            case SET_FRZ:
                 writable = 1;
                 break;
 
@@ -313,6 +317,12 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
                     return -1;
                 f->cpu_s.set.active = cgp->set_controller_enabled;
                 f->cpu_s.set.cpu_id = cgp->cpu_to_use;
+                break;
+
+            case SET_FRZ:
+                if (cgp == cgroup_root())
+                    return -1;
+                f->frz.freezer.frozen = cgp->is_frozen;
                 break;
         }
 
@@ -420,9 +430,13 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
 
             r = copy_buffer_up_to_end(buf + f->off, min(i, n), addr);
         } else if (filename_const == CGROUP_EVENTS) {
-            char eventstext[] = "populated - 0\n";
+            char eventstext[] = "populated - 0\nfrozen - 0\n";
+
             if (f->cgp->populated)
-                eventstext[sizeof(eventstext) - 3] = '1';
+                eventstext[strlen("popluated - ")] = '1';
+
+            if (f->cgp->is_frozen)
+              eventstext[strlen(eventstext) - 2] = '1';
 
             r = copy_buffer_up_to_end(eventstext + f->off, min(sizeof(eventstext), n), addr);
 
@@ -565,6 +579,15 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             copy_and_move_buffer(&cputextp, "\n", strlen("\n"));
 
             r = copy_buffer_up_to_end(cputext + f->off, min(cputextp - cputext, n), addr);
+        } else if (filename_const == SET_FRZ) {
+            char frz_buf[11];
+            char frztext[itoa(frz_buf, f->frz.freezer.frozen) + 2];
+            char * frztextp = frztext;
+
+            copy_and_move_buffer(&frztextp, frz_buf, strlen(frz_buf));
+            copy_and_move_buffer(&frztextp, "\n", strlen("\n"));
+
+            r = copy_buffer_up_to_end(frztext + f->off, min(frztextp - frztext, n), addr);
         }
 
         f->off += r;
@@ -595,6 +618,7 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             copy_and_move_buffer_max_len(&bufp, "cgroup.controllers");
             copy_and_move_buffer_max_len(&bufp, "cgroup.subtree_control");
             copy_and_move_buffer_max_len(&bufp, "cgroup.events");
+            copy_and_move_buffer_max_len(&bufp, "cgroup.freeze");
         }
 
         copy_and_move_buffer_max_len(&bufp, "cgroup.max.descandants");
@@ -813,6 +837,33 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
         if (test == 0 || test == -1)
             return -1;
         f->cpu_s.set.cpu_id = set;
+
+        r = n;
+    } else if (filename_const == SET_FRZ) {
+        char set_string[32] = { 0 };
+        int set_freeze = -1;
+        int i = 0;
+
+        while (*addr && *addr != ',' &&  *addr != '\0' && i < sizeof(set_string)) {
+            set_string[i] = *addr;
+            i++;
+            addr++;
+        }
+        set_string[i] = '\0';
+        i = 0;
+        addr++;
+
+        // Update freeze parameter.
+        set_freeze = atoi(set_string);
+        if (-1 == set_freeze) {
+            return -1;
+        }
+
+        // Update is_frozen field if the paramter is within allowed values.
+        int test = frz_grp(f->cgp, set_freeze);
+        if (test == 0 || test == -1)
+            return -1;
+        f->frz.freezer.frozen = set_freeze;
 
         r = n;
     }

@@ -60,6 +60,12 @@ struct file {
             int cpu_id;
           } set;
         } cpu_s;
+        // freezer
+        union {
+          struct {
+            int frozen;
+          } freezer;
+        } frz;
       };
     };
   };

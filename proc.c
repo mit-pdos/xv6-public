@@ -509,11 +509,16 @@ scheduler(void)
         continue;
       }
 
-      // Cpu set controller is only defined on runnable processes which are not killed.
+      // Cpu set controller and freezer are only defined on runnable processes which are not killed.
       if (p->killed == 0) {
           // If the cpu set controller enabled, and the cpu doesn't match the one that is supposed to run the process
           // then don't let the process run on this cpu.
           if (p->cgroup->set_controller_enabled && p->cgroup->cpu_to_use != c->apicid) {
+              continue;
+          }
+
+          // If the group is frozen, don't schedule it.
+          if (p->cgroup->is_frozen == 1) {
               continue;
           }
       }
