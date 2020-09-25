@@ -1,6 +1,12 @@
 #ifndef CGROUPSTESTS_H
 #define CGROUPSTESTS_H
 
+#define MAX_CONTROLLER_NAME_LENGTH      16
+#define CONTROLLER_COUNT                4
+
+enum controller_types { CPU_CNT, PID_CNT, SET_CNT, MEM_CNT };
+
+
 #define CGROUP                          "cgroup"
 #define ROOT_CGROUP                     "/cgroup"
 #define TEST_1                          "/cgroup/test1"
