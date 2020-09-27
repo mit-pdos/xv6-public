@@ -94,3 +94,16 @@ int sys_date(void)
   cmostime(date);
   return 0;
 }
+
+int sys_settickets(void)
+{
+  int number;
+  if (argint(0, &number) < 0)
+    return -1;
+  return settickets(number);
+}
+
+int sys_getpinfo(void)
+{
+  return 0;
+}
