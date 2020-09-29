@@ -15,7 +15,6 @@ struct
 } ptable;
 
 static struct proc *initproc;
-static struct pstat *pinfo;
 
 int nextpid = 1;
 extern void forkret(void);
@@ -120,13 +119,6 @@ found:
   return p;
 }
 
-int settickets(int number)
-{
-  // get the index of calling process
-  // set pinfo->tickets[index] = number
-  return 0;
-}
-
 //PAGEBREAK: 32
 // Set up first user process.
 void userinit(void)
@@ -160,6 +152,9 @@ void userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
+  p->tickets = 1;
+  p->inuse = 0;
+  p->ticks = 0;
 
   release(&ptable.lock);
 }
@@ -229,6 +224,9 @@ int fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  np->tickets = np->parent->tickets;
+  np->inuse = 0;
+  np->ticks = 0;
 
   release(&ptable.lock);
 
@@ -329,6 +327,19 @@ int wait(void)
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(curproc, &ptable.lock); //DOC: wait-sleep
   }
+}
+
+int settickets(int number)
+{
+  struct proc *curproc = myproc();
+  curproc->tickets = number;
+  return 0;
+}
+
+int getpinfo(struct pstat * pinfo){
+  // traverse through the list of processes
+  // and fill in pinfo
+  return 0;
 }
 
 //PAGEBREAK: 42
