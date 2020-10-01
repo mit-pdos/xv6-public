@@ -7,6 +7,12 @@
 #include "proc.h"
 #include "elf.h"
 
+#define VERIFY(expr, msg)	\
+	do {					\
+		if(!(expr))  		\
+			panic(msg); 	\
+	}while(0)
+
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 
@@ -132,6 +138,34 @@ setupkvm(void)
       freevm(pgdir);
       return 0;
     }
+  return pgdir;
+}
+
+static pde_t *setupkvm_opt(pde_t *src_pgdir) {
+  pde_t *pgdir = (pde_t*)kalloc();
+
+  if(!pgdir)
+    return 0;
+
+  memset(pgdir, 0, PGSIZE);
+  if (P2V(PHYSTOP) > (void*)DEVSPACE)
+    panic("PHYSTOP too high");
+
+  for(struct kmap* k = kmap; k < &kmap[NELEM(kmap)]; k++) {
+    char* end = k->virt + k->phys_end - k->phys_start;
+    for(char* va = k->virt; va < end; va += PGSIZE) {
+    	pde_t* pde = &src_pgdir[PDX(va)];
+		VERIFY(*pde && (*pde & PTE_P), "setupkvm_opt: found invalid pde.");
+
+
+		// Just for verification
+		pte_t* pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+		VERIFY((pgtab[PTX(va)] & PTE_P), "setupkvm_opt: found invalid pte while dereferencing pde.");
+
+    	pgdir[PDX(va)] = *pde;
+    }
+  }
+
   return pgdir;
 }
 
@@ -278,23 +312,35 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   return newsz;
 }
 
+// Return non-zero if the given va is within kmap.
+// Otherwise, it returns 0.
+static int within_kernel(void* va) {
+	for(struct kmap* k = kmap; k < &kmap[NELEM(kmap)]; ++k) {
+		uint size = k->phys_end - k->phys_start;
+		void* end = k->virt + size;
+		if(k->virt <= va && va < end) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 // Free a page table and all the physical memory pages
 // in the user part.
 void
 freevm(pde_t *pgdir)
 {
-  uint i;
-
-  if(pgdir == 0)
-    panic("freevm: no pgdir");
-  deallocuvm(pgdir, KERNBASE, 0);
-  for(i = 0; i < NPDENTRIES; i++){
-    if(pgdir[i] & PTE_P){
-      char * v = P2V(PTE_ADDR(pgdir[i]));
-      kfree(v);
-    }
-  }
-  kfree((char*)pgdir);
+	VERIFY(pgdir, "freevm: no pgdir");
+	for(uint i = 0; i < NPDENTRIES; i++){
+		if(!(pgdir[i] & PTE_P))
+			continue;
+		char* v = P2V(PTE_ADDR(pgdir[i]));
+		if(within_kernel(v))
+			continue;
+		cprintf("%s: free a page in the user-space", __func__);
+		kfree(v);
+	}
+	kfree((char*)pgdir);
 }
 
 // Clear PTE_U on a page. Used to create an inaccessible
@@ -315,33 +361,35 @@ clearpteu(pde_t *pgdir, char *uva)
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
-  pde_t *d;
-  pte_t *pte;
-  uint pa, i, flags;
-  char *mem;
+	// Setup and map kernel area
+	pde_t *d = setupkvm_opt(pgdir);
+	//pde_t *d = setupkvm();
+	if(!d)
+		return 0;
 
-  if((d = setupkvm()) == 0)
-    return 0;
-  for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
-      panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
-    pa = PTE_ADDR(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto bad;
-    memmove(mem, (char*)P2V(pa), PGSIZE);
-    if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
-      kfree(mem);
-      goto bad;
-    }
-  }
-  return d;
+	// mjo: Copy user process's page table.
+	// Copy each page table in the page directory
+	for(uint i = 0; i < sz; i += PGSIZE){
+		pte_t* pte = walkpgdir(pgdir, (void *) i, 0);
+		VERIFY(pte, "copyuvm: pte should exist");
+		VERIFY(*pte & PTE_P, "copyuvm: page not present");
+
+		uint pa = PTE_ADDR(*pte);
+		uint flags = PTE_FLAGS(*pte);
+		char* mem = kalloc();
+		if(!mem)
+			goto bad;
+		memmove(mem, (char*)P2V(pa), PGSIZE);
+		if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
+			kfree(mem);
+			goto bad;
+		}
+	}
+	return d;
 
 bad:
-  freevm(d);
-  return 0;
+	freevm(d);
+	return 0;
 }
 
 //PAGEBREAK!
