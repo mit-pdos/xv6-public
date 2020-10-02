@@ -7,12 +7,10 @@
 #include "proc.h"
 #include "elf.h"
 
-#include <stdbool.h>
-
 #define VERIFY(expr, ...)	\
 	do {					\
 		if(!(expr)) {\
-			cprintf("Verification: " __VA_ARGS__);\
+			cprintf("Failed reason: " __VA_ARGS__);\
 			cprintf("\n");\
 			panic("Error occured"); 	\
 		}\
@@ -129,7 +127,6 @@ static struct kmap {
 pde_t*
 setupkvm(void)
 {
-	cprintf("Entering %s\n", __func__);
   pde_t *pgdir;
   struct kmap *k;
 
@@ -147,6 +144,8 @@ setupkvm(void)
   return pgdir;
 }
 
+// An optimized version of setupkvm. It reuses page tables in kernel 
+// area (>= 2GB) unlike the original code.
 static pde_t *setupkvm_opt(pde_t *src_pgdir) {
 	pde_t *pgdir = (pde_t*)kalloc();
 	if(!pgdir)
@@ -308,31 +307,17 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   return newsz;
 }
 
-// Return true if the given va is within kmap.
-// Otherwise, it returns false.
-static bool within_kernel(void* va) {
-	for(struct kmap* k = kmap; k < &kmap[NELEM(kmap)]; ++k) {
-		uint size = k->phys_end - k->phys_start;
-		void* end = k->virt + size;
-		if(k->virt <= va && va < end) {
-			return true;
-		}
-	}
-	return false;
-}
-
 // Free a page table and all the physical memory pages
 // in the user part.
 void
 freevm(pde_t *pgdir)
 {
-	VERIFY(pgdir, "freevm: no pgdir");
-	for(uint i = 0; i < NPDENTRIES; i++){
+	VERIFY(pgdir, "%s: no pgdir", __func__);
+	deallocuvm(pgdir, KERNBASE, 0);
+	for(uint i = 0; i < NPDENTRIES/2; i++){
 		if(!(pgdir[i] & PTE_P))
 			continue;
 		char *va = P2V(PTE_ADDR(pgdir[i]));
-		if (within_kernel(va))
-			continue;
 		kfree(va);
 	}
 	kfree((char*)pgdir);
@@ -353,7 +338,7 @@ clearpteu(pde_t *pgdir, char *uva)
 
 // Given a parent process's page table, create a copy
 // of it for a child.
-// mjo: Only invoked by fork().
+// Only invoked by fork().
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
@@ -362,7 +347,7 @@ copyuvm(pde_t *pgdir, uint sz)
 	if(!d)
 		return 0;
 
-	// mjo: Copy user process's page table.
+	// Copy user process's page table.
 	// Copy each page table in the page directory
 	for(uint i = 0; i < sz; i += PGSIZE){
 		pte_t* pte = walkpgdir(pgdir, (void *) i, 0);
@@ -372,11 +357,14 @@ copyuvm(pde_t *pgdir, uint sz)
 		uint pa = PTE_ADDR(*pte);
 		uint flags = PTE_FLAGS(*pte);
 		char* mem = kalloc();
-		if(!mem)
+		if(!mem) {
+			panic("Unable to allocate a new page");
 			goto bad;
+		}
 		memmove(mem, (char*)P2V(pa), PGSIZE);
 		if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
 			kfree(mem);
+			panic("Unable to map pages");
 			goto bad;
 		}
 	}
