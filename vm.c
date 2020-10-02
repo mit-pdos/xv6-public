@@ -7,10 +7,15 @@
 #include "proc.h"
 #include "elf.h"
 
-#define VERIFY(expr, msg)	\
+#include <stdbool.h>
+
+#define VERIFY(expr, ...)	\
 	do {					\
-		if(!(expr))  		\
-			panic(msg); 	\
+		if(!(expr)) {\
+			cprintf("Verification: " __VA_ARGS__);\
+			cprintf("\n");\
+			panic("Error occured"); 	\
+		}\
 	}while(0)
 
 extern char data[];  // defined by kernel.ld
@@ -124,6 +129,7 @@ static struct kmap {
 pde_t*
 setupkvm(void)
 {
+	cprintf("Entering %s\n", __func__);
   pde_t *pgdir;
   struct kmap *k;
 
@@ -142,31 +148,21 @@ setupkvm(void)
 }
 
 static pde_t *setupkvm_opt(pde_t *src_pgdir) {
-  pde_t *pgdir = (pde_t*)kalloc();
+	pde_t *pgdir = (pde_t*)kalloc();
+	if(!pgdir)
+		return 0;
+	memset(pgdir, 0, PGSIZE);
 
-  if(!pgdir)
-    return 0;
+	VERIFY(P2V(PHYSTOP) <= (void*)DEVSPACE, "PHYSTOP too high");
 
-  memset(pgdir, 0, PGSIZE);
-  if (P2V(PHYSTOP) > (void*)DEVSPACE)
-    panic("PHYSTOP too high");
+	// Kernel area in the virtual space starts from 2GB.
+	for(int i = NPDENTRIES/2; i < NPDENTRIES; ++i) {
+		if(!(src_pgdir[i] & PTE_P))
+			continue;
+		pgdir[i] = src_pgdir[i];
+	}
 
-  for(struct kmap* k = kmap; k < &kmap[NELEM(kmap)]; k++) {
-    char* end = k->virt + k->phys_end - k->phys_start;
-    for(char* va = k->virt; va < end; va += PGSIZE) {
-    	pde_t* pde = &src_pgdir[PDX(va)];
-		VERIFY(*pde && (*pde & PTE_P), "setupkvm_opt: found invalid pde.");
-
-
-		// Just for verification
-		pte_t* pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
-		VERIFY((pgtab[PTX(va)] & PTE_P), "setupkvm_opt: found invalid pte while dereferencing pde.");
-
-    	pgdir[PDX(va)] = *pde;
-    }
-  }
-
-  return pgdir;
+	return pgdir;
 }
 
 // Allocate one page table for the machine for the kernel address
@@ -312,17 +308,17 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   return newsz;
 }
 
-// Return non-zero if the given va is within kmap.
-// Otherwise, it returns 0.
-static int within_kernel(void* va) {
+// Return true if the given va is within kmap.
+// Otherwise, it returns false.
+static bool within_kernel(void* va) {
 	for(struct kmap* k = kmap; k < &kmap[NELEM(kmap)]; ++k) {
 		uint size = k->phys_end - k->phys_start;
 		void* end = k->virt + size;
 		if(k->virt <= va && va < end) {
-			return 1;
+			return true;
 		}
 	}
-	return 0;
+	return false;
 }
 
 // Free a page table and all the physical memory pages
@@ -334,11 +330,10 @@ freevm(pde_t *pgdir)
 	for(uint i = 0; i < NPDENTRIES; i++){
 		if(!(pgdir[i] & PTE_P))
 			continue;
-		char* v = P2V(PTE_ADDR(pgdir[i]));
-		if(within_kernel(v))
+		char *va = P2V(PTE_ADDR(pgdir[i]));
+		if (within_kernel(va))
 			continue;
-		cprintf("%s: free a page in the user-space", __func__);
-		kfree(v);
+		kfree(va);
 	}
 	kfree((char*)pgdir);
 }
@@ -358,12 +353,12 @@ clearpteu(pde_t *pgdir, char *uva)
 
 // Given a parent process's page table, create a copy
 // of it for a child.
+// mjo: Only invoked by fork().
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
-	// Setup and map kernel area
+	// Map kernel area
 	pde_t *d = setupkvm_opt(pgdir);
-	//pde_t *d = setupkvm();
 	if(!d)
 		return 0;
 
