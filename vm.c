@@ -146,7 +146,7 @@ setupkvm(void)
 
 // An optimized version of setupkvm. It reuses page tables in kernel 
 // area (>= 2GB) unlike the original code.
-static pde_t *setupkvm_opt(pde_t *src_pgdir) {
+pde_t *setupkvm_opt(pde_t *src_pgdir) {
 	pde_t *pgdir = (pde_t*)kalloc();
 	if(!pgdir)
 		return 0;
