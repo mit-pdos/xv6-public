@@ -17,10 +17,9 @@
 // prints "OK".
 //
 
-#define BUFSZ  (MAXOPBLOCKS+2)*BSIZE
+#define BUFSZ  ((MAXOPBLOCKS+2)*BSIZE)
 
 char buf[BUFSZ];
-char name[3];
 
 // what if you pass ridiculous pointers to system calls
 // that read user memory with copyin?
@@ -631,6 +630,7 @@ createtest(char *s)
   int i, fd;
   enum { N=52 };
 
+  char name[3];
   name[0] = 'a';
   name[2] = '\0';
   for(i = 0; i < N; i++){
@@ -1728,6 +1728,61 @@ bigwrite(char *s)
   }
 }
 
+// concurrent writes to try to provoke deadlock in the virtio disk
+// driver.
+void
+manywrites(char *s)
+{
+  int nchildren = 4;
+  
+  for(int ci = 0; ci < nchildren; ci++){
+    int pid = fork();
+    if(pid < 0){
+      printf("fork failed\n");
+      exit(1);
+    }
+
+    if(pid == 0){
+      char name[3];
+      name[0] = 'b';
+      name[1] = 'a' + ci;
+      name[2] = '\0';
+      unlink(name);
+      
+      for(int iters = 0; iters < 500000; iters++){
+        for(int i = 0; i < ci+1; i++){
+          int fd = open(name, O_CREATE | O_RDWR);
+          if(fd < 0){
+            printf("%s: cannot create %s\n", s, name);
+            exit(1);
+          }
+          int sz = sizeof(buf);
+          int cc = write(fd, buf, sz);
+          if(cc != sz){
+            printf("%s: write(%d) ret %d\n", s, sz, cc);
+            exit(1);
+          }
+          close(fd);
+        }
+        unlink(name);
+        if((iters % 50) == ci)
+          write(1, ".", 1);
+      }
+
+      unlink(name);
+      exit(0);
+    }
+  }
+
+  for(int ci = 0; ci < nchildren; ci++){
+    int st = 0;
+    wait(&st);
+    if(st != 0)
+      exit(st);
+  }
+  exit(0);
+}
+
 void
 bigfile(char *s)
 {
@@ -2682,6 +2737,7 @@ main(int argc, char *argv[])
     void (*f)(char *);
     char *s;
   } tests[] = {
+    // {manywrites, "manywrites"},
     {execout, "execout"},
     {copyin, "copyin"},
     {copyout, "copyout"},
