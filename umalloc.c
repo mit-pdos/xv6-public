@@ -43,14 +43,16 @@ free(void *ap)
   freep = p;
 }
 
+#define NALLOC 1024	// min #units to request (to reduce calls to sbrk)
+
 static Header*
 morecore(uint nu)
 {
   char *p;
   Header *hp;
 
-  if(nu < 4096)
-    nu = 4096;
+  if(nu < NALLOC)
+    nu = NALLOC;
   p = sbrk(nu * sizeof(Header));
   if(p == (char*)-1)
     return 0;
