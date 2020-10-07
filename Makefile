@@ -29,11 +29,14 @@ OBJS = \
 	vm.o\
 #
 
-# Cross-compiling (e.g., on Mac OS X)
-# TOOLPREFIX = i386-jos-elf
-
-# Using native tools (e.g., on X86 Linux)
-TOOLPREFIX =
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+  # no prefix for Linux or WSL2
+  TOOLPREFIX =
+else ifeq ($(UNAME_S),Darwin)
+  # need homebrew: $ brew install qemu x86_64-elf-gcc
+  TOOLPREFIX = x86_64-elf-
+endif
 
 # If the makefile can't find QEMU, specify its path here
 QEMU = qemu-system-x86_64
