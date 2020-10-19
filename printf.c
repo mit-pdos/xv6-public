@@ -67,6 +67,9 @@ printf(int fd, char *fmt, ...)
     if (c == 0)
       break;
     switch(c) {
+    case 'c':
+      putc(fd, va_arg(ap, int));
+      break;
     case 'd':
       print_d(fd, va_arg(ap, int));
       break;
