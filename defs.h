@@ -121,6 +121,7 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 int             waitx(int*, int*); // custom system call
+void            procdetails(void); // custom system call
 
 // swtch.S
 void            swtch(struct context**, struct context*);

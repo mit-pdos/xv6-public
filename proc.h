@@ -52,9 +52,15 @@ struct proc {
   int ctime;                   // Process Creation Time
   int etime;                   // Process End Time
   int rtime;                   // Process Total Time
+  int tmp_wtime;                   // Process Wait Time (if a process is running)
+  int priority;                // Priority of the process
+  int n_run;                   // Number of times the process was picked by the scheduler
+  int cur_q;                   // Current queue number (1-5)
+  int q[5];                    // Number of ticks the process has received at each of the 5 queues
 };
 
 void updateruntime(void);
+
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss

@@ -105,3 +105,10 @@ sys_waitx(void)
 
   return waitx(wtime,rtime);
 } 
+
+int
+sys_procdetails(void)
+{
+  procdetails();
+  return 0;
+}

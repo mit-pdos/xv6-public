@@ -113,10 +113,18 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
-
+  // initializing custom values
   p->ctime = ticks;
   p->etime = p->ctime;
   p->rtime = 0;
+  p->tmp_wtime = 0;
+  p->priority = 60;
+  p->n_run = 0;
+  p->cur_q = -1;
+
+  for(int i=0; i<5; i++){
+    p->q[i] = 0;
+  }
 
   return p;
 }
@@ -341,7 +349,7 @@ waitx(int* wtime, int* rtime)
         // Found one.
         // cprintf("->%d %d %d\n", p->ctime, p->etime, p->rtime);
         *rtime = p->rtime;
-        *wtime = p->etime - p->ctime - p->rtime;
+        *wtime = p->etime - p->ctime - p->rtime; // total wait time
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -398,6 +406,9 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      
+      // custom updates
+      p->n_run++;
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -596,6 +607,41 @@ void updateruntime(void){
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == RUNNING){
       p->rtime++;
+      p->tmp_wtime = 0;
+    }
+    else if(p->state != UNUSED){
+      p->tmp_wtime++;
+    }
+  }
+  release(&ptable.lock);
+}
+
+// To print details regarding each process
+void procdetails(void){
+  static char *states[] = {
+  [UNUSED]    "unused",
+  [EMBRYO]    "embryo",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
+  };
+  acquire(&ptable.lock);
+  cprintf("PID\tPriority\tState\tr_time\tw_time\tn_run\tcur_q\tq0\tq1\tq2\tq3\tq4\n");
+  struct proc * p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != UNUSED){
+      cprintf("%d\t", p->pid);
+      cprintf("%d\t\t", p->priority);
+      cprintf("%s\t", states[p->state]);
+      cprintf("%d\t", p->rtime);
+      cprintf("%d\t", p->tmp_wtime);
+      cprintf("%d\t", p->n_run);
+      cprintf("%d\t", p->cur_q);
+      for(int i=0; i<5; i++){
+        cprintf("%d\t", p->q[i]);
+      }
+      cprintf("\n");
     }
   }
   release(&ptable.lock);
