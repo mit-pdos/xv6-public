@@ -425,26 +425,35 @@ scheduler(void)
   #ifdef FCFS
     cprintf("---> FCFS\n");
     for(;;){
+      struct proc *earliestProcess = 0;
       // Enable interrupts on this processor.
       sti();
 
-      // Loop over process table looking for process to run.
+      // Loop over process table looking for process with lowest ctime to run.
       acquire(&ptable.lock);
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE)
           continue;
-
+        if(earliestProcess == 0){
+          earliestProcess = p;
+        }
+        else if(p->ctime < earliestProcess->ctime){
+          earliestProcess = p;
+        }
+        // cprintf("%d\n", earliestProcess->pid);
+      }
+      if(earliestProcess != 0){
         // Switch to chosen process.  It is the process's job
         // to release ptable.lock and then reacquire it
         // before jumping back to us.
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
+        c->proc = earliestProcess;
+        switchuvm(earliestProcess);
+        earliestProcess->state = RUNNING;
         
         // custom updates
-        p->n_run++;
+        earliestProcess->n_run++;
 
-        swtch(&(c->scheduler), p->context);
+        swtch(&(c->scheduler), earliestProcess->context);
         switchkvm();
 
         // Process is done running for now.
@@ -457,26 +466,36 @@ scheduler(void)
   #ifdef PBS
     cprintf("---> PBS\n");
     for(;;){
+      struct proc *highestPriorityProcess = 0;
       // Enable interrupts on this processor.
       sti();
 
-      // Loop over process table looking for process to run.
+      // Loop over process table looking for process with highest priority to run.
       acquire(&ptable.lock);
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE)
           continue;
+        if(highestPriorityProcess == 0){
+          highestPriorityProcess = p;
+        }
+        else if(p->priority < highestPriorityProcess->priority){
+          highestPriorityProcess = p;
+        }
+        // cprintf("%d\n", highestPriorityProcess->pid);
+      }
 
+      if(highestPriorityProcess != 0){
         // Switch to chosen process.  It is the process's job
         // to release ptable.lock and then reacquire it
         // before jumping back to us.
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
+        c->proc = highestPriorityProcess;
+        switchuvm(highestPriorityProcess);
+        highestPriorityProcess->state = RUNNING;
         
         // custom updates
-        p->n_run++;
+        highestPriorityProcess->n_run++;
 
-        swtch(&(c->scheduler), p->context);
+        swtch(&(c->scheduler), highestPriorityProcess->context);
         switchkvm();
 
         // Process is done running for now.
@@ -743,4 +762,24 @@ void procdetails(void){
     }
   }
   release(&ptable.lock);
+}
+
+// To set priority of a process
+int 
+set_priority(int new_priority, int pid){
+  acquire(&ptable.lock);
+  struct proc * p;
+  int oldPriority = -1;
+  cprintf("%d %d\n", new_priority, pid);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != UNUSED){
+      if(p->pid == pid){
+        oldPriority = p->priority;
+        p->priority = new_priority;
+        break;
+      }
+    }
+  }
+  release(&ptable.lock);
+  return oldPriority;
 }

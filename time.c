@@ -6,6 +6,7 @@
 int main(int argc, char *argv[]){
     if(argc < 2){
         printf(1, "Unsufficient arguments supplied\n");
+        exit();
     }
     else{
         int childPid = fork();
