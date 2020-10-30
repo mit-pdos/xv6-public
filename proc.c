@@ -132,9 +132,15 @@ found:
   p->tmp_wtime = 0;
   p->priority = 60;
   p->n_run = 0;
-  p->cur_q = -1;
+
   p->timeslice = 0;
   p->position_priority = 0;
+
+  #ifdef MLFQ
+  p->cur_q = 0;
+  #else
+  p->cur_q = -1;
+  #endif
 
   for(int i=0; i<5; i++){
     p->q[i] = 0;
@@ -648,6 +654,14 @@ sleep(void *chan, struct spinlock *lk)
     acquire(&ptable.lock);  //DOC: sleeplock1
     release(lk);
   }
+
+  #ifdef MLFQ
+  // Process goes to sleep if it waits for io
+  // Hence it is pushed at the end of queue i.e. the maximum value of position_priority is allocated 
+  p->position_priority = 1 + proc_queue[p->cur_q].largest_position;
+  proc_queue[p->cur_q].largest_position = p->position_priority;
+  #endif
+
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
