@@ -14,6 +14,10 @@ struct {
 
 static struct proc *initproc;
 
+#ifdef MLFQ
+struct procQueue proc_queue[5];
+#endif
+
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
@@ -24,6 +28,14 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+
+  #ifdef MLFQ
+  int i;
+  for(i=0; i<5; i++){
+    proc_queue[i].timeslice_cutoff = (1 << i);
+    proc_queue[i].largest_position = 0;
+  }
+  #endif
 }
 
 // Must be called with interrupts disabled
@@ -121,6 +133,8 @@ found:
   p->priority = 60;
   p->n_run = 0;
   p->cur_q = -1;
+  p->timeslice = 0;
+  p->position_priority = 0;
 
   for(int i=0; i<5; i++){
     p->q[i] = 0;
@@ -508,26 +522,41 @@ scheduler(void)
   #ifdef MLFQ
     cprintf("---> MLFQ\n");
     for(;;){
+      struct proc *highestPriorityProcess = 0;
       // Enable interrupts on this processor.
       sti();
 
-      // Loop over process table looking for process to run.
+      // Loop over process table looking for process with highest priority to run.
       acquire(&ptable.lock);
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE)
           continue;
+        if(highestPriorityProcess == 0){
+          highestPriorityProcess = p;
+        }
+        else if(p->cur_q < highestPriorityProcess->cur_q){
+          highestPriorityProcess = p;
+        }
+        else if(p->cur_q == highestPriorityProcess->cur_q){
+          if(p->position_priority < highestPriorityProcess->position_priority){
+            highestPriorityProcess = p;
+          }
+        }
+        // cprintf("%d\n", highestPriorityProcess->pid);
+      }
 
+      if(highestPriorityProcess != 0){
         // Switch to chosen process.  It is the process's job
         // to release ptable.lock and then reacquire it
         // before jumping back to us.
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
+        c->proc = highestPriorityProcess;
+        switchuvm(highestPriorityProcess);
+        highestPriorityProcess->state = RUNNING;
         
         // custom updates
-        p->n_run++;
+        highestPriorityProcess->n_run++;
 
-        swtch(&(c->scheduler), p->context);
+        swtch(&(c->scheduler), highestPriorityProcess->context);
         switchkvm();
 
         // Process is done running for now.
@@ -729,6 +758,13 @@ void updateruntime(void){
     else if(p->state != UNUSED){
       p->tmp_wtime++;
     }
+     
+    #ifdef MLFQ
+    // number of ticks a process received in its queue
+    if(p->state != UNUSED){
+      p->q[p->cur_q]++;
+    }
+    #endif
   }
   release(&ptable.lock);
 }
@@ -770,7 +806,7 @@ set_priority(int new_priority, int pid){
   acquire(&ptable.lock);
   struct proc * p;
   int oldPriority = -1;
-  cprintf("%d %d\n", new_priority, pid);
+  // cprintf("%d %d\n", new_priority, pid);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state != UNUSED){
       if(p->pid == pid){

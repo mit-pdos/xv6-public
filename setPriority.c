@@ -11,7 +11,7 @@ int main(int argc, char *argv[]){
     else{
         int new_priority = atoi(argv[1]);
         int pid = atoi(argv[2]);
-        printf(1, "--> %d %d\n", new_priority, pid);
+        // printf(1, "--> %d %d\n", new_priority, pid);
         int old_priority = set_priority(new_priority, pid);
         if(old_priority != -1){
             printf(1, "Priority of pid %d updated.\n", pid);
