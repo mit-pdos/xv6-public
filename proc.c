@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#define AGE_CUTOFF 200
 
 struct {
   struct spinlock lock;
@@ -561,6 +562,7 @@ scheduler(void)
         
         // custom updates
         highestPriorityProcess->n_run++;
+        highestPriorityProcess->tmp_wtime = 0;
 
         swtch(&(c->scheduler), highestPriorityProcess->context);
         switchkvm();
@@ -768,15 +770,30 @@ void updateruntime(void){
     if(p->state == RUNNING){
       p->rtime++;
       p->tmp_wtime = 0;
+
+      #ifdef MLFQ
+      // number of ticks a process received in its queue
+      p->q[p->cur_q]++;
+      #endif
     }
     else if(p->state != UNUSED){
       p->tmp_wtime++;
     }
      
     #ifdef MLFQ
-    // number of ticks a process received in its queue
     if(p->state != UNUSED){
-      p->q[p->cur_q]++;
+      // for aging
+      if(p->tmp_wtime > AGE_CUTOFF){
+        // priority is increased
+        if(p->cur_q != 0){
+          // change in queue
+          p->cur_q--;
+          // to push to end
+          p->position_priority = 1+proc_queue[p->cur_q].largest_position;
+          proc_queue[p->cur_q].largest_position = p->position_priority;
+          p->tmp_wtime = 0;
+        }
+      }
     }
     #endif
   }
