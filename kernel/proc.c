@@ -116,6 +116,7 @@ found:
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
+    freeproc(p);
     release(&p->lock);
     return 0;
   }
