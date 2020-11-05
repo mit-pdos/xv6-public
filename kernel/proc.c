@@ -20,10 +20,11 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
-// protects parent/child relationships.
-// must be held when using p->parent.
+// helps ensure that wakeups of wait()ing
+// parents are not lost. helps obey the
+// memory model when using p->parent.
 // must be acquired before any p->lock.
-struct spinlock proc_tree_lock;
+struct spinlock wait_lock;
 
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
@@ -48,7 +49,7 @@ procinit(void)
   struct proc *p;
   
   initlock(&pid_lock, "nextpid");
-  initlock(&proc_tree_lock, "proc_tree");
+  initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->kstack = KSTACK((int) (p - proc));
@@ -306,9 +307,9 @@ fork(void)
 
   release(&np->lock);
 
-  acquire(&proc_tree_lock);
+  acquire(&wait_lock);
   np->parent = p;
-  release(&proc_tree_lock);
+  release(&wait_lock);
 
   acquire(&np->lock);
   np->state = RUNNABLE;
@@ -318,7 +319,7 @@ fork(void)
 }
 
 // Pass p's abandoned children to init.
-// Caller must hold proc_tree_lock.
+// Caller must hold wait_lock.
 void
 reparent(struct proc *p)
 {
@@ -357,7 +358,7 @@ exit(int status)
   end_op();
   p->cwd = 0;
 
-  acquire(&proc_tree_lock);
+  acquire(&wait_lock);
 
   // Give any children to init.
   reparent(p);
@@ -370,7 +371,7 @@ exit(int status)
   p->xstate = status;
   p->state = ZOMBIE;
 
-  release(&proc_tree_lock);
+  release(&wait_lock);
 
   // Jump into the scheduler, never to return.
   sched();
@@ -386,7 +387,7 @@ wait(uint64 addr)
   int havekids, pid;
   struct proc *p = myproc();
 
-  acquire(&proc_tree_lock);
+  acquire(&wait_lock);
 
   for(;;){
     // Scan through table looking for exited children.
@@ -403,12 +404,12 @@ wait(uint64 addr)
           if(addr != 0 && copyout(p->pagetable, addr, (char *)&np->xstate,
                                   sizeof(np->xstate)) < 0) {
             release(&np->lock);
-            release(&proc_tree_lock);
+            release(&wait_lock);
             return -1;
           }
           freeproc(np);
           release(&np->lock);
-          release(&proc_tree_lock);
+          release(&wait_lock);
           return pid;
         }
         release(&np->lock);
@@ -417,12 +418,12 @@ wait(uint64 addr)
 
     // No point waiting if we don't have any children.
     if(!havekids || p->killed){
-      release(&proc_tree_lock);
+      release(&wait_lock);
       return -1;
     }
     
     // Wait for a child to exit.
-    sleep(p, &proc_tree_lock);  //DOC: wait-sleep
+    sleep(p, &wait_lock);  //DOC: wait-sleep
   }
 }
 
