@@ -793,7 +793,7 @@ killstatus(char *s)
       exit(1);
     }
     if(pid1 == 0){
-      for (int j = 0; j < 1000; j++) {
+      while(1) {
         getpid();
       }
       exit(0);
