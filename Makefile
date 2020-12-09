@@ -54,10 +54,8 @@ CFLAGS += -ffreestanding -fno-common -nostdlib $(XFLAGS) $(OPT)
 
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
-ASFLAGS = -gdwarf-2 -Wa,-divide -Iinclude $(XFLAGS)
+ASFLAGS = -gdwarf-2 -Wa,-divide $(XFLAGS)
 
-# FreeBSD ld wants ``elf_i386_fbsd''
-#LDFLAGS += -m $(shell $(LD) -V | grep elf_i386 2>/dev/null | head -n 1)
 LDFLAGS = -m elf_x86_64 -nodefaultlibs
 
 
@@ -72,8 +70,8 @@ xv6memfs.img: bootblock kernelmemfs
 	dd if=kernelmemfs of=xv6memfs.img seek=1 conv=notrunc
 
 bootblock: bootasm.S bootmain.c
-	$(CC) -fno-builtin -fno-pic -m32 -Iinclude -O -nostdinc -c bootmain.c
-	$(CC) -fno-builtin -fno-pic -m32 -Iiinclude -nostdinc -c bootasm.S
+	$(CC) -fno-builtin -fno-pic -m32 -O -nostdinc -c bootmain.c
+	$(CC) -fno-builtin -fno-pic -m32 -nostdinc -c bootasm.S
 	$(LD) -m elf_i386 -nodefaultlibs -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
 	$(OBJDUMP) -S bootblock.o > bootblock.asm
 	$(OBJCOPY) -S -O binary -j .text bootblock.o bootblock
@@ -157,8 +155,6 @@ UPROGS=\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
-
--include *.d
 
 clean:
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
