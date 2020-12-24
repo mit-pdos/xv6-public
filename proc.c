@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "syscall.h"
 
 struct {
   struct spinlock lock;
@@ -537,5 +538,5 @@ procdump(void)
 int 
 count(){
     cprintf("count :%d\n",countCalls);
-    return 22;
+    return SYS_count;
 }
