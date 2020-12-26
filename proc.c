@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "syscall.h"
 
 struct {
   struct spinlock lock;
@@ -15,7 +16,9 @@ struct {
 static struct proc *initproc;
 
 int nextpid = 1;
-int countCalls=0;
+
+int countCalls = -1;// to exclude the first call
+
 extern void forkret(void);
 extern void trapret(void);
 
@@ -537,5 +540,5 @@ procdump(void)
 int 
 count(){
     cprintf("count :%d\n",countCalls);
-    return 22;
+    return SYS_count;
 }
