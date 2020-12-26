@@ -135,7 +135,6 @@ void
 syscall(void)
 {
   int num;
-  countCalls++;
   struct proc *curproc = myproc();
 
   num = curproc->tf->eax;
