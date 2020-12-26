@@ -16,7 +16,9 @@ struct {
 static struct proc *initproc;
 
 int nextpid = 1;
+
 int countCalls = -1;// to exclude the first call
+
 extern void forkret(void);
 extern void trapret(void);
 
