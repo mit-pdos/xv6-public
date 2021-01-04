@@ -1,3 +1,7 @@
+# References
+- [add new system call]
+- [how does system call works]
+
 NOTE: we have stopped maintaining the x86 version of xv6, and switched
 our efforts to the RISC-V version
 (https://github.com/mit-pdos/xv6-riscv.git)
@@ -49,3 +53,7 @@ will need to install a cross-compiler gcc suite capable of producing
 x86 ELF binaries (see https://pdos.csail.mit.edu/6.828/).
 Then run "make TOOLPREFIX=i386-jos-elf-". Now install the QEMU PC
 simulator and run "make qemu".
+
+
+[add new system call](https://medium.com/@viduniwickramarachchi/add-a-new-system-call-in-xv6-5486c2437573)
+[how does system call works](https://medium.com/@flag_seeker/xv6-system-calls-how-it-works-c541408f21ff)
