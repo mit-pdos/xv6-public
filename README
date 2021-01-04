@@ -55,5 +55,5 @@ Then run "make TOOLPREFIX=i386-jos-elf-". Now install the QEMU PC
 simulator and run "make qemu".
 
 
-[add new system call](https://medium.com/@viduniwickramarachchi/add-a-new-system-call-in-xv6-5486c2437573)
-[how does system call works](https://medium.com/@flag_seeker/xv6-system-calls-how-it-works-c541408f21ff)
+[add new system call]: <https://medium.com/@viduniwickramarachchi/add-a-new-system-call-in-xv6-5486c2437573>
+[how does system call works]: <https://medium.com/@flag_seeker/xv6-system-calls-how-it-works-c541408f21ff>
