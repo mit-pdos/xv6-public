@@ -14,3 +14,4 @@ kernel
 kernelmemfs
 mkfs
 .gdbinit
+.vscode/
