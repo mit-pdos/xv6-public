@@ -121,6 +121,8 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 int             count(void);
+int             mprotect(void *addr,uint len);
+int             munprotect(void *addr,uint len);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
