@@ -110,13 +110,13 @@ int helper(void*addr,int len){
     cprintf("\nnot a page address !\n");
     return -1;
   }
-
+  return 0;
 }
 //set addr to read
 int sys_mprotect(void){
   void *addr;
   int len;
-  if(helper(addr,len)==-1)return -1;
+  if(helper(addr,len))return -1;
   return mprotect(addr,len);
 }
 
@@ -124,6 +124,6 @@ int sys_mprotect(void){
 int sys_munprotect(void){
   void * addr;
   uint len;
-  if(helper(addr,len)==-1)return -1;
+  if(helper(addr,len))return -1;
   return munprotect(addr,len);
 }
