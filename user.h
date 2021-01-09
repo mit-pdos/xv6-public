@@ -24,6 +24,8 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int count(void);
+int mprotect(void* addr,uint len);
+int munprotect(void* addr,uint len);
 
 // ulib.c
 int stat(const char*, struct stat*);

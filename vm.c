@@ -385,10 +385,30 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
-//PAGEBREAK!
-// Blank page.
-//PAGEBREAK!
-// Blank page.
-//PAGEBREAK!
-// Blank page.
+int mprotect(void* addr,uint len){
+  struct proc *curproc = myproc();  
+  pte_t *pte;
+  for(int i=(int)addr;i<((int)addr+len*PGSIZE);i+=PGSIZE){
+    pte = walkpgdir(curproc->pgdir,(void*)i,0);
+    if((*pte & PTE_U) && (*pte&PTE_P))*pte &= ~PTE_W;
+    else return -1;
+  }
+  //reset cr3 to notify the hardware that the page table entry has changed
+  //cr3 stores current physical address of the page directory
+  lcr3(V2P((uint)curproc->pgdir));
+  return 0;
+}
 
+int munprotect(void* addr,uint len){
+  struct proc *curproc = myproc();  
+  pte_t *pte;
+  for(int i=(int)addr;i<((int)addr+len*PGSIZE);i+=PGSIZE){
+    pte = walkpgdir(curproc->pgdir,(void*)i,0);
+    if((*pte & PTE_U) && (*pte&PTE_P))*pte |= PTE_W;
+    else return -1;
+  }
+  //reset cr3 to notify the hardware that the page table entry has changed
+  //cr3 stores current physical address of the page directory
+  lcr3(V2P((uint)curproc->pgdir));
+  return 0;
+}
