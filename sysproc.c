@@ -96,7 +96,10 @@ sys_count(void){
     return count();
 }
 
-int helper(void*addr,int len){
+//set addr to read
+int sys_mprotect(void){
+  void *addr;
+  int len;
   //return -1 when
   //addr is not page alligned or 
   //addr points to a part of the address space or
@@ -110,20 +113,25 @@ int helper(void*addr,int len){
     cprintf("\nnot a page address !\n");
     return -1;
   }
-  return 0;
-}
-//set addr to read
-int sys_mprotect(void){
-  void *addr;
-  int len;
-  if(helper(addr,len))return -1;
   return mprotect(addr,len);
 }
 
 //set addr to read/write
 int sys_munprotect(void){
   void * addr;
-  uint len;
-  if(helper(addr,len))return -1;
+  int len;
+  //return -1 when
+  //addr is not page alligned or 
+  //addr points to a part of the address space or
+  //len <= 0 
+  if(argptr(0,(void*)&addr,sizeof(void*))<0||argint(1,&len)<0)return -1; 
+  if(len <= 0){
+    cprintf("\nnegative length!\n");
+    return -1;
+  }
+  if((int)(((int)addr)%PGSIZE)){
+    cprintf("\nnot a page address !\n");
+    return -1;
+  }
   return munprotect(addr,len);
 }

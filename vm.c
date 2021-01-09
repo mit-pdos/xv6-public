@@ -395,7 +395,7 @@ int mprotect(void* addr,uint len){
   }
   //reset cr3 to notify the hardware that the page table entry has changed
   //cr3 stores current physical address of the page directory
-  lcr3((uint)curproc->pgdir);
+  lcr3(V2P((uint)curproc->pgdir));
   return 0;
 }
 
@@ -409,6 +409,6 @@ int munprotect(void* addr,uint len){
   }
   //reset cr3 to notify the hardware that the page table entry has changed
   //cr3 stores current physical address of the page directory
-  lcr3((uint)curproc->pgdir);
+  lcr3(V2P((uint)curproc->pgdir));
   return 0;
 }
