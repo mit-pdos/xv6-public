@@ -108,6 +108,10 @@ extern int countCalls;
 extern int sys_mprotect(void);//change protection to read only
 extern int sys_munprotect(void);//change protection to read and write
 
+// lottery change
+extern int sys_settickets(void);
+extern int sys_getpinfo(void);
+
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
@@ -131,8 +135,14 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_count]   sys_count,
+
+// lottery change
+[SYS_settickets]   sys_settickets,
+[SYS_getpinfo]   sys_getpinfo,
+
 [SYS_mprotect] sys_mprotect,
 [SYS_munprotect] sys_munprotect,
+
 };
 
 void

@@ -1,5 +1,6 @@
 struct stat;
 struct rtcdate;
+struct pstat;
 
 // system calls
 int fork(void);
@@ -26,6 +27,10 @@ int uptime(void);
 int count(void);
 int mprotect(void* addr,uint len);
 int munprotect(void* addr,uint len);
+
+// lottery change
+int settickets(int);
+int getpinfo(struct pstat*);
 
 // ulib.c
 int stat(const char*, struct stat*);

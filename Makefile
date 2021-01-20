@@ -27,6 +27,8 @@ OBJS = \
 	uart.o\
 	vectors.o\
 	vm.o\
+	rand.o\
+
 # Cross-compiling (e.g., on Mac OS X)
 # TOOLPREFIX = i386-jos-elf
 
@@ -183,6 +185,8 @@ UPROGS=\
 	_null_test2\
 	_zombie\
 	_count\
+	_try1\
+	_try2\
 	_protection_test\
 	_null_test\
 
@@ -253,10 +257,10 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 # check in that version.
 
 EXTRA=\
-	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c kill.c\
-	printf.c umalloc.c count.c protection_test.c null_test.c\
-	dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
-	ln.c ls.c mkdir.c rm.c stressfs.c null_test1.c null_test2.c usertests.c wc.c zombie.c\
+
+	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\
+	printf.c umalloc.c count.c try1.c try2.c protection_test.c null_test.c null_test1.c null_test2.c\
+	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
 	.gdbinit.tmpl gdbutil\
 
 dist:
