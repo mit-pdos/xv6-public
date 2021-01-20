@@ -7,6 +7,7 @@
 #include "syscall.h"
 #include "traps.h"
 #include "memlayout.h"
+#include "mmu.h"
 
 char buf[8192];
 char name[3];
@@ -1568,7 +1569,7 @@ validatetest(void)
   printf(stdout, "validate test\n");
   hi = 1100*1024;
 
-  for(p = 0; p <= (uint)hi; p += 4096){
+  for(p = PGSIZE; p <= (uint)hi; p += PGSIZE){
     if((pid = fork()) == 0){
       // try to crash the kernel by passing in a badly placed integer
       validateint((int*)p);
