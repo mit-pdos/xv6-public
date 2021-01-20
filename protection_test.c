@@ -12,7 +12,7 @@ main(int argc, char *argv[])
   mprotect(start, 1) ;
   int child=fork();
   if(child==0){
-	printf(1, "protected value = %d\n",*start); 
+        printf(1, "protected value = %d\n",*start); 
         munprotect(start, 1) ;  
         *start=5;
         printf(1, "After unprotecting the value became = %d\n",*start); 
