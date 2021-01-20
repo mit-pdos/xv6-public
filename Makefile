@@ -179,8 +179,8 @@ UPROGS=\
 	_stressfs\
 	_usertests\
 	_wc\
-	_testnull\
-	_testnull2\
+	_null_test1\
+	_null_test2\
 	_zombie\
 	_count\
 	_protection_test\
@@ -256,7 +256,7 @@ EXTRA=\
 	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c kill.c\
 	printf.c umalloc.c count.c protection_test.c null_test.c\
 	dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
-	ln.c ls.c mkdir.c rm.c stressfs.c testnull2.c usertests.c wc.c zombie.c\
+	ln.c ls.c mkdir.c rm.c stressfs.c null_test1.c null_test2.c usertests.c wc.c zombie.c\
 	.gdbinit.tmpl gdbutil\
 
 dist:
