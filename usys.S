@@ -33,3 +33,7 @@ SYSCALL(count)
 
 SYSCALL(settickets)
 SYSCALL(getpinfo)
+
+SYSCALL(mprotect)
+SYSCALL(munprotect)
+

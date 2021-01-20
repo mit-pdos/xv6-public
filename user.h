@@ -25,6 +25,8 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int count(void);
+int mprotect(void* addr,uint len);
+int munprotect(void* addr,uint len);
 
 // lottery change
 int settickets(int);
