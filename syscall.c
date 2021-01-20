@@ -106,6 +106,10 @@ extern int sys_uptime(void);
 extern int sys_count(void);
 extern int countCalls;
 
+// lottery change
+extern int sys_settickets(void);
+extern int sys_getpinfo(void);
+
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
@@ -129,6 +133,10 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_count]   sys_count,
+
+// lottery change
+[SYS_settickets]   sys_settickets,
+[SYS_getpinfo]   sys_getpinfo,
 };
 
 void
