@@ -185,8 +185,8 @@ UPROGS=\
 	_null_test2\
 	_zombie\
 	_count\
-	_try1\
-	_try2\
+	_lottery_test1\
+	_lottery_test2\
 	_protection_test\
 	_null_test\
 
@@ -257,10 +257,10 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 # check in that version.
 
 EXTRA=\
-
+	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c kill.c\
 	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\
-	printf.c umalloc.c count.c try1.c try2.c protection_test.c null_test.c null_test1.c null_test2.c\
-	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
+	printf.c umalloc.c count.c lottery_test1.c lottery_test2.c protection_test.c null_test.c null_test1.c null_test2.c\
+	dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
 	.gdbinit.tmpl gdbutil\
 
 dist:
