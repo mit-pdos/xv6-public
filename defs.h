@@ -128,6 +128,7 @@ void            swtch(struct context**, struct context*);
 void            acquire(struct spinlock*);
 void            getcallerpcs(void*, uint*);
 int             holding(struct spinlock*);
+int             trylock(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
 void            pushcli(void);
@@ -137,6 +138,7 @@ void            popcli(void);
 void            acquiresleep(struct sleeplock*);
 void            releasesleep(struct sleeplock*);
 int             holdingsleep(struct sleeplock*);
+int             trylocksleep(struct sleeplock*);
 void            initsleeplock(struct sleeplock*, char*);
 
 // string.c

@@ -96,6 +96,13 @@ holding(struct spinlock *lock)
   return r;
 }
 
+// Attempt to unlock the lock.
+int
+trylock(struct spinlock *lock)
+{
+  return xchg(&lock->locked, 1);
+}
+
 
 // Pushcli/popcli are like cli/sti except that they are matched:
 // it takes two popcli to undo two pushcli.  Also, if interrupts
