@@ -130,11 +130,11 @@ int sys_mprotect(void){
   //len <= 0 
   if(argptr(0,(void*)&addr,sizeof(void*))<0||argint(1,&len)<0)return -1; 
   if(len <= 0){
-    cprintf("\nnegative length!\n");
+    cprintf("\nzero/negative length!\n");
     return -1;
   }
   if((int)(((int)addr)%PGSIZE)){
-    cprintf("\nnot a page address !\n");
+    cprintf("\nnot page aligned!\n");
     return -1;
   }
   return mprotect(addr,len);
@@ -150,11 +150,11 @@ int sys_munprotect(void){
   //len <= 0 
   if(argptr(0,(void*)&addr,sizeof(void*))<0||argint(1,&len)<0)return -1; 
   if(len <= 0){
-    cprintf("\nnegative length!\n");
+    cprintf("\nzero/negative length!\n");
     return -1;
   }
   if((int)(((int)addr)%PGSIZE)){
-    cprintf("\nnot a page address !\n");
+    cprintf("\nnot page aligned!\n");
     return -1;
   }
   return munprotect(addr,len);

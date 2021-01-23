@@ -187,8 +187,11 @@ UPROGS=\
 	_count\
 	_lottery_test1\
 	_lottery_test2\
-	_protection_test\
+	_pro_test1\
 	_null_test\
+	_pro_test2\
+	_pro_test3\
+	_pro_test4\
 
 
 fs.img: mkfs $(UPROGS)
@@ -259,9 +262,10 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 EXTRA=\
 	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c kill.c\
 	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\
-	printf.c umalloc.c count.c lottery_test1.c lottery_test2.c protection_test.c null_test.c null_test1.c null_test2.c\
+	printf.c umalloc.c count.c lottery_test1.c lottery_test2.c \
+	pro_test1.c null_test.c null_test1.c null_test2.c pro_test2.c pro_test3.c pro_test4.c\
 	dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
-	.gdbinit.tmpl gdbutil\
+	.gdbinit.tmpl gdbutil \
 
 dist:
 	rm -rf dist
