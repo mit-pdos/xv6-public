@@ -29,7 +29,7 @@ acquire(struct spinlock *lk)
     panic("acquire");
 
   // The xchg is atomic.
-  while(xchg(&lk->locked, 1) != 0)
+  while(xchg(&lk->locked, 1) != 0) pause();
     ;
 
   // Tell the C compiler and the processor to not move loads or stores
