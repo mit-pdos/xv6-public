@@ -30,7 +30,7 @@ acquire(struct spinlock *lk)
 
   // The xchg is atomic.
   while(xchg(&lk->locked, 1) != 0)
-    ;
+    pause();
 
   // Tell the C compiler and the processor to not move loads or stores
   // past this point, to ensure that the critical section's memory
