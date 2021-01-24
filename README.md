@@ -22,6 +22,129 @@
 
 ### Test
 
+
+## An xv6 lottery scheduler
+the xv6 by default use a round robin scheduling algorithm. so we will change it to a lottery scheduler. </br>
+The lottery in a nutshell is a probabilistic scheduling algorithm, and the basic idea is to give the processes lottery tickets for various system resources, such as cup time. Whenever a scheduling decision has to be made a lottery ticket is chosen at random, and the process holding that ticket gets the resource. More important processes can be given extra tickets to increase their odds of winning. Lottery scheduling also solves the problem of starvation. Giving each process at least one lottery ticket guarantees that it has a non-zero probability of being selected at each scheduling operation.</br>
+In conclusion what the scheduler will be doing is given two processes A and B, if A has 60 tickets from 1-60 and B has 40 tickets from 61-100. The scheduler will pick a random number from 1 to 100 if the picked number is from 1 to 60 then A is the winner else if the picked number is from 61 to 100 then b is the winner.</br>
+
+### we will implement two system calls:
+1 - `int settickets(int number)` </br>
+Which sets the number of tickets to the calling process. As mentioned above every process has 1 ticket by default, but it may call this routine to raise the number of tickets it has and receive a higher proportion of the cpu.  
+2 - `int getpinfo(struct pstat *)`</br>
+This system call returns some info about all the running processes such as the process id, number of tickets, how many ticks this process accumulated up til now and whether this process is in use or not. We will make use of this system call in the testing phase of the lottery scheduler, But in general we can use it for any task related to processes information.
+it's a variant of the command line program `ps` which is used to know what is going on.
+
+### Steps:
+1- Make a system call which allows you to set the tickets for a process.</br>
+2- Code to generate a random number.</br>
+3- In the scheduler function count the total number of tickets for all processes that are runnable.</br>
+4- Generate a random number between 0 and the total tickets calculated above.</br>
+5- When looping through the processes keep the counter of the total number of tickets passed.</br>
+6- Just when the counter becomes greater the random value we got, run the process.</br>
+7- Put a break at the end of for loop so that we don't execute the processes following the process we just run.</br>
+
+
+#### Making the settickets system call:</br>
+First we need to set the process structure up for the system call. So we need to make couple of changes in `proc.c` and `proc.h`. </br>
+Go to `proc.h` and in the struct proc add two variables, one for the tickets and the other for the ticks. </br>
+```
+int tickets;
+int ticks;
+```
+Then we want to initialize these variables to make the processes have initially one ticket. Any new process is allocated through the `allocproc` function, So go to `proc.c` and in the allocproc we see that it scan the process table to locate an empty slot which will be holding `UNUSED` label and if found it will jump to the found label to initialize some variables such as pid and so on, in this section we initialize our variables also
+```
+p->tickets = 1;
+p->ticks = 0;
+```
+Like and ordinary system call we will change Five files: </br>
+- syscall.h
+- syscall.c
+- sysproc.c
+- usys.S
+- user.h
+
+In `syscall.h` There is a number assigned to every system call. And there is initially 21 of them already defined </br>
+Add the following line with the appropriate number
+
+>    #define SYS_settickets    XX
+
+In `syscall.c` Add a pointer to the system call </br>
+this file contains array of function pointer which use the number we assigned in syscall.h as a pointer to the system call which will be defined in differen file. so add this line in its appropriate position:</br>
+
+>    [SYS_settickets]   sys_settickets
+
+This means, when system call occurred with system call number XX, function pointed by function pointer sys_getreadcount will be called.</br>
+Also in this file is add the function prototype so as to be able to define it in different place. So add this line </br>
+
+>    extern int sys_settickets(void)
+
+In `sysproc.c` we implement the system call function.</br>
+```
+int
+sys_settickets(void)
+{
+  int num_tickets;
+  if (argint(0, &num_tickets) < 0)
+    return -1;
+  
+  settickets(num_tickets);
+  return 0;
+}
+```
+In `usys.S` we add interface to make the userprogram able to call the system call </br>
+
+>    SYSCALL(settickets)
+
+Finally in `user.h` we add the function which will be called from the user program
+
+>    int settickets(void);
+
+In the scheduler function count the total number of tickets for all processes that are runnable.</br
+#### In `proc.c` at the scheduler function count the total number of tickets for all runnable processes
+```
+for(total_tickets = 0, p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      if(p->state==RUNNABLE)
+        total_tickets+=p->tickets;
+```
+
+
+#### Perform the randomized Lottery.</br>
+using random at most function to generate number between 0 and total_tickets</br>
+
+>	winner = random_at_most(total_tickets);
+
+#### Determine which process owns this ticket
+We can do this by using a counter starts from zero and accumelates the tickets every iteration until we hit the range of the winner process when counter value is greater than the winner value</br>
+this section inside the function might look like this
+```
+...
+for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE) {
+            continue;
+      }
+
+      // looking for the winner range
+      counter += p->tickets;
+
+      if (counter < winner) {
+            continue;
+      }
+
+      p->ticks += 1;
+      
+      ...
+```
+After that we should break from the loop to not execute the process next to the current process and make the sceduler start the whole process again.
+
+
+## One last thing to do is handling the fork system call
+we need to make the child process has the same tickets as the parent, so it's an easy job we can perform it by adding the following line to the fork function in the appropriate place:
+
+>	 np->tickets = curproc->tickets;
+
+this line will make the child inherit the parent tickets.
+
 ---
 ## Virtual memory
 ### Required
