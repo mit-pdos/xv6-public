@@ -1,7 +1,7 @@
 # Table of content
 - [Scheduler](#Scheduler)
-    - [Required](#Required)
-    - [Implementation](#Implementation)
+    - [Required](#An-xv6-lottery-scheduler)
+    - [Implementation](#Steps)
     - [Test](#Test)
 - [Virtual memory](#Virtual-memory)
     - [Required](#Required-1)
@@ -16,12 +16,6 @@
 
 ---
 ## Scheduler
-### Required
-
-### Implementation
-
-### Test
-
 
 ## An xv6 lottery scheduler
 the xv6 by default use a round robin scheduling algorithm. so we will change it to a lottery scheduler. </br>
@@ -100,7 +94,8 @@ Finally in `user.h` we add the function which will be called from the user progr
 
 >    int settickets(void);
 
-In the scheduler function count the total number of tickets for all processes that are runnable.</br
+#### to do code to generate the random number 
+
 #### In `proc.c` at the scheduler function count the total number of tickets for all runnable processes
 ```
 for(total_tickets = 0, p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -144,6 +139,9 @@ we need to make the child process has the same tickets as the parent, so it's an
 >	 np->tickets = curproc->tickets;
 
 this line will make the child inherit the parent tickets.
+
+
+### Test
 
 ---
 ## Virtual memory
