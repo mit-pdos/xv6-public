@@ -289,6 +289,17 @@ Read-only code:
 ---
 ## Threads
 ### Required
+Adding Kernel level support for user threads ,that means multiple tasks sharing the same memory can now be ran simultaneously .
+### we will implement two system calls and library for threads:
+-system calls:-</br>
+1 - `clone` ->that we use to create thread .</br>
+2 - `join` ->to wait for the thread to finish.</br></br>
+-thread library implemented in "ulib.c" :-</br>
+1 - `thread_create` ->allocate user stack by using sbrk or malloc ,then call the clone system call.</br>
+2 - `thread_join` ->uses the join system call.</br>
+3 - `lock init` ->intialize the lock by 0.</br>
+4 - `lock_acquire` -> xchg the lock by 1 during the critical region.</br>
+5 - `lock_release` ->xchg lock by 0 after finishing the critical region.</br>
 
 ### Implementation
 
