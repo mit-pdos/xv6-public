@@ -1,7 +1,7 @@
 # Table of content
-- [Scheduler](#Scheduler)
+- [Scheduler](#Required)
     - [Required](#An-xv6-lottery-scheduler)
-    - [Implementation](#Steps)
+    - [Implementation](#Implementation)
     - [Test](#Test)
 - [Virtual memory](#Virtual-memory)
     - [Required](#Required-1)
@@ -17,6 +17,7 @@
 ---
 ## Scheduler
 
+## Required
 ## An xv6 lottery scheduler
 the xv6 by default use a round robin scheduling algorithm. so we will change it to a lottery scheduler. </br>
 The lottery in a nutshell is a probabilistic scheduling algorithm, and the basic idea is to give the processes lottery tickets for various system resources, such as cup time. Whenever a scheduling decision has to be made a lottery ticket is chosen at random, and the process holding that ticket gets the resource. More important processes can be given extra tickets to increase their odds of winning. Lottery scheduling also solves the problem of starvation. Giving each process at least one lottery ticket guarantees that it has a non-zero probability of being selected at each scheduling operation.</br>
@@ -29,6 +30,7 @@ Which sets the number of tickets to the calling process. As mentioned above ever
 This system call returns some info about all the running processes such as the process id, number of tickets, how many ticks this process accumulated up til now and whether this process is in use or not. We will make use of this system call in the testing phase of the lottery scheduler, But in general we can use it for any task related to processes information.
 it's a variant of the command line program `ps` which is used to know what is going on.
 
+## Implementation
 ### Steps:
 1- Make a system call which allows you to set the tickets for a process.</br>
 2- Code to generate a random number.</br>
@@ -51,7 +53,7 @@ Then we want to initialize these variables to make the processes have initially 
 p->tickets = 1;
 p->ticks = 0;
 ```
-Like and ordinary system call we will change Five files: </br>
+Like any ordinary system call we will change Five files: </br>
 - syscall.h
 - syscall.c
 - sysproc.c
@@ -94,7 +96,14 @@ Finally in `user.h` we add the function which will be called from the user progr
 
 >    int settickets(void);
 
-#### to do code to generate the random number 
+#### code to generate the random number 
+
+This part is done using a free open source library `rand.h` which implemented in `rand.c` it has three main functions for doing this job two of them are helper functions
+which are `genrand()` and `sgenrand()` but the one we are interested in is `random_at_most(int max_num)` which will generate the number between 1 and the max_num.</br>
+- `sgenrand()` setting the initial seeds into an array, so this function is called once in another function called genrand().
+- `genrand()` generates pseudo random real number in the interval [0-1] for each call. so every time we call random_at_most() this function is called.
+- `random_at_most(int max_num)` Returns number in the interval [0, max_num] 
+
 
 #### In `proc.c` at the scheduler function count the total number of tickets for all runnable processes
 ```
