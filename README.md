@@ -160,6 +160,8 @@ Read-only code:
 
 
 ### Implementation
+
+Read-only code:
 - by changing the `WRITEABLE` protection bit in the page table entry we control its write protection
 - to do this we created 2 system calls `int mprotect(void *addr,int len)` and `int munprotect(void *addr,int len)`.
     - `mprotect` change the protection of the page to read only
@@ -184,12 +186,12 @@ Read-only code:
         ```
 
     - `defs.h`
-        ```
+        ```c
         int mprotect(void *addr,uint len);
         int munprotect(void *addr,uint len);
         ```
     - `usys.S`
-        ```
+        ```c
         SYSCALL(mprotect)
         SYSCALL(munprotect)
         ```
@@ -232,32 +234,32 @@ Read-only code:
         - we reset the regester cr3 at the end just to notify the hardware with the changes happened to the page table entries. [see Figure 2-1 for more clarification on `walkpgdir` & protection bits](https://pekopeko11.sakura.ne.jp/unix_v6/xv6-book/en/Page_tables.html#paging-hardware).
         - cr3 stores current physical address of the page directory thats why we used `V2P()` to change from virtual address to physical one . [see Figure 2-2 for more clarification on `V2P()` & `P2V()`](https://pekopeko11.sakura.ne.jp/unix_v6/xv6-book/en/Page_tables.html#process-address-space).
             >  PhysicalAddress = VirtualAddress - KERNELBASE;
-    ```c
-    int mprotect(void* addr,uint len){
-        struct proc *curproc = myproc();  
-        pte_t *pte;
-        for(int i=(int)addr;i<((int)addr+len*PGSIZE);i+=PGSIZE){
-            pte = walkpgdir(curproc->pgdir,(void*)i,0);
-            if((*pte & PTE_U) && (*pte&PTE_P))*pte &= ~PTE_W;
-            else return -1;
+        ```c
+        int mprotect(void* addr,uint len){
+            struct proc *curproc = myproc();  
+            pte_t *pte;
+            for(int i=(int)addr;i<((int)addr+len*PGSIZE);i+=PGSIZE){
+                pte = walkpgdir(curproc->pgdir,(void*)i,0);
+                if((*pte & PTE_U) && (*pte&PTE_P))*pte &= ~PTE_W;
+                else return -1;
+            }
+            lcr3(V2P((uint)curproc->pgdir));
+            return 0;
         }
-        lcr3(V2P((uint)curproc->pgdir));
-        return 0;
-    }
-    ```
-    ```c
-    int munprotect(void* addr,uint len){
-        struct proc *curproc = myproc();  
-        pte_t *pte;
-        for(int i=(int)addr;i<((int)addr+len*PGSIZE);i+=PGSIZE){
-            pte = walkpgdir(curproc->pgdir,(void*)i,0);
-            if((*pte & PTE_U) && (*pte&PTE_P))*pte |= PTE_W;
-            else return -1;
+        ```
+        ```c
+        int munprotect(void* addr,uint len){
+            struct proc *curproc = myproc();  
+            pte_t *pte;
+            for(int i=(int)addr;i<((int)addr+len*PGSIZE);i+=PGSIZE){
+                pte = walkpgdir(curproc->pgdir,(void*)i,0);
+                if((*pte & PTE_U) && (*pte&PTE_P))*pte |= PTE_W;
+                else return -1;
+            }
+            lcr3(V2P((uint)curproc->pgdir));
+            return 0;
         }
-        lcr3(V2P((uint)curproc->pgdir));
-        return 0;
-    }
-    ```
+        ```
 
 ### Test
 
