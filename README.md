@@ -330,18 +330,18 @@ Read-only code:
 
 ### Test
 Null pointer dereference:
-`null_test.c` : <br>
+`null_test.c` : </br>
  1. create a pointer 
  2. initilize it to null
- 3. try to dereference it <br>
+ 3. try to dereference it 
 ```c
    int *point; 
    point = NULL; 
    printf(1, "Dereferencing a pointer now %d \n\n  ", *point); 
  ```
-<br>
-it will give trap 14 which is page fault error i.e we can't access page 0 and we made the program raise an exception while dereferencing a null pointer <br>
-![null_test](https://i.ibb.co/pnLV6bX/Screenshot-from-2021-01-25-21-32-40.png "null pointer dereference") <br>
+
+it will give trap 14 which is page fault error i.e we can't access page 0 and we made the program raise an exception while dereferencing a null pointer </br>
+![null_test](https://i.ibb.co/pnLV6bX/Screenshot-from-2021-01-25-21-32-40.png "null pointer dereference") </br>
 
 
 
