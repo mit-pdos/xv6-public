@@ -189,7 +189,7 @@ Now we will try to make the xv6 support this feature and make an exception when 
 
 ### Implementation
 Null pointer dereference:<br>
-the basic idea to make the xv6 supports null pointer exception is to make the user program loads into memory from the second page which in address 4096 or 0x1000H not from the first page with adress 0x1000  i.e we have to make page 0 is inaccessible
+the basic idea to make the xv6 supports null pointer exception is to make the user program loads into memory from the second page which in address 4096 or 0x1000H not from the first page with adress 0x0000  i.e we have to make page 0 is inaccessible
 1. change `sz = 0` to `sz = PGSIZE` `exec.c`
  ```c
  sz= PGSIZE
@@ -330,8 +330,20 @@ Read-only code:
 
 ### Test
 Null pointer dereference:
-- `null_test.c` : create a pointer and initilize it to null and try to dereference it
-it will give trap 14 which is page fault error i.e we can't access page 0 and we made the program raise an exception while dereferencing a null pointer
+`null_test.c` : <br>
+ 1. create a pointer 
+ 2. initilize it to null
+ 3. try to dereference it <br>
+```c
+   int *point; 
+   point = NULL; 
+   printf(1, "Dereferencing a pointer now %d \n\n  ", *point); 
+ ```
+<br>
+it will give trap 14 which is page fault error i.e we can't access page 0 and we made the program raise an exception while dereferencing a null pointer <br>
+![null_test](https://i.ibb.co/pnLV6bX/Screenshot-from-2021-01-25-21-32-40.png "null pointer dereference") <br>
+
+
 
 Read-only code:
 - `pro_test1.c` : tests if `mprotect` & `munprotect` is working 
