@@ -329,6 +329,9 @@ Read-only code:
         ```
 
 ### Test
+Null pointer dereference:
+- `null_test.c` : create a pointer and initilize it to null and try to dereference it
+it will give trap 14 which is page fault error i.e we can't access page 0 and we made the program raise an exception while dereferencing a null pointer
 
 Read-only code:
 - `pro_test1.c` : tests if `mprotect` & `munprotect` is working 
