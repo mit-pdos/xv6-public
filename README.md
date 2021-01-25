@@ -53,7 +53,7 @@ int tickets;
 int ticks;
 ```
 Then we want to initialize these variables to make the processes have initially one ticket. Any new process is allocated through the `allocproc` function, So go to `proc.c` and in the allocproc we see that it scan the process table to locate an empty slot which will be holding `UNUSED` label and if found it will jump to the found label to initialize some variables such as pid and so on, in this section we initialize our variables also
-```
+```c
 p->tickets = 1;
 p->ticks = 0;
 ```
@@ -66,21 +66,21 @@ Like any ordinary system call we will change Five files: </br>
 
 In `syscall.h` There is a number assigned to every system call. And there is initially 21 of them already defined </br>
 Add the following line with the appropriate number
-
->    #define SYS_settickets    XX
-
+```c
+#define SYS_settickets    XX
+```
 In `syscall.c` Add a pointer to the system call </br>
 this file contains array of function pointer which use the number we assigned in syscall.h as a pointer to the system call which will be defined in differen file. so add this line in its appropriate position:</br>
-
->    [SYS_settickets]   sys_settickets
-
+```c
+[SYS_settickets]   sys_settickets
+```
 This means, when system call occurred with system call number XX, function pointed by function pointer sys_getreadcount will be called.</br>
 Also in this file is add the function prototype so as to be able to define it in different place. So add this line </br>
-
->    extern int sys_settickets(void)
-
-In `sysproc.c` we implement the system call function.</br>
+```c
+extern int sys_settickets(void)
 ```
+In `sysproc.c` we implement the system call function.</br>
+```c
 int
 sys_settickets(void)
 {
@@ -93,13 +93,13 @@ sys_settickets(void)
 }
 ```
 In `usys.S` we add interface to make the userprogram able to call the system call </br>
-
->    SYSCALL(settickets)
-
+```c
+SYSCALL(settickets)
+```
 Finally in `user.h` we add the function which will be called from the user program
-
->    int settickets(void);
-
+```c
+int settickets(void);
+```
 #### code to generate the random number 
 
 This part is done using a free open source library `rand.h` which implemented in `rand.c` it has three main functions for doing this job two of them are helper functions
@@ -110,7 +110,7 @@ which are `genrand()` and `sgenrand()` but the one we are interested in is `rand
 
 
 #### In `proc.c` at the scheduler function count the total number of tickets for all runnable processes
-```
+```c
 for(total_tickets = 0, p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       if(p->state==RUNNABLE)
         total_tickets+=p->tickets;
@@ -119,13 +119,13 @@ for(total_tickets = 0, p = ptable.proc; p < &ptable.proc[NPROC]; p++)
 
 #### Perform the randomized Lottery.</br>
 using random at most function to generate number between 0 and total_tickets</br>
-
->	winner = random_at_most(total_tickets);
-
+```c
+winner = random_at_most(total_tickets);
+```
 #### Determine which process owns this ticket
 We can do this by using a counter starts from zero and accumelates the tickets every iteration until we hit the range of the winner process when counter value is greater than the winner value</br>
 this section inside the function might look like this
-```
+```c
 ...
 for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE) {
@@ -148,9 +148,9 @@ After that we should break from the loop to not execute the process next to the 
 
 ## One last thing to do is handling the fork system call
 we need to make the child process has the same tickets as the parent, so it's an easy job we can perform it by adding the following line to the fork function in the appropriate place:
-
->	 np->tickets = curproc->tickets;
-
+```c
+np->tickets = curproc->tickets;
+```
 this line will make the child inherit the parent tickets.
 
 
