@@ -156,7 +156,7 @@ this line will make the child inherit the parent tickets.
 
 ## Virtual memory
 ### Required
-Null pointer dereference:
+<h1 align="center">Null pointer dereference</h1>
 In this part of the project we will be changing the xv6 to support a feature almost every modern os does, which is causing an exception when a program dereferences a null pointer <br>
 what is null pointer:<br>
 A Null Pointer is a pointer that does not point to any memory location. It stores the base address of the segment. The null pointer basically stores the Null value <br>
@@ -174,7 +174,8 @@ Now we can see clearly trying to dereference a null pointer in xv6 will not caus
 Now we will try to make the xv6 support this feature and make an exception when trying to dereferencing a null pointer
 
 
-Read-only code:
+<h1 align="center">Read-only code</h1>
+
 - change the protection of parts of the page table to be read-only or read/write
 - xv6 should trap and kill the process if the code tries to access a protected page.
 - the page protection should be inherited on `fork()` . Thus, if a process has mprotected some of its pages, when the process calls fork, the OS should copy those protections to the child process.
