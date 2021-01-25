@@ -21,7 +21,13 @@ void spin()
 
 int
 main(int argc, char *argv[]){
-  int numtickets[]={20,10,30};
+  
+  int procs = argc - 1;
+  if (procs != 3) {
+  	printf(1, "useage: lottery_test2 num1 num2 num3");
+	exit();
+  }
+  int numtickets[] = {atoi(argv[1]), atoi(argv[2]), atoi(argv[3])};
   int pid_chds[3];
 
   pid_chds[0]=getpid();
