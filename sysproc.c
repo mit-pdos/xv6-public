@@ -128,7 +128,10 @@ int sys_mprotect(void){
   //addr is not page alligned or 
   //addr points to a part of the address space or
   //len <= 0 
-  if(argptr(0,(void*)&addr,sizeof(void*))<0||argint(1,&len)<0)return -1; 
+  if(argptr(0,(void*)&addr,sizeof(void*))<0||argint(1,&len)<0){
+    cprintf("\nzero length!\n");
+    return -1; 
+  }
   if(len <= 0){
     cprintf("\nzero/negative length!\n");
     return -1;
@@ -148,7 +151,10 @@ int sys_munprotect(void){
   //addr is not page alligned or 
   //addr points to a part of the address space or
   //len <= 0 
-  if(argptr(0,(void*)&addr,sizeof(void*))<0||argint(1,&len)<0)return -1; 
+  if(argptr(0,(void*)&addr,sizeof(void*))<0||argint(1,&len)<0){
+    cprintf("\nzero length!\n");
+    return -1; 
+  }
   if(len <= 0){
     cprintf("\nzero/negative length!\n");
     return -1;

@@ -41,7 +41,12 @@ int main(int argc, char *argv[]){
       else 
             printf(1, "protection failed\n");
 
-      printf(1, "changing the value\n");
-      *start = 5;
+      if(len){
+            printf(1, "changing the value\n");
+            printf(1,"val = %d\n",*start);
+            *start = 5;
+            printf(1, "the value has been changed!\n");
+            printf(1,"val = %d\n",*start);
+      }
       exit();
 }
