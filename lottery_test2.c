@@ -31,55 +31,53 @@ main(int argc, char *argv[]){
   for(i=1;i<3;i++){
     pid_chds[i]=fork();
     if(pid_chds[i]==0){
-      for (;;){
-	spin();
-      }
+      while(1) spin();
     }
     else{
       settickets(numtickets[i]);
     }
   }
+  // after this loop 
+  //  parent->tickets = 30 and will continue the executing the code
+  //  first child->tickets = 20 and stuck in the infinity loop calling spin func
+  //  second child->tickets = 10 and stuck in the infinity loop calling spin func
     
   struct pstat st;
-  int time=0;
+  int time = 200;
   int ticks[3]={0,0,0};
 
   printf(1,"pid:%d, pid:%d, pid:%d\n",pid_chds[0],pid_chds[1],pid_chds[2]);
   printf(1,"tickets:%d, tickets:%d, tickets:%d\n",30,20,10);
 
-  while(time<200){
-    if(getpinfo(&st)!=0){
-      printf(1,"check failed: getpinfo\n");
-      goto Cleanup;
-    }
-    
-    int j;
-    int pid;
-    for(i=0;i<3;i++){
-      pid=pid_chds[i];
-      for(j=0;j<NPROC;j++){
-	if(st.pid[j]==pid){
-      	  ticks[i]=st.ticks[j];
-	  // printf(1,"pid:%d, tickets:%d, ticks:%d\n",pid,st.tickets[j],st.ticks[j]);
-	}
+  while(time--){
+      if(getpinfo(&st)!=0){
+        printf(1,"check failed: getpinfo\n");
+        goto Cleanup;
       }
-    }
-
-   
-   for(i=0;i<3;i++){
-      printf(1,"%d, ",ticks[i]);
-    }
-    printf(1,"\n");
+      
+      // search for the parent and childs to get their ticks 
+      // and put it in ticks array
+      int j;
+      int pid;
+      for(i=0;i<3;i++){
+        pid=pid_chds[i];
+        for(j=0;j<NPROC;j++){
+	  if(st.pid[j]==pid){
+      	    ticks[i]=st.ticks[j];
+	  }
+        }
+      }
+     
+     // print their ticks
+     for(i=0;i<3;i++) printf(1,"%d, ",ticks[i]); 
+     printf(1,"\n");
     
-    spin();
-    time++;
+     spin();
   }
     
  Cleanup:
-  for (i = 0; pid_chds[i] > 0; i++){
-    kill(pid_chds[i]);
-  }
-  while(wait() > -1);
-
-  exit();
+  kill(pid_chds[1]);		// kill the 2 child
+  kill(pid_chds[2]);
+  while(wait() > -1);		// clear their slots in process table
+  exit();			// exit parent
 }
