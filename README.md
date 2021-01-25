@@ -196,7 +196,11 @@ the basic idea to make the xv6 supports null pointer exception is to make the us
 `exec` func is used to replace current process with new one in the part of looping over every section in `proghdr` we need to allocate memory sothat we will force the program to start from second page i.e `sz=4096`
 
 2. Change `i=0` to `i=4096` in func `copyuvm` in `vm.c`
- ```c
+
+ in `proc.c` we have a fun called `fork` that is used to create a new process by copying from parent.
+ in `fork` func we use anothe func called `copyuvm` defined in `vm.c` given a parent process page table it creates a copy from it to the child process
+ in our case when the `copyuvm` loops over all pages in the page table we have to force it to start from the second page i.e from 4096 instead of 0 as we did
+  ```c
  for (i = 4096; i < sz; i += PGSIZE)
  ```
 3. adding one more condition which is `i==0` in func `argptr` in syscall .c 
