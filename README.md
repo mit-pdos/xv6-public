@@ -2,11 +2,7 @@
 - [Scheduler](#Required)
     - [Required](#An-xv6-lottery-scheduler)
     - [Implementation](#Implementation)
-    - [Test](#Test)
-- [Null pointer dereference](#NullPointer-Dereference)
-    - [Required](#Required-0)
-    - [Implementation](#Implementation-0)
-    - [Test](#Test-0)    
+    - [Test](#Test)   
 - [Virtual memory](#Virtual-memory)
     - [Required](#Required-1)
     - [Implementation](#Implementation-1)
@@ -157,8 +153,26 @@ this line will make the child inherit the parent tickets.
 ### Test
 
 ---
+
 ## Virtual memory
 ### Required
+Null pointer dereference:
+In this part of the project we will be changing the xv6 to support a feature almost every modern os does, which is causing an exception when a program dereferences a null pointer <br>
+what is null pointer:<br>
+A Null Pointer is a pointer that does not point to any memory location. It stores the base address of the segment. The null pointer basically stores the Null value <br>
+what is null pointer dereference:<br>
+null pointer Dereferencing  means trying to access whatever is pointed to by the pointer. The * operator is the dereferencing operator
+in other words Dereferencing just means reading the memory value at a given address. So when you have a pointer points to something, to dereference the pointer means to read or write the data that the pointer points to.
+
+In Linux trying to dereference a null pointer will cause an exception
+![example-Linux](https://i.ibb.co/ZJYSkKZ/linux-Nullpointer-Dereference.png "linux") <br>
+In xv6 trying to dereference a null pointer will not cause an exception ,however, it gave us a Trap 6 error <br>
+![example-xv6](https://i.ibb.co/chfR346/Screenshot-from-2021-01-25-16-21-02.png "xv6-try1") <br>
+this could be fixed by updating CFLAGS in Makefile <br>
+Now we can see clearly trying to dereference a null pointer in xv6 will not cause an exception
+![example-xv6](https://i.ibb.co/PrbSLR0/Screenshot-from-2021-01-25-16-29-30.png "xv6-try12") <br>
+Now we will try to make the xv6 support this feature and make an exception when trying to dereferencing a null pointer
+
 
 Read-only code:
 - change the protection of parts of the page table to be read-only or read/write
@@ -173,6 +187,31 @@ Read-only code:
 
 
 ### Implementation
+Null pointer dereference:<br>
+the basic idea to make the xv6 supports null pointer exception is to make the user program loads into memory from the second page which in address 4096 or 0x1000H not from the first page with adress 0x1000  i.e we have to make page 0 is inaccessible
+1. change `sz = 0` to `sz = PGSIZE` `exec.c`
+ ```c
+ sz= PGSIZE
+ ```
+2. Change `i=0` to `i=4096` in func `copyuvm` in `vm.c`
+ ```c
+ for (i = 4096; i < sz; i += PGSIZE)
+ ```
+3. adding one more condition which is `i==0` in func `argptr` in syscall .c 
+  ```c
+  if (size < 0 || (uint)i >= curproc->sz || (uint)i + size > curproc->sz || i == 0)
+ ```
+4. update MAKEFILE where the user program is compiled and set the start point is the second page `0x1000` not the first page `0x0000`
+in line 149
+```c
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0x1000 -o $@ $^
+```
+in line 156 
+```c
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0x1000 -o _forktest forktest.o ulib.o usys.o
+```
+5. Last one is to change `p=0` into `p=4096` in func `validatetest` in `usertests.c`
+
 
 Read-only code:
 - by changing the `WRITEABLE` protection bit in the page table entry we control its write protection
