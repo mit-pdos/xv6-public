@@ -193,6 +193,8 @@ the basic idea to make the xv6 supports null pointer exception is to make the us
  ```c
  sz= PGSIZE
  ```
+`exec` func is used to replace current process with new one in the part of looping over every section in `proghdr` we need to allocate memory sothat we will force the program to start from second page i.e `sz=4096`
+
 2. Change `i=0` to `i=4096` in func `copyuvm` in `vm.c`
  ```c
  for (i = 4096; i < sz; i += PGSIZE)
@@ -201,7 +203,9 @@ the basic idea to make the xv6 supports null pointer exception is to make the us
   ```c
   if (size < 0 || (uint)i >= curproc->sz || (uint)i + size > curproc->sz || i == 0)
  ```
-4. update MAKEFILE where the user program is compiled and set the start point is the second page `0x1000` not the first page `0x0000`
+  when we pass a pointer into the kernel,the kernal must check it is not a bad pointer (null pointer) so that we added one more condition `i==0` to make sure that we didn't pass a null pointer 
+  
+4. update MAKEFILE to set the start point is the second page `0x1000` not the first page `0x0000`
 in line 149
 ```c
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0x1000 -o $@ $^
@@ -210,7 +214,13 @@ in line 156
 ```c
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0x1000 -o _forktest forktest.o ulib.o usys.o
 ```
+In xv6 makefile user programs are compiled , by default the entry point [first instruction] is 0 and the changes we have made in the previous 3 steps we made the first page is invalid so that we have to set the entry point from the second page
+
 5. Last one is to change `p=0` into `p=4096` in func `validatetest` in `usertests.c`
+```c
+  for (p = 4096; p <= (uint)hi; p += 4096)
+```
+ To make the usertest pass
 
 
 Read-only code:
