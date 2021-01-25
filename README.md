@@ -116,9 +116,9 @@ for(total_tickets = 0, p = ptable.proc; p < &ptable.proc[NPROC]; p++)
 
 #### Perform the randomized Lottery.</br>
 using random at most function to generate number between 0 and total_tickets</br>
-
->	winner = random_at_most(total_tickets);
-
+```c
+winner = random_at_most(total_tickets);
+```
 #### Determine which process owns this ticket
 We can do this by using a counter starts from zero and accumelates the tickets every iteration until we hit the range of the winner process when counter value is greater than the winner value</br>
 this section inside the function might look like this
@@ -145,9 +145,9 @@ After that we should break from the loop to not execute the process next to the 
 
 ## One last thing to do is handling the fork system call
 we need to make the child process has the same tickets as the parent, so it's an easy job we can perform it by adding the following line to the fork function in the appropriate place:
-
->	 np->tickets = curproc->tickets;
-
+```c
+np->tickets = curproc->tickets;
+```
 this line will make the child inherit the parent tickets.
 
 
