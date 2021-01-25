@@ -1,6 +1,6 @@
 # Table of content
-- [Scheduler](#Required)
-    - [Required](#An-xv6-lottery-scheduler)
+- [Scheduler](#Scheduler)
+    - [Required](#Required)
     - [Implementation](#Implementation)
     - [Test](#Test)   
 - [Virtual memory](#Virtual-memory)
