@@ -29,3 +29,7 @@
 #define SYS_mprotect 25
 #define SYS_munprotect 26
 
+//threads
+
+#define SYS_clone  27
+#define SYS_join 28

@@ -37,3 +37,5 @@ SYSCALL(getpinfo)
 SYSCALL(mprotect)
 SYSCALL(munprotect)
 
+SYSCALL(clone)
+SYSCALL(join)

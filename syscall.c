@@ -111,6 +111,9 @@ extern int sys_munprotect(void);//change protection to read and write
 // lottery change
 extern int sys_settickets(void);
 extern int sys_getpinfo(void);
+//threads
+extern int sys_clone(void);
+extern int sys_join(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -143,6 +146,9 @@ static int (*syscalls[])(void) = {
 [SYS_mprotect] sys_mprotect,
 [SYS_munprotect] sys_munprotect,
 
+//threads
+[SYS_clone]   sys_clone,
+[SYS_join]   sys_join
 };
 
 void

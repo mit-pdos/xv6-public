@@ -131,7 +131,7 @@ int sys_mprotect(void){
   if(argptr(0,(void*)&addr,sizeof(void*))<0||argint(1,&len)<0){
     cprintf("\nzero length!\n");
     return -1; 
-  }
+  } 
   if(len <= 0){
     cprintf("\nzero/negative length!\n");
     return -1;
@@ -165,3 +165,26 @@ int sys_munprotect(void){
   }
   return munprotect(addr,len);
 }
+
+//threads
+int
+sys_clone(void)
+{
+int fcn , arg1 , arg2 ,stack;
+if(argint(0,&fcn)<0)return -1;
+if(argint(1,&arg1)<0)return -1;
+if(argint(2,&arg2)<0)return -1;
+if(argint(3,&stack)<0)return -1;
+return clone((void *)fcn, (void *)arg1, (void *)arg2,(void *)stack);
+}
+
+int 
+sys_join(){
+void **stack;
+  int stackArg;
+  stackArg = argint(0, &stackArg);
+  stack = (void**) stackArg;
+  return join(stack);
+}
+
+
