@@ -263,6 +263,16 @@ Read-only code:
 
 ### Test
 
+Read-only code:
+- `pro_test1.c` : tests if `mprotect` & `munprotect` is working 
+- `pro_test2.c` : tests if `len` is working 'working on 2 pages'
+- `pro_test3.c` : tests if the child process inhereted the protection from the parent process
+- `pro_test4.c` : tests the validation of the `addr` & `len`
+    - pro_test4 offset len
+    - offset will be added to addr
+    - ex :  pro_test4 -54 35  
+        - `addr`+= -54;
+        - `len` = 35;
 ---
 ## Threads
 ### Required
