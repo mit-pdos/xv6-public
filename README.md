@@ -378,7 +378,12 @@ Adding Kernel level support for user threads ,that means multiple tasks sharing 
 * creates a child process -behaves like a thread- that shares the address space and working directory of the parent -calling- process</br>
 * if The child process calls clone() another thread in the same parent process will be created.</br>
 * the child process's stack is in the address space of the parent process</br>
-2 - `join` ->to wait for the thread to finish.</br></br>
+2 - `join`..
+* waits for the thread to finish</br>
+* gives the parent process ability to read the exit status of a child.so, the child won't become a zombie once it exits</br>
+* checks the list of currently running processes, looking for a thread belonging to the parent process
+* when child process is found `join` will "kill" it by setting it to the UNUSED state,clears its entry in the process table and resetting all of its values.</br>
+* It will then return the pid of the child thread that was killed.</br></br>
 -thread library implemented in "ulib.c" :-</br>
 1 - `thread_create` ->allocate user stack by using sbrk or malloc ,then call the clone system call.</br>
 2 - `thread_join` ->uses the join system call.</br>
@@ -507,7 +512,65 @@ return newp->pid;
 
 }
 ```
+#### 2- `join()`
+1- checks the list of currently running processes, looking for a thread belonging to the parent process
+ * To tell if a process is a child thread of the current process, it must have its parent equal to the current process and have the same `pgdir`</br>
 
+```c
+int
+join(void** stack)
+{
+  struct proc *p;           // The thread iterator
+  int havekids, pid;
+  struct proc *cp = myproc();
+  acquire(&ptable.lock);
+  for(;;){
+      // Scan through table looking for zombie children.
+      havekids = 0;
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+
+      //if the parent of p not equal the current process or share the same address space ,then it's not a thread and continue looping
+    
+      if(p->parent != cp || p->pgdir != p->parent->pgdir)
+        continue;
+       
+      havekids = 1;
+```
+2-  kills the child process but doesn't free its virtual memory`pgdir`,as the child shares the address space of its parent, just free the kernel stack`kstack`of child process`p` </br>
+```c
+      if(p->state == ZOMBIE){
+        // Found one.
+	      pid = p->pid;
+        // Removing thread from the kernal stack
+        kfree(p->kstack);
+        p->kstack = 0;
+
+        // Reseting thread from the process table
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        stack = p->threadstack;
+        p->threadstack = 0;
+
+        release(&ptable.lock);
+	      return pid;
+      }
+      
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || cp->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(cp, &ptable.lock);  //DOC: wait-sleep
+  }
+}
+```
 ### Test
 
 ---
