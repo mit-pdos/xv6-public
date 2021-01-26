@@ -357,11 +357,14 @@ Read-only code:
         - `len` = 35;
 ---
 ## Threads
-### Required
+#### Required
 Adding Kernel level support for user threads ,that means multiple tasks sharing the same memory can now be ran simultaneously .
 ### we will implement two system calls and library for threads:
 -system calls:-</br>
-1 - `clone` ->that we use to create thread .</br>
+1 - `clone` ->implement multiple threads-like processes of control in a program that run concurrently in a shared memory space.</br>
+* creates a child process -behaves like a thread- that shares the address space and working directory of the parent -calling- process</br>
+* if The child process calls clone() another thread in the same parent process will be created.</br>
+* the child process's stack is in the address space of the parent process</br>
 2 - `join` ->to wait for the thread to finish.</br></br>
 -thread library implemented in "ulib.c" :-</br>
 1 - `thread_create` ->allocate user stack by using sbrk or malloc ,then call the clone system call.</br>
@@ -371,6 +374,105 @@ Adding Kernel level support for user threads ,that means multiple tasks sharing 
 5 - `lock_release` ->xchg lock by 0 after finishing the critical region.</br>
 
 ### Implementation
+#### 1- `clone()`
+the function's full signature is : </br>
+`int clone(void (*fcn)(void*, void*), void *arg1, void *arg2, void *stack)` </br>
+It takes 4 arguments..
+* `void (*fcn)(void*, void*)` a pointer to function `fcn`, which will be executed when the child process is created with clone()</br>
+* `void *arg1, void *arg2` pointers to the two arguments passed to the funciton `fcn`, those arguments are accessed from the child processe's userstack `stack`</br>
+* `void *stack` a pointer to a location in the parent process address space which contains the stack of the child process , The parent process sets up memory space for the child stack because the child and parent process share address space, it is not possible for the child process to execute in the same stack as the parent process</br>
+*REMEMBER
+Stack grows downward, so `stack` usually points to the topmost address of the memory space allocated by the parent process for the child stackb but here it will poitnts to the bottom of the specified memory ![SEE ](#setstack).
+##### Modified files
+###### `sysproc.c`
+> provides wrapper functions to the raw system calls which makes sure the user has provided the right number and type of arguments before forwarding the arguments > to the actual system call. </br>
+
+`sys_clone` takes no arguments as The arguments are accessed from the stack at known offsets from the %esp register using `argint` that retrieves the nth system call arguments </br>
+```c
+int
+sys_clone(void)
+{
+int fcn , arg1 , arg2 ,stack;
+// if `argint` value is -1, it means that it couldn't retrieves the nth argument of the `clone` then return -1
+if(argint(0,&fcn)<0)return -1; 
+if(argint(1,&arg1)<0)return -1;
+if(argint(2,&arg2)<0)return -1;
+if(argint(3,&stack)<0)return -1;
+//if all the arguments were found pass those arguments to `clone()`
+return clone((void *)fcn, (void *)arg1, (void *)arg2,(void *)stack); //
+}
+```
+###### `proc.c`
+> to declare the `clone()` function
+1- set two `struct proc` pointers , one for the new created process and the other points to the parent process</br>
+```c
+int clone (void(*fcn)(void*,void*),void *arg1 ,void *arg2 ,void* stack)
+{
+struct proc *newp;  
+struct proc *currp = myproc(); 
+```
+2- call `allocproc()` that searches process table for an unused process and sets its state to EMBRYO. if there was no unused process it will return 0 so `clone()` will fail to create a child process. </br>
+3- after creating the child process it will ..</br>
+* use the callin process page directory`pgdir`which holds the process's page table
+* share the size `sz` of the address space of the calling process
+* point to the same trapframe `tp` as the calling process
+* the new process parent will be the calling process
+* the eax register in the new process's trapframe will be cleared `eax =0` ,as the new process is the child process so that its Pid will always be 0
+```c
+if((newp = allocproc())==0) return -1;  
+
+//setting new process data
+newp->pgdir = currp->pgdir;  
+newp->sz = currp->sz;              
+*newp->tf = *currp->tf;	      
+newp->parent = currp; 
+newp->tf->eax = 0 ;         
+```
+<a name="setstack"></a>
+4- set the child process stack..</br>
+* its stack is pagesized so inorder to reach the top of the stack`stack_top` we sum the bottom of the stack `stack` and the size of the stack `PGSIZE` 
+* declare an array of 3 elements as the child process needs 3 essential values on its stack once it starts
+  * return address: the 1st value in the stack which the base poiner register`ebp` will be set to. this address is address of the previous ebp an is used to go        back to the previous stack frame once the current function returns...`0xffffffff` is fake return address because there is no previous base pointer.
+  * function arguments
+    * `user_stack[1]= (uint) arg1` 1st value 
+```c
+uint stack_top = (uint) stack + PGSIZE;
+uint user_stack[3]; 
+
+user_stack[0]= 0xffffffff ;  
+user_stack[1]= (uint) arg1 ; //first arg
+user_stack[2]= (uint) arg2 ; //second arg (will be the top of stack)
+
+stack_top-=12; //cause we will push 3 elements in the stack
+
+// copying 12 bytes from the arry user_stack into memory location stack_top(offset) in the newp->pgdir 
+if(copyout(newp->pgdir , stack_top , user_stack ,12) < 0) return -1;
+
+//setting base and stack pointers for the return from trap
+//they will be the same because we are returning into function
+//setting instruction pointer to the address of the function that the thread will do
+newp->tf->ebp = (uint) stack_top;
+newp->tf->esp = (uint) stack_top;
+newp->tf->eip = (uint) fcn;
+newp->threadstack=stack;
+//duplicating files
+//filedup ->used to increment the reference count of the open files of the process 
+for(int i=0 ; i<NOFILE ; i++) //looping over 14 openfile of process
+	if(currp->ofile[i])  newp->ofile[i] = filedup(currp->ofile[i]); 
+
+//increment reference count of cwd (crnt directry) and save it in newp->cwd
+newp->cwd =idup(currp->cwd); 
+
+//setting the name of new process as same the name of currnet process
+safestrcpy(newp->name ,currp->name ,sizeof(currp->name));
+
+acquire(&ptable.lock);  //make the lock =1
+newp->state = RUNNABLE;
+release(&ptable.lock);  //release spinlock from being held by cpu
+return newp->pid;
+
+}
+```
 
 ### Test
 
