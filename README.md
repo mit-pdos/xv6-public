@@ -513,6 +513,20 @@ return newp->pid;
 }
 ```
 #### 2- `join()`
+##### Modified files
+###### `sysproc.c` 
+```c
+       int sys_join(){
+
+    	   void **stack;
+       	   int stackArg;
+    	   stackArg = argint(0, &stackArg);
+    	   stack = (void**) stackArg;
+
+       return join(stack);
+       }
+ ```
+###### `proc.c`
 1- checks the list of currently running processes, looking for a thread belonging to the parent process
  * To tell if a process is a child thread of the current process, it must have its parent equal to the current process and have the same `pgdir`</br>
 
@@ -573,13 +587,12 @@ join(void** stack)
 ```
 ### to make the system calls and ThreadLibrary we modified this files 
 
- - `syscall.h` 
+ ###### `syscall.h` 
       ```c
        #define SYS_clone 27
         #define SYS_join 28
-       ```
-
-    - `syscall.c`
+       ```'
+ ###### `syscall.c`
         ```c
         extern int sys_clone(void);
         extern int sys_join(void);
@@ -589,52 +602,21 @@ join(void** stack)
         [SYS_join] sys_join,
         ```
 
-    - `usys.S`
+###### `usys.S`
         ```c
         SYSCALL(clone)
         SYSCALL(join)
         ```
-    - `sysproc.c` 
-        ```c
-        int sys_clone(void){
-
-            int fcn , arg1 , arg2 ,stack;
-  	    if(argint(0,&fcn)<0)return -1;
-  	    if(argint(1,&arg1)<0)return -1;
-  	    if(argint(2,&arg2)<0)return -1;
- 	    if(argint(3,&stack)<0)return -1; 
-
-       return clone((void *)fcn, (void *)arg1, (void *)arg2,(void *)stack);
-       }
-
-        ```
-	
-        ```c
-       ```c
-       int sys_join(){
-
-    	   void **stack;
-       	   int stackArg;
-    	   stackArg = argint(0, &stackArg);
-    	   stack = (void**) stackArg;
-
-       return join(stack);
-       }
-       ```
-- `defs.h`
+      
+ ###### `defs.h`
 
        ```c
        //system calls
        int		clone(void(*fcn)(void*,void*) ,void* ,void* ,void*);
        int             join(void**);
        
-       ```    
-       
-- `proc.c`-> in this file we implement `clone()` and `join()` that we discussed above.
- 
- 
-       
-- `user.h`
+       ```       
+ ###### `user.h`
 
        ```c
       struct lock_t;
@@ -652,7 +634,7 @@ join(void** stack)
       
        ```	
 
- - `ulib.c`-> in this file we implement the thread library .</br>
+###### `ulib.c`-> in this file we implement the thread library .</br>
       
       ```c
       struct lock_t
