@@ -199,7 +199,8 @@ Now we will try to make the xv6 support this feature and make an exception when 
 
 
 ### Implementation
-Null pointer dereference:<br>
+<h1 align="center">Null pointer dereference</h1>
+
 the basic idea to make the xv6 supports null pointer exception is to make the user program loads into memory from the second page which in address 4096 or 0x1000H not from the first page with adress 0x0000  i.e we have to make page 0 is inaccessible
 1. change `sz = 0` to `sz = PGSIZE` `exec.c`
  ```c
@@ -239,7 +240,8 @@ In xv6 makefile user programs are compiled , by default the entry point [first i
  To make the usertest pass
 
 
-Read-only code:
+<h1 align="center">Read-only code</h1>
+
 - by changing the `WRITEABLE` protection bit in the page table entry we control its write protection
 - to do this we created 2 system calls `int mprotect(void *addr,int len)` and `int munprotect(void *addr,int len)`.
     - `mprotect` change the protection of the page to read only
