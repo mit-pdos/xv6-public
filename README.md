@@ -70,7 +70,7 @@ this file contains array of function pointer which use the number we assigned in
 ```c
 [SYS_settickets]   sys_settickets
 ```
-This means, when system call occurred with system call number XX, function pointed by function pointer sys_getreadcount will be called.</br>
+This means, when system call occurred with system call number XX, function pointed by function pointer sys_settickets will be called.</br>
 Also in this file is add the function prototype so as to be able to define it in different place. So add this line </br>
 ```c
 extern int sys_settickets(void)
