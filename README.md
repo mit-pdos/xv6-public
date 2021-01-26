@@ -358,7 +358,7 @@ Read-only code:
 ---
 ## Threads
 #### Required
-Adding Kernel level support for user threads ,that means multiple tasks sharing the same memory can now be ran simultaneously .
+Adding Kernel level support for user threads ,that means multiple tasks sharing the same memory  .
 ### we will implement two system calls and library for threads:
 -system calls:-</br>
 1 - `clone` ->implement multiple threads-like processes of control in a program that run concurrently in a shared memory space.</br>
@@ -473,7 +473,9 @@ newp->threadstack=stack;
 * duplicate all the opened files by the parent process to be opened by the child process, each process has about 14 openfiles,`filedup` is used to increment the reference count of the open files of the process 
 * duplicate the current working directory `cwd` of the parent process to be opened by the child process
 * set the name of new process as same the name of currnet process using `safestrcpy`
-  *`safestrcpy` specifies the size of the destination `newp->name` to be equal to the size of source `currp->name` 
+  * `safestrcpy` specifies the size of the destination `newp->name` to be equal to the size of source `currp->name` and guarantee that the destination string will be NULL terminated.</br>
+* sets the child process state to `RUNNABLE`
+* retutn the child process Pid
 ```c
 
 for(int i=0 ; i<NOFILE ; i++) //looping over 14 openfile of process
