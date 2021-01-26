@@ -1,13 +1,13 @@
-<h1 align="center">Lottert Testing Graphs</h1>
+<h1 align="center">Lottery Testing Graphs</h1>
 
 
 <p align="center">
-  <img src="Lottery Graphs/fivethirtyeight.png">
+  <img src="fivethirtyeight.png">
 </p>
 
 # 2- Pie chart
 
 <p align="center">
-  <img src="Lottery Graphs/pie.png">
+  <img src="pie.png">
 </p>
 
