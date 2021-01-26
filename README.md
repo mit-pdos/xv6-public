@@ -379,10 +379,11 @@ the function's full signature is : </br>
 `int clone(void (*fcn)(void*, void*), void *arg1, void *arg2, void *stack)` </br>
 It takes 4 arguments..
 * `void (*fcn)(void*, void*)` a pointer to function `fcn`, which will be executed when the child process is created with clone()</br>
+<a name="fargm"></a>
 * `void *arg1, void *arg2` pointers to the two arguments passed to the funciton `fcn`, those arguments are accessed from the child processe's userstack `stack`</br>
 * `void *stack` a pointer to a location in the parent process address space which contains the stack of the child process , The parent process sets up memory space for the child stack because the child and parent process share address space, it is not possible for the child process to execute in the same stack as the parent process</br>
-*REMEMBER
-Stack grows downward, so `stack` usually points to the topmost address of the memory space allocated by the parent process for the child stackb but here it will poitnts to the bottom of the specified memory ![SEE ](#setstack).
+*REMEMBER </br>
+Stack grows downward, so `stack` usually points to the topmost address of the memory space allocated by the parent process for the child stackb but here it will poitnts to the bottom of the specified memory [SEE](#setstack).</br>
 ##### Modified files
 ###### `sysproc.c`
 > provides wrapper functions to the raw system calls which makes sure the user has provided the right number and type of arguments before forwarding the arguments > to the actual system call. </br>
@@ -404,6 +405,7 @@ return clone((void *)fcn, (void *)arg1, (void *)arg2,(void *)stack); //
 ```
 ###### `proc.c`
 > to declare the `clone()` function
+
 1- set two `struct proc` pointers , one for the new created process and the other points to the parent process</br>
 ```c
 int clone (void(*fcn)(void*,void*),void *arg1 ,void *arg2 ,void* stack)
@@ -417,7 +419,7 @@ struct proc *currp = myproc();
 * share the size `sz` of the address space of the calling process
 * point to the same trapframe `tp` as the calling process
 * the new process parent will be the calling process
-* the eax register in the new process's trapframe will be cleared `eax =0` ,as the new process is the child process so that its Pid will always be 0
+* set the return address of the clone (which is stored in the eax register) to 0 ,as the new process is the child process so that its Pid will always be 0
 ```c
 if((newp = allocproc())==0) return -1;  
 
@@ -430,40 +432,57 @@ newp->tf->eax = 0 ;
 ```
 <a name="setstack"></a>
 4- set the child process stack..</br>
-* its stack is pagesized so inorder to reach the top of the stack`stack_top` we sum the bottom of the stack `stack` and the size of the stack `PGSIZE` 
-* declare an array of 3 elements as the child process needs 3 essential values on its stack once it starts
-  * return address: the 1st value in the stack which the base poiner register`ebp` will be set to. this address is address of the previous ebp an is used to go        back to the previous stack frame once the current function returns...`0xffffffff` is fake return address because there is no previous base pointer.
+* its stack is pagesized so inorder to reach the top of the stack we use an offset`stack_top` and set it to sum of stack bottom `stack` and the size of the stack `PGSIZE` 
+* declare an array of 3 elements as the child process needs 3 essential values on its stack frame once it starts
+  * return address: the 1st value in the stack frame which the base poiner register`ebp` will be set to. this address is address of the previous ebp and is used to go back to the previous stack frame once the current function returns...`0xffffffff` is fake return address because there is no previous base pointer for any other stack frames as well as if the function never return,a system call exit() is always called at the end of the function which terminates the porgram
   * function arguments
-    * `user_stack[1]= (uint) arg1` 1st value 
+    * `user_stack[1]= (uint) arg1` 1st value after the base pointer.
+    * `user_stack[2]= (uint) arg2` 2nd value after the base pointer,as mentioned earliear [SEE](#fargm) function arguments are placed in order on the stack.So, the cloned function `fcn` will retrieve arg1 as its first argument.</br>
+*REMEMBER </br>
+stack is composed of 1 or many several stack frames. Each stack frame corresponds to a call to a function which has not yet terminated with a return</br>
+A stack frame is a frame of data that gets pushed onto the stack.the function return address then the arguments and space for local variables are pushed onto the stack. Together, they make the "stack frame", the area between base pointer and stack pointer</br>
+* subtract 12 bytes from the `stack_top` to make space for the 3 values being saved, each value represents 4 bytes
+* `copyout()` is used to copy 12 bytes from the arry `user_stack` to the real stack in the `newp->pgdir`starting from memory location `stack_top`</br>
 ```c
 uint stack_top = (uint) stack + PGSIZE;
 uint user_stack[3]; 
 
 user_stack[0]= 0xffffffff ;  
-user_stack[1]= (uint) arg1 ; //first arg
-user_stack[2]= (uint) arg2 ; //second arg (will be the top of stack)
+user_stack[1]= (uint) arg1 ; 
+user_stack[2]= (uint) arg2 ; 
+stack_top-=12; 
 
-stack_top-=12; //cause we will push 3 elements in the stack
-
-// copying 12 bytes from the arry user_stack into memory location stack_top(offset) in the newp->pgdir 
 if(copyout(newp->pgdir , stack_top , user_stack ,12) < 0) return -1;
-
-//setting base and stack pointers for the return from trap
-//they will be the same because we are returning into function
-//setting instruction pointer to the address of the function that the thread will do
+```
+5- set base `ebp`and stack `esp`pointers for the return from trap</br>
+ *REMEMBER</br>
+ trap frame stores the state of the processes' registers</br>
+ A process manages its stack using a base pointer`ebp`and stack pointer`esp`</br>
+ A base pointer`ebp`: stores the address of the top of the current stack frame, this address is the address of the previous base, and is used to go back to the previous stack frame once the current function returns,all local variables and function parameters are at known constant offset from this register for the duration of the function call</br>
+ A stack pointer`esp`: stores the lowest address the stack has reached as it changes during the function call when other functions are called. always points to the top of the stack.The child process will use `esp` to find the function args passed to it, and start execution from there.</br>
+ * HERE the top of the current stack `esp`and stack frame `ebp` is`stack_top`, as we are returning into a function, Normally, `ebp` and `esp` won't be the same but this is a special case because we are starting a new process</br>
+ * instruction pointer register`eip`is set to `fcn` to ensure that the child process will run `fcn` on start.
+ * saves the address of the stack to `threadstack`
+```c
 newp->tf->ebp = (uint) stack_top;
 newp->tf->esp = (uint) stack_top;
 newp->tf->eip = (uint) fcn;
 newp->threadstack=stack;
-//duplicating files
-//filedup ->used to increment the reference count of the open files of the process 
+```
+6-duplicate files
+* duplicate all the opened files by the parent process to be opened by the child process, each process has about 14 openfiles,`filedup` is used to increment the reference count of the open files of the process 
+* duplicate the current working directory `cwd` of the parent process to be opened by the child process
+* set the name of new process as same the name of currnet process using `safestrcpy`
+  *`safestrcpy` specifies the size of the destination `newp->name` to be equal to the size of source `currp->name` 
+```c
+
 for(int i=0 ; i<NOFILE ; i++) //looping over 14 openfile of process
 	if(currp->ofile[i])  newp->ofile[i] = filedup(currp->ofile[i]); 
 
 //increment reference count of cwd (crnt directry) and save it in newp->cwd
 newp->cwd =idup(currp->cwd); 
 
-//setting the name of new process as same the name of currnet process
+
 safestrcpy(newp->name ,currp->name ,sizeof(currp->name));
 
 acquire(&ptable.lock);  //make the lock =1
