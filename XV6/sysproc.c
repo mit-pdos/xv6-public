@@ -10,28 +10,6 @@
 
 
 int
-sys_settickets(void)
-{
-  int num_tickets;
-  if (argint(0, &num_tickets) < 0)
-    return -1;
-  
-  settickets(num_tickets);
-  return 0;
-}
-
-int
-sys_getpinfo(void)
-{
-  struct pstat *p;
-  if (argptr(0, (char **)&p, sizeof(struct pstat)) < 0)
-    return -1;
-
-  getpinfo(p);
-  return 0;
-}
-
-int
 sys_fork(void)
 {
   return fork();
@@ -120,6 +98,30 @@ sys_count(void){
     return count();
 }
 
+// -----------------------------------------OUR WORK------------------------------------------
+
+int
+sys_settickets(void)
+{
+  int num_tickets;
+  if (argint(0, &num_tickets) < 0)
+    return -1;
+  
+  settickets(num_tickets);
+  return 0;
+}
+
+int
+sys_getpinfo(void)
+{
+  struct pstat *p;
+  if (argptr(0, (char **)&p, sizeof(struct pstat)) < 0)
+    return -1;
+
+  getpinfo(p);
+  return 0;
+}
+
 //set addr to read
 int sys_mprotect(void){
   void *addr;
@@ -168,22 +170,25 @@ int sys_munprotect(void){
 
 //threads
 int
-sys_clone(void)
-{
-int fcn , arg1 , arg2 ,stack;
-if(argint(0,&fcn)<0)return -1;
-if(argint(1,&arg1)<0)return -1;
-if(argint(2,&arg2)<0)return -1;
-if(argint(3,&stack)<0)return -1;
-return clone((void *)fcn, (void *)arg1, (void *)arg2,(void *)stack);
+sys_clone(void){
+
+  int fcn , arg1 , arg2 ,stack;
+  if(argint(0,&fcn)<0)return -1;
+  if(argint(1,&arg1)<0)return -1;
+  if(argint(2,&arg2)<0)return -1;
+  if(argint(3,&stack)<0)return -1; 
+
+  return clone((void *)fcn, (void *)arg1, (void *)arg2,(void *)stack);
 }
 
 int 
 sys_join(){
-void **stack;
+
+  void **stack;
   int stackArg;
   stackArg = argint(0, &stackArg);
   stack = (void**) stackArg;
+
   return join(stack);
 }
 

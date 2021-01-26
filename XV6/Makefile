@@ -183,7 +183,6 @@ UPROGS=\
 	_wc\
 	_null_test1\
 	_lottery_test1\
-	_lottery_test2\
 	_thread_test1\
 	_thread_test2\
 	_pro_test1\
@@ -260,7 +259,7 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 EXTRA=\
 	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c kill.c\
 	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\
-	printf.c umalloc.c lottery_test1.c lottery_test2.c thread_test1.c \
+	printf.c umalloc.c lottery_test1.c thread_test1.c \
 	thread_test2.c\
 	pro_test1.c null_test2.c pro_test2.c pro_test4.c pro_test3.c \
 	dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
