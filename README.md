@@ -151,6 +151,17 @@ this line will make the child inherit the parent tickets.
 
 
 ### Test
+In this the scheduler part we make a test (`lottery_test1`) that test the two system calls we made ( `settickets()` & `getpinfo()` ) and the new lottery scheduler.
+The idea of the test that we fork two childs to the parent and give them different/similar number of tickets and make them run for a while and during that we are printing their ticks at each moment.
+
+###### To use the test :
+
+> $ lottery_test1 Time Tickets1 Tickets2 Tickets3
+
+* time : length of the loop
+* tickets1 : number of tickets in the first process (parent)
+* tickets2 : number of tickets in the second process
+* tickets3 : number of tickets in the third process
 
 ---
 
