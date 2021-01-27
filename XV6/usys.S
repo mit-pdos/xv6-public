@@ -29,3 +29,13 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
+SYSCALL(count)
+
+SYSCALL(settickets)
+SYSCALL(getpinfo)
+
+SYSCALL(mprotect)
+SYSCALL(munprotect)
+
+SYSCALL(clone)
+SYSCALL(join)

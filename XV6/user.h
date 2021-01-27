@@ -1,5 +1,7 @@
 struct stat;
 struct rtcdate;
+struct pstat;
+struct lock_t;
 
 // system calls
 int fork(void);
@@ -23,6 +25,18 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int count(void);
+int mprotect(void* addr,uint len);
+int munprotect(void* addr,uint len);
+
+// lottery change
+int settickets(int);
+int getpinfo(struct pstat*);
+
+//threads
+int clone(void(*start_routine)(void*,void*),void*,void*,void*);
+int join(void**);
+
 
 // ulib.c
 int stat(const char*, struct stat*);
@@ -37,3 +51,9 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+    //--threads
+int thread_create(void(*start_routine)(void*,void*), void* arg1, void* arg2);
+int thread_join();
+void lock_init(struct lock_t *);
+void lock_acquire(struct lock_t *);
+void lock_release(struct lock_t *);

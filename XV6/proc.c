@@ -6,6 +6,11 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "syscall.h"
+#include "rand.h"
+#include "pstat.h"
+
+
 
 struct {
   struct spinlock lock;
@@ -15,6 +20,9 @@ struct {
 static struct proc *initproc;
 
 int nextpid = 1;
+
+int countCalls = -1;// to exclude the first call
+
 extern void forkret(void);
 extern void trapret(void);
 
@@ -88,6 +96,9 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+
+  p->tickets = 1;               // default value for ticket
+  p->ticks = 0;                 // time spent on the cpu initially 0
 
   release(&ptable.lock);
 
@@ -196,9 +207,12 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+
+  np->tickets = curproc->tickets;                   // assigning the same number of the tickets the parant has
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -311,6 +325,7 @@ wait(void)
   }
 }
 
+// round roppin
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -319,7 +334,7 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-void
+/*void
 scheduler(void)
 {
   struct proc *p;
@@ -352,6 +367,66 @@ scheduler(void)
     }
     release(&ptable.lock);
 
+  }
+}*/
+
+
+// Lottery
+void
+scheduler(void)
+{
+  struct proc *p;
+  struct cpu *c = mycpu();
+  long total_tickets = 0;
+  long counter = 0;
+  long winner = 0;
+
+  c->proc = 0;
+  
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+    
+    // Loop over process table looking for process to run.
+    acquire(&ptable.lock);
+      
+    //loop over process table and increment total tickets if a runnable process is found 
+    for(total_tickets = 0, p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      if(p->state==RUNNABLE)
+        total_tickets+=p->tickets;
+
+    winner = random_at_most(total_tickets);
+    
+    counter = 0;
+    
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE) {
+            continue;
+      }
+
+      // looking for the winner range
+      counter += p->tickets;
+
+      if (counter < winner) {
+            continue;
+      }
+
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+      
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+      p->ticks += 1;
+
+      c->proc = 0;
+      break;
+    }
+
+    release(&ptable.lock);
   }
 }
 
@@ -530,5 +605,155 @@ procdump(void)
         cprintf(" %p", pc[i]);
     }
     cprintf("\n");
+  }
+}
+
+int 
+count(){
+    cprintf("count :%d\n",countCalls);
+    return SYS_count;
+}
+
+//----------------------------------------------OUR WORK----------------------------------------
+
+
+int 
+settickets(int tickets){
+
+  if(tickets < 1)
+    return -1;
+
+  struct proc *proc = myproc();
+
+  acquire(&ptable.lock);
+    proc->tickets = tickets;
+  release(&ptable.lock);
+
+  return 0;
+}
+
+int
+getpinfo(struct pstat* ps){ 
+
+  struct proc *p;
+  int i;
+
+  acquire(&ptable.lock);
+    for (p = ptable.proc, i = 0; p < &ptable.proc[NPROC]; p++, i++){
+      ps->pid[i]     = p->pid;
+      ps->inuse[i]   = p->state != UNUSED;
+      ps->tickets[i] = p->tickets;
+      ps->ticks[i]   = p->ticks;
+    }
+  release(&ptable.lock);
+
+  return 0;
+}
+
+//threads
+int clone (void(*fcn)(void*,void*),void *arg1 ,void *arg2 ,void* stack){
+
+  struct proc *newp;  //newprocess
+  struct proc *currp = myproc(); //parent process 
+
+  //if allocating new process failed allocproc() return 0 : else return proc
+  //if failled clone() will return -1 
+  if((newp = allocproc())==0) return -1;  
+
+  //setting new process data
+  newp->pgdir = currp->pgdir;  //have same process page table
+  newp->sz = currp->sz;        //have the same size        
+  *newp->tf = *currp->tf;	      //have the same trapframe
+  newp->parent = currp; 
+  newp->tf->eax = 0 ;          //clearing eax to return 0 in the child
+
+  //setting the new stack 
+  uint stack_top = (uint) stack + PGSIZE;
+  uint user_stack[3];  //decalring arrray of 3 elements
+
+  user_stack[0]= 0xffffffff ;  //fake return address for thread's stack(first address in stack which base ponter points to)
+  user_stack[1]= (uint) arg1 ; //first arg
+  user_stack[2]= (uint) arg2 ; //second arg (will be the top of stack)
+
+  stack_top-=12; //cause we will push 3 elements in the stack
+
+  // copying 12 bytes from the arry user_stack into memory location stack_top(offset) in the newp->pgdir 
+  if(copyout(newp->pgdir , stack_top , user_stack ,12) < 0) return -1;
+
+  //setting base and stack pointers for the return from trap
+  //they will be the same because we are returning into function
+  //setting instruction pointer to the address of the function that the thread will do
+  newp->tf->ebp = (uint) stack_top;
+  newp->tf->esp = (uint) stack_top;
+  newp->tf->eip = (uint) fcn;
+  newp->threadstack=stack;
+
+  //duplicating files
+  //filedup ->used to increment the reference count of the open files of the process 
+  for(int i=0 ; i<NOFILE ; i++) //looping over 14 openfile of process
+  	if(currp->ofile[i])  newp->ofile[i] = filedup(currp->ofile[i]); 
+
+  //increment reference count of cwd (crnt directry) and save it in newp->cwd
+  newp->cwd =idup(currp->cwd); 
+
+  //setting the name of new process as same the name of currnet process
+  safestrcpy(newp->name ,currp->name ,sizeof(currp->name));
+
+  acquire(&ptable.lock);  //make the lock =1
+  newp->state = RUNNABLE;
+  release(&ptable.lock);  //release spinlock from being held by cpu
+
+  return newp->pid;
+}
+
+int
+join(void** stack){
+  
+  struct proc *p;           // The thread iterator
+  struct proc *cp = myproc();  
+  int havekids, pid;
+
+  acquire(&ptable.lock);
+  for(;;){
+      // Scan through table looking for zombie children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+
+      //if the parent of p not equal the current process or share the same address space 
+      //then it's not a thread and continue looping
+    
+      if(p->parent != cp || p->pgdir != p->parent->pgdir)
+        continue;
+       
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+	      pid = p->pid;
+        // Removing thread from the kernal stack
+        kfree(p->kstack);
+        p->kstack = 0;
+
+        // Reseting thread from the process table
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        stack = p->threadstack;
+        p->threadstack = 0;
+
+        release(&ptable.lock);
+	      return pid;
+      }
+      
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || cp->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(cp, &ptable.lock);  //DOC: wait-sleep
   }
 }

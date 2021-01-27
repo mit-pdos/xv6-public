@@ -7,6 +7,7 @@
 #include "syscall.h"
 #include "traps.h"
 #include "memlayout.h"
+#include "mmu.h"
 
 char buf[8192];
 char name[3];
@@ -1315,7 +1316,7 @@ dirfile(void)
     printf(1, "unlink dirfile/xx succeeded!\n");
     exit();
   }
-  if(link("README", "dirfile/xx") == 0){
+  if(link("README.md", "dirfile/xx") == 0){
     printf(1, "link to dirfile/xx succeeded!\n");
     exit();
   }
@@ -1359,7 +1360,7 @@ iref(void)
     }
 
     mkdir("");
-    link("README", "");
+    link("README.md", "");
     fd = open("", O_CREATE);
     if(fd >= 0)
       close(fd);
@@ -1568,7 +1569,7 @@ validatetest(void)
   printf(stdout, "validate test\n");
   hi = 1100*1024;
 
-  for(p = 0; p <= (uint)hi; p += 4096){
+  for(p = PGSIZE; p <= (uint)hi; p += PGSIZE){
     if((pid = fork()) == 0){
       // try to crash the kernel by passing in a badly placed integer
       validateint((int*)p);

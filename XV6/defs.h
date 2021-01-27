@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct pstat;
 
 // bio.c
 void            binit(void);
@@ -120,6 +121,12 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int             count(void);
+
+
+// Lottery
+int 			settickets(int);
+int 			getpinfo(struct pstat*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -155,7 +162,8 @@ int             argstr(int, char**);
 int             fetchint(uint, int*);
 int             fetchstr(uint, char**);
 void            syscall(void);
-
+int		 clone(void(*fcn)(void*,void*) ,void* ,void* ,void*);
+int             join(void**);
 // timer.c
 void            timerinit(void);
 
@@ -185,6 +193,8 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+int             mprotect(void *addr,uint len);
+int             munprotect(void *addr,uint len);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

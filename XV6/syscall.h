@@ -20,3 +20,16 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+#define SYS_count  22
+
+// lottery change
+#define SYS_settickets  23
+#define SYS_getpinfo  24
+
+#define SYS_mprotect 25
+#define SYS_munprotect 26
+
+//threads
+
+#define SYS_clone  27
+#define SYS_join 28

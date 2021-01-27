@@ -103,6 +103,17 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_count(void); // count number of calls
+extern int countCalls;
+extern int sys_mprotect(void);//change protection to read only
+extern int sys_munprotect(void);//change protection to read and write
+
+// lottery change
+extern int sys_settickets(void);
+extern int sys_getpinfo(void);
+//threads
+extern int sys_clone(void);
+extern int sys_join(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -126,6 +137,18 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_count]   sys_count,
+
+// lottery change
+[SYS_settickets]   sys_settickets,
+[SYS_getpinfo]   sys_getpinfo,
+
+[SYS_mprotect] sys_mprotect,
+[SYS_munprotect] sys_munprotect,
+
+//threads
+[SYS_clone]   sys_clone,
+[SYS_join]   sys_join
 };
 
 void
@@ -137,6 +160,7 @@ syscall(void)
   num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     curproc->tf->eax = syscalls[num]();
+    if(num == 1)countCalls++;//count the number of forks instead
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             curproc->pid, curproc->name, num);
