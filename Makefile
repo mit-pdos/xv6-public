@@ -56,7 +56,7 @@ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 &
 
 ASFLAGS = -gdwarf-2 -Wa,-divide $(XFLAGS)
 
-LDFLAGS = -m elf_x86_64 -z nodefaultlibs
+LDFLAGS = -m elf_x86_64 -nodefaultlibs
 
 
 xv6.img: bootblock kernel fs.img
@@ -72,7 +72,7 @@ xv6memfs.img: bootblock kernelmemfs
 bootblock: bootasm.S bootmain.c
 	$(CC) -fno-builtin -fno-pic -m32 -O -nostdinc -c bootmain.c
 	$(CC) -fno-builtin -fno-pic -m32 -nostdinc -c bootasm.S
-	$(LD) -m elf_i386 -z nodefaultlibs -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
+	$(LD) -m elf_i386 -nodefaultlibs -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
 	$(OBJDUMP) -S bootblock.o > bootblock.asm
 	$(OBJCOPY) -S -O binary -j .text bootblock.o bootblock
 	./sign.pl bootblock
