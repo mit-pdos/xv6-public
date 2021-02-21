@@ -1,32 +1,7 @@
-DEBUG=TRUE
-OBJS = \
-	bio.o\
-	console.o\
-	exec.o\
-	file.o\
-	fs.o\
-	ide.o\
-	ioapic.o\
-	kalloc.o\
-	kbd.o\
-	lapic.o\
-	log.o\
-	main.o\
-	mp.o\
-	pipe.o\
-	proc.o\
-	sleeplock.o\
-	spinlock.o\
-	string.o\
-	swtch.o\
-	syscall.o\
-	sysfile.o\
-	sysproc.o\
-	trapasm.o\
-	trap.o\
-	uart.o\
-	vectors.o\
-	vm.o\
+KERNOBJS = \
+	bio.o console.o exec.o file.o fs.o ide.o ioapic.o kalloc.o kbd.o lapic.o \
+  log.o main.o mp.o pipe.o proc.o sleeplock.o spinlock.o string.o swtch.o \
+  syscall.o sysfile.o sysproc.o trapasm.o trap.o uart.o vectors.o vm.o \
 #
 
 UNAME_S := $(shell uname -s)
@@ -51,12 +26,10 @@ XFLAGS = -m64 -DX64 -mcmodel=large -mtls-direct-seg-refs -mno-red-zone
 
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -fno-omit-frame-pointer
 CFLAGS += -ffreestanding -fno-common -nostdlib $(XFLAGS) $(OPT)
-
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
 ASFLAGS = -gdwarf-2 -Wa,-divide $(XFLAGS)
-
-LDFLAGS = -m elf_x86_64 -nodefaultlibs
+LDFLAGS = -m elf_x86_64 -nostdlib
 
 
 xv6.img: bootblock kernel fs.img
@@ -70,28 +43,27 @@ xv6memfs.img: bootblock kernelmemfs
 	dd if=kernelmemfs of=xv6memfs.img seek=1 conv=notrunc
 
 bootblock: bootasm.S bootmain.c
-	$(CC) -fno-builtin -fno-pic -m32 -O -nostdinc -c bootmain.c
 	$(CC) -fno-builtin -fno-pic -m32 -nostdinc -c bootasm.S
-	$(LD) -m elf_i386 -nodefaultlibs -N -e start -Ttext 0x7C00 -o bootblock.o bootasm.o bootmain.o
-	$(OBJDUMP) -S bootblock.o > bootblock.asm
-	$(OBJCOPY) -S -O binary -j .text bootblock.o bootblock
+	$(CC) -fno-builtin -fno-pic -m32 -O -nostdinc -c bootmain.c
+	$(LD) -m elf_i386 -nostdlib -n -N -e start -Ttext 0x7C00 -o bootblocktmp.o bootasm.o bootmain.o
+	$(OBJDUMP) -S bootblocktmp.o > bootblock.asm
+	$(OBJCOPY) -S -O binary -j .text bootblocktmp.o bootblock
 	./sign.pl bootblock
-
 
 entryother: entryother.S
 	$(CC) $(CFLAGS) -fno-pic -nostdinc -I. -c entryother.S
-	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7000 -o bootblockother.o entryother.o
-	$(OBJCOPY) -S -O binary -j .text bootblockother.o entryother
-	$(OBJDUMP) -S bootblockother.o > entryother.asm
+	$(LD) $(LDFLAGS) -n -N -e start -Ttext 0x7000 -o entryothertmp.o entryother.o
+	$(OBJDUMP) -S entryothertmp.o > entryother.asm
+	$(OBJCOPY) -S -O binary -j .text entryothertmp.o entryother
 
 initcode: initcode.S
-	$(CC) $(CFLAGS) -nostdinc -I. -c initcode.S
-	$(LD) $(LDFLAGS) -N -e start -Ttext 0x1000 -o initcode.out initcode.o
-	$(OBJCOPY) -S -O binary initcode.out initcode
-	$(OBJDUMP) -S initcode.o > initcode.asm
+	$(CC) $(CFLAGS) -fno-pic -nostdinc -I. -c initcode.S
+	$(LD) $(LDFLAGS) -n -N -e start -Ttext 0x1000 -o initcodetmp.o initcode.o
+	$(OBJDUMP) -S initcodetmp.o > initcode.asm
+	$(OBJCOPY) -S -O binary -j .text initcodetmp.o initcode
 
-kernel: $(OBJS) entry.o entryother initcode kernel.ld
-	$(LD) $(LDFLAGS) -T kernel.ld -o kernel entry.o $(OBJS) -b binary initcode entryother
+kernel: $(KERNOBJS) entry.o entryother initcode kernel.ld
+	$(LD) $(LDFLAGS) -T kernel.ld -o kernel entry.o $(KERNOBJS) -b binary initcode entryother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' | sort > kernel.sym
 
@@ -101,29 +73,26 @@ kernel: $(OBJS) entry.o entryother initcode kernel.ld
 # exploring disk buffering implementations, but it is
 # great for testing the kernel on real hardware without
 # needing a scratch disk.
-MEMFSOBJS = $(filter-out ide.o,$(OBJS)) memide.o
+MEMFSOBJS = $(filter-out ide.o,$(KERNOBJS)) memide.o
 kernelmemfs: $(MEMFSOBJS) entry.o entryother initcode kernel.ld fs.img
 	$(LD) $(LDFLAGS) -T kernel.ld -o kernelmemfs entry.o  $(MEMFSOBJS) -b binary initcode entryother fs.img
 	$(OBJDUMP) -S kernelmemfs > kernelmemfs.asm
 	$(OBJDUMP) -t kernelmemfs | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' | sort > kernelmemfs.sym
-
-tags: $(OBJS) entryother.S _init
-	etags *.S *.c
 
 vectors.S: vectors.pl
 	perl vectors.pl > vectors.S
 
 ULIB = ulib.o usys.o printf.o umalloc.o
 
-_%: %.o $(ULIB)
-	$(LD) $(LDFLAGS) -N -e main -Ttext 0x1000 -o $@ $^
+_%: %.o $(ULIB) user.ld
+	$(LD) $(LDFLAGS) -n -N -T user.ld -e main -Ttext 0x1000 -o $@ $< $(ULIB)
 	$(OBJDUMP) -S $@ > $*.asm
 	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' | sort > $*.sym
 
-_forktest: forktest.o $(ULIB)
+_forktest: forktest.o $(ULIB) user.ld
 	# forktest has less library code linked in - needs to be small
 	# in order to be able to max out the proc table.
-	$(LD) $(LDFLAGS) -N -e main -Ttext 0x1000 -o _forktest forktest.o ulib.o usys.o
+	$(LD) $(LDFLAGS) -n -N -T user.ld -e main -Ttext 0x1000 -o $@ $< ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
 
 mkfs: mkfs.c fs.h
@@ -135,22 +104,9 @@ mkfs: mkfs.c fs.h
 # http://www.gnu.org/software/make/manual/html_node/Chained-Rules.html
 .PRECIOUS: %.o
 
-UPROGS=\
-	_cat\
-	_echo\
-	_forktest\
-	_grep\
-	_init\
-	_kill\
-	_ln\
-	_ls\
-	_mkdir\
-	_rm\
-	_sh\
-	_stressfs\
-	_usertests\
-	_wc\
-	_zombie\
+UPROGS= \
+	_cat _echo _forktest _grep _init _kill _ln _ls _mkdir \
+	_rm _sh _stressfs _usertests _wc _zombie \
 #
 
 fs.img: mkfs README $(UPROGS)

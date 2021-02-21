@@ -4,6 +4,7 @@
 #include "traps.h"
 
 # exec(init, argv)
+.code64
 .global start
 start:
   mov $init, %rdi
@@ -22,7 +23,7 @@ init:
   .string "/init\0"
 
 # char *argv[] = { init, 0 };
-.p2align 2
+.p2align 3
 argv:
   .quad init
   .quad 0
