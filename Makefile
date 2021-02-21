@@ -184,6 +184,7 @@ UPROGS=\
 	_zombie\
 	_greet\
 	_cp\
+	_nsh\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
