@@ -165,4 +165,4 @@ wrmsr:
 .global ignore_sysret
 ignore_sysret: #return error code 38, meaning function unimplemented
   mov     $-38, %rax
-  sysret
+  sysretq
