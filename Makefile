@@ -63,7 +63,7 @@ initcode: initcode.S
 	$(OBJCOPY) -S -O binary -j .text initcodetmp.o initcode
 
 kernel: $(KERNOBJS) entry.o entryother initcode kernel.ld
-	$(LD) $(LDFLAGS) -T kernel.ld -o kernel entry.o $(KERNOBJS) -b binary initcode entryother
+	$(LD) $(LDFLAGS) -n -N -T kernel.ld -o kernel entry.o $(KERNOBJS) -b binary initcode entryother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' | sort > kernel.sym
 

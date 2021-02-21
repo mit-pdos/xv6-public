@@ -11,7 +11,7 @@ SECTIONS
 {
 	/* Link the kernel at this address: "." means the current address */
         /* Must be equal to KERNLINK */
-	 . = 0x1000;
+	. = 0x1000;
 
 	PROVIDE(begin = .);
 
