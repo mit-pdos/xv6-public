@@ -6,57 +6,91 @@
 #define MAXSIZE 100
 
 int isspace(char c) { return c == ' ' || c == '\t' || c == '\n' || c=='\r' || c == '\v'; }
-// char** parsecmd(char *buffer){
-//     char *argv[MAXSIZE];
-//     int argc = 0;
-//     for(; *buffer, *buffer = '\0'){
-//         if(!isspace(*buffer)){
-//             argv[argc++] = buffer;
-//         }
-//     }
-//     return argv;
-// }
-int main (int argc, char **argv)
+void cd(char **argv){
+    if(chdir(argv[1]) != 0){
+        printf(2,"Directory not found");
+    }
+}
+int main (int otherstuff, char **stuff)
 {
+  char*** history = malloc(MAXSIZE * sizeof(char **));
+  int historyi = 0;
   while (1)
   {
     static char buffer[100];// buffer for command and arguments
     //static char input[100];
     //char *cmd[2];  //parsed command 
-    printf(2, "EZ$ "); //print prompts out
+    printf(2, "[%d]EZ$ ", historyi); //print prompts out
     memset(buffer, 0, sizeof(buffer));
     gets(buffer, sizeof(buffer));// grab input
+    //parse magic
     char **argv = malloc(MAXSIZE * sizeof argv);
     argv[0] = malloc(MAXSIZE * sizeof argv);
-    int argc = 0, offset = 0;
+    int argc = 0, beginning = 0;
     for (int i = 0; buffer[i]; i++) {
         if (isspace(buffer[i])) {
             //printf(2, "space\n");
             argc++;
             argv[argc] = malloc(MAXSIZE * sizeof (char));
-            offset = i + 1;
-            continue;
+            beginning = i + 1; //create index to beginning of next argument
+            
         }
-        argv[argc][i-offset] = buffer[i];
+        else{
+            argv[argc][i-beginning] = buffer[i];
+        }
     }
-    //argv[argc] = '\0';
-    //argv[strlen(argv) - 1] = '\0';
-    //buffer[strlen(buffer) - 1] = '\0';//insert a null 
-    //cmd[1] = (void *)0; //Okay, how does xv6 read things?
-    int result = fork();
-		if(result == 0)
-    {
-      //printf(2,argv[0]);
-      exec(argv[0], argv);
+    for(int i = argc; i < MAXSIZE; i++)
+        argv[i] = '\0';
+    if((strcmp(argv[0], "cd") == 0)){
+        cd(argv);
+        history[historyi] = argv;
     }
-    else if (result < 0)
-    {
-      printf(2, "ERROR!");
-      exit();
+    else if ((strcmp(argv[0], "chdir") == 0)){
+        cd(argv);
+        history[historyi] = argv;
     }
-    else
-    {
-      wait();
+    else if(argv[0][0] == '#'){
+        argv = history[atoi(argv[0]+1)];
+        int result = fork();
+        if(result == 0)
+        {
+            //printf(2,argv[0]);
+            exec(argv[0], argv);
+        }
+        else if (result < 0)
+        {
+            printf(2, "ERROR!");
+            exit();
+        }
+        else
+        {
+            wait();
+        }
+        history[historyi] = argv;
+    }
+    else{
+        history[historyi] = argv;
+        int result = fork();
+        if(result == 0)
+        {
+            //printf(2,argv[0]);
+            exec(argv[0], argv);
+        }
+        else if (result < 0)
+        {
+            printf(2, "ERROR!");
+            exit();
+        }
+        else
+        {
+            wait();
+        }
+    }
+    if(historyi == MAXSIZE-1){
+        historyi = 0;
+    }
+    else{
+        historyi++;
     }
   }
 }
