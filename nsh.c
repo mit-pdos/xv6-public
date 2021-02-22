@@ -6,7 +6,7 @@
 #define MAXSIZE 100
 
 int isspace(char c) { return c == ' ' || c == '\t' || c == '\n' || c=='\r' || c == '\v'; }
-void cd(char **argv){
+void cd(char **argv){ //it needs to be a built in function because it changes where in the file system ezsh is run thus a different external function would not effect ezsh
     if(chdir(argv[1]) != 0){
         printf(2,"Directory not found");
     }
@@ -41,6 +41,10 @@ int main (int otherstuff, char **stuff)
     }
     for(int i = argc; i < MAXSIZE; i++)
         argv[i] = '\0';
+
+
+
+
     if((strcmp(argv[0], "cd") == 0)){
         cd(argv);
         history[historyi] = argv;
@@ -48,6 +52,25 @@ int main (int otherstuff, char **stuff)
     else if ((strcmp(argv[0], "chdir") == 0)){
         cd(argv);
         history[historyi] = argv;
+    }
+    else if(argv[argc-1][0] == '&'){
+        history[historyi] = argv;
+        argv[argc-1][0] = '\0';
+        int result = fork();
+        if(result == 0)
+        {
+            //printf(2,argv[0]);
+            exec(argv[0], argv);
+            exit();
+        }
+        else if (result < 0)
+        {
+            printf(2, "ERROR!");
+            exit();
+        }
+        else{
+            argv[argc-1][0] = '&';
+        }
     }
     else if(argv[0][0] == '#'){
         argv = history[atoi(argv[0]+1)];
@@ -73,7 +96,7 @@ int main (int otherstuff, char **stuff)
         int result = fork();
         if(result == 0)
         {
-            //printf(2,argv[0]);
+            printf(2,argv[0]);
             exec(argv[0], argv);
         }
         else if (result < 0)
