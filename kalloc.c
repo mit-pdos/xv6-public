@@ -17,9 +17,6 @@ struct run {
   struct run *next;
   struct run *prev;
 };
-// struct run {
-//   struct run *next;
-// };
 
 struct {
   struct spinlock lock;
