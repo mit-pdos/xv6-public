@@ -299,7 +299,7 @@ scheduler(void)
       proc = 0;
     }
     release(&ptable.lock);
-    if (skipped > (2*NPROC)) {
+    if (skipped > NPROC) {
       hlt();
       skipped = 0;
     }
