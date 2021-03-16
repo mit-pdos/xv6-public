@@ -38,14 +38,15 @@ static int pouch_limit_cgroup(char* container_name, char* cgroup_state_obj, char
        printf(stderr, "There is no container: %s in a started stage\n", container_name);
        exit(1);
     }
-    int cpu_max_fd = open(cg_limit_cname, O_RDWR);
-    if(cpu_max_fd < 0){
+    int cname_fd = open(cg_limit_cname, O_RDWR);
+    if(cname_fd < 0){
        printf(stderr, "Incorrect cgroup object-state provided. Not applied.\n", container_name);
        exit(1);
     }
-    if(write(cpu_max_fd, limitation, sizeof(limitation)) < 0)
+
+    if(write(cname_fd, limitation, sizeof(limitation)) < 0)
        return -1;
-    if(close(cpu_max_fd) < 0)
+    if(close(cname_fd) < 0)
        return -1;
     printf(1, "Pouch: %s cgroup applied \n",container_name);
     return 0;
@@ -483,6 +484,7 @@ static int create_pouch_cgroup(char *cg_cname, char *cname){
         return -1;
     }
     char cgpath[256];
+    memset(cgpath,'\0',256);
     strcpy(cgpath, cg_cname);
     strcat(cgpath,"/cgroup.subtree_control");
 
@@ -494,6 +496,7 @@ static int create_pouch_cgroup(char *cg_cname, char *cname){
 
     // Enable cpu controller
     char buf[256];
+    memset(buf,'\0',256);
     strcpy(buf, "+cpu");
     if(write(cgroup_subtree_control_fd, buf, sizeof(buf)) < 0)
         return -1;

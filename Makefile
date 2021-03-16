@@ -99,7 +99,7 @@ HOST_CPU_TSC_FREQ := $(shell cat /proc/cpuinfo | grep -i "cpu mhz" | head -n 1 |
 ifeq ($(debug), true)
 CFLAGS = -DXV6_WAIT_FOR_DEBUGGER=1 -fno-pic -static -fno-builtin -fno-strict-aliasing -Og -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer -std=gnu99 -mno-sse -DXV6_TSC_FREQUENCY=$(HOST_CPU_TSC_FREQ)
 else
-CFLAGS = -DXV6_WAIT_FOR_DEBUGGER=0 -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer -std=gnu99 -mno-sse -DXV6_TSC_FREQUENCY=$(HOST_CPU_TSC_FREQ)
+CFLAGS = -DXV6_WAIT_FOR_DEBUGGER=0 -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -m32 -Werror -fno-omit-frame-pointer -std=gnu99 -mno-sse -DXV6_TSC_FREQUENCY=$(HOST_CPU_TSC_FREQ)
 endif
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
@@ -136,7 +136,7 @@ initcode: initcode.S
 	$(OBJCOPY) -S -O binary initcode.out initcode
 	$(OBJDUMP) -S initcode.o > initcode.asm
 
-kernel: $(OBJS) entry.o entryother initcode kernel.ld
+kernel: entry.o entryother initcode kernel.ld $(OBJS)
 	$(LD) $(LDFLAGS) -T kernel.ld -o kernel entry.o $(OBJS) -b binary initcode entryother
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernel.sym
@@ -174,7 +174,7 @@ _forktest: forktest.o $(ULIB)
 	$(OBJDUMP) -S _forktest > forktest.asm
 
 mkfs: mkfs.c fs.h
-	gcc -Werror -Wall -o mkfs mkfs.c
+	gcc -ggdb -Werror -Wall -o mkfs mkfs.c
 
 # Prevent deletion of intermediate files, e.g. cat.o, after first build, so
 # that disk image changes after first build are persistent until clean.  More
@@ -206,6 +206,9 @@ UPROGS=\
 	_cpu\
 	_cgroupstests\
         _pouch\
+        _ctrl_grp \
+        _demo_pid_ns \
+        _demo_mount_ns \
         _ioctltests
 
 INTERNAL_DEV=\
@@ -217,10 +220,13 @@ internal_fs_%: mkfs
 	dd if=/dev/zero of=$@ count=80
 	./mkfs $@ 1
 
-fs.img: mkfs README $(UPROGS) $(INTERNAL_DEV)
+fs.img: mkfs README $(INTERNAL_DEV)  $(UPROGS) _pouch # $(UPROGS)
 	./mkfs fs.img 0 README $(UPROGS) $(INTERNAL_DEV)
 
 -include *.d
+
+#clean:
+#	rm -rf mkfs bootblock.o fs.img xv6.img pouch.asm pouch.d pouch.o pouch.sym
 
 clean: windows_debugging_clean
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
