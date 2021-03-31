@@ -373,6 +373,37 @@ proc mounttest {argv} {
     }
 }
 
+# - xv6 mntns test with ls
+# @argv - file name for logging
+proc mounttest_with_ls {argv} {
+
+    send "mkdir test_dir_mount_test\n"
+    sleep 2
+    expect {
+       "$ "
+    }
+    send "mount internal_fs_a test_dir_mount_test\n"
+    sleep 2
+    expect {
+       "$ "
+    }
+    send "ls test_dir_mount_test\n"
+    sleep 2
+    expect {
+       "$ "
+    }
+    send "umount test_dir_mount_test\n"
+    sleep 2
+    expect {
+       "$ "
+    }
+    send "rm test_dir_mount_test\n"
+    sleep 2
+    expect {
+       "$ "
+    }
+}
+
 #-------------------------------------------------------------------------
 #-MAIN--------------------------------------------------------------------
 #-------------------------------------------------------------------------
@@ -414,6 +445,7 @@ set running [usertests $argv]
 
 set running [pidns_tests $argv]
 set running [mounttest $argv]
+set running [mounttest_with_ls $argv]
 
 log_file
 # just in case

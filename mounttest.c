@@ -10,23 +10,6 @@
 #include "ns_types.h"
 #include "tester.h"
 
-static int
-fstat_file(char *path, struct stat *st) {
-  int fd;
-  if((fd = open(path, 0)) < 0){
-    printf(1, "mounttest: cannot open %s\n", path);
-    return 1;
-  }
-
-  if(fstat(fd, st) < 0){
-    printf(1, "mounttest: cannot stat %s\n", path);
-    close(fd);
-    return 1;
-  }
-
-  close(fd);
-  return 0;
-}
 
 static int
 createfile(char *path, char *contents) {
@@ -140,12 +123,27 @@ mounttest(void) {
 
 static int
 statroottest(void) {
-  if (mounta() != 0) {
+  int pid = fork();
+
+  if (pid < 0) {
+    return 1; // exit on error in fork
+  }
+
+  if (pid == 0) {
+    // in child, only mount
+    if (mounta() != 0) {
+      return 1;
+    }
+    return 0;
+  }
+
+  int ret_val = child_exit_status(pid); // get child exit status
+  if (ret_val != 0) {
     return 1;
   }
 
   struct stat st;
-  fstat_file("a", &st);
+  stat("a", &st);
   if (st.type != T_DIR || st.ino != 1 || st.size != BSIZE) {
     return 1;
   }
@@ -153,7 +151,6 @@ statroottest(void) {
   if (umounta() != 0) {
     return 1;
   }
-
   return 0;
 }
 
