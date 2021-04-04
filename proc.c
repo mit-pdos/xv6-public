@@ -99,28 +99,24 @@ void remove(struct proc *p) {
   }
   int priority = p->priority;
   ProcessQueue *queue = priority_queue.levels + priority;
-  struct proc *p2 = queue->head;
-  int found = 0;
-  queue->head = 0;
-  queue->tail = 0;
-  while(p2) {
-    struct proc *next = p2->next;
-    p2->next = 0;
-    p2->prev = 0;
-    p2->inqueue = 0;
-    p2->priority = -1;
-
-    if(p2 != p) {
-      p2->priority = priority;
-      push(p2);
-    } else found = 1;
-
-    p2 = next;
+  if(p == queue->head) {
+    queue->head = p->next;
+    if(p->next) {
+      p->next->prev = 0;
+    }
+  } else if(p == queue->tail) {
+    queue->tail = p->prev;
+    queue->tail->next = 0;
+  } else {
+    p->prev->next = p->next;
+    p->next->prev = p->prev;
   }
-  // check that the process was actually found
-  if(!found) {
-    panic("fault in process queue (3.1)");
+  if(queue->head == queue->tail) {
+    queue->tail = 0;
   }
+  p->inqueue = 0;
+  p->next = 0;
+  p->prev = 0;
 }
 // set the process as runnable
 // adds it to the required queue if necessary

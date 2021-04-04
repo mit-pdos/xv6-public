@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 		printf(2, "test '%c' took %d ticks\n", test, tickstaken);
 	} else {
 		if(test == 'a') {
-			for(int i = 0;i < 100;i++) {
+			for(int i = 0;i < 400;i++) {
 				if(fork()) {
 					wait();
 				} else {
