@@ -7,9 +7,142 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#define DEFAULT_BUDGET 10
+#define MAXPRIORITY 3
+#define TICKS_TO_PROMOTE 50
+
+/**
+ * Logic to maintain the multilevel queue
+ * Modified proc structure holds the next, prev values for the queue
+ */
+typedef struct {
+  struct proc *head; 
+  struct proc *tail;
+} ProcessQueue;
+
+struct {
+  // allocate MAXPRIORITY queues
+  ProcessQueue levels[MAXPRIORITY];
+} priority_queue;
+
+// debugging function
+// prints the queue and does additional fault checking
+// checks if the head incorrectly has a previous value, tail has a next etc.
+void printqueue(ProcessQueue *queue) {
+  struct proc *p = queue->head;
+  if(p) {
+    if(p->prev) {
+      cprintf("prev of head %d is %d\n", p->pid, p->prev->pid);
+      panic("fault in process queue(1.0)");
+    }
+    int encountered_tail = 0;
+    while(p) {
+      cprintf(" -> %d", p->pid);
+      if(p == queue->tail) {
+        if(p->next) {
+          panic("fault in process queue(1.1)");
+        }
+        encountered_tail = 1;
+      }
+      if(p->next) {
+        if(p->next->prev != p) {
+          panic("fault in process queue(1.2)");
+        }
+      }
+      p = p->next;
+    }
+    if(queue->tail && !encountered_tail) {
+      panic("fault in process queue(1.3)");
+    }
+  }
+  cprintf("\n");
+}
+/** pushes a process onto the queue of it's priority */
+void push(struct proc *p) {
+  if(p->priority < 0) {
+    panic("fault in process queue(2.0)");
+  }
+  if(p->inqueue) {
+    panic("fault in process queue(2.1)");
+  }
+  ProcessQueue *queue = priority_queue.levels + p->priority;
+  if(!queue->head) { // 0 items
+    queue->head = p;
+    p->prev = 0;
+  } else {
+    if(queue->tail) { // 1+ items
+      queue->tail->next = p;
+      p->prev = queue->tail;
+    } else { // 1 item
+      if(queue->head->next) {
+        panic("fault in process queue(2.2)");
+      }
+      queue->head->next = p;
+      p->prev = queue->head;
+    }
+    queue->tail = p;
+  }
+  p->next = 0;
+  p->inqueue = 1;
+  // additional checks, commented for efficiency
+  /*if(queue->head && queue->head->prev) {
+    panic("fault in process queue(2.3)");
+  }
+  if(queue->tail && queue->tail->next) {
+    panic("fault in process queue(2.4)");
+  }*/
+}
+// remove a process from its queue
+void remove(struct proc *p) {
+  if(p->priority < 0) {
+    panic("fault in process queue(3.0)");
+  }
+  int priority = p->priority;
+  ProcessQueue *queue = priority_queue.levels + priority;
+  struct proc *p2 = queue->head;
+  int found = 0;
+  queue->head = 0;
+  queue->tail = 0;
+  while(p2) {
+    struct proc *next = p2->next;
+    p2->next = 0;
+    p2->prev = 0;
+    p2->inqueue = 0;
+    p2->priority = -1;
+
+    if(p2 != p) {
+      p2->priority = priority;
+      push(p2);
+    } else found = 1;
+
+    p2 = next;
+  }
+  // check that the process was actually found
+  if(!found) {
+    panic("fault in process queue (3.1)");
+  }
+}
+// set the process as runnable
+// adds it to the required queue if necessary
+void setrunnable(struct proc *p) {
+  p->state = RUNNABLE;
+  if(p->priority < 0) {
+    p->priority = MAXPRIORITY-1;
+  }
+  if(!p->inqueue) {
+    push(p);
+    //cprintf("added %d to queue (%d): ", p->pid, p->priority); printqueue(priority_queue.levels + p->priority);
+  }
+}
+// small wrapper function to get ticks
+uint getticks() {
+  return ticks;
+}
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
+  unsigned int promote_at_time;
 } ptable;
 
 static struct proc *initproc;
@@ -77,17 +210,25 @@ allocproc(void)
   char *sp;
 
   acquire(&ptable.lock);
-
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  int i = 0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
     if(p->state == UNUSED)
       goto found;
-
+    i+= 1;
+  }
+    
   release(&ptable.lock);
   return 0;
 
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->budget = DEFAULT_BUDGET;
+  p->priority = MAXPRIORITY-1;
+  p->inqueue = 0;
+  p->next = 0;
+  p->prev = 0;
+  //push(p, priority_queue.levels + MAXPRIORITY-1); // add to high priority queue
 
   release(&ptable.lock);
 
@@ -114,7 +255,9 @@ found:
 
   return p;
 }
-
+void updatepromotiontime(void) {
+  ptable.promote_at_time = getticks() + TICKS_TO_PROMOTE;
+}
 //PAGEBREAK: 32
 // Set up first user process.
 void
@@ -148,7 +291,8 @@ userinit(void)
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
 
-  p->state = RUNNABLE;
+  updatepromotiontime();
+  setrunnable(p);
 
   release(&ptable.lock);
 }
@@ -214,7 +358,7 @@ fork(void)
 
   acquire(&ptable.lock);
 
-  np->state = RUNNABLE;
+  setrunnable(np);
 
   release(&ptable.lock);
 
@@ -322,8 +466,10 @@ wait(void)
 void
 scheduler(void)
 {
-  struct proc *p;
+  struct proc *p, *next, *tail;
   struct cpu *c = mycpu();
+  int idx = 0, newidx;
+  uint startticks;
   c->proc = 0;
   
   for(;;){
@@ -332,26 +478,74 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+    if(getticks() > ptable.promote_at_time) {
+      // promote all processes
+      for(idx = MAXPRIORITY-2;idx >= 0;idx--) {
+        p = priority_queue.levels[idx].head;
+        while(p) {
+          next = p->next;
+          if(p->state == RUNNABLE) {
+            remove(p);
+            p->priority = p->priority+1;
+            push(p);
+          }
+          p = next;
+        }
+      }
+      updatepromotiontime(); // next promotion time
+    }
+    
+    for(idx = MAXPRIORITY-1;idx >= 0;idx--) {
+      p = priority_queue.levels[idx].head;
+      tail = priority_queue.levels[idx].tail;
+      while(p) {
+        next = p->next; // cache the next process
+        if(p->state != RUNNABLE) {
+          // ignore if not runnable
+        } else {
+          //cprintf("start exec of pid=%d: ", p->pid);
+          //printqueue(priority_queue.levels + idx);
+          startticks = getticks(); // start ticks
+          // Switch to chosen process.  It is the process's job
+          // to release ptable.lock and then reacquire it
+          // before jumping back to us.
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+          c->proc = 0;
+          // update the budget
+          p->budget -= (getticks() - startticks);
+          //cprintf("pid %d budget %d\n", p->pid, p->budget);
+          //cprintf("removing %d from (%d): ", p->pid, idx); printqueue(priority_queue.levels + idx);
+          remove(p); // remove the process from the queue
+          if(p->budget <= 0) { // if process has used it's budget
+            // reset budget
+            p->budget = DEFAULT_BUDGET;
+            // demote process
+            newidx = (idx > 0 ? idx - 1 : 0);
+          } else newidx = idx; // push back on same queue if budget left
+
+          p->priority = newidx;
+          if(p->state == RUNNABLE) {
+            setrunnable(p); // run the process again if runnable
+          }
+          // if the process isn't runnable -- then some other mechanism will add it to the queue
+          //cprintf("added %d to (%d): ", p->pid, newidx); printqueue(priority_queue.levels + newidx);
+        }
+        if(p == tail) {
+          break;
+        }
+        p = next;
+      }
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -386,7 +580,7 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
+  setrunnable(myproc());
   sched();
   release(&ptable.lock);
 }
@@ -461,7 +655,7 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
-      p->state = RUNNABLE;
+      setrunnable(p);
 }
 
 // Wake up all processes sleeping on chan.
@@ -487,13 +681,55 @@ kill(int pid)
       p->killed = 1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
-        p->state = RUNNABLE;
+        setrunnable(p);
       release(&ptable.lock);
       return 0;
     }
   }
   release(&ptable.lock);
   return -1;
+}
+struct proc *find_by_pid(int pid) {
+  struct proc *p;
+  for(p = ptable.proc;p < ptable.proc + NPROC;p++) {
+    if(p->pid == pid) {
+      if(p->state == UNUSED || p->state == ZOMBIE) {
+        break;
+      }
+      return p;
+    }
+  }
+  return 0;
+}
+
+int setpriority(int pid, int priority) {
+  if(priority < 0 || priority >= MAXPRIORITY) {
+    return -1;
+  }
+  acquire(&ptable.lock); // acquire lock
+  int result = -1;
+  struct proc *p = find_by_pid(pid); // get the process
+  if(p) {
+    if(p->inqueue) { // remove, if present in some queue
+      remove(p);
+    }
+    p->priority = priority; // set new priority
+    p->budget = DEFAULT_BUDGET; // & reset time budget
+    push(p); // update
+    result = 0;
+  }
+  release(&ptable.lock); 
+  return result;
+}
+int getpriority(int pid) {
+  int result = -1;
+  acquire(&ptable.lock);
+
+  struct proc *p = find_by_pid(pid);
+  if(p) result = p->priority;
+
+  release(&ptable.lock); 
+  return result;
 }
 
 //PAGEBREAK: 36
