@@ -460,6 +460,32 @@ namespacefiletest(void) {
   }
 }
 
+static int
+cdinthenouttest(void) {
+  if (mounta() != 0) {
+    return 1;
+  }
+
+  chdir("a");
+  chdir("..");
+
+  // tmp replacment of pwd - checking if the wd contains the "a" dir
+  struct stat st;
+  if(stat("a", &st) < 0) {
+    printf(1, "cdinthenouttest: not in root or couldnt find a dir\n");
+    return 1;
+  }
+
+  int res = umount("a");
+  if (res != 0) {
+    printf(1, "cdinthenouttest: unmount returned %d\n", res);
+    return 1;
+  }
+  return 0;
+}
+
+
+
 int
 main(int argc, char *argv[])
 {
@@ -477,6 +503,7 @@ main(int argc, char *argv[])
   run_test(errorondeletedevicetest, "errorondeletedevicetest");
   run_test(namespacetest, "namespacetest");
   run_test(namespacefiletest, "namespacefiletest");
+  run_test(cdinthenouttest, "cdinthenouttest");
 
   unlink("a");
   unlink("b");

@@ -648,6 +648,7 @@ namex(char *path, int nameiparent, char *name, struct mount **mnt)
   struct inode *ip, *next;
   struct mount *curmount;
   struct mount *nextmount;
+  uint mntinum;
 
   if(*path == '/') {
     curmount = mntdup(getrootmount());
@@ -677,15 +678,27 @@ namex(char *path, int nameiparent, char *name, struct mount **mnt)
       return 0;
     }
 
+    mntinum=ip->inum;
     iunlockput(ip);
-    if ((nextmount = mntlookup(next, curmount)) != 0) {
+
+    if ((!namecmp(name, "..")) && 
+        (curmount->dev != ROOTDEV) && 
+        (mntinum == ROOTINO)) {
+      nextmount = mntdup(curmount->parent);
+      mntinum = dirlookup(curmount->mountpoint, "..", 0)->inum;
+    } else {
+      nextmount = mntlookup(next, curmount);
+      mntinum = ROOTINO;
+    }
+
+    if (nextmount) {
       mntput(curmount);
       curmount = nextmount;
-      
+
       iput(next);
-      next = iget(curmount->dev, ROOTINO);
+      next = iget(curmount->dev, mntinum);
     }
-    
+
     ip = next;
   }
   if(nameiparent){
