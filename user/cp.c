@@ -1,6 +1,6 @@
-#include "types.h"
-#include "user.h"
-#include "fcntl.h"
+#include "kernel/types.h"
+#include "user/user.h"
+#include "kernel/fcntl.h"
 int main(int argc, char *argv[]){
     char buffer[512];
     // Make sure the usage is correct by first checking for correct number of perameters

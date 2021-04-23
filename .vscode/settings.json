@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "functional": "c"
+        "functional": "c",
+        "stat.h": "c",
+        "types.h": "c",
+        "user.h": "c"
     }
 }

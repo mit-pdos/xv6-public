@@ -1,7 +1,7 @@
-#include "fcntl.h"
-#include "param.h"
-#include "types.h"
-#include "user.h"
+#include "kernel/fcntl.h"
+#include "kernel/param.h"
+#include "kernel/types.h"
+#include "user/user.h"
 
 #define MAXSIZE 128
 
