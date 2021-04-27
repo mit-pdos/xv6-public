@@ -6,13 +6,13 @@
 
 int main(int argc, char *argv[]){
     if(argc == 1){
-        printf(2, "Hello, user!\n");
+        printf("Hello, user!\n");
     }
     else if(argc > 3){
-        printf(1, "Too many arguments!\n");
+        printf("Too many arguments!\n");
     }
     else{
-        printf(1, "Hello, %s \n", argv[1]);
+        printf("Hello, %s \n", argv[1]);
     }
     exit();
 }

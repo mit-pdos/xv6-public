@@ -37,7 +37,7 @@ printint(int fd, int xx, int base, int sgn)
 
 // Print to the given fd. Only understands %d, %x, %p, %s.
 void
-printf(int fd, const char *fmt, ...)
+fprintf(int fd, const char *fmt, ...)
 {
   char *s;
   int c, i, state;
@@ -82,4 +82,9 @@ printf(int fd, const char *fmt, ...)
       state = 0;
     }
   }
+}
+void
+printf(const char *fmt, ...)
+{
+  fprintf(1,fmt);
 }
