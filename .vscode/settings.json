@@ -3,6 +3,7 @@
         "functional": "c",
         "stat.h": "c",
         "types.h": "c",
-        "user.h": "c"
+        "user.h": "c",
+        "condition_variable": "c"
     }
 }

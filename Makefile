@@ -189,6 +189,8 @@ UPROGS=\
 	$U/_zombie\
 	$U/_greet\
 	$U/_cp\
+	$U/_shutdown
+
 
 fs.img: $M/mkfs README $(UPROGS)
 	$M/mkfs fs.img README $(UPROGS)

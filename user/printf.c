@@ -1,11 +1,20 @@
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "user/user.h"
-
+#include <stdarg.h>
+static char digits[] = "0123456789ABCDEF";
 static void
 putc(int fd, char c)
 {
   write(fd, &c, 1);
+}
+static void
+printptr(int fd, uint x) {
+  int i;
+  putc(fd, '0');
+  putc(fd, 'x');
+  for (i = 0; i < (sizeof(uint) * 2); i++, x <<= 4)
+    putc(fd, digits[x >> (sizeof(uint) * 8 - 4)]);
 }
 
 static void
@@ -34,17 +43,12 @@ printint(int fd, int xx, int base, int sgn)
   while(--i >= 0)
     putc(fd, buf[i]);
 }
-
-// Print to the given fd. Only understands %d, %x, %p, %s.
-void
-fprintf(int fd, const char *fmt, ...)
+static void vprintf(int fd, const char *fmt, va_list ap)
 {
   char *s;
   int c, i, state;
-  uint *ap;
 
   state = 0;
-  ap = (uint*)(void*)&fmt + 1;
   for(i = 0; fmt[i]; i++){
     c = fmt[i] & 0xff;
     if(state == 0){
@@ -55,14 +59,15 @@ fprintf(int fd, const char *fmt, ...)
       }
     } else if(state == '%'){
       if(c == 'd'){
-        printint(fd, *ap, 10, 1);
-        ap++;
-      } else if(c == 'x' || c == 'p'){
-        printint(fd, *ap, 16, 0);
-        ap++;
+        printint(fd, va_arg(ap, int), 10, 1);
+      } else if(c == 'l') {
+        printint(fd, va_arg(ap, uint), 10, 0);
+      } else if(c == 'x') {
+        printint(fd, va_arg(ap, int), 16, 0);
+      } else if(c == 'p') {
+        printptr(fd, va_arg(ap, uint));
       } else if(c == 's'){
-        s = (char*)*ap;
-        ap++;
+        s = va_arg(ap, char*);
         if(s == 0)
           s = "(null)";
         while(*s != 0){
@@ -70,8 +75,7 @@ fprintf(int fd, const char *fmt, ...)
           s++;
         }
       } else if(c == 'c'){
-        putc(fd, *ap);
-        ap++;
+        putc(fd, va_arg(ap, uint));
       } else if(c == '%'){
         putc(fd, c);
       } else {
@@ -83,8 +87,18 @@ fprintf(int fd, const char *fmt, ...)
     }
   }
 }
+// Print to the given fd. Only understands %d,%x, %p, %s, %c.
+void
+fprintf(int fd, const char *fmt, ...)
+{
+ va_list ap;
+ va_start(ap, fmt); 
+ vprintf(1,fmt,ap);
+}
 void
 printf(const char *fmt, ...)
 {
-  fprintf(1,fmt);
+  va_list ap;
+  va_start(ap, fmt); 
+  vprintf(1,fmt,ap);
 }
