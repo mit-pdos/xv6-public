@@ -6,6 +6,23 @@
 #include "cgroup.h"
 #include "stat.h"
 
+#define CGFS_PROCS "cgroup.procs"
+#define CGFS_SUBTREE_CONTROL "cgroup.subtree_control"
+#define CGFS_MAX_DESCENDANTS "cgroup.max.descendants"
+#define CGFS_MAX_DEPTH "cgroup.max.depth"
+#define CGFS_CONTROLLERS "cgroup.controllers"
+#define CGFS_EVENTS "cgroup.events"
+#define CGFS_STAT "cgroup.stat"
+#define CGFS_CPU_WEIGHT "cpu.weight"
+#define CGFS_CPU_MAX "cpu.max"
+#define CGFS_CPU_STAT "cpu.stat"
+#define CGFS_PID_MAX "pid.max"
+#define CGFS_PID_CUR "pid.current"
+#define CGFS_SET_CPU "cpuset.cpus"
+#define CGFS_SET_FRZ "cgroup.freeze"
+#define CGFS_MEM_CUR "memory.current"
+#define CGFS_MEM_MAX "memory.max"
+
 /**
  * This function opens a cgroup filesystem file or directory.
  * Receives cg_file_type parameter "type", string parameter "filename", cgroup struct pointer parameter "cgp", int parameter "omode".

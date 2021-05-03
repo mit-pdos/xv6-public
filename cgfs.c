@@ -204,37 +204,37 @@ static int copy_until_char(char * s, char * t, char ch, int n)
 
 static int get_file_name_constant(char * filename)
 {
-    if (strcmp(filename, "cgroup.procs") == 0)
+    if (strcmp(filename, CGFS_PROCS) == 0)
         return CGROUP_PROCS;
-    else if (strcmp(filename, "cgroup.subtree_control") == 0)
+    else if (strcmp(filename, CGFS_SUBTREE_CONTROL) == 0)
         return CGROUP_SUBTREE_CONTROL;
-//    else if (strcmp(filename, "cgroup.max.descendants") == 0)
-//        return CGROUP_MAX_DESCENDANTS;
-    else if (strcmp(filename, "cgroup.max.depth") == 0)
+    else if (strcmp(filename, CGFS_MAX_DESCENDANTS) == 0)
+        return CGROUP_MAX_DESCENDANTS;
+    else if (strcmp(filename, CGFS_MAX_DEPTH) == 0)
         return CGROUP_MAX_DEPTH;
-    else if (strcmp(filename, "cgroup.controllers") == 0)
+    else if (strcmp(filename, CGFS_CONTROLLERS) == 0)
         return CGROUP_CONTROLLERS;
-    else if (strcmp(filename, "cgroup.events") == 0)
+    else if (strcmp(filename, CGFS_EVENTS) == 0)
         return CGROUP_EVENTS;
-    else if (strcmp(filename, "cgroup.stat") == 0)
+    else if (strcmp(filename, CGFS_STAT) == 0)
         return CGROUP_STAT;
-    else if (strcmp(filename, "cpu.weight") == 0)
+    else if (strcmp(filename, CGFS_CPU_WEIGHT) == 0)
         return CPU_WEIGHT;
-    else if (strcmp(filename, "cpu.max") == 0)
+    else if (strcmp(filename, CGFS_CPU_MAX) == 0)
         return CPU_MAX;
-    else if (strcmp(filename, "cpu.stat") == 0)
+    else if (strcmp(filename, CGFS_CPU_STAT) == 0)
         return CPU_STAT;
-    else if (strcmp(filename, "pid.max") == 0)
+    else if (strcmp(filename, CGFS_PID_MAX) == 0)
         return PID_MAX;
-    else if (strcmp(filename, "pid.current") == 0)
+    else if (strcmp(filename, CGFS_PID_CUR) == 0)
         return PID_CUR;
-    else if (strcmp(filename, "cpuset.cpus") == 0)
+    else if (strcmp(filename, CGFS_SET_CPU) == 0)
         return SET_CPU;
-    else if (strcmp(filename, "cgroup.freeze") == 0)
+    else if (strcmp(filename, CGFS_SET_FRZ) == 0)
         return SET_FRZ;
-    else if (strcmp(filename, "memory.current") == 0)
+    else if (strcmp(filename, CGFS_MEM_CUR) == 0)
       return MEM_CUR;
-    else if (strcmp(filename, "memory.max") == 0)
+    else if (strcmp(filename, CGFS_MEM_MAX) == 0)
       return MEM_MAX;
 
     return -1;
@@ -464,12 +464,12 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
 
             r = copy_buffer_up_to_end(eventstext + f->off, min(sizeof(eventstext), n), addr);
 
-        } /*else if (filename_const == CGROUP_MAX_DESCENDANTS) {
+        } else if (filename_const == CGROUP_MAX_DESCENDANTS) {
             char buf[MAX_DECS_SIZE];
             itoa(buf, f->cgp->max_descendants_value);
             copy_buffer_up_to_end_replace_end_with_newline(buf, min(sizeof(buf), n), addr);
 
-        }*/ else if (filename_const == CGROUP_MAX_DEPTH) {
+        } else if (filename_const == CGROUP_MAX_DEPTH) {
             char buf[MAX_DEPTH_SIZE];
             memset(buf,'\0',MAX_DEPTH_SIZE);
             itoa(buf, f->cgp->max_depth_value);
@@ -492,7 +492,7 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             copy_and_move_buffer(&stattextp, "nr_descendants - ", strlen("nr_descendants - "));
             copy_and_move_buffer(&stattextp, nr_descendants_buf, strlen(nr_descendants_buf));
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
-            copy_and_move_buffer(&stattextp, "nr_dying_descandants - ", strlen("nr_dying_descandants - "));
+            copy_and_move_buffer(&stattextp, "nr_dying_descendants - ", strlen("nr_dying_descendants - "));
             copy_and_move_buffer(&stattextp, nr_dying_descendants_buf, strlen(nr_dying_descendants_buf));
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
 
@@ -659,40 +659,40 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             copy_and_move_buffer_max_len(&bufp, "..");
         }
 
-        copy_and_move_buffer_max_len(&bufp, "cgroup.procs");
+        copy_and_move_buffer_max_len(&bufp, CGFS_PROCS);
 
         if (f->cgp != cgroup_root()) {
-            copy_and_move_buffer_max_len(&bufp, "cgroup.controllers");
-            copy_and_move_buffer_max_len(&bufp, "cgroup.subtree_control");
-            copy_and_move_buffer_max_len(&bufp, "cgroup.events");
-            copy_and_move_buffer_max_len(&bufp, "cgroup.freeze");
+            copy_and_move_buffer_max_len(&bufp, CGFS_CONTROLLERS);
+            copy_and_move_buffer_max_len(&bufp, CGFS_SUBTREE_CONTROL);
+            copy_and_move_buffer_max_len(&bufp, CGFS_EVENTS);
+            copy_and_move_buffer_max_len(&bufp, CGFS_SET_FRZ);
         }
 
-//        copy_and_move_buffer_max_len(&bufp, "cgroup.max.descandants");
-        copy_and_move_buffer_max_len(&bufp, "cgroup.max.depth");
-        copy_and_move_buffer_max_len(&bufp, "cgroup.stat");
+        copy_and_move_buffer_max_len(&bufp, CGFS_MAX_DESCENDANTS);
+        copy_and_move_buffer_max_len(&bufp, CGFS_MAX_DEPTH);
+        copy_and_move_buffer_max_len(&bufp, CGFS_STAT);
 //        copy_and_move_buffer_max_len(&bufp, "cgroup.current");
-//        copy_and_move_buffer_max_len(&bufp, "memory.current");
+//        copy_and_move_buffer_max_len(&bufp, CGFS_MEM_CUR);
 
         if (f->cgp != cgroup_root()) {
-            copy_and_move_buffer_max_len(&bufp, "memory.current");
-            copy_and_move_buffer_max_len(&bufp, "cpu.stat");
+            copy_and_move_buffer_max_len(&bufp, CGFS_MEM_CUR);
+            copy_and_move_buffer_max_len(&bufp, CGFS_CPU_STAT);
 
             if (f->cgp->cpu_controller_enabled) {
-                copy_and_move_buffer_max_len(&bufp, "cpu.weight");
-                copy_and_move_buffer_max_len(&bufp, "cpu.max");
+                copy_and_move_buffer_max_len(&bufp, CGFS_CPU_WEIGHT);
+                copy_and_move_buffer_max_len(&bufp, CGFS_CPU_MAX);
             }
 
             if (f->cgp->pid_controller_enabled) {
-                copy_and_move_buffer_max_len(&bufp, "pid.max");
+                copy_and_move_buffer_max_len(&bufp, CGFS_PID_MAX);
             }
 
             if (f->cgp->set_controller_enabled) {
-                copy_and_move_buffer_max_len(&bufp, "cpuset.cpus");
+                copy_and_move_buffer_max_len(&bufp, CGFS_SET_CPU);
             }
 
             if (f->cgp->mem_controller_enabled) {
-              copy_and_move_buffer_max_len(&bufp, "memory.max");
+              copy_and_move_buffer_max_len(&bufp, CGFS_MEM_MAX);
             }
         }
 
@@ -789,12 +789,12 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
           return -1;
 
         r = n - total_len;
-    } /*else if (filename_const == CGROUP_MAX_DESCENDANTS) {
+    } else if (filename_const == CGROUP_MAX_DESCENDANTS) {
         if (atoi(addr) < 0 || strlen(addr) > 2)
             return -1;
         f->cgp->max_descendants_value = atoi(addr);
         r = n;
-    } */ else if (filename_const == CGROUP_MAX_DEPTH) {
+    }  else if (filename_const == CGROUP_MAX_DEPTH) {
         if (atoi(addr) < 0 || strlen(addr) > 2)
             return -1;
         f->cgp->max_depth_value = atoi(addr);
@@ -1054,9 +1054,9 @@ static int cg_file_size(struct file * f)
             size += 3;
     } else if (filename_const == CGROUP_EVENTS) {
         size += strlen("populated - 0");
-    } /*else if (filename_const == CGROUP_MAX_DESCENDANTS) {
+    } else if (filename_const == CGROUP_MAX_DESCENDANTS) {
         size += intlen(f->cgp->max_descendants_value);
-    } */else if (filename_const == CGROUP_MAX_DEPTH) {
+    } else if (filename_const == CGROUP_MAX_DEPTH) {
         size += intlen(f->cgp->max_depth_value);
     } else if (filename_const == CGROUP_STAT) {
         size += strlen("nr_descendants - ") +

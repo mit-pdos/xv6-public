@@ -2,6 +2,7 @@
 #include "types.h"
 #include "user.h"
 #include "test.h"
+#include "param.h"
 #include "cgroupstests.h"
 
 char controller_names[CONTROLLER_COUNT][MAX_CONTROLLER_NAME_LENGTH] =
@@ -1045,13 +1046,11 @@ int main(int argc, char * argv[])
     run_test(test_deleting_cgroups);
     run_test(test_umount_cgroup_fs);
 
-    printf(1, "[===========]\n");
     if (failed) {
         printf(1, "[  FAILED   ]\n");
+        exit(1);
     } else {
         printf(1, "[    PASS   ]\n");
+        exit(0);
     }
-    printf(1, "[===========]\n");
-
-    exit(0);
 }
