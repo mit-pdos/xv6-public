@@ -442,3 +442,48 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+/* program for lseek*/
+
+int sys_lseek(void) {
+
+    int fd, offset, base, x, remaining_byt, new_off;
+    struct file *file;
+    int size = 4096;
+    char null_block[size];
+
+    if (argfd(0, &fd, &file) < 0)
+        return -1;
+    if (argint(1, &offset) < 0)
+        return -1;
+    if (argint(2, &base) < 0)
+        return -1;
+
+    if (base == 0)
+        new_off = offset;
+    else if (base == 1)
+        new_off = file->off + offset;
+    else if (base == 2)
+        new_off = file->ip->size + offset;
+    else
+        return -1;
+
+    if (new_off < 0)
+        return -1;
+
+    if (new_off > file->ip->size) {
+        remaining_byt = new_off - file->ip->size;
+
+        for (x = 0; x < size; x++) {
+            null_block[x] = '\0';
+        }
+
+        while (remaining_byt > 0) {
+            filewrite(file, (char *)null_block, remaining_byt % (size + 1));
+            remaining_byt -= size;
+        }
+    }
+
+    file->off = new_off;
+    return new_off;
+}
