@@ -39,4 +39,4 @@ SYSCALL(ioctl)
 SYSCALL(getppid)
 SYSCALL(getcpu)
 SYSCALL(getmem)
-
+SYSCALL(kmemtest)

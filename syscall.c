@@ -113,6 +113,7 @@ extern int sys_ioctl(void);
 extern int sys_getppid(void);
 extern int sys_getcpu(void);
 extern int sys_getmem(void);
+extern int sys_kmemtest(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -146,6 +147,7 @@ static int (*syscalls[])(void) = {
 [SYS_getppid] sys_getppid,
 [SYS_getcpu] sys_getcpu,
 [SYS_getmem] sys_getmem,
+[SYS_kmemtest] sys_kmemtest,
 };
 
 void
