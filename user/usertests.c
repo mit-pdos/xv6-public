@@ -2565,6 +2565,32 @@ sbrkbugs(char *s)
   exit(0);
 }
 
+// if process size was somewhat more than a page boundary, and then
+// shrunk to be somewhat less than that page boundary, can the kernel
+// still copyin() from addresses in the last page?
+void
+sbrklast(char *s)
+{
+  uint64 top = (uint64) sbrk(0);
+  if((top % 4096) != 0)
+    sbrk(4096 - (top % 4096));
+  sbrk(4096);
+  sbrk(10);
+  sbrk(-20);
+  top = (uint64) sbrk(0);
+  char *p = (char *) (top - 64);
+  p[0] = 'x';
+  p[1] = '\0';
+  int fd = open(p, O_RDWR|O_CREATE);
+  write(fd, p, 1);
+  close(fd);
+  fd = open(p, O_RDWR);
+  p[0] = '\0';
+  read(fd, p, 1);
+  if(p[0] != 'x')
+    exit(1);
+}
+
 // regression test. does write() with an invalid buffer pointer cause
 // a block to be allocated for a file that is then not freed when the
 // file is deleted? if the kernel has this bug, it will panic: balloc:
@@ -2805,6 +2831,7 @@ main(int argc, char *argv[])
     {kernmem, "kernmem"},
     {sbrkfail, "sbrkfail"},
     {sbrkarg, "sbrkarg"},
+    {sbrklast, "sbrklast"},
     {validatetest, "validatetest"},
     {stacktest, "stacktest"},
     {opentest, "opentest"},
