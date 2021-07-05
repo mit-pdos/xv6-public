@@ -4,8 +4,9 @@
 2.2. Instlal Windows Subsystem for Linux
 3. Do the following:
 3.0. Compile the project and run it:
-3.0.1. make clean
-3.0.2. make debug=true qemu-nox-gdb
+3.0.1. 'make clean'
+3.0.2. 'make qemu-nox-gdb'
+3.0.3. if qemu doesn't start paused (the system boots), run: 'make pause_debug=true qemu-nox-gdb'
 3.1. Run the following in the visual studio command in the command window (CTRL+ALT+A to open) and make sure to adjust the path:
 3.1.1. alias d Debug.MIDebugLaunch /Executable:C:/ /OptionsFile:[project_root_path]/windows-debugging/options.xml
 3.1.2. alias e Debug.MIDebugExec

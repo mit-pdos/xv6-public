@@ -1,4 +1,3 @@
-
 /*
  * Get int representation of number in string.
  * String must be null terminated.
@@ -19,27 +18,23 @@ int atoi(char * str)
  */
 int itoa(char * buf, int n)
 {
-    int i = n;
+    int m = n;
     int length = 0;
 
-    while (i > 0) {
+    while (m > 0) {
         length++;
-        i /= 10;
+        m /= 10;
     }
-
-    char revbuf[length];
 
     if (n == 0) {
-        *buf++ = '0';
+        buf[0] = '0';
+        length++;
     }
-    for (i = 0; n > 0 && i < length; i++) {
-        revbuf[i] = (n % 10) + '0';
+    for (int i = length; n > 0 && i > 0; i--) {
+        buf[i - 1] = (n % 10) + '0';
         n /= 10;
     }
-    while (--i >= 0) {
-        *buf++ = revbuf[i];
-    }
-    *buf = '\0';
+    buf[length] = '\0';
     return length;
 }
 
@@ -48,31 +43,23 @@ int itoa(char * buf, int n)
  */
 int utoa(char * buf, unsigned int n)
 {
-    int i = 0;
     unsigned int m = n;
-    unsigned int j = n;
-    unsigned int length = 0;
+    int length = 0;
 
     while (m > 0) {
         length++;
         m /= 10;
     }
 
-    char revbuf[length];
-
-    for (i = 0; n > 0 && i < length; i++) {
-        revbuf[i] = (n % 10) + '0';
-        n /= 10;
-    }
-    while (--i >= 0) {
-        *buf++ = revbuf[i];
-    }
-
-    if (j == 0) {
-        *buf++ = '0';
+    if (n == 0) {
+        buf[0] = '0';
         length++;
     }
-    *buf = '\0';
+    for (int i = length; n > 0 && i > 0; i--) {
+        buf[i - 1] = (n % 10) + '0';
+        n /= 10;
+    }
+    buf[length] = '\0';
     return length;
 }
 

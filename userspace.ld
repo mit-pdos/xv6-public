@@ -1,17 +1,16 @@
-/* Simple linker script for the JOS kernel.
+/* Simple linker script for the xv6 userspace.
    See the GNU ld 'info' manual ("info ld") to learn the syntax. */
 
 OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
 OUTPUT_ARCH(i386)
-ENTRY(_start)
+ENTRY(_main)
 
 SECTIONS
 {
-	/* Link the kernel at this address: "." means the current address */
-        /* Must be equal to KERNLINK */
-	. = 0x80100000;
+	/* Link the program at this address: "." means the current address */
+	. = 0x0;
 
-	.text : AT(0x100000) {
+	.text : AT(0x0) {
 		*(.text .stub .text.* .gnu.linkonce.t.*)
 	}
 
@@ -21,7 +20,7 @@ SECTIONS
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
 	}
 
-	/* Include debugging information in kernel memory */
+	/* Include debugging information in program memory */
 	.stab : {
 		PROVIDE(__STAB_BEGIN__ = .);
 		*(.stab);

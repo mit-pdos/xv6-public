@@ -126,19 +126,15 @@ int itoa(char * buf, int n)
         i /= 10;
     }
 
-    char revbuf[length];
-
     if (n == 0) {
-        *buf++ = '0';
+        buf[0] = '0';
+        length++;
     }
-    for (i = 0; n > 0 && i < length; i++) {
-        revbuf[i] = (n % 10) + '0';
+    for (i = length; n > 0 && i > 0; i--) {
+        buf[i - 1] = (n % 10) + '0';
         n /= 10;
     }
-    while (--i >= 0) {
-        *buf++ = revbuf[i];
-    }
-    *buf = '\0';
+    buf[length] = '\0';
     return length;
 }
 

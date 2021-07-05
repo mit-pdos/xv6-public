@@ -10,6 +10,7 @@
 #define MAX_PID_LENGTH 5
 #define MAX_CGROUP_DIR_ENTRIES 64
 #define MAX_STR 64
+#define MAX_BUF 4096
 
 #define CGROUP_PROCS 1
 #define CGROUP_SUBTREE_CONTROL 2
@@ -30,6 +31,10 @@
 #define MEM_STAT 17
 
 #define min(x, y) (x) > (y) ? (y) : (x)
+#define abs(x) (x) > 0 ? (x) : (0)
+
+// Is static to save space in the stack
+static char buf[MAX_BUF];
 
 
 /**
@@ -412,7 +417,6 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
                     continue;
                 }
 
-                char buf[MAX_PID_LENGTH];
                 memset(buf,'\0',MAX_PID_LENGTH);
                 int pidlength = itoa(buf, proc_pid(f->cgp->proc[procoff]));
                 if (pidoff < pidlength) {
@@ -427,7 +431,6 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
                 r++;
             }
         } else if (filename_const == CGROUP_CONTROLLERS) {
-            char buf[MAX_STR];
             memset(buf,'\0',MAX_STR);
             int i = 0;
 
@@ -446,7 +449,6 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
 
             r = copy_buffer_up_to_end(buf + f->off, min(i, n), addr);
         } else if (filename_const == CGROUP_SUBTREE_CONTROL) {
-            char buf[MAX_STR];
             memset(buf,'\0',MAX_STR);
             int i = 0;
 
@@ -476,12 +478,10 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             r = copy_buffer_up_to_end(eventstext + f->off, min(sizeof(eventstext), n), addr);
 
         } else if (filename_const == CGROUP_MAX_DESCENDANTS) {
-            char buf[MAX_DECS_SIZE];
             itoa(buf, f->cgp->max_descendants_value);
             copy_buffer_up_to_end_replace_end_with_newline(buf, min(sizeof(buf), n), addr);
 
         } else if (filename_const == CGROUP_MAX_DEPTH) {
-            char buf[MAX_DEPTH_SIZE];
             memset(buf,'\0',MAX_DEPTH_SIZE);
             itoa(buf, f->cgp->max_depth_value);
             copy_buffer_up_to_end_replace_end_with_newline(buf, min(sizeof(buf), n), addr);
@@ -494,10 +494,7 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             memset(nr_dying_descendants_buf,'\0',MAX_DECS_SIZE);
             itoa(nr_dying_descendants_buf, f->cgp->nr_dying_descendants);
 
-            char stattext[strlen("nr_descendants - ") +
-                strlen(nr_descendants_buf) + strlen("\n") +
-                strlen("nr_dying_descendants - ") +
-                strlen(nr_dying_descendants_buf) + strlen("\n") ];
+            char * stattext = buf;
             char * stattextp = stattext;
 
             copy_and_move_buffer(&stattextp, "nr_descendants - ", strlen("nr_descendants - "));
@@ -507,7 +504,7 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             copy_and_move_buffer(&stattextp, nr_dying_descendants_buf, strlen(nr_dying_descendants_buf));
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(stattext + f->off, min(stattextp - stattext, n), addr);
+            r = copy_buffer_up_to_end(stattext + f->off, min(abs(stattextp - stattext - f->off), n), addr);
         } else if (filename_const == CPU_STAT) {
             char usage_buf[11] = {0};
             char user_buf[11] = {0};
@@ -515,19 +512,15 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             char nr_periods_buf[11] = {0};
             char nr_throttled_buf[11] = {0};
             char throttled_usec_buf[11] = {0};
-            char stattext[strlen("usage_usec - ") +
-                          itoa(usage_buf, f->cpu.stat.usage_usec) + strlen("\n") +
-                          strlen("user_usec - ") +
-                          itoa(user_buf, f->cpu.stat.user_usec) + strlen("\n") +
-                          strlen("system_usec - ") +
-                          itoa(system_buf, f->cpu.stat.system_usec) + strlen("\n") +
-                          strlen("nr_periods - ") +
-                          itoa(nr_periods_buf, f->cpu.stat.nr_periods) + strlen("\n") +
-                          strlen("nr_throttled - ") +
-                          itoa(nr_throttled_buf, f->cpu.stat.nr_throttled) + strlen("\n") +
-                          strlen("throttled_usec - ") +
-                          itoa(throttled_usec_buf, f->cpu.stat.throttled_usec) + 2];
+            char * stattext = buf;
             char * stattextp = stattext;
+
+            itoa(usage_buf, f->cpu.stat.usage_usec);
+            itoa(user_buf, f->cpu.stat.user_usec);
+            itoa(system_buf, f->cpu.stat.system_usec);
+            itoa(nr_periods_buf, f->cpu.stat.nr_periods);
+            itoa(nr_throttled_buf, f->cpu.stat.nr_throttled);
+            itoa(throttled_usec_buf, f->cpu.stat.throttled_usec);
 
             copy_and_move_buffer(&stattextp, "usage_usec - ", strlen("usage_usec - "));
             copy_and_move_buffer(&stattextp, usage_buf, strlen(usage_buf));
@@ -552,110 +545,115 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
 
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(stattext + f->off, min(stattextp - stattext, n), addr);
+            r = copy_buffer_up_to_end(stattext + f->off, min(abs(stattextp - stattext - f->off), n), addr);
 
         } else if (filename_const == CPU_WEIGHT) {
-            char weight_buf[11] = {0};
-            char weighttext[strlen("weight - ") +
-                itoa(weight_buf, f->cpu.weight.weight) + 2];
-            char * weighttextp = weighttext;
-
+            char tmp_num_buff[20] = {0};
+            char * weighttext = buf;
+            char *weighttextp = weighttext;
             copy_and_move_buffer(&weighttextp, "weight - ", strlen("weight - "));
-            copy_and_move_buffer(&weighttextp, weight_buf, strlen(weight_buf));
+            int num_str_length = utoa(tmp_num_buff, f->cpu.weight.weight);
+            copy_and_move_buffer(&weighttextp, tmp_num_buff, num_str_length);
             copy_and_move_buffer(&weighttextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(weighttext + f->off, min(sizeof(weighttext), n), addr);
+            r = copy_buffer_up_to_end(weighttext + f->off, min(abs(weighttextp - weighttext - f->off), n), addr);
+        }
+        else if (filename_const == CPU_MAX)
+        {
+            char tmp_num_buff[20] = {0};
+            char * maxtext = buf;
+            char *maxtextp = maxtext;
+            copy_and_move_buffer(&maxtextp, "max - ", strlen("max - "));
+            int num_str_length = utoa(tmp_num_buff, f->cpu.max.max);
+            copy_and_move_buffer(&maxtextp, tmp_num_buff, num_str_length);
+            copy_and_move_buffer(&maxtextp, "\nperiod - ", strlen("\nperiod - "));
+            num_str_length = utoa(tmp_num_buff, f->cpu.max.period);
+            copy_and_move_buffer(&maxtextp, tmp_num_buff, num_str_length);
+            copy_and_move_buffer(&maxtextp, "\n", strlen("\n"));
 
-        } else if (filename_const == CPU_MAX) {
+            r = copy_buffer_up_to_end(maxtext + f->off, min(abs(maxtextp - maxtext - f->off), n), addr);
+        }
+        else if (filename_const == PID_MAX)
+        {
             char max_buf[11] = {0};
-            char period_buf[11] = {0};
-            char maxtext[strlen("max - ") + utoa(max_buf, f->cpu.max.max) +
-                strlen("\n") + strlen("period - ") +
-                itoa(period_buf, f->cpu.max.period) + 2];
+            char * maxtext = buf;
             char * maxtextp = maxtext;
+
+            itoa(max_buf, f->pid.max.max);
 
             copy_and_move_buffer(&maxtextp, "max - ", strlen("max - "));
             copy_and_move_buffer(&maxtextp, max_buf, strlen(max_buf));
             copy_and_move_buffer(&maxtextp, "\n", strlen("\n"));
-            copy_and_move_buffer(&maxtextp, "period - ", strlen("period - "));
-            copy_and_move_buffer(&maxtextp, period_buf, strlen(period_buf));
-            copy_and_move_buffer(&maxtextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(maxtext + f->off, min(maxtextp - maxtext, n), addr);
-
-        } else if (filename_const == PID_MAX) {
-            char max_buf[11] = {0};
-            char maxtext[strlen("max - ") + itoa(max_buf, f->pid.max.max) + 2];
-            char * maxtextp = maxtext;
-
-            copy_and_move_buffer(&maxtextp, "max - ", strlen("max - "));
-            copy_and_move_buffer(&maxtextp, max_buf, strlen(max_buf));
-            copy_and_move_buffer(&maxtextp, "\n", strlen("\n"));
-
-            r = copy_buffer_up_to_end(maxtext + f->off, min(maxtextp - maxtext, n), addr);
+            r = copy_buffer_up_to_end(maxtext + f->off, min(abs(maxtextp - maxtext - f->off), n), addr);
 
         } else if (filename_const == PID_CUR) {
             char nr_of_procs_buf[MAX_DECS_SIZE] = {0};
             itoa(nr_of_procs_buf, f->cgp->num_of_procs);
 
-            char stattext[strlen("num_of_procs - ") +
-                strlen(nr_of_procs_buf) + strlen("\n")];
+            char * stattext = buf;
             char * stattextp = stattext;
 
             copy_and_move_buffer(&stattextp, "num_of_procs - ", strlen("num_of_procs - "));
             copy_and_move_buffer(&stattextp, nr_of_procs_buf, strlen(nr_of_procs_buf));
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(stattext + f->off, min(sizeof(stattext), n), addr);
+            r = copy_buffer_up_to_end(stattext + f->off, min(abs(stattextp - stattext - f->off), n), addr);
         } else if (filename_const == SET_CPU) {
             char cpu_buf[11] = {0};
-            char cputext[strlen("use_cpu - ") + itoa(cpu_buf, f->cpu_s.set.cpu_id) + 2];
+            char * cputext = buf;
             char * cputextp = cputext;
+
+            itoa(cpu_buf, f->cpu_s.set.cpu_id);
 
             copy_and_move_buffer(&cputextp, "use_cpu - ", strlen("use_cpu - "));
             copy_and_move_buffer(&cputextp, cpu_buf, strlen(cpu_buf));
             copy_and_move_buffer(&cputextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(cputext + f->off, min(cputextp - cputext, n), addr);
+            r = copy_buffer_up_to_end(cputext + f->off, min(abs(cputextp - cputext - f->off), n), addr);
         } else if (filename_const == SET_FRZ) {
             char frz_buf[11] = {0};
-            char frztext[itoa(frz_buf, f->frz.freezer.frozen) + 2];
+            char * frztext = buf;
             char * frztextp = frztext;
+
+            itoa(frz_buf, f->frz.freezer.frozen);
 
             copy_and_move_buffer(&frztextp, frz_buf, strlen(frz_buf));
             copy_and_move_buffer(&frztextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(frztext + f->off, min(frztextp - frztext, n), addr);
+            r = copy_buffer_up_to_end(frztext + f->off, min(abs(frztextp - frztext - f->off), n), addr);
         } else if (filename_const == MEM_CUR) {
             char cur_mem_buf[10] = {0};
             utoa(cur_mem_buf, f->cgp->current_mem);
 
-            char stattext[strlen(cur_mem_buf) + strlen("\n")];
-            char* stattextp = stattext;
+            char * stattext = buf;
+            char * stattextp = stattext;
 
             copy_and_move_buffer(&stattextp, cur_mem_buf, strlen(cur_mem_buf));
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(stattext + f->off, min(sizeof(stattext), n), addr);
+            r = copy_buffer_up_to_end(stattext + f->off, min(abs(stattextp - stattext - f->off), n), addr);
         } else if (filename_const == MEM_MAX) {
             char max_buf[10] = {0};
-            char maxtext[utoa(max_buf, f->mem.max.max) + 2];
-            char* maxtextp = maxtext;
+            char * maxtext = buf;
+            char * maxtextp = maxtext;
+
+            utoa(max_buf, f->mem.max.max);
 
             copy_and_move_buffer(&maxtextp, max_buf, strlen(max_buf));
             copy_and_move_buffer(&maxtextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(maxtext + f->off, min(maxtextp - maxtext, n), addr);
+            r = copy_buffer_up_to_end(maxtext + f->off, min(abs(maxtextp - maxtext - f->off), n), addr);
         } else if (filename_const == MEM_STAT) {
             uint stattext_size = strlen("empty file") + 2;
-            char stattext[stattext_size];
+            char *stattext = buf;
             memset(stattext, '\0', stattext_size);
             char *stattextp = stattext;
 
             copy_and_move_buffer(&stattextp, "empty file", strlen("empty file"));
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
 
-            r = copy_buffer_up_to_end(stattext + f->off, min(stattext_size, n), addr);
+            r = copy_buffer_up_to_end(stattext + f->off, min(abs(stattextp - stattext - f->off), n), addr);
         }
 
         f->off += r;
@@ -664,7 +662,6 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
 
     } else if (type == CG_DIR){
 
-        static char buf[MAX_CGROUP_FILE_NAME_LENGTH * MAX_CGROUP_DIR_ENTRIES];
         memset(buf, '\0', MAX_CGROUP_FILE_NAME_LENGTH * MAX_CGROUP_DIR_ENTRIES);
         if (*f->cgp->cgroup_dir_path == 0)
             return -1;
@@ -738,11 +735,10 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
     int r = 0;
     int filename_const = get_file_name_constant(f->cgfilename);
 
-    if (f->writable == 0 || *f->cgp->cgroup_dir_path == 0)
+    if (f->writable == 0 || *f->cgp->cgroup_dir_path == 0 || n > MAX_BUF)
         return -1;
 
     if (filename_const == CGROUP_PROCS) {
-        char buf[n + 1];
         buf[n] = 0;
         strncpy(buf, addr, n);
         int pid = atoi(buf);
@@ -763,7 +759,6 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
             if (*addr != '+' && *addr != '-')
                 return -1;
 
-            char buf[MAX_CONTROLLER_NAME_LENGTH];
             memset(buf,'\0',MAX_CONTROLLER_NAME_LENGTH);
             len = copy_until_char(buf, addr + 1,ch, n - 1);
             if (strcmp(buf, "cpu") == 0) {
