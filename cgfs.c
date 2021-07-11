@@ -643,7 +643,7 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
 
     } else if (type == CG_DIR){
 
-        char buf[MAX_CGROUP_FILE_NAME_LENGTH * MAX_CGROUP_DIR_ENTRIES];
+        static char buf[MAX_CGROUP_FILE_NAME_LENGTH * MAX_CGROUP_DIR_ENTRIES];
         memset(buf, '\0', MAX_CGROUP_FILE_NAME_LENGTH * MAX_CGROUP_DIR_ENTRIES);
         if (*f->cgp->cgroup_dir_path == 0)
             return -1;

@@ -20,6 +20,7 @@ struct run {
 struct {
   struct spinlock lock;
   int use_lock;
+  int page_cnt;
   struct run *freelist;
 } kmem;
 
@@ -72,6 +73,7 @@ kfree(char *v)
   r = (struct run*)v;
   r->next = kmem.freelist;
   kmem.freelist = r;
+  kmem.page_cnt++;
   if(kmem.use_lock)
     release(&kmem.lock);
 }
@@ -87,10 +89,54 @@ kalloc(void)
   if(kmem.use_lock)
     acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  if(r){
     kmem.freelist = r->next;
+    kmem.page_cnt--;
+  }
   if(kmem.use_lock)
     release(&kmem.lock);
   return (char*)r;
 }
 
+// Sanity check for free memory. Tests:
+// 1. Whether the free page list contains all the
+//    free memory the system should have;
+// 2. The free pages are filled with 1's, as they
+//    were when freed.
+// Mismatched counters or errors indicate memory
+// corruption!
+int
+kmemtest(void)
+{
+  int page_cnt, list_cnt;
+  int page_err, err_cnt;
+  struct run *r;
+  char *c;
+
+  if(kmem.use_lock)
+    acquire(&kmem.lock);
+  page_cnt = kmem.page_cnt; // free pages by counter
+  list_cnt = 0; // free pages on linked list
+  err_cnt = 0; // corrupted free pages
+  for(r = kmem.freelist; r; r = r->next){
+    list_cnt++;
+    c = (char *)r;
+    page_err = 0;
+    for(int i = sizeof(void*); i < PGSIZE; i++)
+      if (c[i] != 1)
+        page_err = 1;
+    err_cnt += page_err;
+  }
+  if(kmem.use_lock)
+    release(&kmem.lock);
+
+  cprintf("Free Memory Pages:\n"
+    "  counter: %d\n"
+    "  list:    %d\n"
+    "  errors:  %d\n",
+    page_cnt, list_cnt, err_cnt);
+
+  if (page_cnt == list_cnt && !err_cnt)
+    return 0;
+  return -1;
+}

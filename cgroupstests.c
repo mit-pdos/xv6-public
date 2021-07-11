@@ -1015,6 +1015,11 @@ TEST(test_cant_grow_over_mem_limit)
   ASSERT_TRUE(disable_controller(MEM_CNT));
 }
 
+TEST(test_kernel_freem_mem)
+{
+  ASSERT_FALSE(kmemtest());
+}
+
 int main(int argc, char * argv[])
 {
     // comment out for debug messages
@@ -1045,6 +1050,7 @@ int main(int argc, char * argv[])
     run_test(test_setting_max_descendants_and_max_depth);
     run_test(test_deleting_cgroups);
     run_test(test_umount_cgroup_fs);
+    run_test_break_msg(test_kernel_freem_mem);
 
     if (failed) {
         printf(1, "[  FAILED   ]\n");

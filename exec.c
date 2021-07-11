@@ -6,6 +6,7 @@
 #include "defs.h"
 #include "x86.h"
 #include "elf.h"
+#include "cgroup.h"
 
 int
 exec(char *path, char **argv)
@@ -91,6 +92,12 @@ exec(char *path, char **argv)
     if(*s == '/')
       last = s+1;
   safestrcpy(curproc->name, last, sizeof(curproc->name));
+
+  // Update memory usage in cgroup and its ancestors
+  struct cgroup* cgroup = curproc->cgroup;
+  do {
+    cgroup->current_mem += sz - curproc->sz;
+  } while ((cgroup = cgroup->parent));
 
   // Commit to the user image.
   oldpgdir = curproc->pgdir;

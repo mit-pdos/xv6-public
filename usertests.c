@@ -1764,6 +1764,16 @@ exitrctest()
   }
 }
 
+void
+memtest()
+{
+  if (kmemtest()) {
+    printf(2, "memtest: memory corruption\n");
+    exit(1);
+  }
+  printf(1, "memtest: memory ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1813,6 +1823,7 @@ main(int argc, char *argv[])
   iref();
   forktest();
   bigdir(); // slow
+  memtest();
 
   uio();
   exitrctest();

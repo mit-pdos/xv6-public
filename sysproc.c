@@ -253,3 +253,8 @@ int
 sys_getmem(void) {
   return myproc()->sz;
 }
+
+int
+sys_kmemtest(void) {
+  return kmemtest();
+}
