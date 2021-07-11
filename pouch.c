@@ -94,7 +94,7 @@ static int pouch_cmd(char* container_name, enum p_cmd cmd){
         if(cmd == DESTROY && pid != 0){
 
             // Return the process to root cgroup.
-            char cur_pid_buf[3];
+            char cur_pid_buf[10];
             int cgroup_procs_fd = open("/cgroup/cgroup.procs", O_RDWR);
             itoa(cur_pid_buf, pid);
             if(write(cgroup_procs_fd, cur_pid_buf, sizeof(cur_pid_buf)) < 0)
@@ -302,38 +302,30 @@ static int get_connected_cname(char * cname){
 }
 
 static int read_from_cconf(char* container_name, char* tty_name, int* pid){
-   char buf[10];
-   char* find_end;
-   char* find_start;
+   char pid_str[sizeof("PPID:") + 10];
    int cont_fd = open(container_name, 0);
+
    if(cont_fd < 0){
       printf(stderr, "There is no container: %s in a started stage\n", container_name);
       exit(1);
     }
 
-   if(read(cont_fd, buf, 5) <= 0) {
+   if(read(cont_fd, tty_name, sizeof("/ttyX")) < sizeof("/ttyX")) {
       close(cont_fd);
       printf(stderr,"CONT TTY NOT FOUND\n");
       return -1;
    }
 
-   buf[5] = 0;
-   strcpy(tty_name,buf);
+   tty_name[sizeof("/ttyX")-1] = 0;
 
-   if(read(cont_fd, buf, sizeof(buf)-1) <= 0) {
+   if(read(cont_fd, pid_str, sizeof(pid_str)) < sizeof("PPID:")+2) {
       close(cont_fd);
-      printf(stderr,"CONT TTY NOT FOUND\n");
+      printf(stderr,"CONT PID NOT FOUND\n");
       return -1;
    }
 
-   buf[9] = 0;
-   find_start = buf+7;
-   find_end = find_start;
-   while(*find_end != '\n' && *find_end != 0)
-        find_end++;
-
-   *find_end = 0;
-   *pid = atoi(find_start);
+   pid_str[sizeof(pid_str)-1] = 0;
+   *pid = atoi(pid_str+sizeof("PPID:"));
 
    close(cont_fd);
    return 0;
@@ -425,7 +417,7 @@ static int pouch_fork(char* container_name){
         // Move the current process to "/cgroup/<cname>" cgroup.
         strcat(cg_cname,"/cgroup.procs");
         int cgroup_procs_fd = open(cg_cname, O_RDWR);
-        char cur_pid_buf[3];
+        char cur_pid_buf[10];
         itoa(cur_pid_buf, pid);
         if(write(cgroup_procs_fd, cur_pid_buf, sizeof(cur_pid_buf)) < 0)
             return -1;
