@@ -14,13 +14,15 @@ int sys_fork(void)
 
 int sys_exit(void)
 {
-  exit(5);
+  int status = 5;
+  argint(0, &status); //passes int status
+  exit(status);
   return 0; // not reached
 }
 
 int sys_wait(void)
 {
-  return wait();
+  return wait(0);
 }
 
 int sys_kill(void)
@@ -82,9 +84,4 @@ int sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
-}
-
-int sys_debug(void)
-{
-  return 1975;
 }
