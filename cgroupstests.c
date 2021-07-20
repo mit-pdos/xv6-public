@@ -1027,6 +1027,103 @@ TEST(test_kernel_freem_mem)
   ASSERT_FALSE(kmemtest());
 }
 
+TEST(test_cpu_stat_content_valid)
+{
+    ASSERT_FALSE(strcmp(read_file(TEST_1_CPU_STAT, 0), "usage_usec - 0\nuser_usec - 0\nsystem_usec - 0\n"));
+}
+
+TEST(test_cpu_stat)
+{
+
+    char buf1[265];
+    char buf2[265];
+    char buf3[265];
+
+    // read cpu.stat into a buffer
+    strcpy(buf1, read_file(TEST_1_CPU_STAT,0));
+
+    // Fork here since the process should not be running after we move it inside the cgroup.
+    int pid = fork();
+    int pidToMove = 0;
+    int sum = 0;
+    int wstatus;
+
+    // Child
+    if (pid == 0) {
+        pidToMove = getpid();
+
+        // Save the pid of child in temp file.
+        temp_write(pidToMove);
+
+        // Go to sleep for long period of time.
+        sleep(10);
+
+        // At this point, the child process should already be inside the cgroup.
+        //By running the loop we ensure CPU usage which should be reflected in cpu.stst
+        for (int i = 0; i < 10; i++) {
+            sum += 1;
+        }
+
+        // Save sum into temp file.
+        temp_write(sum);
+
+        // Go to sleep to ensure we cen return the child to root cgroup
+        sleep(25);
+        exit(0);
+    }
+    // Father
+    else {
+        sleep(5);
+
+        // Read the child pid from temp file.
+        pidToMove = temp_read(0);
+
+        // Update the temp file for further reading, since next sum will be read from it.
+        ASSERT_TRUE(temp_write(0));
+
+        // Move the child process to "/cgroup/test1" cgroup.
+        ASSERT_TRUE(move_proc(TEST_1_CGROUP_PROCS, pidToMove));
+
+        // Check that the process we moved is really in "/cgroup/test1" cgroup.
+        ASSERT_TRUE(is_pid_in_group(TEST_1_CGROUP_PROCS, pidToMove));
+
+        // Go to sleep to ensure the child process had a chance to be scheduled.
+        sleep(15);
+
+        // Verify that the child process have ran
+        sum = temp_read(0);
+        ASSERT_UINT_EQ(sum, 10);
+
+        // Return the child to root cgroup.
+        ASSERT_TRUE(move_proc(ROOT_CGROUP_PROCS, pidToMove));
+
+        // Check that the child we returned is really in root cgroup.
+        ASSERT_TRUE(is_pid_in_group(ROOT_CGROUP_PROCS, pidToMove));
+
+        // read cpu.stat into a seconde buffer
+        strcpy(buf2,read_file(TEST_1_CPU_STAT,0));
+
+        // Verify that the cpu time has changed because of the child's runing
+        ASSERT_TRUE(strcmp(buf1, buf2));
+
+        sleep(10);
+
+        // read cpu.stat into a third buffer
+        strcpy(buf3,read_file(TEST_1_CPU_STAT,0));
+
+        // Verify that the cpu time has no changed since the child removed
+        ASSERT_FALSE(strcmp(buf2,buf3));
+
+        // Wait for child to exit.
+        wait(&wstatus);
+        ASSERT_TRUE(wstatus);
+
+        // Remove the temp file.
+        ASSERT_TRUE(temp_delete());
+
+    }
+}
+
 int main(int argc, char * argv[])
 {
     // comment out for debug messages
@@ -1037,11 +1134,13 @@ int main(int argc, char * argv[])
     run_test(test_opening_and_closing_cgroup_files);
     run_test_break_msg(test_reading_cgroup_files);
     run_test(test_memory_stat_content_valid);
+    run_test(test_cpu_stat_content_valid);
     run_test(test_moving_process);
     run_test(test_enable_and_disable_all_controllers);
     run_test(test_limiting_pids);
     run_test(test_move_failure);
     run_test(test_fork_failure);
+    run_test(test_cpu_stat);
     run_test(test_pid_current);
     run_test(test_setting_cpu_id);
     run_test(test_correct_cpu_running);
