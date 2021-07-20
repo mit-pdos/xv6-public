@@ -291,12 +291,20 @@ int wait(int *status)
     {
       if (p->parent != curproc)
         continue;
+
       havekids = 1;
       if (p->state == ZOMBIE)
       {
-        // Found one.
+        // Found one
+
         pid = p->pid;
-        if (p->status == 0)
+        /*
+        if (p->status != 0)
+        {
+          *status = p->status;
+        }*/
+
+        if (status != 0)
         {
           *status = p->status;
         }

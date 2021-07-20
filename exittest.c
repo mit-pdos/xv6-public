@@ -2,7 +2,6 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-
 void exittest(void)
 {
     int rpid;
@@ -37,8 +36,8 @@ void exittest(void)
         }
     }
 }
-
 int main(int argc, char *argv[])
+
 {
     exittest();
     exit(1);
