@@ -291,14 +291,15 @@ void dirtest(void)
   printf(stdout, "mkdir test ok\n");
 }
 
-void
+int
 exectest(void)
 {
   printf(stdout, "exec test\n");
   if(exec("echo", echoargv) < 0){
     printf(stdout, "exec echo failed\n");
-    exit(1);
+    return 1;
   }
+  return 0;
 }
 
 // simple fork and pipe read/write
@@ -754,7 +755,7 @@ linktest(void)
   }
 
   if(link(".", "lf1") >= 0){
-    printf(1, "link . lf1 succeeded! oops\n");
+    printf(1, "link . lf1 succeeded! oops\n");   
     exit(1);
   }
 
@@ -1746,6 +1747,94 @@ rand()
   return randstate;
 }
 
+void printftest()
+{
+  int num_chars;
+  int exit_error = -1;
+
+  enum printf_test_strings {
+    HELLO_WORLD,
+    INTEGER_TEST,
+    POINTER_TEST,
+    HEXA_TEST,
+    PERCENT_TEST,
+    UNKNOWN_TYPE_TEST,
+    STRING_NULL_TEST,
+    CHAR_TEST
+  };
+  const char *test_fmts[] = {
+    "hello world!?#~$&*()-=+\\][{}|/\n",
+    "check integer %d number\n",
+    "check pointer address %p\n",
+    "check hexa number 0x%x\n",
+    "check double percent %%\n",
+    "unknown type %z\n",
+    "string is null test %s\n"
+  };
+  const char *test_strings[] = {
+    "hello world!?#~$&*()-=+\\][{}|/\n",
+    "check integer 53 number\n",
+    "check pointer address DF94\n",
+    "check hexa number 0x35\n",
+    "check double percent %\n",
+    "unknown type %z\n",
+    "string is null test (null)\n"
+  };
+
+  printf(1, "printftest starting\n");
+
+  num_chars = printf(1, test_fmts[HELLO_WORLD]);
+  if (num_chars != strlen(test_fmts[HELLO_WORLD])) {
+    printf(2, "printftest failed on HELLO_WORLD string. Expected size = %d, got = %d\n",
+      num_chars, strlen(test_fmts[HELLO_WORLD]));
+    exit(exit_error);
+  }
+
+  num_chars = printf(1, test_fmts[INTEGER_TEST], 53);
+  if (num_chars != strlen(test_strings[INTEGER_TEST])) {
+    printf(2, "printftest failed on INTEGER_TEST string. Expected size = %d, got = %d\n",
+      num_chars, strlen(test_strings[INTEGER_TEST]));
+    exit(exit_error);
+  }
+
+  num_chars = printf(1, test_fmts[POINTER_TEST], test_fmts);
+  if (num_chars != strlen(test_strings[POINTER_TEST])) {
+    printf(2, "printftest failed on POINTER_TEST string. Expected size = %d, got = %d\n",
+      num_chars, strlen(test_strings[POINTER_TEST]));
+    exit(exit_error);
+  }
+
+  num_chars = printf(1, test_fmts[HEXA_TEST], 53);
+  if (num_chars != strlen(test_strings[HEXA_TEST])) {
+    printf(2, "printftest failed on HEXA_TEST string. Expected size = %d, got = %d\n",
+      num_chars, strlen(test_strings[HEXA_TEST]));
+    exit(exit_error);
+  }
+
+  num_chars = printf(1, test_fmts[PERCENT_TEST]);
+  if (num_chars != strlen(test_strings[PERCENT_TEST])) {
+    printf(2, "printftest failed on PERCENT_TEST string. Expected size = %d, got = %d\n",
+      num_chars, strlen(test_strings[PERCENT_TEST]));
+    exit(exit_error);
+  }
+
+  num_chars = printf(1, test_fmts[UNKNOWN_TYPE_TEST]);
+  if (num_chars != strlen(test_strings[UNKNOWN_TYPE_TEST])) {
+    printf(2, "printftest failed on UNKNOWN_TYPE_TEST string. Expected size = %d, got = %d\n",
+      num_chars, strlen(test_strings[UNKNOWN_TYPE_TEST]));
+    exit(exit_error);
+  }
+
+  num_chars = printf(1, test_fmts[STRING_NULL_TEST], 0);
+  if (num_chars != strlen(test_strings[STRING_NULL_TEST])) {
+    printf(2, "printftest failed on STRING_NULL_TEST string. Expected size = %d, got = %d\n",
+      num_chars, strlen(test_strings[STRING_NULL_TEST]));
+    exit(exit_error);
+  }
+
+  printf(1, "printftest passed\n");
+}
+
 void
 exitrctest()
 {
@@ -1784,6 +1873,8 @@ main(int argc, char *argv[])
     exit(1);
   }
   close(open("usertests.ran", O_CREATE));
+
+  printftest();
 
   argptest();
   createdelete();
@@ -1827,7 +1918,5 @@ main(int argc, char *argv[])
 
   uio();
   exitrctest();
-  exectest(); // Ensure this test to be the last one to run (prints ALL TESTS PASSED) 
-
-  exit(0);
+  return(exectest());
 }

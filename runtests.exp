@@ -82,6 +82,28 @@ proc destroy_container {argv id expect_str} {
     }
 }
 
+proc assert_on_exit_status {} {
+    expect {
+        "$ "
+    }
+    sleep 2
+    send "echo $?\n"
+    sleep 2
+
+    # expect is not a line oriented
+    # meaning a number of process exit status comes right after a new line
+    expect -re "\\n(\\d+)" {
+        set result $expect_out(1,string)
+    }
+    if { $result != 0 } {
+        puts "TEST HAS FAILED exit = $result" ; exit 1;
+    }
+    expect {
+        "$ "
+    }
+}
+
+
 #-------------------------------------------------------------------------
 #-TESTS-------------------------------------------------------------------
 #-------------------------------------------------------------------------
@@ -94,9 +116,7 @@ proc ioctl_syscall_test {argv} {
     set timeout 3
     send "ioctltests\n"
     log_file -noappend [lindex $argv 0]
-    expect {
-       "ioctl TESTS PASS"
-    }
+    assert_on_exit_status
 }
 
 # - Stress test
@@ -183,6 +203,28 @@ proc pouch_destroy_test {argv} {
 }
 
 
+proc command_exit_status_test {argv} {
+    set timeout -1
+    log_file -noappend [lindex $argv 0]
+
+    # Test cd
+    send "cd baddirname_itdoesntexist\n"
+    expect "$ "
+    sleep 1
+    send "echo $?\n"
+    sleep 1
+    expect -re "\\n-2"
+
+    # Test exec
+    send "thereisnosuchcommand\n"
+    expect "$ "
+    sleep 1
+    send "echo $?\n"
+    sleep 1
+    expect -re "\\n1"
+}
+
+
 # - Test tries to create 4 containers, in the last one we are expecting:
 # - 'Cannot find tty' because there are only 3 containers available
 # @argv - file name for logging
@@ -215,9 +257,7 @@ proc pouch_list_test {argv} {
 
     send "pouch list all\n"
     log_file -noappend [lindex $argv 0]
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
     log_file -noappend [lindex $argv 0]
     set running [disconnect_container $argv]
 }
@@ -255,9 +295,7 @@ proc pouch_cgroup_already_exists {argv} {
     set timeout 3
     send "mkdir /cgroup/c5\n"
     log_file -noappend [lindex $argv 0]
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
     set timeout 3
     set running [start_container $argv "5" "Pouch: c5 starting"]
     log_file -noappend [lindex $argv 0]
@@ -288,9 +326,7 @@ proc pouch_disconnect_outside_container_test {argv} {
     send "pouch disconnect\n"
     set timeout 3
     log_file -noappend [lindex $argv 0]
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
 }
 
 
@@ -306,9 +342,7 @@ proc pouch_info_container_test {argv} {
     send "pouch info\n"
     set timeout 3
     log_file -noappend [lindex $argv 0]
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
     sleep 2
     send "pouch info c6\n"
     set timeout 3
@@ -326,16 +360,10 @@ proc usertests {argv} {
     set timeout -1
     #clean expect buffer
     expect *
-    expect {
-        "$ "
-    }
     send "usertests\n"
     log_file -noappend [lindex $argv 0]
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
 }
-
 
 # - xv6 cgroup tests
 # @argv - file name for logging
@@ -344,9 +372,7 @@ proc cgroupstests {argv} {
     set timeout -1
     send "cgroupstests\n"
     log_file -noappend [lindex $argv 0]
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
 }
 
 # - xv6 pidns tests
@@ -356,9 +382,7 @@ proc pidns_tests {argv} {
     set timeout -1
     send "pidns_tests\n"
     log_file -noappend [lindex $argv 0]
-    expect {
-       "Pidns tests passed successfully"
-    }
+    assert_on_exit_status
 }
 
 # - xv6 mntns tests
@@ -368,9 +392,7 @@ proc mounttest {argv} {
     set timeout -1
     send "mounttest\n"
     log_file -noappend [lindex $argv 0]
-    expect {
-       "mounttest tests passed successfully"
-    }
+    assert_on_exit_status
 }
 
 # - xv6 mntns test with ls
@@ -378,30 +400,15 @@ proc mounttest {argv} {
 proc mounttest_with_ls {argv} {
 
     send "mkdir test_dir_mount_test\n"
-    sleep 2
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
     send "mount internal_fs_a test_dir_mount_test\n"
-    sleep 2
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
     send "ls test_dir_mount_test\n"
-    sleep 2
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
     send "umount test_dir_mount_test\n"
-    sleep 2
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
     send "rm test_dir_mount_test\n"
-    sleep 2
-    expect {
-       "$ "
-    }
+    assert_on_exit_status
 }
 
 #-------------------------------------------------------------------------
@@ -432,6 +439,7 @@ set running [pouch_start_test $argv]
 set running [pouch_connect_test $argv]
 set running [pouch_disconnect_test $argv]
 set running [pouch_destroy_test $argv]
+set running [command_exit_status_test $argv]
 
 #scenario tests
 set running [pouch_stress_test $argv]
@@ -441,11 +449,11 @@ set running [pouch_list_test $argv]
 set running [pouch_disconnect_outside_container_test $argv]
 set running [pouch_info_container_test $argv]
 set running [pouch_cgroup_limit_test $argv]
-set running [usertests $argv]
 
 set running [pidns_tests $argv]
 set running [mounttest $argv]
 set running [mounttest_with_ls $argv]
+set running [usertests $argv]
 
 log_file
 # just in case

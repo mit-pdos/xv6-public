@@ -1287,10 +1287,10 @@ int main(int argc, char * argv[])
     run_test_break_msg(test_kernel_freem_mem);
 
     if (failed) {
-        printf(1, "[  FAILED   ]\n");
+        printf(1, "[    CGROUPTESTS FAILED    ]\n");
         exit(1);
     } else {
-        printf(1, "[    PASS   ]\n");
+        printf(1, "[    CGROUPTESTS PASSED    ]\n");
         exit(0);
     }
 }

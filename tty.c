@@ -58,6 +58,5 @@ connect_tty(int tty_fd)
 int
 disconnect_tty(int tty_fd)
 {
-    ioctl(tty_fd, TTYSETS, DEV_DISCONNECT);
-    return 0;
+    return ioctl(tty_fd, TTYSETS, DEV_DISCONNECT);
 }

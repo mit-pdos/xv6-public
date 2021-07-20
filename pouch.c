@@ -441,12 +441,14 @@ static int pouch_fork(char* container_name){
   return 0;
 }
 
-void print_help_inside_cnt(){
-    printf(stderr,"\nPouch commands inside containers:\n");
-    printf(stderr,"       pouch disconnect \n");
-    printf(stderr,"          : disconnect a currently connected container\n");
-    printf(stderr,"       pouch info\n");
-    printf(stderr,"          : query information about currently connected container\n");
+static int print_help_inside_cnt(){
+    int retval = 0;
+    retval = printf(stderr,"\nPouch commands inside containers:\n");
+    retval |= printf(stderr,"       pouch disconnect \n");
+    retval |= printf(stderr,"          : disconnect a currently connected container\n");
+    retval |= printf(stderr,"       pouch info\n");
+    retval |= printf(stderr,"          : query information about currently connected container\n");
+    return retval;
 }
 
 void print_help_outside_cnt(){
@@ -582,7 +584,7 @@ main(int argc, char *argv[])
   if(argc >= 3){
      if((strcmp(argv[1],"--help") == 0) || (char)*argv[1] == '-'){
          if(ppid == 1)
-             print_help_inside_cnt();
+            print_help_inside_cnt();
          else
              print_help_outside_cnt();
         exit(0);
@@ -658,8 +660,9 @@ main(int argc, char *argv[])
              printf(1, "Container can't be destroyed while connected.\n");
              exit(1);
          }else if(cmd == LIST){
-             print_help_inside_cnt();
-             exit(1);
+             if (print_help_inside_cnt() < 0) {
+                exit(1);
+             }
          }
      }else{
          //command execution

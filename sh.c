@@ -3,6 +3,7 @@
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
+#include "wstatus.h"
 
 // Parsed command representation
 #define EXEC  1
@@ -11,7 +12,28 @@
 #define LIST  4
 #define BACK  5
 
+// Parsed internal commands
+enum internal_cmd {
+    INTERNAL_CMD_NONE,
+    INTERNAL_CMD_DOLLAR_QUESTION,
+    INTERNAL_CMD_CD,
+    INTERNAL_CMD_EXIT,
+    INTERNAL_CMD_CONNECT_TTY,
+    INTERNAL_CMD_DISCONNECT_TTY,
+    INTERNAL_CMD_ATTACH_TTY,
+    INTERNAL_CMD_PID
+};
+
+
 #define MAXARGS 10
+
+// Internal command ran successfully
+#define RUN_INTERNAL_CMD_OK 0
+// It is not an internal command
+#define RUN_INTERNAL_CMD_NONE -1
+// Running internal command resulted in error
+#define RUN_INTERNAL_CMD_ERR -2
+
 
 struct cmd {
   int type;
@@ -52,6 +74,23 @@ struct backcmd {
 int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
+static int last_cmd_retval; // keeps the value of last cmd's return value
+
+
+static void last_cmd_retval_no_error(void)
+{
+  last_cmd_retval = 0;
+}
+
+static void last_cmd_retval_set_error(int err)
+{
+  last_cmd_retval = err;
+}
+
+static void last_cmd_retval_update_wait_exit_status(void)
+{
+  last_cmd_retval = WEXITSTATUS(last_cmd_retval);
+}
 
 // Execute cmd.  Never returns.
 void
@@ -96,6 +135,7 @@ runcmd(struct cmd *cmd)
     }
 
     printf(2, "exec %s failed\n", ecmd->argv[0]);
+    exit(1);
     break;
 
   case REDIR:
@@ -161,86 +201,136 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
-int 
-runinternal(char* buf){
-    if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
-      // Chdir must be called by the parent, not the child.
-      buf[strlen(buf)-1] = 0;  // chop \n
-      if(chdir(buf+3) < 0)
-        printf(2, "cannot cd %s\n", buf+3);
-      return 0;
+int get_internal_cmd_type(struct execcmd* cmd)
+{
+    int cmd_type = INTERNAL_CMD_NONE;
+
+    if ((strcmp(cmd->argv[0], "echo") == 0) && (strcmp(cmd->argv[1], "$?") == 0)) {
+        cmd_type = INTERNAL_CMD_DOLLAR_QUESTION;
+    }
+    else if (strcmp(cmd->argv[0], "cd") == 0) {
+        cmd_type = INTERNAL_CMD_CD;
+    }
+    else if (strcmp(cmd->argv[0], "exit") == 0) {
+        cmd_type = INTERNAL_CMD_EXIT;
+    }
+    else if ((strcmp(cmd->argv[0], "connect") == 0) && (strcmp(cmd->argv[1], "tty") == 0)) {
+        cmd_type = INTERNAL_CMD_CONNECT_TTY;
+    }
+    else if (strcmp(cmd->argv[0], "disconnect") == 0) {
+        cmd_type = INTERNAL_CMD_DISCONNECT_TTY;
+    }
+    else if ((strcmp(cmd->argv[0], "attach") == 0) && (strcmp(cmd->argv[1], "tty") == 0)) {
+        cmd_type = INTERNAL_CMD_ATTACH_TTY;
+    }
+    else if (strcmp(cmd->argv[0], "pid") == 0) {
+        cmd_type = INTERNAL_CMD_PID;
     }
 
-    if(buf[0] == 'e' && buf[1] == 'x' && buf[2] == 'i' && buf[3] == 't' && buf[4] == '\n'){
+    return cmd_type;
+}
+
+
+// Executes internal commands
+// Returns
+// RUN_INTERNAL_CMD_OK : Successful internal command run
+// RUN_INTERNAL_CMD_NONE : No internal command ran
+// RUN_INTERNAL_CMD_ERROR : There was an error during execution of internal command
+int
+runinternal(struct cmd** pcmd) {
+    struct execcmd* cmd = (struct execcmd*)*pcmd;
+
+    int cmd_type = get_internal_cmd_type(cmd);
+    int tty_fd;
+    switch (cmd_type)
+    {
+    case INTERNAL_CMD_DOLLAR_QUESTION:
+      printf(1, "%d\n", last_cmd_retval);
+      return RUN_INTERNAL_CMD_OK;
+      break;
+
+    case INTERNAL_CMD_CD:
+      // Chdir must be called by the parent, not the child.
+      if (chdir(cmd->argv[1]) < 0) {
+        printf(2, "cannot cd %s\n", cmd->argv[1]);
+        last_cmd_retval_set_error(RUN_INTERNAL_CMD_ERR);
+        return RUN_INTERNAL_CMD_ERR;
+      }
+      return RUN_INTERNAL_CMD_OK;
+      break;
+
+    case INTERNAL_CMD_EXIT:
       // exit must be called by the parent, not the child.
       disconnect_tty(0);
       exit(0);
-    }
+      break;
 
-    //Connect tty
-    if(buf[0] == 'c' && buf[1] == 'o' && buf[2] == 'n' && buf[3] == 'n' && buf[4] == 'e' && buf[5] == 'c' && buf[6] == 't' &&  buf[7] == ' ' &&  buf[8] == 't' &&  buf[9] == 't' &&  buf[10] == 'y' &&  buf[12] == '\n'){
-      int tty_fd;
+    case INTERNAL_CMD_CONNECT_TTY:
 
-      buf[strlen(buf)-1] = 0;
-
-      tty_fd = open(buf+8, O_RDWR);
+      tty_fd = open(cmd->argv[2], O_RDWR);
       if(tty_fd < 0){
-	    printf(2, "exec connect tty failed\n");
-	    return -1;
+        printf(2, "exec connect tty failed\n");
+        last_cmd_retval_set_error(RUN_INTERNAL_CMD_ERR);
+        return RUN_INTERNAL_CMD_ERR;
       }
 
       if(connect_tty(tty_fd) < 0){
-	close(tty_fd);
-	return -1;
+        close(tty_fd);
+        last_cmd_retval_set_error(RUN_INTERNAL_CMD_ERR);
+        return RUN_INTERNAL_CMD_ERR;
       }
 
       close(tty_fd);
-      return 0;
-    }
+      return RUN_INTERNAL_CMD_OK;
+      break;
 
-    //Disconnect tty
-    if(buf[0] == 'd' && buf[1] == 'i' && buf[2] == 's' && buf[3] == 'c' && buf[4] == 'o' && buf[5] == 'n' && buf[6] == 'n' &&  buf[7] == 'e' &&  buf[8] == 'c'  &&  buf[9] == 't' &&  buf[10] == '\n'){
-     buf[strlen(buf)-1] = 0;
-     disconnect_tty(0);
-     sleep(100);
-     return 0;
-    }
+    case INTERNAL_CMD_DISCONNECT_TTY:
+    
+      if (disconnect_tty(0) != 0)
+          printf(2, "disconnect tty failed\n");
+      sleep(100);
+      return RUN_INTERNAL_CMD_OK;
+      break;
 
-    if(buf[0] == 'a' && buf[1] == 't' && buf[2] == 't' && buf[3] == 'a' && buf[4] == 'c' && buf[5] == 'h' && buf[6] == ' ' && buf[7] == 't' && buf[8] == 't' && buf[9] == 'y' && buf[11] == '\n'){
-      int tty_fd;
+    case INTERNAL_CMD_ATTACH_TTY:
 
-      buf[strlen(buf)-1] = 0;
-      tty_fd = open(buf+7, O_RDWR);
+      tty_fd = open(cmd->argv[2], O_RDWR);
       if(tty_fd < 0){
-	    printf(2, "exec attach tty failed\n");
-	    return 0;
+        printf(2, "exec attach tty failed\n");
+        last_cmd_retval_set_error(RUN_INTERNAL_CMD_ERR);
+        return RUN_INTERNAL_CMD_ERR;
       }
 
       if(attach_tty(tty_fd) < 0){
-	    printf(2, "exec attach tty failed 2\n");
-	    close(tty_fd);
-	    return 0;
+        printf(2, "exec attach tty failed 2\n");
+        close(tty_fd);
+        return RUN_INTERNAL_CMD_OK;
       }
 
       ioctl(tty_fd, TTYSETS, DEV_CONNECT);
       close(tty_fd);
-      printf(2, "%s attached\n",buf+7);
-      return 0;
+      printf(2, "%s attached\n", cmd->argv[2]);
+      return RUN_INTERNAL_CMD_OK;
+      break;
+
+    case INTERNAL_CMD_PID:
+      printf(2, "PID: %d\n", getpid());
+      return RUN_INTERNAL_CMD_OK;
+      break;
+
+    default:
+      return RUN_INTERNAL_CMD_NONE;
+      break;
     }
 
-    if(buf[0] == 'p' && buf[1] == 'i' && buf[2] == 'd' && buf[3] == '\n'){
-	printf(2, "PID: %d\n",getpid());
-        return 0;
-    }
-
-   return -1;
 }
 
 int
 main(void)
 {
   static char buf[100];
-  int fd;
+  int fd, retval;
+  struct cmd* pcmd;
 
   // Ensure that three file descriptors are open.
   while((fd = open("console", O_RDWR)) >= 0){
@@ -252,12 +342,19 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
-    if(runinternal(buf) == 0)
+      pcmd = parsecmd(buf);
+      retval = runinternal(&pcmd);
+      if(retval == 0) {
+      last_cmd_retval_no_error();
       continue;
+    } else if (retval == -2) {
+      continue;
+    }
 
     if(fork1() == 0)
-      runcmd(parsecmd(buf));
-    wait(0);
+      runcmd(pcmd);
+    wait(&last_cmd_retval);
+    last_cmd_retval_update_wait_exit_status();
   }
   exit(0);
 }
