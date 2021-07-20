@@ -300,17 +300,18 @@ int wait(int *status)
       {
         // Found one
 
-
+        pid = p->pid;
+        /*
         if (p->status != 0)
         {
           *status = p->status;
-        }
-        /*
-        pid = p->pid;
+        }*/
+        
+        
 
          if (status != 0) {
           *status = p->status;
-        }*/
+        }
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
