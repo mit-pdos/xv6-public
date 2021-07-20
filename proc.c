@@ -282,7 +282,7 @@ int wait(int *status)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  status = curproc->status;
+  curproc->status = *status;
   acquire(&ptable.lock);
   for (;;)
   {
@@ -292,11 +292,25 @@ int wait(int *status)
     {
       if (p->parent != curproc)
         continue;
+
+
+
       havekids = 1;
       if (p->state == ZOMBIE)
       {
-        // Found one.
+        // Found one
+
+
+        if (p->status != 0)
+        {
+          *status = p->status;
+        }
+        /*
         pid = p->pid;
+
+         if (status != 0) {
+          *status = p->status;
+        }*/
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
