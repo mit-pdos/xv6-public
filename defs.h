@@ -118,7 +118,7 @@ void sched(void);
 void setproc(struct proc *);
 void sleep(void *, struct spinlock *);
 void userinit(void);
-int wait(int *);
+int wait(int *); //updated signature
 void wakeup(void *);
 void yield(void);
 

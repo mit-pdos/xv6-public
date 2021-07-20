@@ -4,7 +4,7 @@ struct rtcdate;
 // system calls
 int fork(void);
 //int exit(void) __attribute__((noreturn));
-void exit(int status) __attribute__((noreturn)); //*updated exit prototype
+void exit(int) __attribute__((noreturn)); //*updated exit prototype
 int wait(int *);
 int pipe(int *);
 int write(int, const void *, int);
