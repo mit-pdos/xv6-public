@@ -26,7 +26,7 @@ void exittest(void)
         }
         else if (pid > 0)
         {
-            rpid = wait(status);
+            rpid = waitpid(pid, status, 0);
             printf(1, "Is Parent: child with PID %d has exited w/ status %d\n", rpid, *status);
         }
         else
