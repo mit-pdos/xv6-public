@@ -8,7 +8,7 @@ void exittest(void)
     int rpid;
     int pid;
     int i;
-    int status;
+    int *status = 0;
     for (i = 0; i < 2; i++)
     {
         pid = fork();
@@ -27,8 +27,8 @@ void exittest(void)
         }
         else if (pid > 0)
         {
-            rpid = wait(&status);
-            printf(1, "Is Parent: child with PID %d has exited w/ status %d\n", rpid, status);
+            rpid = wait(status);
+            printf(1, "Is Parent: child with PID %d has exited w/ status %d\n", rpid, *status);
         }
         else
         {

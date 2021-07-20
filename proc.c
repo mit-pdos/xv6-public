@@ -281,6 +281,7 @@ int wait(int *status)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
+  curproc->status = *status;
   acquire(&ptable.lock);
   for (;;)
   {
@@ -295,10 +296,9 @@ int wait(int *status)
       {
         // Found one.
         pid = p->pid;
-        if (p->status == -1)
+        if (p->status == 0)
         {
-          panic("fuck");
-          status = &p->status;
+          *status = p->status;
         }
         kfree(p->kstack);
         p->kstack = 0;
