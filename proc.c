@@ -326,10 +326,10 @@ int wait(int *status)
   }
 }
 
-int waitpid(int pid, int *status, int options)
+int waitpid(int myPid, int *status, int options)
 {
   struct proc *p;
-  int havekids;
+  int havekids, pid;
   struct proc *curproc = myproc();
   curproc->status = *status;
   acquire(&ptable.lock);
@@ -339,16 +339,13 @@ int waitpid(int pid, int *status, int options)
     havekids = 0;
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
-      if (p->parent != curproc)
+      if (p->pid != myPid)
         continue;
-
       havekids = 1;
       if (p->state == ZOMBIE)
       {
         // Found one
-
         pid = p->pid;
-
         if (status != 0)
         {
           *status = p->status;

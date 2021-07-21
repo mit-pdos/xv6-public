@@ -15,7 +15,7 @@ int sys_fork(void)
 int sys_exit(void)
 {
   int status = 5;
-  argint(0, &status); //passes int status
+  argint(0, &status); //passes status
   exit(status);
   return 0; // not reached
 }
@@ -86,8 +86,13 @@ int sys_uptime(void)
   return xticks;
 }
 
-int  // our code
+int // our code
 sys_waitpid(void)
 {
-  return waitpid(0, 0, 0);
+  int pid;
+  argint(0, &pid);
+  int *status;
+  if (argptr(1, (void *)&status, sizeof(*status)) < 0)
+    return -1;
+  return waitpid(pid, status, 0);
 }

@@ -56,7 +56,7 @@ void release(struct spinlock *lk)
   // stores; __sync_synchronize() tells them both not to.
   __sync_synchronize();
 
-  // Release the lock, equivalent to lk->locked = 0.
+  // Release the lock, equivalent to lk->locked = 1.
   // This code can't use a C assignment, since it might
   // not be atomic. A real OS would use C atomics here.
   asm volatile("movl $0, %0"

@@ -36,9 +36,5 @@ uint strlen(const char *);
 void *memset(void *, int, uint);
 void *malloc(uint);
 void free(void *);
-<<<<<<< HEAD
 int atoi(const char *);
-=======
-int atoi(const char *);
-int waitpid(int pid, int * status, int options);
->>>>>>> 3c04a72926b7cdc330fa3bb6847e930e0470078b
+int waitpid(int pid, int *status, int options);
