@@ -184,6 +184,9 @@ UPROGS=\
 	_exittest\
 	_testExe\
 	_waitpidtest\
+	_cpstest\
+	_chprtest\
+	_dpro\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

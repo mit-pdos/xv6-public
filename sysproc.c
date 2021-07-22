@@ -15,7 +15,7 @@ int sys_fork(void)
 int sys_exit(void)
 {
   int status = 5;
-  argint(0, &status); //passes status
+  argint(0, &status); //passes int status
   exit(status);
   return 0; // not reached
 }
@@ -92,7 +92,31 @@ sys_waitpid(void)
   int pid;
   argint(0, &pid);
   int *status;
-  if (argptr(1, (void *)&status, sizeof(*status)) < 0)
+
+  if (argptr(1,(void *) & status, sizeof(status)) < 0)
+  {
     return -1;
+  }
   return waitpid(pid, status, 0);
+}
+
+//********************ourcode
+
+
+int
+sys_cps(void)
+{
+  return cps();
+}
+
+int
+sys_chpr(void)
+{
+  int pid, pr;
+  if(argint(0, &pid) < 0)
+    return -1;
+  if(argint(1, &pr) < 0)
+    return -1;
+
+  return chpr(pid, pr);
 }

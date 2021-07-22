@@ -4,7 +4,7 @@ struct rtcdate;
 // system calls
 int fork(void);
 //int exit(void) __attribute__((noreturn));
-void exit(int) __attribute__((noreturn)); //*updated exit prototype
+void exit(int status) __attribute__((noreturn)); //*updated exit prototype
 int wait(int *);
 int pipe(int *);
 int write(int, const void *, int);
@@ -37,4 +37,6 @@ void *memset(void *, int, uint);
 void *malloc(uint);
 void free(void *);
 int atoi(const char *);
-int waitpid(int pid, int *status, int options);
+int waitpid(int pid, int * status, int options); // our code
+int cps(void); //cur priority status 
+int chpr(int pid, int priority); // change priority

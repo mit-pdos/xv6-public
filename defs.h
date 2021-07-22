@@ -103,6 +103,8 @@ int pipewrite(struct pipe *, char *, int);
 
 //PAGEBREAK: 16
 // proc.c
+int cps(void); // current process state
+int chpr(int pid, int priority); // changes the priority of a process
 int cpuid(void);
 //void            exit(void);
 void exit(int); //*updated signature
