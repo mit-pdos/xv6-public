@@ -27,8 +27,10 @@
 #define SET_FRZ 14
 #define MEM_CUR 15
 #define MEM_MAX 16
+#define MEM_STAT 17
 
 #define min(x, y) (x) > (y) ? (y) : (x)
+
 
 /**
  * This function copies from given buffer into a given address based on the input parameters.
@@ -236,6 +238,8 @@ static int get_file_name_constant(char * filename)
       return MEM_CUR;
     else if (strcmp(filename, CGFS_MEM_MAX) == 0)
       return MEM_MAX;
+    else if (strcmp(filename, CGFS_MEM_STAT) == 0)
+      return MEM_STAT;
 
     return -1;
 }
@@ -272,6 +276,7 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
             case CPU_STAT:
             case PID_CUR:
             case MEM_CUR:
+            case MEM_STAT:
                 writable = 0;
                 break;
 
@@ -339,6 +344,12 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
               f->mem.max.active = cgp->mem_controller_enabled;
               f->mem.max.max = cgp->max_mem;
               break;
+
+            case MEM_STAT:
+                if (cgp == cgroup_root())
+                    return -1;
+                f->mem.stat.active = cgp->mem_controller_enabled;
+                break;
         }
 
         f->type = FD_CG;
@@ -635,6 +646,16 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
             copy_and_move_buffer(&maxtextp, "\n", strlen("\n"));
 
             r = copy_buffer_up_to_end(maxtext + f->off, min(maxtextp - maxtext, n), addr);
+        } else if (filename_const == MEM_STAT) {
+            uint stattext_size = strlen("empty file") + 2;
+            char stattext[stattext_size];
+            memset(stattext, '\0', stattext_size);
+            char *stattextp = stattext;
+
+            copy_and_move_buffer(&stattextp, "empty file", strlen("empty file"));
+            copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
+
+            r = copy_buffer_up_to_end(stattext + f->off, min(stattext_size, n), addr);
         }
 
         f->off += r;
@@ -677,6 +698,7 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
         if (f->cgp != cgroup_root()) {
             copy_and_move_buffer_max_len(&bufp, CGFS_MEM_CUR);
             copy_and_move_buffer_max_len(&bufp, CGFS_CPU_STAT);
+            copy_and_move_buffer_max_len(&bufp, CGFS_MEM_STAT);
 
             if (f->cgp->cpu_controller_enabled) {
                 copy_and_move_buffer_max_len(&bufp, CGFS_CPU_WEIGHT);

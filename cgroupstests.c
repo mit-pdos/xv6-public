@@ -352,6 +352,7 @@ TEST(test_opening_and_closing_cgroup_files)
     ASSERT_TRUE(open_close_file(TEST_1_SET_FRZ));
     ASSERT_TRUE(open_close_file(TEST_1_MEM_CURRENT));
     ASSERT_TRUE(open_close_file(TEST_1_MEM_MAX));
+    ASSERT_TRUE(open_close_file(TEST_1_MEM_STAT));
 }
 
 TEST(test_reading_cgroup_files)
@@ -372,6 +373,7 @@ TEST(test_reading_cgroup_files)
     ASSERT_TRUE(read_file(TEST_1_SET_FRZ, 1));
     ASSERT_TRUE(read_file(TEST_1_MEM_CURRENT, 1));
     ASSERT_TRUE(read_file(TEST_1_MEM_MAX, 1));
+    ASSERT_TRUE(read_file(TEST_1_MEM_STAT, 1));
 }
 
 int test_enable_and_disable_controller(int controller_type)
@@ -1015,6 +1017,11 @@ TEST(test_cant_grow_over_mem_limit)
   ASSERT_TRUE(disable_controller(MEM_CNT));
 }
 
+TEST(test_memory_stat_content_valid)
+{
+    ASSERT_FALSE(strcmp(read_file(TEST_1_MEM_STAT, 0), "empty file\n"));
+}
+
 TEST(test_kernel_freem_mem)
 {
   ASSERT_FALSE(kmemtest());
@@ -1029,6 +1036,7 @@ int main(int argc, char * argv[])
     run_test(test_creating_cgroups);
     run_test(test_opening_and_closing_cgroup_files);
     run_test_break_msg(test_reading_cgroup_files);
+    run_test(test_memory_stat_content_valid);
     run_test(test_moving_process);
     run_test(test_enable_and_disable_all_controllers);
     run_test(test_limiting_pids);

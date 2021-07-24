@@ -70,6 +70,9 @@ struct file {
         union {
           struct {
             char active;
+          } stat;
+          struct {
+            char active;
             unsigned int max;
           } max;
         } mem;

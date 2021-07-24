@@ -30,6 +30,7 @@ enum controller_types { CPU_CNT, PID_CNT, SET_CNT, MEM_CNT };
 #define TEST_1_SET_FRZ                  "/cgroup/test1/cgroup.freeze"
 #define TEST_1_MEM_CURRENT              "/cgroup/test1/memory.current"
 #define TEST_1_MEM_MAX                  "/cgroup/test1/memory.max"
+#define TEST_1_MEM_STAT                 "/cgroup/test1/memory.stat"
 
 #define ROOT_CGROUP_PROCS               "/cgroup/cgroup.procs"
 
