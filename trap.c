@@ -4,6 +4,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "cgroup.h"
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
@@ -91,6 +92,8 @@ trap(struct trapframe *tf)
             "eip 0x%x addr 0x%x--kill proc\n",
             myproc()->ns_pid, myproc()->name, tf->trapno,
             tf->err, cpuid(), tf->eip, rcr2());
+    if (tf->trapno == T_PGFLT)
+       cgroup_mem_stat_pgfault_incr(proc_get_cgroup());
     myproc()->killed = 1;
   }
 

@@ -70,6 +70,10 @@ struct file {
         union {
           struct {
             char active;
+            uint file_dirty;
+            uint file_dirty_aggregated;
+            uint pgfault;
+            uint pgmajfault;
           } stat;
           struct {
             char active;

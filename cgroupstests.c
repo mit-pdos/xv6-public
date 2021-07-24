@@ -35,8 +35,7 @@ void set_suppress(char _suppress) {
 // Set the given string length to empty.
 static void empty_string(char* string, int length)
 {
-  for (int i = 0; i < length; i++)
-    string[i] = 0;
+     memset(string, 0, length);
 }
 
 // Open given file.
@@ -117,6 +116,21 @@ int write_file(const char* file, char* text) {
   }
 
   return close_file(fd);
+}
+
+int write_new_file(const char* file, char* text) {
+   int fd;
+   if ((fd = open(file, O_CREATE | O_RDWR)) < 1) {
+     if (suppress == 0)
+        printf(1, "\nFailed to open a new file \n");
+     return 0;
+   }
+
+   if (!write_file(file, text)) {
+     return 0;
+   }
+
+  return fd;
 }
 
 // Test enabling controller according to given type.
@@ -251,6 +265,22 @@ int temp_delete() {
   }
 
   return 1;
+}
+
+//return the value for a given entry from the bufer
+//entry mast contains all characters before the value include white-spase
+int get_val(char *buf, char *entry){
+
+  do{
+     if(strncmp(buf, entry, strlen(entry))==0){
+       buf+=strlen(entry);
+       return atoi(buf);
+       }
+     else
+       while (*buf++!='\n')//go to next line
+            ;
+      }while(*buf!='\0');
+  return -1;//Assuming all values are supposed to be non-negative
 }
 
 // Write into buffer the sequence of activating, disabling then activating a given controller.
@@ -1019,7 +1049,16 @@ TEST(test_cant_grow_over_mem_limit)
 
 TEST(test_memory_stat_content_valid)
 {
-    ASSERT_FALSE(strcmp(read_file(TEST_1_MEM_STAT, 0), "empty file\n"));
+    char buf[265];
+    strcpy(buf, read_file(TEST_1_MEM_STAT, 0));
+    int file_dirty = get_val(buf, "file_dirty - ");
+    int file_dirty_aggregated = get_val(buf, "file_dirty_aggregated - ");
+    int pgfault = get_val(buf, "pgfault - ");
+    int pgmajfault = get_val(buf, "file_dirty - ");
+    ASSERT_UINT_EQ(file_dirty, 0);
+    ASSERT_UINT_EQ(file_dirty_aggregated, 0);
+    ASSERT_UINT_EQ(pgfault, 0);
+    ASSERT_UINT_EQ(pgmajfault, 0);
 }
 
 TEST(test_kernel_freem_mem)
@@ -1029,7 +1068,14 @@ TEST(test_kernel_freem_mem)
 
 TEST(test_cpu_stat_content_valid)
 {
-    ASSERT_FALSE(strcmp(read_file(TEST_1_CPU_STAT, 0), "usage_usec - 0\nuser_usec - 0\nsystem_usec - 0\n"));
+    char buf[265];
+    strcpy(buf, read_file(TEST_1_CPU_STAT, 0));
+    int usage_usec = get_val(buf, "usage_usec - ");
+    int user_usec = get_val(buf, "user_usec - ");
+    int system_usec = get_val(buf, "system_usec - ");
+    ASSERT_UINT_EQ(usage_usec, 0);
+    ASSERT_UINT_EQ(user_usec, 0);
+    ASSERT_UINT_EQ(system_usec, 0);
 }
 
 TEST(test_cpu_stat)
@@ -1124,6 +1170,86 @@ TEST(test_cpu_stat)
     }
 }
 
+TEST (test_mem_stat) {
+    int wstatus;
+    char befor_all[265];
+    char effect_write_first_file[265];
+    char effect_write_second_file[265];
+
+    strcpy(befor_all, read_file(TEST_1_MEM_STAT,0));
+    // Fork a process because reading the memory values from inside the cgroup may affect the values.
+    int pid = fork();
+    int pidToMove = 0;
+    // Child
+    if (pid == 0) {
+        pidToMove = getpid();
+        // Save the pid of child in temp file.
+        ASSERT_TRUE(temp_write(pidToMove));
+
+        // Go to sleep for long period of time alowe move the prosses into cgroup.
+        sleep(10);
+        char str [256];
+        memset(str, 'a', 256);
+
+        // Write to a new file 2 times.
+        int fd;
+        ASSERT_TRUE(fd=write_new_file("c", str));
+        ASSERT_TRUE(write_new_file("c", str));
+        ASSERT_TRUE(close_file(fd));
+        sleep(20);
+
+        // Write times to another file with the file closed in the middle.
+        ASSERT_TRUE(fd=write_new_file("d", str));
+        ASSERT_TRUE(close_file(fd));
+        ASSERT_TRUE(write_new_file("d", str));
+        ASSERT_TRUE(close_file(fd));
+
+        exit(0);
+
+    } else { // Father
+
+        sleep(5);
+        // Read the child pid from temp file.
+        pidToMove = temp_read(0);
+        // Move the child process to "/cgroup/test1" cgroup.
+        ASSERT_TRUE(move_proc(TEST_1_CGROUP_PROCS, pidToMove));
+        // Check that the process we moved is really in "/cgroup/test1" cgroup.
+        ASSERT_TRUE(is_pid_in_group(TEST_1_CGROUP_PROCS, pidToMove));
+        // Go to sleep to ensure the child process had a chance to be scheduled.
+        // Allows the child to write a page twice for a new file
+        sleep(20);
+        strcpy(effect_write_first_file, read_file(TEST_1_MEM_STAT,0));
+
+        //Allows the child to write to a new file close and write again
+        sleep(20);
+        strcpy(effect_write_second_file, read_file(TEST_1_MEM_STAT,0));
+
+        // check the effect of pgmajfault
+        int pgmajfault_befor = get_val(befor_all, "pgmajfault - ");
+        int pgmajfault_after = get_val(effect_write_second_file, "pgmajfault - ");
+        ASSERT_TRUE(pgmajfault_after - pgmajfault_befor >= 2);
+
+        // check the effect of pgfaul
+        // The second write to file c was before closing and file d was after closing,
+        // so we need more pgfaults besides what the writing itself causes
+        int grow_pgfoult_after_first = get_val(effect_write_first_file, "pgfault - ") - get_val(befor_all , "pgfault - ");
+        int grow_pgfoult_after_seconde = get_val(effect_write_second_file, "pgfault - ") - get_val(effect_write_first_file, "pgfault - ");
+        ASSERT_TRUE(grow_pgfoult_after_first);
+        ASSERT_TRUE(grow_pgfoult_after_seconde > grow_pgfoult_after_first);
+
+        // check the effect of file dirty
+        // we calculate the dirte and aggregated together as it is impossible to know if there is a delay in writing to disk
+        int dirty_befor = get_val(befor_all, "file_dirty - ") + get_val(befor_all, "file_dirty_aggregated - ");
+        int dirty_after = get_val(effect_write_second_file, "file_dirty - ") + get_val(effect_write_second_file, "file_dirty_aggregated - ");
+        ASSERT_TRUE(dirty_after - dirty_befor >= 2);
+        // Wait for child to exit.
+        wait(&wstatus);
+        ASSERT_TRUE(wstatus);
+        // Remove the temp file.
+        ASSERT_TRUE(temp_delete());
+    }
+}
+
 int main(int argc, char * argv[])
 {
     // comment out for debug messages
@@ -1145,6 +1271,7 @@ int main(int argc, char * argv[])
     run_test(test_setting_cpu_id);
     run_test(test_correct_cpu_running);
     run_test(test_no_run);
+    run_test(test_mem_stat);
     run_test(test_setting_freeze);
     run_test(test_frozen_not_running);
     run_test(test_mem_current);

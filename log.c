@@ -6,6 +6,8 @@
 #include "fs.h"
 #include "buf.h"
 #include "device.h"
+#include "proc.h"
+#include "cgroup.h"
 
 // Simple logging that allows concurrent FS system calls.
 //
@@ -77,6 +79,8 @@ install_trans(void)
     struct buf *dbuf = bread(log.dev, log.lh.block[tail]); // read dst
     memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
     bwrite(dbuf);  // write dst to disk
+    cgroup_mem_stat_file_dirty_decr(dbuf->cgroup);
+    cgroup_mem_stat_file_dirty_aggregated_incr(dbuf->cgroup);
     brelse(lbuf);
     brelse(dbuf);
   }
@@ -233,9 +237,11 @@ log_write(struct buf *b)
       break;
   }
   log.lh.block[i] = b->blockno;
-  if (i == log.lh.n)
+  if (i == log.lh.n) {
     log.lh.n++;
+    b->cgroup = proc_get_cgroup();
+    cgroup_mem_stat_file_dirty_incr(b->cgroup);
+  }
   b->flags |= B_DIRTY; // prevent eviction
   release(&log.lock);
 }
-

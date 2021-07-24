@@ -70,8 +70,11 @@ struct cgroup
     int is_frozen; /*Indicates whether cgroup is frozen. */
 
     unsigned int current_mem; /*The current amount of memory used by the group.*/
-
     unsigned int max_mem; /*The maximum memory allowed for a group to use.*/
+    unsigned int mem_stat_file_dirty; /* Amount of cached filesystem data that was modified but not yet written back to disk */
+    unsigned int mem_stat_file_dirty_aggregated; /* Total number of cached filesystem data that was modified and written back to disk */
+    unsigned int mem_stat_pgfault;/*Number of page faults incurred when the kernel dos not needs to read the data from disk*/
+    unsigned int mem_stat_pgmajfault;/*Number of page faults incurred and the kernel actually needs to read the data from disk*/
 
     unsigned long long cpu_time;
     unsigned int cpu_period_time;
@@ -434,4 +437,38 @@ int enable_mem_controller(struct cgroup* cgroup);
 int unsafe_disable_mem_controller(struct cgroup* cgroup);
 int disable_mem_controller(struct cgroup* cgroup);
 
+/**
+ * @brief Increments the cgroup Memory Controller stat of file_dirty
+ *
+ * @param cgroup pointer to a cgroup
+ */
+void cgroup_mem_stat_file_dirty_incr(struct cgroup* cgroup);
+
+/**
+ * @brief Decrements the cgroup Memory Controller stat of file_dirty
+ *
+ * @param cgroup pointer to a cgroup
+ */
+void cgroup_mem_stat_file_dirty_decr(struct cgroup* cgroup);
+
+/**
+ * @brief Increments the cgroup Memory Controller stat of file_dirty_aggregated
+ *
+ * @param cgroup pointer to a cgroup
+ */
+void cgroup_mem_stat_file_dirty_aggregated_incr(struct cgroup* cgroup);
+
+/**
+ * @brief Increments the cgroup Memory Controller stat of pgfault
+ *
+ * @param cgroup pointer to a cgroup
+ */
+void cgroup_mem_stat_pgfault_incr(struct cgroup* cgroup);
+
+/**
+ * @brief Increments the cgroup Memory Controller stat of pgmajfault
+ *
+ * @param cgroup pointer to a cgroup
+ */
+void cgroup_mem_stat_pgmajfault_incr(struct cgroup* cgroup);
 #endif

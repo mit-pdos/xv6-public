@@ -30,7 +30,9 @@
 #define MEM_MAX 16
 #define MEM_STAT 17
 
+// TODO: refactor - move to defs.h
 #define min(x, y) (x) > (y) ? (y) : (x)
+// TODO: refactor - move to defs.h (also change the name)
 #define abs(x) (x) > 0 ? (x) : (0)
 
 // Is static to save space in the stack
@@ -354,6 +356,10 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
                 if (cgp == cgroup_root())
                     return -1;
                 f->mem.stat.active = cgp->mem_controller_enabled;
+                f->mem.stat.file_dirty = cgp->mem_stat_file_dirty;
+                f->mem.stat.file_dirty_aggregated = cgp->mem_stat_file_dirty_aggregated;
+                f->mem.stat.pgfault = cgp->mem_stat_pgfault;
+                f->mem.stat.pgmajfault = cgp->mem_stat_pgmajfault;
                 break;
         }
 
@@ -645,12 +651,38 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
 
             r = copy_buffer_up_to_end(maxtext + f->off, min(abs(maxtextp - maxtext - f->off), n), addr);
         } else if (filename_const == MEM_STAT) {
-            uint stattext_size = strlen("empty file") + 2;
-            char *stattext = buf;
-            memset(stattext, '\0', stattext_size);
-            char *stattextp = stattext;
+            char file_dirty_buf[10] = {0};
+            char file_dirty_aggregated_buf[10] = {0};
+            char pgfault_buf[10] = {0};
+            char pgmajfault_buf[10] = {0};
 
-            copy_and_move_buffer(&stattextp, "empty file", strlen("empty file"));
+            uint stattext_size = strlen("file_dirty - ") +
+                    utoa(file_dirty_buf, f->mem.stat.file_dirty) + 1
+                    + strlen("file_dirty_aggregated - ") +
+                    utoa(file_dirty_aggregated_buf, f->mem.stat.file_dirty_aggregated) + 1 +
+                    strlen("pgfault - ") +
+                    utoa(pgfault_buf, f->mem.stat.pgfault) + 1 +
+                    strlen("pgmajfault - ") +
+                    utoa(pgmajfault_buf, f->mem.stat.pgmajfault) + 2;
+
+            char *stattext = buf;
+            char *stattextp = stattext;
+            memset(stattext, '\0', stattext_size);
+
+            copy_and_move_buffer(&stattextp, "file_dirty - ", strlen("file_dirty - "));
+            copy_and_move_buffer(&stattextp, file_dirty_buf, strlen(file_dirty_buf));
+            copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
+
+            copy_and_move_buffer(&stattextp, "file_dirty_aggregated - ", strlen("file_dirty_aggregated - "));
+            copy_and_move_buffer(&stattextp, file_dirty_aggregated_buf, strlen(file_dirty_aggregated_buf));
+            copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
+
+            copy_and_move_buffer(&stattextp, "pgfault - ", strlen("pgfault - "));
+            copy_and_move_buffer(&stattextp, pgfault_buf, strlen(pgfault_buf));
+            copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
+
+            copy_and_move_buffer(&stattextp, "pgmajfault - ", strlen("pgmajfault - "));
+            copy_and_move_buffer(&stattextp, pgmajfault_buf, strlen(pgmajfault_buf));
             copy_and_move_buffer(&stattextp, "\n", strlen("\n"));
 
             r = copy_buffer_up_to_end(stattext + f->off, min(abs(stattextp - stattext - f->off), n), addr);

@@ -94,6 +94,13 @@ void proc_lock();
  */
 void proc_unlock();
 
+/**
+ * @brief Getter for a cgroup associated with this process
+ *
+ * @return Pointer to a cgroup this process is associated with
+ */
+struct cgroup *proc_get_cgroup(void);
+
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss
