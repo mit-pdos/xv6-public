@@ -1457,8 +1457,11 @@ sbrktest(void)
     printf(stdout, "sbrk test failed to grow big address space; enough phys mem?\n");
     exit();
   }
-  lastaddr = (char*) (BIG-1);
+
+  lastaddr = (char *)(BIG - 1);
+  #pragma GCC diagnostic ignored "-Wstringop-overflow"
   *lastaddr = 99;
+  #pragma GCC diagnostic pop
 
   // can one de-allocate?
   a = sbrk(0);
