@@ -36,6 +36,8 @@ addmountinternal(struct mount_list *mnt_list, uint dev, struct inode *mountpoint
   mnt_list->mnt.dev = dev;
   mnt_list->mnt.parent = parent;
 
+  cprintf("In addmountinternal: mnt.dev: %d\n", dev);
+
   // add to linked list
   mnt_list->next = getactivemounts();
   myproc()->nsproxy->mount_ns->active_mounts = mnt_list;
@@ -130,10 +132,43 @@ mount(struct inode *mountpoint, struct inode *device, struct mount *parent)
   }
 
   mntdup(parent);
-
   addmountinternal(newmountentry, dev, mountpoint, parent);
   release(&myproc()->nsproxy->mount_ns->lock);
   return 0;
+}
+
+int
+objfs_mount(struct inode *mountpoint, struct inode *device, struct mount *parent) {
+    struct mount_list *newmountentry = allocmntlist();
+    struct mount *newmount = &newmountentry->mnt;
+
+    int dev = getobjdevice();
+    if (dev < 0) {
+        newmount->ref = 0;
+        cprintf("failed to create device.\n");
+        return -1;
+    }
+
+    acquire(&myproc()->nsproxy->mount_ns->lock);
+    struct mount_list *current = getactivemounts();
+    while (current != 0) {
+        if (current->mnt.parent == parent && current->mnt.mountpoint == mountpoint) {
+            // error - mount already exists.
+            release(&myproc()->nsproxy->mount_ns->lock);
+            // TODO: need to make it work well on objfs
+            deviceput(dev);
+            newmount->ref = 0;
+            cprintf("mount already exists at that point.\n");
+            return -1;
+        }
+        current = current->next;
+    }
+
+    mntdup(parent);
+
+    addmountinternal(newmountentry, dev, mountpoint, parent);
+    release(&myproc()->nsproxy->mount_ns->lock);
+    return 0;
 }
 
 int

@@ -21,6 +21,7 @@
 #include "buf.h"
 #include "file.h"
 #include "mount.h"
+#include "device.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);

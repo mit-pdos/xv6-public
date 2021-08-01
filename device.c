@@ -5,9 +5,12 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "device.h"
+#include "obj_fs.h"
+#include "obj_disk.h"
 
 #define NLOOPDEVS (10)
 #define NIDEDEVS (2)
+#define NOBJDEVS (2)
 
 struct device {
   struct superblock sb;
@@ -15,16 +18,36 @@ struct device {
   struct inode *ip;
 };
 
+struct obj_device {
+    struct objsuperblock sb;
+    int ref;
+};
+
 struct {
   struct spinlock lock; // protects loopdevs
   struct device loopdevs[NLOOPDEVS];
   struct superblock idesb[NIDEDEVS];
+  struct obj_device objdev[NOBJDEVS];
 } dev_holder;
 
 void
 devinit(void)
 {
   initlock(&dev_holder.lock, "dev_list");
+}
+
+void
+objdevinit(void)
+{
+    memcpy(&dev_holder.objdev[0].sb , memory_storage, sizeof(dev_holder.objdev[0].sb));
+}
+
+int
+getobjdevice()
+{
+    objdevinit();
+    // TODO: This is a hard coded device number for obj device
+    return OBJ_TO_DEV(0);
 }
 
 int
@@ -34,7 +57,7 @@ getorcreatedevice(struct inode *ip)
   int emptydevice = -1;
   for (int i = 0; i < NLOOPDEVS; i++) {
     if (dev_holder.loopdevs[i].ref == 0 && emptydevice == -1) {
-      emptydevice = i;    
+      emptydevice = i;
     } else if (dev_holder.loopdevs[i].ip == ip) {
       dev_holder.loopdevs[i].ref++;
       release(&dev_holder.lock);
@@ -81,6 +104,11 @@ deviceput(uint dev)
     }
     dev_holder.loopdevs[dev].ref--;
     release(&dev_holder.lock);
+  } else if (IS_OBJ_DEVICE(dev)) {
+      dev = DEV_TO_OBJ_DEVICE(dev);
+      acquire(&dev_holder.lock);
+      // TODO: Add functional for obj device
+      release(&dev_holder.lock);
   }
 }
 
@@ -111,6 +139,13 @@ printdevices(void)
       cprintf("Device %d backed by inode %x with ref %d\n", i, dev_holder.loopdevs[i].ip, dev_holder.loopdevs[i].ref);
     }
   }
+
+  for (int i = 0; i < NOBJDEVS; i++) {
+      // TODO: add ref count to OBJDEV.
+//      if (dev_holder.objdev[i].ref != 0) {
+          cprintf("Device %d with storage_device_size of superblock %d\n", i, dev_holder.objdev[i].sb.storage_device_size);
+//      }
+  }
   release(&dev_holder.lock);
 }
 
@@ -135,6 +170,21 @@ getsuperblock(uint dev)
   } else {
     panic("could not find superblock for device");
   }
+}
+
+// TODO: not useful for now, maybe to remove it later if not needed
+struct objsuperblock*
+getobjsuperblock(uint dev)
+{
+    if (IS_OBJ_DEVICE(dev)) {
+        uint objdev = DEV_TO_OBJ_DEVICE(dev);
+        if (objdev >= NOBJDEVS) {
+            panic("could not find superblock for device: device number to high");
+        }
+        return &dev_holder.objdev[objdev].sb;
+    } else {
+        panic("could not find superblock for device - not an obj device");
+    }
 }
 
 int

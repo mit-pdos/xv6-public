@@ -8,6 +8,8 @@ int main(int argc, const char * const argv[])
     const char * path = 0;
     int index = 0;
 
+    printmounts();
+    printdevices();
     if ( (strcmp(argv[1],"internal_fs_a") == 0) ||
          (strcmp(argv[1],"internal_fs_b") == 0) ||
          (strcmp(argv[1],"internal_fs_c") == 0) )

@@ -1,5 +1,5 @@
-#include <string.h>
-
+//#include <string.h>
+#include "string.h"
 #include "obj_cache.h"
 #include "obj_disk.h"
 

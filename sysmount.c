@@ -26,11 +26,41 @@ sys_mount(void)
     char *mount_path;
     struct mount *parent;
 
-    if (argstr(2, &fstype) < 0){
+    cprintf("SYS MOUNTTT\n");
+
+    if (argstr(2, &fstype) < 0) {
         cprintf("badargs\n");
         return -1;
     }
-    if(strcmp(fstype, "cgroup") == 0){
+    if(strcmp(fstype, "objfs") == 0) {
+        cprintf("MOUNT OBJ FS\n");
+        struct inode *mount_dir;
+        if (argstr(1, &mount_path) < 0) {
+            cprintf("badargs\n");
+            return -1;
+        }
+
+        begin_op();
+
+        if ((mount_dir = nameimount(mount_path, &parent)) == 0) {
+            end_op();
+            return -1;
+        }
+
+        ilock(mount_dir);
+
+        int res = objfs_mount(mount_dir, 0, parent);
+        iunlock(mount_dir);
+        if (res != 0) {
+            iput(mount_dir);
+        }
+
+        mntput(parent);
+        end_op();
+
+        return res;
+
+    } else if(strcmp(fstype, "cgroup") == 0) {
         struct inode *mount_dir;
         if (argstr(0, &device_path) < 0 || argstr(1, &mount_path) < 0 || device_path != 0) {
             cprintf("badargs\n");
@@ -111,7 +141,6 @@ sys_mount(void)
 
         return res;
     }
-
 }
 
 int

@@ -5,12 +5,13 @@
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
+#include "obj_disk.h"
 
 // #include "obj_disk.h"
 // #include "obj_cache.h"
 // #include "obj_log.h"
 
-// static void objfsinit(void);
+static void objfsinit(void);
 static void startothers(void);
 static void mpmain(void)  __attribute__((noreturn));
 extern pde_t *kpgdir;
@@ -44,7 +45,7 @@ main(void)
   binit();         // buffer cache
   fileinit();      // file table
   ideinit();       // disk
-  // objfsinit();     // objfs disk
+  objfsinit();     // objfs disk
   startothers();   // start other processors
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
   cginit();        // cgroup table, must come before userinit()
@@ -54,13 +55,13 @@ main(void)
   mpmain();        // finish this processor's setup
 }
 
-// static void
-// objfsinit(void)
-// {
-//   init_obj_fs();
+ static void
+ objfsinit(void)
+ {
+   init_obj_fs();
 //   init_objects_cache();
 //   finish_log_transactions();
-// }
+ }
 
 // Other CPUs jump here from entryother.S.
 static void

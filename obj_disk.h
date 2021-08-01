@@ -1,14 +1,15 @@
 #pragma once
 
+#include "obj_fs.h"
+#include "types.h"
+
 /**
  * `obj_disk` specify the most lower level in the object file system.
  * This layer is responsible to communicate with the object storage device.
  *
  * Object file systems use a table containning the objects meta data. The
  * table has the following structure:
- * | object id | disk offset | object size | is entry occupied |
- * |-----------|-------------|-------------|-------------------|
- * |           |             |             |                   |
+ * |
  *
  * In our implementation we assume the table is software implemented. Some
  * hardware devices can implement it in the hardware level to improve
@@ -81,15 +82,10 @@
 #define NO_DISK_SPACE_FOUND 5
 
 
-// Other parameters:
-#define MAX_OBJECT_NAME_LENGTH 20
-#define SUPER_BLOCK_ID "\x01"
-#define OBJECT_TABLE_ID "\x02"
-
-
 // In the future, this can be set the size of SHA256 digest.
 #define OBJECT_ID_LENGTH MAX_OBJECT_NAME_LENGTH
 
+char memory_storage[STORAGE_DEVICE_SIZE];
 
 typedef struct {
     /*
@@ -101,17 +97,6 @@ typedef struct {
     uint size;
     int occupied;
 } ObjectsTableEntry;
-
-
-typedef struct {
-    uint storage_device_size;
-    uint objects_table_offset;
-    uint objects_table_size;
-
-    // variables to trace the file-system state
-    uint bytes_occupied;
-    uint occupied_objects;
-} SuperBlock;
 
 
 int obj_id_cmp(const char* p, const char* q);
