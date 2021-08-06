@@ -91,7 +91,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->priority = 10; //Default Priority of a process is set to be 10 *our code
+  p->priority = 2; //Default Priority of a process is set to be 10 *our code
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -389,7 +389,7 @@ void scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  int highestPriority;
+  int highestPriority = 0;
   for (;;)
   {
     // Enable interrupts on this processor.
@@ -397,26 +397,35 @@ void scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    highestPriority = p->priority;
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
-      if (p->priority < highestPriority)
-        highestPriority = p->priority;
-      if (p->state != RUNNABLE || p->priority != highestPriority)
+      if (p->state != RUNNABLE)
         continue;
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      p->priority++; //*process is running, so incremeent priority to age it.
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+      if (p->priority > highestPriority)
+        highestPriority = p->priority;
+    }
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if (p->state != RUNNABLE)
+        continue;
+      if (p->priority == highestPriority)
+      {
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        //p->priority++; //*process is running, so incremeent priority to age it.
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      else
+        p->priority++;
     }
     release(&ptable.lock);
   }
@@ -625,12 +634,15 @@ int cps()
 int chpr(int pid, int priority)
 {
   struct proc *p;
+  //struct proc *myP = myproc();
   acquire(&ptable.lock);
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
     if (p->pid == pid)
     {
+      cprintf("Current priority is %d, changing to %d", p->priority, priority);
       p->priority = priority;
+      cprintf("Current priority is now %d", p->priority);
       break;
     }
   }
