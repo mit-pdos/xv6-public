@@ -189,7 +189,7 @@ int ioctl_wrong_device_test() {
   int tty_fd;
   char * tty_name = "tty_test";
 
-  if(mknod(tty_name,5,5) < 0){
+  if(mknod(tty_name,1,5) < 0){
     printf(stderr, "failed to create test device %s\n",tty_name);
     return -1;
   }

@@ -28,6 +28,11 @@ typedef struct device_lock {
   int locking;
 } device_lock;
 
+typedef struct tty {
+  int flags;
+} tty;
+tty tty_table[MAX_TTY];
+
 static device_lock cons;
 
 static void consputc(int);
@@ -287,7 +292,7 @@ consoleread(struct inode *ip, char *dst, int n)
 int
 ttyread(struct inode *ip, char *dst, int n)
 {
-  if(devsw[ip->major].flags & DEV_CONNECT){
+  if(tty_table[ip->minor].flags & DEV_CONNECT){
     return consoleread(ip,dst,n);
   }
   return -1;
@@ -311,7 +316,7 @@ consolewrite(struct inode *ip, char *buf, int n)
 int
 ttywrite(struct inode *ip, char *buf, int n)
 {
-  if(devsw[ip->major].flags & DEV_CONNECT){
+  if(tty_table[ip->minor].flags & DEV_CONNECT){
     return consolewrite(ip,buf,n);
   }
   //2DO: should return -1 when write to tty fails - filewrite panics.
@@ -323,9 +328,9 @@ consoleinit(void)
 {
   initlock(&cons.lock, "console");
 
-  devsw[CONSOLE].write = ttywrite;
-  devsw[CONSOLE].read = ttyread;
-  devsw[CONSOLE].flags = DEV_CONNECT;
+  devsw[CONSOLE_MAJOR].write = ttywrite;
+  devsw[CONSOLE_MAJOR].read = ttyread;
+  tty_table[CONSOLE_MINOR].flags = DEV_CONNECT;
 
   cons.locking = 1;
 
@@ -335,15 +340,39 @@ consoleinit(void)
 void
 ttyinit(void)
 {
-  int i;
-  for(i = CONSOLE+1; i <= CONSOLE+NTTY; i++){
-     devsw[i].write = ttywrite;
-     devsw[i].read = ttyread;
-     devsw[i].flags = 0;
-     ioapicenable(IRQ_KBD, 0);
+  // we create tty devices after the console
+  // therefor the tty's minor will be after the console's
+  for(int i = CONSOLE_MINOR+1; i < MAX_TTY; i++){
+     tty_table[i].flags = 0;
   }
-
 }
 
+void tty_disconnect(struct inode *ip) {
+  tty_table[ip->minor].flags &=  ~(DEV_CONNECT);
+  tty_table[CONSOLE_MINOR].flags |=  DEV_CONNECT;
+  consoleclear();
+  cprintf("Console connected\n");
+}
 
+void tty_connect(struct inode *ip) {
+  tty_table[ip->minor].flags |= DEV_CONNECT;
+  for(int i = CONSOLE_MINOR; i < MAX_TTY; i++){
+    if(ip->minor != i){
+      tty_table[i].flags &= ~(DEV_CONNECT);
+  }
+ }
+ consoleclear();
+ cprintf("\ntty%d connected\n",ip->minor-(CONSOLE_MINOR+1));
+}
 
+void tty_attach(struct inode *ip) {
+  tty_table[ip->minor].flags |= DEV_ATTACH;
+}
+
+void tty_detach(struct inode *ip) {
+  tty_table[ip->minor].flags &= ~(DEV_ATTACH);
+}
+
+int tty_gets(struct inode *ip, int command) {
+  return (tty_table[ip->minor].flags & command ? 1 : 0);
+}

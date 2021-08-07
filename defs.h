@@ -25,10 +25,15 @@ void            invalidateblocks(uint);
 // console.c
 void            consoleclear(void);
 void            consoleinit(void);
-void		ttyinit(void);
+void		    ttyinit(void);
 void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
+void            tty_disconnect(struct inode *ip);
+void            tty_connect(struct inode *ip);
+void            tty_attach(struct inode *ip);
+void            tty_detach(struct inode *ip);
+int             tty_gets(struct inode *ip, int command);
 
 // device.c
 int             getorcreatedevice(struct inode*);

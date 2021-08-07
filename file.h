@@ -103,11 +103,11 @@ struct inode {
 struct devsw {
   int (*read)(struct inode*, char*, int);
   int (*write)(struct inode*, char*, int);
-  int flags;
 };
 
 extern struct devsw devsw[];
 
-#define CONSOLE 1
+#define CONSOLE_MAJOR 1
+#define CONSOLE_MINOR 0
 
 #endif

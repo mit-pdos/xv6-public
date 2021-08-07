@@ -157,7 +157,8 @@ static int find_tty(char* tty_name){
         int tty_fd;
         char tty[] = "/ttyX";
 
-        for(i=0; i < NTTY; i++){
+        // Not including the console tty
+        for(i=0; i < (MAX_TTY - 1); i++){
             tty[4] = '0' + i;
             if((tty_fd = open(tty, O_RDWR)) < 0){
                 printf(stderr, "cannot open %s fd\n", tty);
@@ -181,7 +182,8 @@ static int init_pouch_conf(){
     int ttyc_fd;
     char ttyc[] = "tty.cX";
 
-    for(i=0; i < NTTY; i++){
+    // Not including the console tty
+    for(i=0; i < (MAX_TTY - 1); i++){
         ttyc[5] = '0' + i;
         if((ttyc_fd = open(ttyc, O_CREATE|O_RDWR)) < 0){
             printf(stderr, "cannot open %s fd\n", ttyc);
@@ -246,7 +248,8 @@ static int print_clist(){
     int id = 1;
     printf(stderr,"     Pouch containers:\n");
 
-    for(i=0; i < NTTY; i++){
+    // Not including the console tty
+    for(i=0; i < (MAX_TTY - 1); i++){
         tty[4] = '0' + i;
         if((tty_fd = open(tty, O_RDWR)) < 0){
             printf(stderr, "cannot open %s fd\n", tty);
@@ -283,7 +286,8 @@ static int get_connected_cname(char * cname){
     char tty[] = "/ttyX";
     char buf[CNTNAMESIZE] = {0};
 
-    for(i=0; i < NTTY; i++){
+    // Not including the console tty
+    for(i=0; i < (MAX_TTY - 1); i++){
         tty[4] = '0' + i;
         if((tty_fd = open(tty, O_RDWR)) < 0){
             printf(stderr, "cannot open %s fd\n", tty);

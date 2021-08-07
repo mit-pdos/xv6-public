@@ -136,7 +136,7 @@ sys_ioctl(void)
   int request = -1;
   int command;
 
-  int i,ret;
+  int ret;
   struct file *f;
   struct inode* ip;
 
@@ -152,7 +152,7 @@ sys_ioctl(void)
 
   ip = f->ip;
 
-  if( ip->major == CONSOLE ){
+  if(ip->minor == CONSOLE_MINOR){
     return -1;
   }
 
@@ -163,7 +163,12 @@ sys_ioctl(void)
       return -1;
   }
 
-  if( ip->major > CONSOLE  + NTTY){
+  if(ip->major >= NDEV){
+     iunlockput(ip);
+     return -1;
+  }
+
+  if(ip->minor >= MAX_TTY){
      iunlockput(ip);
      return -1;
   }
@@ -183,33 +188,23 @@ sys_ioctl(void)
 
   case TTYSETS:
     if((command & DEV_DISCONNECT)){
-        devsw[ip->major].flags &=  ~(DEV_CONNECT);
-        devsw[CONSOLE].flags |=  DEV_CONNECT;
-        consoleclear();
-        cprintf("Console connected\n");
+      tty_disconnect(ip);
      }
 
      if((command & DEV_CONNECT)){
-       devsw[ip->major].flags |= DEV_CONNECT;
-       for(i = CONSOLE; i < CONSOLE + 1 + NTTY; i++){
-           if(ip->major != i){
-              devsw[i].flags &= ~(DEV_CONNECT);
-           }
-       }
-       consoleclear();
-       cprintf("\ntty%d connected\n",ip->major-(CONSOLE+1));
+       tty_connect(ip);
      }
 
      if((command & DEV_ATTACH)){
-        devsw[ip->major].flags |= DEV_ATTACH;
+       tty_attach(ip);
      }
 
      if((command & DEV_DETACH)){
-        devsw[ip->major].flags &= ~(DEV_ATTACH);
+        tty_detach(ip);
        }
     break;
   case TTYGETS:
-    ret = (devsw[ip->major].flags & command ? 1 : 0);
+    ret = tty_gets(ip, command);
     iunlock(ip);
     return ret;
   default:

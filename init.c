@@ -13,15 +13,15 @@ main(void)
   int pid, wpid;
 
   if(open("console", O_RDWR) < 0){
-    mknod("console", 1, 1);
+    mknod("console", 1, 0);
     open("console", O_RDWR);
   }
   dup(0);  // stdout
   dup(0);  // stderr
 
-  mknod("tty0", 2, 2);
-  mknod("tty1", 3, 3);
-  mknod("tty2", 4, 4);
+  mknod("tty0", 1, 1);
+  mknod("tty1", 1, 2);
+  mknod("tty2", 1, 3);
 
   for(;;){
     printf(1, "init: starting sh\n");
