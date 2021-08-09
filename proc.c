@@ -397,7 +397,7 @@ void scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) //* ourcode
     {
       if (p->state != RUNNABLE)
         continue;
@@ -411,7 +411,7 @@ void scheduler(void)
         continue;
       if (p->priority == highestPriority)
       {
-        p->priority++; //*process is running, so increment priority to age it.
+        p->priority++; // *process is running, so increment priority to age it.
         // Switch to chosen process.  It is the process's job
         // to release ptable.lock and then reacquire it
         // before jumping back to us.
@@ -426,7 +426,7 @@ void scheduler(void)
         c->proc = 0;
       }
       else
-        p->priority--; //we wait, and increase this processes's priority
+        p->priority--; // *we wait, and increase this processes's priority
     }
     release(&ptable.lock);
   }

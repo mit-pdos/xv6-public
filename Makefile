@@ -185,11 +185,7 @@ UPROGS=\
 	_testExe\
 	_waitpidtest\
 	_cpstest\
-	_chprtest\
-	_dpro\
-    _pp1\
 	_pp2\
-	_pp3\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
