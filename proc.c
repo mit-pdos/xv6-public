@@ -91,7 +91,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->priority = 2; //Default Priority of a process is set to be 10 *our code
+  p->priority = 10; //*Default Priority of a process is set to be 10
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -282,7 +282,7 @@ int wait(int *status)
   int havekids, pid;
   struct proc *curproc = myproc();
   curproc->status = *status;
-  curproc->priority--; // *if the current proc is waiting, decrement priority to de-age it.
+  //curproc->priority--; // *if the current proc is waiting, decrement priority to de-age it.
   acquire(&ptable.lock);
   for (;;)
   {
@@ -333,7 +333,7 @@ int waitpid(int myPid, int *status, int options)
   int havekids, pid;
   struct proc *curproc = myproc();
   curproc->status = *status;
-  curproc->priority--; //* see wait
+  //curproc->priority--; //* see wait
   acquire(&ptable.lock);
   for (;;)
   {
@@ -389,7 +389,7 @@ void scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  int highestPriority = 0;
+  int highestPriority = 20;
   for (;;)
   {
     // Enable interrupts on this processor.
@@ -401,22 +401,23 @@ void scheduler(void)
     {
       if (p->state != RUNNABLE)
         continue;
-      if (p->priority > highestPriority)
+      if (p->priority <= highestPriority)
         highestPriority = p->priority;
     }
+
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if (p->state != RUNNABLE)
         continue;
       if (p->priority == highestPriority)
       {
+        p->priority++; //*process is running, so increment priority to age it.
         // Switch to chosen process.  It is the process's job
         // to release ptable.lock and then reacquire it
         // before jumping back to us.
         c->proc = p;
         switchuvm(p);
         p->state = RUNNING;
-        //p->priority++; //*process is running, so incremeent priority to age it.
         swtch(&(c->scheduler), p->context);
         switchkvm();
 
@@ -425,7 +426,7 @@ void scheduler(void)
         c->proc = 0;
       }
       else
-        p->priority++;
+        p->priority--; //we wait, and increase this processes's priority
     }
     release(&ptable.lock);
   }
@@ -640,12 +641,13 @@ int chpr(int pid, int priority)
   {
     if (p->pid == pid)
     {
-      cprintf("Current priority is %d, changing to %d", p->priority, priority);
+      //cprintf("Current priority is %d, changing to %d\n", p->priority, priority);
       p->priority = priority;
-      cprintf("Current priority is now %d", p->priority);
+      //cprintf("Current priority is now %d\n", p->priority);
       break;
     }
   }
   release(&ptable.lock);
+  yield();
   return pid;
 }
