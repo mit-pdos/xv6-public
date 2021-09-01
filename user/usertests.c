@@ -2482,14 +2482,6 @@ void argptest(char *s)
   close(fd);
 }
 
-unsigned long randstate = 1;
-unsigned int
-rand()
-{
-  randstate = randstate * 1664525 + 1013904223;
-  return randstate;
-}
-
 // check that there's an invalid page beneath
 // the user stack, to catch stack overflow.
 void
