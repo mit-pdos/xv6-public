@@ -18,16 +18,16 @@ Takahiro Aoyagi, Silas Boyd-Wickizer, Anton Burtsev, Ian Chen, Dan
 Cross, Cody Cutler, Mike CAT, Tej Chajed, Asami Doi, eyalz800, Nelson
 Elhage, Saar Ettinger, Alice Ferrazzi, Nathaniel Filardo, flespark,
 Peter Froehlich, Yakir Goaron,Shivam Handa, Matt Harvey, Bryan Henry,
-jaichenhengjie, Jim Huang, Alexander Kapshuk, Anders Kaseorg, kehao95,
-Wolfgang Keller, Jungwoo Kim, Jonathan Kimmitt, Eddie Kohler, Vadim
-Kolontsov , Austin Liew, l0stman, Pavan Maddamsetti, Imbar Marinescu,
-Yandong Mao, , Matan Shabtay, Hitoshi Mitake, Carmi Merimovich, Mark
-Morrissey, mtasm, Joel Nider, OptimisticSide, Greg Price, Jude Rich,
-Ayan Shafqat, Eldar Sehayek, Yongming Shen, Fumiya Shigemitsu, Cam
-Tenny, tyfkda, Warren Toomey, Stephen Tu, Rafael Ubal, Amane Uehara,
-Pablo Ventura, Xi Wang, Keiichi Watanabe, Nicolas Wolovick, wxdao,
-Grant Wu, Jindong Zhang, Icenowy Zheng, ZhUyU1997, and Zou Chang Wei.
-
+jaichenhengjie, Jim Huang, Matúš Jókay, Alexander Kapshuk, Anders
+Kaseorg, kehao95, Wolfgang Keller, Jungwoo Kim, Jonathan Kimmitt,
+Eddie Kohler, Vadim Kolontsov , Austin Liew, l0stman, Pavan
+Maddamsetti, Imbar Marinescu, Yandong Mao, , Matan Shabtay, Hitoshi
+Mitake, Carmi Merimovich, Mark Morrissey, mtasm, Joel Nider,
+OptimisticSide, Greg Price, Jude Rich, Ayan Shafqat, Eldar Sehayek,
+Yongming Shen, Fumiya Shigemitsu, Cam Tenny, tyfkda, Warren Toomey,
+Stephen Tu, Rafael Ubal, Amane Uehara, Pablo Ventura, Xi Wang, Keiichi
+Watanabe, Nicolas Wolovick, wxdao, Grant Wu, Jindong Zhang, Icenowy
+Zheng, ZhUyU1997, and Zou Chang Wei.
 
 The code in the files that constitute xv6 is
 Copyright 2006-2020 Frans Kaashoek, Robert Morris, and Russ Cox.
