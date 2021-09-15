@@ -127,6 +127,10 @@ xv6.pdf: $(PRINT)
 	./runoff
 	ls -l xv6.pdf
 
+xv6_marked.pdf: xv6.pdf
+	gs -o xv6_marked.pdf -sDEVICE=pdfwrite -dPDFSETTINGS=/prepress xv6.pdf pdfmark
+
+
 print: xv6.pdf
 
 # run in emulators
