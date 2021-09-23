@@ -67,6 +67,13 @@ kernel: $(KERNOBJS) entry.o entryother initcode kernel.ld
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' | sort > kernel.sym
 
+depend: .depend
+
+.depend: $(wildcard *.c)
+	rm -f "$@"
+	$(CC) -MM $^ > "$@"
+
+include .depend
 # kernelmemfs is a copy of kernel that maintains the
 # disk image in memory instead of writing to a disk.
 # This is not so useful for testing persistent storage or
