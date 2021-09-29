@@ -30,7 +30,7 @@
 [ /Title (sched)  /Page 36 /View [/Fit] /OUT pdfmark
 [ /Title (swtch.S)  /Page 39 /View [/Fit] /OUT pdfmark
 
-[ /Title (Page Tables) /Count 10 /OUT pdfmark
+[ /Title (Page Tables) /Count 7 /OUT pdfmark
 [ /Title (setupkvm)  /Page 28 /View [/Fit] /OUT pdfmark
 [ /Title (kvmalloc)  /Page 28 /View [/Fit] /OUT pdfmark
 [ /Title (walkpgdir)  /Page 28 /View [/Fit] /OUT pdfmark
