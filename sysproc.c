@@ -21,9 +21,9 @@ sys_exit(void)
 }
 
 int
-sys_wait(void)
+sys_wait(NULL)
 {
-  return wait();
+  return wait(NULL);
 }
 
 int
@@ -88,4 +88,12 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+//9-30 lab
+int
+sys_greeting(void)
+{
+  greeting();
+  return 0;
 }

@@ -7,6 +7,8 @@
 
 #define N  1000
 
+#define NULL ((void*)0)
+
 void
 printf(int fd, const char *s, ...)
 {
@@ -34,13 +36,13 @@ forktest(void)
   }
 
   for(; n > 0; n--){
-    if(wait() < 0){
+    if(wait(NULL) < 0){
       printf(1, "wait stopped early\n");
       exit();
     }
   }
 
-  if(wait() != -1){
+  if(wait(NULL) != -1){
     printf(1, "wait got too many\n");
     exit();
   }
