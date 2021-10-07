@@ -36,13 +36,13 @@ forktest(void)
   }
 
   for(; n > 0; n--){
-    if(wait(NULL) < 0){
+    if(wait((void*)0) < 0){
       printf(1, "wait stopped early\n");
       exit();
     }
   }
 
-  if(wait(NULL) != -1){
+  if(wait((void*)0) != -1){
     printf(1, "wait got too many\n");
     exit();
   }
