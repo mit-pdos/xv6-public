@@ -532,3 +532,8 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+void greeting() {
+  cprintf("Hello Lab Section 022!\n");
+}
