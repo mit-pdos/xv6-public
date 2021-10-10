@@ -95,3 +95,9 @@ sys_greeting(void) {
   greeting();
   return 0;
 }
+
+int
+sys_exitStatus(int status) { //TODO: Yeah not too sure about this either
+  exitStatus(status);
+  return 0;
+}

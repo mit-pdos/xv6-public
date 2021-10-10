@@ -24,6 +24,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 void greeting(void);
+int exitStatus(int); //TODO: this may also cause an error but I believe it to be correct
 
 // ulib.c
 int stat(const char*, struct stat*);
