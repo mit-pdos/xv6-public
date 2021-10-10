@@ -130,7 +130,6 @@ static int (*syscalls[])(void) = {
 [SYS_greeting] sys_greeting,
 };
 
-//TODO nothinhg here is working like it should. testing
 
 void
 syscall(void)
