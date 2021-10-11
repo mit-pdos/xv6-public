@@ -104,6 +104,8 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_greeting(void);
+extern int sys_exitStatus(void); //TODO: Not sure if this needs to have an int parameter
+extern int sys_waitStat(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -128,7 +130,8 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_greeting] sys_greeting,
-[SYS_exitStatus] sys_exitStatus
+[SYS_exitStatus] sys_exitStatus,
+[SYS_waitStat] sys_waitStat,
 };
 
 

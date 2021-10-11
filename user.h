@@ -25,6 +25,7 @@ int sleep(int);
 int uptime(void);
 void greeting(void);
 int exitStatus(int); //TODO: this may also cause an error but I believe it to be correct
+int waitStat(int*);
 
 // ulib.c
 int stat(const char*, struct stat*);

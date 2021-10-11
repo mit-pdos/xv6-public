@@ -22,3 +22,4 @@
 #define SYS_close  21
 #define SYS_greeting 22
 #define SYS_exitStatus 23
+#define SYS_waitStat 24

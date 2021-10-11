@@ -183,6 +183,7 @@ UPROGS=\
 	_zombie\
 	_greet\
 	_exitStatus\
+	_lab1\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

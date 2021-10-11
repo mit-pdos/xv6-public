@@ -7,6 +7,8 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#define NULL 0
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -231,6 +233,7 @@ exit(void)
   struct proc *p;
   int fd;
 
+
   if(curproc == initproc)
     panic("init exiting");
 
@@ -266,6 +269,52 @@ exit(void)
   sched();
   panic("zombie exit");
 }
+
+//Store exit status
+void
+exitStatus(int status)
+{
+  struct proc *curproc = myproc();
+  struct proc *p;
+  int fd;
+  curproc->status = status;
+
+  if(curproc == initproc)
+    panic("init exiting");
+
+  // Close all open files.
+  for(fd = 0; fd < NOFILE; fd++){
+    if(curproc->ofile[fd]){
+      fileclose(curproc->ofile[fd]);
+      curproc->ofile[fd] = 0;
+    }
+  }
+
+  begin_op();
+  iput(curproc->cwd);
+  end_op();
+  curproc->cwd = 0;
+
+  acquire(&ptable.lock);
+
+  // Parent might be sleeping in wait().
+  wakeup1(curproc->parent);
+
+  // Pass abandoned children to init.
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->parent == curproc){
+      p->parent = initproc;
+      if(p->state == ZOMBIE)
+        wakeup1(initproc);
+    }
+  }
+
+  // Jump into the scheduler, never to return.
+  curproc->state = ZOMBIE;
+  sched();
+  panic("zombie exit");
+}
+
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
@@ -310,6 +359,54 @@ wait(void)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+
+//Update the wait() call for Lab1 exercise 2
+int
+waitStat(int *status)
+{
+  struct proc *p;
+  int havekids, pid;
+  struct proc *curproc = myproc();
+  
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != curproc)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        release(&ptable.lock);
+        //TODO: Ask if a status of 0 should count as NULL or if we should keep it
+        if (p->status != NULL || p->status == 0) { //Only update needed for the new wait() function
+          *status = p->status;
+        }
+        return pid;
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
+}
+
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.

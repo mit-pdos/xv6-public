@@ -4,6 +4,7 @@
 
 int main (int agrc, char * argv[]) {
     greeting();
-    exit();
-    //return 0; //I think it should not reach here
+    exitStatus(0);
+    
+    return 0; //I believe it should not reach here
 }
