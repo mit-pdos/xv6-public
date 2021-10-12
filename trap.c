@@ -36,6 +36,16 @@ idtinit(void)
 void
 trap(struct trapframe *tf)
 {
+  
+  if (myproc() != 0){
+    if(tf->trapno < 20){
+      myproc()->traps[tf->trapno]++;
+    }
+    else if(tf->trapno == 32 || tf->trapno == 500){
+      ++myproc()->traps[20];
+    }
+  }
+  
   if(tf->trapno == T_SYSCALL){
     if(myproc()->killed)
       exit();
@@ -109,4 +119,55 @@ trap(struct trapframe *tf)
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
+}
+
+static const char *syscallname[] = {
+    "fork", "exit", "wait", "pipe", "read", "kill", "exec", "fstat", "chdir", "dup", "getpid", "sbrk", "sleep", "uptime", "open", "write", "mknod", "unlink", "link", "mkdir", "close", "countTraps"};
+
+static const char *trapnames[] = {
+    "Divide error",
+    "Debug exception",
+    "Non-maskable interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Bounds check",
+    "Illegal opcode",
+    "Device not available",
+    "Double fault",
+    "Reserved (not used since 486)",
+    "Invalid task switch segment",
+    "Segment not present",
+    "Stack exception",
+    "General protection fault",
+    "Page fault",
+    "Reserved",
+    "Floating point error",
+    "Aligment check",
+    "Machine check",
+    "SIMD floating point error",
+    "General Interrupt"
+};
+
+int sys_countTraps(void) {
+    int s, i, c = 0;
+
+    cprintf("\nsys_countTraps\n\n");
+
+    for (i = 1; i < NELEM(myproc()->syscalls); i++) {
+        s = myproc()->syscalls[i];
+        if (s != 0) {
+            cprintf("Num of %s: %d\n", syscallname[i-1], s);
+            c += s;
+        }
+    }
+    cprintf("\n");
+    for (i = 0; i < NELEM(myproc()->traps); i++) {
+        s = myproc()->traps[i];
+        if (s != 0) {
+            cprintf("Num of %s: %d\n", trapnames[i], s);
+        }
+    }
+
+    cprintf("\nTotal Num of Syscalls:%d\n", c);
+    return c;
 }
