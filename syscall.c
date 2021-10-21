@@ -86,7 +86,7 @@ extern int sys_chdir(void);
 extern int sys_close(void);
 extern int sys_dup(void);
 extern int sys_exec(void);
-extern int sys_exit(void);
+extern int sys_exit(int);
 extern int sys_fork(void);
 extern int sys_fstat(void);
 extern int sys_getpid(void);
@@ -100,7 +100,7 @@ extern int sys_read(void);
 extern int sys_sbrk(void);
 extern int sys_sleep(void);
 extern int sys_unlink(void);
-extern int sys_wait(void);
+extern int sys_wait(int*);
 extern int sys_write(void);
 extern int sys_uptime(void);
 
