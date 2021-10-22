@@ -315,18 +315,10 @@ wait(int* status)
   }
 }
 
-<<<<<<< HEAD
-// System call must act like wait system call
-// System call must wait for a process with a pid that equals to one provided by the pid argument
-// Return value must be the process id of the process that was terminated or -1 if this process
-// does not exist or if an unexpected error occurred.
-
-=======
 // System call must act like wait system call with the following additional properties:
 // System call must wait for a process with a pid that equals to one providied by the pid argument.
 // Return value must be the process id of the process that was terminated or -1 if this process
 // does not exist or if an unexpected error occurred.
->>>>>>> 246372422210adc5f3e06ae0afca8c69c73135ec
 int
 waitpid(int pid, int *status, int options)
 {
@@ -337,29 +329,6 @@ waitpid(int pid, int *status, int options)
 
   acquire(&ptable.lock);
   for(;;){
-<<<<<<< HEAD
-    if(p->pid != pid){
-      continue;
-    }
-    havekids = 1;
-    if(p->state == ZOMBIE){
-      pid = p->pid;
-      kfree(p->kstack);
-      p->kstack = 0;
-      freevm(p->pgdir);
-      p->pid = 0;
-      p->parent =0;
-      p->name[0]=0;
-      p->killed = 0;
-      p->state = UNUSED;
-      release(&ptable.lock);
-      if(status){
-        *status = p->status;
-      }
-      return pid;
-    }
-    
-=======
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->pid != pid){
@@ -374,7 +343,7 @@ waitpid(int pid, int *status, int options)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-        p->stats = UNUSED;
+        p->state = UNUSED;
         release(&ptable.lock);
         if(status){
           *status = p->status;
@@ -383,17 +352,12 @@ waitpid(int pid, int *status, int options)
       }
     }
 
->>>>>>> 246372422210adc5f3e06ae0afca8c69c73135ec
     if(!havekids || curproc->killed){
       release(&ptable.lock);
       return -1;
     }
 
-<<<<<<< HEAD
     if(options == WNOHANG){
-=======
-    if(options == WNOHYANG){
->>>>>>> 246372422210adc5f3e06ae0afca8c69c73135ec
       release(&ptable.lock);
       return 0;
     }
