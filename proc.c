@@ -225,11 +225,12 @@ fork(void)
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
 void
-exit(void)
+exit(int status)
 {
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
+  curproc->status = status;
 
   if(curproc == initproc)
     panic("init exiting");
@@ -270,7 +271,7 @@ exit(void)
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
-wait(void)
+wait(int* status)
 {
   struct proc *p;
   int havekids, pid;
@@ -297,6 +298,9 @@ wait(void)
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;
+
+        if (status)
+          *status = p->status;
       }
     }
 
@@ -311,11 +315,18 @@ wait(void)
   }
 }
 
+<<<<<<< HEAD
 // System call must act like wait system call
 // System call must wait for a process with a pid that equals to one provided by the pid argument
 // Return value must be the process id of the process that was terminated or -1 if this process
 // does not exist or if an unexpected error occurred.
 
+=======
+// System call must act like wait system call with the following additional properties:
+// System call must wait for a process with a pid that equals to one providied by the pid argument.
+// Return value must be the process id of the process that was terminated or -1 if this process
+// does not exist or if an unexpected error occurred.
+>>>>>>> 246372422210adc5f3e06ae0afca8c69c73135ec
 int
 waitpid(int pid, int *status, int options)
 {
@@ -326,6 +337,7 @@ waitpid(int pid, int *status, int options)
 
   acquire(&ptable.lock);
   for(;;){
+<<<<<<< HEAD
     if(p->pid != pid){
       continue;
     }
@@ -347,12 +359,41 @@ waitpid(int pid, int *status, int options)
       return pid;
     }
     
+=======
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->pid != pid){
+        continue;
+      }
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        pid = p->pid;
+        kfree(p->kstack);
+        freevm(p->pgdir);
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->stats = UNUSED;
+        release(&ptable.lock);
+        if(status){
+          *status = p->status;
+        }
+        return pid;
+      }
+    }
+
+>>>>>>> 246372422210adc5f3e06ae0afca8c69c73135ec
     if(!havekids || curproc->killed){
       release(&ptable.lock);
       return -1;
     }
 
+<<<<<<< HEAD
     if(options == WNOHANG){
+=======
+    if(options == WNOHYANG){
+>>>>>>> 246372422210adc5f3e06ae0afca8c69c73135ec
       release(&ptable.lock);
       return 0;
     }
