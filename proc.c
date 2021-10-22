@@ -321,7 +321,7 @@ waitpid(int pid, int *status, int options)
 {
   int WNOHANG = 1;
   struct proc *p;
-  int havkids;
+  int havekids;
   struct proc *curproc = myproc();
 
   acquire(&ptable.lock);
@@ -336,13 +336,13 @@ waitpid(int pid, int *status, int options)
       p->kstack = 0;
       freevm(p->pgdir);
       p->pid = 0;
-      p-> parent =0;
+      p->parent =0;
       p->name[0]=0;
       p->killed = 0;
       p->state = UNUSED;
       release(&ptable.lock);
       if(status){
-        *status=p->status;
+        *status = p->status;
       }
       return pid;
     }
