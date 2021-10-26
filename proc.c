@@ -6,6 +6,9 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "pstat.h"
+#include <stddef.h>
+
 
 struct {
   struct spinlock lock;
@@ -19,6 +22,58 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+
+int getpinfo(void){
+
+  struct pstat *proc_new;
+  argptr(0,(void*)&proc_new,sizeof(*proc_new));
+
+  if(proc_new == NULL)
+    return -1;
+
+  acquire(&ptable.lock);
+  struct proc* p;
+  for(p=ptable.proc;p != &(ptable.proc[NPROC]); p++)
+    {
+      const int index = p - ptable.proc;
+      if(p->state != UNUSED)
+        {
+	  proc_new->pid[index] = p->pid;
+	  proc_new->ticks[index] = p->ticks;
+	  proc_new->tickets[index] = p->tickets;
+	  proc_new->inuse[index] = p->inuse;
+        }
+    }
+  release(&ptable.lock);
+  return 0; 
+}
+
+int settickets( int num){
+  int n = num; 
+  acquire(&ptable.lock);
+
+
+  struct proc* p;
+  
+  // n = n+1sss;
+  for(p=ptable.proc;p != &(ptable.proc[NPROC]); p++)
+    {
+      // const int index = p - ptable.proc;
+      if(p->state != UNUSED)
+        {
+
+        cprintf("\nThis is where we set tickets  : %d for process : %s\n", n, p->name);
+        p->tickets = n;
+
+        }
+    }
+  
+
+  release(&ptable.lock);
+  
+  return n;
+}
+
 
 void
 pinit(void)
@@ -325,6 +380,12 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
+
+
+
+  // acquire(&ptable.lock);
+  settickets(1);
+  // release(&ptable.lock);
   
   for(;;){
     // Enable interrupts on this processor.

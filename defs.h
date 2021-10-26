@@ -1,3 +1,4 @@
+
 struct buf;
 struct context;
 struct file;
@@ -120,7 +121,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-
+int             getpinfo(void);
+int             settickets(int);
 // swtch.S
 void            swtch(struct context**, struct context*);
 
