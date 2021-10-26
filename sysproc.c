@@ -6,6 +6,35 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "pstat.h"
+#include <stddef.h>
+#include "spinlock.h"
+
+
+
+struct spinlock ptable_lock;
+int sys_getpinfo(void)
+{
+
+  // getpinfo();
+  
+  return 1975;
+}
+
+int sys_settickets(void)
+{
+  int num;
+  // // Error
+  argint(0, &num);
+  if(num <= 0)  
+    return -1;
+
+  // acquire(&ptable.lock);
+  // settickets(num);
+  // release(&ptable.lock);
+
+  return 1985;
+}
 
 int
 sys_fork(void)
