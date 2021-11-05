@@ -568,20 +568,20 @@ pssyscall()
     //Printf(1,"%d",id) 
     if (pr->state == SLEEPING)
     {
-      cprintf("%s \t\t %d \t\t (sleeping) \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
+      cprintf("%s \t\t %d \t\t \e[1;36;1m(sleeping)\e[1;0m \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
     }
     else if (pr->state == RUNNING)
     {
-      cprintf("%s \t\t %d \t\t (running) \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
+      cprintf("%s \t\t %d \t\t \e[1;32;1m(running)\e[1;0m \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
 
     }
     else if (pr->state == RUNNABLE)
     {
-      cprintf("%s \t\t %d \t\t (runnable) \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
+      cprintf("%s \t\t %d \t\t \e[1;33;1m(runnable)\e[1;0m \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
     }
     else if (pr->state == ZOMBIE)
     {
-      cprintf("%s \t\t %d \t\t (zombie) \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
+      cprintf("%s \t\t %d \t\t \e[1;31;1m(zombie)\e[1;0m \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
     }
     else if (pr->state == EMBRYO)
     {
