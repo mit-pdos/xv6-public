@@ -90,14 +90,21 @@ sys_uptime(void)
   return xticks;
 }
 
-int
-sys_getSharedPage(void)
+extern void *GetSharedPage(int key, int len);
+void* sys_GetSharedPage(void)
 {
-  return -1;
+	int key,len;
+
+	if(argint(0, &key) < 0 || argint(1, &len) < 0)
+		return (void*)-1;
+	return (void*)(getSharedPage(key, len));
 }
 
-int
-sys_freeSharedPage(void)
+extern int FreeSharedPage(int key);
+int sys_FreeSharedPage(void)
 {
-  return -1;
+	int key;
+	if(argint(0, &key) < 0)
+		return -1;
+	return freeSharedPage(key);
 }
