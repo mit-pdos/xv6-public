@@ -391,16 +391,18 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 
 //implementing getSharedPage() here
 //set 32 bit region
+//edwin: we are on x86, so we can use 64 bit address
 #define MAX_REGION_SIZE 32
-//scared to include #stdbool.h lol
-typedef char bool;
+//an int can be used as a boolean
 struct shared_region {
-  bool valid; //boolean for valid region
+  int valid; //boolean for valid region
   int rc; //refcount
   int len; //length
   uint  physical_pages[MAX_REGION_SIZE];
 };
 struct shared_region regions[32];
+
+
 void map_shared_region(int key, struct proc *p, void *addr) {
   for (int k = 0; k < regions[key].len; k++) {
     //use built in xv6 mappages to map our shared region to physical pages
