@@ -26,7 +26,7 @@ int uptime(void);
 int countTraps(void);
 
 void* getSharedPage(int, int);
-int freeSharedPage(void);
+int freeSharedPage(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

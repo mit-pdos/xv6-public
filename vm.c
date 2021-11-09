@@ -406,6 +406,7 @@ struct shared_region regions[32];
 void map_shared_region(int key, struct proc *p, void *addr) {
   for (int k = 0; k < regions[key].len; k++) {
     //use built in xv6 mappages to map our shared region to physical pages
+    //cprintf("[%d] %p -> %p\n", p->pid, addr + (k*PGSIZE), regions[key].physical_pages[k]);
     mappages(p->pgdir, (void*)(addr + (k*PGSIZE)), PGSIZE, regions[key].physical_pages[k], PTE_W | PTE_U);
   }
 }
@@ -427,9 +428,10 @@ void * getSharedPage(int key, int len)
     regions[key].rc = 0;
   } 
   else {
-    if(regions[key].len != len)
-      //another catch case. for now returning void pointer
+    if(regions[key].len != len){
+      cprintf("[%d] %d != %d\n", key, regions[key].len, len);
       return (void*)0;
+    }
   }
   //increment the refcount
   regions[key].rc += 1;
@@ -458,8 +460,15 @@ void * getSharedPage(int key, int len)
   p->shm[sindex].va = va;
   p->shm[sindex].key = key;
 
+  cprintf("va=%p\n", va);
+
   // Map them in memory
   map_shared_region(key, p, va);
+
+  struct proc *q = myproc();
+  for (int i = 0; i < 32; i++) {
+    cprintf("[%d] %d %d\n", i, q->shm[i].key, q->shm[i].va);
+  }
 
   return va;
 }
