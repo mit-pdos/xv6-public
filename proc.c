@@ -111,7 +111,11 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
+  //added: emphy shared mapping
+  for (int i = 0; i < 32; i++) {
+    p->shm[i].key = -1;
+    p->shm[i].va = 0;
+  }
   return p;
 }
 

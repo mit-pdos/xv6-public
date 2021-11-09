@@ -90,21 +90,29 @@ sys_uptime(void)
   return xticks;
 }
 
-extern void *GetSharedPage(int key, int len);
-void* sys_GetSharedPage(void)
+extern void *getSharedPage(int i, int len); // little shortcut lol
+void*
+sys_getSharedPage(void)
 {
-	int key,len;
-
-	if(argint(0, &key) < 0 || argint(1, &len) < 0)
-		return (void*)-1;
-	return (void*)(getSharedPage(key, len));
+  int key;
+  int len;
+  //catch bad cases
+  if(argint(0, &key) < 0)
+    return (void*)-1;
+  if(argint(1, &len) < 0)
+    return (void*)-1;
+  //return the function (in vm.c)
+  return (void*)(getSharedPage(key, len));
 }
 
-extern int FreeSharedPage(int key);
-int sys_FreeSharedPage(void)
+extern int freeSharedPage(int id);
+int
+sys_freeSharedPage(void)
 {
-	int key;
-	if(argint(0, &key) < 0)
-		return -1;
-	return freeSharedPage(key);
+  int key;
+  //bad case
+  if(argint(0, &key) < 0)
+    return -1;
+  //return the function (in vm.c)
+  return freeSharedPage(key);
 }

@@ -182,7 +182,7 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_testCountTraps\
-	_testSharedPages\
+	_test\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
