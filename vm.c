@@ -392,3 +392,119 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 //PAGEBREAK!
 // Blank page.
 
+sharedRegion_t sharedRegions[MAX_SH_KEY]; // Keys range from 0-NPROC => 0-63
+
+void *mapSharedRegions(struct proc *p, int key) {
+  
+  
+
+  sharedRegion_t *region = sharedRegions + key;  // get region we are intrested in
+  sharedReference_t *ref = p->shared + key;
+
+  if (ref->region && ref->region->valid)  // If this region has already been mapped to this process return the mapped virtual address
+      return ref->va;
+
+  pushcli();
+
+  // Starting from KERNBASE or shaddr, subtract `PGSIZE`from current shared region addr (shaddr), then map usingthis addr. repeat `pageCount` times
+  for (int k = 0; k < region->pageCount; k++) {
+      if (mappages(p->pgdir, (p->shaddr -= PGSIZE), PGSIZE,region->pages[k], PTE_W | PTE_U) < 0) {
+          return (void *)-1;
+      }
+  }
+  region->refCount++;  // New Reference increases counter
+  popcli();
+  ref->region = region;          // Set the reference to theregion
+  return (ref->va = p->shaddr);  // Set the reference va tothe current shared pointer and return it
+}
+
+
+
+
+void *getSharedPage(int key,int len){
+  if (key < 0 || key >= MAX_ || count <= 0 || count >= MAX_) {
+    return (void *) -1;
+  }
+  struct proc *currProc = myproc();              // Getcurrent process
+  sharedRegion_t *region = sharedRegions + key;  // Getpointer to the shared region that is being requested
+  if (!region->valid) {  // New shared page
+      pushcli();
+      for (int i = 0; i < count; i++) {  // Create `count`number of pages
+          void *mem = kalloc();          // alloc mem
+          if (mem == 0) {                // Error
+              cprintf("allocuvm out of memory\n");
+              return (void *)-1;
+          }
+          memset(mem, 0, PGSIZE);       // Clear memory
+          region->pages[i] = V2P(mem);  // Save new page toregion
+      }
+      region->valid = 1;          // region is now valid
+      region->refCount = 0;       // reset ref counter
+      region->pageCount = count;  // set the size of thisregion
+      popcli();
+  } else if (count > region->pageCount) {  // Resizing notsupported, though returning a larger space than requestedshould be fine
+      return (void *)-1;
+  }
+  return mapSharedRegion(currProc, key);
+}
+
+
+
+int deallocProcSharedVM(struct proc *currProc, int key) {
+    if (key < 0 || key >= MAX_) {  // Must be within set limits to keep implement simple
+        return (void *)-1;
+    }
+
+
+    sharedReference_t *ref = currProc->sharedRegions + key;
+    sharedRegion_t *region = sharedRegions + key;  // Get pointer to the shared region that is being requested
+
+    if (!region->valid || ref->va == 0)
+        return (void *)-1;
+
+    pushcli();
+    
+
+    // Clear page table entries for shared pages
+    for (int i = 0; i < region->pageCount; i++) {
+        pte_t *pte = walkpgdir(currProc->pgdir, (void *)(ref->va + (i * PGSIZE)), 0);
+
+        /*
+        for (int i = 0; i < region->pageCount; i++) {
+          kfree((char *)P2V(region->pages[i]));
+        }
+        */
+
+        if (pte == 0) {
+            return -1;
+        }
+    }
+
+    // Clear Reference on proc
+    ref->region = 0;
+    ref->va = 0;
+
+    // check that the region is not already deallocated / not initalized and refCount != 0
+    if (region->valid && (--region->rc) == 0) {
+        pushcli();
+        for (int i = 0; i < region->pageCount; i++) {
+            kfree(P2V(region->pages[i]));
+            region->pages[i] = 0;
+        }
+        region->valid = 0;
+        region->pageCount = 0;
+        popcli();
+    }
+
+    return region->rc; // should always be 0
+}
+
+
+
+
+
+int removeSharedPages(int key){
+  // Never removed pages for child procces and other processes that have not been created yet
+  // This is because the child process will have a different address space and therefore will not have the pages
+  // This is also why we cannot just remove the pages from the parent process
+}
