@@ -25,9 +25,9 @@ int sleep(int);
 int uptime(void);
 int countTraps(void);
 
-//TODO: need to change to a pointer
-int getSharedPage(void);
-int freeSharedPage(void);
+
+char* getSharedPage(int,int);
+int freeSharedPage(int);
 
 // ulib.c
 int stat(const char*, struct stat*);
