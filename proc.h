@@ -33,6 +33,7 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+<<<<<<< HEAD
 
 
 #define MAX_ 64
@@ -40,6 +41,13 @@ typedef struct sharedRegion_t {
     int valid;                // Whether this region has been initalized
     int rc;             // references to this region
 
+=======
+//mapped pages
+struct shared_mapping{
+  int key;
+  void *va;
+};
+>>>>>>> 8fed774b9ae30c02a1fe20d05aca2af14adca120
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -57,8 +65,12 @@ struct proc {
   char name[16];               // Process name (debugging)
   int traps[21];                  // Number of traps
   int syscalls[23];
+<<<<<<< HEAD
   sharedRegion_t sharedRegions[MAX_];
   sharedReference_t sharedmm[MAX_];
+=======
+  struct shared_mapping shm[32];
+>>>>>>> 8fed774b9ae30c02a1fe20d05aca2af14adca120
 };
 
 // Process memory is laid out contiguously, low addresses first:

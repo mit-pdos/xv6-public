@@ -183,7 +183,6 @@ UPROGS=\
 	_zombie\
 	_testCountTraps\
 	_test\
-	_directoryWalker\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
