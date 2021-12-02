@@ -22,7 +22,8 @@
 #include "file.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
-static void itrunc(struct inode*);
+//moved to defs.h
+//static void itrunc(struct inode*);
 // there should be one superblock per disk device, but we run with
 // only one device
 struct superblock sb; 
@@ -211,6 +212,23 @@ ialloc(uint dev, short type)
     brelse(bp);
   }
   panic("ialloc: no inodes");
+}
+int
+//lists allocated inodes here. To be called in syscall
+ilist(void)
+{
+  int inum;
+  struct buf *bp;
+  struct dinode *dip;
+  //uses superblock to tell us how many inodes to check
+  for(inum = 1; inum < sb.ninodes; inum++){
+    bp = bread(dev, IBLOCK(inum, sb));
+    dip = (struct dinode*)bp->data + inum%IPB;
+    if(dip->type != 0){  // allocated inode
+      printf(1, "inum %d", inum);
+    }
+  }
+  return 0;
 }
 
 // Copy a modified in-memory inode to disk.
@@ -404,7 +422,7 @@ bmap(struct inode *ip, uint bn)
 // to it (no directory entries referring to it)
 // and has no in-memory reference to it (is
 // not an open file or current directory).
-static void
+void
 itrunc(struct inode *ip)
 {
   int i, j;

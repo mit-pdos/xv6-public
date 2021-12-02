@@ -185,6 +185,7 @@ UPROGS=\
 	_test\
 	_directoryWalker\
 	_iErase\
+	_inodeTBwalker\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

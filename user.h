@@ -29,6 +29,7 @@ int countTraps(void);
 char* getSharedPage(int,int);
 int freeSharedPage(int);
 int iErase(int);
+int iList(void);
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);

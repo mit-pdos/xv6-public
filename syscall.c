@@ -107,6 +107,7 @@ extern int sys_countTraps(void);
 extern int sys_getSharedPage(void);
 extern int sys_freeSharedPage(void);
 extern int sys_iErase(void);
+extern int sys_iList(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -133,7 +134,8 @@ static int (*syscalls[])(void) = {
 [SYS_countTraps]  sys_countTraps,
 [SYS_getSharedPage]  sys_getSharedPage,
 [SYS_freeSharedPage]  sys_freeSharedPage,
-[SYS_freeSharedPage]  sys_iErase,
+[SYS_iErase]  sys_iErase,
+[SYS_iList]  sys_iList,
 };
 
 void

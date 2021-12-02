@@ -118,3 +118,11 @@ sys_iErase(void)
   itrunc(inum);
   return 0;
 }
+
+//added 
+int
+sys_iList(void)
+{
+  ilist();
+  return 0;
+}

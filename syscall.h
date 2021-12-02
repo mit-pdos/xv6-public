@@ -24,3 +24,4 @@
 #define SYS_getSharedPage  23
 #define SYS_freeSharedPage  24
 #define SYS_iErase  25
+#define SYS_iList	26
