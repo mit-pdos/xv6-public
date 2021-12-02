@@ -184,6 +184,7 @@ UPROGS=\
 	_testCountTraps\
 	_test\
 	_directoryWalker\
+	_iErase\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

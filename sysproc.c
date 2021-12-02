@@ -90,50 +90,31 @@ sys_uptime(void)
   return xticks;
 }
 
-<<<<<<< HEAD
 extern void *GetSharedPage(int key, int len);
 void* sys_GetSharedPage(void)
 {
-	int key,len;
+  int key,len;
 
-	if(argint(0, &key) < 0 || argint(1, &len) < 0)
-		return (void*)-1;
-	return (void*)(getSharedPage(key, len));
+  if(argint(0, &key) < 0 || argint(1, &len) < 0)
+    return (void*)-1;
+  return (void*)(getSharedPage(key, len));
 }
 
 extern int FreeSharedPage(int key);
 int sys_FreeSharedPage(void)
 {
-	int key;
-	if(argint(0, &key) < 0)
-		return -1;
-	return freeSharedPage(key);
-}
-=======
-extern void *getSharedPage(int i, int len); // little shortcut lol
-void*
-sys_getSharedPage(void)
-{
   int key;
-  int len;
-  //catch bad cases
-  if(argint(0, &key) < 0)
-    return (void*)-1;
-  if(argint(1, &len) < 0)
-    return (void*)-1;
-  //return the function (in vm.c)
-  return (void*)(getSharedPage(key, len));
-}
-
-extern int freeSharedPage(int id);
-int
-sys_freeSharedPage(void)
-{
-  int key;
-  //bad case
   if(argint(0, &key) < 0)
     return -1;
-  //return the function (in vm.c)
   return freeSharedPage(key);
 }
->>>>>>> 8fed774b9ae30c02a1fe20d05aca2af14adca120
+int 
+//added 
+sys_iErase(void)
+{
+  int inum
+  if(argint(0, &inum) < 0)
+    return -1;
+  itrunc(inum);
+  return 0;
+}

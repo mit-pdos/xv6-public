@@ -25,14 +25,10 @@ int sleep(int);
 int uptime(void);
 int countTraps(void);
 
-<<<<<<< HEAD
 
 char* getSharedPage(int,int);
-=======
-void* getSharedPage(int, int);
->>>>>>> 8fed774b9ae30c02a1fe20d05aca2af14adca120
 int freeSharedPage(int);
-
+int iErase(int);
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);
