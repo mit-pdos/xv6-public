@@ -64,18 +64,21 @@ dw(char *path)
         printf(1, "dw: cannot stat %s\n", buf);
         continue;
       }
-      printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
       switch(st.type){
       case T_FILE:
-      	break;
+        printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+        break;
       case T_DIR: 
-      	if(skip){
-      	  //since this relies on xv6's ls.c, we need to skip the first two (the directory itself and the parent) to not get locked in infinite recursion
-      	  skip--;
-      	  break;
-      	}
-    	dw(buf);
-    	break;
+        if(skip){
+          //since this relies on xv6's ls.c,
+          // we need to skip the first two (the directory itself and the parent) to not infinitly recurse
+          skip--;
+          break;
+        }
+        printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+        //now we recurse 
+      dw(buf);
+      break;
       }
     }
     break;
@@ -96,4 +99,3 @@ main(int argc, char *argv[])
     dw(argv[i]);
   exit();
 }
-
