@@ -672,18 +672,33 @@ nameiparent(char *path, char *name)
 
 int
 //lists allocated inodes here. To be called in syscall
-ilist(uint dev)
+ilist()
 {
-  int inum;
+  // get dp from current directory
+  
+  int i;
   struct buf *bp;
   struct dinode *dip;
-  //uses superblock to tell us how many inodes to check
-  for(inum = 1; inum < sb.ninodes; inum++){
-    bp = bread(dev, IBLOCK(inum, sb));
-    dip = (struct dinode*)bp->data + inum%IPB;
-    if(dip->type != 0){  // allocated inode
-      cprintf("inum %d", inum);
+
+  for(i=0; i< sb.ninodes; i++){
+    bp = bread(ROOTDEV, i);
+    dip = (struct dinode*)bp->data;
+    if(dip->type == T_DIR){
+      cprintf("inode %d: type %d\n", i, dip->type);
     }
+    else if(dip->type == T_FILE){
+      //print out ls type data from inode
+      cprintf("inode %d: type %d\n", i, dip->type);
+      cprintf("inode %d: size %d\n", i, dip->size);
+    }
+    else if(dip->type == T_DEV){
+      cprintf("inode %d: type %d\n", i, dip->type);
+    }
+    else {
+      //cprintf("free inode %d\n", i);
+    }
+    
+    brelse(bp);
   }
   return 0;
 }

@@ -55,7 +55,7 @@ int             writei(struct inode*, char*, uint, uint);
 //moved
 void 			itrunc(struct inode*);
 //added
-int			    ilist(uint);
+int			    ilist(void);
 
 // ide.c
 void            ideinit(void);

@@ -12,6 +12,14 @@ main(int argc, char *argv[])
     printf(1, "no arguements supported");
     exit();
   }
+
+  // get inode from current directory using stat
+  struct stat st;
+  stat(".", &st);
+  int inum = st.ino;
+  printf(1, "inum: %d\n", inum);
+
   iList();
-  return 0;
+
+  exit();
 }

@@ -125,5 +125,8 @@ sys_iErase(void)
 int
 sys_iList(void)
 {
+  cprintf("nice");
+  ilist();
   return 0;
 }
+
