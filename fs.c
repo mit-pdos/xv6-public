@@ -672,18 +672,18 @@ nameiparent(char *path, char *name)
 
 int ilist()
 {
-  int i;
-  struct buf *bp;
-  struct dinode *dip;
-
-  // get inode from dinode
-  for(i = 0; i < sb.ninodes; i++){
-    bp = bread(ROOTDEV, IBLOCK(i, sb));
-    dip = (struct dinode*)bp->data + i%IPB;
+  struct buf *buffer;
+  struct dinode *dinode;
+  for(int i = 0; i < sb.ninodes; i++){
+    // read and lock buffer
+    buffer = bread(ROOTDEV, IBLOCK(i, sb));
+    // get dinode from buffer and add size of 
+    dinode = (struct dinode*)buffer->data + i%IPB;
     // ignore device inodes or non-allocated inodes
-    if(dip->type == 2 || dip->type == 1)
-      printf(1,"inode: %d type: %d size: %d\n", i, dip->type, dip->size);
-    brelse(bp);
+    if(dinode->type == 2 || dinode->type == 1)
+      cprintf("inode: %d type: %d size: %d\n", i, dinode->type, dinode->size);
+    // release lock for buffer
+    brelse(buffer);
   }
   return 0;
 }
