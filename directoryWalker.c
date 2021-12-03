@@ -66,7 +66,7 @@ dw(char *path)
       }
       switch(st.type){
       case T_FILE:
-        printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+        printf(1, "%s type: %d inode: %d size: %d\n", fmtname(buf), st.type, st.ino, st.size);
         break;
       case T_DIR: 
         if(skip){
@@ -75,7 +75,7 @@ dw(char *path)
           skip--;
           break;
         }
-        printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+        printf(1, "%s type: %d inode: %d size: %d\n", fmtname(buf), st.type, st.ino, st.size);
         //now we recurse 
       dw(buf);
       break;

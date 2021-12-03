@@ -680,24 +680,13 @@ ilist()
   struct buf *bp;
   struct dinode *dip;
 
-  for(i=0; i< sb.ninodes; i++){
-    bp = bread(ROOTDEV, i);
-    dip = (struct dinode*)bp->data;
-    if(dip->type == T_DIR){
-      cprintf("inode %d: type %d\n", i, dip->type);
-    }
-    else if(dip->type == T_FILE){
-      //print out ls type data from inode
-      cprintf("inode %d: type %d\n", i, dip->type);
-      cprintf("inode %d: size %d\n", i, dip->size);
-    }
-    else if(dip->type == T_DEV){
-      cprintf("inode %d: type %d\n", i, dip->type);
-    }
-    else {
-      //cprintf("free inode %d\n", i);
-    }
-    
+  // get inode from dinode
+  for(i = 0; i < sb.ninodes; i++){
+    bp = bread(ROOTDEV, IBLOCK(i, sb));
+    dip = (struct dinode*)bp->data + i%IPB;
+    // ignore device inodes or non-allocated inodes
+    if(dip->type == 2)
+      cprintf("inode: %d type: %d size: %d\n", i, dip->type, dip->size);
     brelse(bp);
   }
   return 0;
