@@ -7,9 +7,9 @@
 int
 main(int argc, char *argv[])
 {
-  int inum;
+  //int inum;
   if(argc > 1){
-    printf(1, "no arguements supported")
+    printf(1, "no arguements supported");
     exit();
   }
   iList();

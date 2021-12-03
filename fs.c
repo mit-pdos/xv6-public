@@ -213,23 +213,6 @@ ialloc(uint dev, short type)
   }
   panic("ialloc: no inodes");
 }
-int
-//lists allocated inodes here. To be called in syscall
-ilist(void)
-{
-  int inum;
-  struct buf *bp;
-  struct dinode *dip;
-  //uses superblock to tell us how many inodes to check
-  for(inum = 1; inum < sb.ninodes; inum++){
-    bp = bread(dev, IBLOCK(inum, sb));
-    dip = (struct dinode*)bp->data + inum%IPB;
-    if(dip->type != 0){  // allocated inode
-      printf(1, "inum %d", inum);
-    }
-  }
-  return 0;
-}
 
 // Copy a modified in-memory inode to disk.
 // Must be called after every change to an ip->xxx field
@@ -685,4 +668,22 @@ struct inode*
 nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
+}
+
+int
+//lists allocated inodes here. To be called in syscall
+ilist(uint dev)
+{
+  int inum;
+  struct buf *bp;
+  struct dinode *dip;
+  //uses superblock to tell us how many inodes to check
+  for(inum = 1; inum < sb.ninodes; inum++){
+    bp = bread(dev, IBLOCK(inum, sb));
+    dip = (struct dinode*)bp->data + inum%IPB;
+    if(dip->type != 0){  // allocated inode
+      cprintf("inum %d", inum);
+    }
+  }
+  return 0;
 }

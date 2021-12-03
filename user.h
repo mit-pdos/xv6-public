@@ -26,8 +26,8 @@ int uptime(void);
 int countTraps(void);
 
 
-char* getSharedPage(int,int);
-int freeSharedPage(int);
+char* GetSharedPage(int,int);
+int FreeSharedPage(int);
 int iErase(int);
 int iList(void);
 // ulib.c

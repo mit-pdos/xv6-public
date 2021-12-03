@@ -21,7 +21,7 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_countTraps  22
-#define SYS_getSharedPage  23
-#define SYS_freeSharedPage  24
+#define SYS_GetSharedPage  23
+#define SYS_FreeSharedPage  24
 #define SYS_iErase  25
 #define SYS_iList	26

@@ -104,8 +104,8 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_countTraps(void);
-extern int sys_getSharedPage(void);
-extern int sys_freeSharedPage(void);
+extern int sys_GetSharedPage(void);
+extern int sys_FreeSharedPage(void);
 extern int sys_iErase(void);
 extern int sys_iList(void);
 
@@ -132,8 +132,8 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_countTraps]  sys_countTraps,
-[SYS_getSharedPage]  sys_getSharedPage,
-[SYS_freeSharedPage]  sys_freeSharedPage,
+[SYS_GetSharedPage]  sys_GetSharedPage,
+[SYS_FreeSharedPage]  sys_FreeSharedPage,
 [SYS_iErase]  sys_iErase,
 [SYS_iList]  sys_iList,
 };

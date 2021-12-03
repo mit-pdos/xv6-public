@@ -97,7 +97,7 @@ void* sys_GetSharedPage(void)
 
   if(argint(0, &key) < 0 || argint(1, &len) < 0)
     return (void*)-1;
-  return (void*)(getSharedPage(key, len));
+  return (void*)(GetSharedPage(key, len));
 }
 
 extern int FreeSharedPage(int key);
@@ -106,15 +106,17 @@ int sys_FreeSharedPage(void)
   int key;
   if(argint(0, &key) < 0)
     return -1;
-  return freeSharedPage(key);
+  return FreeSharedPage(key);
 }
 int 
 //added 
 sys_iErase(void)
 {
-  int inum
-  if(argint(0, &inum) < 0)
+  //create a struct inode* named inum
+  struct inode *inum;
+  if(argptr(0, (char**)&inum, sizeof(struct inode*)) < 0)
     return -1;
+  //call iErase
   itrunc(inum);
   return 0;
 }
@@ -123,6 +125,5 @@ sys_iErase(void)
 int
 sys_iList(void)
 {
-  ilist();
   return 0;
 }
