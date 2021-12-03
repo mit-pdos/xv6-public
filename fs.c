@@ -687,3 +687,34 @@ int ilist()
   }
   return 0;
 }
+
+ierase(int inum)
+{
+  // get dp from current directory
+  
+  int i;
+  int j;
+  struct buf *bp;
+  struct dinode *dip;
+
+  // get inode from dinode
+  for(i = 0; i < sb.ninodes; i++){
+    bp = bread(ROOTDEV, IBLOCK(i, sb));
+    dip = (struct dinode*)bp->data + i%IPB;
+    // ignore device inodes or non-allocated inodes
+    if(i == inum){
+      cprintf("inode type: %d,", dip->type);
+      dip->type = 0;
+      dip->major = 0;
+      dip->minor = 0;
+      dip->size = 0;
+      for (j = 0; j < 13; i++){
+        dip->addrs[j] = 0;
+      }
+      cprintf("inode type: %d,", dip->type);
+      return 0;
+    }
+    brelse(bp);
+  }
+  return -1;
+}

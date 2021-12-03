@@ -110,14 +110,11 @@ int sys_FreeSharedPage(void)
 }
 int 
 //added 
-sys_iErase(void)
+
+sys_iErase(int inum)
 {
-  //create a struct inode* named inum
-  struct inode *inum;
-  if(argptr(0, (char**)&inum, sizeof(struct inode*)) < 0)
-    return -1;
   //call iErase
-  itrunc(inum);
+  ierase(inum);
   return 0;
 }
 

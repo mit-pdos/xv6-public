@@ -56,6 +56,7 @@ int             writei(struct inode*, char*, uint, uint);
 void 			itrunc(struct inode*);
 //added
 int			    ilist(void);
+int 			ierase(int inum);
 
 // ide.c
 void            ideinit(void);
