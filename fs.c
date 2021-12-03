@@ -670,12 +670,8 @@ nameiparent(char *path, char *name)
   return namex(path, 1, name);
 }
 
-int
-//lists allocated inodes here. To be called in syscall
-ilist()
+int ilist()
 {
-  // get dp from current directory
-  
   int i;
   struct buf *bp;
   struct dinode *dip;
@@ -685,8 +681,8 @@ ilist()
     bp = bread(ROOTDEV, IBLOCK(i, sb));
     dip = (struct dinode*)bp->data + i%IPB;
     // ignore device inodes or non-allocated inodes
-    if(dip->type == 2)
-      cprintf("inode: %d type: %d size: %d\n", i, dip->type, dip->size);
+    if(dip->type == 2 || dip->type == 1)
+      printf(1,"inode: %d type: %d size: %d\n", i, dip->type, dip->size);
     brelse(bp);
   }
   return 0;
