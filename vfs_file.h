@@ -6,6 +6,7 @@
 #include "cgfs.h"
 #include "param.h"
 #include "stat.h"
+#include "kvector.h"
 
 struct vfs_file;
 
@@ -102,7 +103,7 @@ struct inode_operations {
     void            (*iunlock) (struct vfs_inode*);
     void            (*iunlockput) (struct vfs_inode*);
     void            (*iupdate) (struct vfs_inode*);
-    int             (*readi) (struct vfs_inode*, char*, uint, uint);
+    int             (*readi) (struct vfs_inode*, uint, uint, vector*);
     void            (*stati) (struct vfs_inode*, struct stat*);
     int             (*writei) (struct vfs_inode*, char*, uint, uint);
     int             (*isdirempty) (struct vfs_inode*);
@@ -126,7 +127,7 @@ struct vfs_inode {
 // table mapping major device number to
 // device functions
 struct devsw {
-    int (*read)(struct vfs_inode*, char*, int);
+    int (*read)(struct vfs_inode*, int, vector * dstvector);
     int (*write)(struct vfs_inode*, char*, int);
 };
 

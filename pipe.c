@@ -98,7 +98,7 @@ pipewrite(struct pipe *p, char *addr, int n)
 }
 
 int
-piperead(struct pipe *p, char *addr, int n)
+piperead(struct pipe *p, int n, vector * outputvector)
 {
   int i;
 
@@ -113,7 +113,8 @@ piperead(struct pipe *p, char *addr, int n)
   for(i = 0; i < n; i++){  //DOC: piperead-copy
     if(p->nread == p->nwrite)
       break;
-    addr[i] = p->data[p->nread++ % PIPESIZE];
+    char current_read = p->data[p->nread++ % PIPESIZE];
+    memmove_into_vector_bytes(*outputvector,  i, (char*)&current_read, 1);
   }
   wakeup(&p->nwrite);  //DOC: piperead-wakeup
   release(&p->lock);

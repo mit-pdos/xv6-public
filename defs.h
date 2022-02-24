@@ -1,3 +1,6 @@
+#ifndef __DEFS_H__
+#define __DEFS_H__
+
 struct buf;
 struct context;
 struct file;
@@ -17,6 +20,7 @@ struct cgroup;
 struct objsuperblock;
 struct vfs_inode;
 struct vfs_file;
+typedef struct kvec vector;
 
 // bio.c
 void            binit(void);
@@ -58,7 +62,7 @@ void            vfs_fileinit(void);
 struct vfs_file*    vfs_filealloc(void);
 void            vfs_fileclose(struct vfs_file*);
 struct vfs_file*    vfs_filedup(struct vfs_file*);
-int             vfs_fileread(struct vfs_file*, char*, int n);
+int             vfs_fileread(struct vfs_file*, int n, vector * dstvector);
 int             vfs_filestat(struct vfs_file*, struct stat*);
 int             vfs_filewrite(struct vfs_file*, char*, int n);
 
@@ -117,6 +121,19 @@ void            kinit1(void*, void*);
 void            kinit2(void*, void*);
 int             kmemtest(void);
 
+//kvector.c
+vector          newvector(unsigned int, unsigned int);
+void            freevector(vector *);
+uint            setelement(vector, unsigned int, char*);
+char*           getelementpointer(vector, unsigned int);
+void            memmove_into_vector_bytes(vector,unsigned int, char*, unsigned int);
+void            memmove_into_vector_elements(vector, unsigned int, char*, unsigned int);
+void            memmove_from_vector(char * dst, vector vec, unsigned int elementoffset, unsigned int elementcount);
+vector          slicevector(vector, unsigned int, unsigned int);
+uint            vectormemcmp(char * lbl, vector v,unsigned int vectorstartoffset, char * m, unsigned int bytes);
+uint            copysubvector(vector * dstvector, vector * srcvector, unsigned int srcoffset, unsigned int count);
+
+
 // kbd.c
 void            kbdintr(void);
 
@@ -160,7 +177,7 @@ void            picinit(void);
 // pipe.c
 int             pipealloc(struct vfs_file**, struct vfs_file**);
 void            pipeclose(struct pipe*, int);
-int             piperead(struct pipe*, char*, int);
+int             piperead(struct pipe*, int, vector * outputvector);
 int             pipewrite(struct pipe*, char*, int);
 
 //PAGEBREAK: 16
@@ -265,3 +282,5 @@ int             intlen(int n);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+#endif
