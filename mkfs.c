@@ -109,7 +109,7 @@ main(int argc, char *argv[])
 
   sb.size = xint(fssize);
   sb.nblocks = xint(nblocks);
-  sb.ninodes = xint(NINODES);
+  sb.vfs_sb.ninodes = xint(NINODES);
   sb.nlog = xint(nlog);
   sb.logstart = xint(2);
   sb.inodestart = xint(2+nlog);
@@ -240,8 +240,8 @@ ialloc(ushort type)
   struct dinode din;
 
   bzero(&din, sizeof(din));
-  din.type = xshort(type);
-  din.nlink = xshort(1);
+  din.vfs_dinode.type = xshort(type);
+  din.vfs_dinode.nlink = xshort(1);
   din.size = xint(0);
   winode(inum, &din);
   return inum;

@@ -84,7 +84,7 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
  *    16)   "memory.max"
  *    17)    cgroup directories
  */
-int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n);
+int unsafe_cg_read(cg_file_type type, struct vfs_file * f, char * addr, int n);
 
 /**
  * This function writes to cgroup filesystem file.
@@ -106,16 +106,16 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n);
  *    8)    "cgroup.freeze"
  *    9)    "memory.max"
  */
-int unsafe_cg_write(struct file * f, char * addr, int n);
+int unsafe_cg_write(struct vfs_file * f, char * addr, int n);
 
 /**
  * This function closes a cgroup filesystem file or directory.
- * Executes fileclose() function from "file.c".
+ * Executes vfs_fileclose() function from "vfs_file.c".
  * Receives file struct pointer parameter "f".
  * "f" is a pointer to the file to be closed.
  * Returns 0 on success.
  */
-int unsafe_cg_close(struct file * file);
+int unsafe_cg_close(struct vfs_file * file);
 
 /**
  * This function extracts the file name from a given path.
@@ -148,6 +148,6 @@ int get_dir_name(char * path, char * dir_name);
  * -1 on failure.
  * 0 on success.
  */
-int unsafe_cg_stat(struct file * f, struct stat * st);
+int unsafe_cg_stat(struct vfs_file * f, struct stat * st);
 
 #endif

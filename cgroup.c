@@ -611,7 +611,7 @@ int cg_sys_open(char * path, int omode)
     return -1;
 }
 
-int cg_read(cg_file_type type, struct file * f, char * addr, int n)
+int cg_read(cg_file_type type, struct vfs_file * f, char * addr, int n)
 {
     acquire(&cgtable.lock);
     int res = unsafe_cg_read(type, f, addr, n);
@@ -619,7 +619,7 @@ int cg_read(cg_file_type type, struct file * f, char * addr, int n)
     return res;
 }
 
-int cg_write(struct file * f, char * addr, int n)
+int cg_write(struct vfs_file * f, char * addr, int n)
 {
     acquire(&cgtable.lock);
     int res = unsafe_cg_write(f, addr, n);
@@ -627,7 +627,7 @@ int cg_write(struct file * f, char * addr, int n)
     return res;
 }
 
-int cg_close(struct file * file)
+int cg_close(struct vfs_file * file)
 {
     acquire(&cgtable.lock);
     int res = unsafe_cg_close(file);
@@ -635,7 +635,7 @@ int cg_close(struct file * file)
     return res;
 }
 
-int cg_stat(struct file * f, struct stat * st)
+int cg_stat(struct vfs_file * f, struct stat * st)
 {
     acquire(&cgtable.lock);
     int res = unsafe_cg_stat(f, st);

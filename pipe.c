@@ -20,13 +20,13 @@ struct pipe {
 };
 
 int
-pipealloc(struct file **f0, struct file **f1)
+pipealloc(struct vfs_file **f0, struct vfs_file **f1)
 {
   struct pipe *p;
 
   p = 0;
   *f0 = *f1 = 0;
-  if((*f0 = filealloc()) == 0 || (*f1 = filealloc()) == 0)
+  if((*f0 = vfs_filealloc()) == 0 || (*f1 = vfs_filealloc()) == 0)
     goto bad;
   if((p = (struct pipe*)kalloc()) == 0)
     goto bad;
@@ -50,9 +50,9 @@ pipealloc(struct file **f0, struct file **f1)
   if(p)
     kfree((char*)p);
   if(*f0)
-    fileclose(*f0);
+    vfs_fileclose(*f0);
   if(*f1)
-    fileclose(*f1);
+    vfs_fileclose(*f1);
   return -1;
 }
 

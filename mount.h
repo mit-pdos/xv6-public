@@ -1,6 +1,6 @@
 struct mount {
   struct mount *parent;
-  struct inode *mountpoint;
+  struct vfs_inode *mountpoint;
   int ref;
   uint dev;
 };

@@ -5,8 +5,9 @@ OBJS = \
 	console.o\
 	device.o\
 	exec.o\
-	file.o\
+	vfs_file.o\
 	fs.o\
+	vfs_fs.o\
 	ide.o\
 	ioapic.o\
 	kalloc.o\
@@ -42,7 +43,12 @@ OBJS = \
 	cgfs.o\
 	cgroup.o\
 	cpu_account.o\
-	obj_disk.o
+	obj_disk.o\
+	obj_cache.o\
+	obj_log.o\
+	obj_fs.o
+
+
 
 # Cross-compiling (e.g., on Mac OS X)
 # TOOLPREFIX = i386-jos-elf
@@ -110,6 +116,7 @@ CFLAGS += -DXV6_WAIT_FOR_DEBUGGER=0
 endif
 
 OFLAGS = -O2
+CFLAGS += -DSTORAGE_DEVICE_SIZE=327680 -DOBJECTS_TABLE_SIZE=200
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ############################
 
@@ -220,7 +227,8 @@ UPROGS=\
         _ctrl_grp \
         _demo_pid_ns \
         _demo_mount_ns \
-        _ioctltests
+        _ioctltests \
+        _objfstests
 
 INTERNAL_DEV=\
 	internal_fs_a\
@@ -272,7 +280,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 ifndef CPUS
 CPUS := 2
 endif
-QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA)
+QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA) -nographic
 
 gdb: OFLAGS = -Og -ggdb
 gdb: fs.img xv6.img
@@ -360,6 +368,6 @@ windows_debugging_clean:
 run-objfs-tests:
 	$(CC) $(CLAGS) \
 		obj_disk.c obj_cache.c obj_log.c obj_fs_tests.c obj_fs_tests_utilities.c \
-		-DKERNEL_TESTS -DSTORAGE_DEVICE_SIZE=67108864 -DOBJECTS_TABLE_SIZE=200 \
+		-std=gnu99 -DSTORAGE_DEVICE_SIZE=67108864 -DOBJECTS_TABLE_SIZE=200 \
 		-o tests
 	./tests

@@ -26,6 +26,9 @@
 #include "fs.h"
 #include "buf.h"
 #include "device.h"
+#include "vfs_fs.h"
+#include "file.h"
+#include "vfs_file.h"
 #include "proc.h"
 #include "cgroup.h"
 
@@ -116,9 +119,9 @@ void
 devicerw(struct inode *device, struct buf *b)
 {
   if ((b->flags & B_DIRTY) == 0) {
-    readi(device, (char *) b->data, BSIZE*b->blockno, BSIZE);
+      device->vfs_inode.i_op.readi(&device->vfs_inode, (char *) b->data, BSIZE*b->blockno, BSIZE);
   } else {
-    writei(device, (char *) b->data, BSIZE*b->blockno, BSIZE);
+      device->vfs_inode.i_op.writei(&device->vfs_inode, (char *) b->data, BSIZE*b->blockno, BSIZE);
   }
   b->flags |= B_VALID;
   b->flags &= ~B_DIRTY;
@@ -127,11 +130,13 @@ devicerw(struct inode *device, struct buf *b)
 void
 brw(struct buf *b)
 {
-  struct inode *device;
+  struct vfs_inode *device;
   if ((device = getinodefordevice(b->dev)) != 0) {
-    devicerw(device, b);
+      struct inode * i_device = container_of(device, struct inode, vfs_inode);
+
+      devicerw(i_device, b);
   } else {
-    iderw(b);
+      iderw(b);
   }
 }
 

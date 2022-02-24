@@ -107,7 +107,7 @@ TEST(add_single_object) {
 }
 
 TEST(add_object_already_exist) {
-    uint placeholder;
+    uint placeholder = 0;
     ASSERT_NO_ERR(
         add_object(&placeholder, sizeof(placeholder), "already_exist_0")
     );
@@ -119,7 +119,7 @@ TEST(add_object_already_exist) {
 
 
 TEST(delete_existing_object) {
-    uint placeholder;
+    uint placeholder = 0;
     ASSERT_NO_ERR(
         add_object(&placeholder, sizeof(placeholder), "delete_0")
     );
@@ -223,7 +223,7 @@ TEST(add_to_full_table) {
     }
     ASSERT_NO_ERR(rewrite_object(table, sizeof(table), OBJECT_TABLE_ID));
 
-    uint data;
+    uint data = 0;
     ASSERT_UINT_EQ(
         OBJECTS_TABLE_FULL,
         add_object(&data, sizeof(data), "non existing object")
@@ -247,7 +247,7 @@ uint find_object_offset(const char* object_name) {
 
 
 TEST(reusing_freed_space) {
-    uint data;
+    uint data = 0;
     ASSERT_NO_ERR(add_object(&data, sizeof(data), "reusing object 1"));
     uint obj_1_offset = find_object_offset("reusing object 1");
     ASSERT_TRUE(obj_1_offset != -1);
@@ -434,7 +434,7 @@ TEST(logbook_rewrite_object_regular_flow) {
 
 TEST(logbook_delete_object_regular_flow) {
     const char* object_name = "log delete obj";
-    uint placeholder;
+    uint placeholder = 0;
     ASSERT_NO_ERR(
         log_add_object(&placeholder, sizeof(placeholder), object_name)
     );

@@ -1,6 +1,7 @@
 #include "types.h"
 #include "mmu.h"
 #include "param.h"
+#include "vfs_file.h"
 
 #ifndef XV6_PROC_H
 #define XV6_PROC_H
@@ -63,8 +64,8 @@ struct proc {
   struct context *context;     // swtch() here to run process
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
-  struct file *ofile[NOFILE];  // Open files
-  struct inode *cwd;           // Current directory
+  struct vfs_file *ofile[NOFILE];  // Open files
+  struct vfs_inode *cwd;           // Current directory
   struct mount *cwdmount;      // Mount in which current directory lies
   char name[16];               // Process name (debugging)
   struct nsproxy *nsproxy;     // Namespace proxy object

@@ -1,7 +1,7 @@
 //
 // File-system system calls.
 // Mostly argument checking, since we don't trust
-// user code, and calls into file.c and fs.c.
+// user code, and calls into vfs_file.c and vfs_fs.c.
 //
 
 #include "types.h"
@@ -16,14 +16,16 @@
 #include "fcntl.h"
 #include "cgroup.h"
 #include "cgfs.h"
+#include "device.h"
+#include "vfs_fs.h"
+#include "mount.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
 static int
-argfd(int n, int *pfd, struct file **pf)
-{
-  int fd;
-  struct file *f;
+argfd(int n, int *pfd, struct vfs_file **pf) {
+   int fd;
+   struct vfs_file *f;
 
   if(argint(n, &fd) < 0)
     return -1;
@@ -39,7 +41,7 @@ argfd(int n, int *pfd, struct file **pf)
 // Allocate a file descriptor for the given file.
 // Takes over file reference from caller on success.
 static int
-fdalloc(struct file *f)
+fdalloc(struct vfs_file *f)
 {
   int fd;
   struct proc *curproc = myproc();
@@ -56,21 +58,21 @@ fdalloc(struct file *f)
 int
 sys_dup(void)
 {
-  struct file *f;
+  struct vfs_file *f;
   int fd;
 
   if(argfd(0, 0, &f) < 0)
     return -1;
   if((fd=fdalloc(f)) < 0)
     return -1;
-  filedup(f);
+  vfs_filedup(f);
   return fd;
 }
 
 int
 sys_read(void)
 {
-  struct file *f;
+  struct vfs_file *f;
   int n;
   char *p;
 
@@ -85,13 +87,13 @@ sys_read(void)
   }
 
   else
-    return fileread(f, p, n);
+    return vfs_fileread(f, p, n);
 }
 
 int
 sys_write(void)
 {
-  struct file *f;
+  struct vfs_file *f;
   int n;
   char *p;
 
@@ -101,14 +103,14 @@ sys_write(void)
   if(f->type == FD_CG)
     return cg_write(f, p, n);
   else
-    return filewrite(f, p, n);
+    return vfs_filewrite(f, p, n);
 }
 
 int
 sys_close(void)
 {
   int fd;
-  struct file *f;
+  struct vfs_file *f;
 
   if(argfd(0, &fd, &f) < 0)
     return -1;
@@ -116,14 +118,14 @@ sys_close(void)
   if(f->type == FD_CG)
       cg_close(f);
   else
-      fileclose(f);
+      vfs_fileclose(f);
   return 0;
 }
 
 int
 sys_fstat(void)
 {
-  struct file *f;
+  struct vfs_file *f;
   struct stat *st;
 
   if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
@@ -132,7 +134,7 @@ sys_fstat(void)
   if(f->type == FD_CG)
       return cg_stat(f, st);
 
-  return filestat(f, st);
+  return vfs_filestat(f, st);
 }
 
 // Create the path new as a link to the same inode as old.
@@ -140,72 +142,56 @@ int
 sys_link(void)
 {
   char name[DIRSIZ], *new, *old;
-  struct inode *dp, *ip;
+  struct vfs_inode *dp, *ip;
 
   if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
     return -1;
 
   begin_op();
-  if((ip = namei(old)) == 0){
+  if((ip = vfs_namei(old)) == 0){
     end_op();
     return -1;
   }
 
-  ilock(ip);
+  ip->i_op.ilock(ip);
   if(ip->type == T_DIR){
-    iunlockput(ip);
+    ip->i_op.iunlockput(ip);
     end_op();
     return -1;
   }
 
   ip->nlink++;
-  iupdate(ip);
-  iunlock(ip);
+  ip->i_op.iupdate(ip);
+  ip->i_op.iunlock(ip);
 
-  if((dp = nameiparent(new, name)) == 0)
+  if((dp = vfs_nameiparent(new, name)) == 0)
     goto bad;
-  ilock(dp);
-  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
-    iunlockput(dp);
+  dp->i_op.ilock(dp);
+  if(dp->dev != ip->dev || dp->i_op.dirlink(dp, name, ip->inum) < 0){
+    dp->i_op.iunlockput(dp);
     goto bad;
   }
-  iunlockput(dp);
-  iput(ip);
+  dp->i_op.iunlockput(dp);
+  ip->i_op.iput(ip);
 
   end_op();
 
   return 0;
 
 bad:
-  ilock(ip);
+  ip->i_op.ilock(ip);
   ip->nlink--;
-  iupdate(ip);
-  iunlockput(ip);
+  ip->i_op.iupdate(ip);
+  ip->i_op.iunlockput(ip);
   end_op();
   return -1;
-}
-
-// Is the directory dp empty except for "." and ".." ?
-static int
-isdirempty(struct inode *dp)
-{
-  int off;
-  struct dirent de;
-
-  for(off=2*sizeof(de); off<dp->size; off+=sizeof(de)){
-    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-      panic("isdirempty: readi");
-    if(de.inum != 0)
-      return 0;
-  }
-  return 1;
 }
 
 //PAGEBREAK!
 int
 sys_unlink(void)
 {
-  struct inode *ip, *dp;
+  struct vfs_inode *ip, *dp;
   struct dirent de;
   char name[DIRSIZ], *path;
   uint off;
@@ -218,46 +204,46 @@ sys_unlink(void)
   int delete_cgroup_res = cgroup_delete(path, "unlink");
   if(delete_cgroup_res == -1)
   {
-      if((dp = nameiparent(path, name)) == 0){
+      if((dp = vfs_nameiparent(path, name)) == 0){
         end_op();
         return -1;
       }
 
-      ilock(dp);
+      dp->i_op.ilock(dp);
 
       // Cannot unlink "." or "..".
-      if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
+      if(vfs_namecmp(name, ".") == 0 || vfs_namecmp(name, "..") == 0)
         goto bad;
 
-      if((ip = dirlookup(dp, name, &off)) == 0)
+      if((ip = dp->i_op.dirlookup(dp, name, &off)) == 0)
         goto bad;
 
-      ilock(ip);
+      ip->i_op.ilock(ip);
 
       if(ip->nlink < 1)
         panic("unlink: nlink < 1");
-      if(ip->type == T_DIR && !isdirempty(ip)){
-        iunlockput(ip);
+      if(ip->type == T_DIR && !ip->i_op.isdirempty(ip)){
+        ip->i_op.iunlockput(ip);
         goto bad;
       }
 
       if (doesbackdevice(ip) == 1) {
-        iunlockput(ip);
+        ip->i_op.iunlockput(ip);
         goto bad;
       }
 
       memset(&de, 0, sizeof(de));
-      if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+      if(dp->i_op.writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
         panic("unlink: writei");
       if(ip->type == T_DIR){
         dp->nlink--;
-        iupdate(dp);
+        dp->i_op.iupdate(dp);
       }
-      iunlockput(dp);
+      dp->i_op.iunlockput(dp);
 
       ip->nlink--;
-      iupdate(ip);
-      iunlockput(ip);
+      ip->i_op.iupdate(ip);
+      ip->i_op.iunlockput(ip);
   }
   if(delete_cgroup_res == -2){
       end_op();
@@ -268,62 +254,68 @@ sys_unlink(void)
   return 0;
 
 bad:
-  iunlockput(dp);
+  dp->i_op.iunlockput(dp);
   end_op();
   return -1;
 }
 
-static struct inode*
+static struct vfs_inode*
 createmount(char *path, short type, short major, short minor, struct mount **mnt)
 {
   uint off;
-  struct inode *ip, *dp;
+  struct vfs_inode *ip, *dp;
   char name[DIRSIZ];
 
-  if((dp = nameiparentmount(path, name, mnt)) == 0)
+  if((dp = vfs_nameiparentmount(path, name, mnt)) == 0)
     return 0;
-  ilock(dp);
+  dp->i_op.ilock(dp);
 
-  if((ip = dirlookup(dp, name, &off)) != 0){
-    iunlockput(dp);
-    ilock(ip);
+  if((ip = dp->i_op.dirlookup(dp, name, &off)) != 0){
+    dp->i_op.iunlockput(dp);
+    ip->i_op.ilock(ip);
     if(type == T_FILE && ip->type == T_FILE)
       return ip;
-    iunlockput(ip);
+    ip->i_op.iunlockput(ip);
     mntput(*mnt);
     return 0;
   }
 
-  if((ip = ialloc(dp->dev, type)) == 0)
-    panic("create: ialloc");
+  if (IS_OBJ_DEVICE(dp->dev)) {
+    if ((ip = obj_ialloc(dp->dev, type)) == 0)
+      panic("create: obj_ialloc");
 
-  ilock(ip);
+  } else {
+    if ((ip = ialloc(dp->dev, type)) == 0)
+       panic("create: ialloc");
+  }
+
+  ip->i_op.ilock(ip);
   ip->major = major;
   ip->minor = minor;
   ip->nlink = 1;
-  iupdate(ip);
+  ip->i_op.iupdate(ip);
 
   if(type == T_DIR){  // Create . and .. entries.
     dp->nlink++;  // for ".."
-    iupdate(dp);
+    dp->i_op.iupdate(dp);
     // No ip->nlink++ for ".": avoid cyclic ref count.
-    if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
+    if(ip->i_op.dirlink(ip, ".", ip->inum) < 0 || ip->i_op.dirlink(ip, "..", dp->inum) < 0)
       panic("create dots");
   }
 
-  if(dirlink(dp, name, ip->inum) < 0)
+  if(dp->i_op.dirlink(dp, name, ip->inum) < 0)
     panic("create: dirlink");
 
-  iunlockput(dp);
+  dp->i_op.iunlockput(dp);
 
   return ip;
 }
 
-static struct inode*
+static struct vfs_inode*
 create(char *path, short type, short major, short minor)
 {
   struct mount *mnt;
-  struct inode *res = createmount(path, type, major, minor, &mnt);
+  struct vfs_inode *res = createmount(path, type, major, minor, &mnt);
   if (res != 0) {
     mntput(mnt);
   }
@@ -335,8 +327,8 @@ sys_open(void)
 {
   char *path;
   int fd, omode;
-  struct file *f;
-  struct inode *ip;
+  struct vfs_file *f;
+  struct vfs_inode *ip;
   struct mount *mnt;
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
@@ -358,28 +350,28 @@ sys_open(void)
       return -1;
     }
   } else {
-    if((ip = nameimount(path, &mnt)) == 0){
+    if((ip = vfs_nameimount(path, &mnt)) == 0){
       end_op();
       return -1;
     }
-    ilock(ip);
+    ip->i_op.ilock(ip);
     if(ip->type == T_DIR && omode != O_RDONLY){
-      iunlockput(ip);
+      ip->i_op.iunlockput(ip);
       mntput(mnt);
       end_op();
       return -1;
     }
   }
 
-  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
+  if((f = vfs_filealloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
-      fileclose(f);
-    iunlockput(ip);
+      vfs_fileclose(f);
+    ip->i_op.iunlockput(ip);
     mntput(mnt);
     end_op();
     return -1;
   }
-  iunlock(ip);
+  ip->i_op.iunlock(ip);
   end_op();
 
   f->type = FD_INODE;
@@ -396,7 +388,7 @@ int
 sys_mkdir(void)
 {
   char *path;
-  struct inode *ip;
+  struct vfs_inode *ip;
 
   begin_op();
 
@@ -416,7 +408,7 @@ sys_mkdir(void)
       end_op();
       return -1;
     }
-    iunlockput(ip);
+    ip->i_op.iunlockput(ip);
   }
   end_op();
   return 0;
@@ -425,7 +417,7 @@ sys_mkdir(void)
 int
 sys_mknod(void)
 {
-  struct inode *ip;
+  struct vfs_inode *ip;
   char *path;
   int major, minor;
 
@@ -437,7 +429,7 @@ sys_mknod(void)
     end_op();
     return -1;
   }
-  iunlockput(ip);
+  ip->i_op.iunlockput(ip);
   end_op();
   return 0;
 }
@@ -446,7 +438,7 @@ int
 sys_chdir(void)
 {
   char *path;
-  struct inode *ip;
+  struct vfs_inode *ip;
   struct proc *curproc = myproc();
   struct mount *mnt;
   struct cgroup *cgp;
@@ -461,19 +453,19 @@ sys_chdir(void)
     safestrcpy(curproc->cwdp, cgp->cgroup_dir_path, sizeof(cgp->cgroup_dir_path));
     return 0;
   }
-  if((ip = nameimount(path, &mnt)) == 0){
+  if((ip = vfs_nameimount(path, &mnt)) == 0){
     end_op();
     return -1;
   }
-  ilock(ip);
+  ip->i_op.ilock(ip);
   if(ip->type != T_DIR){
-    iunlockput(ip);
+    ip->i_op.iunlockput(ip);
     end_op();
     return -1;
   }
-  iunlock(ip);
+  ip->i_op.iunlock(ip);
   if(curproc->cwd)
-    iput(curproc->cwd);
+    curproc->cwd->i_op.iput(curproc->cwd);
   if(curproc->cwdmount)
     mntput(curproc->cwdmount);
   end_op();
@@ -513,7 +505,7 @@ int
 sys_pipe(void)
 {
   int *fd;
-  struct file *rf, *wf;
+  struct vfs_file *rf, *wf;
   int fd0, fd1;
 
   if(argptr(0, (void*)&fd, 2*sizeof(fd[0])) < 0)
@@ -524,8 +516,8 @@ sys_pipe(void)
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
     if(fd0 >= 0)
       myproc()->ofile[fd0] = 0;
-    fileclose(rf);
-    fileclose(wf);
+    vfs_fileclose(rf);
+    vfs_fileclose(wf);
     return -1;
   }
   fd[0] = fd0;

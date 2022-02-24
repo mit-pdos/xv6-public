@@ -3,6 +3,7 @@
 
 #include "obj_disk.h"
 #include "types.h"
+#include "sleeplock.h"
 
 #ifndef KERNEL_TESTS
 #include "defs.h"  // import `panic`
@@ -20,11 +21,12 @@
 #error "OBJECTS_TABLE_SIZE must be defined when using the mock storage device"
 #endif
 
+
+struct sleeplock disklock;
+
 struct objsuperblock super_block;
 
 uint get_objects_table_index(const char* name, uint* output) {
-    cprintf("In get_objects_table_index\n");
-
     for (uint i = 0; i < max_objects(); ++i) {
         ObjectsTableEntry* entry = objects_table_entry(i);
         if (entry->occupied &&
@@ -34,13 +36,12 @@ uint get_objects_table_index(const char* name, uint* output) {
             return NO_ERR;
         }
     }
+
     return OBJECT_NOT_EXISTS;
 }
 
 
 ObjectsTableEntry* objects_table_entry(uint offset) {
-    cprintf("In objects_table_entry\n");
-
     return (ObjectsTableEntry*)&memory_storage[
         super_block.objects_table_offset
         + offset * sizeof(ObjectsTableEntry)
@@ -54,15 +55,12 @@ uint flush_objects_table_entry(uint offset) {
      * entry received by `objects_table_entry` changes the table itself.
      * In the future, this method would write the specific bytes to the disk.
      */
-    cprintf("In flush_objects_table_entry\n");
 
     return NO_ERR;
 }
 
 
 int obj_id_cmp(const char* p, const char* q) {
-    cprintf("In obj_id_cmp\n");
-
     uint i = 0;
     while(*p && *p == *q && i < OBJECT_ID_LENGTH) {
         p++;
@@ -74,8 +72,6 @@ int obj_id_cmp(const char* p, const char* q) {
 
 
 uint obj_id_bytes(const char* object_id) {
-    cprintf("In obj_id_bytes\n");
-
     uint bytes = strlen(object_id);
     if (bytes < MAX_OBJECT_NAME_LENGTH) {
         bytes++;  // null terminator as well.
@@ -85,8 +81,6 @@ uint obj_id_bytes(const char* object_id) {
 
 
 void swap(uint* xp, uint* yp) {
-    cprintf("In swap\n");
-
     int temp = *xp;
     *xp = *yp;
     *yp = temp;
@@ -94,15 +88,11 @@ void swap(uint* xp, uint* yp) {
 
 
 void bubble_sort(uint* arr, uint n) {
-    cprintf("In bubble sorttttt\n");
-
     for (uint i = 0; i < n - 1; i++) {
         for (uint j = 0; j < n - i - 1; j++) {
             if (objects_table_entry(arr[j])->disk_offset > objects_table_entry(arr[j + 1])->disk_offset) {
                 swap(&arr[j], &arr[j + 1]);
             }
-
-
         }
     }
 }
@@ -124,9 +114,7 @@ void bubble_sort(uint* arr, uint n) {
  * blocks in a list. Read "malloc internals" for details.
  */
 static void* find_empty_space(uint size) {
-    cprintf("In find_empty_space\n");
-
-    uint entries_indices[super_block.occupied_objects];
+    uint entries_indices[OBJECTS_TABLE_SIZE];
     uint* current = entries_indices;
     for (uint i = 0; i < max_objects(); ++i) {
         if (objects_table_entry(i)->occupied) {
@@ -167,10 +155,8 @@ static void* find_empty_space(uint size) {
 
 
 static void initialize_super_block_entry() {
-    cprintf("In initialize_super_block_entry\n");
-
     ObjectsTableEntry* entry = objects_table_entry(0);
-    memcpy(entry->object_id, SUPER_BLOCK_ID, strlen(SUPER_BLOCK_ID) + 1);
+    memmove(entry->object_id, SUPER_BLOCK_ID, strlen(SUPER_BLOCK_ID) + 1);
     entry->disk_offset = 0;
     entry->size = sizeof(super_block);
     entry->occupied = 1;
@@ -178,27 +164,26 @@ static void initialize_super_block_entry() {
 
 
 static void initialize_objects_table_entry() {
-    cprintf("In initialize_objects_table_entry\n");
-
     ObjectsTableEntry* entry = objects_table_entry(1);
-    memcpy(entry->object_id, OBJECT_TABLE_ID, strlen(OBJECT_TABLE_ID) + 1);
+    memmove(entry->object_id, OBJECT_TABLE_ID, strlen(OBJECT_TABLE_ID) + 1);
     entry->disk_offset = super_block.objects_table_offset;
     entry->size = OBJECTS_TABLE_SIZE * sizeof(ObjectsTableEntry);
     entry->occupied = 1;
 }
 
 
+// the disk lock should be held by the caller
 static void write_super_block() {
-    cprintf("In write_super_block\n");
-
-    memcpy(memory_storage, &super_block, sizeof(super_block));
+    memmove(memory_storage, &super_block, sizeof(super_block));
 }
 
 
 void init_obj_fs() {
-    cprintf("In init_obj_fs\n");
-
+    struct vfs_superblock sb;
     // with real device, we would read the block form the disk.
+    initsleeplock(&disklock, "disklock");
+
+    // Super block initializing
     super_block.storage_device_size = STORAGE_DEVICE_SIZE;
     super_block.objects_table_offset = sizeof(struct objsuperblock);
     super_block.objects_table_size = OBJECTS_TABLE_SIZE;
@@ -206,6 +191,10 @@ void init_obj_fs() {
         sizeof(super_block)
         + OBJECTS_TABLE_SIZE * sizeof(ObjectsTableEntry);
     super_block.occupied_objects = 2;
+    super_block.last_inode = 2; // Inode counter starts from 3, when 3 reserved to root dir object.
+    sb.ninodes = 200;
+    super_block.vfs_sb = sb;
+    // Inode initializing
 
     // To keep consistency, we write the super block to the disk and sets the
     // table state. This part should be read from the device and be created
@@ -220,45 +209,47 @@ void init_obj_fs() {
 
 
 uint add_object(const void* object, uint size, const char* name) {
-    cprintf("In add_object\n");
-
     uint err = check_add_object_validality(size, name);
     if (err != NO_ERR) {
         return err;
     }
+    acquiresleep(&disklock);
     for (uint i = 0; i < max_objects(); ++i) {
         ObjectsTableEntry* entry = objects_table_entry(i);
         if (!entry->occupied) {
             void* address = find_empty_space(size);
             if (!address) {
+                releasesleep(&disklock);
                 return NO_DISK_SPACE_FOUND;
             }
-            memcpy(entry->object_id, name, obj_id_bytes(name));
+            memmove(entry->object_id, name, obj_id_bytes(name));
             entry->disk_offset = address - (void*)memory_storage;
             entry->size = size;
-            memcpy(address, object, size);
+            memmove(address, object, size);
             entry->occupied = 1;
             super_block.bytes_occupied += size;
             super_block.occupied_objects += 1;
             write_super_block();
+            releasesleep(&disklock);
             return NO_ERR;
         }
     }
+    releasesleep(&disklock);
     return OBJECTS_TABLE_FULL;
 }
 
 
 uint rewrite_object(const void* object, uint size, const char* name) {
-    cprintf("In rewrite_object\n");
-
     uint err;
     err = check_rewrite_object_validality(size, name);
     if (err != NO_ERR) {
         return err;
     }
+    acquiresleep(&disklock);
     uint i;
     err = get_objects_table_index(name, &i);
     if (err != NO_ERR) {
+        releasesleep(&disklock);
         return err;
     }
     ObjectsTableEntry* entry = objects_table_entry(i);
@@ -266,7 +257,7 @@ uint rewrite_object(const void* object, uint size, const char* name) {
     if (entry->size >= size) {
         void* address =
             (void*)memory_storage + entry->disk_offset;
-        memcpy(address, object, size);
+        memmove(address, object, size);
         entry->size = size;
     } else {
         entry->occupied = 0;
@@ -275,63 +266,68 @@ uint rewrite_object(const void* object, uint size, const char* name) {
         entry->occupied = 1;
         super_block.occupied_objects += 1;
         if (!address) {
+            releasesleep(&disklock);
             return NO_DISK_SPACE_FOUND;
         }
-        memcpy(address, object, size);
+        memmove(address, object, size);
         entry->size = size;
         entry->disk_offset = address - (void*)memory_storage;
     }
     super_block.bytes_occupied += size;
     write_super_block();
+    releasesleep(&disklock);
     return NO_ERR;
 }
 
 
 uint object_size(const char* name, uint* output) {
-    cprintf("In object_size\n");
-
     if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
         return OBJECT_NAME_TOO_LONG;
     }
+    acquiresleep(&disklock);
     uint i;
     uint err = get_objects_table_index(name, &i);
     if (err != NO_ERR) {
+        releasesleep(&disklock);
         return err;
     }
     ObjectsTableEntry* entry = objects_table_entry(i);
     *output = entry->size;
+    releasesleep(&disklock);
     return NO_ERR;
 }
 
 
 uint get_object(const char* name, void* output) {
-    cprintf("In get_object\n");
-
     if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
         return OBJECT_NAME_TOO_LONG;
     }
+    acquiresleep(&disklock);
     uint i;
     uint err = get_objects_table_index(name, &i);
     if (err != NO_ERR) {
+        releasesleep(&disklock);
         return err;
     }
     ObjectsTableEntry* entry = objects_table_entry(i);
     void* address = (void*)memory_storage + entry->disk_offset;
-    memcpy(output, address, entry->size);
+    memmove(output, address, entry->size);
+
+    releasesleep(&disklock);
     return NO_ERR;
 }
 
 
 uint delete_object(const char* name) {
-    cprintf("In delete_object\n");
-
     uint err = check_delete_object_validality(name);
     if (err != NO_ERR) {
         return err;
     }
+    acquiresleep(&disklock);
     uint i;
     err = get_objects_table_index(name, &i);
     if (err != NO_ERR) {
+        releasesleep(&disklock);
         return err;
     }
     ObjectsTableEntry* entry = objects_table_entry(i);
@@ -339,13 +335,12 @@ uint delete_object(const char* name) {
     super_block.occupied_objects -= 1;
     super_block.bytes_occupied -= entry->size;
     write_super_block();
+    releasesleep(&disklock);
     return NO_ERR;
 }
 
 
 uint check_add_object_validality(uint size, const char* name) {
-    cprintf("In check_add_object_validality\n");
-
     // currently, because we don't use hash function, we must first scan the
     // table and check if the object already exists.
     if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
@@ -362,8 +357,6 @@ uint check_add_object_validality(uint size, const char* name) {
 
 
 uint check_rewrite_object_validality(uint size, const char* name) {
-    cprintf("In check_rewrite_object_validality\n");
-
     if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
         return OBJECT_NAME_TOO_LONG;
     }
@@ -372,8 +365,6 @@ uint check_rewrite_object_validality(uint size, const char* name) {
 
 
 uint check_delete_object_validality(const char* name) {
-    cprintf("In check_delete_object_validality\n");
-
     if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
         return OBJECT_NAME_TOO_LONG;
     }
@@ -381,37 +372,38 @@ uint check_delete_object_validality(const char* name) {
 }
 
 
-uint max_objects() {
-    cprintf("In max_objects\n");
+uint new_inode_number() {
+    acquiresleep(&disklock);
+    super_block.last_inode++;
+    write_super_block();
+    releasesleep(&disklock);
+    return super_block.last_inode;
+}
 
+
+uint max_objects() {
     return super_block.objects_table_size;
 }
 
 
 uint occupied_objects() {
-    cprintf("In occupied_objects\n");
-
     return super_block.occupied_objects;
 }
 
 
 void set_occupied_objects(uint value) {
-    cprintf("In set_occupied_objects\n");
-
+    acquiresleep(&disklock);
     super_block.occupied_objects = value;
     write_super_block();
+    releasesleep(&disklock);
 }
 
 
 uint device_size() {
-    cprintf("In device_size\n");
-
     return super_block.storage_device_size;
 }
 
 
 uint occupied_bytes() {
-    cprintf("In occupied_bytes\n");
-
     return super_block.bytes_occupied;
 }

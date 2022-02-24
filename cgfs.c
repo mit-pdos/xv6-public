@@ -154,7 +154,7 @@ static inline void move_and_add(char* destination, char* source, int* var)
     *var += strlen(source);
 }
 
-static int fdalloc(struct file * f)
+static int fdalloc(struct vfs_file * f)
 {
     int fd;
     struct proc * curproc = myproc();
@@ -168,7 +168,7 @@ static int fdalloc(struct file * f)
     return -1;
 }
 
-static int find_procs_offsets(int * procoff, int * pidoff, struct file * f)
+static int find_procs_offsets(int * procoff, int * pidoff, struct vfs_file * f)
 {
     *procoff = 0;
     *pidoff = f->off;
@@ -253,7 +253,7 @@ static int get_file_name_constant(char * filename)
 
 int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int omode)
 {
-    struct file * f;
+    struct vfs_file * f;
     int fd;
 
     if (type == CG_FILE){
@@ -292,9 +292,9 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
         }
 
         /* Allocate file structure and file desctiptor.*/
-        if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
+        if ((f = vfs_filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
             if (f)
-                fileclose(f);
+                vfs_fileclose(f);
             return -1;
         }
 
@@ -379,9 +379,9 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
             return -1;
 
         /* Allocate file structure and file desctiptor.*/
-        if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
+        if ((f = vfs_filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
             if (f)
-                fileclose(f);
+                vfs_fileclose(f);
             return -1;
         }
 
@@ -399,7 +399,7 @@ int unsafe_cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int 
     return -1;
 }
 
-int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
+int unsafe_cg_read(cg_file_type type, struct vfs_file * f, char * addr, int n)
 {
     if (type == CG_FILE){
 
@@ -762,7 +762,7 @@ int unsafe_cg_read(cg_file_type type, struct file * f, char * addr, int n)
     return -1;
 }
 
-int unsafe_cg_write(struct file * f, char * addr, int n)
+int unsafe_cg_write(struct vfs_file * f, char * addr, int n)
 {
     int r = 0;
     int filename_const = get_file_name_constant(f->cgfilename);
@@ -1012,9 +1012,9 @@ int unsafe_cg_write(struct file * f, char * addr, int n)
     return r;
 }
 
-int unsafe_cg_close(struct file * file)
+int unsafe_cg_close(struct vfs_file * file)
 {
-    fileclose(file);
+    vfs_fileclose(file);
     file->cgp->ref_count--;
     if (file->cgp->ref_count == 0 && *file->cgp->cgroup_dir_path == 0)
         decrement_nr_dying_descendants(file->cgp->parent);
@@ -1071,7 +1071,7 @@ int get_dir_name(char * path, char * dir_name)
     return 0;
 }
 
-static int cg_file_size(struct file * f)
+static int cg_file_size(struct vfs_file * f)
 {
     int size = 0;
     int filename_const = get_file_name_constant(f->cgfilename);
@@ -1125,7 +1125,7 @@ static int cg_file_size(struct file * f)
     return size;
 }
 
-int unsafe_cg_stat(struct file * f, struct stat * st)
+int unsafe_cg_stat(struct vfs_file * f, struct stat * st)
 {
     if (*f->cgp->cgroup_dir_path == 0)
         return -1;

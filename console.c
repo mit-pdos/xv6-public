@@ -16,6 +16,8 @@
 #include "proc.h"
 #include "x86.h"
 #include "fcntl.h"
+#include "vfs_file.h"
+#include "vfs_fs.h"
 
 //PAGEBREAK: 50
 #define BACKSPACE 0x100
@@ -252,19 +254,19 @@ consoleintr(int (*getc)(void))
 }
 
 int
-consoleread(struct inode *ip, char *dst, int n)
+consoleread(struct vfs_inode *ip, char *dst, int n)
 {
   uint target;
   int c;
 
-  iunlock(ip);
+  ip->i_op.iunlock(ip);
   target = n;
   acquire(&cons.lock);
   while(n > 0){
     while(input.r == input.w){
       if(myproc()->killed){
         release(&cons.lock);
-        ilock(ip);
+        ip->i_op.ilock(ip);
         return -1;
       }
       sleep(&input.r, &cons.lock);
@@ -284,13 +286,13 @@ consoleread(struct inode *ip, char *dst, int n)
       break;
   }
   release(&cons.lock);
-  ilock(ip);
+  ip->i_op.ilock(ip);
 
   return target - n;
 }
 
 int
-ttyread(struct inode *ip, char *dst, int n)
+ttyread(struct vfs_inode *ip, char *dst, int n)
 {
   if(tty_table[ip->minor].flags & DEV_CONNECT){
     return consoleread(ip,dst,n);
@@ -299,22 +301,22 @@ ttyread(struct inode *ip, char *dst, int n)
 }
 
 int
-consolewrite(struct inode *ip, char *buf, int n)
+consolewrite(struct vfs_inode *ip, char *buf, int n)
 {
   int i;
 
-  iunlock(ip);
+  ip->i_op.iunlock(ip);
   acquire(&cons.lock);
   for(i = 0; i < n; i++)
     consputc(buf[i] & 0xff);
   release(&cons.lock);
-  ilock(ip);
+  ip->i_op.ilock(ip);
 
   return n;
 }
 
 int
-ttywrite(struct inode *ip, char *buf, int n)
+ttywrite(struct vfs_inode *ip, char *buf, int n)
 {
   if(tty_table[ip->minor].flags & DEV_CONNECT){
     return consolewrite(ip,buf,n);
@@ -347,14 +349,14 @@ ttyinit(void)
   }
 }
 
-void tty_disconnect(struct inode *ip) {
+void tty_disconnect(struct vfs_inode *ip) {
   tty_table[ip->minor].flags &=  ~(DEV_CONNECT);
   tty_table[CONSOLE_MINOR].flags |=  DEV_CONNECT;
   consoleclear();
   cprintf("Console connected\n");
 }
 
-void tty_connect(struct inode *ip) {
+void tty_connect(struct vfs_inode *ip) {
   tty_table[ip->minor].flags |= DEV_CONNECT;
   for(int i = CONSOLE_MINOR; i < MAX_TTY; i++){
     if(ip->minor != i){
@@ -365,14 +367,14 @@ void tty_connect(struct inode *ip) {
  cprintf("\ntty%d connected\n",ip->minor-(CONSOLE_MINOR+1));
 }
 
-void tty_attach(struct inode *ip) {
+void tty_attach(struct vfs_inode *ip) {
   tty_table[ip->minor].flags |= DEV_ATTACH;
 }
 
-void tty_detach(struct inode *ip) {
+void tty_detach(struct vfs_inode *ip) {
   tty_table[ip->minor].flags &= ~(DEV_ATTACH);
 }
 
-int tty_gets(struct inode *ip, int command) {
+int tty_gets(struct vfs_inode *ip, int command) {
   return (tty_table[ip->minor].flags & command ? 1 : 0);
 }

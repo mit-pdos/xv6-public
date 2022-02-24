@@ -10,6 +10,7 @@
 #include "pid_ns.h"
 #include "namespace.h"
 #include "cpu_account.h"
+#include "obj_log.h"
 
 struct {
   struct spinlock lock;
@@ -283,8 +284,8 @@ fork(void)
 
   for (i = 0; i < NOFILE; i++)
     if (curproc->ofile[i])
-      np->ofile[i] = filedup(curproc->ofile[i]);
-  np->cwd = idup(curproc->cwd);
+      np->ofile[i] = vfs_filedup(curproc->ofile[i]);
+  np->cwd = curproc->cwd->i_op.idup(curproc->cwd);
   safestrcpy(np->cwdp, curproc->cwdp, sizeof(curproc->cwdp));
   np->cwdmount = mntdup(curproc->cwdmount);
 
@@ -378,13 +379,13 @@ exit(int status)
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
     if(curproc->ofile[fd]){
-      fileclose(curproc->ofile[fd]);
+      vfs_fileclose(curproc->ofile[fd]);
       curproc->ofile[fd] = 0;
     }
   }
 
   begin_op();
-  iput(curproc->cwd);
+  curproc->cwd->i_op.iput(curproc->cwd);
   end_op();
 
   mntput(curproc->cwdmount);
@@ -646,6 +647,7 @@ forkret(void)
     first = 0;
     iinit(ROOTDEV);
     initlog(ROOTDEV);
+    init_objfs_log();
     mntinit(); // initialize mounts
   }
 

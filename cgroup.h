@@ -304,22 +304,22 @@ int cg_open(cg_file_type type, char * filename, struct cgroup * cgp, int omode);
 /**
  * This function is a lock protected version of the corresponding unsafe function unsafe_cg_read() defined in cgfs.h.
  */
-int cg_read(cg_file_type type, struct file * f, char * addr, int n);
+int cg_read(cg_file_type type, struct vfs_file * f, char * addr, int n);
 
 /**
  * This function is a lock protected version of the corresponding unsafe function unsafe_cg_write() defined in cgfs.h.
  */
-int cg_write(struct file * f, char * addr, int n);
+int cg_write(struct vfs_file * f, char * addr, int n);
 
 /**
  * This function is a lock protected version of the corresponding unsafe function unsafe_cg_close() defined in cgfs.h.
  */
-int cg_close(struct file * file);
+int cg_close(struct vfs_file * file);
 
 /**
  * This function is a lock protected version of the corresponding unsafe function unsafe_cg_stat() defined in cgfs.h.
  */
-int cg_stat(struct file * f, struct stat * st);
+int cg_stat(struct vfs_file * f, struct stat * st);
 
 /**
  * This function opens cgroup file or directory. Meant to be called in sys_open().

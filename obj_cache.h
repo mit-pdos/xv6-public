@@ -1,4 +1,6 @@
-#pragma once
+#ifndef XV6_OBJ_CACHE_H
+#define XV6_OBJ_CACHE_H
+
 
 /**
  * `obj_cache` specify the second layer in the file system. It is the objects
@@ -72,8 +74,8 @@
 
 void init_objects_cache();
 
-
-uint cache_add_object(const void* object, uint size, const char* name); 
+void _check(char * val);
+uint cache_add_object(const void* object, uint size, const char* name);
 uint cache_rewrite_object(const void* object, uint size, const char* name); 
 uint cache_delete_object(const char* name); 
 uint cache_object_size(const char* name, uint* output);
@@ -81,8 +83,9 @@ uint cache_get_object(const char* name, void* output);
 
 /**
  * Remove the object from the objects cache but not form the disk.
+ * This function locks the cache lock and release it in the end.
  */
-uint cache_free_from_cache(const char* name);
+uint cache_free_from_cache_safe(const char* name);
 
 
 /**
@@ -91,6 +94,8 @@ uint cache_free_from_cache(const char* name);
  * optimize their run flow.
  */
 
-uint objects_cache_hits(); 
-uint objects_cache_misses(); 
+uint objects_cache_hits();
+uint objects_cache_misses();
 uint cache_max_object_size();
+
+#endif

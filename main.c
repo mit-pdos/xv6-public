@@ -5,15 +5,16 @@
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
-#include "obj_disk.h"
-
-// #include "obj_disk.h"
-// #include "obj_cache.h"
-// #include "obj_log.h"
+ #include "obj_disk.h"
+#include "vfs_file.h"
+#include "obj_cache.h"
 
 static void objfsinit(void);
+
 static void startothers(void);
+
 static void mpmain(void)  __attribute__((noreturn));
+
 extern pde_t *kpgdir;
 extern char end[]; // first address after kernel loaded from ELF file
 
@@ -43,9 +44,9 @@ main(void)
   pinit();         // process table
   tvinit();        // trap vectors
   binit();         // buffer cache
-  fileinit();      // file table
-  ideinit();       // disk
+  vfs_fileinit();      // file table
   objfsinit();     // objfs disk
+  ideinit();       // disk
   startothers();   // start other processors
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
   cginit();        // cgroup table, must come before userinit()
@@ -55,13 +56,10 @@ main(void)
   mpmain();        // finish this processor's setup
 }
 
- static void
- objfsinit(void)
- {
-   init_obj_fs();
-//   init_objects_cache();
-//   finish_log_transactions();
- }
+static void
+objfsinit(void) {
+    obj_mkfs();
+}
 
 // Other CPUs jump here from entryother.S.
 static void
