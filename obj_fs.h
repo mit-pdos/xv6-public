@@ -15,13 +15,14 @@
 struct objsuperblock {
     uint storage_device_size;
     uint objects_table_offset;
-    uint objects_table_size;
     // the last inode added
     uint last_inode;
     // variables to trace the file-system state
     uint bytes_occupied;
     uint occupied_objects;
     struct vfs_superblock vfs_sb;
+    // determines the limit between object table space and the store itself
+    uint store_offset;
 };
 
 /**

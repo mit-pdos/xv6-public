@@ -184,6 +184,7 @@
  */
 
 #include "types.h"
+#include "kvector.h"
 
 #define LOGBOOK_OBJECT_ID "\xfflogbook\xff"
 
@@ -191,7 +192,7 @@ void init_objfs_log();
 uint log_add_object(const void* object, uint size, const char* name);
 uint log_rewrite_object(const void* object, uint size, const char* name);
 uint log_delete_object(const char* name);
-uint log_get_object(const char* name, void* output);
+uint log_get_object(const char* name, vector * outputvector, uint readfromoffset);
 uint log_object_size(const char* name, uint* output);
 
 #endif

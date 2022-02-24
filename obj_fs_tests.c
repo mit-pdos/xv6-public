@@ -48,7 +48,6 @@ TEST(super_block_object) {
 
     EXPECT_UINT_EQ(STORAGE_DEVICE_SIZE, sb.storage_device_size);
     EXPECT_UINT_EQ(sizeof(struct objsuperblock), sb.objects_table_offset);
-    EXPECT_UINT_EQ(OBJECTS_TABLE_SIZE, sb.objects_table_size);
     EXPECT_UINT_EQ(2, sb.occupied_objects);
     EXPECT_UINT_EQ(sizeof(struct objsuperblock) + objects_table_bytes,
                   sb.bytes_occupied);

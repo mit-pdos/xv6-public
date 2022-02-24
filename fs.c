@@ -23,8 +23,7 @@
 #include "mount.h"
 #include "device.h"
 #include "vfs_fs.h"
-
-#define min(a, b) ((a) < (b) ? (a) : (b))
+#include "kvector.h"
 
 int             dirlink(struct vfs_inode*, char*, uint);
 struct vfs_inode*   dirlookup(struct vfs_inode*, char*, uint*);
@@ -34,7 +33,7 @@ void            iput(struct vfs_inode*);
 void            iunlock(struct vfs_inode*);
 void            iunlockput(struct vfs_inode*);
 void            iupdate(struct vfs_inode*);
-int             readi(struct vfs_inode*, char*, uint, uint);
+int             readi(struct vfs_inode*, uint, uint, vector *);
 void            stati(struct vfs_inode*, struct stat*);
 int             writei(struct vfs_inode*, char*, uint, uint);
 int             isdirempty (struct vfs_inode*);
@@ -500,7 +499,7 @@ stati(struct vfs_inode *vfs_ip, struct stat *st) {
 // Read data from inode.
 // Caller must hold ip->lock.
 int
-readi(struct vfs_inode *vfs_ip, char *dst, uint off, uint n) {
+readi(struct vfs_inode *vfs_ip, uint off, uint n, vector * dstvector) {
     uint tot, m;
     struct buf *bp;
     struct inode * ip = container_of(vfs_ip, struct inode, vfs_inode);
@@ -510,7 +509,9 @@ readi(struct vfs_inode *vfs_ip, char *dst, uint off, uint n) {
     || ip->vfs_inode.minor < 0 || ip->vfs_inode.minor >= MAX_TTY 
     || !devsw[ip->vfs_inode.major].read)
       return -1;
-    return devsw[ip->vfs_inode.major].read(vfs_ip, dst, n);
+    
+    int read_result = devsw[ip->vfs_inode.major].read(vfs_ip, n, dstvector);
+    return read_result;
   }
 
     if (off > ip->size || off + n < off)
@@ -518,10 +519,12 @@ readi(struct vfs_inode *vfs_ip, char *dst, uint off, uint n) {
     if (off + n > ip->size)
         n = ip->size - off;
 
-    for (tot = 0; tot < n; tot += m, off += m, dst += m) {
+    unsigned int dstoffset = 0;
+    for (tot = 0; tot < n; tot += m, off += m, dstoffset += m) {
         bp = bread(ip->vfs_inode.dev, bmap(ip, off / BSIZE));
         m = min(n - tot, BSIZE - off % BSIZE);
-        memmove(dst, bp->data + off % BSIZE, m);
+        memmove_into_vector_bytes(*dstvector, dstoffset, (char*)(bp->data + off % BSIZE), m);
+        //vectormemcmp("readi", *dstvector, dstoffset, (char*)(bp->data + off % BSIZE), m);
         brelse(bp);
     }
     return n;
@@ -573,11 +576,15 @@ isdirempty(struct vfs_inode *vfs_dp)
 {
   int off;
   struct dirent de;
+  vector direntryvec;
   struct inode * dp = container_of(vfs_dp, struct inode, vfs_inode);
+  direntryvec = newvector(sizeof(de), 1);
 
   for(off=2*sizeof(de); off<dp->size; off+=sizeof(de)) {
-    if(dp->vfs_inode.i_op.readi(&dp->vfs_inode, (char*)&de, off, sizeof(de)) != sizeof(de))
+    if(dp->vfs_inode.i_op.readi(&dp->vfs_inode, off, sizeof(de), &direntryvec) != sizeof(de))
       panic("isdirempty: readi");
+    //vectormemcmp("isdirempty", direntryvec,0, (char *) &de, sizeof(de));
+    memmove_from_vector((char*)&de, direntryvec, 0, sizeof(de));
     if(de.inum != 0)
       return 0;
   }
@@ -591,14 +598,18 @@ struct vfs_inode *
 dirlookup(struct vfs_inode *vfs_dp, char *name, uint *poff) {
     uint off, inum;
     struct dirent de;
+    vector direntryvec;
     struct inode * dp = container_of(vfs_dp, struct inode, vfs_inode);
+    direntryvec = newvector(sizeof(de),1);
 
     if (dp->vfs_inode.type != T_DIR)
         panic("dirlookup not DIR");
 
     for (off = 0; off < dp->size; off += sizeof(de)) {
-        if (readi(&dp->vfs_inode, (char *) &de, off, sizeof(de)) != sizeof(de))
+        if (readi(&dp->vfs_inode, off, sizeof(de), &direntryvec) != sizeof(de))
             panic("dirlookup read");
+        //vectormemcmp("dirlookup", direntryvec,0, (char *) &de, sizeof(de));
+        memmove_from_vector((char*)&de, direntryvec, 0, sizeof(de));
         if (de.inum == 0)
             continue;
         if (vfs_namecmp(name, de.name) == 0) {
@@ -606,10 +617,11 @@ dirlookup(struct vfs_inode *vfs_dp, char *name, uint *poff) {
             if (poff)
                 *poff = off;
             inum = de.inum;
+            freevector(&direntryvec);
             return iget(dp->vfs_inode.dev, inum);
         }
     }
-
+    freevector(&direntryvec);
     return 0;
 }
 
@@ -620,6 +632,8 @@ dirlink(struct vfs_inode *vfs_dp, char *name, uint inum) {
     struct dirent de;
     struct vfs_inode *ip;
     struct inode * dp = container_of(vfs_dp, struct inode, vfs_inode);
+    vector direntryvec;
+    direntryvec = newvector(sizeof(de),1);
 
     // Check that name is not present.
     if ((ip = dirlookup(&dp->vfs_inode, name, 0)) != 0) {
@@ -629,17 +643,19 @@ dirlink(struct vfs_inode *vfs_dp, char *name, uint inum) {
 
     // Look for an empty dirent.
     for (off = 0; off < dp->size; off += sizeof(de)) {
-        if (readi(&dp->vfs_inode, (char *) &de, off, sizeof(de)) != sizeof(de))
+        if (readi(&dp->vfs_inode, off, sizeof(de), &direntryvec) != sizeof(de))
             panic("dirlink read");
+        memmove_from_vector((char*)&de, direntryvec, 0, sizeof(de));
         if (de.inum == 0)
             break;
     }
 
     strncpy(de.name, name, DIRSIZ);
     de.inum = inum;
-    if (writei(&dp->vfs_inode, (char *) &de, off, sizeof(de)) != sizeof(de))
+    if (writei(&dp->vfs_inode, (char *) &de, off, sizeof(de)) != sizeof(de)) //TODO: write from vector
         panic("dirlink");
 
+    freevector(&direntryvec);
     return 0;
 }
 

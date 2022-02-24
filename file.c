@@ -98,16 +98,28 @@ int
 fileread(struct file *f, char *addr, int n)
 {
   int r;
+  vector file_content;
+  file_content = newvector(n, 1);
 
-  if(f->readable == 0)
+  if(f->readable == 0){
+    freevector(&file_content);
     return -1;
-  if(f->type == FD_PIPE)
-    return piperead(f->pipe, addr, n);
+  }
+  if(f->type == FD_PIPE){
+    r = piperead(f->pipe, n, &file_content);
+    memmove_from_vector(addr, file_content, 0, n);
+    freevector(&file_content);
+    return r;
+  }
   if(f->type == FD_INODE){
     ilock(f->ip);
-    if((r = readi(f->ip, addr, f->off, n)) > 0)
+    r = readi(f->ip, addr, f->off, n, &file_content);
+    memmove_from_vector(addr, file_content, 0, n);
+    if(r > 0){
       f->off += r;
+    }
     iunlock(f->ip);
+    freevector(&file_content);
     return r;
   }
   panic("fileread");

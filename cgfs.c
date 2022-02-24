@@ -30,11 +30,6 @@
 #define MEM_MAX 16
 #define MEM_STAT 17
 
-// TODO: refactor - move to defs.h
-#define min(x, y) (x) > (y) ? (y) : (x)
-// TODO: refactor - move to defs.h (also change the name)
-#define abs(x) (x) > 0 ? (x) : (0)
-
 // Is static to save space in the stack
 static char buf[MAX_BUF];
 

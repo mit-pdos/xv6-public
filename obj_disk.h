@@ -3,6 +3,7 @@
 
 #include "obj_fs.h"
 #include "types.h"
+#include "kvector.h"
 
 /**
  * `obj_disk` specify the most lower level in the object file system.
@@ -51,7 +52,7 @@
  * end in a single operation.
  *
  * The inner implementation has the following structure:
- * The memory is an array os size `STORAGE_DEVICE_SIZE` which must be defined.
+ * The memory is an array of size `STORAGE_DEVICE_SIZE` which must be defined.
  * The super block is located at offset 0 and the table right after it. The
  * size of the table is set by the define `OBJECTS_TABLE_SIZE`.
  *
@@ -65,7 +66,7 @@
  * full scanning the objects-table. In addition, this method would set all
  * the ids to be with the same length in bytes.
  * Because we currently doesn't use such method, we set an upper length for
- * the objects name. Hence, a relevant error can occour when caling
+ * the objects name. Hence, a relevant error can occour when calling
  *
  * In the current version, the disk is NOT thread safe.
  * TODO make it a thread safe.
@@ -133,7 +134,7 @@ uint add_object(const void* object, uint size, const char* name);
  *   NO_ERR            - no error occured.
  *   OBJECT_NOT_EXISTS - object with this name already exists.
  */
-uint rewrite_object(const void* object, uint size, const char* name);
+uint rewrite_object(vector object, uint size, const char* name);
 
 
 /**
@@ -162,7 +163,7 @@ uint object_size(const char* name, uint* output);
  *   NO_ERR            - no error occured.
  *   OBJECT_NOT_EXISTS - no object with this name exists.
  */
-uint get_object(const char* name, void* output);
+uint get_object(const char* name, void* output, vector * outputvector);
 
 
 
@@ -221,8 +222,7 @@ uint new_inode_number();
  * file-system used objects such as inodes and the super block.
  * More specificaly, this value is the size of the objects table.
  */
-uint max_objects(); 
-
+uint get_object_table_size();
 
 /**
  * Specify how many objects are currently occupied in the table.
@@ -251,5 +251,12 @@ uint device_size();
  * fregmentation, the actual amount of data you can write might be lower.
  */
 uint occupied_bytes();
+
+
+/**
+ * Resize the object table and the store itself
+ * by setting the limit between them to a specified value.
+ */
+void set_store_offset(uint new_offset);
 
 #endif
