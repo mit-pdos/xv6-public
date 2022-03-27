@@ -7,18 +7,21 @@ int main(void)
     int pid = fork();
     if (!pid) // child
     {
+        printf(1, "I am the child, my pid is %d\n", getpid());
         while (1)
         {
-            printf(1, "I am the child, my pid is %d\n", getpid());
-            sleep(300);
+            sleep(30);
+            printf(1, "child heartbeat <3\n");
         }
     }
     sleep(10);
-    printf(1, "I am the parent, pid %d\n", getpid());
+    printf(1, "I am the parent, my pid is %d\n", getpid());
     // parent code
-    sleep(1000);
-    printf(1, "parent killing child %d...", pid);
-    kill(pid);
+    sleep(100);
+    printf(1, "parent killing child pid=%d...", pid);
+    kill(pid,0);
     sleep(10);
-    printf(1, "done.\n");
+    printf(1, "done.\nexiting parent.\n");
+
+    exit();
 }

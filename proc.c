@@ -494,19 +494,43 @@ int kill(int pid, int flag)
   {
     if (p->pid == pid)
     {
-      if (!flag)
+      if (flag == 0)
       {
         p->killed = 1;
+        // Wake process from sleep if necessary.
+        if (p->state == SLEEPING)
+        {
+          p->state = RUNNABLE;
+        }
       }
-      // Wake process from sleep if necessary.
-      if (p->state == SLEEPING)
-        p->state = RUNNABLE;
+      else if (flag == 1)
+      {
+        if (p->state == PAUSED)
+          p->state = RUNNABLE;
+      }
+      else
+      {
+        break;
+      }
       release(&ptable.lock);
       return 0;
     }
   }
   release(&ptable.lock);
   return -1;
+}
+
+// pause system call definition
+void pause(void)
+{
+  // get self process
+  struct proc *p = myproc();
+  acquire(&ptable.lock);
+  // pause self
+  p->state = PAUSED;
+  // call scheduler, since self should not keep running
+  sched();
+  release(&ptable.lock);
 }
 
 // PAGEBREAK: 36
@@ -521,7 +545,8 @@ void procdump(void)
       [SLEEPING] "sleep ",
       [RUNNABLE] "runble",
       [RUNNING] "run   ",
-      [ZOMBIE] "zombie"};
+      [ZOMBIE] "zombie",
+      [PAUSED] "paused"};
   int i;
   struct proc *p;
   char *state;
