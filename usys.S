@@ -10,7 +10,7 @@
 
 SYSCALL(fork)
 SYSCALL(exit) //lab1
-SYSCALL(wait)
+SYSCALL(wait) 
 SYSCALL(pipe)
 SYSCALL(read)
 SYSCALL(write)
