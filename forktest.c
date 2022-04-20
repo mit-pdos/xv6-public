@@ -17,7 +17,7 @@ void
 forktest(void)
 {
   int n, pid;
-
+  int status;
   printf(1, "fork test\n");
 
   for(n=0; n<N; n++){
@@ -34,13 +34,13 @@ forktest(void)
   }
 
   for(; n > 0; n--){
-    if(wait() < 0){
+    if(wait(&status) < 0){
       printf(1, "wait stopped early\n");
       exit(0);
     }
   }
 
-  if(wait() != -1){
+  if(wait(&status) != -1){
     printf(1, "wait got too many\n");
     exit(0);
   }
