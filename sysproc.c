@@ -99,7 +99,8 @@ sys_hello(void) {
 
 int 
 sys_waitpid(void){
-  int pid, options;
+  int pid = 1; 
+  int options = 1;
   int status;
-  waitpid(pid, &status, options);
+  return waitpid(pid, &status, options);
 }
