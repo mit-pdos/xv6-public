@@ -26,7 +26,7 @@ int
 sys_wait(void)
 {
   int *d;
-  argptr(0,(char**)&d, sizeof(int*));
+  argptr(0,(char**)&d, 0);
   return wait(d);
 }
 
@@ -102,8 +102,13 @@ sys_hello(void) {
 
 int 
 sys_waitpid(void){
-  int pid = 1; 
-  int options = 1;
-  int status;
-  return waitpid(pid, &status, options);
+  int pid; 
+  int options;
+  int* status;
+
+  argint(0, &pid);
+  argint(1, &options);
+  argptr(1,(char**)&status,0);
+
+  return waitpid(pid,status, options);
 }

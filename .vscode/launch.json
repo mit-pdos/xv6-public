@@ -2,13 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "gdb",
-            "request": "attach",
-            "name": "debug xv6",
-            "executable": "kernel",
-            "target": ":26328",
-            "remote": true,
+            "type": "by-gdb",
+            "request": "launch",
+            "name": "Launch(remote)",
+            "program": "${workspaceRoot}/kernel",
             "cwd": "${workspaceRoot}",
+            "remote": {
+                "enabled": true,
+                "address": ":28480",
+                "mode": "remote",
+                "execfile": "${workspaceRoot}/kernel"
+            }
         }
     ]
 }
