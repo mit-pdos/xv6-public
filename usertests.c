@@ -43,7 +43,6 @@ void
 exitiputtest(void)
 {
   int pid;
-  int status;
 
   printf(stdout, "exitiput test\n");
 
@@ -67,7 +66,7 @@ exitiputtest(void)
     }
     exit();
   }
-wait();
+  wait();
   printf(stdout, "exitiput test ok\n");
 }
 
@@ -86,7 +85,6 @@ void
 openiputtest(void)
 {
   int pid;
-  int status;
 
   printf(stdout, "openiput test\n");
   if(mkdir("oidir") < 0){
@@ -111,7 +109,7 @@ openiputtest(void)
     printf(stdout, "unlink failed\n");
     exit();
   }
-wait();
+  wait();
   printf(stdout, "openiput test ok\n");
 }
 
@@ -307,7 +305,6 @@ exectest(void)
 void
 pipe1(void)
 {
-  int status;
   int fds[2], pid;
   int seq, i, n, cc, total;
 
@@ -349,7 +346,7 @@ pipe1(void)
       exit();
     }
     close(fds[0]);
-  wait();
+    wait();
   } else {
     printf(1, "fork() failed\n");
     exit();
@@ -361,7 +358,6 @@ pipe1(void)
 void
 preempt(void)
 {
-  int status;
   int pid1, pid2, pid3;
   int pfds[2];
 
@@ -398,9 +394,9 @@ preempt(void)
   kill(pid2);
   kill(pid3);
   printf(1, "wait... ");
-wait();
-wait();
-wait();
+  wait();
+  wait();
+  wait();
   printf(1, "preempt ok\n");
 }
 
@@ -409,7 +405,6 @@ void
 exitwait(void)
 {
   int i, pid;
-  int status;
 
   for(i = 0; i < 100; i++){
     pid = fork();
@@ -434,7 +429,6 @@ mem(void)
 {
   void *m1, *m2;
   int pid, ppid;
-  int status;
 
   printf(1, "mem test\n");
   ppid = getpid();
@@ -459,7 +453,7 @@ mem(void)
     printf(1, "mem ok\n");
     exit();
   } else {
-  wait();
+    wait();
   }
 }
 
@@ -470,7 +464,6 @@ mem(void)
 void
 sharedfd(void)
 {
-  int status;
   int fd, pid, i, n, nc, np;
   char buf[10];
 
@@ -493,7 +486,7 @@ sharedfd(void)
   if(pid == 0)
     exit();
   else
-  wait();
+    wait();
   close(fd);
   fd = open("sharedfd", 0);
   if(fd < 0){
@@ -524,7 +517,6 @@ sharedfd(void)
 void
 fourfiles(void)
 {
-  int status;
   int fd, pid, i, j, n, total, pi;
   char *names[] = { "f0", "f1", "f2", "f3" };
   char *fname;
@@ -560,7 +552,7 @@ fourfiles(void)
   }
 
   for(pi = 0; pi < 4; pi++){
-  wait();
+    wait();
   }
 
   for(i = 0; i < 2; i++){
@@ -591,7 +583,6 @@ fourfiles(void)
 void
 createdelete(void)
 {
-  int status;
   enum { N = 20 };
   int pid, i, fd, pi;
   char name[32];
@@ -629,7 +620,7 @@ createdelete(void)
   }
 
   for(pi = 0; pi < 4; pi++){
-  wait();
+    wait();
   }
 
   name[0] = name[1] = name[2] = 0;
@@ -773,7 +764,6 @@ linktest(void)
 void
 concreate(void)
 {
-  int status;
   char file[3];
   int i, pid, n, fd;
   char fa[40];
@@ -804,7 +794,7 @@ concreate(void)
     if(pid == 0)
       exit();
     else
-    wait();
+      wait();
   }
 
   memset(fa, 0, sizeof(fa));
@@ -856,7 +846,7 @@ concreate(void)
     if(pid == 0)
       exit();
     else
-    wait();
+      wait();
   }
 
   printf(1, "concreate ok\n");
@@ -868,7 +858,6 @@ void
 linkunlink()
 {
   int pid, i;
-  int status;
 
   printf(1, "linkunlink test\n");
 
@@ -892,7 +881,7 @@ linkunlink()
   }
 
   if(pid)
-  wait();
+    wait();
   else
     exit();
 
@@ -1390,7 +1379,6 @@ iref(void)
 void
 forktest(void)
 {
-  int status;
   int n, pid;
 
   printf(1, "fork test\n");
@@ -1426,7 +1414,6 @@ forktest(void)
 void
 sbrktest(void)
 {
-  int status;
   int fds[2], pid, pids[10], ppid;
   char *a, *b, *c, *lastaddr, *oldbrk, *p, scratch;
   uint amt;
@@ -1459,7 +1446,7 @@ sbrktest(void)
   }
   if(pid == 0)
     exit();
-wait();
+  wait();
 
   // can one grow address space to something big?
 #define BIG (100*1024*1024)
@@ -1519,7 +1506,7 @@ wait();
       kill(ppid);
       exit();
     }
-  wait();
+    wait();
   }
 
   // if we run the system out of memory, does it clean up the last
@@ -1546,7 +1533,7 @@ wait();
     if(pids[i] == -1)
       continue;
     kill(pids[i]);
-  wait();
+    wait();
   }
   if(c == (char*)0xffffffff){
     printf(stdout, "failed sbrk leaked memory\n");
@@ -1575,7 +1562,6 @@ validateint(int *p)
 void
 validatetest(void)
 {
-  int status;
   int hi, pid;
   uint p;
 
@@ -1591,7 +1577,7 @@ validatetest(void)
     sleep(0);
     sleep(0);
     kill(pid);
-  wait();
+    wait();
 
     // try to crash the kernel by passing in a bad string pointer
     if(link("nosuchfile", (char*)p) != -1){
@@ -1626,7 +1612,6 @@ bsstest(void)
 void
 bigargtest(void)
 {
-  int status;
   int pid, fd;
 
   unlink("bigarg-ok");
@@ -1647,7 +1632,7 @@ bigargtest(void)
     printf(stdout, "bigargtest: fork failed\n");
     exit();
   }
-wait();
+  wait();
   fd = open("bigarg-ok", 0);
   if(fd < 0){
     printf(stdout, "bigarg test failed!\n");
@@ -1716,11 +1701,9 @@ uio()
   #define RTC_ADDR 0x70
   #define RTC_DATA 0x71
 
-
   ushort port = 0;
   uchar val = 0;
   int pid;
-  int status;
 
   printf(1, "uio test\n");
   pid = fork();
@@ -1737,7 +1720,7 @@ uio()
     printf (1, "fork failed\n");
     exit();
   }
-wait();
+  wait();
   printf(1, "uio test done\n");
 }
 

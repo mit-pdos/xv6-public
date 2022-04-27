@@ -89,9 +89,3 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
-
-int
-sys_hello(void) {
-  hello();
-  return 0;
-}
