@@ -89,3 +89,12 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_setprior(void){
+  int prior_lvl;
+  if(argint(0, &prior_lvl)<0){
+    return -1;
+  }
+  setprior(prior_lvl);
+}
