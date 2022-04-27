@@ -25,6 +25,7 @@ int sleep(int);
 int uptime(void);
 int hello(void); //J.H
 int waitpid(int, int*, int); //lab1c
+void setprior(int); //lab2
 
 // ulib.c
 int stat(const char*, struct stat*);

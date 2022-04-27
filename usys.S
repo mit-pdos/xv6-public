@@ -31,3 +31,4 @@ SYSCALL(sleep)
 SYSCALL(uptime)
 SYSCALL(hello) //J.H.
 SYSCALL(waitpid)
+SYSCALL(setprior)

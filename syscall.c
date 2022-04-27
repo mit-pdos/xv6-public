@@ -105,6 +105,7 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_hello(void); //J.H.
 extern int sys_waitpid(void);
+extern int sys_setprior(void); //lab2
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -130,6 +131,7 @@ static int (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_hello]   sys_hello, //J.H.
 [SYS_waitpid] sys_waitpid,
+[SYS_setprior]  sys_setprior, //lab2
 };
 
 void
