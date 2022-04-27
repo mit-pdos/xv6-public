@@ -329,8 +329,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
-  int temp_high = 31;
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -339,20 +338,10 @@ scheduler(void)
     acquire(&ptable.lock);
 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if (p->prior_val < temp_high){
-        temp_high = p->prior_val;
-      }
-    }
-
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       
       //MODIFY SCHEDULER
-      if(p->state != RUNNABLE && p->prior_val != temp_high){
-        p->prior_val = p->prior_val -1;
+      if(p->state != RUNNABLE)
         continue;
-      }
-   
-      p->prior_val = p->prior_val +1;
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -601,10 +590,4 @@ waitpid(int id, int *status, int options){
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
-}
-
-void set_prior(int prior_lvl){
-  struct proc *curproc = myproc();
-  curproc->prior_val = prior_lvl;
-  yield();
 }

@@ -22,4 +22,3 @@
 #define SYS_close  21
 #define SYS_hello  22 //J.H
 #define SYS_waitpid 23
-#define SYS_setprior    24 //lab2

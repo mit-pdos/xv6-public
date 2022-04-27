@@ -121,12 +121,3 @@ sys_waitpid(void){
   }
   return waitpid(pid,status, options);
 }
-
-int
-sys_setprior(void){
-  int prior_lvl;
-  if(argint(0, &prior_lvl)<0){
-    return -1;
-  }
-  setprior(prior_lvl);
-}
