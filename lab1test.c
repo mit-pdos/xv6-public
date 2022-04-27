@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
    printf(1, "\ntype \"%s 1\" to test exit and wait, \"%s 2\" to test waitpid\n", argv[0], argv[0]);
   
     // End of test
-	 exit(0);
+	 exit();
 	 return 0;
  }
   
@@ -35,7 +35,7 @@ int exitWait(void) {
     if (pid == 0) { // only the child executed this code
       if (i == 0){
         printf(1, "\nThis is child with PID# %d and I will exit with status %d\n", getpid(), 0);
-        exit(0);
+        exit();
       }
       else{
 	      printf(1, "\nThis is child with PID# %d and I will exit with status %d\n" ,getpid(), -1);

@@ -44,7 +44,7 @@ main(int argc, char *argv[])
     read(fd, data, sizeof(data));
   close(fd);
 
-wait(&status);
+wait();
 
-  exit(0);
+  exit();
 }

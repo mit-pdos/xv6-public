@@ -9,8 +9,8 @@
     ret
 
 SYSCALL(fork)
-SYSCALL(exit) //lab1
-SYSCALL(wait) 
+SYSCALL(exit)
+SYSCALL(wait)
 SYSCALL(pipe)
 SYSCALL(read)
 SYSCALL(write)
@@ -29,5 +29,3 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
-SYSCALL(hello) //J.H.
-SYSCALL(waitpid)
