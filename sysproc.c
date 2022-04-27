@@ -17,7 +17,9 @@ int
 sys_exit(void)
 {
   int status;
-  argint(0,&status);
+  if (argint(0,&status)<0){
+    return -1;
+  }
   exit(status);
   return 0;  // not reached
 }
@@ -26,7 +28,9 @@ int
 sys_wait(void)
 {
   int *d;
-  argptr(0,(char**)&d, 0);
+  if(argptr(0,(char**)&d, 0)<0){
+    return -1;
+  }
   return wait(d);
 }
 
@@ -106,9 +110,14 @@ sys_waitpid(void){
   int options;
   int* status;
 
-  argint(0, &pid);
-  argint(1, &options);
-  argptr(1,(char**)&status,0);
-
+  if(argint(0, &pid)<0){
+    return -1;
+  }
+ if(argptr(1,(void*)&status,0)<0){
+    return -1;
+  }
+  if(argint(2, &options)<0){
+    return -1;
+  }
   return waitpid(pid,status, options);
 }
