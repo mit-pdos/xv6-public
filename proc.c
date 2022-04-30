@@ -112,6 +112,7 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  p->prior_val = 0;
   return p;
 }
 
@@ -184,6 +185,7 @@ fork(void)
   struct proc *np;
   struct proc *curproc = myproc();
 
+  curproc->prior_val = 0;
   // Allocate process.
   if((np = allocproc()) == 0){
     return -1;
@@ -230,6 +232,11 @@ exit(void)
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
+
+  curproc->T_finish = ticks;
+  int turnaround = curproc->T_finish - curproc->T_start;
+  int waiting = turnaround - curproc->burst_time;
+  cprintf("Init Lvl: %d; Turnaround time: %d; Waiting time: %d\n", curproc->init_val, turnaround, waiting);
 
   if(curproc == initproc)
     panic("init exiting");
@@ -327,6 +334,7 @@ scheduler(void)
   c->proc = 0;
   
   int temp_high = 31;
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -343,12 +351,20 @@ scheduler(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       
       //MODIFY SCHEDULER
-      if(p->state != RUNNABLE && p->prior_val != temp_high){
+      if((p->state != RUNNABLE)){
+        continue;
+      }
+
+      if((p->prior_val != temp_high)){
         p->prior_val = p->prior_val -1;
         continue;
       }
-   
+
+      
+      
+      // cprintf("p: %p \n", p);
       p->prior_val = p->prior_val +1;
+      p->burst_time = p->burst_time+1;
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -547,8 +563,10 @@ procdump(void)
   }
 }
 
-void set_prior(int prior_lvl){
+void setprior(int prior_lvl){
   struct proc *curproc = myproc();
   curproc->prior_val = prior_lvl;
+  curproc->init_val = prior_lvl;
+  curproc->burst_time = 0;
   yield();
 }

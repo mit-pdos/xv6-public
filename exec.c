@@ -21,6 +21,8 @@ exec(char *path, char **argv)
 
   begin_op();
 
+  curproc->T_start = ticks;
+
   if((ip = namei(path)) == 0){
     end_op();
     cprintf("exec: fail\n");

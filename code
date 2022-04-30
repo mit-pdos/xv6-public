@@ -1,0 +1,805 @@
+diff --git a/.vscode/launch.json b/.vscode/launch.json
+new file mode 100644
+index 0000000..2148bf0
+--- /dev/null
++++ b/.vscode/launch.json
+@@ -0,0 +1,18 @@
++{
++    "version": "0.2.0",
++    "configurations": [
++        {
++            "type": "by-gdb",
++            "request": "launch",
++            "name": "Launch(remote)",
++            "program": "${workspaceRoot}/kernel",
++            "cwd": "${workspaceRoot}",
++            "remote": {
++                "enabled": true,
++                "address": ":28480",
++                "mode": "remote",
++                "execfile": "${workspaceRoot}/kernel"
++            }
++        }
++    ]
++}
+\ No newline at end of file
+diff --git a/.vscode/settings.json b/.vscode/settings.json
+new file mode 100644
+index 0000000..5f94f34
+--- /dev/null
++++ b/.vscode/settings.json
+@@ -0,0 +1,5 @@
++{
++    "files.associations": {
++        "types.h": "c"
++    }
++}
+\ No newline at end of file
+diff --git a/.vscode/tasks.json b/.vscode/tasks.json
+new file mode 100644
+index 0000000..106a3f1
+--- /dev/null
++++ b/.vscode/tasks.json
+@@ -0,0 +1,25 @@
++{
++    "version": "2.0.0",
++    "tasks": [
++        {
++            "label": "compile xv6 and run in debug mode",
++            "command": "bash",
++            "args": [
++                "-c",
++                "make && make qemu-nox-gdb"
++            ],
++            "presentation": {
++                "echo": true,
++                "reveal": "always",
++                "focus": true,
++                "panel": "new",
++                "showReuseMessage": true,
++                "clear": true
++            },
++            "group": {
++                "kind": "build",
++                "isDefault": true
++            }
++        }
++    ]
++}
+\ No newline at end of file
+diff --git a/Makefile b/Makefile
+index 09d790c..7c6f2f7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -181,6 +181,9 @@ UPROGS=\
+ 	_usertests\
+ 	_wc\
+ 	_zombie\
++	_proc1\
++	_proc2\
++	_proc3\
+ 
+ fs.img: mkfs README $(UPROGS)
+ 	./mkfs fs.img README $(UPROGS)
+@@ -217,7 +220,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
+ 	then echo "-gdb tcp::$(GDBPORT)"; \
+ 	else echo "-s -p $(GDBPORT)"; fi)
+ ifndef CPUS
+-CPUS := 2
++CPUS := 1
+ endif
+ QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA)
+ 
+@@ -283,4 +286,4 @@ tar:
+ 	cp dist/* dist/.gdbinit.tmpl /tmp/xv6
+ 	(cd /tmp; tar cf - xv6) | gzip >xv6-rev10.tar.gz  # the next one will be 10 (9/17)
+ 
+-.PHONY: dist-test dist
++.PHONY: dist-test dist
+\ No newline at end of file
+diff --git a/bug.c b/bug.c
+new file mode 100644
+index 0000000..be576da
+--- /dev/null
++++ b/bug.c
+@@ -0,0 +1,9 @@
++#include "types.h"
++#include "user.h"
++
++int main(int argc, char* argv[])
++{
++    int val = 1234 / (argc -1);
++    printf(1,"%d\n", val);
++    exit();
++}
+\ No newline at end of file
+diff --git a/cat.c b/cat.c
+index 5ddc820..ac8d2d3 100644
+--- a/cat.c
++++ b/cat.c
+@@ -40,4 +40,4 @@ main(int argc, char *argv[])
+     close(fd);
+   }
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/core.18571 b/core.18571
+new file mode 100644
+index 0000000..6babf4a
+Binary files /dev/null and b/core.18571 differ
+diff --git a/core.31960 b/core.31960
+new file mode 100644
+index 0000000..3661fbe
+Binary files /dev/null and b/core.31960 differ
+diff --git a/core.36446 b/core.36446
+new file mode 100644
+index 0000000..33e349b
+Binary files /dev/null and b/core.36446 differ
+diff --git a/defs.h b/defs.h
+index 82fb982..a791af2 100644
+--- a/defs.h
++++ b/defs.h
+@@ -120,6 +120,7 @@ void            userinit(void);
+ int             wait(void);
+ void            wakeup(void*);
+ void            yield(void);
++void            setprior(int);
+ 
+ // swtch.S
+ void            swtch(struct context**, struct context*);
+@@ -187,4 +188,4 @@ int             copyout(pde_t*, uint, void*, uint);
+ void            clearpteu(pde_t *pgdir, char *uva);
+ 
+ // number of elements in fixed-size array
+-#define NELEM(x) (sizeof(x)/sizeof((x)[0]))
++#define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+\ No newline at end of file
+diff --git a/echo.c b/echo.c
+index 806dee0..d250102 100644
+--- a/echo.c
++++ b/echo.c
+@@ -10,4 +10,4 @@ main(int argc, char *argv[])
+   for(i = 1; i < argc; i++)
+     printf(1, "%s%s", argv[i], i+1 < argc ? " " : "\n");
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/exec.c b/exec.c
+index b40134f..f88ca36 100644
+--- a/exec.c
++++ b/exec.c
+@@ -18,6 +18,7 @@ exec(char *path, char **argv)
+   struct proghdr ph;
+   pde_t *pgdir, *oldpgdir;
+   struct proc *curproc = myproc();
++  curproc->T_start = ticks;
+ 
+   begin_op();
+ 
+diff --git a/forktest.c b/forktest.c
+index 8bc984d..b831d8f 100644
+--- a/forktest.c
++++ b/forktest.c
+@@ -53,4 +53,4 @@ main(void)
+ {
+   forktest();
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/grep.c b/grep.c
+index adc4835..99ac862 100644
+--- a/grep.c
++++ b/grep.c
+@@ -104,4 +104,3 @@ int matchstar(int c, char *re, char *text)
+   }while(*text!='\0' && (*text++==c || c=='.'));
+   return 0;
+ }
+-
+diff --git a/init.c b/init.c
+index 046b551..64c7bae 100644
+--- a/init.c
++++ b/init.c
+@@ -34,4 +34,4 @@ main(void)
+     while((wpid=wait()) >= 0 && wpid != pid)
+       printf(1, "zombie!\n");
+   }
+-}
++}
+\ No newline at end of file
+diff --git a/initcode.S b/initcode.S
+index 80ac5d8..70484db 100644
+--- a/initcode.S
++++ b/initcode.S
+@@ -29,4 +29,3 @@ init:
+ argv:
+   .long init
+   .long 0
+-
+diff --git a/kill.c b/kill.c
+index 364f6af..4599a35 100644
+--- a/kill.c
++++ b/kill.c
+@@ -14,4 +14,4 @@ main(int argc, char **argv)
+   for(i=1; i<argc; i++)
+     kill(atoi(argv[i]));
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/lab1test.c b/lab1test.c
+new file mode 100644
+index 0000000..e50102a
+--- /dev/null
++++ b/lab1test.c
+@@ -0,0 +1,103 @@
++#include "types.h"
++#include "user.h"
++
++#define WNOHANG 	1
++
++int main(int argc, char *argv[])
++{
++	
++	int exitWait(void);
++	int waitPid(void);
++
++  printf(1, "\n This program tests the correctness of your lab#1\n");
++  
++  if (atoi(argv[1]) == 1)
++	exitWait();
++  else if (atoi(argv[1]) == 2)
++	waitPid();
++  else 
++   printf(1, "\ntype \"%s 1\" to test exit and wait, \"%s 2\" to test waitpid\n", argv[0], argv[0]);
++  
++    // End of test
++	 exit();
++	 return 0;
++ }
++  
++int exitWait(void) {
++	  int pid, ret_pid, exit_status;
++    int i;
++  // use this part to test exit(int status) and wait(int* status)
++ 
++  printf(1, "\n  Parts a & b) testing exit(int status) and wait(int* status):\n");
++
++  for (i = 0; i < 2; i++) {
++    pid = fork();
++    if (pid == 0) { // only the child executed this code
++      if (i == 0){
++        printf(1, "\nThis is child with PID# %d and I will exit with status %d\n", getpid(), 0);
++        exit();
++      }
++      else{
++	      printf(1, "\nThis is child with PID# %d and I will exit with status %d\n" ,getpid(), -1);
++        exit(-1);
++      } 
++    } else if (pid > 0) { // only the parent executes this code
++      ret_pid = wait(&exit_status);
++      printf(1, "\n This is the parent: child with PID# %d has exited with status %d\n", ret_pid, exit_status);
++    } else { // something went wrong with fork system call
++	    printf(2, "\nError using fork\n");
++      exit(-1);
++    }
++  }
++  return 0;
++}
++
++int waitPid(void){
++	
++  int ret_pid, exit_status;
++  int i;
++  int pid_a[5]={0, 0, 0, 0, 0};
++ // use this part to test wait(int pid, int* status, int options)
++
++  printf(1, "\n  Part c) testing waitpid(int pid, int* status, int options):\n");
++
++	for (i = 0; i <5; i++) {
++		pid_a[i] = fork();
++		if (pid_a[i] == 0) { // only the child executed this code
++			printf(1, "\n This is child with PID# %d and I will exit with status %d\n", getpid(), getpid() + 4);
++			exit(getpid() + 4);
++		}
++	}
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[3]);
++  ret_pid = waitpid(pid_a[3], &exit_status, 0);
++  printf(1, "\n This is the partent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[3] + 4);
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[1]);
++  ret_pid = waitpid(pid_a[1], &exit_status, 0);
++  printf(1, "\n This is the parent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[1] + 4);
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[2]);
++  ret_pid = waitpid(pid_a[2], &exit_status, 0);
++  printf(1, "\n This is the partent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[2] + 4);
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[0]);
++  ret_pid = waitpid(pid_a[0], &exit_status, 0);
++  printf(1, "\n This is the partent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[0] + 4);
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[4]);
++  ret_pid = waitpid(pid_a[4], &exit_status, 0);
++  printf(1, "\n This is the parent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[4] + 4);
++
++
++  printf(1, "\n This is the parent: Now try to wait for a invalid Number, this should not get stuck..\n");
++  ret_pid = waitpid(9999, &exit_status, 0);
++  printf(1, "\n This is the parent: Child# 9999 has ret code %d, expected: -1\n",ret_pid);
++  //printf(1, "\n This is the parent: Child# %d has exited with status %d\n",ret_pid, exit_status);
++
++  printf(1, "\n This is the parent: Now try to give invalid argument.\n");
++  ret_pid = waitpid(9999, (int*) 0xffffffff, 0);
++  printf(1, "\n This is the parent: Got ret code %d, expected: -1\n",ret_pid);
++
++  return 0;
++}
+diff --git a/ln.c b/ln.c
+index cf8a64e..ca7d86a 100644
+--- a/ln.c
++++ b/ln.c
+@@ -12,4 +12,4 @@ main(int argc, char *argv[])
+   if(link(argv[1], argv[2]) < 0)
+     printf(2, "link %s %s: failed\n", argv[1], argv[2]);
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/ls.c b/ls.c
+index 2862913..33bd440 100644
+--- a/ls.c
++++ b/ls.c
+@@ -82,4 +82,4 @@ main(int argc, char *argv[])
+   for(i=1; i<argc; i++)
+     ls(argv[i]);
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/mkdir.c b/mkdir.c
+index 6e4c954..aca060b 100644
+--- a/mkdir.c
++++ b/mkdir.c
+@@ -20,4 +20,4 @@ main(int argc, char *argv[])
+   }
+ 
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/mkfs.c b/mkfs.c
+index 8e011a7..a0fe40e 100644
+--- a/mkfs.c
++++ b/mkfs.c
+@@ -294,4 +294,4 @@ iappend(uint inum, void *xp, int n)
+   }
+   din.size = xint(off);
+   winode(inum, &din);
+-}
++}
+\ No newline at end of file
+diff --git a/mycode.diff b/mycode.diff
+new file mode 100644
+index 0000000..6744303
+--- /dev/null
++++ b/mycode.diff
+@@ -0,0 +1,131 @@
++diff --git a/mycode.diff b/mycode.diff
++index ca75de6..e69de29 100644
++--- a/mycode.diff
+++++ b/mycode.diff
++@@ -1,126 +0,0 @@
++-diff --git a/.vscode/launch.json b/.vscode/launch.json
++-index 1a3d89d..2148bf0 100644
++---- a/.vscode/launch.json
++-+++ b/.vscode/launch.json
++-@@ -2,13 +2,17 @@
++-     "version": "0.2.0",
++-     "configurations": [
++-         {
++--            "type": "gdb",
++--            "request": "attach",
++--            "name": "debug xv6",
++--            "executable": "kernel",
++--            "target": ":26328",
++--            "remote": true,
++-+            "type": "by-gdb",
++-+            "request": "launch",
++-+            "name": "Launch(remote)",
++-+            "program": "${workspaceRoot}/kernel",
++-             "cwd": "${workspaceRoot}",
++-+            "remote": {
++-+                "enabled": true,
++-+                "address": ":28480",
++-+                "mode": "remote",
++-+                "execfile": "${workspaceRoot}/kernel"
++-+            }
++-         }
++-     ]
++- }
++-\ No newline at end of file
++-diff --git a/Makefile b/Makefile
++-index ef245d2..761b909 100644
++---- a/Makefile
++-+++ b/Makefile
++-@@ -76,7 +76,7 @@ AS = $(TOOLPREFIX)gas
++- LD = $(TOOLPREFIX)ld
++- OBJCOPY = $(TOOLPREFIX)objcopy
++- OBJDUMP = $(TOOLPREFIX)objdump
++--CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
++-+CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O0 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer -gdwarf-2
++- CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
++- ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
++- # FreeBSD ld wants ``elf_i386_fbsd''
++-diff --git a/proc.c b/proc.c
++-index e70c5bd..7695652 100644
++---- a/proc.c
++-+++ b/proc.c
++-@@ -554,26 +554,30 @@ waitpid(int id, int *status, int options){
++-     // Scan through table looking for exited children.
++-     havekids = 0;
++-     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
++--      if(p->parent != curproc) //p is 
++--        continue;
++--      havekids = 1;
++--    if(p->pid == id){}
++--      if(p->state == ZOMBIE){
++--        // Found one.
++--        pid = p->pid;
++--        kfree(p->kstack);
++--        p->kstack = 0;
++--        freevm(p->pgdir);
++--        p->pid = 0;
++--        p->parent = 0;
++--        p->name[0] = 0;
++--        p->killed = 0;
++--        p->state = UNUSED;
++--        release(&ptable.lock);
++--        return pid;
++-+      // if(p->parent != curproc) //p is 
++-+      //   continue;
++-+      if(p->pid == id){
++-+        havekids = 1;
++-+        if(p->state == ZOMBIE){
++-+          // Found one.
++-+          pid = p->pid;
++-+          kfree(p->kstack);
++-+          p->kstack = 0;
++-+          freevm(p->pgdir);
++-+          p->pid = 0;
++-+          p->parent = 0;
++-+          p->name[0] = 0;
++-+          p->killed = 0;
++-+          p->state = UNUSED;
++-+          *status = p->status;
++-+          // cprintf("%d %x\n", *status, status);
++-+          release(&ptable.lock);
++-+          return pid;
++-+        }
++-       }
++-     }
++- 
++-+
++-     // No point waiting if we don't have any children.
++-     if(!havekids || curproc->killed){
++-       release(&ptable.lock);
++-diff --git a/sysproc.c b/sysproc.c
++-index 2a053db..65c0280 100644
++---- a/sysproc.c
++-+++ b/sysproc.c
++-@@ -26,7 +26,7 @@ int
++- sys_wait(void)
++- {
++-   int *d;
++--  argptr(0,(char**)&d, sizeof(int*));
++-+  argptr(0,(char**)&d, 0);
++-   return wait(d);
++- }
++- 
++-@@ -102,8 +102,13 @@ sys_hello(void) {
++- 
++- int 
++- sys_waitpid(void){
++--  int pid = 1; 
++--  int options = 1;
++--  int status;
++--  return waitpid(pid, &status, options);
++-+  int pid; 
++-+  int options;
++-+  int* status;
++-+
++-+  argint(0, &pid);
++-+  argint(1, &options);
++-+  argptr(1,(char**)&status,0);
++-+
++-+  return waitpid(pid,status, options);
++- }
++-\ No newline at end of file
+diff --git a/proc.c b/proc.c
+index 806b1b1..39d14a9 100644
+--- a/proc.c
++++ b/proc.c
+@@ -112,6 +112,7 @@ found:
+   memset(p->context, 0, sizeof *p->context);
+   p->context->eip = (uint)forkret;
+ 
++  p->prior_val = 0;
+   return p;
+ }
+ 
+@@ -184,6 +185,7 @@ fork(void)
+   struct proc *np;
+   struct proc *curproc = myproc();
+ 
++  curproc->prior_val = 0;
+   // Allocate process.
+   if((np = allocproc()) == 0){
+     return -1;
+@@ -231,6 +233,12 @@ exit(void)
+   struct proc *p;
+   int fd;
+ 
++  // curproc->T_finish = ticks;
++  // int turnaround = curproc->T_finish - curproc->T_start;
++  // int waiting = turnaround - curproc->burst_time;
++  // cprintf("Turnaround time: %d ; Waiting time: %d\n", turnaround, waiting);
++
++
+   if(curproc == initproc)
+     panic("init exiting");
+ 
+@@ -326,15 +334,38 @@ scheduler(void)
+   struct cpu *c = mycpu();
+   c->proc = 0;
+   
++  int temp_high = 31;
++
+   for(;;){
+     // Enable interrupts on this processor.
+     sti();
+ 
+     // Loop over process table looking for process to run.
+     acquire(&ptable.lock);
++
++    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
++      if (p->prior_val < temp_high){
++        temp_high = p->prior_val;
++      }
++    }
++
+     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+-      if(p->state != RUNNABLE)
++      
++      //MODIFY SCHEDULER
++      if((p->state != RUNNABLE)){
+         continue;
++      }
++
++      if((p->prior_val != temp_high)){
++        p->prior_val = p->prior_val -1;
++        continue;
++      }
++
++      
++      
++      // cprintf("p: %p \n", p);
++      p->prior_val = p->prior_val +1;
++      p->burst_time = p->burst_time+1;
+ 
+       // Switch to chosen process.  It is the process's job
+       // to release ptable.lock and then reacquire it
+@@ -532,3 +563,10 @@ procdump(void)
+     cprintf("\n");
+   }
+ }
++
++void setprior(int prior_lvl){
++  struct proc *curproc = myproc();
++  curproc->prior_val = prior_lvl;
++  curproc->burst_time = 0;
++  yield();
++}
+\ No newline at end of file
+diff --git a/proc.h b/proc.h
+index 1647114..9f601ed 100644
+--- a/proc.h
++++ b/proc.h
+@@ -49,10 +49,14 @@ struct proc {
+   struct file *ofile[NOFILE];  // Open files
+   struct inode *cwd;           // Current directory
+   char name[16];               // Process name (debugging)
++  int prior_val;
++  int T_finish;
++  int T_start;
++  int burst_time;
+ };
+ 
+ // Process memory is laid out contiguously, low addresses first:
+ //   text
+ //   original data and bss
+ //   fixed-size stack
+-//   expandable heap
++//   expandable heap
+\ No newline at end of file
+diff --git a/rm.c b/rm.c
+index 4fd33c8..69bc332 100644
+--- a/rm.c
++++ b/rm.c
+@@ -20,4 +20,4 @@ main(int argc, char *argv[])
+   }
+ 
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/sh.c b/sh.c
+index 054bab9..52e559d 100644
+--- a/sh.c
++++ b/sh.c
+@@ -490,4 +490,4 @@ nulterminate(struct cmd *cmd)
+     break;
+   }
+   return cmd;
+-}
++}
+\ No newline at end of file
+diff --git a/stressfs.c b/stressfs.c
+index c0a4743..ae8b79a 100644
+--- a/stressfs.c
++++ b/stressfs.c
+@@ -46,4 +46,4 @@ main(int argc, char *argv[])
+   wait();
+ 
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/syscall.c b/syscall.c
+index ee85261..15a048e 100644
+--- a/syscall.c
++++ b/syscall.c
+@@ -103,6 +103,7 @@ extern int sys_unlink(void);
+ extern int sys_wait(void);
+ extern int sys_write(void);
+ extern int sys_uptime(void);
++extern int sys_setprior(void);
+ 
+ static int (*syscalls[])(void) = {
+ [SYS_fork]    sys_fork,
+@@ -126,6 +127,7 @@ static int (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_setprior]  sys_setprior,
+ };
+ 
+ void
+@@ -142,4 +144,4 @@ syscall(void)
+             curproc->pid, curproc->name, num);
+     curproc->tf->eax = -1;
+   }
+-}
++}
+\ No newline at end of file
+diff --git a/syscall.h b/syscall.h
+index bc5f356..cd295eb 100644
+--- a/syscall.h
++++ b/syscall.h
+@@ -20,3 +20,4 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_setprior    22
+\ No newline at end of file
+diff --git a/sysproc.c b/sysproc.c
+index 0686d29..6483a13 100644
+--- a/sysproc.c
++++ b/sysproc.c
+@@ -89,3 +89,13 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++int
++sys_setprior(void){
++  int prior_lvl;
++  if(argint(0, &prior_lvl)<0){
++    return -1;
++  }
++  setprior(prior_lvl);
++  return 0;
++}
+\ No newline at end of file
+diff --git a/test.c b/test.c
+new file mode 100644
+index 0000000..d3fa3fc
+--- /dev/null
++++ b/test.c
+@@ -0,0 +1,9 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++int main(int argc, char *argv[]){
++    //printf(1, hello world\n");
++    hello(); //J.H.
++    exit();
++}
+\ No newline at end of file
+diff --git a/trap.c b/trap.c
+index 41c66eb..a405841 100644
+--- a/trap.c
++++ b/trap.c
+@@ -109,4 +109,4 @@ trap(struct trapframe *tf)
+   // Check if the process has been killed since we yielded
+   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
+     exit();
+-}
++}
+\ No newline at end of file
+diff --git a/user.h b/user.h
+index 4f99c52..9ab9603 100644
+--- a/user.h
++++ b/user.h
+@@ -23,6 +23,7 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++void setprior(int);
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+@@ -36,4 +37,4 @@ uint strlen(const char*);
+ void* memset(void*, int, uint);
+ void* malloc(uint);
+ void free(void*);
+-int atoi(const char*);
++int atoi(const char*);
+\ No newline at end of file
+diff --git a/usertests.c b/usertests.c
+index a1e97e7..32213f3 100644
+--- a/usertests.c
++++ b/usertests.c
+@@ -1800,4 +1800,4 @@ main(int argc, char *argv[])
+   exectest();
+ 
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/usys.S b/usys.S
+index 8bfd8a1..7902c2d 100644
+--- a/usys.S
++++ b/usys.S
+@@ -29,3 +29,4 @@ SYSCALL(getpid)
+ SYSCALL(sbrk)
+ SYSCALL(sleep)
+ SYSCALL(uptime)
++SYSCALL(setprior)
+\ No newline at end of file
+diff --git a/wc.c b/wc.c
+index d6a54df..aab2222 100644
+--- a/wc.c
++++ b/wc.c
+@@ -51,4 +51,4 @@ main(int argc, char *argv[])
+     close(fd);
+   }
+   exit();
+-}
++}
+\ No newline at end of file
+diff --git a/zombie.c b/zombie.c
+index ee817da..54b6479 100644
+--- a/zombie.c
++++ b/zombie.c
+@@ -11,4 +11,4 @@ main(void)
+   if(fork() > 0)
+     sleep(5);  // Let child exit before parent.
+   exit();
+-}
++}
+\ No newline at end of file

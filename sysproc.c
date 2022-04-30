@@ -97,4 +97,5 @@ sys_setprior(void){
     return -1;
   }
   setprior(prior_lvl);
+  return 0;
 }
