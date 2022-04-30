@@ -184,6 +184,7 @@ UPROGS=\
 	_proc1\
 	_proc2\
 	_proc3\
+	_lab2test\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
