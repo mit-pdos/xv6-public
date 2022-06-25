@@ -38,10 +38,10 @@ struct cpu*
 mycpu(void)
 {
   int apicid, i;
-  
+
   if(readeflags()&FL_IF)
     panic("mycpu called with interrupts enabled\n");
-  
+
   apicid = lapicid();
   // APIC IDs are not guaranteed to be contiguous. Maybe we should have
   // a reverse map, or reserve a register to store &cpus[i].
@@ -124,7 +124,7 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -275,7 +275,7 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -325,7 +325,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -418,7 +418,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   if(p == 0)
     panic("sleep");
 
@@ -531,4 +531,87 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+
+int
+pssyscall()
+{
+
+  struct proc *pr;
+
+  sti();
+
+  acquire(&ptable.lock);
+  cprintf("name \t\t pid \t\t state \t\t\t parent \t\t sibling \n\n");
+  for(pr= ptable.proc ; pr < &ptable.proc[NPROC]; pr++)
+  {
+
+
+    struct proc *sib;
+    int siblings_id [256];
+    int number_of_siblings= 0;
+    for(sib= ptable.proc ; sib < &ptable.proc[NPROC]; sib++)
+    {
+      if (sib->parent == pr->parent && sib->pid != pr->pid)
+      {
+        //sib->pid
+        siblings_id[number_of_siblings] = sib->pid;
+        number_of_siblings ++;
+
+      }
+    }
+
+
+    if (pr->pid == 1)
+      number_of_siblings = 0;
+    //Printf(1,"%d",id) 
+    if (pr->state == SLEEPING)
+    {
+      cprintf("%s \t\t %d \t\t \e[1;36;1m(sleeping)\e[1;0m \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
+    }
+    else if (pr->state == RUNNING)
+    {
+      cprintf("%s \t\t %d \t\t \e[1;32;1m(running)\e[1;0m \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
+
+    }
+    else if (pr->state == RUNNABLE)
+    {
+      cprintf("%s \t\t %d \t\t \e[1;33;1m(runnable)\e[1;0m \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
+    }
+    else if (pr->state == ZOMBIE)
+    {
+      cprintf("%s \t\t %d \t\t \e[1;31;1m(zombie)\e[1;0m \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
+    }
+    else if (pr->state == EMBRYO)
+    {
+      cprintf("%s \t\t %d \t\t (embryo) \t\t %d \t\t\t ", pr->name, pr->pid, pr->parent->pid);
+    }
+    // else if (pr->state == UNUSED)
+    // {
+    //   cprintf("%s \t\t %d \t\t (unused) \t\t %d \t\t ", pr->name, pr->pid, pr->parent->pid);
+    // }
+    else{
+      continue;
+    }
+
+    if (number_of_siblings == 0)
+      cprintf("NS\n");
+    else
+    {
+      cprintf("(");
+      for (int i=0 ; i<number_of_siblings ; i++)
+      {
+        cprintf("%d ,", siblings_id[i]);
+      }
+      cprintf(")\n");
+
+    }
+  }
+
+  release(&ptable.lock);
+
+
+  return 22;
+
 }

@@ -1,3 +1,4 @@
+//#include <stdio.h>
 #include "types.h"
 #include "x86.h"
 #include "defs.h"
@@ -7,10 +8,17 @@
 #include "mmu.h"
 #include "proc.h"
 
+ int
+ sys_pssyscall(void)
+ {
+   return pssyscall();
+ }
+
+
 int
 sys_fork(void)
 {
-  return fork();
+  return fork();  
 }
 
 int
@@ -39,6 +47,7 @@ sys_kill(void)
 int
 sys_getpid(void)
 {
+  //printf("Hello getpid");
   return myproc()->pid;
 }
 
