@@ -26,11 +26,10 @@ strcmp(const char *p, const char *q)
 uint
 strlen(const char *s)
 {
-  int n;
-
-  for(n = 0; s[n]; n++)
-    ;
-  return n;
+  int x = 0;
+  while (s[++x);
+           
+  return x;
 }
 
 void*
