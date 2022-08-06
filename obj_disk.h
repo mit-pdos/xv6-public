@@ -53,8 +53,7 @@
  *
  * The inner implementation has the following structure:
  * The memory is an array of size `STORAGE_DEVICE_SIZE` which must be defined.
- * The super block is located at offset 0 and the table right after it. The
- * size of the table is set by the define `OBJECTS_TABLE_SIZE`.
+ * The super block is located at offset 0 and the table right after it.
  *
  * Futher improvments
  * ==================
@@ -72,6 +71,7 @@
  * TODO make it a thread safe.
  */
 
+#define INITIAL_OBJECT_TABLE_SIZE 200
 
 // Possible errors:
 #define NO_ERR 0

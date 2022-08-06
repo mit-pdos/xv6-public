@@ -117,7 +117,7 @@ CFLAGS += -DXV6_WAIT_FOR_DEBUGGER=0
 endif
 
 OFLAGS = -O2
-CFLAGS += -DSTORAGE_DEVICE_SIZE=327680 -DOBJECTS_TABLE_SIZE=200
+CFLAGS += -DSTORAGE_DEVICE_SIZE=327680
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ############################
 
@@ -369,6 +369,13 @@ windows_debugging_clean:
 run-objfs-tests:
 	$(CC) $(CLAGS) \
 		obj_disk.c obj_cache.c obj_log.c obj_fs_tests.c obj_fs_tests_utilities.c \
-		-std=gnu99 -DSTORAGE_DEVICE_SIZE=67108864 -DOBJECTS_TABLE_SIZE=200 \
+		-std=gnu99 -DSTORAGE_DEVICE_SIZE=67108864 \
 		-o tests
 	./tests
+
+run-vector-tests:
+	$(CC) $(CLAGS) -DUNITTESTS=1 \
+		kvector.h kvector.c unittests/unittests.h unittests/kvectortest.c \
+		-std=gnu99 \
+		-o vectortests
+	./vectortests

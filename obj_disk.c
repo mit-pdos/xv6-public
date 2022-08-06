@@ -19,10 +19,6 @@
 #error "STORAGE_DEVICE_SIZE must be defined when using the mock storage device"
 #endif
 
-#ifndef OBJECTS_TABLE_SIZE
-#error "OBJECTS_TABLE_SIZE must be defined when using the mock storage device"
-#endif
-
 #define entry_index_to_entry_offset(index) super_block.objects_table_offset + index * sizeof(ObjectsTableEntry)
 
 struct sleeplock disklock;
@@ -194,7 +190,7 @@ static void initialize_objects_table_entry() {
     ObjectsTableEntry* entry = objects_table_entry(1);
     memmove(entry->object_id, OBJECT_TABLE_ID, strlen(OBJECT_TABLE_ID) + 1);
     entry->disk_offset = super_block.objects_table_offset;
-    entry->size = OBJECTS_TABLE_SIZE * sizeof(ObjectsTableEntry);
+    entry->size = INITIAL_OBJECT_TABLE_SIZE * sizeof(ObjectsTableEntry);
     entry->occupied = 1;
 }
 
@@ -216,7 +212,7 @@ void init_obj_fs() {
     super_block.store_offset = super_block.objects_table_offset + 200 * sizeof(ObjectsTableEntry); //initial state only
     super_block.bytes_occupied =
         sizeof(super_block)
-        + OBJECTS_TABLE_SIZE * sizeof(ObjectsTableEntry);
+        + INITIAL_OBJECT_TABLE_SIZE * sizeof(ObjectsTableEntry);
     super_block.occupied_objects = 2;
     super_block.last_inode = 2; // Inode counter starts from 3, when 3 reserved to root dir object.
     sb.ninodes = get_object_table_size(); //TODO: remove it? it is now meaningless since inode number can grow and shrink. analyze effect over vfs.
@@ -459,10 +455,16 @@ void set_occupied_objects(uint value) {
 
 
 void set_store_offset(uint new_offset) {
-    acquiresleep(&disklock);
+    int acquired = 0;
+    if(!holdingsleep(&disklock)){
+        acquired = 1;
+        acquiresleep(&disklock);
+    }
     super_block.store_offset = new_offset;
     write_super_block();
-    releasesleep(&disklock);
+    if(acquired){
+        releasesleep(&disklock);
+    }
 }
 
 

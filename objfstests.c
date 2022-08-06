@@ -464,17 +464,18 @@ writetest(void)
 void
 writetest1(void)
 {
-    int i, fd, n;
+    int i, fd, n, filesize;
+    filesize = 1000;
 
     printf(stdout, "big files test\n");
 
     fd = open("big", O_CREATE|O_RDWR);
     if(fd < 0){
-        printf(stdout, "error: creat big failed!\n");
+        printf(stdout, "error: create big failed!\n");
         exit(1);
     }
 
-    for(i = 0; i < OBJECTS_TABLE_SIZE; i++){
+    for(i = 0; i < filesize; i++){
         ((int*)buf)[0] = i;
         if(write(fd, buf, 1) != 1){
             printf(stdout, "error: write big file failed\n", i);
@@ -494,7 +495,7 @@ writetest1(void)
     for(;;){
         i = read(fd, buf, 1);
         if(i == 0){
-            if(n == OBJECTS_TABLE_SIZE - 1){
+            if(n == filesize - 1){
                 printf(stdout, "read only %d blocks from big", n);
                 exit(0);
             }
@@ -1140,6 +1141,24 @@ iref(void)
     chdir("/new");
     printf(1, "empty file name OK\n");
 }
+
+void
+createmanyfiles(uint number_of_files_to_create) {
+    printf(stdout, "create many files\n");
+    char filename[100] = "file";
+    for(int i=0;i<number_of_files_to_create;i++){
+        // generate filename
+        itoa(filename+4, i);
+        int fd = open(filename, O_CREATE | O_RDWR);
+        if(fd < 0){
+            printf(1, "create %s failed\n", filename);
+            exit(1);
+        }
+        close(fd);
+    }
+    printf(stdout, "create many files ok\n");
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1162,6 +1181,7 @@ main(int argc, char *argv[])
     }
 
     createdelete();
+    createmanyfiles(300);
     linkunlink();
     concreate();
     fourfiles();
@@ -1179,8 +1199,7 @@ main(int argc, char *argv[])
     linktest();
     unlinkread();
     dirfile();
-    iref();
-    
+    iref();    
 
     exectest(); // Ensure this test to be the last one to run (prints ALL TESTS PASSED)
 

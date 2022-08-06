@@ -18,8 +18,8 @@ int failed = 0;
  */
 
 
-const uint objects_table_bytes =
-    OBJECTS_TABLE_SIZE * sizeof(ObjectsTableEntry);
+const uint initial_objects_table_bytes =
+    INITIAL_OBJECT_TABLE_SIZE * sizeof(ObjectsTableEntry);
 
 
 /**
@@ -27,10 +27,9 @@ const uint objects_table_bytes =
  * correctly by calling the get functions.
  */
 TEST(initialization) {
-    EXPECT_UINT_EQ(OBJECTS_TABLE_SIZE, max_objects());
     EXPECT_UINT_EQ(2, occupied_objects());
     EXPECT_UINT_EQ(STORAGE_DEVICE_SIZE, device_size());
-    EXPECT_UINT_EQ(sizeof(struct objsuperblock) + objects_table_bytes,
+    EXPECT_UINT_EQ(sizeof(struct objsuperblock) + initial_objects_table_bytes,
                    occupied_bytes());
 }
 
@@ -49,7 +48,7 @@ TEST(super_block_object) {
     EXPECT_UINT_EQ(STORAGE_DEVICE_SIZE, sb.storage_device_size);
     EXPECT_UINT_EQ(sizeof(struct objsuperblock), sb.objects_table_offset);
     EXPECT_UINT_EQ(2, sb.occupied_objects);
-    EXPECT_UINT_EQ(sizeof(struct objsuperblock) + objects_table_bytes,
+    EXPECT_UINT_EQ(sizeof(struct objsuperblock) + initial_objects_table_bytes,
                   sb.bytes_occupied);
 }
 
@@ -63,7 +62,7 @@ TEST(super_block_object) {
 TEST(table_object) {
     uint size;
     ASSERT_NO_ERR(object_size(OBJECT_TABLE_ID, &size));
-    ASSERT_UINT_EQ(objects_table_bytes, size)
+    ASSERT_UINT_EQ(initial_objects_table_bytes, size)
 
     ObjectsTableEntry table[OBJECTS_TABLE_SIZE];
     ASSERT_NO_ERR(get_object(OBJECT_TABLE_ID, &table));
@@ -74,7 +73,7 @@ TEST(table_object) {
     EXPECT_TRUE(table[0].occupied)
     EXPECT_UINT_EQ(sizeof(struct objsuperblock), table[0].size)
     EXPECT_TRUE(table[1].occupied)
-    EXPECT_UINT_EQ(objects_table_bytes, table[1].size)
+    EXPECT_UINT_EQ(initial_objects_table_bytes, table[1].size)
 }
 
 

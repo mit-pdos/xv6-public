@@ -1,8 +1,20 @@
-// Heap array implementation
+/**************
+ * This file is an implementaion of
+ * the vector data structure.
+ * It is basically a linked list of
+ * arrays. 
+ **************/
 #include "types.h"
-#include "defs.h"
 #include "mmu.h"
 #include "kvector.h"
+
+#ifndef UNITTESTS
+#include "defs.h"
+#else
+#include "unittests/unitmock.h"
+#include <string.h>
+#endif
+
 
 #define check_existence(vp, onerror) if((vp) == NULL) return onerror
 #define check_validity(vp, onerror) if((vp)->valid == 0) return onerror
@@ -113,7 +125,7 @@ setelement(vector v, unsigned int index, char* data){
 
 unsigned int
 setbyte(vector v, unsigned int index, char* databyte){
-    if(v.valid && v.vectorsize > index){
+    if(v.valid && (v.vectorsize * v.typesize) > index){
         unsigned int pageindex, pageoffset;
 
         unsigned int pointersspace = 2*sizeof(char*);
@@ -192,6 +204,9 @@ freevector(vector * v){
         kfree(currentpage);
         currentpage = nextpage;
     }
+    v->valid = 0;
+    v->head = NULL;
+    v->tail = NULL;
 }
 
 void
@@ -206,7 +221,7 @@ void
 memmove_into_vector_elements(vector dstvec, unsigned int dstelementoffset, char* src, unsigned int size){
     int i;
     for(i=0;i<size;i++){
-        setelement(dstvec,i+dstelementoffset,&(src[i]));
+        setelement(dstvec,i+dstelementoffset,&(src[i*dstvec.typesize]));
     }
 }
 
