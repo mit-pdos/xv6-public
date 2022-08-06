@@ -100,7 +100,7 @@ static void finish_rewrite_event() {
         vector templogbookvector;
         templogbookvector = newvector(sizeof(logbook), 1);
         memmove_into_vector_bytes(templogbookvector,0,(char*)&logbook,sizeof(logbook));
-        err = cache_rewrite_object(templogbookvector, sizeof(logbook), LOGBOOK_OBJECT_ID);
+        err = cache_rewrite_entire_object(templogbookvector, sizeof(logbook), LOGBOOK_OBJECT_ID);
         if (err != NO_ERR) {
             releasesleep(&loglock);
             panic("logbook - error updating the logbook to the disk");

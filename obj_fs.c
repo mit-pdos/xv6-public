@@ -171,8 +171,7 @@ obj_iupdate(struct vfs_inode *vfs_ip) {
     unsigned disize = sizeof(di);
     vector disk_inode_vector = newvector(disize,1);
     memmove_into_vector_bytes(disk_inode_vector, 0, (char*)(&di), disize);
-    //vectormemcmp("obj_iupdate", disk_inode_vector, 0, (char*)&di, disize);
-    if (cache_rewrite_object(disk_inode_vector, sizeof(di), iname) != NO_ERR) { //TODO: turn into vector
+    if (cache_rewrite_entire_object(disk_inode_vector, sizeof(di), iname) != NO_ERR) {
         panic("obj_iupdate: failed writing dinode to the disk");
     }
     freevector(&disk_inode_vector);
@@ -425,13 +424,10 @@ obj_writei(struct vfs_inode *vfs_ip, char *src, uint off, uint n) {
         size = off + n;
     }
 
-    vector datavector = newvector(size,1);
-    if (log_get_object(ip->data_object_name, &datavector, 0) != NO_ERR) {
-        panic("obj_writei failed reading object data");
-    }
-    memmove_into_vector_bytes(datavector, off, src, n);
-    cache_rewrite_object(datavector, size, ip->data_object_name); 
-    freevector(&datavector); 
+    vector srcvector = newvector(n,1);
+    memmove_into_vector_bytes(srcvector, 0, src, n);
+    cache_rewrite_object(srcvector, size, off, ip->data_object_name); 
+    freevector(&srcvector); 
     return n;
 }
 

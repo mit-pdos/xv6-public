@@ -124,7 +124,11 @@ uint add_object(const void* object, uint size, const char* name);
 
 
 /**
- * Rewrites the specified object to the disk.
+ * This functions receives an object of size 'objectsize'
+ * and rewrites some of its content which is specified
+ * by the offset parameter.
+ * This function will then write the data contained in the vector
+ * to the file, starting the given offset.
  * If the new size is larger than the located one for the object, the method
  * search for a new address for the object. Before searching, the method
  * "deallocate" the object for the search. By that, the search method might
@@ -134,7 +138,7 @@ uint add_object(const void* object, uint size, const char* name);
  *   NO_ERR            - no error occured.
  *   OBJECT_NOT_EXISTS - object with this name already exists.
  */
-uint rewrite_object(vector object, uint size, const char* name);
+uint rewrite_object(vector object, uint objectsize, uint write_starting_offset, const char* name);
 
 
 /**

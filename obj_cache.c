@@ -23,7 +23,6 @@
 
 struct sleeplock cachelock;
 
-
 uint hits;
 uint misses;
 
@@ -44,6 +43,10 @@ struct {
   struct obj_cache_entry head;
 } obj_cache;
 
+void init_object_entry(struct obj_cache_entry* e) {
+    e->size = 0;
+    e->object_id[0] = 0;  // empty string
+}
 
 void init_objects_cache() {
     hits = 0;
@@ -56,16 +59,13 @@ void init_objects_cache() {
     obj_cache.head.prev = &obj_cache.head;
     obj_cache.head.next = &obj_cache.head;
     for (e = obj_cache.entries; e < obj_cache.entries + OBJECTS_CACHE_ENTRIES; e++) {
-        e->size = 0;
-        e->object_id[0] = 0;  // empty string
-
+        init_object_entry(e);
         e->next = obj_cache.head.next;
         e->prev = &obj_cache.head;
         obj_cache.head.next->prev = e;
         obj_cache.head.next = e;
     }
 }
-
 
 static void move_to_front(struct obj_cache_entry* e) {
     e->next->prev = e->prev;
@@ -75,7 +75,6 @@ static void move_to_front(struct obj_cache_entry* e) {
     obj_cache.head.next->prev = e;
     obj_cache.head.next = e;
 }
-
 
 static void move_to_back(struct obj_cache_entry* e) {
     e->next->prev = e->prev;
@@ -109,18 +108,21 @@ uint cache_add_object(const void* object, uint size, const char* name) {
     return NO_ERR;
 }
 
-uint cache_rewrite_object(vector object, uint size, const char* name) {
+uint cache_rewrite_object(vector data, uint objectsize, uint offset, const char * name) {
     acquiresleep(&cachelock);
-    uint rv = rewrite_object(object, size, name);
+    // 1. check for name constraints validity
+    uint rv = rewrite_object(data, objectsize, offset, name);
     if (rv != NO_ERR) {
         releasesleep(&cachelock);
         return rv;
     }
-    if (size > CACHE_MAX_OBJECT_SIZE) {
+    // 2. check if object is small enough to be cached
+    if (objectsize > CACHE_MAX_OBJECT_SIZE) {
         releasesleep(&cachelock);
         return NO_ERR;
     }
-    // the object might be inside the cache and might not
+    // 3. search the cache for an object with the specified name
+    int found = 0;
     struct obj_cache_entry* e = obj_cache.head.prev;
     misses++;
     for(struct obj_cache_entry* current = obj_cache.head.prev;
@@ -131,17 +133,24 @@ uint cache_rewrite_object(vector object, uint size, const char* name) {
             e = current;
             misses--;
             hits++;
+            found = 1;
             break;
         }
     }
-    move_to_front(e);
-    e->size = size;
-    memmove_from_vector((char*)e->data, object, 0, size);
-    memmove(e->object_id, name, obj_id_bytes(name));
+    // 4. if found cache it. otherwise, evict using LRU policy
+    if(found){
+        move_to_front(e);
+        e->size = objectsize;
+        memmove_from_vector((char*)(e->data + offset), data, 0, data.vectorsize);
+        memmove(e->object_id, name, obj_id_bytes(name));
+    }
     releasesleep(&cachelock);
     return NO_ERR;
 }
 
+uint cache_rewrite_entire_object(vector object, uint size, const char* name) {
+    return cache_rewrite_object(object, size, 0, name);
+}
 
 /// the caller holds the cache lock
 static uint cache_free_from_cache(const char* name) {
@@ -245,14 +254,12 @@ uint cache_get_object(const char* name, vector * outputvector, uint read_object_
     return NO_ERR;
 }
 
-
 uint cache_free_from_cache_safe(const char* name) {
     acquiresleep(&cachelock);
     uint err = cache_free_from_cache(name);
     releasesleep(&cachelock);
     return err;
 }
-
 
 uint objects_cache_hits() {
     return hits;

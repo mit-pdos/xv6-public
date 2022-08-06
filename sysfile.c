@@ -208,6 +208,7 @@ sys_unlink(void)
   int delete_cgroup_res = cgroup_delete(path, "unlink");
   if(delete_cgroup_res == -1)
   {
+      // 1. search for parent derectory inode, denote it dp
       if((dp = vfs_nameiparent(path, name)) == 0){
         end_op();
         return -1;
@@ -215,10 +216,11 @@ sys_unlink(void)
 
       dp->i_op.ilock(dp);
 
-      // Cannot unlink "." or "..".
+      // 2. Make sure were not trying to unlink "." or "..".
       if(vfs_namecmp(name, ".") == 0 || vfs_namecmp(name, "..") == 0)
         goto bad;
 
+      // 3. find the inode of the unlinked file, denote it ip
       if((ip = dp->i_op.dirlookup(dp, name, &off)) == 0)
         goto bad;
 
@@ -236,6 +238,7 @@ sys_unlink(void)
         goto bad;
       }
 
+      // 4. erase content of the unlinked directory entry
       memset(&de, 0, sizeof(de));
       if(dp->i_op.writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
         panic("unlink: writei");

@@ -77,7 +77,8 @@ void init_objects_cache();
 
 void _check(char * val);
 uint cache_add_object(const void* object, uint size, const char* name);
-uint cache_rewrite_object(vector object, uint size, const char* name); 
+uint cache_rewrite_entire_object(vector object, uint size, const char* name); 
+uint cache_rewrite_object(vector data, uint objectsize, uint offset, const char * name);
 uint cache_delete_object(const char* name); 
 uint cache_object_size(const char* name, uint* output);
 uint cache_get_object(const char* name, vector * outputvector, uint read_object_from_offset);
