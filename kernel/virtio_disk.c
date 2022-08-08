@@ -20,20 +20,20 @@
 #define R(r) ((volatile uint32 *)(VIRTIO0 + (r)))
 
 static struct disk {
-  // the first is a set (not a ring) of DMA descriptors, with which the
+  // a set (not a ring) of DMA descriptors, with which the
   // driver tells the device where to read and write individual
   // disk operations. there are NUM descriptors.
   // most commands consist of a "chain" (a linked list) of a couple of
   // these descriptors.
   struct virtq_desc *desc;
 
-  // next is a ring in which the driver writes descriptor numbers
+  // a ring in which the driver writes descriptor numbers
   // that the driver would like the device to process.  it only
   // includes the head descriptor of each chain. the ring has
   // NUM elements.
   struct virtq_avail *avail;
 
-  // finally a ring in which the device writes descriptor numbers that
+  // a ring in which the device writes descriptor numbers that
   // the device has finished processing (just the head of each chain).
   // there are NUM used ring entries.
   struct virtq_used *used;
