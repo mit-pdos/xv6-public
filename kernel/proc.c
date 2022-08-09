@@ -30,7 +30,8 @@ struct spinlock wait_lock;
 // Map it high in memory, followed by an invalid
 // guard page.
 void
-proc_mapstacks(pagetable_t kpgtbl) {
+proc_mapstacks(pagetable_t kpgtbl)
+{
   struct proc *p;
   
   for(p = proc; p < &proc[NPROC]; p++) {
@@ -42,7 +43,7 @@ proc_mapstacks(pagetable_t kpgtbl) {
   }
 }
 
-// initialize the proc table at boot time.
+// initialize the proc table.
 void
 procinit(void)
 {
@@ -69,7 +70,8 @@ cpuid()
 // Return this CPU's cpu struct.
 // Interrupts must be disabled.
 struct cpu*
-mycpu(void) {
+mycpu(void)
+{
   int id = cpuid();
   struct cpu *c = &cpus[id];
   return c;
@@ -77,7 +79,8 @@ mycpu(void) {
 
 // Return the current struct proc *, or zero if none.
 struct proc*
-myproc(void) {
+myproc(void)
+{
   push_off();
   struct cpu *c = mycpu();
   struct proc *p = c->proc;
@@ -86,7 +89,8 @@ myproc(void) {
 }
 
 int
-allocpid() {
+allocpid()
+{
   int pid;
   
   acquire(&pid_lock);
@@ -210,7 +214,8 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 }
 
 // a user program that calls exec("/init")
-// od -t xC initcode
+// assembled from ../user/initcode.S
+// od -t xC ../user/initcode
 uchar initcode[] = {
   0x17, 0x05, 0x00, 0x00, 0x13, 0x05, 0x45, 0x02,
   0x97, 0x05, 0x00, 0x00, 0x93, 0x85, 0x35, 0x02,
@@ -230,9 +235,9 @@ userinit(void)
   p = allocproc();
   initproc = p;
   
-  // allocate one user page and copy init's instructions
+  // allocate one user page and copy initcode's instructions
   // and data into it.
-  uvminit(p->pagetable, initcode, sizeof(initcode));
+  uvmfirst(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
   // prepare for the very first "return" from kernel to user.
