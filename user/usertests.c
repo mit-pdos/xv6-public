@@ -2706,6 +2706,49 @@ execout(char *s)
   exit(0);
 }
 
+// can the kernel tolerate running out of disk space?
+void
+diskfull(char *s)
+{
+  int fi;
+  int done = 0;
+  
+  for(fi = 0; done == 0; fi++){
+    char name[32];
+    name[0] = 'b';
+    name[1] = 'i';
+    name[2] = 'g';
+    name[3] = '0' + fi;
+    name[4] = '\0';
+    unlink(name);
+    int fd = open(name, O_CREATE|O_RDWR|O_TRUNC);
+    if(fd < 0){
+      printf("%s: could not create file %s\n", s, name);
+      done = 1;
+      break;
+    }
+    for(int i = 0; i < MAXFILE; i++){
+      char buf[BSIZE];
+      if(write(fd, buf, BSIZE) != BSIZE){
+        done = 1;
+        close(fd);
+        break;
+      }
+    }
+    close(fd);
+  }
+
+  for(int i = 0; i < fi; i++){
+    char name[32];
+    name[0] = 'b';
+    name[1] = 'i';
+    name[2] = 'g';
+    name[3] = '0' + i;
+    name[4] = '\0';
+    unlink(name);
+  }
+}
+
 //
 // use sbrk() to count how many free physical memory pages there are.
 // touches the pages to force allocation.
@@ -2818,7 +2861,7 @@ main(int argc, char *argv[])
     void (*f)(char *);
     char *s;
   } tests[] = {
-    {MAXVAplus, "MAXVAplus"},
+    {diskfull, "diskfull"},
     {manywrites, "manywrites"},
     {execout, "execout"},
     {copyin, "copyin"},
@@ -2880,6 +2923,7 @@ main(int argc, char *argv[])
     {dirfile, "dirfile"},
     {iref, "iref"},
     {forktest, "forktest"},
+    {MAXVAplus, "MAXVAplus"},
     {bigdir, "bigdir"}, // slow
     { 0, 0},
   };
