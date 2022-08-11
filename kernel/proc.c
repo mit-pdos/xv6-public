@@ -588,7 +588,7 @@ kill(int pid)
   for(p = proc; p < &proc[NPROC]; p++){
     acquire(&p->lock);
     if(p->pid == pid){
-      __atomic_store_n(&p->killed, 1, __ATOMIC_SEQ_CST);
+      p->killed = 1;
       if(p->state == SLEEPING){
         // Wake process from sleep().
         p->state = RUNNABLE;
@@ -601,10 +601,23 @@ kill(int pid)
   return -1;
 }
 
+void
+setkilled(struct proc *p)
+{
+  acquire(&p->lock);
+  p->killed = 1;
+  release(&p->lock);
+}
+
 int
 killed(struct proc *p)
 {
-  return  __atomic_load_n(&p->killed, __ATOMIC_SEQ_CST);
+  int k;
+  
+  acquire(&p->lock);
+  k = p->killed;
+  release(&p->lock);
+  return k;
 }
 
 // Copy to either a user address, or kernel address,
