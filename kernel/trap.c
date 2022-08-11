@@ -70,7 +70,7 @@ usertrap(void)
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-    __sync_bool_compare_and_swap(&p->killed, 0, 1);
+    __atomic_store_n(&p->killed, 1, __ATOMIC_SEQ_CST);
   }
 
   if(killed(p))
