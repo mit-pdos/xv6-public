@@ -422,7 +422,7 @@ wait(uint64 addr)
     }
 
     // No point waiting if we don't have any children.
-    if(!havekids || p->killed){
+    if(!havekids || __sync_add_and_fetch(&p->killed, 0)){
       release(&wait_lock);
       return -1;
     }
@@ -588,7 +588,7 @@ kill(int pid)
   for(p = proc; p < &proc[NPROC]; p++){
     acquire(&p->lock);
     if(p->pid == pid){
-      p->killed = 1;
+      __sync_bool_compare_and_swap(&p->killed, 0, 1);
       if(p->state == SLEEPING){
         // Wake process from sleep().
         p->state = RUNNABLE;
