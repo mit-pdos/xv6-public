@@ -63,7 +63,7 @@ sys_sleep(void)
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
-    if(__sync_add_and_fetch(&(myproc()->killed), 0)){
+    if(killed(myproc())){
       release(&tickslock);
       return -1;
     }

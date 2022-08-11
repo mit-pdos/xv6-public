@@ -89,7 +89,7 @@ consoleread(int user_dst, uint64 dst, int n)
     // wait until interrupt handler has put some
     // input into cons.buffer.
     while(cons.r == cons.w){
-      if(__sync_add_and_fetch(&(myproc()->killed), 0)){
+      if(killed(myproc())){
         release(&cons.lock);
         return -1;
       }

@@ -422,7 +422,7 @@ wait(uint64 addr)
     }
 
     // No point waiting if we don't have any children.
-    if(!havekids || __sync_add_and_fetch(&p->killed, 0)){
+    if(!havekids || killed(p)){
       release(&wait_lock);
       return -1;
     }
@@ -599,6 +599,12 @@ kill(int pid)
     release(&p->lock);
   }
   return -1;
+}
+
+int
+killed(struct proc *p)
+{
+  return __sync_add_and_fetch(&p->killed, 0);
 }
 
 // Copy to either a user address, or kernel address,
