@@ -27,7 +27,7 @@
 
 //
 // send one character to the uart.
-// called by printf, and to echo input characters,
+// called by printf(), and to echo input characters,
 // but not from write().
 //
 void
@@ -45,8 +45,8 @@ struct {
   struct spinlock lock;
   
   // input
-#define INPUT_BUF 128
-  char buf[INPUT_BUF];
+#define INPUT_BUF_SIZE 128
+  char buf[INPUT_BUF_SIZE];
   uint r;  // Read index
   uint w;  // Write index
   uint e;  // Edit index
@@ -96,7 +96,7 @@ consoleread(int user_dst, uint64 dst, int n)
       sleep(&cons.r, &cons.lock);
     }
 
-    c = cons.buf[cons.r++ % INPUT_BUF];
+    c = cons.buf[cons.r++ % INPUT_BUF_SIZE];
 
     if(c == C('D')){  // end-of-file
       if(n < target){
@@ -143,7 +143,7 @@ consoleintr(int c)
     break;
   case C('U'):  // Kill line.
     while(cons.e != cons.w &&
-          cons.buf[(cons.e-1) % INPUT_BUF] != '\n'){
+          cons.buf[(cons.e-1) % INPUT_BUF_SIZE] != '\n'){
       cons.e--;
       consputc(BACKSPACE);
     }
@@ -156,16 +156,16 @@ consoleintr(int c)
     }
     break;
   default:
-    if(c != 0 && cons.e-cons.r < INPUT_BUF){
+    if(c != 0 && cons.e-cons.r < INPUT_BUF_SIZE){
       c = (c == '\r') ? '\n' : c;
 
       // echo back to the user.
       consputc(c);
 
       // store for consumption by consoleread().
-      cons.buf[cons.e++ % INPUT_BUF] = c;
+      cons.buf[cons.e++ % INPUT_BUF_SIZE] = c;
 
-      if(c == '\n' || c == C('D') || cons.e == cons.r+INPUT_BUF){
+      if(c == '\n' || c == C('D') || cons.e == cons.r+INPUT_BUF_SIZE){
         // wake up consoleread() if a whole line (or end-of-file)
         // has arrived.
         cons.w = cons.e;
