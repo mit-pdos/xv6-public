@@ -53,6 +53,7 @@ procinit(void)
   initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
+      p->state = UNUSED;
       p->kstack = KSTACK((int) (p - proc));
   }
 }
@@ -639,6 +640,7 @@ procdump(void)
 {
   static char *states[] = {
   [UNUSED]    "unused",
+  [USED]      "used",
   [SLEEPING]  "sleep ",
   [RUNNABLE]  "runble",
   [RUNNING]   "run   ",
