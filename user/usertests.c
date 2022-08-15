@@ -2508,17 +2508,40 @@ stacktest(char *s)
     exit(xstatus);
 }
 
+// check that writes to text segment fault
+void
+texttest(char *s)
+{
+  int pid;
+  int xstatus;
+  
+  pid = fork();
+  if(pid == 0) {
+    volatile int *addr = (int *) 0;
+    *addr = 10;
+    exit(1);
+  } else if(pid < 0){
+    printf("%s: fork failed\n", s);
+    exit(1);
+  }
+  wait(&xstatus);
+  if(xstatus == -1)  // kernel killed child?
+    exit(0);
+  else
+    exit(xstatus);
+}
+
 // regression test. copyin(), copyout(), and copyinstr() used to cast
 // the virtual page address to uint, which (with certain wild system
 // call arguments) resulted in a kernel page faults.
+void *big = (void*) 0xeaeb0b5b00002f5e;
 void
 pgbug(char *s)
 {
   char *argv[1];
   argv[0] = 0;
-  exec((char*)0xeaeb0b5b00002f5e, argv);
-
-  pipe((int*)0xeaeb0b5b00002f5e);
+  exec(big, argv);
+  pipe(big);
 
   exit(0);
 }
@@ -2607,6 +2630,7 @@ sbrklast(char *s)
     exit(1);
 }
 
+
 // does sbrk handle signed int32 wrap-around with
 // negative arguments?
 void
@@ -2616,6 +2640,7 @@ sbrk8000(char *s)
   volatile char *top = sbrk(0);
   *(top-1) = *(top-1) + 1;
 }
+
 
 // regression test. does write() with an invalid buffer pointer cause
 // a block to be allocated for a file that is then not freed when the
