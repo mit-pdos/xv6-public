@@ -259,7 +259,7 @@ userinit(void)
 int
 growproc(int n)
 {
-  uint sz;
+  uint64 sz;
   struct proc *p = myproc();
 
   sz = p->sz;
