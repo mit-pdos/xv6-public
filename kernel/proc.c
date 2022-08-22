@@ -390,7 +390,7 @@ exit(int status)
 int
 wait(uint64 addr)
 {
-  struct proc *np;
+  struct proc *pp;
   int havekids, pid;
   struct proc *p = myproc();
 
@@ -399,27 +399,27 @@ wait(uint64 addr)
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
-    for(np = proc; np < &proc[NPROC]; np++){
-      if(np->parent == p){
+    for(pp = proc; pp < &proc[NPROC]; pp++){
+      if(pp->parent == p){
         // make sure the child isn't still in exit() or swtch().
-        acquire(&np->lock);
+        acquire(&pp->lock);
 
         havekids = 1;
-        if(np->state == ZOMBIE){
+        if(pp->state == ZOMBIE){
           // Found one.
-          pid = np->pid;
-          if(addr != 0 && copyout(p->pagetable, addr, (char *)&np->xstate,
-                                  sizeof(np->xstate)) < 0) {
-            release(&np->lock);
+          pid = pp->pid;
+          if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
+                                  sizeof(pp->xstate)) < 0) {
+            release(&pp->lock);
             release(&wait_lock);
             return -1;
           }
-          freeproc(np);
-          release(&np->lock);
+          freeproc(pp);
+          release(&pp->lock);
           release(&wait_lock);
           return pid;
         }
-        release(&np->lock);
+        release(&pp->lock);
       }
     }
 
