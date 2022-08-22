@@ -60,8 +60,8 @@ usertrap(void)
     // but we want to return to the next instruction.
     p->trapframe->epc += 4;
 
-    // an interrupt will change sstatus &c registers,
-    // so don't enable until done with those registers.
+    // an interrupt will change sepc, scause, and sstatus,
+    // so enable only now that we're done with those registers.
     intr_on();
 
     syscall();
@@ -101,7 +101,7 @@ usertrapret(void)
   w_stvec(trampoline_uservec);
 
   // set up trapframe values that uservec will need when
-  // the process next re-enters the kernel.
+  // the process next traps into the kernel.
   p->trapframe->kernel_satp = r_satp();         // kernel page table
   p->trapframe->kernel_sp = p->kstack + PGSIZE; // process's kernel stack
   p->trapframe->kernel_trap = (uint64)usertrap;
