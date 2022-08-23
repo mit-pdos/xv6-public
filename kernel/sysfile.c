@@ -272,24 +272,31 @@ create(char *path, short type, short major, short minor)
   iupdate(ip);
 
   if(type == T_DIR){  // Create . and .. entries.
-    dp->nlink++;  // for ".."
-    iupdate(dp);
     // No ip->nlink++ for ".": avoid cyclic ref count.
     if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
-      panic("create dots");
+      goto fail;
   }
 
-  if(dirlink(dp, name, ip->inum) < 0){
-    // oops. we don't need ip after all.
-    ip->nlink = 0;
-    iupdate(ip);
-    iunlockput(ip);
-    ip = 0;
+  if(dirlink(dp, name, ip->inum) < 0)
+    goto fail;
+
+  if(type == T_DIR){
+    // now that success is guaranteed:
+    dp->nlink++;  // for ".."
+    iupdate(dp);
   }
 
   iunlockput(dp);
 
   return ip;
+
+ fail:
+  // something went wrong. de-allocate ip.
+  ip->nlink = 0;
+  iupdate(ip);
+  iunlockput(ip);
+  iunlockput(dp);
+  return 0;
 }
 
 uint64

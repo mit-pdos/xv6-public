@@ -2712,6 +2712,8 @@ diskfull(char *s)
 {
   int fi;
   int done = 0;
+
+  unlink("diskfulldir");
   
   for(fi = 0; done == 0; fi++){
     char name[32];
@@ -2757,6 +2759,9 @@ diskfull(char *s)
     }
     close(fd);
   }
+
+  mkdir("diskfulldir");
+  unlink("diskfulldir");
 
   for(int i = 0; i < nzz; i++){
     char name[32];
