@@ -1,18 +1,19 @@
-	#
-        # code to switch between user and kernel space.
         #
-        # this code is mapped at the same virtual address
-        # (TRAMPOLINE) in user and kernel space so that
-        # it continues to work when it switches page tables.
-	#
-	# kernel.ld causes this to be aligned
-        # to a page boundary.
+        # low-level code to handle traps from user space into
+        # the kernel, and returns from kernel to user.
+        #
+        # the kernel maps the page holding this code
+        # at the same virtual address (TRAMPOLINE)
+        # in user and kernel space so that it continues
+        # to work when it switches page tables.
+        # kernel.ld causes this code to start at 
+        # a page boundary.
         #
 
 #include "riscv.h"
 #include "memlayout.h"
 
-	.section trampsec
+.section trampsec
 .globl trampoline
 trampoline:
 .align 4
@@ -31,7 +32,7 @@ uservec:
 
         # each process has a separate p->trapframe memory area,
         # but it's mapped to the same virtual address
-        # (TRAPFRAME) in every process.
+        # (TRAPFRAME) in every process's user page table.
         li a0, TRAPFRAME
         
         # save the user registers in TRAPFRAME
@@ -70,22 +71,19 @@ uservec:
         csrr t0, sscratch
         sd t0, 112(a0)
 
-        # restore kernel stack pointer from p->trapframe->kernel_sp
+        # initialize kernel stack pointer, from p->trapframe->kernel_sp
         ld sp, 8(a0)
 
         # make tp hold the current hartid, from p->trapframe->kernel_hartid
         ld tp, 32(a0)
 
-        # load the address of usertrap(), p->trapframe->kernel_trap
+        # load the address of usertrap(), from p->trapframe->kernel_trap
         ld t0, 16(a0)
 
-        # restore kernel page table from p->trapframe->kernel_satp
+        # load the kernel page table, from p->trapframe->kernel_satp
         ld t1, 0(a0)
         csrw satp, t1
         sfence.vma zero, zero
-
-        # a0 is no longer valid, since the kernel page
-        # table does not specially map p->tf.
 
         # jump to usertrap(), which does not return
         jr t0
@@ -93,6 +91,7 @@ uservec:
 .globl userret
 userret:
         # userret(pagetable)
+        # called by usertrapret() in trap.c to
         # switch from kernel to user.
         # a0: user page table, for satp.
 

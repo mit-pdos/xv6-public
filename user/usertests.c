@@ -2737,6 +2737,8 @@ diskfull(char *s)
 {
   int fi;
   int done = 0;
+
+  unlink("diskfulldir");
   
   for(fi = 0; done == 0; fi++){
     char name[32];
@@ -2761,6 +2763,39 @@ diskfull(char *s)
       }
     }
     close(fd);
+  }
+
+  // now that there are no free blocks, test that dirlink()
+  // merely fails (doesn't panic) if it can't extend
+  // directory content.
+  int nzz = 128;
+  for(int i = 0; i < nzz; i++){
+    char name[32];
+    name[0] = 'z';
+    name[1] = 'z';
+    name[2] = '0' + (i / 32);
+    name[3] = '0' + (i % 32);
+    name[4] = '\0';
+    unlink(name);
+    int fd = open(name, O_CREATE|O_RDWR|O_TRUNC);
+    if(fd < 0){
+      printf("%s: could not create file %s\n", s, name);
+      break;
+    }
+    close(fd);
+  }
+
+  mkdir("diskfulldir");
+  unlink("diskfulldir");
+
+  for(int i = 0; i < nzz; i++){
+    char name[32];
+    name[0] = 'z';
+    name[1] = 'z';
+    name[2] = '0' + (i / 32);
+    name[3] = '0' + (i % 32);
+    name[4] = '\0';
+    unlink(name);
   }
 
   for(int i = 0; i < fi; i++){
