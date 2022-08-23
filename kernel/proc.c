@@ -424,7 +424,7 @@ wait(uint64 addr)
     }
 
     // No point waiting if we don't have any children.
-    if(!havekids || p->killed){
+    if(!havekids || killed(p)){
       release(&wait_lock);
       return -1;
     }
@@ -601,6 +601,25 @@ kill(int pid)
     release(&p->lock);
   }
   return -1;
+}
+
+void
+setkilled(struct proc *p)
+{
+  acquire(&p->lock);
+  p->killed = 1;
+  release(&p->lock);
+}
+
+int
+killed(struct proc *p)
+{
+  int k;
+  
+  acquire(&p->lock);
+  k = p->killed;
+  release(&p->lock);
+  return k;
 }
 
 // Copy to either a user address, or kernel address,
