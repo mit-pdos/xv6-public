@@ -7,7 +7,7 @@
 #include "defs.h"
 #include "elf.h"
 
-static int loadseg(pde_t *, uint64, uint, struct inode *, uint, uint);
+static int loadseg(pde_t *, uint64, struct inode *, uint, uint);
 
 int flags2perm(int flags)
 {
@@ -59,15 +59,13 @@ exec(char *path, char **argv)
       goto bad;
     if(ph.vaddr + ph.memsz < ph.vaddr)
       goto bad;
-    if(ph.align != PGSIZE)
+    if(ph.vaddr % PGSIZE != 0)
       goto bad;
-    uint64 e = PGROUNDUP(ph.vaddr + ph.memsz);
     uint64 sz1;
-    if((sz1 = uvmalloc(pagetable, sz, e, flags2perm(ph.flags))) == 0)
+    if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz, flags2perm(ph.flags))) == 0)
       goto bad;
     sz = sz1;
-    uint64 s = PGROUNDDOWN(ph.vaddr);
-    if(loadseg(pagetable, s, ph.vaddr - s, ip, ph.off, ph.filesz) < 0)
+    if(loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
       goto bad;
   }
   iunlockput(ip);
@@ -147,7 +145,7 @@ exec(char *path, char **argv)
 // and the pages from va to va+sz must already be mapped.
 // Returns 0 on success, -1 on failure.
 static int
-loadseg(pagetable_t pagetable, uint64 va, uint poff, struct inode *ip, uint offset, uint sz)
+loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz)
 {
   uint i, n;
   uint64 pa;
@@ -160,7 +158,7 @@ loadseg(pagetable_t pagetable, uint64 va, uint poff, struct inode *ip, uint offs
       n = sz - i;
     else
       n = PGSIZE;
-    if(readi(ip, 0, (uint64)pa+poff, offset+i, n) != n)
+    if(readi(ip, 0, (uint64)pa, offset+i, n) != n)
       return -1;
   }
   
