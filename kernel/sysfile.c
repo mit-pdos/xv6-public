@@ -279,8 +279,13 @@ create(char *path, short type, short major, short minor)
       panic("create dots");
   }
 
-  if(dirlink(dp, name, ip->inum) < 0)
-    panic("create: dirlink");
+  if(dirlink(dp, name, ip->inum) < 0){
+    // oops. we don't need ip after all.
+    ip->nlink = 0;
+    iupdate(ip);
+    iunlockput(ip);
+    ip = 0;
+  }
 
   iunlockput(dp);
 
