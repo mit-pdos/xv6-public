@@ -262,8 +262,10 @@ create(char *path, short type, short major, short minor)
     return 0;
   }
 
-  if((ip = ialloc(dp->dev, type)) == 0)
-    panic("create: ialloc");
+  if((ip = ialloc(dp->dev, type)) == 0){
+    iunlockput(dp);
+    return 0;
+  }
 
   ilock(ip);
   ip->major = major;
