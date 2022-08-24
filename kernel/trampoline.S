@@ -82,6 +82,7 @@ uservec:
 
         # load the kernel page table, from p->trapframe->kernel_satp
         ld t1, 0(a0)
+        sfence.vma zero, zero
         csrw satp, t1
         sfence.vma zero, zero
 
@@ -96,6 +97,7 @@ userret:
         # a0: user page table, for satp.
 
         # switch to the user page table.
+        sfence.vma zero, zero
         csrw satp, a0
         sfence.vma zero, zero
 
