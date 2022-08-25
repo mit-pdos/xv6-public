@@ -14,6 +14,8 @@
 //     so do not keep them longer than necessary.
 //
 // The implementation uses two state flags internally:
+
+//welcome
 // * B_VALID: the buffer data has been read from the disk.
 // * B_DIRTY: the buffer data has been modified
 //     and needs to be written to disk.
