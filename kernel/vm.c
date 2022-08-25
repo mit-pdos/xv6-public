@@ -61,7 +61,12 @@ kvminit(void)
 void
 kvminithart()
 {
+  // wait for any previous writes to the page table memory to finish.
+  sfence_vma();
+
   w_satp(MAKE_SATP(kernel_pagetable));
+
+  // flush stale entries from the TLB.
   sfence_vma();
 }
 

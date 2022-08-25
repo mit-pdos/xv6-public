@@ -194,7 +194,7 @@ static struct inode* iget(uint dev, uint inum);
 // Allocate an inode on device dev.
 // Mark it as allocated by  giving it type type.
 // Returns an unlocked but allocated and referenced inode,
-// or NULL if there is no free inode..
+// or NULL if there is no free inode.
 struct inode*
 ialloc(uint dev, short type)
 {
