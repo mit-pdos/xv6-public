@@ -74,7 +74,7 @@ bget(uint dev, uint blockno)
       return b;
     }
   }
-
+  //hi welcome
   // Not cached; recycle an unused buffer.
   // Even if refcnt==0, B_DIRTY indicates a buffer is in use
   // because log.c has modified it but not yet committed it.
