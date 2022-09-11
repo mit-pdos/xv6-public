@@ -43,6 +43,12 @@ sys_getpid(void)
 }
 
 int
+sys_getprocs(void)
+{
+  return countproc();
+}
+
+int
 sys_sbrk(void)
 {
   int addr;
@@ -89,3 +95,4 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
