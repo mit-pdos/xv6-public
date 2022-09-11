@@ -532,3 +532,21 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+int
+countproc(void)
+{
+  struct proc *p;
+  int counter = 0;
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != UNUSED){
+      counter++;
+    }
+  }
+
+  release(&ptable.lock);
+
+  return counter;
+}
