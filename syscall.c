@@ -131,6 +131,7 @@ static int (*syscalls[])(void) = {
 void
 syscall(void)
 {
+  
   int num;
   struct proc *curproc = myproc();
 
