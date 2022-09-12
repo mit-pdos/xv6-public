@@ -335,17 +335,17 @@ void scheduler(void)
     sti();
 
     int tickets_passed = 0;
-    int totalTickets = 0;
+    int number_tickets  = 0;
 
     //cuenta el total de tickets
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if (p->state != RUNNABLE)
         continue;
-      totalTickets = totalTickets + p->tickets;
+      number_tickets  = number_tickets  + p->tickets;
     }
 
-    long winner = random_tickets(totalTickets);
+    long winner = random_tickets(number_tickets );
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
