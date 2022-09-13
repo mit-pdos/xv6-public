@@ -73,6 +73,7 @@ void            kinit2(void*, void*);
 void            kbdintr(void);
 
 // lapic.c
+unsigned long   unixtime(void);
 void            cmostime(struct rtcdate *r);
 int             lapicid(void);
 extern volatile uint*    lapic;
