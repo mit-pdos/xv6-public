@@ -10,6 +10,8 @@
 #include "vfs_fs.h"
 #include "vfs_file.h"
 #include "file.h"
+#include "defs.h"
+#include "kvector.h"
 
 int
 exec(char *path, char **argv)
@@ -18,10 +20,13 @@ exec(char *path, char **argv)
   int i, off;
   uint argc, sz, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
-  struct vfs_inode *ip;
   struct proghdr ph;
+  vector elfv, phv;
+  struct vfs_inode *ip;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
+  elfv = newvector(sizeof(elf),1);
+  phv = newvector(sizeof(ph),1);
 
   begin_op();
 
@@ -33,8 +38,13 @@ exec(char *path, char **argv)
   pgdir = 0;
 
   // Check ELF header
-  if(ip->i_op.readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
+  if(ip->i_op.readi(ip, 0, sizeof(elf), &elfv) != sizeof(elf))
     goto bad;
+
+  //vectormemcmp("exec", elfv, 0, (char*)&elf, sizeof(struct elfhdr));
+  //Restore data from vector to object
+  memmove_from_vector((char*)(&elf), elfv, 0, elfv.vectorsize); // now elfv is the source of elf.
+
   if(elf.magic != ELF_MAGIC)
     goto bad;
 
@@ -44,8 +54,9 @@ exec(char *path, char **argv)
   // Load program into memory.
   sz = 0;
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
-    if(ip->i_op.readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
+    if(ip->i_op.readi(ip, off, sizeof(ph), &phv) != sizeof(ph))
       goto bad;
+    memmove_from_vector((char*)(&ph), phv, 0, phv.vectorsize); // now phv is the source of ph.
     if(ph.type != ELF_PROG_LOAD)
       continue;
     if(ph.memsz < ph.filesz)

@@ -3,6 +3,7 @@
 #include "obj_cache.h"
 #include "obj_disk.h"
 #include "sleeplock.h"
+#include "vfs_fs.h" //remove!
 
 #ifndef KERNEL_TESTS
 #include "defs.h"  // import `panic`
@@ -109,7 +110,7 @@ uint cache_add_object(const void* object, uint size, const char* name) {
     return NO_ERR;
 }
 
-uint cache_rewrite_object(const void* object, uint size, const char* name) {
+uint cache_rewrite_object(vector object, uint size, const char* name) {
     acquiresleep(&cachelock);
     uint rv = rewrite_object(object, size, name);
     if (rv != NO_ERR) {
@@ -136,7 +137,8 @@ uint cache_rewrite_object(const void* object, uint size, const char* name) {
     }
     move_to_front(e);
     e->size = size;
-    memmove(e->data, object, size);
+    //memmove(e->data, object, size);
+    memmove_from_vector((char*)e->data, object, 0, size);
     memmove(e->object_id, name, obj_id_bytes(name));
     releasesleep(&cachelock);
     return NO_ERR;
@@ -203,26 +205,24 @@ uint cache_object_size(const char* name, uint* output) {
     return err;
 }
 
-uint cache_get_object(const char* name, void* output) {
+uint cache_get_object(const char* name, vector * outputvector, uint read_object_from_offset) {
     acquiresleep(&cachelock);
+    // 1. check if the desired object is already in the cache
     for(struct obj_cache_entry* e = obj_cache.head.prev;
         e != &obj_cache.head;
         e = e->prev)
     {
         if (obj_id_cmp(name, e->object_id) == 0) {
-            memmove(output, e->data, e->size);
+            memmove_into_vector_bytes(*outputvector, 0,  (char*)e->data, e->size);
             move_to_front(e);
             hits++;
             releasesleep(&cachelock);
             return NO_ERR;
         }
     }
+    // 2. object is not in cache hence the miss counter is incremented
     misses++;
-    uint rv = get_object(name, output);
-    if (rv != NO_ERR) {
-        releasesleep(&cachelock);
-        return rv;
-    }
+    // 3. try to fetch object from disk
     uint size;
     if (object_size(name, &size) != NO_ERR) {
         releasesleep(&cachelock);
@@ -232,13 +232,16 @@ uint cache_get_object(const char* name, void* output) {
         releasesleep(&cachelock);
         return NO_ERR;
     }
+    uint rv = get_object(name, NULL, outputvector); 
+    if (rv != NO_ERR) {
+        releasesleep(&cachelock);
+        return rv;
+    }
+    // 4. store the object in some cache entry for later use
     struct obj_cache_entry* e = obj_cache.head.prev;
     move_to_front(e);
     e->size = size;
-    if (get_object(name, e->data)) {
-        releasesleep(&cachelock);
-        panic("cache get object failed to get object data");
-    }
+    memmove_from_vector((char*)e->data, *outputvector, 0, e->size);
     memmove(e->object_id, name, obj_id_bytes(name));
     releasesleep(&cachelock);
     return NO_ERR;

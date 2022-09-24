@@ -4,6 +4,8 @@
 #include "obj_disk.h"
 #include "types.h"
 #include "sleeplock.h"
+#include "kvector.h"
+#include "vfs_file.h"
 
 #ifndef KERNEL_TESTS
 #include "defs.h"  // import `panic`
@@ -239,7 +241,7 @@ uint add_object(const void* object, uint size, const char* name) {
 }
 
 
-uint rewrite_object(const void* object, uint size, const char* name) {
+uint rewrite_object(vector object, uint size, const char* name) {
     uint err;
     err = check_rewrite_object_validality(size, name);
     if (err != NO_ERR) {
@@ -257,7 +259,8 @@ uint rewrite_object(const void* object, uint size, const char* name) {
     if (entry->size >= size) {
         void* address =
             (void*)memory_storage + entry->disk_offset;
-        memmove(address, object, size);
+        //memmove(address, object, size);
+        memmove_from_vector(address, object, 0, size);
         entry->size = size;
     } else {
         entry->occupied = 0;
@@ -269,7 +272,8 @@ uint rewrite_object(const void* object, uint size, const char* name) {
             releasesleep(&disklock);
             return NO_DISK_SPACE_FOUND;
         }
-        memmove(address, object, size);
+        //memmove(address, object, size);
+        memmove_from_vector(address, object, 0, size);
         entry->size = size;
         entry->disk_offset = address - (void*)memory_storage;
     }
@@ -298,10 +302,13 @@ uint object_size(const char* name, uint* output) {
 }
 
 
-uint get_object(const char* name, void* output) {
+uint get_object(const char* name, void* output, vector * outputvector) {
+    // 1. make sure the name is of legal length
     if (strlen(name) > MAX_OBJECT_NAME_LENGTH) {
         return OBJECT_NAME_TOO_LONG;
     }
+    // 2. try to locate the object in the object-table
+    // return an index i or an error code
     acquiresleep(&disklock);
     uint i;
     uint err = get_objects_table_index(name, &i);
@@ -309,10 +316,14 @@ uint get_object(const char* name, void* output) {
         releasesleep(&disklock);
         return err;
     }
+    // 3. read the objects offset in disk, then read the object into
+    // output address and vector
     ObjectsTableEntry* entry = objects_table_entry(i);
     void* address = (void*)memory_storage + entry->disk_offset;
-    memmove(output, address, entry->size);
-
+    if(output != NULL)
+        memmove(output, address, entry->size);
+    if(outputvector != NULL)
+        memmove_into_vector_bytes(*outputvector, 0, address, entry->size);
     releasesleep(&disklock);
     return NO_ERR;
 }
