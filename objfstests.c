@@ -743,8 +743,6 @@ void
 bigfile(void)
 {
     int fd, i, total, cc;
-    int write_iterations = 20;
-    int bytes_per_write = 100;
 
     printf(1, "bigfile test\n");
 
@@ -754,10 +752,9 @@ bigfile(void)
         printf(1, "cannot create bigfile");
         exit(1);
     }
-    //write 
-    for(i = 0; i < write_iterations; i++){
-        memset(buf, i, bytes_per_write);
-        if(write(fd, buf, bytes_per_write) != bytes_per_write){
+    for(i = 0; i < 20; i++){
+        memset(buf, i, 20);
+        if(write(fd, buf, 20) != 20){
             printf(1, "write bigfile failed\n");
             exit(1);
         }
@@ -771,25 +768,25 @@ bigfile(void)
     }
     total = 0;
     for(i = 0; ; i++){
-        cc = read(fd, buf, bytes_per_write);
+        cc = read(fd, buf, 10);
         if(cc < 0){
             printf(1, "read bigfile failed\n");
             exit(1);
         }
         if(cc == 0)
             break;
-        if(cc != bytes_per_write){
+        if(cc != 10){
             printf(1, "short read bigfile\n");
             exit(1);
         }
-        if(buf[0] != i || buf[bytes_per_write-1] != i){
+        if(buf[0] != i/2 || buf[9] != i/2){
             printf(1, "read bigfile wrong data\n");
             exit(1);
         }
         total += cc;
     }
     close(fd);
-    if(total != write_iterations * bytes_per_write){
+    if(total != 20*20){
         printf(1, "read bigfile wrong total\n");
         exit(1);
     }
@@ -1152,10 +1149,12 @@ main(int argc, char *argv[])
         printf(2, "objtest: failed to create dir new\n");
     }
 
+    printf(1, "objtest: before mount\n");
     if (mount(0, "new", "objfs") != 0) {
         printf(2, "objtest: failed to mount objfs to new\n");
         exit(0);
     }
+    printf(1, "objtest: after mount\n");
 
     if(chdir("/new") < 0) {
         printf(2, "ls: cannot cd new\n");

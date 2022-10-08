@@ -94,19 +94,17 @@ vfs_filestat(struct vfs_file *f, struct stat *st)
 
 // Read from file f.
 int
-vfs_fileread(struct vfs_file *f, int n, vector * dstvector)
+vfs_fileread(struct vfs_file *f, char *addr, int n)
 {
   int r;
 
   if(f->readable == 0)
     return -1;
-  if(f->type == FD_PIPE){
-    int piperesult = piperead(f->pipe, n, dstvector);
-    return piperesult;
-  }
+  if(f->type == FD_PIPE)
+    return piperead(f->pipe, addr, n);
   if(f->type == FD_INODE){
     f->ip->i_op.ilock(f->ip);
-    if((r = f->ip->i_op.readi(f->ip, f->off, n, dstvector)) > 0) {
+    if((r = f->ip->i_op.readi(f->ip, addr, f->off, n)) > 0) {
         f->off += r;
     }
     f->ip->i_op.iunlock(f->ip);
@@ -140,7 +138,7 @@ vfs_filewrite(struct vfs_file *f, char *addr, int n)
       int n1 = n - i;
       if(n1 > max)
         n1 = max;
-        
+
       begin_op();
       f->ip->i_op.ilock(f->ip);
       if ((r = f->ip->i_op.writei(f->ip, addr + i, f->off, n1)) > 0)

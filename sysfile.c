@@ -19,7 +19,6 @@
 #include "device.h"
 #include "vfs_fs.h"
 #include "mount.h"
-#include "kvector.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -75,7 +74,7 @@ sys_read(void)
 {
   struct vfs_file *f;
   int n;
-  char *p;  // is it a contiuous space? of what size? should we make it a vector too?
+  char *p;
 
   if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
@@ -85,13 +84,10 @@ sys_read(void)
       return cg_read(CG_DIR, f, p, n);
     else
       return cg_read(CG_FILE, f, p, n);
-  }else{
-    vector pv;
-    pv = newvector(n,1);
-    int vfs_read_result = vfs_fileread(f, n, &pv);
-    memmove_from_vector(p, pv, 0, n);
-    return vfs_read_result;
-  } 
+  }
+
+  else
+    return vfs_fileread(f, p, n);
 }
 
 int
@@ -287,7 +283,7 @@ createmount(char *path, short type, short major, short minor, struct mount **mnt
   if (IS_OBJ_DEVICE(dp->dev)) {
     if ((ip = obj_ialloc(dp->dev, type)) == 0)
       panic("create: obj_ialloc");
-      
+
   } else {
     if ((ip = ialloc(dp->dev, type)) == 0)
        panic("create: ialloc");

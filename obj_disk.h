@@ -3,7 +3,6 @@
 
 #include "obj_fs.h"
 #include "types.h"
-#include "kvector.h"
 
 /**
  * `obj_disk` specify the most lower level in the object file system.
@@ -134,7 +133,7 @@ uint add_object(const void* object, uint size, const char* name);
  *   NO_ERR            - no error occured.
  *   OBJECT_NOT_EXISTS - object with this name already exists.
  */
-uint rewrite_object(vector object, uint size, const char* name);
+uint rewrite_object(const void* object, uint size, const char* name);
 
 
 /**
@@ -163,7 +162,7 @@ uint object_size(const char* name, uint* output);
  *   NO_ERR            - no error occured.
  *   OBJECT_NOT_EXISTS - no object with this name exists.
  */
-uint get_object(const char* name, void* output, vector * outputvector);
+uint get_object(const char* name, void* output);
 
 
 

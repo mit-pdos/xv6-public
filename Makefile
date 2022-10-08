@@ -1,7 +1,6 @@
 MAKEFILE_DIRECTORY := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 OBJS = \
-	kvector.o\
 	bio.o\
 	console.o\
 	device.o\

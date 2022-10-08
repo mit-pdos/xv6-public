@@ -5,7 +5,6 @@
 #include "obj_fs.h"
 #include "obj_cache.h"
 #include "obj_disk.h"
-#include "kvector.h"
 #ifndef KERNEL_TESTS
 #include "defs.h"  // import `panic`
 #else
@@ -97,15 +96,11 @@ static void finish_rewrite_event() {
             releasesleep(&loglock);
             panic("logbook - error getting the new object objects table offset");
         }
-        vector templogbookvector;
-        templogbookvector = newvector(sizeof(logbook), 1);
-        memmove_into_vector_bytes(templogbookvector,0,(char*)&logbook,sizeof(logbook));
-        err = cache_rewrite_object(templogbookvector, sizeof(logbook), LOGBOOK_OBJECT_ID);
+        err = cache_rewrite_object(&logbook, sizeof(logbook), LOGBOOK_OBJECT_ID);
         if (err != NO_ERR) {
             releasesleep(&loglock);
             panic("logbook - error updating the logbook to the disk");
         }
-        freevector(&templogbookvector);
     }
     // change the new object id inside the table
     memmove(
@@ -155,14 +150,11 @@ static void finish_log_transactions() {
         releasesleep(&loglock);
         panic("logbook - unexpected error when loading the logbook event object size");
     }
-    vector logbookvector;
-    err = cache_get_object(LOGBOOK_OBJECT_ID, &logbookvector, 0);
-    //vectormemcmp("finish_log_transactions", logbookvector, 0, (char*)&logbook, logbookvector.vectorsize);
+    err = cache_get_object(LOGBOOK_OBJECT_ID, &logbook);
     if (err != NO_ERR) {
         releasesleep(&loglock);
         panic("logbook - unexpected error when loading the logbook event object");
     }
-    memmove_from_vector((char*)&logbook, logbookvector, 0, logbookvector.vectorsize);
     switch (logbook.type) {
         case ADD_EVENT:
             finish_add_event();
@@ -295,9 +287,9 @@ uint log_delete_object(const char* name) {
     return NO_ERR;
 }
 
-uint log_get_object(const char* name, vector * outputvector, uint read_object_from_offset) {
+uint log_get_object(const char* name, void* output) {
     acquiresleep(&loglock);
-    uint result = cache_get_object(name, outputvector, read_object_from_offset);
+    uint result = cache_get_object(name, output);
     releasesleep(&loglock);
     return result;
 }

@@ -18,7 +18,6 @@
 #include "fcntl.h"
 #include "vfs_file.h"
 #include "vfs_fs.h"
-#include "kvector.h"
 
 //PAGEBREAK: 50
 #define BACKSPACE 0x100
@@ -113,10 +112,6 @@ cprintf(char *fmt, ...)
       for(; *s; s++)
         consputc(*s);
       break;
-    case 'c':{
-      s = ((char*)*argp++);
-      consputc(*s);
-    }break;
     case '%':
       consputc('%');
       break;
@@ -259,11 +254,11 @@ consoleintr(int (*getc)(void))
 }
 
 int
-consoleread(struct vfs_inode *ip, int n, vector * dstvector)
+consoleread(struct vfs_inode *ip, char *dst, int n)
 {
   uint target;
   int c;
-  int dstindx = 0;
+
   ip->i_op.iunlock(ip);
   target = n;
   acquire(&cons.lock);
@@ -285,7 +280,7 @@ consoleread(struct vfs_inode *ip, int n, vector * dstvector)
       }
       break;
     }
-    memmove_into_vector_bytes(*dstvector, dstindx++, (char*)&c, 1);
+    *dst++ = c;
     --n;
     if(c == '\n')
       break;
@@ -297,10 +292,10 @@ consoleread(struct vfs_inode *ip, int n, vector * dstvector)
 }
 
 int
-ttyread(struct vfs_inode *ip, int n, vector * dstvector)
+ttyread(struct vfs_inode *ip, char *dst, int n)
 {
   if(tty_table[ip->minor].flags & DEV_CONNECT){
-    return consoleread(ip,n, dstvector);
+    return consoleread(ip,dst,n);
   }
   return -1;
 }

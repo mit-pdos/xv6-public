@@ -6,7 +6,6 @@
 #include "mmu.h"
 #include "proc.h"
 #include "elf.h"
-#include "kvector.h"
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
@@ -211,15 +210,8 @@ loaduvm(pde_t *pgdir, char *addr, struct vfs_inode *ip, uint offset, uint sz)
       n = sz - i;
     else
       n = PGSIZE;
-    
-    vector segment_buffer;
-    segment_buffer = newvector(n,1);
-    unsigned int read_result = ip->i_op.readi(ip, offset+i, n, &segment_buffer);
-    memmove_from_vector((char*)P2V(pa), segment_buffer, 0, n);
-    freevector(&segment_buffer);
-    if(read_result != n){
+    if(ip->i_op.readi(ip, P2V(pa), offset+i, n) != n)
       return -1;
-    }
   }
   return 0;
 }

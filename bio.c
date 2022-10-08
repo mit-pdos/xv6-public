@@ -31,7 +31,6 @@
 #include "vfs_file.h"
 #include "proc.h"
 #include "cgroup.h"
-#include "kvector.h"
 
 struct {
   struct spinlock lock;
@@ -120,12 +119,7 @@ void
 devicerw(struct inode *device, struct buf *b)
 {
   if ((b->flags & B_DIRTY) == 0) {
-      vector read_result_vector;
-      read_result_vector = newvector(BSIZE, 1);
-      device->vfs_inode.i_op.readi(&device->vfs_inode, BSIZE*b->blockno, BSIZE, &read_result_vector);
-      memmove_from_vector((char*)b->data, read_result_vector, 0, BSIZE);
-      // debugging: vectormemcmp("devicerw", read_result_vector, 0, (char *) b->data, BSIZE);
-      freevector(&read_result_vector);
+      device->vfs_inode.i_op.readi(&device->vfs_inode, (char *) b->data, BSIZE*b->blockno, BSIZE);
   } else {
       device->vfs_inode.i_op.writei(&device->vfs_inode, (char *) b->data, BSIZE*b->blockno, BSIZE);
   }
