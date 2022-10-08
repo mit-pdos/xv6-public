@@ -80,8 +80,7 @@ sys_mount(void)
         }
 
         set_cgroup_dir_path(cgroup_root(), mount_path);
-        objfs_mount(mount_dir, 0, parent);
-        mntput(parent);
+
         end_op();
 
         return 0;

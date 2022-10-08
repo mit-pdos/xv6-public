@@ -280,27 +280,23 @@ shallowcopyactivemounts(struct mount **newcwdmount) {
     while (entry != 0) {
         struct mount_list *newentry = allocmntlist();
         if (head == 0) {
-          head = newentry;
+            head = newentry;
         }
         newentry->mnt.ref = 1;
-        if(entry->mnt.mountpoint != 0) {
-          //ordinary link
-          newentry->mnt.mountpoint = entry->mnt.mountpoint->i_op.idup(entry->mnt.mountpoint);
-        }
+        newentry->mnt.mountpoint = entry->mnt.mountpoint->i_op.idup(entry->mnt.mountpoint);
         newentry->mnt.parent = 0;
         newentry->mnt.dev = entry->mnt.dev;
         deviceget(newentry->mnt.dev);
-
         if (prev != 0) {
-        prev->next = newentry;
+            prev->next = newentry;
         }
 
-        if (myproc()->cwdmount == &entry->mnt) {
-          *newcwdmount = &newentry->mnt;
-        }
+    if (myproc()->cwdmount == &entry->mnt) {
+      *newcwdmount = &newentry->mnt;
+    }
 
-      prev = newentry;
-      entry = entry->next;
+    prev = newentry;
+    entry = entry->next;
   }
   
 

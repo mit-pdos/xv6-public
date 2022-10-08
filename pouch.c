@@ -504,50 +504,24 @@ static int create_pouch_cgroup(char *cg_cname, char *cname){
 
 }
 
-static void printp(char * message){
-    printf(1,"Pouch: %s\n", message);
-}
+static int init_pouch_cgroup(){
 
-static int init_pouch_cgroup()
-{
-    char * cgroup_dir = "/cgroup";
-    printp("Initilizing root cgroup. Checking for root-cgroup existence...");
-    int cgroup_fd = open(cgroup_dir, O_RDWR);
-    // When arriving here first time, the directory might not exist
-    if (cgroup_fd < 0) {
-        printp("root cgroup does not exist. trying to create it...");        
-        // The directory does not exist or it cannot be
-        // accessed using the specified permissions
-        // after creating it next condition will always return !=0.
-        if (mkdir(cgroup_dir) != 0) {
-            //sometimes a group is partially defined (directory with no actual cgroups)
-            //deleting the directory should help recovering.
-            printf(1, "Pouch: Failed to create root cgroup. trying to recover.\n");
-            if(unlink(cgroup_dir) < 0) {
-                printf(1, "Pouch: failed to recover.\n");
-                return -1;
-            } else if(mkdir(cgroup_dir) == 0) {
-                printf(1, "Pouch : Created root cgroup directory after recovering.\n");            
-            } else {
-                printf(1, "Pouch: Failed to create root cgroup and cannot recover.\n");
-                return -1;                
-            }
-        } else {
-            printf(1, "Pouch : Created root cgroup directory.\n");
+    int cgroup_fd = -1;
+    if((cgroup_fd = open("/cgroup", O_RDWR)) < 0){
+
+        if(mkdir("/cgroup") != 0){
+            printf(1, "Pouch: Failed to create root cgroup.\n");
+            return -1;
         }
-        if (mount(0, cgroup_dir, "cgroup") != 0)
-        {
+        if(mount(0, "/cgroup", "cgroup") != 0){
             printf(1, "Pouch: Failed to mount cgroup fs.\n");
             return -1;
-        } else {
-            printf(1, "Pouch: intitialized mount for cgroup.\n");
         }
+    }else{
+        if(close(cgroup_fd) < 0)
+            return -1;
     }
-    else if (close(cgroup_fd) < 0) {
-        printf(1, "Pouch: Failed to close cgroup.\n");
-        return -1;
-    }
-    printp("Root cgroup is initialized.");
+
     return 0;
 }
 

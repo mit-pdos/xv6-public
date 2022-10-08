@@ -340,7 +340,6 @@ sys_open(void)
 
   begin_op();
 
-  // First check if the desired resource is a cgroup.
   fd = cg_sys_open(path, omode);
 
   if(fd >= 0){
@@ -348,7 +347,6 @@ sys_open(void)
     return fd;
   }
 
-  //If it is not proceed with ordinary inodes.
   if(omode & O_CREATE){
     ip = createmount(path, T_FILE, 0, 0, &mnt);
     if(ip == 0){
