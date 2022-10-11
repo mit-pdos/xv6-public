@@ -89,3 +89,23 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_hello(void)
+{
+    hello();
+    return 0;
+}
+
+int
+sys_exitstat(void)
+{
+    int status;
+
+    if(argint(0, &status) < 0)
+    {
+        exitstat(0);
+    }
+    exitstat(status);
+    return 0;
+}
