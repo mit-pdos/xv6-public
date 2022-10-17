@@ -5,11 +5,11 @@ _init:     file format elf32-i386
 Disassembly of section .text:
 
 00000000 <main>:
+#include "fcntl.h"
 
-char *argv[] = { "sh", 0 };
+char *argv[] = {"sh", 0};
 
-int
-main(void)
+int main(void)
 {
    0:	55                   	push   %ebp
    1:	89 e5                	mov    %esp,%ebp
@@ -18,25 +18,27 @@ main(void)
    7:	83 ec 10             	sub    $0x10,%esp
   int pid, wpid;
 
-  if(open("console", O_RDWR) < 0){
+  if (open("console", O_RDWR) < 0)
    a:	c7 44 24 04 02 00 00 	movl   $0x2,0x4(%esp)
   11:	00 
   12:	c7 04 24 f6 07 00 00 	movl   $0x7f6,(%esp)
   19:	e8 64 03 00 00       	call   382 <open>
   1e:	85 c0                	test   %eax,%eax
-  20:	0f 88 ba 00 00 00    	js     e0 <main+0xe0>
+  20:	0f 88 c0 00 00 00    	js     e6 <main+0xe6>
+  {
     mknod("console", 1, 1);
     open("console", O_RDWR);
   }
-  dup(0);  // stdout
+  dup(0); // stdout
   26:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
   2d:	e8 88 03 00 00       	call   3ba <dup>
-  dup(0);  // stderr
+  dup(0); // stderr
   32:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
   39:	e8 7c 03 00 00       	call   3ba <dup>
   3e:	66 90                	xchg   %ax,%ax
 
-  for(;;){
+  for (;;)
+  {
     printf(1, "init: starting sh\n");
   40:	c7 44 24 04 fe 07 00 	movl   $0x7fe,0x4(%esp)
   47:	00 
@@ -44,73 +46,72 @@ main(void)
   4f:	e8 3c 04 00 00       	call   490 <printf>
     pid = fork();
   54:	e8 e1 02 00 00       	call   33a <fork>
-    if(pid < 0){
+    if (pid < 0)
   59:	85 c0                	test   %eax,%eax
     pid = fork();
   5b:	89 c3                	mov    %eax,%ebx
-    if(pid < 0){
-  5d:	78 2d                	js     8c <main+0x8c>
+    if (pid < 0)
+  5d:	78 33                	js     92 <main+0x92>
   5f:	90                   	nop
+    {
       printf(1, "init: fork failed\n");
       exit(0);
     }
-    if(pid == 0){
-  60:	74 4a                	je     ac <main+0xac>
+    if (pid == 0)
+  60:	74 50                	je     b2 <main+0xb2>
   62:	8d b6 00 00 00 00    	lea    0x0(%esi),%esi
+    {
       exec("sh", argv);
       printf(1, "init: exec sh failed\n");
       exit(0);
     }
-    while((wpid=wait()) >= 0 && wpid != pid)
-  68:	e8 dd 02 00 00       	call   34a <wait>
-  6d:	85 c0                	test   %eax,%eax
-  6f:	90                   	nop
-  70:	78 ce                	js     40 <main+0x40>
-  72:	39 d8                	cmp    %ebx,%eax
-  74:	74 ca                	je     40 <main+0x40>
+    while ((wpid = wait(0)) >= 0 && wpid != pid)
+  68:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
+  6f:	e8 d6 02 00 00       	call   34a <wait>
+  74:	85 c0                	test   %eax,%eax
+  76:	78 c8                	js     40 <main+0x40>
+  78:	39 d8                	cmp    %ebx,%eax
+  7a:	74 c4                	je     40 <main+0x40>
       printf(1, "zombie!\n");
-  76:	c7 44 24 04 3d 08 00 	movl   $0x83d,0x4(%esp)
-  7d:	00 
-  7e:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
-  85:	e8 06 04 00 00       	call   490 <printf>
-  8a:	eb dc                	jmp    68 <main+0x68>
+  7c:	c7 44 24 04 3d 08 00 	movl   $0x83d,0x4(%esp)
+  83:	00 
+  84:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
+  8b:	e8 00 04 00 00       	call   490 <printf>
+  90:	eb d6                	jmp    68 <main+0x68>
       printf(1, "init: fork failed\n");
-  8c:	c7 44 24 04 11 08 00 	movl   $0x811,0x4(%esp)
-  93:	00 
-  94:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
-  9b:	e8 f0 03 00 00       	call   490 <printf>
+  92:	c7 44 24 04 11 08 00 	movl   $0x811,0x4(%esp)
+  99:	00 
+  9a:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
+  a1:	e8 ea 03 00 00       	call   490 <printf>
       exit(0);
-  a0:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
-  a7:	e8 96 02 00 00       	call   342 <exit>
+  a6:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
+  ad:	e8 90 02 00 00       	call   342 <exit>
       exec("sh", argv);
-  ac:	c7 44 24 04 c4 0a 00 	movl   $0xac4,0x4(%esp)
-  b3:	00 
-  b4:	c7 04 24 24 08 00 00 	movl   $0x824,(%esp)
-  bb:	e8 ba 02 00 00       	call   37a <exec>
+  b2:	c7 44 24 04 c4 0a 00 	movl   $0xac4,0x4(%esp)
+  b9:	00 
+  ba:	c7 04 24 24 08 00 00 	movl   $0x824,(%esp)
+  c1:	e8 b4 02 00 00       	call   37a <exec>
       printf(1, "init: exec sh failed\n");
-  c0:	c7 44 24 04 27 08 00 	movl   $0x827,0x4(%esp)
-  c7:	00 
-  c8:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
-  cf:	e8 bc 03 00 00       	call   490 <printf>
+  c6:	c7 44 24 04 27 08 00 	movl   $0x827,0x4(%esp)
+  cd:	00 
+  ce:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
+  d5:	e8 b6 03 00 00       	call   490 <printf>
       exit(0);
-  d4:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
-  db:	e8 62 02 00 00       	call   342 <exit>
+  da:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
+  e1:	e8 5c 02 00 00       	call   342 <exit>
     mknod("console", 1, 1);
-  e0:	c7 44 24 08 01 00 00 	movl   $0x1,0x8(%esp)
-  e7:	00 
-  e8:	c7 44 24 04 01 00 00 	movl   $0x1,0x4(%esp)
-  ef:	00 
-  f0:	c7 04 24 f6 07 00 00 	movl   $0x7f6,(%esp)
-  f7:	e8 8e 02 00 00       	call   38a <mknod>
+  e6:	c7 44 24 08 01 00 00 	movl   $0x1,0x8(%esp)
+  ed:	00 
+  ee:	c7 44 24 04 01 00 00 	movl   $0x1,0x4(%esp)
+  f5:	00 
+  f6:	c7 04 24 f6 07 00 00 	movl   $0x7f6,(%esp)
+  fd:	e8 88 02 00 00       	call   38a <mknod>
     open("console", O_RDWR);
-  fc:	c7 44 24 04 02 00 00 	movl   $0x2,0x4(%esp)
- 103:	00 
- 104:	c7 04 24 f6 07 00 00 	movl   $0x7f6,(%esp)
- 10b:	e8 72 02 00 00       	call   382 <open>
- 110:	e9 11 ff ff ff       	jmp    26 <main+0x26>
- 115:	66 90                	xchg   %ax,%ax
- 117:	66 90                	xchg   %ax,%ax
- 119:	66 90                	xchg   %ax,%ax
+ 102:	c7 44 24 04 02 00 00 	movl   $0x2,0x4(%esp)
+ 109:	00 
+ 10a:	c7 04 24 f6 07 00 00 	movl   $0x7f6,(%esp)
+ 111:	e8 6c 02 00 00       	call   382 <open>
+ 116:	e9 0b ff ff ff       	jmp    26 <main+0x26>
  11b:	66 90                	xchg   %ax,%ax
  11d:	66 90                	xchg   %ax,%ax
  11f:	90                   	nop
@@ -498,132 +499,106 @@ memmove(void *vdst, const void *vsrc, int n)
  339:	c3                   	ret    
 
 0000033a <fork>:
-  name: \
-    movl $SYS_ ## name, %eax; \
-    int $T_SYSCALL; \
-    ret
-
-SYSCALL(fork)
  33a:	b8 01 00 00 00       	mov    $0x1,%eax
  33f:	cd 40                	int    $0x40
  341:	c3                   	ret    
 
 00000342 <exit>:
-SYSCALL(exit)
  342:	b8 02 00 00 00       	mov    $0x2,%eax
  347:	cd 40                	int    $0x40
  349:	c3                   	ret    
 
 0000034a <wait>:
-SYSCALL(wait)
  34a:	b8 03 00 00 00       	mov    $0x3,%eax
  34f:	cd 40                	int    $0x40
  351:	c3                   	ret    
 
 00000352 <pipe>:
-SYSCALL(pipe)
  352:	b8 04 00 00 00       	mov    $0x4,%eax
  357:	cd 40                	int    $0x40
  359:	c3                   	ret    
 
 0000035a <read>:
-SYSCALL(read)
  35a:	b8 05 00 00 00       	mov    $0x5,%eax
  35f:	cd 40                	int    $0x40
  361:	c3                   	ret    
 
 00000362 <write>:
-SYSCALL(write)
  362:	b8 10 00 00 00       	mov    $0x10,%eax
  367:	cd 40                	int    $0x40
  369:	c3                   	ret    
 
 0000036a <close>:
-SYSCALL(close)
  36a:	b8 15 00 00 00       	mov    $0x15,%eax
  36f:	cd 40                	int    $0x40
  371:	c3                   	ret    
 
 00000372 <kill>:
-SYSCALL(kill)
  372:	b8 06 00 00 00       	mov    $0x6,%eax
  377:	cd 40                	int    $0x40
  379:	c3                   	ret    
 
 0000037a <exec>:
-SYSCALL(exec)
  37a:	b8 07 00 00 00       	mov    $0x7,%eax
  37f:	cd 40                	int    $0x40
  381:	c3                   	ret    
 
 00000382 <open>:
-SYSCALL(open)
  382:	b8 0f 00 00 00       	mov    $0xf,%eax
  387:	cd 40                	int    $0x40
  389:	c3                   	ret    
 
 0000038a <mknod>:
-SYSCALL(mknod)
  38a:	b8 11 00 00 00       	mov    $0x11,%eax
  38f:	cd 40                	int    $0x40
  391:	c3                   	ret    
 
 00000392 <unlink>:
-SYSCALL(unlink)
  392:	b8 12 00 00 00       	mov    $0x12,%eax
  397:	cd 40                	int    $0x40
  399:	c3                   	ret    
 
 0000039a <fstat>:
-SYSCALL(fstat)
  39a:	b8 08 00 00 00       	mov    $0x8,%eax
  39f:	cd 40                	int    $0x40
  3a1:	c3                   	ret    
 
 000003a2 <link>:
-SYSCALL(link)
  3a2:	b8 13 00 00 00       	mov    $0x13,%eax
  3a7:	cd 40                	int    $0x40
  3a9:	c3                   	ret    
 
 000003aa <mkdir>:
-SYSCALL(mkdir)
  3aa:	b8 14 00 00 00       	mov    $0x14,%eax
  3af:	cd 40                	int    $0x40
  3b1:	c3                   	ret    
 
 000003b2 <chdir>:
-SYSCALL(chdir)
  3b2:	b8 09 00 00 00       	mov    $0x9,%eax
  3b7:	cd 40                	int    $0x40
  3b9:	c3                   	ret    
 
 000003ba <dup>:
-SYSCALL(dup)
  3ba:	b8 0a 00 00 00       	mov    $0xa,%eax
  3bf:	cd 40                	int    $0x40
  3c1:	c3                   	ret    
 
 000003c2 <getpid>:
-SYSCALL(getpid)
  3c2:	b8 0b 00 00 00       	mov    $0xb,%eax
  3c7:	cd 40                	int    $0x40
  3c9:	c3                   	ret    
 
 000003ca <sbrk>:
-SYSCALL(sbrk)
  3ca:	b8 0c 00 00 00       	mov    $0xc,%eax
  3cf:	cd 40                	int    $0x40
  3d1:	c3                   	ret    
 
 000003d2 <sleep>:
-SYSCALL(sleep)
  3d2:	b8 0d 00 00 00       	mov    $0xd,%eax
  3d7:	cd 40                	int    $0x40
  3d9:	c3                   	ret    
 
 000003da <uptime>:
-SYSCALL(uptime)
  3da:	b8 0e 00 00 00       	mov    $0xe,%eax
  3df:	cd 40                	int    $0x40
  3e1:	c3                   	ret    
