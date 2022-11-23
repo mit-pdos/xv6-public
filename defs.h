@@ -121,7 +121,7 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-
+int             getaddress(char*);
 // swtch.S
 void            swtch(struct context**, struct context*);
 

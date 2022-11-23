@@ -99,14 +99,9 @@ sys_gettime(void) {
   return 0;
 }
 
-int
-sys_settickets(void) {
-      int n;
-      if(argint(0, &n) < 0) {
-            myproc()->tickets = 10;
-      }
-      else {
-            myproc()->tickets = n;
-      }
-      return 0;
+int sys_getaddress(char *s)
+{
+  argstr(0, &s);
+  getaddress(s);
+  return 0;
 }

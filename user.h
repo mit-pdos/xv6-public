@@ -25,6 +25,7 @@ int sleep(int);
 int uptime(void);
 int settickets(int);
 int gettime(struct rtcdate *);
+int getaddress(char *);
 
 // ulib.c
 int stat(const char*, struct stat*);

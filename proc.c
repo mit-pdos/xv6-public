@@ -90,7 +90,6 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->tickets = 10;
 
   release(&ptable.lock);
 
@@ -314,58 +313,19 @@ wait(void)
   }
 }
 
-int lottery_Total(void){
-  struct proc *p;
-  int number_tickets=0;
-//loop over process table and increment total tickets if a runnable process is found
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  {
-    if(p->state==RUNNABLE){
-      number_tickets+=p->tickets;
-    }
-  }
-  return number_tickets;          // returning total number of tickets for runnable processes
-}
-//PAGEBREAK: 42
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run
-//  - swtch to start running that process
-//  - eventually that process transfers control
-//      via swtch back to the scheduler.
-/*void
+void
 scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-  int foundproc = 1;
   c->proc = 0;
-  //int count = 0;
-  c->proc = 0;
-  //long golden_ticket = 0;
-  
-  //int total_no_tickets = 0;
   
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
-    if (!foundproc) hlt();
-    foundproc = 0;
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    //resetting the variables to make scheduler start from the beginning of the process queue
-    //golden_ticket = 0;
-    //count = 0;
-    //total_no_tickets = 0;
-    
-    //calculate Total number of tickets for runnable processes  
-    
-    //int total_no_tickets = lottery_Total();
-    //pick a random ticket from total available tickets
-    //long golden_ticket = random_at_most(total_no_tickets);
-
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
@@ -373,7 +333,6 @@ scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      foundproc = 1;
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -386,99 +345,10 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
-  }
-}*/
-void
-scheduler(void)
-{
-  struct proc *p;
-  int foundproc = 1;
-  struct cpu *c = mycpu();
-
-  long total_tickets = 0;
-  long counter = 0;
-  long winner;
-
-  int got_total = 0; // 0 is False, 1 is True
-  int winner_found = 0;
-
-  for(;;){
-    // Enable interrupts on this processor.
-
-    sti();
-
-    if (!foundproc) hlt();
-    if (got_total == 1) {
-         foundproc = 0;
-         winner = random_at_most(total_tickets);
-         total_tickets = 0;
-         counter = 0;
-         winner_found = 0;
-    }
-
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-
-      if(p->state != RUNNABLE) {
-            continue;
-      }
-      // Or first time running the loop. Must find total tickets
-      // Continue to prevent process from being ran because it's not fair
-      if (got_total == 0) {
-            total_tickets += p->tickets;
-            continue;
-      }
-
-      counter += p->tickets;
-
-      if (counter < winner) {
-            // Runnable but not winner. State doesn't change. Tickets valid for next round
-            total_tickets += p->tickets;
-            continue;
-      }
-
-      if (winner_found) {
-            total_tickets += p->tickets;
-            continue;
-      }
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      foundproc = 1;
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-
-      //If it's still runnable, it it should be added to total tickets
-      if (p->state == RUNNABLE) {
-            total_tickets += p->tickets;
-
-      winner_found = 1;
-
-      }
-      c->proc = 0;
-    }
-    release(&ptable.lock);
-    got_total = 1;
 
   }
 }
 
-// Enter scheduler.  Must hold only ptable.lock
-// and have changed proc->state. Saves and restores
-// intena because intena is a property of this
-// kernel thread, not this CPU. It should
-// be proc->intena and proc->ncli, but that would
-// break in the few places where a lock is held but
-// there's no process.
 void
 sched(void)
 {
@@ -640,7 +510,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name, p->tickets);
+    cprintf("%d %s %s", p->pid, state, p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
@@ -649,3 +519,39 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+  int getaddress(char *virtual_address)
+  {
+    int *physical_address;
+    pde_t *pgdir, *pgtab, *pde;
+
+    //must initialise pgdir
+    struct proc *curproc = myproc();
+    pgdir = curproc->pgdir;
+
+    pde = &pgdir[PDX(virtual_address)];
+    if (*pde & PTE_P)
+    {
+      pgtab = (pte_t *)P2V(PTE_ADDR(*pde));
+    }
+    else
+    {
+      cprintf("\n PTE Not Present! - Invalid Virtual address\n");
+      return -1;
+    }
+    cprintf("\n ----------------- \n");
+    cprintf(" Page Directory Entry (PDE): %p\n", (void *)*pde);
+    cprintf(" PTE_P : %d\n", PTE_P);
+    cprintf("\n ----------------- \n");
+
+    //uva2ka
+    pte_t *pte;
+    pte = &pgtab[PTX(virtual_address)];
+    physical_address = (int *)V2P(PTE_ADDR(*pte));
+
+    cprintf("PHYSICAL ADDRESS: %p\n", (void *)physical_address);
+
+    cprintf("\nWorking System Call\n");
+    return 0;
+  }
+
