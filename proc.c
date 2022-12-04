@@ -7,6 +7,85 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#define STARTING_PRIORITY 2
+#define ZERO_TO_ONE 20
+#define ONE_TO_TWO 20
+
+//Implementando a fila
+struct Fila{
+  int primeiro, ultimo, tamanho;
+  struct proc* fila[NPROC];
+};
+
+void instanciaFila(struct Fila *fila){
+  fila->tamanho = 0;
+  int i;
+  for(i = 0; i < NPROC; i++){
+    fila->fila[i] = 0;
+  }
+}
+
+int filaCheia(struct Fila *fila){
+  return (fila->tamanho == NPROC);
+}
+
+int filaVazia(struct Fila *fila){
+  return (fila->tamanho == 0);
+}
+
+void adicionaFila(struct Fila *fila, struct proc* processo){
+  if(filaCheia(fila))
+    return;
+  int i = fila->tamanho;
+  fila->fila[i] = processo;
+  fila->tamanho++;
+}
+
+void removeFila(struct Fila *fila, struct proc* processo){
+  if(processo == 0)
+    return;
+  if(filaVazia(fila))
+    return;
+
+  int i = 0;
+  int flagProcesso = 0;
+  while(i < NPROC){
+    if(fila->fila[i] && fila->fila[i]->pid == processo->pid){
+      flagProcesso = 1;
+      break;
+    }
+    i++;
+  }
+
+  if(flagProcesso){
+    while(i < NPROC - 1){
+      fila->fila[i] = fila->fila[i + 1];
+      i++;
+    }
+    fila->fila[fila->tamanho - 1] = 0;
+    fila->tamanho--;
+  }
+}
+
+struct proc* getPrimeiroFila(struct Fila *fila){
+  int i;
+  for(i = 0; i < NPROC; i++){
+    if(fila->fila[i] && fila->fila[i]->state == RUNNABLE)
+      return fila->fila[i];
+  }
+  return 0;
+}
+
+// Instanciando as 3 filas de prioridade
+struct Fila fila0;
+struct Fila fila1;
+struct Fila fila2;
+
+void iniciaFilas(void){
+  instanciaFila(&fila0);
+  instanciaFila(&fila1);
+  instanciaFila(&fila2);
+}
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -24,6 +103,7 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+  iniciaFilas();
 }
 
 // Must be called with interrupts disabled
@@ -88,6 +168,8 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->tickets = 10;
+  p->tipoScheduler = 0;
 
   release(&ptable.lock);
 
@@ -111,6 +193,8 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  p->prioridade = STARTING_PRIORITY;
+  adicionaFila(&fila2, p);
 
   return p;
 }
@@ -295,6 +379,11 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        //reseta estados de teste
+        p->ctime = 0;
+        p->retime = 0;
+        p->rutime = 0;
+        p->stime = 0;
         release(&ptable.lock);
         return pid;
       }
@@ -332,10 +421,29 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-
+    p = 0;
+    if(!filaVazia(&fila2))
+      p = getPrimeiroFila(&fila2);
+    if(p == 0){
+      if(!filaVazia(&fila0))
+        p = getPrimeiroFila(&fila1);
+      
+      if(p == 0)
+        if(!filaVazia(&fila0))
+          p = getPrimeiroFila(&fila0);
+    }
+    if(p){
+      // colocando o processo no fim da sua fila.
+      if(p->prioridade == 0){
+        removeFila(&fila0, p);
+        adicionaFila(&fila0, p);
+      } else if (p->prioridade == 1){
+        removeFila(&fila1, p);
+        adicionaFila(&fila1, p);
+      } else{
+        removeFila(&fila2, p);
+        adicionaFila(&fila2, p);
+      }
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -351,7 +459,6 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -531,4 +638,113 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int set_prio(int _prioridade){
+  if(_prioridade < 0 || _prioridade > 2)
+    return -1;
+
+  int prioridadeAnterior = myproc()->prioridade;
+
+  acquire(&ptable.lock);
+  myproc()->prioridade = _prioridade;
+  release(&ptable.lock);
+
+  if(_prioridade == 2)
+    adicionaFila(&fila2, myproc());
+  else if(_prioridade == 1)
+    adicionaFila(&fila1, myproc());
+  else
+    adicionaFila(&fila0, myproc());
+
+  if(prioridadeAnterior == 2)
+    removeFila(&fila2, myproc());
+  else if(prioridadeAnterior == 1)
+    removeFila(&fila1, myproc());
+  else
+    removeFila(&fila0, myproc());
+
+  return 0;
+}
+
+int wait2(int *retime, int *rutime, int *stime){
+  struct proc *processo;
+  int temFilhos, pid;
+  struct proc *processoAtual = myproc();
+  acquire(&ptable.lock);
+  for(;;){
+    temFilhos = 0;
+    for(processo = ptable.proc; processo < &ptable.proc[NPROC]; processo++){
+      if(processo->parent != processoAtual)
+        continue;
+      temFilhos = 1;
+      if(processo->state == ZOMBIE){
+        *retime = processo->retime;
+        *rutime = processo->rutime;
+        *stime = processo->stime;
+        pid = processo->pid;
+        kfree(processo->kstack);
+        processo->kstack = 0;
+        freevm(processo->pgdir);
+        processo->pid = 0;
+        processo->parent = 0;
+        processo->name[0] = 0;
+        processo->killed = 0;
+        processo->state = UNUSED;
+        processo->ctime = 0;
+        processo->retime = 0;
+        processo->rutime = 0;
+        processo->stime = 0;
+        release(&ptable.lock);
+        return pid;
+      }
+    }
+    if(!temFilhos || processoAtual->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+    sleep(processoAtual, &ptable.lock);
+  }
+}
+
+void update_stats(void){
+  struct proc *processo;
+  acquire(&ptable.lock);
+
+  for(processo = ptable.proc; processo < &ptable.proc[NPROC]; processo++){
+    if(processo->state == SLEEPING)
+      processo->stime++;
+    else if(processo->state == RUNNABLE)
+      processo->retime++;
+    else if(processo->state == RUNNING)
+      processo->rutime++;
+  }
+  release(&ptable.lock);
+}
+
+void  aging(void){
+  struct proc *processo;
+  acquire(&ptable.lock);
+
+  for(processo = ptable.proc; processo < &ptable.proc[NPROC]; processo++){
+    if(processo->prioridade == 0){
+      if(processo->retime >= ZERO_TO_ONE){
+        adicionaFila(&fila1, processo);
+        removeFila(&fila0, processo);
+        processo->prioridade++;
+      }
+    } else if(processo->prioridade == 1){
+        if(processo->retime >= ONE_TO_TWO){
+          adicionaFila(&fila2, processo);
+          removeFila(&fila1, processo);
+          processo->prioridade++;
+        }
+    }
+  }
+  release(&ptable.lock);
+}
+
+int user_yield(void){
+  yield();
+  return 0;
 }
