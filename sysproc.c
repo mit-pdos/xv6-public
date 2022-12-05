@@ -116,3 +116,17 @@ int sys_yield(void){
   yield();
   return 0;
 }
+
+int sys_settickets(void){
+  int n;
+  if(argint(0, &n) < 0)
+    return -1;
+  return set_tickets(n);
+}
+
+int sys_setscheduler(void){
+  int n;
+  if(argint(0, &n) < 0)
+    return -1;
+  return set_scheduler(n);
+}

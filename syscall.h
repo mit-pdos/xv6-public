@@ -23,3 +23,5 @@
 #define SYS_set_prio 22
 #define SYS_wait2 23
 #define SYS_user_yield 24
+#define SYS_settickets 25
+#define SYS_setscheduler 26

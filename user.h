@@ -26,6 +26,8 @@ int uptime(void);
 int set_prio(int);
 int wait2(int*, int*, int*);
 int user_yield(void);
+int set_tickets(int);
+int set_scheduler(int);
 
 // ulib.c
 int stat(const char*, struct stat*);
