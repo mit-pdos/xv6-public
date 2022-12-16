@@ -71,6 +71,11 @@
  * TODO make it a thread safe.
  */
 
+// The object table is of variable size.
+// However, this is its default initial size.
+// During the creation and deletion of files
+// this table can grow in otder to index many files,
+// Or shrink, making room for content storage.
 #define INITIAL_OBJECT_TABLE_SIZE 200
 
 // Possible errors:

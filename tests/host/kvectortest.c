@@ -1,5 +1,5 @@
 #include "unittests.h"
-#include "../kvector.h"
+#include "../../kvector.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -42,6 +42,7 @@ int initializeVectorTest(){
     freevector(&v);
     return PASS;
 }
+
 int readAndWriteDataTest(){
     char testName[] = "readAndWriteDataTest";
 
@@ -92,6 +93,7 @@ int readAndWriteDataTest(){
     PASSTEST(testName);
     return PASS;
 }
+
 int moveBytesTest(){
     char testName[] = "moveBytesTest";
 
@@ -110,6 +112,7 @@ int moveBytesTest(){
         return FAIL;
     }
 }
+
 int moveBytesWithOffsetTest(){
     char testName[] = "moveBytesWithOffsetTest";
 
@@ -128,6 +131,7 @@ int moveBytesWithOffsetTest(){
         return FAIL;
     }
 }
+
 int moveElementsTest(){
     char testName[] = "moveElementsTest";
 
@@ -148,6 +152,7 @@ int moveElementsTest(){
         return FAIL;
     }
 }
+
 int moveElementsWithOffsetTest(){
     char testName[] = "moveElementsWithOffsetTest";
 

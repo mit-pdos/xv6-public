@@ -17,4 +17,4 @@ mkfs
 internal_fs_*
 *.swp
 *.orig
-tests
+.vscode

@@ -432,6 +432,14 @@ set timeout -1
 
 # run standalone tests
 spawn bash -c "make run-vector-tests"
+expect eof
+set result [wait]
+if {[lindex $result 2] == 0} {
+    puts "VECTOR TESTS HAVE PASSED"
+} else {
+    puts "VECTOR TESTS HAVE FAILED"
+    exit 1
+}
 
 # dry-run to get qemu command - to end qemu with close afterwards
 spawn bash -c "make -n qemu-nox | grep qemu"

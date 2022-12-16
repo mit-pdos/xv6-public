@@ -1,9 +1,9 @@
 #ifndef _UNITMOCK_H_
 #define _UNITMOCK_H_
 
-#include "../types.h"
-#include "../mmu.h"
-#include <stdio.h> 
+#include "../../types.h"
+#include "../../mmu.h"
+#include <stdio.h>
 
 #define NUMBER_OF_PAGES 10000
 #define cprintf(...) printf(__VA_ARGS__)

@@ -11,7 +11,7 @@
 #ifndef UNITTESTS
 #include "defs.h"
 #else
-#include "unittests/unitmock.h"
+#include "tests/host/unitmock.h"
 #include <string.h>
 #endif
 

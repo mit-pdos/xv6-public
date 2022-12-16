@@ -375,7 +375,7 @@ run-objfs-tests:
 
 run-vector-tests:
 	$(CC) $(CLAGS) -DUNITTESTS=1 \
-		kvector.h kvector.c unittests/unittests.h unittests/kvectortest.c \
+		kvector.h kvector.c tests/host/unittests.h tests/host/kvectortest.c \
 		-std=gnu99 \
 		-o vectortests
 	./vectortests
