@@ -146,10 +146,7 @@ main(void)
 {
   static char buf[100];
   int fd;
-  // added this one
-  int fp;
-  int n=1;
-  n=n+1;
+
   // Ensure that three file descriptors are open.
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
@@ -157,16 +154,7 @@ main(void)
       break;
     }
   }
-  //important to open
-  fp = open("commands",O_WRONLY|O_CREATE);
-  if (fp == 0) 
-    {
-        // Error opening the file
-        printf(2, "Error opening file");
-        return 1;
-    }
-    char command[256];
-  //printf(2,"Sucessfully opened!");
+
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
@@ -177,22 +165,9 @@ main(void)
       continue;
     }
     if(fork1() == 0)
-    {
-      //To check if this is where process is going
-      //printf(1,"at least this is working ??\n");
-       strcpy(command,buf);
-      // Append the command to the file
-      write(fd, command, strlen(command));
-      //printf(2,"we are here", buf);
       runcmd(parsecmd(buf));
-     
-      
-    }
-     
     wait();
   }
-  //close the file?
-  close(fp);
   exit();
 }
 

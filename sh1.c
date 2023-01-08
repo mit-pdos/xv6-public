@@ -1,5 +1,5 @@
 // Shell.
-
+//#include <stdio.h>
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
@@ -146,10 +146,8 @@ main(void)
 {
   static char buf[100];
   int fd;
-  // added this one
   int fp;
-  int n=1;
-  n=n+1;
+
   // Ensure that three file descriptors are open.
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
@@ -158,15 +156,13 @@ main(void)
     }
   }
   //important to open
-  fp = open("commands",O_WRONLY|O_CREATE);
+  fp = open("commands.txt",O_RDWR);
   if (fp == 0) 
     {
         // Error opening the file
         printf(2, "Error opening file");
         return 1;
     }
-    char command[256];
-  //printf(2,"Sucessfully opened!");
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
@@ -178,20 +174,13 @@ main(void)
     }
     if(fork1() == 0)
     {
-      //To check if this is where process is going
-      //printf(1,"at least this is working ??\n");
-       strcpy(command,buf);
-      // Append the command to the file
-      write(fd, command, strlen(command));
-      //printf(2,"we are here", buf);
       runcmd(parsecmd(buf));
-     
-      
+      // Append the command to the file
+      printf(fp, "%s\n", buf);
     }
-     
     wait();
   }
-  //close the file?
+  //Close the file
   close(fp);
   exit();
 }
