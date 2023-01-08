@@ -1,5 +1,5 @@
 // Shell.
-
+//#include <stdio.h>
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
@@ -146,7 +146,6 @@ main(void)
 {
   static char buf[100];
   int fd;
-  // added this one
   int fp;
 
   // Ensure that three file descriptors are open.
@@ -164,7 +163,6 @@ main(void)
         printf(2, "Error opening file");
         return 1;
     }
-  printf(2,"Sucessfully opened!");
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
@@ -180,10 +178,9 @@ main(void)
       // Append the command to the file
       printf(fp, "%s\n", buf);
     }
-     
     wait();
   }
-  //close the file?
+  //Close the file
   close(fp);
   exit();
 }
