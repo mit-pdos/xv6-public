@@ -545,7 +545,7 @@ getparents(void){
   int p;
   while(parproc != 0){
   p = parproc->pid;
-  cprintf("%c", p);
+  cprintf("%d", p);
   parproc = parproc->parent;
   }
 }
