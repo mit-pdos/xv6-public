@@ -542,9 +542,10 @@ void
 getparents(void){
   struct proc *curproc = myproc();
   struct proc *parproc = curproc->parent;
+  int p;
   while(parproc != 0){
-  int x = parproc->pid;
-  cprintf(x);
+  p = parproc->pid;
+  cprintf(p);
   parproc = parproc->parent;
   }
 }
