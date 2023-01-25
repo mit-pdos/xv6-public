@@ -537,3 +537,10 @@ void
 hello(void){
   cprintf("\n\n Hello from your kernel space! \n\n");
 }
+
+void
+getparents(void){
+  struct proc *curproc = myproc();
+  struct proc *parproc = curproc->parent;
+  cprintf("\n\n Hello from your kernel space! \n\n");
+}

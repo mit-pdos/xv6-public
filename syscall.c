@@ -104,6 +104,7 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_hello(void); //J>H
+extern int sys_getparents(void); //getparents
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -128,6 +129,7 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_hello]   sys_hello, // J.H
+[SYS_getparents] sys_getparents, //GETPARENTS
 };
 
 void

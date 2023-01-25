@@ -95,3 +95,9 @@ sys_hello(void) {
   hello();
   return 0;
 }
+
+int
+sys_getparents(void) {
+  getparents();
+  return 0;
+}
