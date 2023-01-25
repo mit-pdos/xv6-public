@@ -542,5 +542,8 @@ void
 getparents(void){
   struct proc *curproc = myproc();
   struct proc *parproc = curproc->parent;
-  cprintf("\n\n Hello from your kernel space! \n\n");
+  while(parproc != 0){
+  cprintf(parproc->pid);
+  parproc = parproc->parent;
+  }
 }
