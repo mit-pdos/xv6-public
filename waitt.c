@@ -6,6 +6,6 @@
 
 int main(int arc, char *argv[]){
     //printf(1, "hello world\ n");
-    wait();
+    mywait();
 }
 

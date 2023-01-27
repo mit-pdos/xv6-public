@@ -588,7 +588,7 @@ exitt(int status){
     }
   }
    
-  p->exstatus = status;
+  curproc->exstatus = status;
   
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
