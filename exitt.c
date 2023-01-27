@@ -4,6 +4,6 @@
 
 int main(int arc, char *argv[]){
     //printf(1, "hello world\ n");
-    exitt(0);
+    exitt(1);
 }
 
