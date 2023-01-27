@@ -122,6 +122,7 @@ void            wakeup(void*);
 void            yield(void);
 void hello(void); //J. H
 void getparents(void); //getparents
+void exitt(int); //return status
 
 
 // swtch.S

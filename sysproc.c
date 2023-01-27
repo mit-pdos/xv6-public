@@ -101,3 +101,9 @@ sys_getparents(void) {
   getparents();
   return 0;
 }
+
+int
+sys_exitt(void) {
+  exitt(0);
+  return 0;
+}
