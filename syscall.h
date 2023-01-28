@@ -23,5 +23,5 @@
 #define SYS_hello  22
 #define SYS_getparents 23
 #define SYS_exitt 24
-
+#define SYS_mywait 25
 

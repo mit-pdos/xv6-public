@@ -107,3 +107,9 @@ sys_exitt(void) {
   exitt(0);
   return 0;
 }
+
+int
+sys_mywait(void) {
+ mywait(0);
+return 0;
+}

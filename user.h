@@ -25,7 +25,9 @@ int sleep(int);
 int uptime(void);
 int hello(void);
 int getparents(void);
-int exit(int) __attribute__((noreturn));
+int exitt(int) __attribute__((noreturn));
+int mywait(int*); //new
+
 
 
 

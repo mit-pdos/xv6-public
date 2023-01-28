@@ -123,6 +123,7 @@ void            yield(void);
 void hello(void); //J. H
 void getparents(void); //getparents
 void exitt(int); //return status
+void mywait(int); //wait status
 
 
 // swtch.S

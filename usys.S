@@ -32,3 +32,4 @@ SYSCALL(uptime)
 SYSCALL(hello) //J.H
 SYSCALL(getparents) //GETPARENTS
 SYSCALL(exitt) //exit status
+SYSCALL(mywait) //wait status
