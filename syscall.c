@@ -107,6 +107,7 @@ extern int sys_hello(void); //J>H
 extern int sys_getparents(void); //getparents
 extern int sys_exitt(void); //returnt status
 extern int sys_mywait(void);
+extern int sys_waitpid(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -134,6 +135,7 @@ static int (*syscalls[])(void) = {
 [SYS_getparents] sys_getparents, //GETPARENTS
 [SYS_exitt] sys_exitt,
 [SYS_mywait] sys_mywait,
+[SYS_waitpid] sys_waitpid,
 
 };
 

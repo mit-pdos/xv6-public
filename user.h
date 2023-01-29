@@ -27,6 +27,7 @@ int hello(void);
 int getparents(void);
 int exitt(int) __attribute__((noreturn));
 int mywait(int*); //new
+int waitpid(int, int*); 
 
 
 

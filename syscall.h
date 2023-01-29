@@ -24,4 +24,4 @@
 #define SYS_getparents 23
 #define SYS_exitt 24
 #define SYS_mywait 25
-
+#define SYS_waitpid 26

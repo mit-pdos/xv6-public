@@ -7,67 +7,69 @@
 #include "mmu.h"
 #include "proc.h"
 
-int
+int 
 sys_fork(void)
 {
   return fork();
 }
 
 int
-sys_exit(void)
+ sys_exit(void)
 {
   exit();
-  return 0;  // not reached
+  return 0; // not reached
 }
 
-int
+int 
 sys_wait(void)
 {
   return wait();
 }
 
-int
+int 
 sys_kill(void)
 {
   int pid;
 
-  if(argint(0, &pid) < 0)
+  if (argint(0, &pid) < 0)
     return -1;
   return kill(pid);
 }
 
-int
+int 
 sys_getpid(void)
 {
   return myproc()->pid;
 }
 
-int
+int 
 sys_sbrk(void)
 {
   int addr;
   int n;
 
-  if(argint(0, &n) < 0)
+  if (argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  if(growproc(n) < 0)
+  if (growproc(n) < 0)
     return -1;
   return addr;
 }
 
-int
+int 
 sys_sleep(void)
 {
   int n;
   uint ticks0;
 
-  if(argint(0, &n) < 0)
+  if (argint(0, &n) < 0)
     return -1;
   acquire(&tickslock);
   ticks0 = ticks;
-  while(ticks - ticks0 < n){
-    if(myproc()->killed){
+  while (ticks - ticks0 < n)
+  {
+    if (myproc()->killed)
+    {
       release(&tickslock);
       return -1;
     }
@@ -80,7 +82,7 @@ sys_sleep(void)
 // return how many clock tick interrupts have occurred
 // since start.
 int
-sys_uptime(void)
+ sys_uptime(void)
 {
   uint xticks;
 
@@ -91,25 +93,36 @@ sys_uptime(void)
 }
 
 int
-sys_hello(void) {
+ sys_hello(void)
+{
   hello();
   return 0;
 }
 
 int
-sys_getparents(void) {
+ sys_getparents(void)
+{
   getparents();
   return 0;
 }
 
-int
-sys_exitt(void) {
+int 
+sys_exitt(void)
+{
   exitt(0);
   return 0;
 }
 
 int
-sys_mywait(void) {
- mywait(0);
-return 0;
+ sys_mywait(void)
+{
+  // mywait(0);
+  return mywait(0);
+}
+
+int 
+sys_waitpid(void)
+{
+  //  waitpid(0, 0);
+  return waitpid(0, 0);
 }
