@@ -1,0 +1,5 @@
+sudo apt install qemu-system-x86
+make qemu-nox
+make clean
+proc_dump
+proc_dump 5 100 700000 1200000 2000000 3500000
