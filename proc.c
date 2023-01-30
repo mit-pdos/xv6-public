@@ -678,7 +678,7 @@ struct proc *p;
       }
     }
 
-            cprintf("%d", pid); //delete later 
+            cprintf("%d", "h1"); //delete later 
  
     // No point waiting if we don't have any children.
     if(!havekids || curproc->killed){
@@ -686,7 +686,7 @@ struct proc *p;
       return -1;
     }
              
-   cprintf("%d", pid); //delete later 
+   cprintf("%d", "h2"); //delete later 
 
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
