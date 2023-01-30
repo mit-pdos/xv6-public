@@ -656,12 +656,13 @@ struct proc *p;
   int havekids, pid;
   // int stat = *status;
  // int dog = 95;
+ int pop = pidd;
   
   struct proc *curproc = myproc();
   
   acquire(&ptable.lock);
-  cprintf("%d", pidd);
-  cprintf("%d", pidd);
+  cprintf("%d", pop);
+  cprintf("%d", pop);
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
