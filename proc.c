@@ -681,14 +681,14 @@ struct proc *p;
         p->state = UNUSED;
         cprintf("%d", pid);
          
-        if (stat != -1 && pidd == pid ){
+        
         release(&ptable.lock);
         return pid;
-        }
+        
       }
     }
 
-            cprintf("%d", dog); //delete later 
+     //       cprintf("%d", dog); //delete later 
  
     // No point waiting if we don't have any children.
     if(!havekids || curproc->killed){
@@ -696,7 +696,7 @@ struct proc *p;
       return -1;
     }
              
-   cprintf("%d", dog); //delete later 
+   //cprintf("%d", dog); //delete later 
 
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
