@@ -665,6 +665,7 @@ struct proc *p;
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       cprintf("%d", p->pid);
+      cprintf("%d", pidd);
       if(p->pid != pidd)
         continue;
       havekids = 1;
