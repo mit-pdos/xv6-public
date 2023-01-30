@@ -649,6 +649,7 @@ waitpid(int pidd, int* status){
 struct proc *p;
   int havekids, pid;
   int stat = *status;
+  int dog = 95;
   
   struct proc *curproc = myproc();
   
@@ -660,7 +661,7 @@ struct proc *p;
       if(p->parent != curproc)
         continue;
       havekids = 1;
-      cprintf("%d", "hh");
+      cprintf("%d", dog);
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
