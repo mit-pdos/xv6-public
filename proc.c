@@ -678,11 +678,16 @@ struct proc *p;
       }
     }
 
+            cprintf("%d", pid); //delete later 
+ 
     // No point waiting if we don't have any children.
     if(!havekids || curproc->killed){
       release(&ptable.lock);
       return -1;
     }
+             
+   cprintf("%d", pid); //delete later 
+
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
