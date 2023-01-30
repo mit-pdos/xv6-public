@@ -648,13 +648,8 @@ int
 waitpid(int pidd, int* status){
 struct proc *p;
   int havekids, pid;
-  int stat;
-  if(status != 0){
-   stat = *status;
-  }
-  else{
-    stat = -1;
-  }
+  int stat = *status;
+  
   struct proc *curproc = myproc();
   
   acquire(&ptable.lock);
