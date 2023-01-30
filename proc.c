@@ -660,12 +660,14 @@ struct proc *p;
   struct proc *curproc = myproc();
   
   acquire(&ptable.lock);
+  cprintf("%d", pidd);
+  cprintf("%d", pidd);
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       cprintf("%d", p->pid);
-      cprintf("%d", pidd);
+      
       if(p->pid != pidd)
         continue;
       havekids = 1;
