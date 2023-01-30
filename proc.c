@@ -606,6 +606,10 @@ struct proc *p;
   }
   struct proc *curproc = myproc();
   
+   if(pid == 0){
+    pid = 0;
+   }
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
