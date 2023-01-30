@@ -186,6 +186,7 @@ UPROGS=\
 	_exitt\
 	_waitt\
 	_waitpidd\
+	_labtest\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
