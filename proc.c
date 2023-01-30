@@ -628,7 +628,8 @@ struct proc *p;
         p->killed = 0;
         p->state = UNUSED;
         release(&ptable.lock);
-        if(stat != -1)
+       // if(stat != -1)
+        *status = p->exstatus;
         return pid;
       }
     }
