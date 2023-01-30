@@ -671,6 +671,7 @@ struct proc *p;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        cprintf("%d", pid);
         release(&ptable.lock);
         cprintf("%d", pid); //delete later 
         if (stat != -1 && pidd == pid )
