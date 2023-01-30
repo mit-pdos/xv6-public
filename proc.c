@@ -678,7 +678,7 @@ struct proc *p;
         p->state = UNUSED;
         release(&ptable.lock);
         if (stat != -1 && pidd == pid )
-        return stat;
+        return pid;
       }
     }
 
