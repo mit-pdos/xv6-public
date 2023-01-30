@@ -12,6 +12,11 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+// struct proc_info {
+// int pid;
+// int memsize; // in bytes
+// };
+
 static struct proc *initproc;
 
 int nextpid = 1;
@@ -531,4 +536,115 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+// struct proc_info*
+int
+sort_proc(void)
+{
+  int max;
+  int count = 0;
+  struct proc *p;
+  struct proc_info *result ;
+
+  argint(0, &max); // max -> NPROC; // max number of processes = 6
+  argptr(1, (char **)&result, max*sizeof(struct proc_info));
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == UNUSED) continue;
+    if(p->state == RUNNABLE || p->state == RUNNING){
+      result[count].pid = p -> pid;
+      result[count].memsize = p -> sz;
+      count ++;
+    }    
+  }
+
+  // sort by memsize and pid
+  for(int i = 0; i < count; i++){
+    for(int j = i + 1; j < count; j++){
+      if(result[i].memsize > result[j].memsize){
+        struct proc_info temp = result[i];
+        result[i] = result[j];
+        result[j] = temp;
+
+        // temp.pid = result[i].pid;
+        // temp.memsize = result[i].memsize;
+
+        // result[i].pid = result[j].pid;
+        // result[i].memsize = result[j].memsize;
+
+        // result[j].pid = temp.pid;
+        // result[j].memsize = temp.memsize;
+      }
+      else if (result[i].memsize == result[j].memsize)
+      {
+        if(result[i].pid > result[j].pid){
+          struct proc_info temp = result[i];
+          result[i] = result[j];
+          result[j] = temp;
+        }
+      }
+    }
+  }
+
+  for(int i = 0; i < count; i++){
+    cprintf("memsize:%d --process_id:%d\n", result[i].memsize, result[i].pid); // this works
+  }
+
+  return count;
+
+
+
+  // // static char *states[] = {
+  // // [UNUSED]    "unused",
+  // // [EMBRYO]    "embryo",
+  // // [SLEEPING]  "sleep ",
+  // // [RUNNABLE]  "runble",
+  // // [RUNNING]   "run   ",
+  // // [ZOMBIE]    "zombie"
+  // // };
+  // int i;
+  // struct proc *p;
+  // // char *state;
+  // // proc_info array
+  // // struct proc_info *result = (struct proc_info *)kalloc();
+  // // struct proc_info result[NPROC] = (struct proc_info *)kalloc(sizeof(struct proc_info) * NPROC);
+  // // struct proc_info result[NPROC] = (struct proc_info *)kalloc();
+  // struct proc_info result[NPROC];
+  
+  // int count = 0;
+  // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+  //   // if(p->state == UNUSED)
+  //   //   continue;
+  //   // if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+  //   if(p->state == RUNNABLE || p->state == RUNNING){
+  //     /// add to result
+  //     result[count].pid = p->pid;
+  //     result[count].memsize = p->sz;
+  //     count++;
+  //   }
+  // }
+  // // sort by memsize and pid
+  // for(i = 0; i < count; i++){
+  //   for(int j = i + 1; j < count; j++){
+  //     if(result[i].memsize > result[j].memsize){
+  //       struct proc_info temp = result[i];
+  //       result[i] = result[j];
+  //       result[j] = temp;
+  //     }
+  //     else if (result[i].memsize == result[j].memsize)
+  //     {
+  //       if(result[i].pid > result[j].pid){
+  //         struct proc_info temp = result[i];
+  //         result[i] = result[j];
+  //         result[j] = temp;
+  //       }
+  //     }
+  //   }
+  // }
+
+  // // print result
+  // for(i = 0; i < count; i++){
+  //   cprintf("memsize:%d --process_id:%d\n", result[i].memsize, result[i].pid);
+  // }
 }
