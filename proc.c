@@ -600,10 +600,10 @@ int
 mywait(int* status){
 struct proc *p;
   int havekids, pid;
-   int stat = 0;
-  if(status != 0){
-   stat = *status;
-  }
+ //  int stat = 0;
+ // if(status != 0){
+ //  stat = *status;
+  //}
   struct proc *curproc = myproc();
   
   
@@ -628,8 +628,9 @@ struct proc *p;
         p->killed = 0;
         p->state = UNUSED;
         release(&ptable.lock);
-       // if(stat != -1)
+        if(status != 0){
         *status = p->exstatus;
+        }
         return pid;
       }
     }
