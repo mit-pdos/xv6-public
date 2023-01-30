@@ -674,10 +674,11 @@ struct proc *p;
         p->killed = 0;
         p->state = UNUSED;
         cprintf("%d", pid);
+         
+        if (stat != -1 && pidd == pid ){
         release(&ptable.lock);
-        cprintf("%d", pid); //delete later 
-        if (stat != -1 && pidd == pid )
         return pid;
+        }
       }
     }
 
