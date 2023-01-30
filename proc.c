@@ -606,11 +606,7 @@ struct proc *p;
   }
   struct proc *curproc = myproc();
   
-  pid = 0;
   
-   if(pid == 0){
-    pid = 0;
-   }
 
   acquire(&ptable.lock);
   for(;;){
@@ -632,7 +628,8 @@ struct proc *p;
         p->killed = 0;
         p->state = UNUSED;
         release(&ptable.lock);
-        return stat;
+        if(stat != -1)
+        return pid;
       }
     }
 
