@@ -655,7 +655,7 @@ waitpid(int pidd, int* status){
 struct proc *p;
   int havekids, pid;
   // int stat = *status;
-  int dog = 95;
+ // int dog = 95;
   
   struct proc *curproc = myproc();
   
