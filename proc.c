@@ -606,6 +606,8 @@ struct proc *p;
   }
   struct proc *curproc = myproc();
   
+  pid = 0;
+  
    if(pid == 0){
     pid = 0;
    }
