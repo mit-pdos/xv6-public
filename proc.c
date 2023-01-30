@@ -667,7 +667,7 @@ struct proc *p;
       if(p->pid != pidd)
         continue;
       havekids = 1;
-      cprintf("%d", dog);
+      //cprintf("%d", dog);
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
