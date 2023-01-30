@@ -620,7 +620,7 @@ struct proc *p;
         // Found one.
         pid = p->pid;
         cprintf("%d", p->exstatus);
-        status = p->exstatus;
+        status* = p->exstatus;
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
