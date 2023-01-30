@@ -619,6 +619,7 @@ struct proc *p;
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
+        *status = p->exstatus;
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
@@ -627,10 +628,9 @@ struct proc *p;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        
         release(&ptable.lock);
-        if(p->exstatus != 0){
-        *status = p->exstatus;
-        }
+        
         return pid;
       }
     }
