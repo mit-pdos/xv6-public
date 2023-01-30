@@ -660,6 +660,7 @@ struct proc *p;
       if(p->parent != curproc)
         continue;
       havekids = 1;
+      cprintf("%d", "hh");
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
