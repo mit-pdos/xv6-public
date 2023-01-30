@@ -89,3 +89,13 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_proc_dump(void)
+{
+  sort_proc();
+  // cprintf("Hello world\n");
+  // return 12;
+  // proc_dump();
+  return 0;
+}
