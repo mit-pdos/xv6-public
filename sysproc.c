@@ -124,5 +124,5 @@ int
 sys_waitpid(void)
 {
   //  waitpid(0, 0);
-  return waitpid(0, 0);
+  return waitpid(myproc()->pid, 0);
 }
