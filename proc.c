@@ -664,6 +664,7 @@ struct proc *p;
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      cprintf("%d", p->pid);
       if(p->pid != pidd)
         continue;
       havekids = 1;
