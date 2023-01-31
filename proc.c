@@ -664,8 +664,8 @@ struct proc *p;
   
   acquire(&ptable.lock);
   cprintf("%d", pop);
-  cprintf("%d", pop);
-  cprintf("%d", pop);
+  //cprintf("%d", pop);
+  //cprintf("%d", pop);
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
