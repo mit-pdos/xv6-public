@@ -680,9 +680,9 @@ struct proc *p;
         // Found one.
         pid = p->pid;
          
-           cprintf("%d", p->pid);
-           cprintf("%d", p->pid);
-           cprintf("%d", p->exstatus);
+          // cprintf("%d", p->pid);
+          // cprintf("%d", p->pid);
+          // cprintf("%d", p->exstatus);
 
          *status = p->exstatus;
 
