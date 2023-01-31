@@ -122,7 +122,7 @@ int
   int* status = &myproc()->exstatus;
 
   //*status = argptr(0 , (void*)&curproc , sizeof(*curproc));
-  argptr(0 , (void*)&status , sizeof(*status));
+  argptr(1 , (void*)&status , sizeof(*status));
 
   return mywait(status);
 
