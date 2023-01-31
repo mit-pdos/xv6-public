@@ -126,8 +126,10 @@ int
 
 
   //*status = argptr(0 , (void*)&curproc , sizeof(*curproc));
+  argptr(0 , (void*)&curproc , sizeof(*curproc));
 
-  return mywait(argptr(0 , (void*)&curproc , sizeof(*curproc)));
+  return mywait(curproc);
+
 }
 
 int 
