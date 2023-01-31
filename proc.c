@@ -621,8 +621,9 @@ struct proc *p;
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
-        // cprintf("%d", p->exstatus);
+       
         *status = p->exstatus;
+            cprintf("%d", &status);
 
         kfree(p->kstack);
         p->kstack = 0;
