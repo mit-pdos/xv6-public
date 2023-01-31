@@ -670,7 +670,7 @@ struct proc *p;
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      cprintf("%d", p->pid);
+     // cprintf("%d", p->pid);
       
       if(p->parent != curproc && p->pid != pidd)
         continue;
@@ -690,7 +690,7 @@ struct proc *p;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        cprintf("%d", pid);
+       // cprintf("%d", pid);
          
         
         release(&ptable.lock);
