@@ -663,7 +663,7 @@ struct proc *p;
   struct proc *curproc = myproc();
   
   acquire(&ptable.lock);
-  cprintf("%d", pop);
+  //cprintf("%d", pop);
   //cprintf("%d", pop);
   //cprintf("%d", pop);
   for(;;){
