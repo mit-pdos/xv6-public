@@ -117,7 +117,7 @@ int
  sys_mywait(void)
 {
   // mywait(0);
-  struct proc *curproc = myproc();
+  int* status = myproc()->exstatus;
 
   //int t = 3;
 
@@ -126,9 +126,9 @@ int
 
 
   //*status = argptr(0 , (void*)&curproc , sizeof(*curproc));
-  argptr(0 , (void*)&curproc , sizeof(*curproc));
+  argptr(0 , (void*)&status , sizeof(*status));
 
-  return mywait(curproc);
+  return mywait(status);
 
 }
 
