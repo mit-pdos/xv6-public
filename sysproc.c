@@ -119,9 +119,9 @@ int
   // mywait(0);
   struct proc *curproc = myproc();
 
-  int *status;
+  int *status = malloc(sizeof *status);
 
-  *status = 1;
+
 
   *status = argptr(0 , (void*)&curproc , sizeof(*curproc));
 
