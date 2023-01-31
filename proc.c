@@ -623,7 +623,7 @@ struct proc *p;
         pid = p->pid;
        
         *status = p->exstatus;
-            cprintf("%d", *status);
+         //   cprintf("%d", *status);
 
         kfree(p->kstack);
         p->kstack = 0;
