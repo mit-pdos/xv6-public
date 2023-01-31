@@ -136,7 +136,7 @@ sys_waitpid(void)
   
 
     int* bubus = &myproc()->exstatus;
-    argptr(0 , (void*)&bubus , sizeof(*bubus));
+    argptr(1 , (void*)&bubus , sizeof(*bubus));
 
    int a = 100;
   argint(0, &a);
