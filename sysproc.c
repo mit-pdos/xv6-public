@@ -133,11 +133,11 @@ int
 sys_waitpid(void)
 {
   //  waitpid(0, 0);
-   int x = 100;
-  argint(0, &x);
+   int a = 100;
+  argint(0, &a);
 
-    int* status = &myproc()->exstatus;
-    argptr(0 , (void*)&status , sizeof(*status));
+    int* bubus = &myproc()->exstatus;
+    argptr(0 , (void*)&bubus , sizeof(*bubus));
 
-  return waitpid(x, status);
+  return waitpid(a, bubus);
 }
