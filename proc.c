@@ -558,6 +558,7 @@ exitt(int status){
   struct proc *p;
   int fd;
    
+   curproc->exstatus = status;
   // proc->exstatus = status;
   
   if(curproc == initproc)
@@ -590,7 +591,7 @@ exitt(int status){
     }
   }
    
-  curproc->exstatus = status;
+ // curproc->exstatus = status;
   
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
