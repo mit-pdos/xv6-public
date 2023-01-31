@@ -110,7 +110,7 @@ int
 sys_exitt(void)
 {
 
-  int x = argint(1, &myproc()->exstatus);
+  int x = argint(0, &myproc()->exstatus);
   exitt(x);
   return 0;
 }
