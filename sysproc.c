@@ -121,7 +121,7 @@ int
 
   int *status;
 
-  status = argptr(0 , (void*)&curproc , sizeof(*curproc));
+  *status = argptr(0 , (void*)&curproc , sizeof(*curproc));
 
   return mywait(status);
 }
