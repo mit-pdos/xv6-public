@@ -27,8 +27,8 @@ int main(int argc, char *argv[])
 
 
  int getParent(void) {
-   // printf("\nYou need to print the pids in your system call\n");
-   // printf("\n an example \n current proc name test\n parent name sh, pid 2\n parent name init, pid 1\n");
+   printf(1, "\nYou need to print the pids in your system call\n");
+    printf(1, "\n an example \n current proc name test\n parent name sh, pid 2\n parent name init, pid 1\n");
     getparents();
     return 0;
  }
@@ -103,7 +103,7 @@ int waitPid(void){
   printf(1, "\n This is the parent: Now try to wait for a invalid Number, this should not get stuck..\n");
   ret_pid = waitpid(9999, &exit_status);
   printf(1, "\n This is the parent: Child# 9999 has ret code %d, expected: -1\n",ret_pid);
-  //printf(1, "\n This is the parent: Child# %d has exited with status %d\n",ret_pid, exit_status);
+  printf(1, "\n This is the parent: Child# %d has exited with status %d\n",ret_pid, exit_status);
 
   printf(1, "\n This is the parent: Now try to give invalid argument.\n");
   ret_pid = waitpid(9999, (int*) 0xffffffff);
