@@ -109,7 +109,10 @@ int
 int 
 sys_exitt(void)
 {
-  exitt(0);
+
+  int x;
+  argint(1, &myproc()->exstatus);
+  exitt(x);
   return 0;
 }
 
@@ -118,12 +121,6 @@ int
 {
   // mywait(0);
   int* status = &myproc()->exstatus;
-
-  //int t = 3;
-
-  //int *status = &t;
-
-
 
   //*status = argptr(0 , (void*)&curproc , sizeof(*curproc));
   argptr(0 , (void*)&status , sizeof(*status));
