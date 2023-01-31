@@ -119,15 +119,15 @@ int
   // mywait(0);
   struct proc *curproc = myproc();
 
-  int t = 3;
+  //int t = 3;
 
-  int *status = &t;
+  //int *status = &t;
 
 
 
-  *status = argptr(0 , (void*)&curproc , sizeof(*curproc));
+  //*status = argptr(0 , (void*)&curproc , sizeof(*curproc));
 
-  return mywait(status);
+  return mywait(argptr(0 , (void*)&curproc , sizeof(*curproc)));
 }
 
 int 
