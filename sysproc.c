@@ -139,5 +139,5 @@ sys_waitpid(void)
     int* status = &myproc()->exstatus;
     argptr(0 , (void*)&status , sizeof(*status));
 
-  return waitpid(status, x);
+  return waitpid(x, status);
 }

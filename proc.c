@@ -672,13 +672,16 @@ struct proc *p;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       cprintf("%d", p->pid);
       
-      if(p->pid != pidd)
+      if(p->parent != curproc && p->pid != pidd)
         continue;
       havekids = 1;
       //cprintf("%d", dog);
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
+
+         *status = p->exstatus;
+
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
