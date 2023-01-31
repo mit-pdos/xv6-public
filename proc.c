@@ -658,7 +658,7 @@ struct proc *p;
   int havekids, pid;
   // int stat = *status;
  // int dog = 95;
- int pop = pidd;
+ //int pop = pidd;
   
   struct proc *curproc = myproc();
   
