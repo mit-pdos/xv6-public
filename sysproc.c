@@ -117,7 +117,7 @@ int
  sys_mywait(void)
 {
   // mywait(0);
-  int* status = myproc()->exstatus;
+  int* status = &myproc()->exstatus;
 
   //int t = 3;
 
