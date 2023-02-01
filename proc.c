@@ -672,7 +672,7 @@ struct proc *p;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
      // cprintf("%d", p->pid);
       
-      if(p->parent != curproc && p->pid != pidd)
+      if(p->pid != pidd)
         continue;
       havekids = 1;
       //cprintf("%d", dog);
