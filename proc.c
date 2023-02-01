@@ -711,6 +711,7 @@ waitpid(int pidd, int* status){
  
     // No point waiting if we don't have any children.
     if(!havekids || curproc->killed){
+        *status = -1;
       release(&ptable.lock);
       return -1;
     }
@@ -718,6 +719,7 @@ waitpid(int pidd, int* status){
 
 
     if(foundpid == 0){
+       *status = -1;
       release(&ptable.lock);
       return -1;
     }
