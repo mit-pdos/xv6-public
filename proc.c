@@ -654,11 +654,12 @@ struct proc *p;
 
 int
 waitpid(int pidd, int* status){
-struct proc *p;
+ struct proc *p;
   int havekids, pid;
   // int stat = *status;
  // int dog = 95;
  //int pop = pidd;
+ int foundpid = 0;
   
   struct proc *curproc = myproc();
   
@@ -669,12 +670,14 @@ struct proc *p;
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
+    
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
      // cprintf("%d", p->pid);
       
       if(p->pid != pidd)
         continue;
       havekids = 1;
+      foundpid = 1;
       //cprintf("%d", dog);
       if(p->state == ZOMBIE){
         // Found one.
@@ -703,10 +706,18 @@ struct proc *p;
       }
     }
 
+     
      //       cprintf("%d", dog); //delete later 
  
     // No point waiting if we don't have any children.
     if(!havekids || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+
+
+    if(foundpid == 0){
       release(&ptable.lock);
       return -1;
     }
