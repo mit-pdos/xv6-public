@@ -1,0 +1,776 @@
+diff --git a/Makefile b/Makefile
+index 09d790c..74b936c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -76,7 +76,7 @@ AS = $(TOOLPREFIX)gas
+ LD = $(TOOLPREFIX)ld
+ OBJCOPY = $(TOOLPREFIX)objcopy
+ OBJDUMP = $(TOOLPREFIX)objdump
+-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
++CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer -gdwarf-2
+ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+ ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
+ # FreeBSD ld wants ``elf_i386_fbsd''
+@@ -181,6 +181,12 @@ UPROGS=\
+        _usertests\
+        _wc\
+        _zombie\
++       _test\
++       _parent\
++       _exitt\
++       _waitt\
++       _waitpidd\
++       _labtest\
+ 
+ fs.img: mkfs README $(UPROGS)
+        ./mkfs fs.img README $(UPROGS)
+@@ -217,7 +223,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
+        then echo "-gdb tcp::$(GDBPORT)"; \
+        else echo "-s -p $(GDBPORT)"; fi)
+ ifndef CPUS
+-CPUS := 2
++CPUS := 1
+ endif
+ QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA)
+ 
+diff --git a/defs.h b/defs.h
+index 82fb982..c6631fd 100644
+--- a/defs.h
++++ b/defs.h
+@@ -120,6 +120,12 @@ void            userinit(void);
+ int             wait(void);
+ void            wakeup(void*);
+ void            yield(void);
++void hello(void); //J. H
++void getparents(void); //getparents
++void exitt(int); //return status
++int mywait(int*); //wait status
++int waitpid(int, int*);
++
+ 
+ // swtch.S
+ void            swtch(struct context**, struct context*);
+diff --git a/exitt.c b/exitt.c
+new file mode 100644
+index 0000000..9cd301d
+--- /dev/null
++++ b/exitt.c
+@@ -0,0 +1,9 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++int main(int arc, char *argv[]){
++    //printf(1, "hello world\ n");
++    exitt(1);
++}
++
+diff --git a/labtest.c b/labtest.c
+new file mode 100644
+index 0000000..40d0bbe
+--- /dev/null
++++ b/labtest.c
+@@ -0,0 +1,113 @@
++#include "types.h"
++#include "user.h"
++#include "stat.h"
++
++#define WNOHANG        1
++
++int main(int argc, char *argv[])
++{
++       int getParent(void);
++       int exitWait(void);
++       int waitPid(void);
++
++  printf(1, "\n This program tests the correctness of your lab#1\n");
++  
++  if (atoi(argv[1]) == 1)
++    getParent();
++  else if (atoi(argv[1]) == 2)
++         waitPid();
++  else if (atoi(argv[1]) == 3)
++    exitWait();  
++  else 
++    printf(1, "\ntype \"%s 1\" to test getparent, \"%s 2\" to test waitpid\n, \"%s 3\" to test exit and wait\n", argv[0], argv[0], argv[0]);
++    // End of test
++        exitt(0);
++        return 0;
++ }
++
++
++ int getParent(void) {
++   printf(1, "\nYou need to print the pids in your system call\n");
++    printf(1, "\n an example \n current proc name test\n parent name sh, pid 2\n parent name init, pid 1\n");
++    getparents();
++    return 0;
++ }
++  
++int exitWait(void) {
++         int pid, ret_pid, exit_status;
++    int i;
++  // use this part to test exit(int status) and wait(int* status)
++ 
++  printf(1, "\n  Parts a & b) testing exit(int status) and wait(int* status):\n");
++
++  for (i = 0; i < 2; i++) {
++    pid = fork();
++    if (pid == 0) { // only the child executed this code
++      if (i == 0){
++        printf(1, "\nThis is child with PID# %d and I will exit with status %d\n", getpid(), 0);
++        exitt(0);
++      }
++      else{
++             printf(1, "\nThis is child with PID# %d and I will exit with status %d\n" ,getpid(), -1);
++        exitt(-1);
++      } 
++    } else if (pid > 0) { // only the parent executes this code
++      ret_pid = mywait(&exit_status);
++      printf(1, "\n This is the parent: child with PID# %d has exited with status %d\n", ret_pid, exit_status);
++    } else { // something went wrong with fork system call
++           printf(2, "\nError using fork\n");
++      exitt(-1);
++    }
++  }
++  return 0;
++}
++
++int waitPid(void){
++       
++  int ret_pid, exit_status;
++  int i;
++  int pid_a[5]={0, 0, 0, 0, 0};
++ // use this part to test wait(int pid, int* status, int options)
++
++  printf(1, "\n  Part c) testing waitpid(int pid, int* status, int options):\n");
++
++       for (i = 0; i <5; i++) {
++               pid_a[i] = fork();
++               if (pid_a[i] == 0) { // only the child executed this code
++                       printf(1, "\n This is child with PID# %d and I will exit with status %d\n", getpid(), getpid() + 4);
++                       exitt(getpid() + 4);
++               }
++       }
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[3]);
++  ret_pid = waitpid(pid_a[3], &exit_status);
++  printf(1, "\n This is the partent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[3] + 4);
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[1]);
++  ret_pid = waitpid(pid_a[1], &exit_status);
++  printf(1, "\n This is the parent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[1] + 4);
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[2]);
++  ret_pid = waitpid(pid_a[2], &exit_status);
++  printf(1, "\n This is the partent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[2] + 4);
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[0]);
++  ret_pid = waitpid(pid_a[0], &exit_status);
++  printf(1, "\n This is the partent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[0] + 4);
++  sleep(5);
++  printf(1, "\n This is the parent: Now waiting for child with PID# %d\n",pid_a[4]);
++  ret_pid = waitpid(pid_a[4], &exit_status);
++  printf(1, "\n This is the parent: Child# %d has exited with status %d, expected: %d\n",ret_pid, exit_status, pid_a[4] + 4);
++
++
++  printf(1, "\n This is the parent: Now try to wait for a invalid Number, this should not get stuck..\n");
++  ret_pid = waitpid(9999, &exit_status);
++  printf(1, "\n This is the parent: Child# 9999 has ret code %d, expected: -1\n",ret_pid);
++  printf(1, "\n This is the parent: Child# %d has exited with status %d\n",ret_pid, exit_status);
++
++  printf(1, "\n This is the parent: Now try to give invalid argument.\n");
++  ret_pid = waitpid(9999, (int*) 0xffffffff);
++  printf(1, "\n This is the parent: Got ret code %d, expected: -1\n",ret_pid);
++
++  return 0;
++}
+diff --git a/parent.c b/parent.c
+new file mode 100644
+index 0000000..976a6af
+--- /dev/null
++++ b/parent.c
+@@ -0,0 +1,10 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++int main(int arc, char *argv[]){
++    //printf(1, "hello world\ n");
++    getparents(); //J.H.
++    exitt(1);
++}
++
+diff --git a/proc.c b/proc.c
+index 806b1b1..30e3de9 100644
+--- a/proc.c
++++ b/proc.c
+@@ -532,3 +532,202 @@ procdump(void)
+     cprintf("\n");
+   }
+ }
++
++void
++hello(void){
++  cprintf("\n\n Hello from your kernel space! \n\n");
++}
++
++void
++getparents(void){
++  struct proc *curproc = myproc();
++  struct proc *parproc = curproc->parent;
++  int p;
++  while(parproc != 0){
++  p = parproc->pid;
++  cprintf("%d", p);
++  parproc = parproc->parent;
++  }
++}
++
++void 
++exitt(int status){
++
++
++  struct proc *curproc = myproc();
++  struct proc *p;
++  int fd;
++   
++   //curproc->exstatus = status;
++  // proc->exstatus = status;
++  
++  if(curproc == initproc)
++    panic("init exiting");
++
++  // Close all open files.
++  for(fd = 0; fd < NOFILE; fd++){
++    if(curproc->ofile[fd]){
++      fileclose(curproc->ofile[fd]);
++      curproc->ofile[fd] = 0;
++    }
++  }
++
++  begin_op();
++  iput(curproc->cwd);
++  end_op();
++  curproc->cwd = 0;
++
++  acquire(&ptable.lock);
++
++  // Parent might be sleeping in wait().
++  wakeup1(curproc->parent);
++
++  // Pass abandoned children to init.
++  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
++    if(p->parent == curproc){
++      p->parent = initproc;
++      if(p->state == ZOMBIE)
++        wakeup1(initproc);
++    }
++  }
++   
++ // curproc->exstatus = status;
++  curproc->exstatus = status;
++  // Jump into the scheduler, never to return.
++  curproc->state = ZOMBIE;
++  sched();
++  panic("zombie exit");   
++}
++
++int
++mywait(int* status){
++struct proc *p;
++  int havekids, pid;
++ //  int stat = 0;
++ // if(status != 0){
++ //  stat = *status;
++  //}
++  struct proc *curproc = myproc();
++  
++  
++
++  acquire(&ptable.lock);
++  for(;;){
++    // Scan through table looking for exited children.
++    havekids = 0;
++    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
++      if(p->parent != curproc)
++        continue;
++      havekids = 1;
++      if(p->state == ZOMBIE){
++        // Found one.
++        pid = p->pid;
++       
++        *status = p->exstatus;
++         //   cprintf("%d", *status);
++
++        kfree(p->kstack);
++        p->kstack = 0;
++        freevm(p->pgdir);
++        p->pid = 0;
++        p->parent = 0;
++        p->name[0] = 0;
++        p->killed = 0;
++        p->state = UNUSED;
++        
++        release(&ptable.lock);
++        
++        return pid;
++      }
++    }
++
++    // No point waiting if we don't have any children.
++    if(!havekids || curproc->killed){
++      release(&ptable.lock);
++      return -1;
++    }
++
++    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
++    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
++  }
++}
++
++int
++waitpid(int pidd, int* status){
++ struct proc *p;
++  int havekids, pid;
++  // int stat = *status;
++ // int dog = 95;
++ //int pop = pidd;
++ int foundpid = 0;
++  
++  struct proc *curproc = myproc();
++  
++  acquire(&ptable.lock);
++  //cprintf("%d", pop);
++  //cprintf("%d", pop);
++  //cprintf("%d", pop);
++  for(;;){
++    // Scan through table looking for exited children.
++    havekids = 0;
++    
++    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
++     // cprintf("%d", p->pid);
++      
++      if(p->pid != pidd)
++        continue;
++      havekids = 1;
++      foundpid = 1;
++      //cprintf("%d", dog);
++      if(p->state == ZOMBIE){
++        // Found one.
++        pid = p->pid;
++         
++          // cprintf("%d", p->pid);
++          // cprintf("%d", p->pid);
++          // cprintf("%d", p->exstatus);
++
++         *status = p->exstatus;
++
++        kfree(p->kstack);
++        p->kstack = 0;
++        freevm(p->pgdir);
++        p->pid = 0;
++        p->parent = 0;
++        p->name[0] = 0;
++        p->killed = 0;
++        p->state = UNUSED;
++       // cprintf("%d", pid);
++         
++        
++        release(&ptable.lock);
++        return pid;
++        
++      }
++    }
++
++     
++     //       cprintf("%d", dog); //delete later 
++ 
++    // No point waiting if we don't have any children.
++    if(!havekids || curproc->killed){
++        *status = -1;
++      release(&ptable.lock);
++      return -1;
++    }
++
++
++
++    if(foundpid == 0){
++       *status = -1;
++      release(&ptable.lock);
++      return -1;
++    }
++             
++   //cprintf("%d", dog); //delete later 
++
++
++    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
++    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
++  }
++}
+\ No newline at end of file
+diff --git a/proc.h b/proc.h
+index 1647114..aec117f 100644
+--- a/proc.h
++++ b/proc.h
+@@ -49,6 +49,7 @@ struct proc {
+   struct file *ofile[NOFILE];  // Open files
+   struct inode *cwd;           // Current directory
+   char name[16];               // Process name (debugging)
++  int exstatus;
+ };
+ 
+ // Process memory is laid out contiguously, low addresses first:
+diff --git a/sh.c b/sh.c
+index 054bab9..b83a152 100644
+--- a/sh.c
++++ b/sh.c
+@@ -65,7 +65,7 @@ runcmd(struct cmd *cmd)
+   struct redircmd *rcmd;
+ 
+   if(cmd == 0)
+-    exit();
++    exitt(1);
+ 
+   switch(cmd->type){
+   default:
+@@ -74,7 +74,7 @@ runcmd(struct cmd *cmd)
+   case EXEC:
+     ecmd = (struct execcmd*)cmd;
+     if(ecmd->argv[0] == 0)
+-      exit();
++      exitt(1);
+     exec(ecmd->argv[0], ecmd->argv);
+     printf(2, "exec %s failed\n", ecmd->argv[0]);
+     break;
+@@ -84,7 +84,7 @@ runcmd(struct cmd *cmd)
+     close(rcmd->fd);
+     if(open(rcmd->file, rcmd->mode) < 0){
+       printf(2, "open %s failed\n", rcmd->file);
+-      exit();
++      exitt(1);
+     }
+     runcmd(rcmd->cmd);
+     break;
+@@ -127,7 +127,7 @@ runcmd(struct cmd *cmd)
+       runcmd(bcmd->cmd);
+     break;
+   }
+-  exit();
++  exitt(1);
+ }
+ 
+ int
+@@ -168,14 +168,14 @@ main(void)
+       runcmd(parsecmd(buf));
+     wait();
+   }
+-  exit();
++  exitt(1);
+ }
+ 
+ void
+ panic(char *s)
+ {
+   printf(2, "%s\n", s);
+-  exit();
++  exitt(1);
+ }
+ 
+ int
+diff --git a/syscall.c b/syscall.c
+index ee85261..94d696e 100644
+--- a/syscall.c
++++ b/syscall.c
+@@ -103,6 +103,11 @@ extern int sys_unlink(void);
+ extern int sys_wait(void);
+ extern int sys_write(void);
+ extern int sys_uptime(void);
++extern int sys_hello(void); //J>H
++extern int sys_getparents(void); //getparents
++extern int sys_exitt(void); //returnt status
++extern int sys_mywait(void);
++extern int sys_waitpid(void);
+ 
+ static int (*syscalls[])(void) = {
+ [SYS_fork]    sys_fork,
+@@ -126,6 +131,12 @@ static int (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_hello]   sys_hello, // J.H
++[SYS_getparents] sys_getparents, //GETPARENTS
++[SYS_exitt] sys_exitt,
++[SYS_mywait] sys_mywait,
++[SYS_waitpid] sys_waitpid,
++
+ };
+ 
+ void
+diff --git a/syscall.h b/syscall.h
+index bc5f356..19dbd4a 100644
+--- a/syscall.h
++++ b/syscall.h
+@@ -20,3 +20,8 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_hello  22
++#define SYS_getparents 23
++#define SYS_exitt 24
++#define SYS_mywait 25
++#define SYS_waitpid 26
+diff --git a/sysproc.c b/sysproc.c
+index 0686d29..61ec3b6 100644
+--- a/sysproc.c
++++ b/sysproc.c
+@@ -7,67 +7,69 @@
+ #include "mmu.h"
+ #include "proc.h"
+ 
+-int
++int 
+ sys_fork(void)
+ {
+   return fork();
+ }
+ 
+ int
+-sys_exit(void)
++ sys_exit(void)
+ {
+   exit();
+-  return 0;  // not reached
++  return 0; // not reached
+ }
+ 
+-int
++int 
+ sys_wait(void)
+ {
+   return wait();
+ }
+ 
+-int
++int 
+ sys_kill(void)
+ {
+   int pid;
+ 
+-  if(argint(0, &pid) < 0)
++  if (argint(0, &pid) < 0)
+     return -1;
+   return kill(pid);
+ }
+ 
+-int
++int 
+ sys_getpid(void)
+ {
+   return myproc()->pid;
+ }
+ 
+-int
++int 
+ sys_sbrk(void)
+ {
+   int addr;
+   int n;
+ 
+-  if(argint(0, &n) < 0)
++  if (argint(0, &n) < 0)
+     return -1;
+   addr = myproc()->sz;
+-  if(growproc(n) < 0)
++  if (growproc(n) < 0)
+     return -1;
+   return addr;
+ }
+ 
+-int
++int 
+ sys_sleep(void)
+ {
+   int n;
+   uint ticks0;
+ 
+-  if(argint(0, &n) < 0)
++  if (argint(0, &n) < 0)
+     return -1;
+   acquire(&tickslock);
+   ticks0 = ticks;
+-  while(ticks - ticks0 < n){
+-    if(myproc()->killed){
++  while (ticks - ticks0 < n)
++  {
++    if (myproc()->killed)
++    {
+       release(&tickslock);
+       return -1;
+     }
+@@ -80,7 +82,7 @@ sys_sleep(void)
+ // return how many clock tick interrupts have occurred
+ // since start.
+ int
+-sys_uptime(void)
++ sys_uptime(void)
+ {
+   uint xticks;
+ 
+@@ -89,3 +91,55 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++int
++ sys_hello(void)
++{
++  hello();
++  return 0;
++}
++
++int
++ sys_getparents(void)
++{
++  getparents();
++  return 0;
++}
++
++int 
++sys_exitt(void)
++{
++
++  int x = 100;
++  argint(0, &x);
++  exitt(x);
++  return 0;
++}
++
++int
++ sys_mywait(void)
++{
++  // mywait(0);
++  int* status = &myproc()->exstatus;
++
++  //*status = argptr(0 , (void*)&curproc , sizeof(*curproc));
++  argptr(0 , (void*)&status , sizeof(*status));
++
++  return mywait(status);
++
++}
++
++int 
++sys_waitpid(void)
++{
++  //  waitpid(0, 0);
++  
++
++    int* bubus = &myproc()->exstatus;
++    argptr(1 , (void*)&bubus , sizeof(*bubus)); // was 0
++
++   int a = 100;
++  argint(0, &a);
++
++  return waitpid(a, bubus);
++}
+\ No newline at end of file
+diff --git a/test.c b/test.c
+new file mode 100644
+index 0000000..5af3401
+--- /dev/null
++++ b/test.c
+@@ -0,0 +1,10 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++int main(int arc, char *argv[]){
++    //printf(1, "hello world\ n");
++    hello(); //J.H.
++    exit();
++}
++
+diff --git a/user.h b/user.h
+index 4f99c52..dd60ee6 100644
+--- a/user.h
++++ b/user.h
+@@ -23,8 +23,16 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int hello(void);
++int getparents(void);
++int exitt(int) __attribute__((noreturn));
++int mywait(int*); //new
++int waitpid(int, int*); 
+ 
+-// ulib.c
++
++
++
++// ulib.c also replaced with unsigned int as it was buggy
+ int stat(const char*, struct stat*);
+ char* strcpy(char*, const char*);
+ void *memmove(void*, const void*, int);
+@@ -32,8 +40,8 @@ char* strchr(const char*, char c);
+ int strcmp(const char*, const char*);
+ void printf(int, const char*, ...);
+ char* gets(char*, int max);
+-uint strlen(const char*);
+-void* memset(void*, int, uint);
+-void* malloc(uint);
++unsigned int strlen(const char*);
++void* memset(void*, int, unsigned int);
++void* malloc(unsigned int);
+ void free(void*);
+ int atoi(const char*);
+diff --git a/usys.S b/usys.S
+index 8bfd8a1..15ed5d2 100644
+--- a/usys.S
++++ b/usys.S
+@@ -29,3 +29,8 @@ SYSCALL(getpid)
+ SYSCALL(sbrk)
+ SYSCALL(sleep)
+ SYSCALL(uptime)
++SYSCALL(hello) //J.H
++SYSCALL(getparents) //GETPARENTS
++SYSCALL(exitt) //exit status
++SYSCALL(mywait) //wait status
++SYSCALL(waitpid)
+\ No newline at end of file
+diff --git a/waitpidd.c b/waitpidd.c
+new file mode 100644
+index 0000000..eeeb5ce
+--- /dev/null
++++ b/waitpidd.c
+@@ -0,0 +1,12 @@
++
++
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++int main(int arc, char *argv[]){
++    //printf(1, "hello world\ n");
++    waitpid(0, 0);
++    exit();
++}
++
+diff --git a/waitt.c b/waitt.c
+new file mode 100644
+index 0000000..2857fc6
+--- /dev/null
++++ b/waitt.c
+@@ -0,0 +1,12 @@
++
++
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++int main(int arc, char *argv[]){
++    //printf(1, "hello world\ n");
++    mywait(0);
++    exitt(0);
++}
++
+(END)
