@@ -27,6 +27,16 @@ sys_wait(void)
 }
 
 int
+sys_nice(void)
+{
+  int pid, priority;
+
+  if(argint(0, &pid) < 0 || argint(1, &priority) < 0)
+    return -1;
+  return nice(pid, priority);
+}
+
+int
 sys_kill(void)
 {
   int pid;
