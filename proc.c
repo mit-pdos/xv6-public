@@ -325,8 +325,10 @@ void
 scheduler(void)
 {
   struct proc *p;
+  struct proc *a;
   struct cpu *c = mycpu();
   c->proc = 0;
+  int tt = 0;
   
   for(;;){
     // Enable interrupts on this processor.
@@ -338,8 +340,38 @@ scheduler(void)
       if(p->state != RUNNABLE)
         continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
+      if(tt == 0){
+        a = p;
+        tt = 1;
+      } 
+      
+      if(a->val_priority > p->val_priority){
+        a = p;
+        continue;
+      }
+      else{
+        continue;
+      }
+      
+    }
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+           if(p = a){
+            if(p->val_priority != 31){
+            p->val_priority = p->val_priority +1;
+            }
+           }     
+           else{
+              if(p->val_priority > 0){
+                p->val_priority = p->val_priority - 1;
+              }
+           }
+        }
+
+    p = a;
+    
+
+
+       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
       switchuvm(p);
@@ -351,7 +383,7 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
-    }
+
     release(&ptable.lock);
 
   }
@@ -732,4 +764,11 @@ waitpid(int pidd, int* status){
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
+}
+
+int setprior(int y){
+    struct proc *curproc = myproc();
+    curproc->val_priority = y;
+    sched(); //OPTIONAL
+    return y;
 }

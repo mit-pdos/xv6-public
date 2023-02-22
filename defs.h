@@ -125,6 +125,7 @@ void getparents(void); //getparents
 void exitt(int); //return status
 int mywait(int*); //wait status
 int waitpid(int, int*);
+int setprior(int);
 
 
 // swtch.S
