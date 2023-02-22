@@ -25,4 +25,4 @@
 #define SYS_exitt 24
 #define SYS_mywait 25
 #define SYS_waitpid 26
-#define SYS_set_prior
+#define SYS_setprior 27

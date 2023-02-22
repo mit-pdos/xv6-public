@@ -143,3 +143,11 @@ sys_waitpid(void)
 
   return waitpid(a, bubus);
 }
+
+int 
+sys_setprior(void){
+   int y = 100;
+  argint(0, &y);
+    
+  return setprior(y);
+}
