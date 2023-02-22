@@ -34,3 +34,4 @@ SYSCALL(getparents) //GETPARENTS
 SYSCALL(exitt) //exit status
 SYSCALL(mywait) //wait status
 SYSCALL(waitpid)
+SYSCALL(set_prior)

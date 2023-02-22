@@ -112,6 +112,7 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  p->val_priority = 10;
   return p;
 }
 
@@ -215,6 +216,7 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  np->val_priority = curproc->val_priority; //NEW CHANGE
 
   release(&ptable.lock);
 
