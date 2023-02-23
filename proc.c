@@ -351,7 +351,7 @@ scheduler(void)
       if(a->val_priority > p->val_priority){
         a = p;
       //  cprintf("a \n");
-       cprintf("%d", a->pid); 
+     //  cprintf("%d", a->pid); 
         continue;
       }
       else{
@@ -372,6 +372,7 @@ scheduler(void)
                 p->val_priority = p->val_priority - 1;
               }
            }
+             cprintf("%d", a->pid); 
         }
 
     p = a;
