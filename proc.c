@@ -328,9 +328,9 @@ scheduler(void)
   struct proc *a = myproc();
   struct cpu *c = mycpu();
   c->proc = 0;
-  int tt = 0;
-  int blank = 0;
-
+  //int tt = 0;
+  //int blank = 0;
+  int lowepri = findpri(0);
   
   for(;;){
     // Enable interrupts on this processor.
@@ -341,33 +341,16 @@ scheduler(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
-
-
-      if(tt == 0){
-        a = p;
-        tt = 1;
-        blank = 1;
-      } 
-      
-       // cprintf("a \n");
-     // cprintf("%d", a->pid); 
-      if(a->val_priority > p->val_priority){
-        blank = 1;
-        a = p;
-      //  cprintf("a \n");
-     //  cprintf("%d", a->pid); 
+      if(p->val_priority != lowepri){
         continue;
       }
-      else{
-        continue;
-      }
+
+     a = p;
       
-    }
-     // cprintf("a \n");
-     //cprintf("%d", a->pid); 
-    if(blank == 1){ //SO THAT IT DOESNT RUN CONSTANTLY
+     
+   
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-           if(p == a){
+           if(p->val_priority == lowepri){
             if(p->val_priority < 31){
             p->val_priority = p->val_priority +1;
             }
@@ -377,13 +360,9 @@ scheduler(void)
                 p->val_priority = p->val_priority - 1;
               }
            }
-            // cprintf("%d", a->pid); 
         }
-    }
-
-    p = a;
-  //  cprintf("p \n");
-   //  cprintf("%d", p->pid); 
+    
+  p = a;
 
 
        // to release ptable.lock and then reacquire it
@@ -398,6 +377,13 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
+
+      
+    }
+     // cprintf("a \n");
+     //cprintf("%d", a->pid); 
+    
+  
 
     release(&ptable.lock);
 
@@ -786,4 +772,27 @@ int setprior(int y){
     curproc->val_priority = y;
    // sched(); //OPTIONAL
     return y;
+}
+
+int findpri(int z){
+   struct proc *p;
+   struct proc *a = myproc();
+   int x = 0;
+    acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+     if(p->state != RUNNABLE)
+        continue;
+
+       if(x == 0){
+        a = p;
+        x = 1;
+       }
+       else if(a->val_priority > p->val_priority){
+                a = p;
+       }
+
+
+  }
+  release(&ptable.lock);
+  return a->val_priority;
 }

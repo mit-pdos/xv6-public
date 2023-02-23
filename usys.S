@@ -35,3 +35,4 @@ SYSCALL(exitt) //exit status
 SYSCALL(mywait) //wait status
 SYSCALL(waitpid)
 SYSCALL(setprior)
+SYSCALL(findpri)

@@ -151,3 +151,11 @@ sys_setprior(void){
     
   return setprior(y);
 }
+
+int 
+sys_findpri(void){
+   int z = 100;
+  argint(0, &z);
+    
+  return findpri(z);
+}

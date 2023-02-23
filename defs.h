@@ -126,6 +126,7 @@ void exitt(int); //return status
 int mywait(int*); //wait status
 int waitpid(int, int*);
 int setprior(int);
+int findpri(int);
 
 
 // swtch.S

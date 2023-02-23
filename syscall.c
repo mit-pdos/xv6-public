@@ -109,6 +109,7 @@ extern int sys_exitt(void); //returnt status
 extern int sys_mywait(void);
 extern int sys_waitpid(void);
 extern int sys_setprior(void);
+extern int sys_findpri(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -138,6 +139,7 @@ static int (*syscalls[])(void) = {
 [SYS_mywait] sys_mywait,
 [SYS_waitpid] sys_waitpid,
 [SYS_setprior] sys_setprior,
+[SYS_findpri] sys_findpri,
 
 };
 

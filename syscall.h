@@ -26,3 +26,4 @@
 #define SYS_mywait 25
 #define SYS_waitpid 26
 #define SYS_setprior 27
+#define SYS_findpri 28
