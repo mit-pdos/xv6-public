@@ -346,9 +346,11 @@ scheduler(void)
         tt = 1;
       } 
       
-      cprintf("%d", a->pid); 
+       // cprintf("a \n");
+     // cprintf("%d", a->pid); 
       if(a->val_priority > p->val_priority){
         a = p;
+        cprintf("a \n");
        cprintf("%d", a->pid); 
         continue;
       }
@@ -357,6 +359,8 @@ scheduler(void)
       }
       
     }
+     // cprintf("a \n");
+     //cprintf("%d", a->pid); 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
            if(p == a){
             if(p->val_priority != 31){
@@ -371,7 +375,8 @@ scheduler(void)
         }
 
     p = a;
-    
+  //  cprintf("p \n");
+   //  cprintf("%d", p->pid); 
 
 
        // to release ptable.lock and then reacquire it
