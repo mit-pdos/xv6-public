@@ -329,6 +329,8 @@ scheduler(void)
   struct cpu *c = mycpu();
   c->proc = 0;
   int tt = 0;
+  int blank = 0;
+
   
   for(;;){
     // Enable interrupts on this processor.
@@ -349,6 +351,7 @@ scheduler(void)
        // cprintf("a \n");
      // cprintf("%d", a->pid); 
       if(a->val_priority > p->val_priority){
+        blank = 1;
         a = p;
       //  cprintf("a \n");
      //  cprintf("%d", a->pid); 
@@ -361,6 +364,7 @@ scheduler(void)
     }
      // cprintf("a \n");
      //cprintf("%d", a->pid); 
+    if(blank == 1){ //SO THAT IT DOESNT RUN CONSTANTLY
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
            if(p == a){
             if(p->val_priority < 31){
@@ -372,8 +376,9 @@ scheduler(void)
                 p->val_priority = p->val_priority - 1;
               }
            }
-             cprintf("%d", a->pid); 
+            // cprintf("%d", a->pid); 
         }
+    }
 
     p = a;
   //  cprintf("p \n");
