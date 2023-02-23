@@ -363,7 +363,7 @@ scheduler(void)
      //cprintf("%d", a->pid); 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
            if(p == a){
-            if(p->val_priority != 31){
+            if(p->val_priority < 31){
             p->val_priority = p->val_priority +1;
             }
            }     
