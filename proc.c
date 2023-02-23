@@ -346,6 +346,7 @@ scheduler(void)
       if(tt == 0){
         a = p;
         tt = 1;
+        blank = 1;
       } 
       
        // cprintf("a \n");
