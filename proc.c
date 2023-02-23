@@ -325,7 +325,7 @@ void
 scheduler(void)
 {
   struct proc *p;
-  struct proc *a;
+  struct proc *a = myproc();
   struct cpu *c = mycpu();
   c->proc = 0;
   int tt = 0;
@@ -355,7 +355,7 @@ scheduler(void)
       
     }
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-           if(p = a){
+           if(p == a){
             if(p->val_priority != 31){
             p->val_priority = p->val_priority +1;
             }
@@ -769,6 +769,6 @@ waitpid(int pidd, int* status){
 int setprior(int y){
     struct proc *curproc = myproc();
     curproc->val_priority = y;
-    sched(); //OPTIONAL
+   // sched(); //OPTIONAL
     return y;
 }
