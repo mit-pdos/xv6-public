@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
     PScheduler();
 
-    exit(0);
+    exitt(0);
 }    
       
 int PScheduler(void){
@@ -38,16 +38,16 @@ int PScheduler(void){
                 }
             }
             printf(1, " - Child #%d with priority %d has finished! \n", getpid(), 30-10*i);		
-            exit(0);
+            exitt(0);
         } else {
             printf(2," \n Error fork() \n");
-            exit(-1);
+            exitt(-1);
         }
     }
 
     if(pid > 0) {
         for (i = 0; i < 3; i++) {
-            ret_pid = wait(&exit_status);
+            ret_pid = waitt(&exit_status);
             printf(1, " - This is the parent: child with PID# %d has finished with status %d \n", ret_pid, exit_status);
         }
         printf(1, " - If processes with highest priority finished first then its correct. \n");
