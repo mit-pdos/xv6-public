@@ -340,13 +340,16 @@ scheduler(void)
       if(p->state != RUNNABLE)
         continue;
 
+
       if(tt == 0){
         a = p;
         tt = 1;
       } 
       
+      cprintf("%d", a->pid); 
       if(a->val_priority > p->val_priority){
         a = p;
+       cprintf("%d", a->pid); 
         continue;
       }
       else{
