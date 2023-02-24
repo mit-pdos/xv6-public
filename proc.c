@@ -113,6 +113,9 @@ found:
   p->context->eip = (uint)forkret;
 
   p->val_priority = 10;
+  p->ticks = ticks;
+  p->burst = 0;
+  
   return p;
 }
 
@@ -200,6 +203,8 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  np->t_start = ticks; //NEW CODES
+  np->burst = 0;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -264,6 +269,9 @@ exit(void)
   }
 
   // Jump into the scheduler, never to return.
+  curproc->t_finish = ticks;
+ // fd = findpri(0);
+
   curproc->state = ZOMBIE;
   sched();
   panic("zombie exit");
@@ -289,6 +297,10 @@ wait(void)
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
+       if(p->val_priority > curproc->val_priority){//PRIORITY inheritance
+        p->val_priority = curproc->val_priority;
+        }
+
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
@@ -328,9 +340,10 @@ scheduler(void)
   struct proc *a = myproc();
   struct cpu *c = mycpu();
   c->proc = 0;
+  int ttracker;
   //int tt = 0;
   //int blank = 0;
-  int lowepri = findpri(0);
+  //int lowepri = findpri(0);
   
   for(;;){
     // Enable interrupts on this processor.
@@ -341,39 +354,54 @@ scheduler(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
-      if(p->val_priority != lowepri){
-        continue;
-      }
-
-     a = p;
+     
+    
+    // a = p;
       
      
-   
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-           if(p->val_priority == lowepri){
-            if(p->val_priority < 31){
-            p->val_priority = p->val_priority +1;
-            }
-           }     
-           else{
-              if(p->val_priority > 0){
-                p->val_priority = p->val_priority - 1;
-              }
-           }
-        }
     
-  p = a;
+ // p = a;
+     
+     a = p;
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
+        if(a->val_priority > p->val_priority){
 
+          a = p;
+        }
+
+      }
+      
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
+      
+      
+      if(p == a){
+        p->val_priority = p->val_priority + 1;
+      }
+
+        else{
+  
+         if(p->val_priority > 0)
+          p->val_priority = p->val_priority - 1;
+        }
+
+      }
+
+      p = a;
 
        // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
+      ttracker = ticks; //CHECKS THESE ONES
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
+      p->burst = p->burst + (ticks -ttracker);
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
@@ -628,8 +656,12 @@ exitt(int status){
    
  // curproc->exstatus = status;
   curproc->exstatus = status;
+  curproc->t_finish = ticks;
+  
+  fd = findpri(0);
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
+  
   sched();
   panic("zombie exit");   
 }
@@ -657,7 +689,9 @@ struct proc *p;
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
-       
+        if(p->val_priority > curproc->val_priority){//PRIORITY inheritance
+        p->val_priority = curproc->val_priority;
+        }
         *status = p->exstatus;
          //   cprintf("%d", *status);
 
@@ -770,29 +804,29 @@ waitpid(int pidd, int* status){
 int setprior(int y){
     struct proc *curproc = myproc();
     curproc->val_priority = y;
+
+   
    // sched(); //OPTIONAL
     return y;
 }
 
-int findpri(int z){
-   struct proc *p;
+int findpri(int z){//THIS IS JUST TURNAROUND TIME
+  
    struct proc *a = myproc();
-   int x = 0;
-    acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-     if(p->state != RUNNABLE)
-        continue;
+   int x;
+   x = a->t_finish - a->t_start; // - t_finish
+   cprintf("\n this is the turnaround time for process ");
+   cprintf("%d", a->pid);
+   cprintf(": ");
+  cprintf("%d", x);
+  cprintf("\n"); 
 
-       if(x == 0){
-        a = p;
-        x = 1;
-       }
-       else if(a->val_priority > p->val_priority){
-                a = p;
-       }
+   cprintf("\n this is the waiting time for process ");
+   x = x - a->burst;
+   cprintf("%d", a->pid);
+   cprintf(": ");
+  cprintf("%d", x);
+  cprintf("\n"); 
 
-
-  }
-  release(&ptable.lock);
-  return a->val_priority;
+  return x;
 }

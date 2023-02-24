@@ -18,6 +18,7 @@ int PScheduler(void){
 
     int pid, ret_pid, exit_status;
     int i,j,k;
+   
   
     printf(1, "Testing the priority scheduler and setpriority system call:\n");
     printf(1, "Assuming that the priorities range between range between 0 to 31\n");
@@ -30,7 +31,7 @@ int PScheduler(void){
 	if (pid > 0) {
             continue;
         } else if ( pid == 0) {
-            printf(1, " - Hello! this is child# %d and I will change my priority to %d \n", getpid(), 60 - 20 * i);
+            printf(1, " - Hello! this is child# %d and I will change my priority to %d \n", getpid(), 30 - 10 * i);
             setprior(30 - 10 * i); // Use your own setpriority interface
             for (j = 0; j < 50000; j++) {
                 asm("nop");
@@ -38,7 +39,9 @@ int PScheduler(void){
                     asm("nop"); 
                 }
             }
-            printf(1, " - Child #%d with priority %d has finished! \n", getpid(), 30-10*i);		
+           printf(1, " - Child #%d with priority %d has finished! \n", getpid(), 30-10 * i);
+     //    t =  findpri(0);	
+         
             exitt(0);
         } else {
             printf(2," \n Error fork() \n");

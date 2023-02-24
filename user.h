@@ -29,8 +29,8 @@ int exitt(int) __attribute__((noreturn));
 int mywait(int*); //new
 int waitpid(int, int*); 
 int setprior(int);
-int finpri(int);
-
+int findpri(int);
+int tick_et(int);
 
 
 
