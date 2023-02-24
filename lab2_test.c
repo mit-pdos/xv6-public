@@ -2,10 +2,12 @@
 #include "user.h"
 
 int PScheduler(void);
+int donation(void);
 
 int main(int argc, char *argv[])
 {
     PScheduler();
+    donation();
 
     exitt(0);
 }    
@@ -60,3 +62,23 @@ int PScheduler(void){
     return 0;
 }
 
+int donation(void){
+int pid = 0;
+int ret_pid = 0;
+int exit_status;
+printf(1, "Testing priority inheritance and aging of priority\n");
+printf(1, "Priority of child will be set to 30  and priority of parent will start at default 10 \n");
+pid = fork();
+if(pid == 0){
+    setprior(30);
+}
+else{
+    ret_pid = mywait(&exit_status);
+
+}
+if(ret_pid == 0){
+    
+}
+return 0;
+
+}

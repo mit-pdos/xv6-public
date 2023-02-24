@@ -690,7 +690,12 @@ struct proc *p;
         // Found one.
         pid = p->pid;
         if(p->val_priority > curproc->val_priority){//PRIORITY inheritance
+        cprintf("\n priority switched for child priority was ");
+        cprintf("%d", p->val_priority);
         p->val_priority = curproc->val_priority;
+        cprintf("\n priority is now ");
+       cprintf("%d", p->val_priority);
+
         }
         *status = p->exstatus;
          //   cprintf("%d", *status);
