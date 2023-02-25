@@ -1,0 +1,516 @@
+index 74b936c..36b6d59 100644
+--- a/Makefile
++++ b/Makefile
+@@ -187,6 +187,7 @@ UPROGS=\
+        _waitt\
+        _waitpidd\
+        _labtest\
++       _lab2_test\
+ 
+ fs.img: mkfs README $(UPROGS)
+        ./mkfs fs.img README $(UPROGS)
+diff --git a/defs.h b/defs.h
+index c6631fd..bd02dfb 100644
+--- a/defs.h
+:...skipping...
+diff --git a/Makefile b/Makefile
+index 74b936c..36b6d59 100644
+--- a/Makefile
++++ b/Makefile
+@@ -187,6 +187,7 @@ UPROGS=\
+        _waitt\
+        _waitpidd\
+        _labtest\
++       _lab2_test\
+ 
+ fs.img: mkfs README $(UPROGS)
+        ./mkfs fs.img README $(UPROGS)
+diff --git a/defs.h b/defs.h
+index c6631fd..bd02dfb 100644
+--- a/defs.h
++++ b/defs.h
+@@ -125,6 +125,8 @@ void getparents(void); //getparents
+ void exitt(int); //return status
+ int mywait(int*); //wait status
+ int waitpid(int, int*);
++int setprior(int);
++int findpri(int);
+ 
+ 
+ // swtch.S
+diff --git a/difff.txt b/difff.txt
+new file mode 100644
+index 0000000..e69de29
+diff --git a/exec.c b/exec.c
+index b40134f..76f12ee 100644
+--- a/exec.c
++++ b/exec.c
+@@ -99,6 +99,7 @@ exec(char *path, char **argv)
+   curproc->sz = sz;
+   curproc->tf->eip = elf.entry;  // main
+   curproc->tf->esp = sp;
++  curproc->t_start = ticks; //CHANGED
+   switchuvm(curproc);
+   freevm(oldpgdir);
+   return 0;
+diff --git a/lab2_test.c b/lab2_test.c
+new file mode 100644
+:...skipping...
+diff --git a/Makefile b/Makefile
+index 74b936c..36b6d59 100644
+--- a/Makefile
++++ b/Makefile
+@@ -187,6 +187,7 @@ UPROGS=\
+        _waitt\
+        _waitpidd\
+        _labtest\
++       _lab2_test\
+ 
+ fs.img: mkfs README $(UPROGS)
+        ./mkfs fs.img README $(UPROGS)
+diff --git a/defs.h b/defs.h
+index c6631fd..bd02dfb 100644
+--- a/defs.h
++++ b/defs.h
+@@ -125,6 +125,8 @@ void getparents(void); //getparents
+ void exitt(int); //return status
+ int mywait(int*); //wait status
+ int waitpid(int, int*);
++int setprior(int);
++int findpri(int);
+ 
+ 
+ // swtch.S
+diff --git a/difff.txt b/difff.txt
+new file mode 100644
+index 0000000..e69de29
+diff --git a/exec.c b/exec.c
+index b40134f..76f12ee 100644
+--- a/exec.c
++++ b/exec.c
+@@ -99,6 +99,7 @@ exec(char *path, char **argv)
+   curproc->sz = sz;
+   curproc->tf->eip = elf.entry;  // main
+   curproc->tf->esp = sp;
++  curproc->t_start = ticks; //CHANGED
+   switchuvm(curproc);
+   freevm(oldpgdir);
+   return 0;
+diff --git a/lab2_test.c b/lab2_test.c
+new file mode 100644
+index 0000000..9c82975
+--- /dev/null
++++ b/lab2_test.c
+@@ -0,0 +1,84 @@
++#include "types.h"
++#include "user.h"
++
++int PScheduler(void);
++int donation(void);
++
++int main(int argc, char *argv[])
++{
++    PScheduler();
++    donation();
++
++    exitt(0);
++}    
++      
++int PScheduler(void){
++                
++    // Use this part to test the priority scheduler. Assuming that the priorities range between range between 0 to 31
++    // 0 is the highest priority. All processes have a default priority of 10
++    // You can use your own priority range/value setup
++
++    int pid, ret_pid, exit_status;
++    int i,j,k;
++   
++  
++    printf(1, "Testing the priority scheduler and setpriority system call:\n");
++    printf(1, "Assuming that the priorities range between range between 0 to 31\n");
++    printf(1, "0 is the highest priority. All processes have a default priority of 10\n");
++    printf(1, " - The parent processes will switch to priority 0\n");
++    setprior(0); // Use your own setpriority interface
++    printf(1, "this worked\n");
++    for (i = 0; i < 3; i++) {
++       pid = fork();
++       if (pid > 0) {
++            continue;
++        } else if ( pid == 0) {
++            printf(1, " - Hello! this is child# %d and I will change my priority to %d \n", getpid(), 30 - 10 * i);
++            setprior(30 - 10 * i); // Use your own setpriority interface
++            for (j = 0; j < 50000; j++) {
++                asm("nop");
++                for(k = 0; k < 10000; k++) {
++                    asm("nop"); 
++                }
++            }
++           printf(1, " - Child #%d with priority %d has finished! \n", getpid(), 30-10 * i);
++     //    t =  findpri(0);    
++         
++            exitt(0);
++        } else {
++            printf(2," \n Error fork() \n");
++            exitt(-1);
++        }
++    }
++
++    if(pid > 0) {
++        for (i = 0; i < 3; i++) {
++            ret_pid = mywait(&exit_status);
++            printf(1, " - This is the parent: child with PID# %d has finished with status %d \n", ret_pid, exit_status);
++        }
++        printf(1, " - If processes with highest priority finished first then its correct. \n");
++    }
++                       
++    return 0;
++}
++
++int donation(void){
++int pid = 0;
++int ret_pid = 0;
++int exit_status;
++printf(1, "Testing priority inheritance and aging of priority\n");
++printf(1, "Priority of child will be set to 30  and priority of parent will start at default 10 \n");
++pid = fork();
++if(pid == 0){
++    setprior(30);
++}
++else{
++    ret_pid = mywait(&exit_status);
++
++}
++if(ret_pid == 0){
++    
++}
++return 0;
++
++}
+\ No newline at end of file
+diff --git a/proc.c b/proc.c
+index 30e3de9..0e6d5c0 100644
+--- a/proc.c
++++ b/proc.c
+@@ -112,6 +112,10 @@ found:
+   memset(p->context, 0, sizeof *p->context);
+   p->context->eip = (uint)forkret;
+ 
++  p->val_priority = 10;
++  p->ticks = ticks;
++  p->burst = 0;
++  
+   return p;
+ }
+ 
+@@ -199,6 +203,8 @@ fork(void)
+   np->sz = curproc->sz;
+   np->parent = curproc;
+   *np->tf = *curproc->tf;
++  np->t_start = ticks; //NEW CODES
++  np->burst = 0;
+ 
+   // Clear %eax so that fork returns 0 in the child.
+   np->tf->eax = 0;
+@@ -215,6 +221,7 @@ fork(void)
+   acquire(&ptable.lock);
+ 
+   np->state = RUNNABLE;
++  np->val_priority = curproc->val_priority; //NEW CHANGE
+ 
+   release(&ptable.lock);
+ 
+@@ -262,6 +269,9 @@ exit(void)
+   }
+ 
+   // Jump into the scheduler, never to return.
++  curproc->t_finish = ticks;
++ // fd = findpri(0);
++
+   curproc->state = ZOMBIE;
+   sched();
+   panic("zombie exit");
+@@ -287,6 +297,10 @@ wait(void)
+       if(p->state == ZOMBIE){
+         // Found one.
+         pid = p->pid;
++       if(p->val_priority > curproc->val_priority){//PRIORITY inheritance
++        p->val_priority = curproc->val_priority;
++        }
++
+         kfree(p->kstack);
+         p->kstack = 0;
+         freevm(p->pgdir);
+@@ -323,8 +337,13 @@ void
+ scheduler(void)
+ {
+   struct proc *p;
++  struct proc *a = myproc();
+   struct cpu *c = mycpu();
+   c->proc = 0;
++  int ttracker;
++  //int tt = 0;
++  //int blank = 0;
++  //int lowepri = findpri(0);
+   
+   for(;;){
+     // Enable interrupts on this processor.
+@@ -335,21 +354,65 @@ scheduler(void)
+     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+       if(p->state != RUNNABLE)
+         continue;
++     
++    
++    // a = p;
++      
++     
++    
++ // p = a;
++     
++     a = p;
++      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
++      if(p->state != RUNNABLE)
++        continue;
++        if(a->val_priority > p->val_priority){
++
++          a = p;
++        }
++
++      }
++      
++      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
++      if(p->state != RUNNABLE)
++        continue;
++      
++      
++      if(p == a){
++        p->val_priority = p->val_priority + 1;
++      }
+ 
+-      // Switch to chosen process.  It is the process's job
+-      // to release ptable.lock and then reacquire it
++        else{
++  
++         if(p->val_priority > 0)
++          p->val_priority = p->val_priority - 1;
++        }
++
++      }
++
++      p = a;
++
++       // to release ptable.lock and then reacquire it
+       // before jumping back to us.
+       c->proc = p;
+       switchuvm(p);
+       p->state = RUNNING;
+-
++      ttracker = ticks; //CHECKS THESE ONES
+       swtch(&(c->scheduler), p->context);
+       switchkvm();
+ 
++      p->burst = p->burst + (ticks -ttracker);
+       // Process is done running for now.
+       // It should have changed its p->state before coming back.
+       c->proc = 0;
++
++      
+     }
++     // cprintf("a \n");
++     //cprintf("%d", a->pid); 
++    
++  
++
+     release(&ptable.lock);
+ 
+   }
+@@ -593,8 +656,12 @@ exitt(int status){
+    
+  // curproc->exstatus = status;
+   curproc->exstatus = status;
++  curproc->t_finish = ticks;
++  
++  fd = findpri(0);
+   // Jump into the scheduler, never to return.
+   curproc->state = ZOMBIE;
++  
+   sched();
+   panic("zombie exit");   
+ }
+@@ -622,7 +689,14 @@ struct proc *p;
+       if(p->state == ZOMBIE){
+         // Found one.
+         pid = p->pid;
+-       
++        if(p->val_priority > curproc->val_priority){//PRIORITY inheritance
++        cprintf("\n priority switched for child priority was ");
++        cprintf("%d", p->val_priority);
++        p->val_priority = curproc->val_priority;
++        cprintf("\n priority is now ");
++       cprintf("%d", p->val_priority);
++
++        }
+         *status = p->exstatus;
+          //   cprintf("%d", *status);
+ 
+@@ -730,4 +804,34 @@ waitpid(int pidd, int* status){
+     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+   }
++}
++
++int setprior(int y){
++    struct proc *curproc = myproc();
++    curproc->val_priority = y;
++
++   
++   // sched(); //OPTIONAL
++    return y;
++}
++
++int findpri(int z){//THIS IS JUST TURNAROUND TIME
++  
++   struct proc *a = myproc();
++   int x;
++   x = a->t_finish - a->t_start; // - t_finish
++   cprintf("\n this is the turnaround time for process ");
++   cprintf("%d", a->pid);
++   cprintf(": ");
++  cprintf("%d", x);
++  cprintf("\n"); 
++
++   cprintf("\n this is the waiting time for process ");
++   x = x - a->burst;
++   cprintf("%d", a->pid);
++   cprintf(": ");
++  cprintf("%d", x);
++  cprintf("\n"); 
++
++  return x;
+ }
+\ No newline at end of file
+diff --git a/proc.h b/proc.h
+index aec117f..7d728df 100644
+--- a/proc.h
++++ b/proc.h
+@@ -50,6 +50,13 @@ struct proc {
+   struct inode *cwd;           // Current directory
+   char name[16];               // Process name (debugging)
+   int exstatus;
++  int val_priority;
++  int t_start;
++  int t_finish;
++  int ticks;
++  int burst;
++  int tick_et;
++
+ };
+ 
+ // Process memory is laid out contiguously, low addresses first:
+diff --git a/syscall.c b/syscall.c
+index 94d696e..45fa596 100644
+--- a/syscall.c
++++ b/syscall.c
+@@ -108,6 +108,8 @@ extern int sys_getparents(void); //getparents
+ extern int sys_exitt(void); //returnt status
+ extern int sys_mywait(void);
+ extern int sys_waitpid(void);
++extern int sys_setprior(void);
++extern int sys_findpri(void);
+ 
+ static int (*syscalls[])(void) = {
+ [SYS_fork]    sys_fork,
+@@ -136,6 +138,8 @@ static int (*syscalls[])(void) = {
+ [SYS_exitt] sys_exitt,
+ [SYS_mywait] sys_mywait,
+ [SYS_waitpid] sys_waitpid,
++[SYS_setprior] sys_setprior,
++[SYS_findpri] sys_findpri,
+ 
+ };
+ 
+diff --git a/syscall.h b/syscall.h
+index 19dbd4a..995381b 100644
+--- a/syscall.h
++++ b/syscall.h
+@@ -25,3 +25,5 @@
+ #define SYS_exitt 24
+ #define SYS_mywait 25
+ #define SYS_waitpid 26
++#define SYS_setprior 27
++#define SYS_findpri 28
+diff --git a/sysproc.c b/sysproc.c
+index 61ec3b6..f49ba35 100644
+--- a/sysproc.c
++++ b/sysproc.c
+@@ -142,4 +142,20 @@ sys_waitpid(void)
+   argint(0, &a);
+ 
+   return waitpid(a, bubus);
++}
++
++int 
++sys_setprior(void){
++   int y = 100;
++  argint(0, &y);
++    
++  return setprior(y);
++}
++
++int 
++sys_findpri(void){
++   int z = 100;
++  argint(0, &z);
++    
++  return findpri(z);
+ }
+\ No newline at end of file
+diff --git a/trap.c b/trap.c
+index 41c66eb..6bc259a 100644
+--- a/trap.c
++++ b/trap.c
+@@ -48,12 +48,15 @@ trap(struct trapframe *tf)
+ 
+   switch(tf->trapno){
+   case T_IRQ0 + IRQ_TIMER:
++   
+     if(cpuid() == 0){
+       acquire(&tickslock);
+       ticks++;
+       wakeup(&ticks);
+       release(&tickslock);
++     
+     }
++    
+     lapiceoi();
+     break;
+   case T_IRQ0 + IRQ_IDE:
+diff --git a/user.h b/user.h
+index dd60ee6..ae046ec 100644
+--- a/user.h
++++ b/user.h
+@@ -28,7 +28,9 @@ int getparents(void);
+ int exitt(int) __attribute__((noreturn));
+ int mywait(int*); //new
+ int waitpid(int, int*); 
+-
++int setprior(int);
++int findpri(int);
++int tick_et(int);
+ 
+ 
+ 
+diff --git a/usys.S b/usys.S
+index 15ed5d2..0399394 100644
+--- a/usys.S
++++ b/usys.S
+@@ -33,4 +33,6 @@ SYSCALL(hello) //J.H
+ SYSCALL(getparents) //GETPARENTS
+ SYSCALL(exitt) //exit status
+ SYSCALL(mywait) //wait status
+-SYSCALL(waitpid)
+\ No newline at end of file
++SYSCALL(waitpid)
++SYSCALL(setprior)
++SYSCALL(findpri)
+\ No newline at end of file
+(END)
