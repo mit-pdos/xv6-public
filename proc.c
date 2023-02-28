@@ -114,6 +114,7 @@ found:
 
   p->val_priority = 10;
   p->ticks = ticks;
+ // p->t_start = ticks;
   p->burst = 0;
   
   return p;
