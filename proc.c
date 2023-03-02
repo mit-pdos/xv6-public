@@ -397,6 +397,7 @@ scheduler(void)
       // before jumping back to us.
       c->proc = p;
       switchuvm(p);
+      
       p->state = RUNNING;
       ttracker = ticks; //CHECKS THESE ONES
       swtch(&(c->scheduler), p->context);
