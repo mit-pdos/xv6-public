@@ -182,6 +182,8 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_testcase\
+	_numvp\
+	_numpp
 
 
 fs.img: mkfs README $(UPROGS)
