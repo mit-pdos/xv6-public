@@ -14,3 +14,5 @@ kernel
 kernelmemfs
 mkfs
 .gdbinit
+.DS_store
+.idea/
