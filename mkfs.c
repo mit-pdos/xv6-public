@@ -170,6 +170,10 @@ main(int argc, char *argv[])
 void
 wsect(uint sec, void *buf)
 {
+  if(sec > FSSIZE) {
+    fprintf(stderr, "failed: trying to write sector %d > FSSIZE = %d\n", sec, FSSIZE);
+    exit(1);
+  }
   if(lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE){
     perror("lseek");
     exit(1);
@@ -210,6 +214,10 @@ rinode(uint inum, struct dinode *ip)
 void
 rsect(uint sec, void *buf)
 {
+  if(sec > FSSIZE) {
+    fprintf(stderr, "failed: trying to read sector %d > FSSIZE = %d\n", sec, FSSIZE);
+    exit(1);
+  }
   if(lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE){
     perror("lseek");
     exit(1);

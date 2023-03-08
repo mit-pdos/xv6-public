@@ -89,3 +89,21 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_yield(void)
+{
+  yield();
+  return 0;
+}
+
+int sys_shutdown(void)
+{
+  shutdown();
+  return 0;
+}
+
+int sys_ps(void)
+{
+  return 42;
+}
