@@ -105,5 +105,9 @@ int sys_shutdown(void)
 
 int sys_ps(void)
 {
-  return 42;
+  int numberOfProcs;
+
+  if(argint(0, &numberOfProcs) < 0)
+    return -1;
+  return proc_ps(numberOfProcs);
 }

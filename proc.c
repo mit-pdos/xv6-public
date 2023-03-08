@@ -20,6 +20,23 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+int proc_ps(int numberOfProcs)
+{
+  struct proc *p;
+  int result = 0;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->state != UNUSED) {
+      ++result;
+    }
+  }
+
+  release(&ptable.lock);
+  return result + numberOfProcs;
+}
+
 void
 pinit(void)
 {
