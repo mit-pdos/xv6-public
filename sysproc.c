@@ -117,5 +117,12 @@ sys_numpp(void) {
 
 int
 sys_mmap(void) {
-    return 0;
+    int num;
+    argint(0,&num);
+    if (num % PGSIZE != 0 || num == 0) {
+        cprintf("mmap failed\n");
+        cprintf("%d - not divisible by PGSIZE\n", num);
+        return 0;
+    }
+    return num;
 }

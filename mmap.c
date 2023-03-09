@@ -4,8 +4,9 @@
 
 
 int
-main(void)
+main(int argc, char *argv[])
 {
-    printf(1, "%d\n", mmap());
+    int n = atoi(argv[1]);
+    printf(1, "mmap returned %d\n", mmap(n));
     exit();
 }
