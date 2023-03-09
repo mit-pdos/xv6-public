@@ -183,7 +183,8 @@ UPROGS=\
 	_zombie\
 	_testcase\
 	_numvp\
-	_numpp
+	_numpp\
+	_mmap
 
 
 fs.img: mkfs README $(UPROGS)

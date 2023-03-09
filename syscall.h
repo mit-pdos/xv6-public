@@ -22,3 +22,4 @@
 #define SYS_close  21
 #define SYS_numvp  22
 #define SYS_numpp  23
+#define SYS_mmap   24
