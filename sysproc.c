@@ -92,8 +92,7 @@ sys_uptime(void)
 
 int
 sys_numvp(void) {
-    cprintf("numvp syscall\n");
-    return 12;
+    return (PGROUNDUP(myproc()->sz))/PGSIZE + 1;
 }
 
 int
