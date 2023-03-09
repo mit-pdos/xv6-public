@@ -3,7 +3,8 @@
 #include "user.h"
 
 int
-main(void) {
-    printf(1, "return val of system call is %d\n", numpp());
+main(void)
+{
+    printf(1, "%d\n", numpp());
     exit();
 }
