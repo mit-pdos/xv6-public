@@ -120,7 +120,7 @@ sys_mmap(void) {
     int num;
     argint(0,&num);
     if (num % PGSIZE != 0 || num == 0) {
-        cprintf("mmap failed\n");
+        cprintf("error: mmap failed\n");
         cprintf("%d - not divisible by PGSIZE\n", num);
         return 0;
     }
