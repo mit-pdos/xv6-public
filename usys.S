@@ -29,3 +29,7 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
+SYSCALL(numvp)
+SYSCALL(numpp)
+SYSCALL(mmap)
+
