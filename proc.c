@@ -20,21 +20,24 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
-int proc_ps(int numberOfProcs)
+int proc_ps(int numberOfProcs, struct procInfo* arrayOfProcInfo)
 {
   struct proc *p;
   int result = 0;
+  int procInfoArrayIndex = 0;
 
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
     if(p->state != UNUSED) {
+      safestrcpy(arrayOfProcInfo[procInfoArrayIndex].name, p->name, MAX_PROC_NAME_LENGTH);
+      ++procInfoArrayIndex;
       ++result;
     }
   }
 
   release(&ptable.lock);
-  return result + numberOfProcs;
+  return procInfoArrayIndex;
 }
 
 void

@@ -26,7 +26,7 @@ int sleep(int);
 int uptime(void);
 int yield(void);
 int shutdown(void);
-int ps(int);
+int ps(int, struct procInfo*);
 
 // ulib.c
 int stat(const char*, struct stat*);
