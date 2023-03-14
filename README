@@ -1,3 +1,9 @@
+This repository is a fork of the xv6-public repository. This repository was forked 
+in order to add extensions to the xv6 OS and implement a MLFQ scheduler. 
+
+Team Partner: Jonathan Hsin, as part of EECE7376.
+
+
 NOTE: we have stopped maintaining the x86 version of xv6, and switched
 our efforts to the RISC-V version
 (https://github.com/mit-pdos/xv6-riscv.git)
