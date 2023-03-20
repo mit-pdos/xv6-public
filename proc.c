@@ -7,9 +7,15 @@
 #include "proc.h"
 #include "spinlock.h"
 
+// Edited by Eric Cordts and Jonathan Hsin
+#define NULL ((void*) 0)
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
+  // Edited by Eric Cordts and Jonathan Hsin
+  struct proc* priorityQueue[3][NPROC]; // Need 3 queues, 0 is highest priority, 2 is lowest
+  int queueCount[3];
 } ptable;
 
 static struct proc *initproc;
@@ -20,10 +26,31 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+void removeProcessFromPriorityQueue(int priority, int indexInQueue);
+
 void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+  
+  // Edited by Eric Cordts and Jonathan Hsin
+
+  // Set each spot to null in the priority queue.
+  int i;
+  int j;
+  acquire(&ptable.lock);
+  for(i = 0; i < 3; i++)
+  {
+	for(j = 0; j < NPROC; j++)
+	{
+		ptable.priorityQueue[i][j] = NULL;
+	}
+  }
+  ptable.queueCount[0] = 0;
+  ptable.queueCount[1] = 0;
+  ptable.queueCount[2] = 0;
+
+  release(&ptable.lock);
 }
 
 // Must be called with interrupts disabled
@@ -78,6 +105,8 @@ allocproc(void)
 
   acquire(&ptable.lock);
 
+  // Edited by Eric Cordts and Jonathan Hsin, EECE7376
+  // Default priority queue is 1
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
@@ -115,6 +144,25 @@ found:
   return p;
 }
 
+// Requires the user has has acquired the ptable.
+// Find the first index in the specified priority queue
+// that is a valid spot and returns that value 
+int findIndexInPriorityQueue(int priority)
+{
+  int i;
+  for(i = 0; i < NPROC; i++)
+  {
+     if(ptable.priorityQueue[priority][i] == NULL)
+     {
+	return i;
+     }
+  }
+
+  // error if there are no open spots.
+  panic("Error! No open spots in priority queue\n");
+  return -1;
+}
+
 //PAGEBREAK: 32
 // Set up first user process.
 void
@@ -148,6 +196,13 @@ userinit(void)
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
 
+  // Edited by Jonathan Hsin and Eric Cordts
+  // Assign default priority of user process 
+  // to 1 and put it into appropriate queue
+  p->priority = 1;
+  p->indexInQueue = findIndexInPriorityQueue(p->priority);
+  ptable.priorityQueue[p->priority][p->indexInQueue] = p;
+  ptable.queueCount[p->priority]++;
   p->state = RUNNABLE;
 
   release(&ptable.lock);
@@ -214,6 +269,14 @@ fork(void)
 
   acquire(&ptable.lock);
 
+  // Edited by Jonathan Hsin and Eric Cordt
+  // new process set to priority 1 and added to 
+  // appropriate queue
+  np->priority = 1;
+  np->indexInQueue = findIndexInPriorityQueue(np->priority);
+  ptable.priorityQueue[np->priority][np->indexInQueue] = np;
+  ptable.queueCount[np->priority]++;
+
   np->state = RUNNABLE;
 
   release(&ptable.lock);
@@ -260,6 +323,10 @@ exit(void)
         wakeup1(initproc);
     }
   }
+
+  // Remove the exiting process from its priority queue
+  // and decrement the queue count
+  removeProcessFromPriorityQueue(curproc->priority, curproc->indexInQueue);
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
@@ -385,8 +452,28 @@ sched(void)
 void
 yield(void)
 {
+  struct proc* curproc = myproc();
   acquire(&ptable.lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
+  // Edited by Jonathan Hsin and Eric Cordts
+
+  // Process has used up its alloted time slot, 
+  // so bump it down in priority (move it towards 2) 
+  if(curproc->priority < 2)
+  {
+      // if it needs to be bumped down in priorty, 
+      // remove it from its current queue
+      // and add it to the new queue. 
+      ptable.priorityQueue[curproc->priority][curproc->indexInQueue] = NULL;
+      ptable.queueCount[curproc->priority]--;
+      curproc->priority++;
+      curproc->indexInQueue = findIndexInPriorityQueue(curproc->priority);
+      ptable.priorityQueue[curproc->priority][curproc->indexInQueue] = curproc;
+      ptable.queueCount[curproc->priority]++;
+  }
+  // Otherwise, it is already at the lowest 
+  // priority queue, so just leave it as is.
+
+  curproc->state = RUNNABLE;
   sched();
   release(&ptable.lock);
 }
@@ -488,6 +575,7 @@ kill(int pid)
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
         p->state = RUNNABLE;
+
       release(&ptable.lock);
       return 0;
     }
@@ -532,3 +620,44 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+// Added by Eric Cordts and Jonathan Hsin for EECE7376
+// helper function to remove a killed process from the priority queue
+void removeProcessFromPriorityQueue(int priority, int indexInQueue)
+{
+   ptable.priorityQueue[priority][indexInQueue] = NULL;
+   ptable.queueCount[priority]--;
+}
+
+// Added by Eric Cordts and Jonathan Hsin for EECE7376
+// Helper function to reset the priority of all 
+// running processes to the highest priority 0
+// for usage during the timer interrupt. 
+void resetPriority()
+{
+   acquire(&ptable.lock);
+   int i;
+   int priIndex;
+   for(i = 0; i < NPROC; i++)
+   {
+     for(priIndex = 1; priIndex < 3; priIndex++)
+     {
+	struct proc* process = ptable.priorityQueue[priIndex][i];
+     	if(process != NULL)
+     	{
+	  // Add process from priority 1/2 to priority 0
+          process->priority = 0;
+	  process->indexInQueue = findIndexInPriorityQueue(process->priority);
+	  ptable.priorityQueue[0][process->indexInQueue] = process;
+	  ptable.queueCount[0]++;
+
+	  // Remove process from priority 1/2 queue
+	  ptable.priorityQueue[priIndex][i] = NULL;
+	  ptable.queueCount[priIndex]--;
+     	}
+     }
+   }
+
+   release(&ptable.lock);
+}
+

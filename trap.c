@@ -14,6 +14,8 @@ extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
 
+extern void resetPriority();
+
 void
 tvinit(void)
 {
@@ -38,11 +40,15 @@ trap(struct trapframe *tf)
 {
   if(tf->trapno == T_SYSCALL){
     if(myproc()->killed)
+    {
       exit();
+    }
     myproc()->tf = tf;
     syscall();
     if(myproc()->killed)
+    {
       exit();
+    }
     return;
   }
 
@@ -51,6 +57,15 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
+      
+      // Edited by Eric Cordts and Jonathan Hsin for EECE7376
+      if(ticks % 20 == 0)
+      {
+	// reset priority to highest priority for all processes
+	// every 200ms
+	resetPriority();
+      }
+
       wakeup(&ticks);
       release(&tickslock);
     }
@@ -98,8 +113,9 @@ trap(struct trapframe *tf)
   // (If it is still executing in the kernel, let it keep running
   // until it gets to the regular system call return.)
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
+  {
     exit();
-
+  }
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
@@ -108,5 +124,7 @@ trap(struct trapframe *tf)
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
+  {
     exit();
+  }
 }
