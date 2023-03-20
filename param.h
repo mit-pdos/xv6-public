@@ -15,14 +15,4 @@
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       2000 // size of file system in blocks
 
-
-#define MAX_PROC_NAME_LENGTH (16)
-struct procInfo {
-    char name[MAX_PROC_NAME_LENGTH];
-    int state;
-    int pid;
-    int ticksAtStart;
-    int ticksWhileScheduled;
-};
-
 #endif // PARAM_H
