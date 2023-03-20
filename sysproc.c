@@ -103,6 +103,14 @@ int sys_shutdown(void)
   return 0;
 }
 
+/// @brief This is the kernel side of a system call to obtain information 
+/// about existing processes in the kernel
+/// arg0 is the maximum number of elements storable in procInfoArray
+/// arg1 is an array of struct procInfo able to store at least 
+/// arg0 elements.
+/// @return The number of struct procInfo structures stored in arg1.
+/// This number may be less than arg0, and if it is, elements
+/// at indexes >= arg0 may contain uninitialized memory.
 int sys_ps(void)
 {
   int numberOfProcs;
