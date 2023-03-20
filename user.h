@@ -26,7 +26,16 @@ int sleep(int);
 int uptime(void);
 int yield(void);
 int shutdown(void);
-int ps(int);
+
+/// @brief This is a system call to obtain information about existing 
+/// processes in the kernel
+/// @param count : the maximum number of elements storable in procInfoArray
+/// @param procInfoArray : an array of struct procInfo able to store at least 
+/// count elements.
+/// @return The number of struct procInfo structures stored in procInfoArray
+/// by the kernel. This number may be less than count, and if it is, elements
+/// at indexes >= count may contain uninitialized memory.
+int ps(int count, struct procInfo* procInfoArray);
 
 // ulib.c
 int stat(const char*, struct stat*);

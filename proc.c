@@ -7,6 +7,15 @@
 #include "proc.h"
 #include "spinlock.h"
 
+static const char * const states[] = {
+  [UNUSED]    "unused",
+  [EMBRYO]    "embryo",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
+  };
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -20,21 +29,37 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
-int proc_ps(int numberOfProcs)
+int proc_ps(int numberOfProcs, struct procInfo* arrayOfProcInfo)
 {
   struct proc *p;
   int result = 0;
+  int procInfoArrayIndex = 0;
+  int currentTicks = ticks;
 
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
     if(p->state != UNUSED) {
+      safestrcpy(arrayOfProcInfo[procInfoArrayIndex].name, p->name,   
+        MAX_PROC_NAME_LENGTH);
+      arrayOfProcInfo[procInfoArrayIndex].pid = p->pid;
+      arrayOfProcInfo[procInfoArrayIndex].state = p->state;
+      int elapsedTicks = currentTicks - p->ticksAtStart;
+      int cpuPercent = 0;
+      if(elapsedTicks > 0 && 1 < p->ticksScheduled) {
+        cpuPercent = (p->ticksScheduled * 100) / elapsedTicks;
+        if(100 < cpuPercent) {
+          cpuPercent = 100;
+        }
+      }
+      arrayOfProcInfo[procInfoArrayIndex].cpuPercent = cpuPercent;
+      ++procInfoArrayIndex;
       ++result;
     }
   }
 
   release(&ptable.lock);
-  return result + numberOfProcs;
+  return procInfoArrayIndex;
 }
 
 void
@@ -158,6 +183,8 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+  p->ticksAtStart = ticks;
+  p->ticksScheduled = 0;
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -232,6 +259,8 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  np->ticksAtStart = ticks;
+  np->ticksScheduled = 0;
 
   release(&ptable.lock);
 
@@ -394,6 +423,7 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = mycpu()->intena;
+  p->ticksScheduled += 1;
   swtch(&p->context, mycpu()->scheduler);
   mycpu()->intena = intena;
 }
@@ -520,17 +550,9 @@ kill(int pid)
 void
 procdump(void)
 {
-  static char *states[] = {
-  [UNUSED]    "unused",
-  [EMBRYO]    "embryo",
-  [SLEEPING]  "sleep ",
-  [RUNNABLE]  "runble",
-  [RUNNING]   "run   ",
-  [ZOMBIE]    "zombie"
-  };
   int i;
   struct proc *p;
-  char *state;
+  const char *state;
   uint pc[10];
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
