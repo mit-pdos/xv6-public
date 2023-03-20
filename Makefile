@@ -193,6 +193,7 @@ UPROGS=\
 	_mycat2\
 	_snprintftest\
 	_ps\
+	_longRunner\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
