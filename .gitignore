@@ -14,3 +14,8 @@ kernel
 kernelmemfs
 mkfs
 .gdbinit
+cscope.out
+tags
+.gitignore
+
+

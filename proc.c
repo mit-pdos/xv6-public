@@ -532,3 +532,13 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+int
+clone(void)
+{
+	cprintf("This is clone system call copy of fork system call\n");
+	return 0;
+
+
+}
