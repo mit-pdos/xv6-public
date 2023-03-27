@@ -106,6 +106,8 @@ extern int sys_uptime(void);
 extern int sys_yield(void);
 extern int sys_shutdown(void);
 extern int sys_ps(void);
+extern int sys_flock(void);
+extern int sys_funlock(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -129,9 +131,11 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_yield] sys_yield,
-[SYS_shutdown] sys_shutdown,
-[SYS_ps] sys_ps,
+[SYS_yield]   sys_yield,
+[SYS_shutdown]sys_shutdown,
+[SYS_ps]      sys_ps,
+[SYS_flock]   sys_flock,
+[SYS_funlock] sys_funlock,
 };
 
 void

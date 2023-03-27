@@ -34,6 +34,8 @@ void            fileinit(void);
 int             fileread(struct file*, char*, int n);
 int             filestat(struct file*, struct stat*);
 int             filewrite(struct file*, char*, int n);
+int             filelock(struct file*);
+int             fileunlock(struct file*);
 
 // fs.c
 void            readsb(int dev, struct superblock *sb);
@@ -42,6 +44,8 @@ struct inode*   dirlookup(struct inode*, char*, uint*);
 struct inode*   ialloc(uint, short);
 struct inode*   idup(struct inode*);
 void            iinit(int dev);
+void            fsemaphore_lock(struct inode*);
+void            fsemaphore_unlock(struct inode*);
 void            ilock(struct inode*);
 void            iput(struct inode*);
 void            iunlock(struct inode*);

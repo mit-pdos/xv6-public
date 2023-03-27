@@ -155,3 +155,23 @@ filewrite(struct file *f, char *addr, int n)
   panic("filewrite");
 }
 
+int filelock(struct file* fp) { 
+  if(fp->ip == 0 || fp->ip->ref < 1) {
+    return -1;
+  }
+
+  fsemaphore_lock(fp->ip);
+  return 0;
+}
+
+int fileunlock(struct file* fp)
+{
+  int status = -1;
+
+  if(fp->ip != 0 && holdingsleep(&fp->ip->flock) && !(fp->ip->ref < 1)) {
+    fsemaphore_unlock(fp->ip);
+    status = 0;
+  }
+
+  return status;
+}
