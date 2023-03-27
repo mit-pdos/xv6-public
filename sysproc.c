@@ -116,9 +116,11 @@ int sys_ps(void)
   int numberOfProcs;
   struct procInfo* procInfoArray;
 
-  if(argint(0, &numberOfProcs) < 0)
+  if(argint(0, &numberOfProcs) < 0) {
     return -1;
-  if(argptr(1, (char **)&procInfoArray,  sizeof(struct procInfo *)) < 0)
+  }
+  if(argptr(1, (char **)&procInfoArray,  sizeof(struct procInfo *)) < 0) {
     return -1;
+  }
   return proc_ps(numberOfProcs, procInfoArray);
 }

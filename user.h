@@ -37,6 +37,20 @@ int shutdown(void);
 /// at indexes >= count may contain uninitialized memory.
 int ps(int count, struct procInfo* procInfoArray);
 
+/// @brief call this function pasing the file descriptor for an open file in order to
+/// acquire a sleep lock associated with the open file. This function blocks 
+/// (a.k.a. sleeps) until the lock is acquired.
+/// @param fd descriptor for a file opened with open()
+/// @return zero if lock is acquired and a negative number if any error is detected.
+int flock(int fd);
+
+/// @brief call this function pasing the file descriptor for an open file that is
+/// currently locked via flock(). This function unlocks the lock associated with 
+/// the file. 
+/// @param fd descriptor for a file opened with open() and locked with flock()
+/// @return zero if lock is released and a negative number if any error is detected.
+int funlock(int fd);
+
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);

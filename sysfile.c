@@ -90,6 +90,25 @@ sys_write(void)
   return filewrite(f, p, n);
 }
 
+
+int 
+sys_flock(void) {
+   struct file *fp;
+   if(argfd(0, 0, &fp) >= 0) {
+     return filelock(fp);
+   }
+   return -1;
+}
+
+int 
+sys_funlock(void) {
+   struct file *fp;
+   if(argfd(0, 0, &fp) >= 0) {
+     return fileunlock(fp);
+   }
+   return -1;
+}
+
 int
 sys_close(void)
 {

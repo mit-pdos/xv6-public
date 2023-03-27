@@ -14,6 +14,7 @@ struct inode {
   uint dev;           // Device number
   uint inum;          // Inode number
   int ref;            // Reference count
+  struct sleeplock flock; // use to implement file based semaphore
   struct sleeplock lock; // protects everything below here
   int valid;          // inode has been read from disk?
 
