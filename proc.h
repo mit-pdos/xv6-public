@@ -52,6 +52,7 @@ struct proc {
   //thread's DS
   int isthread;
   int tid;
+  char* tstack;
   
 };
 
@@ -60,3 +61,9 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+#define CLONE_THREAD 1
+#define CLONE_VM     2 
+#define CLONE_FS     4
+#define CLONE_PARENT 8
+#define CLONE_FILE   16
+
