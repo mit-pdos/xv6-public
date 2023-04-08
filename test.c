@@ -1,10 +1,73 @@
-#include"types.h"
-#include"stat.h"
-#include"user.h"
-#include"fs.h"
+#include "types.h"
+#include "stat.h"
+#include "user.h"
+#include "fs.h"
+#include "fcntl.h"
 
+#define CLONE_VM 2
+#define CLONE_THREAD 1
+#define CLONE_FILES 16
 
-int main(int argc,char* argv[]){
-	clone();
+int glob = 10;
+void userprog(void *arg)
+{
+	// int fd = *((int *)arg);
+	// char buf[15];
+	// read(fd, buf, sizeof(buf));
+	// printf(1, "Child process read: %s\n", buf);
+	// close(fd);
+	glob += 13;
+	printf(1, "Global in child %d\n", glob);
+	exit();
+}
+
+void child_func(void *arg)
+{
+	int *fd = (int *)arg;
+	printf(1, "child process: fd[0] = %d, fd[1] = %d\n", fd[0], fd[1]);
+	close(fd[0]);
+	write(fd[1], "hello from child\n", 17);
+	close(fd[1]);
+	glob += 13;
+	printf(1, "Global in child %d\n", glob);
+	close(0);
+	// close(1);
+	exit();
+}
+
+void test_CloneVm()
+{
+
+	char *stack = malloc(4096);
+	clone(&userprog, stack, CLONE_VM, 0);
+	sleep(2);
+	glob+=10;
+	printf(1, "From parent %d\n", glob);
+}
+
+void test_CloneFiles(){
+	int fd[2];
+
+	if (pipe(fd) < 0)
+	{
+		exit();
+	}
+	char *stack = malloc(4096);
+	clone(&child_func, stack, 0 , &fd);
+	printf(1, "parent process: fd[0] = %d, fd[1] = %d\n", fd[0], fd[1]);
+	// closing the write end of the pipe
+	close(fd[1]);
+	char buf[256];
+	int n = read(fd[0], buf, sizeof(buf));
+	write(1, buf, n);
+	// closing the read end of the pipe
+	close(fd[0]);
+	sleep(2);
+
+}
+int main(int argc, char *argv[])
+{
+	test_CloneFiles();
+	test_CloneVm();
 	exit();
 }

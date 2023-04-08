@@ -1,4 +1,10 @@
 // Per-CPU state
+#define CLONE_THREAD 1
+#define CLONE_VM     2 
+#define CLONE_FS     4
+#define CLONE_PARENT 8
+#define CLONE_FILES  16
+
 struct cpu {
   uchar apicid;                // Local APIC ID
   struct context *scheduler;   // swtch() here to enter scheduler
@@ -52,7 +58,8 @@ struct proc {
   //thread's DS
   int isthread;
   int tid;
-  char* tstack;
+  uint tstack;
+  uint tgid;   //for the CLONE_THREAD child is placed in the same thread group id
   
 };
 
@@ -61,9 +68,4 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
-#define CLONE_THREAD 1
-#define CLONE_VM     2 
-#define CLONE_FS     4
-#define CLONE_PARENT 8
-#define CLONE_FILE   16
 
