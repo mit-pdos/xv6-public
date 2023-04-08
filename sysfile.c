@@ -443,10 +443,3 @@ sys_pipe(void)
   return 0;
 }
 
-/*int 
-sys_clone(void)
-{
-	cprintf("This is clone system call\n");
-	return 0;
-}
-*/
