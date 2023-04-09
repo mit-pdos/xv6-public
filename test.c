@@ -15,9 +15,9 @@ void userprog(void *arg)
 	// char buf[15];
 	// read(fd, buf, sizeof(buf));
 	// printf(1, "Child process read: %s\n", buf);
-	// close(fd);
 	glob += 13;
 	printf(1, "Global in child %d\n", glob);
+	close(1);
 	exit();
 }
 
@@ -30,8 +30,8 @@ void child_func(void *arg)
 	close(fd[1]);
 	glob += 13;
 	printf(1, "Global in child %d\n", glob);
-	close(0);
-	// close(1);
+	//close(0);
+        close(1);
 	exit();
 }
 
@@ -39,10 +39,11 @@ void test_CloneVm()
 {
 
 	char *stack = malloc(4096);
-	clone(&userprog, stack, CLONE_VM, 0);
+	clone(&userprog, stack,CLONE_FILES, 0);
 	sleep(2);
 	glob+=10;
 	printf(1, "From parent %d\n", glob);
+
 }
 
 void test_CloneFiles(){
@@ -53,7 +54,7 @@ void test_CloneFiles(){
 		exit();
 	}
 	char *stack = malloc(4096);
-	clone(&child_func, stack, 0 , &fd);
+	clone(&child_func, stack,CLONE_VM , &fd);
 	printf(1, "parent process: fd[0] = %d, fd[1] = %d\n", fd[0], fd[1]);
 	// closing the write end of the pipe
 	close(fd[1]);
@@ -67,7 +68,11 @@ void test_CloneFiles(){
 }
 int main(int argc, char *argv[])
 {
-	test_CloneFiles();
+//	test_CloneFiles();
 	test_CloneVm();
+/*	char* stack = malloc(4096);
+	clone(&userprog, stack , CLONE_VM , 0);
+	sleep(2);*/
+	printf(1,"Manja is Ganja\n");
 	exit();
 }

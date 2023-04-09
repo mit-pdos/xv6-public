@@ -6,7 +6,9 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -211,6 +213,7 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
+  np->tid = -1; //tid -1
 
   acquire(&ptable.lock);
 
@@ -558,7 +561,7 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   }
   else
   {
-    //  np->parent = curproc;
+   // np->parent = curproc;
   }
 
   if (flags & CLONE_VM)
@@ -590,29 +593,10 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
     retid = np->pid;
   }
 
+  //When CLONE_FILES set then file descriptors get shared , else it is copied.
   if (flags & CLONE_FILES)
   {
-    for (i = 0; i < NOFILE; i++)
-    {
-      if (curproc->ofile[i])
-      {
-        struct file *f = filealloc();
-        if (f == 0)
-        {
-          return -1;
-        }
-        *f = *curproc->ofile[i];
-
-        if (f->ip)
-        {
-          f->ip->ref++;
-        }
-        np->ofile[i] = f;
-      }
-    }
-  }
-  else
-  {
+    cprintf("clone_files\n");	  
     for (i = 0; i < NOFILE; i++)
     {
       if (curproc->ofile[i])
@@ -620,24 +604,54 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
         np->ofile[i] = filedup(curproc->ofile[i]);
       }
     }
+
   }
+  else{
+     for (i = 0; i < NOFILE; i++) {
+     		 if (curproc->ofile[i])
+		 {
+			 cprintf("try to copy ofiles\n");
+       			 struct file *f = filealloc();
+       			 if (f == 0)
+			 {
+				 cprintf("filealloc error in copying file descriptor\n");
+         			 return -1;
+			 }
+		        *f = *curproc->ofile[i];
 
-  np->tstack = (uint)stack;
+		        if (f->ip)
+		        {
+		          f->ip->ref++;
+		       	 }
+		        np->ofile[i] = f;
+		 }
+		 
+      	  }
+  }
+  if(flags & CLONE_VM){
+	 np->tstack = (uint)stack;
+  }
   *np->tf = *curproc->tf;
+  if(flags & CLONE_VM){
 
-  userstack[0] = (uint)0xffffffff;
-  userstack[1] = (uint)args;
-  sp = (uint)np->tstack;
-  sp -= 2 * 4;
-  if (copyout(np->pgdir, sp, userstack, 2 * sizeof(uint)) == -1)
-  {
-    kfree(np->kstack);
-    np->kstack = 0;
-    np->state = UNUSED;
-    return -1;
+  	userstack[0] = (uint)0xffffffff;
+	userstack[1] = (uint)args;
+	sp = (uint)np->tstack;
+ 	sp -= 2 * 4;
+ 	 if (copyout(np->pgdir, sp, userstack, 2 * sizeof(uint)) == -1)
+ 	 {
+    		kfree(np->kstack);
+    		np->kstack = 0;
+    		np->state = UNUSED;
+    		return -1;
+	 }
   }
   // Clear %eax so that fork returns 0 in the child.
-  np->tf->eax = 0;
+  else{
+	  
+	  np->tf->eax = 0;
+	  sp = np->tf->esp;
+  }
   np->tf->eip = (uint)fn;
   np->tf->esp = sp;
 
