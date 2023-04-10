@@ -11,13 +11,13 @@
 int glob = 10;
 void userprog(void *arg)
 {
-	// int fd = *((int *)arg);
-	// char buf[15];
-	// read(fd, buf, sizeof(buf));
-	// printf(1, "Child process read: %s\n", buf);
+	int fd = *((int *)arg);
+	/*char buf[15];
+	read(fd, buf, sizeof(buf));
+        printf(1, "Child process read: %s\n", buf);
 	glob += 13;
-	printf(1, "Global in child %d\n", glob);
-	close(1);
+	printf(1, "Global in child %d\n", glob);*/
+	close(fd);
 	exit();
 }
 
@@ -69,10 +69,25 @@ void test_CloneFiles(){
 int main(int argc, char *argv[])
 {
 //	test_CloneFiles();
-	test_CloneVm();
+//	test_CloneVm();
 /*	char* stack = malloc(4096);
 	clone(&userprog, stack , CLONE_VM , 0);
 	sleep(2);*/
+	int fd;
+	fd = open("manja.txt",O_RDONLY | O_CREATE);
+	char* stack = malloc(4096);
+	clone(&userprog , stack,0,&fd);
+	char buf[100];
+	strcpy(buf, "manja test file\n");
+	int n=write(fd,buf,10);
+	if(n<=0){
+		printf(1,"write fails in manja.txt\n");
+	}
+	else{
+		printf(1,"write succ\n");
+	}
+
+
 	printf(1,"Manja is Ganja\n");
 	exit();
 }
