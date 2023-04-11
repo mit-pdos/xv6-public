@@ -638,7 +638,7 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
 	userstack[1] = (uint)args;
 	sp = (uint)np->tstack;
  	sp -= 2 * 4;
- 	 if (copyout(np->pgdir, sp, userstack, 2 * sizeof(uint)) == -1)
+ 	if (copyout(np->pgdir, sp, userstack, 2 * sizeof(uint)) == -1)
  	 {
     		kfree(np->kstack);
     		np->kstack = 0;
