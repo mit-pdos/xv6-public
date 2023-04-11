@@ -74,20 +74,21 @@ int main(int argc, char *argv[])
 	clone(&userprog, stack , CLONE_VM , 0);
 	sleep(2);*/
 	int fd;
-	fd = open("manja.txt",O_RDONLY | O_CREATE);
+	fd = open("try.txt",O_RDONLY | O_CREATE);
 	char* stack = malloc(4096);
 	clone(&userprog , stack,0,&fd);
+	wait();
 	char buf[100];
-	strcpy(buf, "manja test file\n");
+	strcpy(buf, "test file\n");
 	int n=write(fd,buf,10);
 	if(n<=0){
-		printf(1,"write fails in manja.txt\n");
+		printf(1,"write fails in try.txt\n");
 	}
 	else{
 		printf(1,"write succ\n");
 	}
 
 
-	printf(1,"Manja is Ganja\n");
+	printf(1,"parent here\n");
 	exit();
 }

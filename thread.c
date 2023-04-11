@@ -33,7 +33,8 @@ int routine(void *arg){
 
 int main(){
 	thread_t th1;
-	thread_create(&th1,routine ,0, CLONE_VM);
+	thread_create(&th1,routine ,0,CLONE_VM);
+	
 	thread_join(&th1);
 	glob += 10;
 	printf(1,"Global in Parent %d\n",glob);
@@ -49,7 +50,6 @@ int thread_create(thread_t* thread, int(*start_routine)(void*),void *arg, int fl
                 return -1;
         }
         thread->tid = clone((void*)start_routine, thread->stack,flags , arg);
-
         if( thread->tid == -1){
         //      free(thread->stack);
                 return -1;
@@ -60,5 +60,6 @@ int thread_create(thread_t* thread, int(*start_routine)(void*),void *arg, int fl
 
 int thread_join(thread_t *th){
 	sleep(2);
+	wait();
 	return 0;
 }

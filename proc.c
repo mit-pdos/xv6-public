@@ -561,7 +561,7 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   }
   else
   {
-   // np->parent = curproc;
+     //np->parent = curproc;
   }
 
   if (flags & CLONE_VM)
@@ -579,20 +579,6 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
       return -1;
     }
   }
-
-  if (flags & CLONE_THREAD)
-  {
-    np->tid = np->pid;
-    np->pid = curproc->pid;
-
-    retid = np->tid;
-  }
-  else
-  {
-    np->tid = -1;
-    retid = np->pid;
-  }
-
   //When CLONE_FILES set then file descriptors get shared , else it is copied.
   if (flags & CLONE_FILES)
   {
@@ -656,9 +642,7 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   np->tf->esp = sp;
 
   np->cwd = idup(curproc->cwd);
-
-  // np->tid = np->pid;
-  // np->pid = curproc->pid;
+  retid = np->tid;
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
   acquire(&ptable.lock);
   np->state = RUNNABLE;
