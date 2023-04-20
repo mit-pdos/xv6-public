@@ -33,11 +33,11 @@ int routine(void *arg){
 
 int main(){
 	thread_t th1;
-	thread_create(&th1,routine ,0,CLONE_VM);
-	
-	thread_join(&th1);
+	thread_create(&th1,routine ,0,0);
+	sleep(1);	
+//	thread_join(&th1);
 	glob += 10;
-	printf(1,"Global in Parent %d\n",glob);
+	printf(1,"Global in parent %d\n",glob);
 	exit();
 
 }
@@ -59,7 +59,6 @@ int thread_create(thread_t* thread, int(*start_routine)(void*),void *arg, int fl
 }
 
 int thread_join(thread_t *th){
-	sleep(2);
-	wait();
-	return 0;
+	return join(th->tid);
+
 }

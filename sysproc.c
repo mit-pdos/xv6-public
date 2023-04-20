@@ -108,3 +108,12 @@ sys_clone(void)
   return clone(fcn,(void*)stack,flags,(void*)args);
 }
 
+
+int
+sys_join(void)
+{
+	int tid;
+	if(argint(0,&tid)<0)
+		return -1;
+	return join(tid);
+}

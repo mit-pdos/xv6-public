@@ -11,13 +11,13 @@
 int glob = 10;
 void userprog(void *arg)
 {
-	int fd = *((int *)arg);
+	//int fd = *((int *)arg);
 	/*char buf[15];
 	read(fd, buf, sizeof(buf));
         printf(1, "Child process read: %s\n", buf);
-	glob += 13;
-	printf(1, "Global in child %d\n", glob);*/
-	close(fd);
+	glob += 13;*/
+	printf(1, "Global in child %d\n", glob);
+	//close(fd);
 	exit();
 }
 
@@ -73,10 +73,12 @@ int main(int argc, char *argv[])
 /*	char* stack = malloc(4096);
 	clone(&userprog, stack , CLONE_VM , 0);
 	sleep(2);*/
+//	close(1);
 	int fd;
 	fd = open("try.txt",O_RDONLY | O_CREATE);
+	close(1);
 	char* stack = malloc(4096);
-	clone(&userprog , stack,0,&fd);
+	clone(&userprog ,stack,0,&fd);
 	wait();
 	char buf[100];
 	strcpy(buf, "test file\n");

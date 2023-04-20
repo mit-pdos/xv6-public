@@ -647,3 +647,41 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   release(&ptable.lock);
   return retid;
 }
+
+
+int join(int tid){
+	struct proc* curproc = myproc();
+	struct proc* p;
+	int jtid;
+	for(p = ptable.proc;p<&ptable.proc[NPROC];p++){
+		if(p->tid == tid){
+			break;
+		}
+	}
+	acquire(&ptable.lock);
+	for(;;){
+		if(curproc->killed){
+			release(&ptable.lock);
+			return -1;
+		}
+		if(p->state == ZOMBIE){
+			jtid = p->tid;
+			kfree(p->kstack);
+			p->kstack = 0;
+			p->pgdir = 0;
+			p->pid = 0;
+			p->tid = 0;
+			p->tstack = 0;
+			p->parent = 0;
+			p->killed = 0;
+			p->state = UNUSED;
+			release(&ptable.lock);
+			return jtid;
+		}
+		 sleep(curproc, &ptable.lock);
+
+	}
+	cprintf("join systemcall \n");
+	return -1;
+
+}
