@@ -642,8 +642,21 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   }
   // Clear %eax so that fork returns 0 in the child.
   else{  
+	userstack[0] = (uint)0xffffffff;
+	userstack[1] = (uint)args;
+	sp = np->tf->esp;
+	sp -= 2 * 4;
+	if (copyout(np->pgdir, sp, userstack, 2 * sizeof(uint)) == -1)
+	 {
+		cprintf("copyout error \n");
+  		kfree(np->kstack);
+  		np->kstack = 0;
+  		np->state = UNUSED;
+  		return -1;
+	}
+	  
 	  np->tf->eax = 0;
-	  sp = np->tf->esp;
+	  //sp = np->tf->esp;
   }
   np->tf->eip = (uint)fn;
   np->tf->esp = sp;
