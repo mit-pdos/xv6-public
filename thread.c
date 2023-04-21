@@ -149,13 +149,155 @@ void test_clone_files(){
 	exit();
 }
 
+
+//sorting algorithm
+#define MAX 20
+#define THREAD_MAX 4
+int a[MAX] = {83, 86, 77, 15, 93, 35, 86, 92, 49, 21, 62, 27, 90, 59, 63, 26, 40, 26, 72, 36
+};
+int part = 0 ;
+// merge function for merging two parts
+void merge(int low, int mid, int high)
+{
+    int left[mid-low+1];
+    int right[high - mid];
+ 
+    // n1 is size of left part and n2 is size
+    // of right part
+    int n1 = mid - low + 1, n2 = high - mid, i, j;
+ 
+    // storing values in left part
+    for (i = 0; i < n1; i++)
+        left[i] = a[i + low];
+ 
+    // storing values in right part
+    for (i = 0; i < n2; i++)
+        right[i] = a[i + mid + 1];
+ 
+    int k = low;
+    i = j = 0;
+ 
+    // merge left and right in ascending order
+    while (i < n1 && j < n2) {
+        if (left[i] <= right[j])
+            a[k++] = left[i++];
+        else
+            a[k++] = right[j++];
+    }
+ 
+    // insert remaining values from left
+    while (i < n1) {
+        a[k++] = left[i++];
+    }
+ 
+    // insert remaining values from right
+    while (j < n2) {
+        a[k++] = right[j++];
+    }
+}
+
+void merge_sort(int low, int high)
+{
+    // calculating mid point of array
+    int mid = low + (high - low) / 2;
+    if (low < high) {
+ 
+        // calling first half
+        merge_sort(low, mid);
+ 
+        // calling second half
+        merge_sort(mid + 1, high);
+ 
+        // merging the two halves
+        merge(low, mid, high);
+    }
+}
+ 
+void* merge_sort123(void* arg)
+{
+    // which part out of 4 parts
+    int thread_part = part++;
+ 
+    // calculating low and high
+    int low = thread_part * (MAX / 4);
+    int high = (thread_part + 1) * (MAX / 4) - 1;
+ 
+    // evaluating mid point
+    int mid = low + (high - low) / 2;
+    if (low < high) {
+        merge_sort(low, mid);
+        merge_sort(mid + 1, high);
+        merge(low, mid, high);
+    }
+    exit();
+}
+void sorting_test(){
+    thread_t threads[THREAD_MAX];
+ 
+    // creating 4 threads
+    for (int i = 0; i < THREAD_MAX; i++)
+        thread_create(&threads[i], (void*)merge_sort123, 0,CLONE_FILES | CLONE_VM);
+ 
+    // joining all 4 threads
+    for (int i = 0; i < 4; i++)
+        thread_join(&threads[i]);
+ 
+    // merging the final 4 parts
+    merge(0, (MAX / 2 - 1) / 2, MAX / 2 - 1);
+    merge(MAX / 2, MAX/2 + (MAX-1-MAX/2)/2, MAX - 1);
+    merge(0, (MAX - 1)/2, MAX - 1); 
+    // displaying sorted array
+    
+ printf(1, "Sorted array is \n ");
+     for (int i = 0; i < MAX; i++) {
+        printf(1, "%d ", a[i]);
+    }
+    printf(1, "\n");
+}
+
+
+struct limits {
+	int l, h, res;
+};
+void *f(void *arg) {
+	struct limits *p = (struct limits *)arg;
+	int prod = 1, k;
+	for(k = p->l; k <= p->h; k++)
+		prod *= k;
+	p->res = prod;
+	exit();
+}
+
+void factorial(){
+	thread_t tid[2];
+	//thread_attr_t pattr[2];
+	int  k, n;
+	struct limits lim[2];
+	//scanf("%d", &n);	
+	n = 5;
+	lim[0].l = 1;
+	lim[0].h = n/2;	
+	lim[1].l = n/2 + 1;
+	lim[1].h = n;	
+	thread_create(&tid[0], (void*)f,  &lim[0],CLONE_VM |  CLONE_FILES);
+	thread_create(&tid[1], (void*)f,  &lim[1], CLONE_VM | CLONE_FILES);
+	for(k = 0; k < 2; k++) {
+		thread_join(&tid[k]);
+	}
+	printf(1,"Factorial of  %d is %d\n",n, lim[0].res * lim[1].res);
+	exit();
+}
+
 int main(){
 	//ciheckclone();
 	//primessum();
 	//test for clone files
-	//test_clone_files();
+	//test_clone_cfiles();
 	//test for tkill
-	testkill();
+	//testkill();
+	sorting_test();
+	factorial();
+	
 }
 
 int thread_create(thread_t* thread, int(*start_routine)(void*),void *arg, int flags)
