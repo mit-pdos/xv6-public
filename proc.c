@@ -729,3 +729,7 @@ tkill(int tid)
 	release(&ptable.lock);
 	return -1;
 }
+
+int gettid(void){
+	return myproc()->tid;
+}

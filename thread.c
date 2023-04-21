@@ -253,6 +253,7 @@ void sorting_test(){
         printf(1, "%d ", a[i]);
     }
     printf(1, "\n");
+    exit();
 }
 
 
@@ -288,6 +289,19 @@ void factorial(){
 	exit();
 }
 
+void test_tid(){
+	int tid = gettid();
+	printf(1 ,"tid is : %d\n" , tid);
+	exit();
+}
+
+void test_gettid(){
+	thread_t th;
+	thread_create(&th, (void*)test_tid,0,0);
+	thread_join(&th);
+	exit();
+}
+
 int main(){
 	//ciheckclone();
 	//primessum();
@@ -295,9 +309,9 @@ int main(){
 	//test_clone_cfiles();
 	//test for tkill
 	//testkill();
+	//test_gettid();
 	sorting_test();
-	factorial();
-	
+	//factorial();
 }
 
 int thread_create(thread_t* thread, int(*start_routine)(void*),void *arg, int flags)

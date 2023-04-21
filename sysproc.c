@@ -127,3 +127,6 @@ sys_tkill(void)
 	return tkill(tid);
 }
 
+int sys_gettid(void){
+	return gettid();
+}
