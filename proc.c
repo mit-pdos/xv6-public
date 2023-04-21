@@ -637,7 +637,7 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   		np->state = UNUSED;
   		return -1;
 		 }
-	np->tf->eax = 0;
+	//np->tf->eax = 0;
 
   }
   // Clear %eax so that fork returns 0 in the child.
