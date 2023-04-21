@@ -28,21 +28,6 @@ int routine(void *arg){
     exit();
 }
 
-int routine2(void* arg){
-    printf(1,"routine2 is sleeping \n");
-    sleep(10);
-    exit();
-}
-
-int checktkill(){
-    thread_t th1;
-    thread_create(&th1,routine2,0,0);
-    thread_join(&th1);
-    exit();
-}
-
-//
-
 int checkclone(){
     thread_t th1;
     int ar = 10;
@@ -92,13 +77,18 @@ void* primessum(){
 
 int waitthread(void* arg){
 	int tid = (int)arg;
+	int i = 0;
 	printf(1,"Thread %d started\n",tid);
-	while(1);
+	while(i<10){
+		sleep(1000000);
+		printf(1,"while : %d\n" , i);
+		i++;
+	}
 	exit();
 }
 
 void testkill(){
-	thread_t th[2];
+	/*thread_t th[2];
 	int i;
 	int a[2];
 	for(i = 0;i<2 ;i++){
@@ -115,18 +105,57 @@ void testkill(){
 	}
 	printf(1,"Thread 1 killed\n");
 
-	if(thread_join(&th[0])<0){
-		printf(1,"Error joining thread\n");
-		exit();
+	for(i = 0 ; i<2 ; i++){
+		if(thread_join(&th[i])<0){
+			printf(1,"Error joining thread\n");
+			exit();
+		}
 	}
 	printf(1,"Thread 0 compleleted\n");
+	exit();*/
+	
+	
+	thread_t th;
+	thread_create(&th,waitthread,0,CLONE_VM | CLONE_FILES);
+	printf(1,"Thread created with tid %d\n",th.tid);
+	
+	if(tkill(th.tid)<0){
+		printf(1,"Error killing thread\n");
+		exit();
+	}
+	printf(1,"Thread killed\n");
+	thread_join(&th);
 	exit();
 }
 
+int readData(void *arg){
+	char buf[18];
+    int fd=*(int *)arg;
+    
+    read(fd , buf , 8);
+	printf(1,"child : %s\n",buf);
+    exit();
+}
+
+void test_clone_files(){
+	thread_t th;
+	char buf[18];
+	int fd = open("README",O_RDONLY);
+	printf(1 , "fd : %d\n" , fd);
+	thread_create(&th,readData,&fd,0);
+	thread_join(&th);
+	read(fd , buf , 8);
+	printf(1,"parent : %s\n",buf);
+	exit();
+}
 
 int main(){
 	//ciheckclone();
-	primessum();
+	//primessum();
+	//test for clone files
+	//test_clone_files();
+	//test for tkill
+	testkill();
 }
 
 int thread_create(thread_t* thread, int(*start_routine)(void*),void *arg, int flags)
