@@ -213,7 +213,7 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
-  np->tid = -1; //tid -1
+//  np->tid = -1; //tid -1
 
   acquire(&ptable.lock);
 
@@ -253,7 +253,12 @@ exit(void)
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
-  wakeup1(curproc->parent);
+  /*if(curproc->tid != -1){
+	  wakeup1(curproc);
+  }
+  else{*/
+	  wakeup1(curproc->parent);
+//  }
 
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -539,21 +544,22 @@ procdump(void)
 int clone(void (*fn)(void *), void *stack, int flags, void *args)
 {
   int i, retid;
-  ;
   struct proc *np;
   struct proc *curproc = myproc();
-  uint sp, userstack[2];
+  
+  uint sp;
+  uint userstack[2];
   // Allocate process.
   if ((np = allocproc()) == 0)
   {
     return -1;
   }
 
-  if (curproc->tid != -1)
+/*  if (curproc->tid != -1)
   {
     curproc = curproc->parent;
     cprintf("tid not equal to -1\n");
-  }
+  }*/
   np->sz = curproc->sz;
   if (flags & CLONE_PARENT)
   {
@@ -561,7 +567,7 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   }
   else
   {
-     //np->parent = curproc;
+     np->parent = curproc;
   }
 
   if (flags & CLONE_VM)
@@ -625,11 +631,14 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
 	sp -= 2 * 4;
 	if (copyout(np->pgdir, sp, userstack, 2 * sizeof(uint)) == -1)
 	 {
+		cprintf("copyout error \n");
   		kfree(np->kstack);
   		np->kstack = 0;
   		np->state = UNUSED;
   		return -1;
-	 }
+		 }
+	np->tf->eax = 0;
+
   }
   // Clear %eax so that fork returns 0 in the child.
   else{  
@@ -640,6 +649,8 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   np->tf->esp = sp;
 
   np->cwd = idup(curproc->cwd);
+  np->tid = np->pid;
+  np->pid = curproc->pid;
   retid = np->tid;
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
   acquire(&ptable.lock);
@@ -684,4 +695,24 @@ int join(int tid){
 	cprintf("join systemcall \n");
 	return -1;
 
+}
+
+int
+tkill(int tid)
+{
+	struct proc* p;
+	acquire(&ptable.lock);
+	for(p = ptable.proc; p< &ptable.proc[NPROC]; p++){
+		if(p->tid == tid){
+			p->killed = 1;
+			if(p->state == SLEEPING){
+				//wake process from sleep()
+				p->state = RUNNABLE;
+			}
+			release(&ptable.lock);
+			return 0;
+		}
+	}
+	release(&ptable.lock);
+	return -1;
 }

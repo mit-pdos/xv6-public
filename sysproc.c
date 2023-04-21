@@ -117,3 +117,13 @@ sys_join(void)
 		return -1;
 	return join(tid);
 }
+
+int
+sys_tkill(void)
+{
+	int tid;
+	if(argint(0, &tid)<0)
+		return -1;
+	return tkill(tid);
+}
+

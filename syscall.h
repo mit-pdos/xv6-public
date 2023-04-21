@@ -22,3 +22,4 @@
 #define SYS_close  21
 #define SYS_clone  22
 #define SYS_join   23
+#define SYS_tkill  24

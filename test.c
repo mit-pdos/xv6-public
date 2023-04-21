@@ -11,13 +11,13 @@
 int glob = 10;
 void userprog(void *arg)
 {
-	//int fd = *((int *)arg);
+	int fd = *((int *)arg);
 	/*char buf[15];
 	read(fd, buf, sizeof(buf));
-        printf(1, "Child process read: %s\n", buf);
-	glob += 13;*/
+        printf(1, "Child process read: %s\n", buf);*/
+	glob += 13;
 	printf(1, "Global in child %d\n", glob);
-	//close(fd);
+	close(fd);
 	exit();
 }
 
@@ -43,7 +43,7 @@ void test_CloneVm()
 	sleep(2);
 	glob+=10;
 	printf(1, "From parent %d\n", glob);
-
+	exit();
 }
 
 void test_CloneFiles(){
@@ -64,6 +64,7 @@ void test_CloneFiles(){
 	// closing the read end of the pipe
 	close(fd[0]);
 	sleep(2);
+	exit();
 
 }
 int main(int argc, char *argv[])
@@ -71,15 +72,18 @@ int main(int argc, char *argv[])
 //	test_CloneFiles();
 //	test_CloneVm();
 /*	char* stack = malloc(4096);
-	clone(&userprog, stack , CLONE_VM , 0);
-	sleep(2);*/
+	int tid=clone(&userprog, stack ,CLONE_FILES, 0);
+	sleep(2);
+	join(tid);*/
+/*	sleep(2);*/
 //	close(1);
 	int fd;
-	fd = open("try.txt",O_RDONLY | O_CREATE);
-	close(1);
+	fd = open("try.txt",O_WRONLY | O_CREATE);
+//	close(1);
 	char* stack = malloc(4096);
-	clone(&userprog ,stack,0,&fd);
-	wait();
+	clone(&userprog ,stack,CLONE_VM,&fd);
+	sleep(1);
+//	wait();
 	char buf[100];
 	strcpy(buf, "test file\n");
 	int n=write(fd,buf,10);
@@ -91,6 +95,8 @@ int main(int argc, char *argv[])
 	}
 
 
-	printf(1,"parent here\n");
+	glob +=20;
+	printf(1,"parent here glob is:%d\n",glob);
+	
 	exit();
 }
