@@ -1,3 +1,5 @@
+#ifndef XV6_TESTER_H
+#define XV6_TESTER_H
 #include "wstatus.h"
 
 typedef int(*test_func_t)(void);
@@ -40,3 +42,5 @@ void run_test(test_func_t func, const char *name) {
     testsPassed = 1; /*Denotes some test has failed to pass*/
   }
 }
+#endif /* XV6_TESTER_H */
+ 

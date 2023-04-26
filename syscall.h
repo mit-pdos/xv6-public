@@ -1,3 +1,5 @@
+#ifndef XV6_SYSCALL_H
+#define XV6_SYSCALL_H
 // System call numbers
 #define SYS_fork    1
 #define SYS_exit    2
@@ -31,3 +33,6 @@
 #define SYS_getcpu 30
 #define SYS_getmem 31
 #define SYS_kmemtest 32
+
+#endif /* XV6_SYSCALL_H */
+ 

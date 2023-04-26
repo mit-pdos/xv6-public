@@ -471,4 +471,4 @@ void cgroup_mem_stat_pgfault_incr(struct cgroup* cgroup);
  * @param cgroup pointer to a cgroup
  */
 void cgroup_mem_stat_pgmajfault_incr(struct cgroup* cgroup);
-#endif
+#endif /* XV6_CGROUP_H */

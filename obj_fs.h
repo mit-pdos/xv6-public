@@ -59,4 +59,5 @@ struct obj_dinode {
  */
 #define INODE_NAME_LENGTH (5 + sizeof(uint) + 1 + 1)
 
-#endif
+#endif /* XV6_OBJ_FS_H */
+

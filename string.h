@@ -1,3 +1,5 @@
+#ifndef XV6_STRING_H
+#define XV6_STRING_H
 #pragma once
 
 #include "types.h"
@@ -11,3 +13,6 @@ int    strlen(const char*);
 int    strcmp(const char*, const char*);
 int    strncmp(const char*, const char*, uint);
 char*  strncpy(char*, const char*, int);
+
+#endif /* XV6_STRING_H */
+ 

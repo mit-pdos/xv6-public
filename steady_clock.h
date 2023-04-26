@@ -6,4 +6,5 @@
  */
 unsigned long long steady_clock_now();
 
-#endif
+#endif /* XV6_STEADY_CLOCK_H */
+

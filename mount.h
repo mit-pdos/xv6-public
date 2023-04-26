@@ -1,3 +1,5 @@
+#ifndef XV6_MOUNT_H
+#define XV6_MOUNT_H
 struct mount {
   struct mount *parent;
   struct vfs_inode *mountpoint;
@@ -6,3 +8,6 @@ struct mount {
 };
 
 #define NMOUNT (200)
+
+#endif /* XV6_MOUNT_H */
+ 

@@ -1,3 +1,5 @@
+#ifndef XV6_KBD_H
+#define XV6_KBD_H
 // PC keyboard interface constants
 
 #define KBSTATP         0x64    // kbd controller status port(I)
@@ -110,3 +112,6 @@ static uchar ctlmap[256] =
   [0xD2] KEY_INS,   [0xD3] KEY_DEL
 };
 
+
+#endif /* XV6_KBD_H */
+ 

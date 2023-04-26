@@ -1,3 +1,5 @@
+#ifndef XV6_PID_NS_H
+#define XV6_PID_NS_H
 #define MAX_PID_NS_DEPTH 4
 
 struct pid_ns {
@@ -15,3 +17,6 @@ int pid_ns_next_pid(struct pid_ns* pid_ns);
 struct pid_ns* pid_ns_new(struct pid_ns* parent);
 struct pid_ns* pid_ns_dup(struct pid_ns* pid_ns);
 int pid_ns_is_max_depth(struct pid_ns* pid_ns);
+
+#endif /* XV6_PID_NS_H */
+ 

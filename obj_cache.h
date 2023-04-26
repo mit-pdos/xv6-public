@@ -100,4 +100,5 @@ uint objects_cache_hits();
 uint objects_cache_misses();
 uint cache_max_object_size();
 
-#endif
+#endif /* XV6_OBJ_CACHE_H */
+

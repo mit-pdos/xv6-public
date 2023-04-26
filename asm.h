@@ -1,3 +1,5 @@
+#ifndef XV6_ASM_H
+#define XV6_ASM_H
 //
 // assembler macros to create x86 segments
 //
@@ -19,3 +21,6 @@
 #define STA_W     0x2       // Writeable (non-executable segments)
 #define STA_R     0x2       // Readable (executable segments)
 #define STA_A     0x1       // Accessed
+
+#endif /* XV6_ASM_H */
+ 

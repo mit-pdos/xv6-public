@@ -15,4 +15,5 @@ struct inode {
   struct vfs_inode vfs_inode;
 };
 
-#endif
+#endif /* XV6_FILE_H */
+

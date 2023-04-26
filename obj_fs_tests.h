@@ -1,3 +1,5 @@
+#ifndef XV6_OBJ_FS_TESTS_H
+#define XV6_OBJ_FS_TESTS_H
 /**
  Defines a simple test library.
  To define a new test use `TEST`. For example:
@@ -86,3 +88,6 @@ void print_error(const char *name, unsigned long int x, unsigned long int y,
  */
 #define ASSERT_NO_ERR(x) \
     ASSERT_UINT_EQ(NO_ERR, (x))
+
+#endif /* XV6_OBJ_FS_TESTS_H */
+ 

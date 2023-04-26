@@ -15,4 +15,5 @@ struct stat {
   uint size;   // Size of file in bytes
 };
 
-#endif
+#endif /* XV6_STAT_H */
+

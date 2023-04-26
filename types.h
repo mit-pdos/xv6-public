@@ -11,4 +11,5 @@ typedef uint pde_t;
 #define NULL 0
 #endif
 
-#endif
+#endif /* XV6_TYPES_H */
+

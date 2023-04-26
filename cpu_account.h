@@ -68,4 +68,5 @@ void cpu_account_before_hlt(struct cpu_account * cpu);
  */
 void cpu_account_after_hlt(struct cpu_account * cpu);
 
-#endif
+#endif /* XV6_CPU_ACCOUNT_H */
+

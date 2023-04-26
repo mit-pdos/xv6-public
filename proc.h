@@ -108,4 +108,4 @@ struct cgroup *proc_get_cgroup(void);
 //   fixed-size stack
 //   expandable heap
 
-#endif
+#endif /* XV6_PROC_H */

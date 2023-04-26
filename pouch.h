@@ -2,8 +2,8 @@
 *   Pouch.h
 *   - pouch container commands
 */
-#ifndef POUCH_H
-#define POUCH_H
+#ifndef XV6_POUCH_H
+#define XV6_POUCH_H
 
 typedef enum p_cmd {START, CONNECT, DISCONNECT, DESTROY, LIMIT, INFO, LIST} p_cmd;
 #define CNTNAMESIZE 100
@@ -160,5 +160,5 @@ static int print_cinfo(char* container_name, char * tty_name, int pid);
 */
 static int get_connected_cname(char * cname);
 
-#endif // POUCH_H
+#endif /* XV6_POUCH_H */
 

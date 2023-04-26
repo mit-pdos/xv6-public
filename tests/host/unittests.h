@@ -11,4 +11,5 @@
 #define FAIL 0
 #define PASS 1
 
-#endif
+#endif /* _UNITTEST_H_ */
+

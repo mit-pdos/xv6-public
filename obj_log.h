@@ -195,4 +195,5 @@ uint log_delete_object(const char* name);
 uint log_get_object(const char* name, vector * outputvector, uint readfromoffset);
 uint log_object_size(const char* name, uint* output);
 
-#endif
+#endif /* XV6_OBJ_LOG_H */
+

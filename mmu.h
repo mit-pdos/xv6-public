@@ -230,4 +230,5 @@ struct gatedesc {
 
 #endif
 
-#endif
+#endif /* XV6_MMU_H */
+

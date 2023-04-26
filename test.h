@@ -1,3 +1,5 @@
+#ifndef XV6_TEST_H
+#define XV6_TEST_H
 /**
  Defines a simple test library.
  To define a new test use `TEST`. For example:
@@ -113,3 +115,6 @@ void print_error(const char* name, unsigned long int x, unsigned long int y,
         failed = 1; \
     }
 
+
+#endif /* XV6_TEST_H */
+ 

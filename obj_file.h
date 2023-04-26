@@ -18,4 +18,5 @@ struct obj_inode {
 
 #define CONSOLE 1
 
-#endif
+#endif /* XV6_OBJ_FILE_H */
+

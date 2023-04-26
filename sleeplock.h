@@ -13,4 +13,5 @@ struct sleeplock {
   int pid;           // Process holding lock
 };
 
-#endif
+#endif /* XV6_SLEEPLOCK_H */
+

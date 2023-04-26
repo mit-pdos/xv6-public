@@ -268,4 +268,5 @@ uint occupied_bytes();
  */
 void set_store_offset(uint new_offset);
 
-#endif
+#endif /* XV6_OBJ_DISK_H */
+

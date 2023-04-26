@@ -1,3 +1,5 @@
+#ifndef XV6_WSTATUS_H
+#define XV6_WSTATUS_H
 /*
  * This file holds definitions relevent to the wait4 system call
  * and the alternate interfaces that use it (wait, wait3, waitpid).
@@ -22,3 +24,6 @@
 
 #define	W_EXITCODE(ret, sig)	((ret) << 8 | (sig))
 #define	W_STOPCODE(sig)		((sig) << 8 | _WSTOPPED)
+
+#endif /* XV6_WSTATUS_H */
+ 

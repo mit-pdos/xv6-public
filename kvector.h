@@ -1,5 +1,5 @@
-#ifndef KVEC_H
-#define KVEC_H
+#ifndef XV6_KVEC_H
+#define XV6_KVEC_H
 
 #define getelement(vec, ind, typ) *(typ*)getelementpointer(vec,ind)
 
@@ -13,4 +13,5 @@ typedef struct kvec {
     int valid;                          // 1 if the initialization function succeeds. 0 if it fails.
 } vector;
 
-#endif
+#endif /* XV6_KVEC_H */
+

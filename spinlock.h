@@ -12,4 +12,5 @@ struct spinlock {
                      // that locked the lock.
 };
 
-#endif
+#endif /* XV6_SPINLOCK_H */
+

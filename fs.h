@@ -53,4 +53,5 @@ struct dinode {
 // Directory is a file containing a sequence of dirent structures.
 #define DIRSIZ 14
 
-#endif
+#endif /* XV6_FS_H */
+

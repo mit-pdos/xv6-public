@@ -35,4 +35,5 @@ void kfree(char * ptr){
         }
     }
 }
-#endif
+#endif /* _UNITMOCK_H_ */
+
