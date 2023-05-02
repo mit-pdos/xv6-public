@@ -10,9 +10,9 @@ static void
 ctoahex(char val, char buf[2])
 {
 	char l = (val & 0xF);
-	buf[0] = (l <= 9 ? ('0' + l) : ('A' + l - 10));
+	buf[1] = (l <= 9 ? ('0' + l) : ('A' + l - 10));
 	char h = (val & 0xF0) >> 4;
-	buf[1] = (h <= 9 ? ('0' + h) : ('A' + h - 10));
+	buf[0] = (h <= 9 ? ('0' + h) : ('A' + h - 10));
 }
 
 static void
