@@ -81,8 +81,9 @@ int main(int argc, char *argv[])
 	fd = open("try.txt",O_WRONLY | O_CREATE);
 //	close(1);
 	char* stack = malloc(4096);
-	clone(&userprog ,stack,CLONE_VM,&fd);
+	int th = clone(&userprog ,stack,CLONE_VM,&fd);
 	sleep(1);
+	join(th);
 //	wait();
 	char buf[100];
 	strcpy(buf, "test file\n");
