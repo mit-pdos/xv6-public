@@ -21,67 +21,77 @@ int thread_create(thread_t* ,int(*start_routine)(void*),void*, int );
 int thread_join(thread_t*);
 
 int routine(void *arg){
-    int p=*(int *)arg;
+    //int p=*(int *)arg;
     glob +=13;
-    printf(1,"Global in routine %d\n",glob);
-    printf(1,"Argument in p:%d\n",p);
+    //printf(1,"Global in routine %d\n",glob);
+    //printf(1,"Argument in p:%d\n",p);
+    if(glob == 23)
+    	exit();
+    	//printf(1 ,"clonecheck : In function routine , succeeded\n");
+    else
+    	printf(1,"clonecheck : In function routine , not succeeded\n");
     exit();
 }
 
-int checkclone(){
+void checkclone(){
     thread_t th1;
     int ar = 10;
     thread_create(&th1,routine, &ar,CLONE_VM | CLONE_FILES);
     thread_join(&th1);
     glob +=10;
-    printf(1,"Global in Checkclone %d\n",glob);
-    exit();
+    if(glob == 33)
+	printf(1,"cloneCheck : Test Succeeded.\n");
+    else
+    	printf(1,"cloneCheck : Not succeeded.\n");
+    return ;
 }
 
 //testing program
 int primes[10] = {2,3,5,7,11,13,17,19,23,29};
 int globalSum = 0;
 
-int findsum(void* arg){
+void findsum(void* arg){
 	int index = *(int*)arg;
 	int sum =0;
-	printf(1,"index is %d\n",index);
+	//printf(1,"index is %d\n",index);
 	for(int j = 0;j<5;j++){
 		sum += primes[index+j];
 	}
 //	*(int*)arg = sum;
-	printf(1,"Local sum is %d\n",sum);
+	//printf(1,"Local sum is %d\n",sum);
 	globalSum += sum;
 //	return arg;
 	exit();
 }
 
-void* primessum(){
+void primessum(){
 	thread_t th[2];
 	int a[2];
 	for(int i=0 ;i<2;i++){
 		//int* a = malloc(sizeof(int));
 		//*a = i*5;
 		a[i] = i*5;
-		thread_create(&th[i],findsum,a+i,CLONE_FILES | CLONE_VM);
-
+		thread_create(&th[i],(void*)findsum,a+i,CLONE_FILES | CLONE_VM);
 //		free(a);
 	}
 	for(int i=0; i<2;i++){
 		thread_join(&th[i]);
 	}
-	printf(1,"Global Sum of primes is %d \n",globalSum);
-	exit();
-
+	//printf(1,"Global Sum of primes is %d \n",globalSum);
+	if(globalSum == 129)
+		printf(1,"primeSum : Test succeeded.\n");
+	else
+		printf(1,"primeSum : Not succeeded.\n");
+	return;
 }
 
 int waitthread(void* arg){
-	int tid = (int)arg;
+	//int tid = (int)arg;
 	int i = 0;
-	printf(1,"Thread %d started\n",tid);
+	//printf(1,"Thread %d started\n",tid);
 	while(i<10){
 		sleep(1000000);
-		printf(1,"while : %d\n" , i);
+		//printf(1,"while : %d\n" , i);
 		i++;
 	}
 	exit();
@@ -117,13 +127,13 @@ void testkill(){
 	
 	thread_t th;
 	thread_create(&th,waitthread,0,CLONE_VM | CLONE_FILES);
-	printf(1,"Thread created with tid %d\n",th.tid);
+	//printf(1,"Thread created with tid %d\n",th.tid);
 	
 	if(tkill(th.tid)<0){
-		printf(1,"Error killing thread\n");
-		exit();
+		printf(1,"tkill : Failed ! Error killing thread\n");
+		return ;
 	}
-	printf(1,"Thread killed\n");
+	printf(1,"tkill : Thread killed , Test succeeded.\n");
 	thread_join(&th);
 	exit();
 }
@@ -133,7 +143,12 @@ int readData(void *arg){
     int fd=*(int *)arg;
     
     read(fd , buf , 8);
-	printf(1,"child : %s\n",buf);
+    //printf(1,"child : %s\n",buf);
+    if(strcmp(buf ,"NOTE: we")==0)
+    	exit();
+    	//printf(1,"test_clone_files (child): succeeded.\n");
+    else
+    	printf(1,"test_clone_files (child): not succeeded.\n");
     exit();
 }
 
@@ -141,12 +156,16 @@ void test_clone_files(){
 	thread_t th;
 	char buf[18];
 	int fd = open("README",O_RDONLY);
-	printf(1 , "fd : %d\n" , fd);
-	thread_create(&th,readData,&fd,0);
+	//printf(1 , "fd : %d\n" , fd);
+	thread_create(&th,readData,&fd,CLONE_FILES);
 	thread_join(&th);
 	read(fd , buf , 8);
-	printf(1,"parent : %s\n",buf);
-	exit();
+	if(strcmp(buf ," have st")==0)
+		printf(1,"test_clone_files : Test succeeded.\n");
+	else
+    		printf(1,"test_clone_files : not succeeded.\n");
+	//printf(1,"parent : %s\n",buf);
+	return;
 }
 
 
@@ -248,14 +267,19 @@ void sorting_test(){
     merge(0, (MAX - 1)/2, MAX - 1); 
     // displaying sorted array
     
- printf(1, "Sorted array is \n ");
+ /*printf(1, "Sorted array is \n ");
      for (int i = 0; i < MAX; i++) {
         printf(1, "%d ", a[i]);
     }
     printf(1, "\n");
-    exit();
+  */
+  for(int i =0 ; i<MAX-1 ;i++){
+  	if(a[i]>a[i+1])
+  		printf(1,"SortingTest : Not succeeded.\n");
+  }
+  printf(1,"sortingTest : Test succeeded.\n");
+  return;
 }
-
 
 struct limits {
 	int l, h, res;
@@ -285,13 +309,17 @@ void factorial(){
 	for(k = 0; k < 2; k++) {
 		thread_join(&tid[k]);
 	}
-	printf(1,"Factorial of  %d is %d\n",n, lim[0].res * lim[1].res);
-	exit();
+	//printf(1,"Factorial of  %d is %d\n",n, lim[0].res * lim[1].res);
+	if(lim[0].res*lim[1].res == 120)
+		printf(1,"factorialTest : Test succeeded.\n");
+	else
+		printf(1 , "factorialTest : Not succeeded.\n");
+	return;
 }
 
 void test_tid(){
 	int tid = gettid();
-	printf(1 ,"tid is : %d\n" , tid);
+	printf(1 ,"gettidTest : tid is %d , Test succeeded.\n" , tid);
 	exit();
 }
 
@@ -299,19 +327,23 @@ void test_gettid(){
 	thread_t th;
 	thread_create(&th, (void*)test_tid,0,0);
 	thread_join(&th);
-	exit();
+	return;
 }
 
 int main(){
-	//ciheckclone();
-	//primessum();
-	//test for clone files
-	//test_clone_cfiles();
-	//test for tkill
-	//testkill();
-	//test_gettid();
+	checkclone();
+	printf(1,"\n");
+	primessum();
+	printf(1,"\n");
+	test_clone_files();
+	printf(1,"\n");
+	test_gettid();
+	printf(1,"\n");
 	sorting_test();
-	//factorial();
+	printf(1,"\n");
+	factorial();
+	printf(1,"\n");
+	testkill();
 }
 
 int thread_create(thread_t* thread, int(*start_routine)(void*),void *arg, int flags)
@@ -323,7 +355,7 @@ int thread_create(thread_t* thread, int(*start_routine)(void*),void *arg, int fl
         }
         thread->tid = clone((void*)start_routine, thread->stack,flags , arg);
         if( thread->tid == -1){
-        //      free(thread->stack);
+        	free(thread->stack);
                 return -1;
         }
         return 0;
