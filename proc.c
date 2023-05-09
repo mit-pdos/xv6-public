@@ -573,7 +573,7 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   if (flags & CLONE_VM)
   {
     np->pgdir = curproc->pgdir;
-    cprintf("Clone_vm \n");
+    //cprintf("Clone_vm \n");
   }
   else
   {
@@ -588,7 +588,7 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
   //When CLONE_FILES set then file descriptors get shared , else it is copied.
   if (flags & CLONE_FILES)
   {
-    cprintf("clone_files\n");
+    //cprintf("clone_files\n");
     for (i = 0; i < NOFILE; i++)
     {
       if (curproc->ofile[i])
@@ -602,7 +602,7 @@ int clone(void (*fn)(void *), void *stack, int flags, void *args)
      for (i = 0; i < NOFILE; i++) {
 	 if (curproc->ofile[i])
 		 {
-                 cprintf("try to copy ofiles\n");
+                 //cprintf("try to copy ofiles\n");
                  struct file *f = filealloc();
        			 if (f == 0)
 			 {
