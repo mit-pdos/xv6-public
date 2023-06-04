@@ -477,11 +477,9 @@ set running [pidns_tests $argv]
 set running [mounttest $argv]
 set running [mounttest_with_ls $argv]
 set running [objfstests $argv]
-set running [usertests $argv]
+set running [usertests $argv] # run last, prints "ALL TESTS PASSED"
 
 log_file
 # just in case
 close
 
-# jenkins will check if lines=$(grep "ALL TESTS PASSED" mylog.txt | wc -l)
-# -eq 1 (aka SUCCESS, FAILURE otherwise).
