@@ -1,5 +1,6 @@
 #ifndef XV6_ASM_H
 #define XV6_ASM_H
+
 //
 // assembler macros to create x86 segments
 //

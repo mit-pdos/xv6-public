@@ -1,5 +1,6 @@
 #ifndef XV6_DEFS_H
 #define XV6_DEFS_H
+
 #define min(x, y) (x) > (y) ? (y) : (x)
 #define abs(x) (x) > 0 ? (x) : (0)
 

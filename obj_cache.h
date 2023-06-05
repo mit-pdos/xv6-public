@@ -1,7 +1,6 @@
 #ifndef XV6_OBJ_CACHE_H
 #define XV6_OBJ_CACHE_H
 
-
 /**
  * `obj_cache` specify the second layer in the file system. It is the objects
  * cache layer. The cache in this file-system is different from the original

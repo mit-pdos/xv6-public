@@ -3,7 +3,6 @@
 
 #include "fs.h"
 #include "sleeplock.h"
-#include "cgfs.h"
 #include "param.h"
 #include "vfs_file.h"
 

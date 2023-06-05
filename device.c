@@ -7,6 +7,7 @@
 #include "device.h"
 #include "obj_fs.h"
 #include "obj_disk.h"
+#include "vfs_file.h"
 
 #define NLOOPDEVS (10)
 #define NIDEDEVS (2)

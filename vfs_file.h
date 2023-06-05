@@ -3,7 +3,7 @@
 
 #include "vfs_fs.h"
 #include "sleeplock.h"
-#include "cgfs.h"
+#include "cgroup.h"
 #include "param.h"
 #include "stat.h"
 #include "kvector.h"
@@ -89,10 +89,12 @@ struct vfs_file {
   };
 };
 
-struct {
+struct ftable_s {
     struct spinlock lock;
     struct vfs_file file[NFILE];
-} ftable;
+};
+
+extern struct ftable_s ftable;
 
 struct inode_operations {
     int             (*dirlink) (struct vfs_inode*, char*, uint);

@@ -1,5 +1,6 @@
 #ifndef XV6_TESTER_H
 #define XV6_TESTER_H
+
 #include "wstatus.h"
 
 typedef int(*test_func_t)(void);

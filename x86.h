@@ -1,5 +1,6 @@
 #ifndef XV6_X86_H
 #define XV6_X86_H
+
 // Routines to let C code use special x86 instructions.
 
 static inline uchar

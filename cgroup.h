@@ -1,9 +1,9 @@
+#ifndef XV6_CGROUP_H
+#define XV6_CGROUP_H
+
 #include "param.h"
 #include "proc.h"
 #include "defs.h"
-
-#ifndef XV6_CGROUP_H
-#define XV6_CGROUP_H
 
 #define MAX_DECS_SIZE 3       // Max length of string representation of descendants number. (the value is a number of at most two digits + null terminator)
 #define MAX_DEPTH_SIZE 3      // Max length of string representation of depth number. (the value is a number of at most two digits + null terminator)
@@ -471,4 +471,5 @@ void cgroup_mem_stat_pgfault_incr(struct cgroup* cgroup);
  * @param cgroup pointer to a cgroup
  */
 void cgroup_mem_stat_pgmajfault_incr(struct cgroup* cgroup);
+
 #endif /* XV6_CGROUP_H */

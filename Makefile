@@ -224,12 +224,12 @@ UPROGS=\
 	_timer\
 	_cpu\
 	_cgroupstests\
-        _pouch\
-        _ctrl_grp \
-        _demo_pid_ns \
-        _demo_mount_ns \
-        _ioctltests \
-        _objfstests
+    _pouch\
+    _ctrl_grp \
+    _demo_pid_ns \
+    _demo_mount_ns \
+    _ioctltests \
+    _objfstests
 
 INTERNAL_DEV=\
 	internal_fs_a\

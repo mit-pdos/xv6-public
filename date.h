@@ -1,5 +1,6 @@
 #ifndef XV6_DATE_H
 #define XV6_DATE_H
+
 struct rtcdate {
   uint second;
   uint minute;

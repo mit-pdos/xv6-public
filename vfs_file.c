@@ -13,6 +13,7 @@
 #include "device.h"
 
 struct devsw devsw[NDEV];
+struct ftable_s ftable;
 
 void
 vfs_fileinit(void)

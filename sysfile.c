@@ -15,7 +15,6 @@
 #include "file.h"
 #include "fcntl.h"
 #include "cgroup.h"
-#include "cgfs.h"
 #include "device.h"
 #include "vfs_fs.h"
 #include "mount.h"

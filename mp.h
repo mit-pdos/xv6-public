@@ -1,5 +1,6 @@
 #ifndef XV6_MP_H
 #define XV6_MP_H
+
 // See MultiProcessor Specification Version 1.[14]
 
 struct mp {             // floating pointer

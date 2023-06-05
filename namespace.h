@@ -1,5 +1,6 @@
 #ifndef XV6_NAMESPACE_H
 #define XV6_NAMESPACE_H
+
 struct nsproxy {
     int ref;
     struct mount_ns* mount_ns;

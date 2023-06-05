@@ -1,5 +1,6 @@
 #ifndef XV6_MEMLAYOUT_H
 #define XV6_MEMLAYOUT_H
+
 // Memory layout
 
 #define EXTMEM  0x100000            // Start of extended memory

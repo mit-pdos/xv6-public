@@ -1,5 +1,6 @@
 #ifndef XV6_TRAPS_H
 #define XV6_TRAPS_H
+
 // x86 trap and interrupt constants.
 
 // Processor-defined:

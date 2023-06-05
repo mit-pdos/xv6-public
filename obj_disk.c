@@ -25,6 +25,8 @@ struct sleeplock disklock;
 
 struct objsuperblock super_block;
 
+char memory_storage[STORAGE_DEVICE_SIZE];
+
 uint get_objects_table_index(const char* name, uint* output) {
     for (uint i = 0; i < get_object_table_size(); ++i) {
         ObjectsTableEntry* entry = objects_table_entry(i);

@@ -17,7 +17,6 @@
 #include "x86.h"
 #include "fcntl.h"
 #include "vfs_file.h"
-#include "vfs_fs.h"
 #include "kvector.h"
 
 //PAGEBREAK: 50

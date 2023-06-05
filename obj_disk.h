@@ -90,7 +90,7 @@
 // In the future, this can be set the size of SHA256 digest.
 #define OBJECT_ID_LENGTH MAX_OBJECT_NAME_LENGTH
 
-char memory_storage[STORAGE_DEVICE_SIZE];
+extern char memory_storage[STORAGE_DEVICE_SIZE];
 
 typedef struct {
     /*

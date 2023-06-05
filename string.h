@@ -1,6 +1,5 @@
 #ifndef XV6_STRING_H
 #define XV6_STRING_H
-#pragma once
 
 #include "types.h"
 
