@@ -5,9 +5,14 @@ KERNOBJS = \
 #
 
 UNAME_S := $(shell uname -s)
+UNAME_P := $(shell uname -p)
 ifeq ($(UNAME_S),Linux)
-  # no prefix for Linux or WSL2
-  TOOLPREFIX =
+  ifeq ($(UNAME_P),aarch64)
+	TOOLPREFIX = x86_64-linux-gnu
+  else
+  	# no prefix for Linux or WSL2
+ 	 TOOLPREFIX = 
+  endif
 else ifeq ($(UNAME_S),Darwin)
   # need homebrew: $ brew install qemu x86_64-elf-gcc
   TOOLPREFIX = x86_64-elf-
