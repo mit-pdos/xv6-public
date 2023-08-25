@@ -1,21 +1,19 @@
 [ /Title (xv6-64 source code) /DOCINFO pdfmark 
 
-[ /Title (Boot) /Count 5 /OUT pdfmark
+[ /Title (Boot) /Count 5 /F 2 /OUT pdfmark
 [ /Title (bootasm.S) /Page 18 /View [/Fit] /OUT pdfmark
 [ /Title (bootmain.c) /Page 19 /View [/Fit] /OUT pdfmark
 [ /Title (kernel.ld) /Page 24 /View [/Fit] /OUT pdfmark
-
 [ /Title (entry.S) /Page 20 /View [/Fit] /OUT pdfmark
 [ /Title (main()) /Page 23 /View [/Fit] /OUT pdfmark
 
-[ /Title (System Call Handling) /Count 5 /OUT pdfmark
+[ /Title (System Call Handling) /F 2 /Count 5 /OUT pdfmark
 [ /Title (syscall_entry)  /Page 42 /View [/Fit] /OUT pdfmark
 [ /Title (syscall())  /Page 46 /View [/Fit] /OUT pdfmark
 [ /Title (sys_getpid() in sysproc.c)  /Page 47 /View [/Fit] /OUT pdfmark
 [ /Title (sys_write() in sysfile.c)  /Page 83 /View [/Fit] /OUT pdfmark
 [ /Title (filewrite() in file.c)  /Page 82 /View [/Fit] /OUT pdfmark
 
-
-[ /Title (Interrupt Handling) /Count 1 /OUT pdfmark
+[ /Title (Interrupt Handling) /Count 1 /F 2 /OUT pdfmark
 [ /Title (trap())  /Page 43 /View [/Fit] /OUT pdfmark
 
