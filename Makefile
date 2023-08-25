@@ -5,9 +5,14 @@ KERNOBJS = \
 #
 
 UNAME_S := $(shell uname -s)
+UNAME_P := $(shell uname -p)
 ifeq ($(UNAME_S),Linux)
-  # no prefix for Linux or WSL2
-  TOOLPREFIX =
+  ifeq ($(UNAME_P),aarch64)
+	TOOLPREFIX = x86_64-linux-gnu
+  else
+  	# no prefix for Linux or WSL2
+ 	 TOOLPREFIX = 
+  endif
 else ifeq ($(UNAME_S),Darwin)
   # need homebrew: $ brew install qemu x86_64-elf-gcc
   TOOLPREFIX = x86_64-elf-
@@ -67,6 +72,13 @@ kernel: $(KERNOBJS) entry.o entryother initcode kernel.ld
 	$(OBJDUMP) -S kernel > kernel.asm
 	$(OBJDUMP) -t kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' | sort > kernel.sym
 
+depend: .depend
+
+.depend: $(wildcard *.c)
+	rm -f "$@"
+	$(CC) -MM $^ > "$@"
+
+include .depend
 # kernelmemfs is a copy of kernel that maintains the
 # disk image in memory instead of writing to a disk.
 # This is not so useful for testing persistent storage or

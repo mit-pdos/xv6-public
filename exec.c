@@ -74,20 +74,18 @@ exec(char *path, char **argv)
     sp = (sp - (strlen(argv[argc]) + 1)) & ~(sizeof(addr_t)-1);
     if(copyout(pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
-    ustack[3+argc] = sp;
+    ustack[1+argc] = sp;
   }
-  ustack[3+argc] = 0;
+  ustack[1+argc] = 0;
 
-  ustack[0] = 0xffffffff;  // fake return PC
-  ustack[1] = argc;
-  ustack[2] = sp - (argc+1)*sizeof(addr_t);  // argv pointer
+  ustack[0] = 0xffffffffffffffff;  // fake return PC
 
+	// argc and argv for main() entry point
   proc->tf->rdi = argc;
   proc->tf->rsi = sp - (argc+1)*sizeof(addr_t);
 
-
-  sp -= (3+argc+1) * sizeof(addr_t);
-  if(copyout(pgdir, sp, ustack, (3+argc+1)*sizeof(addr_t)) < 0)
+  sp -= (1+argc+1) * sizeof(addr_t);
+  if(copyout(pgdir, sp, ustack, (1+argc+1)*sizeof(addr_t)) < 0)
     goto bad;
 
   // Save program name for debugging.

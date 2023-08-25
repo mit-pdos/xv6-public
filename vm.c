@@ -12,7 +12,7 @@ pde_t *kpgdir;  // for use in scheduler()
 __thread struct cpu *cpu;         // %fs:(-16)
 __thread struct proc *proc;       // %fs:(-8)
 
-static pde_t *kpml4;
+static pml4e_t *kpml4;
 static pde_t *kpdpt;
 
 void
@@ -116,7 +116,7 @@ setupkvm(void)
 void
 kvmalloc(void)
 {
-  kpml4 = (pde_t*) kalloc();
+  kpml4 = (pml4e_t*) kalloc();
   memset(kpml4, 0, PGSIZE);
 
   // the kernel memory region starts at KERNBASE and up

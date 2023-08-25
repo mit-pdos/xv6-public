@@ -5,7 +5,6 @@ _*
 *.asm
 *.sym
 *.img
-*.pdf
 fmt/*
 tags
 vectors.S

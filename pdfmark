@@ -17,3 +17,23 @@
 [ /Title (Interrupt Handling) /Count 1 /F 2 /OUT pdfmark
 [ /Title (trap())  /Page 43 /View [/Fit] /OUT pdfmark
 
+[ /Title (Process Management) /Count 10 /OUT pdfmark
+[ /Title (struct proc)  /Page 32 /View [/Fit] /OUT pdfmark
+[ /Title (allocproc())  /Page 33 /View [/Fit] /OUT pdfmark
+[ /Title (userinit())  /Page 34 /View [/Fit] /OUT pdfmark
+[ /Title (initcode.S)  /Page 90 /View [/Fit] /OUT pdfmark
+[ /Title (fork)  /Page 34 /View [/Fit] /OUT pdfmark
+[ /Title (forkret)  /Page 37 /View [/Fit] /OUT pdfmark
+[ /Title (exec)  /Page 48 /View [/Fit] /OUT pdfmark
+[ /Title (scheduler)  /Page 36 /View [/Fit] /OUT pdfmark
+[ /Title (sched)  /Page 36 /View [/Fit] /OUT pdfmark
+[ /Title (swtch.S)  /Page 39 /View [/Fit] /OUT pdfmark
+
+[ /Title (Page Tables) /Count 7 /OUT pdfmark
+[ /Title (setupkvm)  /Page 28 /View [/Fit] /OUT pdfmark
+[ /Title (kvmalloc)  /Page 28 /View [/Fit] /OUT pdfmark
+[ /Title (walkpgdir)  /Page 28 /View [/Fit] /OUT pdfmark
+[ /Title (mappages)  /Page 29 /View [/Fit] /OUT pdfmark
+[ /Title (allocuvm)  /Page 29 /View [/Fit] /OUT pdfmark
+[ /Title (copyuvm)  /Page 31 /View [/Fit] /OUT pdfmark
+[ /Title (copyout)  /Page 31 /View [/Fit] /OUT pdfmark

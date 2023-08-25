@@ -24,7 +24,7 @@ main(void)
   lapicinit();     // interrupt controller
   tvinit();        // trap vectors
   seginit();       // segment descriptors
-  cprintf("\ncpu%d: starting xv6\n\n", cpunum());
+  cprintf("\ncpu%d: starting Fall 2021 xv6\n\n", cpunum());
   ioapicinit();    // another interrupt controller
   consoleinit();   // console hardware
   uartinit();      // serial port
