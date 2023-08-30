@@ -242,7 +242,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 ifndef CPUS
 CPUS := 1
 endif
-QEMUOPTS = -device isa-debug-exit -drive file=$(FS),index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA)
+QEMUOPTS = -device isa-debug-exit -drive file=$(FS),index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 256 $(QEMUEXTRA)
 
 qemu: $(FS) xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS) || true
