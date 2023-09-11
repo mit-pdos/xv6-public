@@ -12,14 +12,14 @@
 #define SECTSIZE  512
 
 struct mbheader {
-  uint64 magic;
-  uint64 flags;
-  uint64 checksum;
-  uint64 header_addr;
-  uint64 load_addr;
-  uint64 load_end_addr;
-  uint64 bss_end_addr;
-  uint64 entry_addr;
+  uint32 magic;
+  uint32 flags;
+  uint32 checksum;
+  uint32 header_addr;
+  uint32 load_addr;
+  uint32 load_end_addr;
+  uint32 bss_end_addr;
+  uint32 entry_addr;
 };
 
 void readseg(uchar*, uint, uint);
