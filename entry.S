@@ -50,11 +50,12 @@ mboot_entry:
   rep     stosb         # memset(4096, 0, 8192)
 
 # map both virtual address 0 and KERNBASE to the same PDPT
+# note: 32-bit operations manipulating 64-bit page table
 # PML4T[0] -> 0x2000 (PDPT)
 # PML4T[256] -> 0x2000 (PDPT)
   mov     $(0x2000 | PTE_P | PTE_W), %eax
   mov     %eax, 0x1000  # PML4T[0]
-  mov     %eax, 0x1800  # PML4T[512]
+  mov     %eax, 0x1800  # PML4T[256]
 
 # PDPT[0] -> 0x0 (1 GB flat map page)
   mov     $(0x0 | PTE_P | PTE_PS | PTE_W), %eax
@@ -82,7 +83,7 @@ entry32mp:
 # access EFER Model specific register
   mov     $MSR_EFER, %ecx
   rdmsr
-  bts     $0, %eax #enable system call extentions
+  bts     $0, %eax #enable system call extensions
   bts     $8, %eax #enable long mode
   wrmsr
 
