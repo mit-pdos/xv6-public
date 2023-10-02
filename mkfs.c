@@ -162,7 +162,7 @@ main(int argc, char *argv[])
   din.size = xint(off);
   winode(rootino, &din);
 
-  balloc(freeblock);
+  balloc(freeblock-1);
 
   exit(0);
 }
