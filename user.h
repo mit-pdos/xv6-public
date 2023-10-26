@@ -37,6 +37,13 @@ int shutdown(void);
 /// at indexes >= count may contain uninitialized memory.
 int ps(int count, struct procInfo* procInfoArray);
 
+/// @brief Make system call to obtain user virtual address of start
+/// of shared memory page.
+/// @param sharedPageStart_p : pointer to the memory that will store
+/// the user virtual address of start of shared memory page
+/// @return zero upon success and -1 otherwise
+int attachSharedMemory(char **sharedPageStart_p);
+
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);

@@ -23,3 +23,4 @@
 #define SYS_yield     22
 #define SYS_shutdown  23
 #define SYS_ps        24
+#define SYS_attachSharedMemory        25

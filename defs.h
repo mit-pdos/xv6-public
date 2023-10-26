@@ -23,6 +23,9 @@ void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 
+// dhello.c
+void helloinit(void);
+
 // exec.c
 int             exec(char*, char**);
 
@@ -201,6 +204,13 @@ struct procInfo;
 /// by the kernel. This number may be less than count, and if it is, elements
 /// at indexes >= count may contain uninitialized memory.
 int             proc_ps(int count, struct procInfo* procInfoArray);
+
+/// @brief Call this function to obtain a pointer to shared memory.
+/// @param storeBuffer_p Addess of memory where a pointer to the shared memory 
+/// should be stored. FYI, pass by reference and pass by pointer are the same
+/// thing.
+/// @return zero upon success and -1 otherwise
+int proc_attachSharedMemory(char **storeBuffer_p);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

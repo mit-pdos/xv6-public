@@ -122,3 +122,16 @@ int sys_ps(void)
     return -1;
   return proc_ps(numberOfProcs, procInfoArray);
 }
+
+/// @brief This function executes as result of system call
+/// @return zero upon success and -1 otherwise
+int sys_attachSharedMemory(void) 
+{
+  char **sharedUVM;
+  if(argptr(0, (char **)&sharedUVM,  sizeof(char *)) < 0)
+  {
+    return -1;
+  }
+
+  return proc_attachSharedMemory(sharedUVM);
+}

@@ -112,7 +112,28 @@ static struct kmap {
  { (void*)KERNLINK, V2P_C(KERNLINK), V2P_C(data), 0},     // kern text+rodata
  { (void*)data,     V2P_C(data),     PHYSTOP,     PTE_W}, // kern data+memory
  { (void*)DEVSPACE, DEVSPACE,        0,           PTE_W}, // more devices
+ //{ (void*)(data + PHYSTOP), V2P_C(data + PHYSTOP), SHAREDSIZE, PTE_W}, // shared memory page
 };
+
+// Create a shared page at uva which ust also be a kva.
+void
+sharepteu(pde_t *pgdir, char *uva)
+{
+  pte_t *pte;
+
+  pte = walkpgdir(pgdir, uva, 1);
+  if(pte == 0)
+    panic("sharepteu");
+  *pte |= PTE_U|PTE_W;
+}
+
+/// This variable stores the address of the start of a page of
+/// kernel vurtual memory. Since every kernal page is mapped into
+/// user process virtual memory, the address is valid in user
+/// programs. Normal, even though kernel pages are mapped into
+/// user virtual memory, the kernal pages are protected to prevent
+/// unpriviledged user access. They are there but not accessible.
+static char * s_kvLastPageStart_p = 0;
 
 // Set up kernel part of a page table.
 pde_t*
@@ -132,6 +153,15 @@ setupkvm(void)
       freevm(pgdir);
       return 0;
     }
+
+  k = &kmap[2]; // 2 is index of data area in kmap
+  int kvSize = k->phys_end - k->phys_start;
+  s_kvLastPageStart_p = ((char *)k->virt) + kvSize - (1 << 12);
+  
+  // Make last page below PHYSTOP writablefrom user space
+  //sharepteu(pgdir, (char*)(PHYSTOP - (1 << 12)));
+  sharepteu(pgdir, s_kvLastPageStart_p);
+
   return pgdir;
 }
 
@@ -295,6 +325,12 @@ freevm(pde_t *pgdir)
     }
   }
   kfree((char*)pgdir);
+}
+
+int proc_attachSharedMemory(char **storeBuffer_p) 
+{
+  *storeBuffer_p = s_kvLastPageStart_p;
+  return 0;
 }
 
 // Clear PTE_U on a page. Used to create an inaccessible
