@@ -47,6 +47,7 @@ void
 freerange(void *vstart, void *vend)
 {
   char *p;
+  if (vend < vstart) panic("freerange");
   p = (char*)PGROUNDUP((uint)vstart);
   for(; p + PGSIZE <= (char*)vend; p += PGSIZE)
     kfree(p);

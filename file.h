@@ -35,3 +35,9 @@ struct devsw {
 extern struct devsw devsw[];
 
 #define CONSOLE 1
+
+// This is te Major number for the new custom hello devices
+// it probably should not be defiend in file.h, but that's
+// where CONSOLE is defined, so we will follow the same 
+// practice.
+#define HELLO 7

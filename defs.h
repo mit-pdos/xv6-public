@@ -1,3 +1,4 @@
+#include "param.h"
 struct buf;
 struct context;
 struct file;
@@ -21,6 +22,9 @@ void            consoleinit(void);
 void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
+
+// dhello.c
+void helloinit(void);
 
 // exec.c
 int             exec(char*, char**);
@@ -156,6 +160,9 @@ int             fetchint(uint, int*);
 int             fetchstr(uint, char**);
 void            syscall(void);
 
+// shutdown.c
+void            shutdown(void);
+
 // timer.c
 void            timerinit(void);
 
@@ -185,6 +192,18 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+
+struct procInfo;
+
+/// @brief Call this function to obtain information about existing 
+/// processes.
+/// @param count : the maximum number of elements storable in procInfoArray
+/// @param procInfoArray : an array of struct procInfo able to store at least 
+/// count elements.
+/// @return The number of struct procInfo structures stored in procInfoArray
+/// by the kernel. This number may be less than count, and if it is, elements
+/// at indexes >= count may contain uninitialized memory.
+int             proc_ps(int count, struct procInfo* procInfoArray);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

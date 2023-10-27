@@ -1,3 +1,4 @@
+#include "param.h"
 struct stat;
 struct rtcdate;
 
@@ -23,6 +24,18 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int yield(void);
+int shutdown(void);
+
+/// @brief This is a system call to obtain information about existing 
+/// processes in the kernel
+/// @param count : the maximum number of elements storable in procInfoArray
+/// @param procInfoArray : an array of struct procInfo able to store at least 
+/// count elements.
+/// @return The number of struct procInfo structures stored in procInfoArray
+/// by the kernel. This number may be less than count, and if it is, elements
+/// at indexes >= count may contain uninitialized memory.
+int ps(int count, struct procInfo* procInfoArray);
 
 // ulib.c
 int stat(const char*, struct stat*);
@@ -31,6 +44,7 @@ void *memmove(void*, const void*, int);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
 void printf(int, const char*, ...);
+int snprintf(char *outbuffer, int n, const char *fmt, ...);
 char* gets(char*, int max);
 uint strlen(const char*);
 void* memset(void*, int, uint);
