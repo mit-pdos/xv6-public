@@ -29,6 +29,29 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+int proc_nice(int targetPID, int targetPriority)
+{
+  //cprintf("proc_nice(%d, %d)\n", targetPID, targetPriority);
+
+  int result = -1;
+  int isDone = 0;
+  acquire(&ptable.lock); // ToDo: Do we really need the lock?
+  for(struct proc *p = ptable.proc; 
+    !isDone && p < &ptable.proc[NPROC];
+    p++) 
+  {
+    if(p->pid == targetPID) {
+      result = p->priority;
+      p->priority = targetPriority;
+      isDone = 1;
+    }
+  }
+
+  release(&ptable.lock);
+
+  return result;
+}
+
 int proc_ps(int numberOfProcs, struct procInfo* arrayOfProcInfo)
 {
   struct proc *p;
@@ -38,7 +61,9 @@ int proc_ps(int numberOfProcs, struct procInfo* arrayOfProcInfo)
 
   acquire(&ptable.lock);
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+  for(p = ptable.proc; 
+    p < &ptable.proc[NPROC] && procInfoArrayIndex < numberOfProcs;
+    p++) {
     if(p->state != UNUSED) {
       safestrcpy(arrayOfProcInfo[procInfoArrayIndex].name, p->name,   
         MAX_PROC_NAME_LENGTH);
@@ -53,6 +78,7 @@ int proc_ps(int numberOfProcs, struct procInfo* arrayOfProcInfo)
         }
       }
       arrayOfProcInfo[procInfoArrayIndex].cpuPercent = cpuPercent;
+      arrayOfProcInfo[procInfoArrayIndex].priority = p->priority;
       ++procInfoArrayIndex;
       ++result;
     }
@@ -261,6 +287,7 @@ fork(void)
   np->state = RUNNABLE;
   np->ticksAtStart = ticks;
   np->ticksScheduled = 0;
+  np->priority = 0;  // All processes start with zero priority
 
   release(&ptable.lock);
 
@@ -371,21 +398,38 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+  int indexOfHighestPriority = 0;
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    int indexInProcs = indexOfHighestPriority;
+    int count = 0;
+    while(count < NPROC) {
+      count += 1;
+      p = &ptable.proc[indexInProcs];
 
+      if(p->state == RUNNABLE) {
+        if(c->proc == 0) {
+          c->proc = p; // First viable candidate to run
+          indexOfHighestPriority = indexInProcs;
+        } else if(p->priority >= c->proc->priority) {
+          c->proc = p; // Found higher priority
+          indexOfHighestPriority = indexInProcs;
+        }
+      }
+      indexInProcs = (indexInProcs + 1) % NPROC;
+    } 
+
+    // c->proc is now highest priority proc or 0
+    if(0 != c->proc) {
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      c->proc = p;
+      p = c->proc;
       switchuvm(p);
       p->state = RUNNING;
 
@@ -396,6 +440,25 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
+
+    // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    //   if(p->state != RUNNABLE)
+    //     continue;
+
+    //   // Switch to chosen process.  It is the process's job
+    //   // to release ptable.lock and then reacquire it
+    //   // before jumping back to us.
+    //   c->proc = p;
+    //   switchuvm(p);
+    //   p->state = RUNNING;
+
+    //   swtch(&(c->scheduler), p->context);
+    //   switchkvm();
+
+    //   // Process is done running for now.
+    //   // It should have changed its p->state before coming back.
+    //   c->proc = 0;
+    // }
     release(&ptable.lock);
 
   }

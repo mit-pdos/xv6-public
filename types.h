@@ -13,6 +13,7 @@ struct procInfo {
     int state;
     int pid;
     int cpuPercent;
+    int priority;
     char name[MAX_PROC_NAME_LENGTH];
 };
 

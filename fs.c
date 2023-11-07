@@ -21,6 +21,26 @@
 #include "buf.h"
 #include "file.h"
 
+// Lock the given inode (treat it as a semphore).
+void
+fsemaphore_lock(struct inode *ip)
+{
+  if(ip == 0 || ip->ref < 1)
+    panic("flock");
+
+  acquiresleep(&ip->flock);
+}
+
+// Unlock the given inode (that isbeing treated as a semaphore).
+void
+fsemaphore_unlock(struct inode *ip)
+{
+  if(ip == 0 || !holdingsleep(&ip->flock) || ip->ref < 1)
+    panic("funlock");
+
+  releasesleep(&ip->flock);
+}
+
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
 // there should be one superblock per disk device, but we run with

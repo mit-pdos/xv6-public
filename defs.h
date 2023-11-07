@@ -1,3 +1,5 @@
+#ifndef defs_H
+#define defs_H
 #include "param.h"
 struct buf;
 struct context;
@@ -195,6 +197,18 @@ void            clearpteu(pde_t *pgdir, char *uva);
 
 struct procInfo;
 
+int             filelock(struct file*);
+int             fileunlock(struct file*);
+void            fsemaphore_lock(struct inode*);
+void            fsemaphore_unlock(struct inode*);
+
+/// @brief This fuction changes the priority of the procee with 
+/// targetPID to targetPriority.
+/// @param targetPID The index of the process data structure to change
+/// @param targetPriority the new priority
+/// @return the priority of chnage dprocess before the change
+int proc_nice(int targetPID, int targetPriority) ;
+
 /// @brief Call this function to obtain information about existing 
 /// processes.
 /// @param count : the maximum number of elements storable in procInfoArray
@@ -214,3 +228,5 @@ int proc_attachSharedMemory(char **storeBuffer_p);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+#endif // defs_H

@@ -27,6 +27,13 @@ int uptime(void);
 int yield(void);
 int shutdown(void);
 
+/// @brief This system call changes the priority of the procee with 
+/// targetPID to targetPriority.
+/// @param targetPID The index of the process data structure to change
+/// @param targetPriority the new priority
+/// @return the priority of chnage dprocess before the change
+int nice(int tragetPID, int targetPriority);
+
 /// @brief This is a system call to obtain information about existing 
 /// processes in the kernel
 /// @param count : the maximum number of elements storable in procInfoArray
@@ -43,6 +50,20 @@ int ps(int count, struct procInfo* procInfoArray);
 /// the user virtual address of start of shared memory page
 /// @return zero upon success and -1 otherwise
 int attachSharedMemory(char **sharedPageStart_p);
+
+/// @brief call this function pasing the file descriptor for an open file in order to
+/// acquire a sleep lock associated with the open file. This function blocks 
+/// (a.k.a. sleeps) until the lock is acquired.
+/// @param fd descriptor for a file opened with open()
+/// @return zero if lock is acquired and a negative number if any error is detected.
+int flock(int fd);
+
+/// @brief call this function pasing the file descriptor for an open file that is
+/// currently locked via flock(). This function unlocks the lock associated with 
+/// the file. 
+/// @param fd descriptor for a file opened with open() and locked with flock()
+/// @return zero if lock is released and a negative number if any error is detected.
+int funlock(int fd);
 
 // ulib.c
 int stat(const char*, struct stat*);

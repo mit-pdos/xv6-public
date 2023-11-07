@@ -24,3 +24,6 @@
 #define SYS_shutdown  23
 #define SYS_ps        24
 #define SYS_attachSharedMemory        25
+#define SYS_nice      26
+#define SYS_flock     27
+#define SYS_funlock   28

@@ -459,3 +459,21 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+int 
+sys_flock(void) {
+  struct file *fp;
+  if(argfd(0, 0, &fp) >= 0) {
+    return filelock(fp);
+  }
+  return -1;
+}
+
+int 
+sys_funlock(void) {
+  struct file *fp;
+  if(argfd(0, 0, &fp) >= 0) {
+    return fileunlock(fp);
+  }
+  return -1;
+}

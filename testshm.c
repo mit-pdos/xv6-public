@@ -14,6 +14,7 @@ main(int argc, char *argv[])
         printf(1, "PID: %d Attached: %p\n", getpid(), sharedMemory_p);
         
         int counter = 0;
+        printf(2, "counter: %p\n", &counter);
         while(counter < 30) {
             if(1 == argc) {
                 // no command line argument means read from shared memory
