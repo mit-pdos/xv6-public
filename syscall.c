@@ -65,7 +65,7 @@ argint(int n, int *ip)
   return 0;
 }
 
-int
+addr_t
 argaddr(int n, addr_t *ip)
 {
   *ip = fetcharg(n);
@@ -75,7 +75,7 @@ argaddr(int n, addr_t *ip)
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size bytes.  Check that the pointer
 // lies within the process address space.
-int
+addr_t
 argptr(int n, char **pp, int size)
 {
   addr_t i;
