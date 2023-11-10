@@ -96,11 +96,14 @@ struct segdesc {
 #define PTE_U           0x004   // User
 #define PTE_PS          0x080   // Page Size
 
-// Address in page table or page directory entry
-#define PTE_ADDR(pte)   ((uint)(pte) & ~0xFFF)
-#define PTE_FLAGS(pte)  ((uint)(pte) &  0xFFF)
 
 #ifndef __ASSEMBLER__
+// Address in page table or page directory entry
+//   I changes these from macros into inline functions to make sure we
+//   consistently get an error if a pointer is erroneously passed to them.
+static inline uint PTE_ADDR(uint pte)  { return pte & ~0xFFF; }
+static inline uint PTE_FLAGS(uint pte) { return pte & 0xFFF; }
+
 typedef uint pte_t;
 
 // Task state segment format

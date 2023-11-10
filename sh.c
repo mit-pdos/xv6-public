@@ -11,7 +11,7 @@
 #define LIST  4
 #define BACK  5
 
-#define MAXARGS 10
+#define MAXARGS 20
 
 struct cmd {
   int type;
@@ -144,7 +144,7 @@ getcmd(char *buf, int nbuf)
 int
 main(void)
 {
-  static char buf[100];
+  static char buf[200];
   int fd;
 
   // Ensure that three file descriptors are open.

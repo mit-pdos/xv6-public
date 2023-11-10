@@ -139,6 +139,7 @@ sys_link(void)
 
   ip->nlink++;
   iupdate(ip);
+  //cprintf("sys_link %s\n", ip->lock.name);
   iunlock(ip);
 
   if((dp = nameiparent(new, name)) == 0)
@@ -251,8 +252,15 @@ create(char *path, short type, short major, short minor)
   if((ip = dirlookup(dp, name, 0)) != 0){
     iunlockput(dp);
     ilock(ip);
-    if(type == T_FILE && ip->type == T_FILE)
+    if(type == T_FILE && ip->type == T_FILE) {
+      // File already exists so nothing to create
       return ip;
+    }
+    else if(ip->type == T_DEV) {
+      // Device already exists so nothing to create. This
+      // is added do that shell redirect '>' to device works
+      return ip;
+    }
     iunlockput(ip);
     return 0;
   }
@@ -296,7 +304,7 @@ sys_open(void)
   begin_op();
 
   if(omode & O_CREATE){
-    ip = create(path, T_FILE, 0, 0);
+    ip = create(path, T_FILE, 0, 0); // grabs ip->lock
     if(ip == 0){
       end_op();
       return -1;
@@ -321,7 +329,15 @@ sys_open(void)
     end_op();
     return -1;
   }
+
+  // Every execution path to here grabbed ip->lock
+  if(ip == 0 || !holdingsleep(&ip->lock) || ip->ref < 1) {
+    cprintf("Invariant untrue: %s\n", ip->lock.name);
+  }
+  //cprintf("sys_open %s\n", path);
+  //cprintf("sys_open %s\n", ip->lock.name);
   iunlock(ip);
+  //cprintf("sys_open unlocked %s\n", path);
   end_op();
 
   f->type = FD_INODE;
@@ -386,6 +402,7 @@ sys_chdir(void)
     end_op();
     return -1;
   }
+  //cprintf("sys_chdir %s\n", ip->lock.name);
   iunlock(ip);
   iput(curproc->cwd);
   end_op();
@@ -441,4 +458,22 @@ sys_pipe(void)
   fd[0] = fd0;
   fd[1] = fd1;
   return 0;
+}
+
+int 
+sys_flock(void) {
+  struct file *fp;
+  if(argfd(0, 0, &fp) >= 0) {
+    return filelock(fp);
+  }
+  return -1;
+}
+
+int 
+sys_funlock(void) {
+  struct file *fp;
+  if(argfd(0, 0, &fp) >= 0) {
+    return fileunlock(fp);
+  }
+  return -1;
 }

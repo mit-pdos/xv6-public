@@ -7,6 +7,15 @@
 #include "proc.h"
 #include "spinlock.h"
 
+static const char * const states[] = {
+  [UNUSED]    "unused",
+  [EMBRYO]    "embryo",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
+  };
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -19,6 +28,65 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+
+int proc_nice(int targetPID, int targetPriority)
+{
+  //cprintf("proc_nice(%d, %d)\n", targetPID, targetPriority);
+
+  int result = -1;
+  int isDone = 0;
+  acquire(&ptable.lock); // ToDo: Do we really need the lock?
+  for(struct proc *p = ptable.proc; 
+    !isDone && p < &ptable.proc[NPROC];
+    p++) 
+  {
+    if(p->pid == targetPID) {
+      result = p->priority;
+      p->priority = targetPriority;
+      isDone = 1;
+    }
+  }
+
+  release(&ptable.lock);
+
+  return result;
+}
+
+int proc_ps(int numberOfProcs, struct procInfo* arrayOfProcInfo)
+{
+  struct proc *p;
+  int result = 0;
+  int procInfoArrayIndex = 0;
+  int currentTicks = ticks;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; 
+    p < &ptable.proc[NPROC] && procInfoArrayIndex < numberOfProcs;
+    p++) {
+    if(p->state != UNUSED) {
+      safestrcpy(arrayOfProcInfo[procInfoArrayIndex].name, p->name,   
+        MAX_PROC_NAME_LENGTH);
+      arrayOfProcInfo[procInfoArrayIndex].pid = p->pid;
+      arrayOfProcInfo[procInfoArrayIndex].state = p->state;
+      int elapsedTicks = currentTicks - p->ticksAtStart;
+      int cpuPercent = 0;
+      if(elapsedTicks > 0 && 1 < p->ticksScheduled) {
+        cpuPercent = (p->ticksScheduled * 100) / elapsedTicks;
+        if(100 < cpuPercent) {
+          cpuPercent = 100;
+        }
+      }
+      arrayOfProcInfo[procInfoArrayIndex].cpuPercent = cpuPercent;
+      arrayOfProcInfo[procInfoArrayIndex].priority = p->priority;
+      ++procInfoArrayIndex;
+      ++result;
+    }
+  }
+
+  release(&ptable.lock);
+  return procInfoArrayIndex;
+}
 
 void
 pinit(void)
@@ -141,6 +209,8 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+  p->ticksAtStart = ticks;
+  p->ticksScheduled = 0;
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -215,6 +285,9 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  np->ticksAtStart = ticks;
+  np->ticksScheduled = 0;
+  np->priority = 0;  // All processes start with zero priority
 
   release(&ptable.lock);
 
@@ -325,21 +398,38 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+  int indexOfHighestPriority = 0;
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    int indexInProcs = indexOfHighestPriority;
+    int count = 0;
+    while(count < NPROC) {
+      count += 1;
+      p = &ptable.proc[indexInProcs];
 
+      if(p->state == RUNNABLE) {
+        if(c->proc == 0) {
+          c->proc = p; // First viable candidate to run
+          indexOfHighestPriority = indexInProcs;
+        } else if(p->priority >= c->proc->priority) {
+          c->proc = p; // Found higher priority
+          indexOfHighestPriority = indexInProcs;
+        }
+      }
+      indexInProcs = (indexInProcs + 1) % NPROC;
+    } 
+
+    // c->proc is now highest priority proc or 0
+    if(0 != c->proc) {
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      c->proc = p;
+      p = c->proc;
       switchuvm(p);
       p->state = RUNNING;
 
@@ -350,6 +440,25 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
+
+    // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    //   if(p->state != RUNNABLE)
+    //     continue;
+
+    //   // Switch to chosen process.  It is the process's job
+    //   // to release ptable.lock and then reacquire it
+    //   // before jumping back to us.
+    //   c->proc = p;
+    //   switchuvm(p);
+    //   p->state = RUNNING;
+
+    //   swtch(&(c->scheduler), p->context);
+    //   switchkvm();
+
+    //   // Process is done running for now.
+    //   // It should have changed its p->state before coming back.
+    //   c->proc = 0;
+    // }
     release(&ptable.lock);
 
   }
@@ -377,6 +486,7 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = mycpu()->intena;
+  p->ticksScheduled += 1;
   swtch(&p->context, mycpu()->scheduler);
   mycpu()->intena = intena;
 }
@@ -503,17 +613,9 @@ kill(int pid)
 void
 procdump(void)
 {
-  static char *states[] = {
-  [UNUSED]    "unused",
-  [EMBRYO]    "embryo",
-  [SLEEPING]  "sleep ",
-  [RUNNABLE]  "runble",
-  [RUNNING]   "run   ",
-  [ZOMBIE]    "zombie"
-  };
   int i;
   struct proc *p;
-  char *state;
+  const char *state;
   uint pc[10];
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
