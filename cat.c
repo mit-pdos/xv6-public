@@ -16,7 +16,7 @@ cat(int fd)
     }
   }
   if(n < 0){
-    printf(1, "cat: read error\n"); 
+    printf(1, "cat: read error\n");
     exit();
   }
 }
