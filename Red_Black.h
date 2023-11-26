@@ -1,5 +1,7 @@
-#include"proc.h"
+
 #include "defs.h"
+#include"MALLOC.h"
+
 //#define Null ((void*)0)
 enum Color {Red,Black};
 void Print(struct proc *p){
