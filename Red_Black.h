@@ -128,3 +128,121 @@ void Insert(struct node **root,struct proc* p) {
         Parent->right = New;
     FixViolation(root, New);
 }
+struct node *Min_Vruntime_Node(struct node *node) {
+    struct node *current = node;
+    while (current->left != Null)
+        current = current->left;
+    return current;
+}
+void F2B(struct node **root, struct node *x) {
+    if (x == *root)
+        return;
+    struct node *sibling = Null;
+    if (x->parent->left == x) {
+        sibling = x->parent->right;
+        if (sibling->node_color==Red) {
+            sibling->node_color = Black;
+            x->parent->node_color = Red;
+            rotateLeft(root, x->parent);
+            sibling = x->parent->right;
+        }
+        if ((sibling->left == Null || sibling->left->node_color == Black) && (sibling->right == Null || sibling->right->node_color == Black)) {
+            sibling->node_color=Red;
+            if (x->parent->node_color == Black)
+                F2B(root, x->parent);
+            else
+                x->parent->node_color= Black;
+        } else {
+            if (sibling->right == Null || sibling->right->node_color == Black) {
+                sibling->left->node_color = Black;
+                sibling->node_color = Red;
+                rotateRight(root, sibling);
+                sibling = x->parent->right;
+            }
+            sibling->node_color = x->parent->node_color;
+            x->parent->node_color = Black;
+            sibling->right->node_color = Black;
+            rotateLeft(root, x->parent);
+        }
+    } else {
+        sibling = x->parent->left;
+        if (sibling->node_color == Red) {
+            sibling->node_color = Black;
+            x->parent->node_color = Red;
+            rotateRight(root, x->parent);
+            sibling = x->parent->left;
+        }
+        if ((sibling->left == Null || sibling->left->node_color == Black) && (sibling->right == Null || sibling->right->node_color == Black)) {
+            sibling->node_color=Red;
+            if (x->parent->node_color== Black)
+                F2B(root, x->parent);
+            else
+                x->parent->node_color=Black;
+        } else {
+            if (sibling->left == Null || sibling->left->node_color == Black) {
+                sibling->right->node_color = Black;
+                sibling->node_color = Red;
+                rotateLeft(root, sibling);
+                sibling = x->parent->left;
+            }
+            sibling->node_color= x->parent->node_color;
+            x->parent->node_color = Black;
+            sibling->left->node_color = Black;
+            rotateRight(root, x->parent);
+        }
+    }
+}
+void Delete(struct node **root,struct proc *p) {
+    struct node *z = Create_Node(p);
+    struct node *x, *y;
+    struct node *current = *root;
+
+    while (current != Null) {
+        if (current->Process->Vruntime == z->Process->Vruntime) {
+            z = current;
+            break;
+        }
+
+        if (current->Process->Vruntime < z->Process->Vruntime)
+            current = current->right;
+        else
+            current = current->left;
+            
+    }
+    if (z == Null) {
+        cprintf("No process was found with the provided pid\n");
+        return;
+    }
+    if (z->left == Null || z->right == Null)
+        y = z;
+    else {
+        y = Min_Vruntime_Node(z->right);
+        z->Process->Vruntime = y->Process->Vruntime;
+    }
+    if (y->left != Null){
+
+        x = y->left;
+    }
+    else{
+        x = y->right;
+    }
+    if(x!=Null)
+       x->parent = y->parent;
+    
+    if (y->parent == Null)
+        *root = x;
+    else if (y == y->parent->left)
+        y->parent->left = x;
+    else
+        y->parent->right = x;
+    if (y->node_color == Black)
+        F2B(root, x);
+    //kfree((char*)y);
+}
+void Traverse(struct node *root) {
+    if (root == Null)
+        return;
+    Traverse(root->left);
+    cprintf("A process with name %s was found in the tree\n", root->Process->name);
+    Traverse(root->right);
+}
