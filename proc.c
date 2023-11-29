@@ -149,8 +149,8 @@ userinit(void)
   p->state = RUNNABLE;
 
   release(&ptable.lock);
-  Red_Black_Tree=Create_Red_Black_Tree(p);
-  cprintf("Red Black Tree was initialized successfully with process %s as root\n",p->name);
+  //Red_Black_Tree=Create_Red_Black_Tree(p);
+  //cprintf("Red Black Tree was initialized successfully with process %s as root\n",p->name);
 }
 
 // Grow current process's memory by n bytes.
