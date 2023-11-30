@@ -1,16 +1,19 @@
 #include "types.h"
-#include "defs.h"
 #include "param.h"
-#include "memlayout.h"
-#include "mmu.h"
-#include "x86.h"
-#include "proc.h"
-#include "spinlock.h"
 
+#include "x86.h"
+#include"Red_Black.h"
+//struct node* Red_Black_Tree=Null;
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
+struct
+{
+  struct spinlock Tree_Lock;
+  struct node *Tree;
+}Red_Black_Tree;
+
 
 static struct proc *initproc;
 
@@ -88,7 +91,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-
+  p->Vruntime=p->pid;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -146,11 +149,14 @@ userinit(void)
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
   // because the assignment might not be atomic.
+
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
 
   release(&ptable.lock);
+  //Red_Black_Tree=Create_Red_Black_Tree(p);
+  //cprintf("Red Black Tree was initialized successfully with process %s as root\n",p->name);
 }
 
 // Grow current process's memory by n bytes.
@@ -325,7 +331,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -340,12 +346,20 @@ scheduler(void)
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
+      //This code right here is the way we can use our Data structure
+      acquire(&Red_Black_Tree.Tree_Lock);
+      Insert(&Red_Black_Tree.Tree,p);
+      //Traverse(Red_Black_Tree.Tree);
+      Delete(&Red_Black_Tree.Tree,p);
+      release(&Red_Black_Tree.Tree_Lock);
       switchuvm(p);
       p->state = RUNNING;
 
       swtch(&(c->scheduler), p->context);
+      
       switchkvm();
-
+      
+      //cprintf("The name of the process %s\n",p->name);
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;

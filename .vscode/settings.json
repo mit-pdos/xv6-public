@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "red_black.h": "c",
+        "memlayout.h": "c"
+    }
+}
