@@ -120,6 +120,10 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+//We will add clone & join syscall prototypes here
+int clone(void* stack);
+
+int join(int Thread_id);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

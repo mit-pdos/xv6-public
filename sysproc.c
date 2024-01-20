@@ -7,6 +7,20 @@
 #include "mmu.h"
 #include "proc.h"
 
+int sys_clone(void)
+{
+  void* Child_Thread;
+  if(argint(0,(int*)&Child_Thread)<0)
+    return -1;
+  return clone((void*)Child_Thread);  
+}
+int sys_join(void)
+{
+  int Thread_id;
+  if(argint(0,&Thread_id)<0)
+    return -1;
+  return join(Thread_id);  
+}
 int
 sys_fork(void)
 {

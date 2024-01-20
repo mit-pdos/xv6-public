@@ -495,6 +495,14 @@ kill(int pid)
   release(&ptable.lock);
   return -1;
 }
+int clone(void* stack)
+{
+  return 0;
+}
+int join(int Thread_id)
+{
+  return 0;
+}
 
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
