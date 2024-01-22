@@ -16,7 +16,7 @@ int main(){
         tid=thread_create(&Print,(void*)size,(void*)&list[i]);
     }
     for(int i=1;i<=3;i++){
-        Stat=join(i);
+        Stat=thread_join(i);
     }
     printf(2,"%d %d",tid,Stat);
     exit();

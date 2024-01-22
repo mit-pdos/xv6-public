@@ -10,7 +10,10 @@ thread_create(void (*worker)(void*,void*),void* arg1,void* arg2)
   int Thread_id=clone(worker,arg1,arg2,Child_Stack);
   return Thread_id;
 }
-
+int thread_join(int thread_id)
+{
+  return join(thread_id);
+}
 
 char*
 strcpy(char *s, const char *t)

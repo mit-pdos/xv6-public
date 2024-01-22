@@ -41,4 +41,4 @@ int atoi(const char*);
 
 //Thread library
 int thread_create(void (*)(void*,void*),void*,void*);
-
+int thread_join(int thread_id);
