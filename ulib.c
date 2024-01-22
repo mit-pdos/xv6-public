@@ -11,6 +11,7 @@ thread_create(void (*worker)(void*,void*),void* arg1,void* arg2)
   return Thread_id;
 }
 
+
 char*
 strcpy(char *s, const char *t)
 {
