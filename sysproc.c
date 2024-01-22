@@ -7,6 +7,49 @@
 #include "mmu.h"
 #include "proc.h"
 
+int sys_clone(void)
+{
+
+    void (*func)(void *,void *);
+    char *child_stack, *arg1,*arg2;
+
+    if(argptr(0, (char **)&func, 0) == -1) {
+        return -1;
+    }
+    
+    if(argptr(1, &arg1, 0) == -1) {
+        return -1;
+    }
+    
+    if(argptr(2, &arg2, 0) == -1) {
+        return -1;
+    }
+    if(argint(3, (int *)&child_stack) == -1) {
+        return -1;
+    }
+    
+    
+    if(myproc()->sz < (uint)arg1 + (uint)arg2) {
+        return -1;
+    }
+
+    
+    if(myproc()->sz <= (uint)child_stack && 
+        myproc()->sz < (uint)child_stack - PGSIZE) {
+        return -1;
+    }
+    
+    
+  return clone(func,(void*)arg1,(void*)arg2,(void *)child_stack);
+
+}
+int sys_join(void)
+{
+  int Thread_id;
+  if(argint(0,&Thread_id)<0)
+    return -1;
+  return join(Thread_id);  
+}
 int
 sys_fork(void)
 {

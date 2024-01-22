@@ -111,7 +111,10 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
+  p->Is_Thread=0;
+  p->Thread_Num=0;
+  p->tstack=0;
+  p->tid=0;
   return p;
 }
 
@@ -209,7 +212,7 @@ fork(void)
   np->cwd = idup(curproc->cwd);
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
-
+  //np->tid=-1;
   pid = np->pid;
 
   acquire(&ptable.lock);
@@ -246,7 +249,9 @@ exit(void)
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
-
+  if(curproc->tid == 0 && curproc->Thread_Num!=0) {
+    panic("Parent cannot exit before its children");
+  }
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -494,6 +499,130 @@ kill(int pid)
   }
   release(&ptable.lock);
   return -1;
+}
+int clone(void (*worker)(void*,void*),void* arg1,void* arg2,void* stack)
+{
+  //int i, pid;
+  struct proc *New_Thread;
+  struct proc *curproc = myproc();
+  uint sp,HandCrafted_Stack[3];
+  // Allocate process.
+  if((New_Thread = allocproc()) == 0){
+    return -1;
+  }
+  if(curproc->tid!=0){
+      kfree(New_Thread->kstack);
+      New_Thread->kstack = 0;
+      New_Thread->state = UNUSED;
+      cprintf("Clone called by a thread\n");
+      return -1;
+  }
+  //The new thread parent would be curproc
+  New_Thread->pid=curproc->pid;
+  New_Thread->sz=curproc->sz;
+
+  //The tid of the thread will be determined by Number of current threads 
+  //of a process
+  curproc->Thread_Num++;
+  New_Thread->tid=curproc->Thread_Num;
+  New_Thread->Is_Thread=1;
+
+  //The parent of thread will be the process calling clone
+  New_Thread->parent=curproc;
+
+  //Sharing the same virtual address space
+  New_Thread->pgdir=curproc->pgdir;
+  if(!stack){
+      kfree(New_Thread->kstack);
+      New_Thread->kstack = 0;
+      New_Thread->state = UNUSED;
+      curproc->Thread_Num--;
+      New_Thread->tid=0;
+      New_Thread->Is_Thread=0;
+      cprintf("Child process wasn't allocated a stack\n");    
+  }
+  //Assuming that child_stack has been allocated by malloc
+  New_Thread->tstack=(char*)stack;
+  //Thread has the same trapframe as its parent
+  *New_Thread->tf=*curproc->tf;
+
+  HandCrafted_Stack[0]=(uint)0xfffeefff;
+  HandCrafted_Stack[1]=(uint)arg1;
+  HandCrafted_Stack[2]=(uint)arg2;
+  
+  sp=(uint)New_Thread->tstack;
+  sp-=3*4;
+  if(copyout(New_Thread->pgdir, sp,HandCrafted_Stack, 3 * sizeof(uint)) == -1){
+      kfree(New_Thread->kstack);
+      New_Thread->kstack = 0;
+      New_Thread->state = UNUSED;
+      curproc->Thread_Num--;
+      New_Thread->tid=0;
+      New_Thread->Is_Thread=0;      
+      return -1;
+  }
+  New_Thread->tf->esp=sp;
+  New_Thread->tf->eip=(uint)worker;
+  //Duplicate all the file descriptors for the new thread
+  for(uint i = 0; i < NOFILE; i++){
+    if(curproc->ofile[i])
+      New_Thread->ofile[i] = filedup(curproc->ofile[i]);
+  }
+  New_Thread->cwd = idup(curproc->cwd);
+  safestrcpy(New_Thread->name, curproc->name, sizeof(curproc->name));
+  acquire(&ptable.lock);
+  New_Thread->state=RUNNABLE;
+  release(&ptable.lock);
+  //cprintf("process running Clone has  %d threads\n",curproc->Thread_Num);  
+  return New_Thread->tid;
+}
+int join(int Thread_id)
+{
+  struct proc  *p,*curproc=myproc();
+  int Join_Thread_Exit=0,jtid;
+  if(Thread_id==0)
+     return -1;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->tid == Thread_id && p->parent == curproc) {
+      Join_Thread_Exit=1; 
+      break;
+    }
+  }
+  if(!Join_Thread_Exit || curproc->killed){
+    //cprintf("Herere");
+    return -1;
+  }  
+  acquire(&ptable.lock);
+  for(;;){
+    // thread is killed by some other thread in group
+    //cprintf("I am waiting\n");
+    if(curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+    if(p->state == ZOMBIE){
+      // Found the thread 
+      curproc->Thread_Num--;
+      jtid = p->tid;
+      kfree(p->kstack);
+      p->kstack = 0;
+      p->pgdir = 0;
+      p->pid = 0;
+      p->tid = 0;
+      p->tstack = 0;
+      p->parent = 0;
+      p->name[0] = 0;
+      p->killed = 0;
+      p->state = UNUSED;
+      release(&ptable.lock);
+      //cprintf("Parent has  %d threads\n",curproc->Thread_Num);
+      return jtid;
+    } 
+
+    sleep(curproc, &ptable.lock);  
+  }     
+  //curproc->Thread_Num--;
+  return 0;
 }
 
 //PAGEBREAK: 36

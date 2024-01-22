@@ -3,6 +3,14 @@
 #include "fcntl.h"
 #include "user.h"
 #include "x86.h"
+int 
+thread_create(void (*worker)(void*,void*),void* arg1,void* arg2)
+{
+  void* Child_Stack=malloc(4096);
+  int Thread_id=clone(worker,arg1,arg2,Child_Stack);
+  return Thread_id;
+}
+
 
 char*
 strcpy(char *s, const char *t)
@@ -104,3 +112,4 @@ memmove(void *vdst, const void *vsrc, int n)
     *dst++ = *src++;
   return vdst;
 }
+

@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "defs.h": "c",
+        "user.h": "c",
+        "traps.h": "c"
+    }
+}
