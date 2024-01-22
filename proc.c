@@ -111,7 +111,10 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
+  p->Is_Thread=0;
+  p->Thread_Num=0;
+  p->tstack=0;
+  p->tid=0;
   return p;
 }
 
@@ -495,9 +498,57 @@ kill(int pid)
   release(&ptable.lock);
   return -1;
 }
-int clone(void* stack)
+int clone(void (*worker)(void*,void*),void* arg1,void* arg2,void* stack)
 {
-  return 0;
+  //int i, pid;
+  struct proc *New_Thread;
+  struct proc *curproc = myproc();
+
+  // Allocate process.
+  if((New_Thread = allocproc()) == 0){
+    return -1;
+  }
+  if(curproc->tid!=0){
+      kfree(New_Thread->kstack);
+      New_Thread->kstack = 0;
+      New_Thread->state = UNUSED;
+      cprintf("Clone called by a thread\n");
+      return -1;
+  }
+  //The new thread parent would be curproc
+  New_Thread->pid=curproc->pid;
+  New_Thread->sz=curproc->sz;
+
+  //The tid of the thread will be determined by Number of current threads 
+  //of a process
+  curproc->Thread_Num++;
+  New_Thread->tid=curproc->Thread_Num;
+  New_Thread->Is_Thread=1;
+
+  //The parent of thread will be the process calling clone
+  New_Thread->parent=curproc;
+
+  //Sharing the same virtual address space
+  New_Thread->pgdir=curproc->pgdir;
+  if(!stack){
+      kfree(New_Thread->kstack);
+      New_Thread->kstack = 0;
+      New_Thread->state = UNUSED;
+      cprintf("Child process wasn't allocated a stack\n");    
+  }
+  //Assuming that child_stack has been allocated by malloc
+  New_Thread->tstack=(char*)stack;
+  //Thread has the same trapframe as its parent
+  *New_Thread->tf=*curproc->tf;
+
+  //Duplicate all the file descriptors for the new thread
+  for(uint i = 0; i < NOFILE; i++){
+    if(curproc->ofile[i])
+      New_Thread->ofile[i] = filedup(curproc->ofile[i]);
+  }
+  New_Thread->cwd = idup(curproc->cwd);
+  safestrcpy(New_Thread->name, curproc->name, sizeof(curproc->name));
+  return New_Thread->tid;
 }
 int join(int Thread_id)
 {

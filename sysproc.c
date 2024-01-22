@@ -9,10 +9,39 @@
 
 int sys_clone(void)
 {
-  void* Child_Thread;
-  if(argint(0,(int*)&Child_Thread)<0)
-    return -1;
-  return clone((void*)Child_Thread);  
+
+    void (*func)(void *,void *);
+    char *child_stack, *arg1,*arg2;
+
+    if(argptr(0, (char **)&func, 0) == -1) {
+        return -1;
+    }
+    
+    if(argptr(1, &arg1, 0) == -1) {
+        return -1;
+    }
+    
+    if(argptr(2, &arg2, 0) == -1) {
+        return -1;
+    }
+    if(argint(3, (int *)&child_stack) == -1) {
+        return -1;
+    }
+    
+    
+    if(myproc()->sz < (uint)arg1 + (uint)arg2) {
+        return -1;
+    }
+
+    
+    if(myproc()->sz <= (uint)child_stack && 
+        myproc()->sz < (uint)child_stack - PGSIZE) {
+        return -1;
+    }
+    
+    
+  return clone(func,(void*)arg1,(void*)arg2,(void *)child_stack);
+
 }
 int sys_join(void)
 {
