@@ -121,6 +121,9 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 
+//find.c
+//void            find(char *filename);
+
 // swtch.S
 void            swtch(struct context**, struct context*);
 
