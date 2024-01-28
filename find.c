@@ -87,3 +87,16 @@ main (int argc, char *argv[])
     find (argv[1],argv[3]);
     exit();
     }
+
+    // Inside the find function in find.c
+if (argc > 1 && strcmp(argv[1], "-printf") == 0) {
+    // Check if there is a format string after -printf
+    if (argc > 2) {
+        char *formatString = argv[2];
+        // Call a function to print files based on the format string
+        printFilesWithFormat(dirpath, formatString);
+    } else {
+        printf(2, "Usage: find <directory> -printf <format>\n");
+    }
+    exit();
+}
