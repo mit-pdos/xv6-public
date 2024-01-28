@@ -1,51 +1,52 @@
-NOTE: we have stopped maintaining the x86 version of xv6, and switched
-our efforts to the RISC-V version
-(https://github.com/mit-pdos/xv6-riscv.git)
+# Threading Support in Xv6
 
-xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
-Version 6 (v6).  xv6 loosely follows the structure and style of v6,
-but is implemented for a modern x86-based multiprocessor using ANSI C.
+**Authors:** Ali Momen, Mobin Barfi
 
-ACKNOWLEDGMENTS
+## Introduction
+### What are threads?
+Within a program, a Thread is a separate execution path. It is a lightweight process that the operating system can schedule and run concurrently with other threads. The operating system creates and manages threads, and they share the same memory and resources as the program that created them. This enables multiple threads to collaborate and work efficiently within a single program. Each such thread has its own CPU state and stack, but they share the address space of the process and the environment.
 
-xv6 is inspired by John Lions's Commentary on UNIX 6th Edition (Peer
-to Peer Communications; ISBN: 1-57398-013-7; 1st edition (June 14,
-2000)). See also https://pdos.csail.mit.edu/6.828/, which
-provides pointers to on-line resources for v6.
+### Project Overview
+The aim of this project was to add threading support in xv6 via adding kernel threads. The core idea is to add 2 main system calls `Clone` and `Join`. After that, we had to implement Locks to ensure the safety of the execution of our threads. Finally, we programmed a file called `Test-Thread` to test the functionality of our program.
 
-xv6 borrows code from the following sources:
-    JOS (asm.h, elf.h, mmu.h, bootasm.S, ide.c, console.c, and others)
-    Plan 9 (entryother.S, mp.h, mp.c, lapic.c)
-    FreeBSD (ioapic.c)
-    NetBSD (console.c)
+## System Calls
+### Clone
+This call creates a new kernel thread which shares the calling process's address space. File descriptors are copied as in `fork()`. The new process uses stack as its user stack, which is passed two arguments (`arg1` and `arg2`) and uses a fake return PC (0xffffffff); a proper thread will simply call `exit()` when it is done (and not return). The stack should be one page in size and page-aligned. In our implementation of this system call, the parent would allocate 4096 bytes (1 page) of dynamic memory using `malloc` and set the pointer pointing at the child's stack to this block of memory.
 
-The following people have made contributions: Russ Cox (context switching,
-locking), Cliff Frey (MP), Xiao Yu (MP), Nickolai Zeldovich, and Austin
-Clements.
+New Members added to `struct proc`:
+- `int tid`: New Thread Id
+- `char *tstack`: Thread stack
+- `int Is-Thread`: Set to 1 if it is a thread
+- `int Thread-Num`: The number of threads of a process
 
-We are also grateful for the bug reports and patches contributed by Silas
-Boyd-Wickizer, Anton Burtsev, Cody Cutler, Mike CAT, Tej Chajed, eyalz800,
-Nelson Elhage, Saar Ettinger, Alice Ferrazzi, Nathaniel Filardo, Peter
-Froehlich, Yakir Goaron,Shivam Handa, Bryan Henry, Jim Huang, Alexander
-Kapshuk, Anders Kaseorg, kehao95, Wolfgang Keller, Eddie Kohler, Austin
-Liew, Imbar Marinescu, Yandong Mao, Matan Shabtay, Hitoshi Mitake, Carmi
-Merimovich, Mark Morrissey, mtasm, Joel Nider, Greg Price, Ayan Shafqat,
-Eldar Sehayek, Yongming Shen, Cam Tenny, tyfkda, Rafael Ubal, Warren
-Toomey, Stephen Tu, Pablo Ventura, Xi Wang, Keiichi Watanabe, Nicolas
-Wolovick, wxdao, Grant Wu, Jindong Zhang, Icenowy Zheng, and Zou Chang Wei.
+### Join
+The other new system call is `int join(int tid)`. This call waits for a child thread that shares the address space with the calling process to exit. It returns 1 upon success and 0 if failed. After the `join` system call, the user stack dynamically allocated by the parent will be freed. It is really good to mention that the kernel stack allocated for this thread will be freed when `exit()` is called.
 
-The code in the files that constitute xv6 is
-Copyright 2006-2018 Frans Kaashoek, Robert Morris, and Russ Cox.
+### Wrappers and a few details
+In our implementation, there are 2 user functions called:
+1. `int thread-create(void (*worker)(int*, int*), int* arg1, int* arg2)`
+2. `int thread-join(int thread-id)`
 
-ERROR REPORTS
+These 2 functions serve as wrappers to the `clone` and `join` system calls.
 
-We don't process error reports (see note on top of this file).
+Now I would like to show the changes before and after creating a thread in the virtual address space of the parent process:
 
-BUILDING AND RUNNING XV6
+![Virtual address space before clone](./Images/before.png)
+*Figure 1: Virtual address space before clone*
 
-To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run
-"make". On non-x86 or non-ELF machines (like OS X, even on x86), you
-will need to install a cross-compiler gcc suite capable of producing
-x86 ELF binaries (see https://pdos.csail.mit.edu/6.828/).
-Then run "make TOOLPREFIX=i386-jos-elf-". Now install the QEMU PC
-simulator and run "make qemu".
+![Virtual address space after clone](./Images/after.png)
+*Figure 2: Virtual address space after clone*
+
+## Lock system
+### Lock-init
+For the safety of our program and conserving the logic of our code, we need to implement a lock system (spin lock). There should be a type lock that one uses to declare a lock, and two routines (`lock-acquire` and `lock-release`). One last routine, `void lock-init(lock *)`, is used to initialize the lock as need be (it should only be called by one thread).
+
+### Lock-acquire
+The `lock-acquire(lock*)` is the function responsible for taking the lock if available if not it will loop over and over until the lock is released.
+
+### Lock-release
+The `lock-release(lock*)` is the function responsible for releasing the lock.
+
+## Test-Program
+### Test-Thread.c
+In our implementation, we added a new C file that uses the user-space functions `thread-create` and `thread-join` to test the multithreaded functionality.
