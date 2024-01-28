@@ -89,3 +89,23 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_uniq(void)
+{
+  char *filename;
+  int flags;
+  int n;
+
+
+  if(argstr(0, &filename) < 0)
+    return -1;
+  
+  if(argint(1, &flags) < 0)
+    return -1;
+
+  if(argint(2, &n) < 0)
+    return -1;
+
+  return 0;
+}

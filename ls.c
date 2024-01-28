@@ -4,7 +4,7 @@
 #include "fs.h"
 
 char*
-fmtname(char *path)
+fmtname(char *path, int type)
 {
   static char buf[DIRSIZ+1];
   char *p;
@@ -13,6 +13,7 @@ fmtname(char *path)
   for(p=path+strlen(path); p >= path && *p != '/'; p--)
     ;
   p++;
+  if(type == 1) path[strlen(path)] = '/';
 
   // Return blank-padded name.
   if(strlen(p) >= DIRSIZ)
@@ -23,7 +24,7 @@ fmtname(char *path)
 }
 
 void
-ls(char *path)
+ls(char *path, int show_hidden)
 {
   char buf[512], *p;
   int fd;
@@ -43,10 +44,13 @@ ls(char *path)
 
   switch(st.type){
   case T_FILE:
-    printf(1, "%s %d %d %d\n", fmtname(path), st.type, st.ino, st.size);
+    //printf(1, "%s\n", "This is a file");
+    if (fmtname(path, st.type)[0] != '.' || show_hidden == 1)
+      printf(1, "%s %d %d %d\n", fmtname(path, st.type), st.type, st.ino, st.size);
     break;
 
   case T_DIR:
+    //printf(1, "%s\n", "This is a directory");
     if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
       printf(1, "ls: path too long\n");
       break;
@@ -55,7 +59,8 @@ ls(char *path)
     p = buf+strlen(buf);
     *p++ = '/';
     while(read(fd, &de, sizeof(de)) == sizeof(de)){
-      if(de.inum == 0)
+  
+      if(de.inum == 0 || (show_hidden == 0 && de.name[0] == '.'))
         continue;
       memmove(p, de.name, DIRSIZ);
       p[DIRSIZ] = 0;
@@ -63,7 +68,7 @@ ls(char *path)
         printf(1, "ls: cannot stat %s\n", buf);
         continue;
       }
-      printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+      printf(1, "%s %d %d %d\n", fmtname(buf, st.type), st.type, st.ino, st.size);
     }
     break;
   }
@@ -73,13 +78,19 @@ ls(char *path)
 int
 main(int argc, char *argv[])
 {
-  int i;
+  int i, show_hidden = 0;
+
+  if(argc > 1 && strcmp(argv[1], "-a") == 0) {
+    show_hidden = 1;
+    argc--;
+    argv++;
+  }
 
   if(argc < 2){
-    ls(".");
+    ls(".", show_hidden);
     exit();
   }
-  for(i=1; i<argc; i++)
-    ls(argv[i]);
+  for(i = 1; i<argc; i++)
+    ls(argv[i], show_hidden);
   exit();
 }
