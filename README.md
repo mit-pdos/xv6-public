@@ -40,13 +40,19 @@ Now I would like to show the changes before and after creating a thread in the v
 ## Lock system
 ### Lock-init
 For the safety of our program and conserving the logic of our code, we need to implement a lock system (spin lock). There should be a type lock that one uses to declare a lock, and two routines (`lock-acquire` and `lock-release`). One last routine, `void lock-init(lock *)`, is used to initialize the lock as need be (it should only be called by one thread).
+It will set the Is_Locked member of our struct to 1
 
 ### Lock-acquire
-The `lock-acquire(lock*)` is the function responsible for taking the lock if available if not it will loop over and over until the lock is released.
+The `lock-acquire(lock*)` is the function responsible for taking the lock if available if not it will loop over and over until the lock is released.Mainly this is possible using xchgl instruction written in x86.h file.
 
 ### Lock-release
 The `lock-release(lock*)` is the function responsible for releasing the lock.
+It would set Is_Locked member to zero atomically using movl assembly instruction.
 
 ## Test-Program
+In our implementation, we added 2 new C files that use the user-space functions `thread-create` and `thread-join` to test the multithreaded functionality.
 ### Test-Thread.c
-In our implementation, we added a new C file that uses the user-space functions `thread-create` and `thread-join` to test the multithreaded functionality.
+This C code is a simple multi-threaded program that calculates the expression 2x + 1 for three different threads, where x is the thread ID (tid) passed to each thread as its second argument. The program uses a simple locking mechanism to ensure that threads don't interfere with each other while accessing shared resources.
+### Test-Thread2.c
+This C code is a simple program that uses two locks (P2_Perm and P1_Perm) to control the order of execution between two threads (p1 and p2). The program prints a sequence of letters in a specific order by coordinating the execution of the two threads using locks.
+
