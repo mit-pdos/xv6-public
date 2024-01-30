@@ -42,3 +42,14 @@ int atoi(const char*);
 //Thread library
 int thread_create(void (*)(void*,void*),void*,void*);
 int thread_join(int thread_id);
+
+//Lock System
+typedef struct Lock
+{
+    uint Is_Locked;
+} Lock;
+
+//Lock Functions
+void Lock_Init(Lock* mutex);
+void Lock_Acquire(Lock* mutex);
+void Lock_Release(Lock* mutex);
