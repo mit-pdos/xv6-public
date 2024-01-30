@@ -3,6 +3,25 @@
 #include "fcntl.h"
 #include "user.h"
 #include "x86.h"
+
+void Lock_Init(Lock* mutex)
+{
+  mutex->Is_Locked = 0;
+}
+
+void Lock_Acquire(Lock* mutex)
+{
+  __sync_synchronize();
+  while(xchg(&(mutex->Is_Locked), 1) != 0);
+
+  return;
+}
+
+void Lock_Release(Lock* mutex)
+{
+  asm volatile("movl $0, %0" : "+m" (mutex->Is_Locked) : );
+}
+
 int 
 thread_create(void (*worker)(void*,void*),void* arg1,void* arg2)
 {
