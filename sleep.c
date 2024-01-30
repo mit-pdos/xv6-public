@@ -13,8 +13,9 @@ main(int argc, char *argv[])
     }
     ticks = atoi(argv[1]);
     if(ticks <= 0) {
-        printf(1, "%s\n", "Error: sleep ticks must be a positive value");
+        printf(1, "%s\n", "Error: sleep ticks must be a positive integer");
         exit();
     }
     sleep(ticks);
+    exit();
 }

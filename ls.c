@@ -44,13 +44,13 @@ ls(char *path, int show_hidden)
 
   switch(st.type){
   case T_FILE:
-    printf(1, "%s\n", "This is a file");
+    //printf(1, "%s\n", "This is a file");
     if (fmtname(path, st.type)[0] != '.' || show_hidden == 1)
       printf(1, "%s %d %d %d\n", fmtname(path, st.type), st.type, st.ino, st.size);
     break;
 
   case T_DIR:
-    printf(1, "%s\n", "This is a directory");
+    //printf(1, "%s\n", "This is a directory");
     if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
       printf(1, "ls: path too long\n");
       break;
