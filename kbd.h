@@ -1,3 +1,5 @@
+#ifndef KBD_H_5FC7143C_CAAF_11EE_A572_90B11C0C0FF8
+#define KBD_H_5FC7143C_CAAF_11EE_A572_90B11C0C0FF8
 // PC keyboard interface constants
 
 #define KBSTATP         0x64    // kbd controller status port(I)
@@ -110,3 +112,4 @@ static uchar ctlmap[256] =
   [0xD2] KEY_INS,   [0xD3] KEY_DEL
 };
 
+#endif

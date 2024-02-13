@@ -1,3 +1,5 @@
+#ifndef DEFS_H_5FCEEDA6_CAAF_11EE_B851_90B11C0C0FF8
+#define DEFS_H_5FCEEDA6_CAAF_11EE_B851_90B11C0C0FF8
 struct buf;
 struct context;
 struct file;
@@ -188,3 +190,4 @@ void            clearpteu(pde_t *pgdir, char *uva);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+#endif

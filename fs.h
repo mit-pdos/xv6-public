@@ -1,3 +1,5 @@
+#ifndef FS_H_5FC27350_CAAF_11EE_8DCB_90B11C0C0FF8
+#define FS_H_5FC27350_CAAF_11EE_8DCB_90B11C0C0FF8
 // On-disk file system format.
 // Both the kernel and user programs use this header file.
 
@@ -55,3 +57,4 @@ struct dirent {
   char name[DIRSIZ];
 };
 
+#endif

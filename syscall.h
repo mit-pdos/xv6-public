@@ -1,3 +1,5 @@
+#ifndef SYSCALL_H_5FC98D3E_CAAF_11EE_81F6_90B11C0C0FF8
+#define SYSCALL_H_5FC98D3E_CAAF_11EE_81F6_90B11C0C0FF8
 // System call numbers
 #define SYS_fork    1
 #define SYS_exit    2
@@ -20,3 +22,4 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+#endif

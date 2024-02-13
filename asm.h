@@ -1,3 +1,5 @@
+#ifndef ASM_H_5FC4D1F4_CAAF_11EE_AA2B_90B11C0C0FF8
+#define ASM_H_5FC4D1F4_CAAF_11EE_AA2B_90B11C0C0FF8
 //
 // assembler macros to create x86 segments
 //
@@ -16,3 +18,4 @@
 #define STA_X     0x8       // Executable segment
 #define STA_W     0x2       // Writeable (non-executable segments)
 #define STA_R     0x2       // Readable (executable segments)
+#endif

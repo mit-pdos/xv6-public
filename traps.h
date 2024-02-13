@@ -1,3 +1,5 @@
+#ifndef TRAPS_H_5FD18188_CAAF_11EE_ADFC_90B11C0C0FF8
+#define TRAPS_H_5FD18188_CAAF_11EE_ADFC_90B11C0C0FF8
 // x86 trap and interrupt constants.
 
 // Processor-defined:
@@ -36,3 +38,4 @@
 #define IRQ_ERROR       19
 #define IRQ_SPURIOUS    31
 
+#endif

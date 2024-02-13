@@ -1,3 +1,5 @@
+#ifndef MMU_H_5FCC4614_CAAF_11EE_B100_90B11C0C0FF8
+#define MMU_H_5FCC4614_CAAF_11EE_B100_90B11C0C0FF8
 // This file contains definitions for the
 // x86 memory management unit (MMU).
 
@@ -178,4 +180,5 @@ struct gatedesc {
   (gate).off_31_16 = (uint)(off) >> 16;                  \
 }
 
+#endif
 #endif
