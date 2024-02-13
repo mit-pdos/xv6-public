@@ -16,6 +16,10 @@
 #include "file.h"
 #include "fcntl.h"
 
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
 static int
@@ -441,4 +445,30 @@ sys_pipe(void)
   fd[0] = fd0;
   fd[1] = fd1;
   return 0;
+}
+
+int
+sys_lseek(void)
+{
+  int fd;
+  int offsetVal;
+  int mode;
+
+  struct file *f;
+
+  if (argfd(0, &fd, &f) < 0 || argint(1, &offsetVal) < 0 || argint(2, &mode) < 0)
+    return -1;
+
+  // SEEK_SET=0, SEEK_CUR=1, SEEK_END=2
+  if (mode == SEEK_CUR){
+    f->off = f->off + offsetVal;
+  } else if (mode == SEEK_END) {
+    f->off = f->ip->size + offsetVal;
+  } else if (mode == SEEK_SET) {
+    f->off = offsetVal;
+  } else {
+    return -1;
+  }
+
+  return f->off;
 }

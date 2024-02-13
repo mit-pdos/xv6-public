@@ -1,0 +1,95 @@
+diff --git a/syscall.c b/syscall.c
+index ee85261..bb96e30 100644
+--- a/syscall.c
++++ b/syscall.c
+@@ -103,6 +103,7 @@ extern int sys_unlink(void);
+ extern int sys_wait(void);
+ extern int sys_write(void);
+ extern int sys_uptime(void);
++extern int sys_lseek(void);
+ 
+ static int (*syscalls[])(void) = {
+ [SYS_fork]    sys_fork,
+@@ -126,6 +127,7 @@ static int (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_lseek]   sys_lseek,
+ };
+ 
+ void
+diff --git a/syscall.h b/syscall.h
+index bc5f356..93fbf00 100644
+--- a/syscall.h
++++ b/syscall.h
+@@ -20,3 +20,4 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_lseek  22
+diff --git a/sysfile.c b/sysfile.c
+index bfe61b7..f9309e8 100644
+--- a/sysfile.c
++++ b/sysfile.c
+@@ -16,6 +16,10 @@
+ #include "file.h"
+ #include "fcntl.h"
+ 
++#define SEEK_SET 0
++#define SEEK_CUR 1
++#define SEEK_END 2
++
+ // Fetch the nth word-sized system call argument as a file descriptor
+ // and return both the descriptor and the corresponding struct file.
+ static int
+@@ -442,3 +446,29 @@ sys_pipe(void)
+   fd[1] = fd1;
+   return 0;
+ }
++
++int
++sys_lseek(void)
++{
++  int fd;
++  int offsetVal;
++  int mode;
++
++  struct file *f;
++
++  if (argfd(0, &fd, &f) < 0 || argint(1, &offsetVal) < 0 || argint(2, &mode) < 0)
++    return -1;
++
++  // SEEK_SET=0, SEEK_CUR=1, SEEK_END=2
++  if (mode == SEEK_CUR){
++    f->off = f->off + offsetVal;
++  } else if (mode == SEEK_END) {
++    f->off = f->ip->size + offsetVal;
++  } else if (mode == SEEK_SET) {
++    f->off = offsetVal;
++  } else {
++    return -1;
++  }
++
++  return f->off;
++}
+diff --git a/user.h b/user.h
+index 4f99c52..d05ba2c 100644
+--- a/user.h
++++ b/user.h
+@@ -23,6 +23,7 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int lseek(int, int, int);
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+diff --git a/usys.S b/usys.S
+index 8bfd8a1..6244300 100644
+--- a/usys.S
++++ b/usys.S
+@@ -29,3 +29,4 @@ SYSCALL(getpid)
+ SYSCALL(sbrk)
+ SYSCALL(sleep)
+ SYSCALL(uptime)
++SYSCALL(lseek)
