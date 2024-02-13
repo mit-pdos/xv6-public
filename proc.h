@@ -1,3 +1,5 @@
+#ifndef PROC_H_5FBAE11C_CAAF_11EE_B85B_90B11C0C0FF8
+#define PROC_H_5FBAE11C_CAAF_11EE_B85B_90B11C0C0FF8
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -56,3 +58,4 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+#endif

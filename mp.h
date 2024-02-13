@@ -1,3 +1,5 @@
+#ifndef MP_H_5FA4371E_CAAF_11EE_9652_90B11C0C0FF8
+#define MP_H_5FA4371E_CAAF_11EE_9652_90B11C0C0FF8
 // See MultiProcessor Specification Version 1.[14]
 
 struct mp {             // floating pointer
@@ -54,3 +56,4 @@ struct mpioapic {       // I/O APIC table entry
 
 //PAGEBREAK!
 // Blank page.
+#endif

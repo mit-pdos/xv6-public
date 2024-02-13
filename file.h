@@ -1,3 +1,5 @@
+#ifndef FILE_H_5FBFEB30_CAAF_11EE_B018_90B11C0C0FF8
+#define FILE_H_5FBFEB30_CAAF_11EE_B018_90B11C0C0FF8
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE } type;
   int ref; // reference count
@@ -35,3 +37,4 @@ struct devsw {
 extern struct devsw devsw[];
 
 #define CONSOLE 1
+#endif

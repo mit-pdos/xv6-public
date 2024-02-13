@@ -1,3 +1,5 @@
+#ifndef SPINLOCK_H_5FAE6694_CAAF_11EE_AA29_90B11C0C0FF8
+#define SPINLOCK_H_5FAE6694_CAAF_11EE_AA29_90B11C0C0FF8
 // Mutual exclusion lock.
 struct spinlock {
   uint locked;       // Is the lock held?
@@ -9,3 +11,4 @@ struct spinlock {
                      // that locked the lock.
 };
 
+#endif
