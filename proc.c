@@ -113,6 +113,8 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  p->ticks = 0;
+
   return p;
 }
 
@@ -344,6 +346,8 @@ scheduler(void)
       switchuvm(p);
       p->state = RUNNING;
 
+      p->ticks++;
+
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -491,6 +495,20 @@ kill(int pid)
         p->state = RUNNABLE;
       release(&ptable.lock);
       return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -1;
+}
+
+int ticks_running(int pid) {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->pid == pid) {
+      int ticks = p->ticks;
+      release(&ptable.lock);
+      return ticks;
     }
   }
   release(&ptable.lock);
