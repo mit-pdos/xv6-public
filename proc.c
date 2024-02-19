@@ -501,7 +501,10 @@ kill(int pid)
   return -1;
 }
 
-int ticks_running(int pid) {
+//return ticks running with the given pid
+int
+ticks_running(int pid)
+{
   struct proc *p;
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {

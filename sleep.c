@@ -17,5 +17,6 @@ main(int argc, char *argv[])
         exit();
     }
     sleep(ticks);
+    //printf(1, "Ticks ran: %d\n", ticks_running(getpid()));
     exit();
 }
