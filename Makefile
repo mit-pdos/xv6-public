@@ -182,6 +182,10 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_find\
+<<<<<<< HEAD
+=======
+	_uniq\
+>>>>>>> 9a63b7985bcb5a862246a5a1cd907ee98c267b9a
 	_sleep\
 	_uniq
 
@@ -252,7 +256,11 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 # check in that version.
 
 EXTRA=\
+<<<<<<< HEAD
 	mkfs.c ulib.c user.h cat.c echo.c find.c forktest.c grep.c kill.c uniq.c find.c\
+=======
+	mkfs.c ulib.c user.h cat.c echo.c find.c forktest.c grep.c kill.c uniq.c\
+>>>>>>> 9a63b7985bcb5a862246a5a1cd907ee98c267b9a
 	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\
 	printf.c umalloc.c\
 	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\

@@ -104,7 +104,7 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_uniq(void);
-
+extern int sys_ticks_running(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -130,6 +130,7 @@ static int (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_uniq]    sys_uniq,
 [SYS_sleep]   sys_sleep,
+[SYS_ticks_running] sys_ticks_running,
 };
 
 void

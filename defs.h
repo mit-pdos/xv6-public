@@ -120,6 +120,7 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int             ticks_running(int);
 
 //find.c
 //void            find(char *filename);

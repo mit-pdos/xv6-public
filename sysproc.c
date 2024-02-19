@@ -77,6 +77,13 @@ sys_sleep(void)
   return 0;
 }
 
+int sys_ticks_running(void) {
+  int pid;
+
+  if(argint(0,&pid) < 0) return -1;
+  return ticks_running(pid);
+}
+
 // return how many clock tick interrupts have occurred
 // since start.
 int
