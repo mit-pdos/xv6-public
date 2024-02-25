@@ -1,6 +1,11 @@
 {
     "files.associations": {
         "*.tcc": "c",
+<<<<<<< HEAD
         "fstream": "c"
+=======
+        "fstream": "c",
+        "memlayout.h": "c"
+>>>>>>> testing
     }
 }

@@ -19,6 +19,13 @@ main(void)
   dup(0);  // stdout
   dup(0);  // stderr
 
+  // Print the scheduler policy
+  #ifdef FIFO
+  printf(1, "Scheduler policy: FIFO\n");
+  #else
+  printf(1, "Scheduler policy: DEFAULT\n");
+  #endif
+
   for(;;){
     printf(1, "init: starting sh\n");
     pid = fork();

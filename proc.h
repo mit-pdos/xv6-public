@@ -1,3 +1,5 @@
+#define DEFAULT_TICKETS 1
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -50,6 +52,11 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   int ticks;
+  uint ctime;                  //Process creation time
+  int stime;                   //process SLEEPING time
+  int retime;                  //process READY(RUNNABLE) time
+  int rutime;                  //process RUNNING time
+  int fifo_position;           
 };
 
 // Process memory is laid out contiguously, low addresses first:

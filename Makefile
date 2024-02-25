@@ -71,12 +71,16 @@ QEMU = $(shell if which qemu > /dev/null; \
 	echo "***" 1>&2; exit 1)
 endif
 
+ifdef SCHEDULER
+SCHEDULER := DEFAULT
+endif
+
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
+CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -Wno-unused-variable -Wno-unused-function -fno-omit-frame-pointer  -D SCHEDULER=$(SCHEDULER)
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
 # FreeBSD ld wants ``elf_i386_fbsd''
@@ -183,11 +187,17 @@ UPROGS=\
 	_zombie\
 	_find\
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	_uniq\
 >>>>>>> 9a63b7985bcb5a862246a5a1cd907ee98c267b9a
 	_sleep\
 	_uniq
+=======
+	_uniq\
+	_sleep\
+	_uniq\
+>>>>>>> testing
 
 
 fs.img: mkfs README $(UPROGS) 1.txt
@@ -230,6 +240,10 @@ endif
 QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA)
 
 qemu: fs.img xv6.img
+<<<<<<< HEAD
+=======
+	@echo "Scheduler policy: $(SCHEDULER)"
+>>>>>>> testing
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)
 
 qemu-memfs: xv6memfs.img
@@ -257,10 +271,15 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 
 EXTRA=\
 <<<<<<< HEAD
+<<<<<<< HEAD
 	mkfs.c ulib.c user.h cat.c echo.c find.c forktest.c grep.c kill.c uniq.c find.c\
 =======
 	mkfs.c ulib.c user.h cat.c echo.c find.c forktest.c grep.c kill.c uniq.c\
 >>>>>>> 9a63b7985bcb5a862246a5a1cd907ee98c267b9a
+=======
+	mkfs.c ulib.c user.h cat.c echo.c find.c forktest.c grep.c kill.c uniq.c find.c\
+	mkfs.c ulib.c user.h cat.c echo.c find.c forktest.c grep.c kill.c uniq.c\
+>>>>>>> testing
 	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\
 	printf.c umalloc.c\
 	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\

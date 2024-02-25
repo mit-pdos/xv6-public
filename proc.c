@@ -71,6 +71,7 @@ myproc(void) {
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
+static int next_fifo_position = 0;  // Global counter for FIFO position
 static struct proc*
 allocproc(void)
 {
@@ -89,6 +90,12 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->ctime = ticks; //record the creation time for FIFO
+  p->retime = 0;
+  p->rutime = 0;
+  p->stime = 0;
+  p->fifo_position = next_fifo_position++;  // Set FIFO position
+
 
   release(&ptable.lock);
 
@@ -133,6 +140,7 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
+  p->ctime = ticks;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -264,6 +272,13 @@ exit(void)
     }
   }
 
+  // Decrement fifo_position of all processes with a higher position.
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->state != UNUSED && p->fifo_position > curproc->fifo_position) {
+      p->fifo_position--;
+    }
+  }
+
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
   sched();
@@ -297,6 +312,7 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+        p->ctime = 0;
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;
@@ -313,6 +329,53 @@ wait(void)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+
+
+// int wait2(int *retime, int *rutime, int *stime) {
+//   struct proc *p;
+//   int havekids, pid;
+//   acquire(&ptable.lock);
+//   for(;;){
+//     // Scan through table looking for zombie children.
+//     havekids = 0;
+//     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+//       if(p->parent != myproc())
+//         continue;
+//       havekids = 1;
+//       if(p->state == ZOMBIE){
+//         // Found one.
+//         *retime = p->retime;
+//         *rutime = p->rutime;
+//         *stime = p->stime;
+//         pid = p->pid;
+//         kfree(p->kstack);
+//         p->kstack = 0;
+//         freevm(p->pgdir);
+//         p->state = UNUSED;
+//         p->pid = 0;
+//         p->parent = 0;
+//         p->name[0] = 0;
+//         p->killed = 0;
+//         p->ctime = 0;
+//         p->retime = 0;
+//         p->rutime = 0;
+//         p->stime = 0;
+       
+//         release(&ptable.lock);
+//         return pid;
+//       }
+//     }
+
+//     // No point waiting if we don't have any children.
+//     if(!havekids || myproc()->killed){
+//       release(&ptable.lock);
+//       return -1;
+//     }
+
+//     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+//     sleep(myproc(), &ptable.lock);  //DOC: wait-sleep
+//   }
+// }
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
@@ -335,30 +398,86 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    
+    // #ifdef FIFO
+    // struct proc *minP = 0;
+    // for(p = ptable.proc; p < &ptable.proc[NPROC] ; p++){
+    //   if(p->state != RUNNABLE)
+    //      continue;
+
+    //   // ignore init and sh processes from FCFS
+    //   if(p->pid > 1){
+    //     if (minP != 0){
+    //       // here I find the process with the lowest creation time (the first one that was created)
+    //       if(p->ctime < minP->ctime)
+    //          minP = p;
+    //     } else {
+    //             minP = p;
+    //     }
+    //   }
+    // }
+
+    // // If I found the process which I created first and it is runnable I run it
+    // //(in the real FCFS I should not check if it is runnable, but for testing purposes I have to make this control, otherwise every time I launch
+    // // a process which does I/0 operation (every simple command) everything will be blocked
+    // if(minP != 0 && minP->state == RUNNABLE)
+    //    p = minP;
+    #ifdef FIFO
+    struct proc *next_proc = 0;
+    int lowest_position = -1;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+      // Ignore init and sh processes from FIFO
+      if(p->pid > 1){
+        if (lowest_position == -1 || p->fifo_position < lowest_position) {
+          next_proc = p;
+          lowest_position = p->fifo_position;
+        }
+      }
+    }
+
+    // If a process with the lowest fifo_position is found and is runnable, then run it
+    if(next_proc != 0) {
+      p = next_proc;
+
+      // Switch to chosen process
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
-      p->ticks++;
-
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
+      // Process is done running for now
       c->proc = 0;
     }
-    release(&ptable.lock);
 
+    #else
+    #ifdef DEFAULT
+    // Default Round-Robin Scheduler
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+           continue;
+        // Switch to chosen process. It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+    
+        // Process is done running for now.
+        // It should have changed its p-state before coming back.
+        c->proc = 0;
+    }
+    #endif
+    #endif
+    release(&ptable.lock);
+    }
   }
-}
+
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
@@ -554,3 +673,9 @@ procdump(void)
     cprintf("\n");
   }
 }
+struct proc *getptable_proc(void) {
+  return ptable.proc;
+}
+
+
+

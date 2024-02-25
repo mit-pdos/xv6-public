@@ -25,6 +25,8 @@ int sleep(int);
 int uptime(void);
 int uniq(int);
 int ticks_running(int);
+//int wait2(int*, int*, int*);
+
 
 // ulib.c
 int stat(const char*, struct stat*);
