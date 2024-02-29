@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "condvar.h"
 
 int
 sys_fork(void)
@@ -88,4 +89,26 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int
+sys_cv_signal(void)
+{
+    int i;
+    struct condvar *cv;
+    argint(0, &i);
+    cv = (struct condvar *) i;
+    wakeup(cv);
+    return 0;
+}
+
+int
+sys_cv_wait(void)
+{
+    int i;
+    struct condvar *cv;
+    argint(0, &i);
+    cv = (struct condvar *) i;
+    sleep1(cv, &(cv->lk));
+    return 0;
 }
