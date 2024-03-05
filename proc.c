@@ -439,7 +439,6 @@ scheduler(void)
       }
     }
 
-    // If a process with the lowest fifo_position is found and is runnable, then run it
     if(next_proc != 0) {
       p = next_proc;
 
@@ -458,6 +457,29 @@ scheduler(void)
     #ifdef LOTTERY
     struct proc *next_proc = 0;
     int total_tickets = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if(p->state != RUNNABLE || p->pid <= 1) continue;
+      total_tickets += p->lottery_tickets;
+    }
+    int lottery_num = get_random(0, total_tickets);
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if(p->state != RUNNABLE || p->pid <= 1) continue;
+      lottery_num -= p->lottery_tickets;
+      if(lottery_num <= 0) {
+        next_proc = p;
+        break;
+      }
+    }
+    if(next_proc != 0) {
+      p = next_proc;
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+      c->proc = 0;
+    }
     
 
     #else
