@@ -84,6 +84,20 @@ int sys_ticks_running(void) {
   return ticks_running(pid);
 }
 
+int sys_set_lottery_tickets(void) {
+  int tickets;
+  if(argint(0, &tickets) < 0) return -1;
+  myproc()->lottery_tickets = tickets;
+  return 0;
+}
+int sys_get_lottery_tickets(void) {
+  int pid;
+  if (argint(0, &pid) < 0) return -1;
+  struct proc *p = find_proc_by_pid(pid);
+  if (p == 0 || p->state == UNUSED || p->state == ZOMBIE) return -1;
+  return p->lottery_tickets;
+}
+
 // return how many clock tick interrupts have occurred
 // since start.
 int

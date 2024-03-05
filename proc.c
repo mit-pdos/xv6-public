@@ -95,6 +95,7 @@ found:
   p->rutime = 0;
   p->stime = 0;
   p->fifo_position = next_fifo_position++;  // Set FIFO position
+  p->lottery_tickets = INTIAL_TICKETS;
 
 
   release(&ptable.lock);
@@ -454,6 +455,12 @@ scheduler(void)
     }
 
     #else
+    #ifdef LOTTERY
+    struct proc *next_proc = 0;
+    int total_tickets = 0;
+    
+
+    #else
     #ifdef DEFAULT
     // Default Round-Robin Scheduler
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -472,6 +479,7 @@ scheduler(void)
         // It should have changed its p-state before coming back.
         c->proc = 0;
     }
+    #endif
     #endif
     #endif
     release(&ptable.lock);
@@ -635,6 +643,10 @@ ticks_running(int pid)
   }
   release(&ptable.lock);
   return -1;
+}
+
+int get_random(int min, int max) {
+  //Need to implement!!!!!!!
 }
 
 //PAGEBREAK: 36

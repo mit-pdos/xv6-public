@@ -22,3 +22,5 @@
 #define SYS_close  21
 #define SYS_uniq   22
 #define SYS_ticks_running 23
+#define SYS_get_lottery_tickets 24
+#define SYS_set_lottery_tickets 25
