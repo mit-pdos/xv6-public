@@ -93,7 +93,7 @@ int sys_set_lottery_tickets(void) {
 int sys_get_lottery_tickets(void) {
   int pid;
   if (argint(0, &pid) < 0) return -1;
-  struct proc *p = find_proc_by_pid(pid);
+  struct proc *p = get_proc(pid);
   if (p == 0 || p->state == UNUSED || p->state == ZOMBIE) return -1;
   return p->lottery_tickets;
 }

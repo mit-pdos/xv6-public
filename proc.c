@@ -668,7 +668,8 @@ ticks_running(int pid)
 }
 
 int get_random(int min, int max) {
-  //Need to implement!!!!!!!
+  int range = max - min;
+  return min + (ticks % range);
 }
 
 //PAGEBREAK: 36
@@ -706,6 +707,18 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+struct proc* get_proc(int pid) {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == pid && p-> state !=UNUSED) {
+      release(&ptable.lock);
+      return p;
+    }
+  }
+  release(&ptable.lock);
+  return 0;
 }
 struct proc *getptable_proc(void) {
   return ptable.proc;

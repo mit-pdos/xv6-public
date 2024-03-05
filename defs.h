@@ -121,7 +121,8 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 int             ticks_running(int);
-int             get_random(int min, int max);
+int             get_random(int, int);
+struct proc*    get_proc(int);
 
 //find.c
 //void            find(char *filename);

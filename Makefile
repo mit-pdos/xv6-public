@@ -72,7 +72,9 @@ QEMU = $(shell if which qemu > /dev/null; \
 endif
 
 ifdef SCHEDULER
-SCHEDULER := DEFAULT
+	SCHEDULER := $(SCHEDULER)
+else
+	SCHEDULER := DEFAULT
 endif
 
 CC = $(TOOLPREFIX)gcc
