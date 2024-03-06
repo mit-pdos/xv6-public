@@ -21,6 +21,17 @@ extern void trapret(void);
 extern uint ticks;
 
 static void wakeup1(void *chan);
+int ije = 0;
+
+#ifdef FIFO
+ije = 1;
+#endif
+#ifdef LOTTERY
+ije = 2;
+#endif
+#ifdef SCHEDULER
+ije = 3;
+#endif
 
 
 void
@@ -394,6 +405,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
+  cprintf("Mode: %d\n", ije);
   for(;;){
 
     // Enable interrupts on this processor.
@@ -425,10 +437,10 @@ scheduler(void)
     // // a process which does I/0 operation (every simple command) everything will be blocked
     // if(minP != 0 && minP->state == RUNNABLE)
     //    p = minP;
-    #if defined(SCHEDULER)
-    #if SCHEDULER == FIFO
-    cprintf("fifo");
     struct proc *next_proc = 0;
+
+    switch(ije) {
+      case 1:
     int lowest_position = -1;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
@@ -456,8 +468,9 @@ scheduler(void)
       // Process is done running for now
       c->proc = 0;
     }
-    #elif SCHEDULER == LOTTERY
-    struct proc *next_proc = 0;
+    break;
+    case 2:
+
     int total_tickets = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
       if(p->state != RUNNABLE || p->pid <= 1) continue;
@@ -482,8 +495,8 @@ scheduler(void)
       switchkvm();
       c->proc = 0;
     }
-    #else
-    cprintf("Default");
+    break;
+    default:
 
     // Default Round-Robin Scheduler
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -502,28 +515,7 @@ scheduler(void)
         // It should have changed its p-state before coming back.
         c->proc = 0;
     }
-    #endif
-    #else
-    cprintf("Default");
-
-    // Default Round-Robin Scheduler
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->state != RUNNABLE)
-           continue;
-        // Switch to chosen process. It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
-        swtch(&(c->scheduler), p->context);
-        switchkvm();
-    
-        // Process is done running for now.
-        // It should have changed its p-state before coming back.
-        c->proc = 0;
     }
-    #endif
     release(&ptable.lock);
     }
   }

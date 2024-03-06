@@ -105,6 +105,8 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_uniq(void);
 extern int sys_ticks_running(void);
+extern int sys_set_lottery_tickets(void);
+extern int sys_get_lottery_tickets(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -131,6 +133,8 @@ static int (*syscalls[])(void) = {
 [SYS_uniq]    sys_uniq,
 [SYS_sleep]   sys_sleep,
 [SYS_ticks_running] sys_ticks_running,
+[SYS_set_lottery_tickets] sys_set_lottery_tickets,
+[SYS_get_lottery_tickets] sys_get_lottery_tickets,
 };
 
 void
