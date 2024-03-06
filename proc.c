@@ -22,6 +22,7 @@ extern uint ticks;
 
 static void wakeup1(void *chan);
 
+
 void
 pinit(void)
 {
@@ -424,7 +425,7 @@ scheduler(void)
     // // a process which does I/0 operation (every simple command) everything will be blocked
     // if(minP != 0 && minP->state == RUNNABLE)
     //    p = minP;
-    #ifdef SCHEDULER
+    #if defined(SCHEDULER)
     #if SCHEDULER == FIFO
     cprintf("fifo");
     struct proc *next_proc = 0;
@@ -455,7 +456,6 @@ scheduler(void)
       // Process is done running for now
       c->proc = 0;
     }
-
     #elif SCHEDULER == LOTTERY
     struct proc *next_proc = 0;
     int total_tickets = 0;
@@ -482,8 +482,6 @@ scheduler(void)
       switchkvm();
       c->proc = 0;
     }
-    
-
     #else
     cprintf("Default");
 
@@ -505,6 +503,26 @@ scheduler(void)
         c->proc = 0;
     }
     #endif
+    #else
+    cprintf("Default");
+
+    // Default Round-Robin Scheduler
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+           continue;
+        // Switch to chosen process. It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+    
+        // Process is done running for now.
+        // It should have changed its p-state before coming back.
+        c->proc = 0;
+    }
     #endif
     release(&ptable.lock);
     }
