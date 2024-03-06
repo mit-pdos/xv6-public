@@ -21,7 +21,6 @@ extern void trapret(void);
 extern uint ticks;
 
 static void wakeup1(void *chan);
-int ije = 0;
 
 
 void
@@ -393,24 +392,10 @@ void
 scheduler(void)
 {
 
-  
-
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
   for(;;){
-
-    #ifdef FIFO
-    ije = 1;
-    #endif
-    #ifdef LOTTERY
-    ije = 2;
-    #endif
-    #ifdef SCHEDULER
-    ije = 3;
-    #endif
-    cprintf("%d", ije);
-
     // Enable interrupts on this processor.
     sti();
 
@@ -442,38 +427,36 @@ scheduler(void)
     //    p = minP;
     struct proc *next_proc = 0;
 
-    switch(ije) {
-      case 1:
+    #ifdef FIFO
     int lowest_position = -1;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+          if(p->state != RUNNABLE)
+            continue;
 
-      // Ignore init and sh processes from FIFO
-      if(p->pid > 1){
-        if (lowest_position == -1 || p->fifo_position < lowest_position) {
-          next_proc = p;
-          lowest_position = p->fifo_position;
+          // Ignore init and sh processes from FIFO
+          if(p->pid > 1){
+            if (lowest_position == -1 || p->fifo_position < lowest_position) {
+              next_proc = p;
+              lowest_position = p->fifo_position;
+            }
+          }
         }
-      }
-    }
 
-    if(next_proc != 0) {
-      p = next_proc;
+        if(next_proc != 0) {
+          p = next_proc;
 
-      // Switch to chosen process
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+          // Switch to chosen process
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
 
-      // Process is done running for now
-      c->proc = 0;
-    }
-    break;
-    case 2:
-
+          // Process is done running for now
+          c->proc = 0;
+        }
+    #else
+    #ifdef LOTTERY
     int total_tickets = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
       if(p->state != RUNNABLE || p->pid <= 1) continue;
@@ -498,10 +481,7 @@ scheduler(void)
       switchkvm();
       c->proc = 0;
     }
-    break;
-    default:
-
-    // Default Round-Robin Scheduler
+    #else
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE)
            continue;
@@ -518,7 +498,8 @@ scheduler(void)
         // It should have changed its p-state before coming back.
         c->proc = 0;
     }
-    }
+    #endif
+    #endif
     release(&ptable.lock);
     }
   }
