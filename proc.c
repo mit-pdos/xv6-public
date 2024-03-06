@@ -18,6 +18,7 @@ static struct proc *initproc;
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
+extern uint ticks;
 
 static void wakeup1(void *chan);
 
@@ -392,8 +393,8 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
   for(;;){
+
     // Enable interrupts on this processor.
     sti();
 
@@ -423,7 +424,9 @@ scheduler(void)
     // // a process which does I/0 operation (every simple command) everything will be blocked
     // if(minP != 0 && minP->state == RUNNABLE)
     //    p = minP;
-    #ifdef FIFO
+    #ifdef SCHEDULER
+    #if SCHEDULER == FIFO
+    cprintf("fifo");
     struct proc *next_proc = 0;
     int lowest_position = -1;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -453,8 +456,7 @@ scheduler(void)
       c->proc = 0;
     }
 
-    #else
-    #ifdef LOTTERY
+    #elif SCHEDULER == LOTTERY
     struct proc *next_proc = 0;
     int total_tickets = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
@@ -483,7 +485,8 @@ scheduler(void)
     
 
     #else
-    #ifdef DEFAULT
+    cprintf("Default");
+
     // Default Round-Robin Scheduler
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE)
@@ -501,7 +504,6 @@ scheduler(void)
         // It should have changed its p-state before coming back.
         c->proc = 0;
     }
-    #endif
     #endif
     #endif
     release(&ptable.lock);

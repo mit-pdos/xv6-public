@@ -13,3 +13,5 @@
 #define FSSIZE       1000  // size of file system in blocks
 #define INTIAL_TICKETS 10
 #define MAX_TICKETS 100
+#define FIFO 1
+#define LOTTERY 1
