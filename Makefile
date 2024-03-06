@@ -71,11 +71,7 @@ QEMU = $(shell if which qemu > /dev/null; \
 	echo "***" 1>&2; exit 1)
 endif
 
-ifdef SCHEDULER
-	SCHEDULER := $(SCHEDULER)
-else
-	SCHEDULER := DEFAULT
-endif
+
 
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
