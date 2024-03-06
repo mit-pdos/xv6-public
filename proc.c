@@ -23,16 +23,6 @@ extern uint ticks;
 static void wakeup1(void *chan);
 int ije = 0;
 
-#ifdef FIFO
-ije = 1;
-#endif
-#ifdef LOTTERY
-ije = 2;
-#endif
-#ifdef SCHEDULER
-ije = 3;
-#endif
-
 
 void
 pinit(void)
@@ -402,11 +392,24 @@ wait(void)
 void
 scheduler(void)
 {
+
+  
+
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  cprintf("Mode: %d\n", ije);
   for(;;){
+
+    #ifdef FIFO
+    ije = 1;
+    #endif
+    #ifdef LOTTERY
+    ije = 2;
+    #endif
+    #ifdef SCHEDULER
+    ije = 3;
+    #endif
+    cprintf("%d", ije);
 
     // Enable interrupts on this processor.
     sti();

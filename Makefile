@@ -71,10 +71,6 @@ QEMU = $(shell if which qemu > /dev/null; \
 	echo "***" 1>&2; exit 1)
 endif
 
-ifndef SCHEDULER
-SCHEDULER := RR
-endif
-
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
@@ -93,6 +89,13 @@ CFLAGS += -fno-pie -no-pie
 endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
+endif
+
+ifndef SCHEDULER
+SCHEDULER := RR
+else
+define $(SCHEDULER)
+endef
 endif
 
 xv6.img: bootblock kernel
