@@ -192,6 +192,7 @@ UPROGS=\
 	_find\
 	_uniq\
 	_sleep\
+	_workloadtest\
 
 fs.img: mkfs README $(UPROGS) 1.txt
 	./mkfs fs.img README $(UPROGS) 1.txt
