@@ -212,7 +212,7 @@ consoleintr(int (*getc)(void))
      
       if (c == 88)
       {
-        while(input.e != input.w && input.buf[(input.e-1) % INPUT_BUF] != '\n'){
+        for(int i = (input.e - input.r) - K; i < input.e - input.r ; i++){
         input.e--;
         consputc(BACKSPACE);
       }
