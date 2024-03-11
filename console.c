@@ -187,6 +187,9 @@ struct {
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
+#define K 4
+char saved_buf[INPUT_BUF]; // saved buffer of copy-paste
+int saved_buffer_size = 0;
 
 void
 consoleintr(int (*getc)(void))
@@ -200,6 +203,51 @@ consoleintr(int (*getc)(void))
       // procdump() locks cons.lock indirectly; invoke later
       doprocdump = 1;
       break;
+    case 67: case 88: //copy and cut
+      for (int i = (input.e - input.r) - K; i < input.e - input.r ; i++)
+      {
+        saved_buf[i - (input.e - input.r - K)] = input.buf[(input.r + i ) % INPUT_BUF];
+        saved_buffer_size += 1;
+      }
+     
+      if (c == 88)
+      {
+        while(input.e != input.w && input.buf[(input.e-1) % INPUT_BUF] != '\n'){
+        input.e--;
+        consputc(BACKSPACE);
+      }
+      }
+      break;
+    case 86: //paste
+      for (int i = 0; i < saved_buffer_size; i++)
+      {
+        c = saved_buf[i];
+        consputc(c);
+      }
+      break;
+
+    case C('E'):
+      for (int i = 0; i < input.e - input.r ; i++)
+      {
+        int temp = input.buf[(input.r + i ) % INPUT_BUF];
+        if(temp >= 48 && temp <= 53)
+        {
+          temp += 4;
+        }
+        else if(temp >= 54 && temp <= 57)
+        {
+
+        }
+        else if(temp >= 97 && temp <= 122)
+        {
+
+        }
+        else if(temp >= 65 && temp <= 90)
+        {
+         
+        }
+        // saved_buf[i] =
+      }
     case C('U'):  // Kill line.
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
@@ -231,6 +279,7 @@ consoleintr(int (*getc)(void))
     procdump();  // now call procdump() wo. cons.lock held
   }
 }
+
 
 int
 consoleread(struct inode *ip, char *dst, int n)
