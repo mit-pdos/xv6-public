@@ -1,76 +1,158 @@
+#include "types.h"
+#include "stat.h"
+#include "user.h"
+#include "fcntl.h"
+
 #define MAX_NUMBERS 7
 
-float calculateSD(double data[],int n) {
-    float sum = 0.0, mean, SD = 0.0;
-    int i;
-    for (i = 0; i < n; ++i) {
-        sum += data[i];
-    }
-    mean = sum / n;
-    for (i = 0; i < n; ++i) {
-        SD += pow(data[i] - mean, 2);
-    }
-    return sqrt(SD / n);
+int abs(int x) {
+    return x >= 0 ? x : -x;
 }
-float Variance(double a[], int n)
-{
+
+double sqrt(double x) {
+    if (x < 0) return -1;
+
+    double epsilon = 0.1;
+    double guess = x;
+
+    while (abs(guess * guess - x) >= epsilon) {
+        guess = (guess + x / guess) / 2.0;
+    }
+
+    return guess;
+}
+
+int calculate_sum(int arr[], int size) {
     int sum = 0;
-    for (int i = 0; i < n; i++)
-        sum += a[i];
-    double mean = (double)sum / (double)n;
- 
-    double sqDiff = 0;
-    for (int i = 0; i < n; i++) 
-        sqDiff += (a[i] - mean) * 
-                  (a[i] - mean);
-    return sqDiff / n;
+    for(int i = 0; i < size; i++){
+        sum += arr[i];
+    }
+    return sum;
 }
-int main() {
-    double numbers[MAX_NUMBERS];
-    int count = 0;
-    double sum = 0.0;
 
-    // Read input numbers
-    printf("Enter up to %d numbers (separated by spaces):\n", MAX_NUMBERS);
-    while (count < MAX_NUMBERS && scanf("%lf", &numbers[count]) == 1) {
-        sum += numbers[count];
-        count++;
+double calculate_mean(int arr[], int size)
+{
+    return (double)calculate_sum(arr, size) / size;
+}
+
+double calculate_variance(int arr[], int n) {
+    double sum_of_squared_differences = 0.0;
+    double mean = calculate_mean(arr, n);
+
+    for (int i = 0; i < n; i++) {
+        double difference = (double)arr[i] - mean;
+        sum_of_squared_differences += difference * difference;
     }
 
-    // Calculate average
-    int average = sum / count;
+    return sum_of_squared_differences / n;
+}
+
+double calculate_standard_deviation(int arr[], int n) {
+    return sqrt(calculate_variance(arr, n));
+}
+
+void initializeBiggerAndSmallerNumbers(int numbers[], int size , int mean, int* smallNumbers, int* bigNumbers){
+    int j = 0;
+    int k = 0;
+    for (int i = 0; i < size; i++) {
+        if (numbers[i] <= mean) {
+            smallNumbers[j++] = numbers[i];
+        } else {
+            bigNumbers[k++] = numbers[i];
+        }
+    }
+}
+
+void reverse(char s[]) {
+    int i, j;
+    char c;
+    for (i = 0, j = strlen(s)-1; i < j; i++, j--) {
+        c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}
+
+void itoa(int n, char s[]) {
+    int i, sign;
+    if ((sign = n) < 0) {
+        n = -n; // Make n positive
+    }
+    i = 0;
+    do {
+        s[i++] = n % 10 + '0'; // Get next digit
+    } while ((n /= 10) > 0); // Delete it
+    if (sign < 0) {
+        s[i++] = '-';
+    }
+    s[i] = '\0'; // Null-terminate the string
+    reverse(s);
+}
+
+
+int main(int argc, char* argv[]) {
+
+    if (argc > 8){
+        printf(1, "Error! : size of array is not valid");
+        exit();
+    }
+
+    int numbers[MAX_NUMBERS];
+    int size = argc - 1; 
+
+    for (int i = 0; i < size; i++){
+        numbers[i] = atoi(argv[i + 1]);
+    }
+
+    int mean = (int)calculate_mean(numbers, size);
     
-    // Calculate standard deviation and variance
-    double standard_deviation_array[MAX_NUMBERS];
-    double variance_array[MAX_NUMBERS];
-    int sda_temp = 0;
-    int va_temp = 0;
-    for(int i=0; i<count; i++)
-    {
-        if(numbers[i] <= average)
-        {
-            
-            standard_deviation_array[sda_temp] = numbers[i];
-            sda_temp++;
+
+    int smallCount = 0;
+    int bigCount = 0;
+    for (int i = 0; i < size; i++) {
+        if (numbers[i] <= mean) {
+            smallCount++;
+        } else {
+            bigCount++;
         }
-        else
-        {
-            variance_array[va_temp] = numbers[i];
-            va_temp++;
-        }
-    }
-    int standard_deviation = calculateSD(standard_deviation_array, sda_temp);
-    int variance = Variance(variance_array, va_temp);
-    // Save results to a file
-    FILE *file = fopen("txt.result_sdvar", "w");
-    if (file != NULL) {
-        fprintf(file, "%d\n", average);
-        fprintf(file, "%d\n", standard_deviation);
-        fprintf(file, "%d\n", variance);
-        fclose(file);
-    } else {
-        printf("Error opening file for writing.\n");
     }
 
-    return 0;
+    int* smallNumbers = (int*)malloc(smallCount * sizeof(int));
+    int* bigNumbers = (int*)malloc(bigCount * sizeof(int));
+    
+
+    initializeBiggerAndSmallerNumbers(numbers, size, mean, smallNumbers, bigNumbers);
+    
+    int sd = (int)calculate_standard_deviation(smallNumbers, smallCount);
+    int variance = (int)calculate_variance(bigNumbers, bigCount);
+
+    free(bigNumbers);
+    free(smallNumbers);
+
+    
+    unlink("strdiff_result.txt");
+    int fd = open("sdvar_result.txt", O_CREATE | O_WRONLY);
+    if (fd >= 0) {
+        
+        char mean_str[10];
+        char sd_str[10];
+        char variance_str[10];
+
+        itoa(mean, mean_str);
+        itoa(sd, sd_str);
+        itoa(variance, variance_str);
+
+        write(fd, mean_str, strlen(mean_str));
+        write(fd, " ", 1); 
+        write(fd, sd_str, strlen(sd_str));
+        write(fd, " ", 1); 
+        write(fd, variance_str, strlen(variance_str));
+        write(fd, "\n", 1); 
+
+        close(fd);
+    } else {
+        printf(1, "Error opening file for writing.\n");
+    }
+
+    exit();
 }
