@@ -203,51 +203,61 @@ consoleintr(int (*getc)(void))
       // procdump() locks cons.lock indirectly; invoke later
       doprocdump = 1;
       break;
-    case 67: case 88: //copy and cut
+    case 'C': case 'X': //copy and cut
       for (int i = (input.e - input.r) - K; i < input.e - input.r ; i++)
       {
         saved_buf[i - (input.e - input.r - K)] = input.buf[(input.r + i ) % INPUT_BUF];
         saved_buffer_size += 1;
       }
      
-      if (c == 88)
+      if (c == 'X')
       {
         for(int i = (input.e - input.r) - K; i < input.e - input.r ; i++){
-        input.e--;
-        consputc(BACKSPACE);
-      }
+          input.e--;
+          consputc(BACKSPACE);
+        }
       }
       break;
-    case 86: //paste
+    case 'V': //paste
       for (int i = 0; i < saved_buffer_size; i++)
       {
         c = saved_buf[i];
         consputc(c);
       }
       break;
-
-    case C('E'):
+      
+    case C('e'):
       for (int i = 0; i < input.e - input.r ; i++)
       {
         int temp = input.buf[(input.r + i ) % INPUT_BUF];
-        if(temp >= 48 && temp <= 53)
+        if(temp >= 48 && temp <= 57)
         {
           temp += 4;
-        }
-        else if(temp >= 54 && temp <= 57)
-        {
-
+          if (temp > 57){
+            temp += 7; // to get to 'A' ascii and continue from there
+          }
+          input.buf[(input.r + i) % INPUT_BUF] = (char)temp; //this is not equivelent to writing in console see cinputc() for more information
         }
         else if(temp >= 97 && temp <= 122)
         {
-
+          input.buf[(input.r + i) % INPUT_BUF] = (char)(temp - 32);
         }
         else if(temp >= 65 && temp <= 90)
         {
-         
+          input.buf[(input.r + i) % INPUT_BUF] = (char)(temp + 32);
         }
-        // saved_buf[i] =
+        else if(temp == 32){
+          // space -> do nothing
+        }
+        else {
+          //remove these charachters 
+        }
       }
+      break;
+
+    case '\t':
+      // tab handler
+      break;
     case C('U'):  // Kill line.
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
