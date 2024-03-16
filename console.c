@@ -187,9 +187,10 @@ struct {
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
+
 #define K 4
-char saved_buf[INPUT_BUF]; // saved buffer of copy-paste
-int saved_buffer_size = 0;
+char clipboard[K]; // saved buffer of copy-paste
+int clipboard_size;
 
 void
 consoleintr(int (*getc)(void))
@@ -203,30 +204,30 @@ consoleintr(int (*getc)(void))
       // procdump() locks cons.lock indirectly; invoke later
       doprocdump = 1;
       break;
-    case 'C': case 'X': //copy and cut
-      for (int i = (input.e - input.r) - K; i < input.e - input.r ; i++)
-      {
-        saved_buf[i - (input.e - input.r - K)] = input.buf[(input.r + i ) % INPUT_BUF];
-        saved_buffer_size += 1;
+
+    case 'C': case 'X': //copy & cut
+      clipboard_size = input.e - input.w > 4 ? 4 : input.e - input.w;
+      for (int i = 0; i < clipboard_size; i++) {
+        clipboard[i] = input.buf[(input.e - clipboard_size + i) % INPUT_BUF];
       }
-     
-      if (c == 'X')
-      {
-        for(int i = (input.e - input.r) - K; i < input.e - input.r ; i++){
+
+      if (c == 'X'){
+        for (int i = 0; i < clipboard_size; i++){
+          if(input.e != input.w){
           input.e--;
           consputc(BACKSPACE);
+          }
         }
       }
       break;
     case 'V': //paste
-      for (int i = 0; i < saved_buffer_size; i++)
-      {
-        c = saved_buf[i];
-        consputc(c);
-      }
+      for (int i = 0; i < clipboard_size; i++) {
+          input.buf[input.e++ % INPUT_BUF] = clipboard[i];
+          consputc(clipboard[i]);
+        }
       break;
       
-    case C('e'):
+    case C('e'): 
       for (int i = 0; i < input.e - input.r ; i++)
       {
         int temp = input.buf[(input.r + i ) % INPUT_BUF];
