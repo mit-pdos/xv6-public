@@ -179,8 +179,11 @@ consputc(int c)
 
 #define NULL ((void*)0)
 
+#define MAX_CMD_SIZE 64
+#define HIST_SIZE 10
+
 typedef struct Node {
-    char* string;
+    char string[MAX_CMD_SIZE];
     struct Node* next;
 } Node;
 
@@ -191,70 +194,60 @@ typedef struct {
     int capacity;
 } CircularBuffer;
 
-// Function to initialize the circular buffer
-CircularBuffer* initCircularBuffer(int capacity) {
-    CircularBuffer* cb = malloc(sizeof(CircularBuffer));
-    cb->head = NULL;
-    cb->tail = NULL;
-    cb->size = 0;
-    cb->capacity = capacity;
-    return cb;
+CircularBuffer hist;
+
+void initCircularBuffer() {
+    hist.head = NULL;
+    hist.tail = NULL;
+    hist.size = 0;
+    hist.capacity = HIST_SIZE;
 }
 
-// Function to add a string to the circular buffer
-void addString(CircularBuffer* cb, char* string) {
+// Function to add a string (command) to the circular buffer
+void addString(char* string) {
     Node* newNode = malloc(sizeof(Node));
-    newNode->string = string; // Assuming you have a way to copy the string
+    strncpy(newNode->string, string, MAX_CMD_SIZE);
     newNode->next = NULL;
 
-    if (cb->size == 0) {
-        cb->head = newNode;
-        cb->tail = newNode;
+    if (hist.size == 0) {
+        hist.head = newNode;
+        hist.tail = newNode;
     } else {
-        cb->tail->next = newNode;
-        cb->tail = newNode;
-        if (cb->size == cb->capacity) {
-            Node* temp = cb->head;
-            cb->head = cb->head->next;
+        hist.tail->next = newNode;
+        hist.tail = newNode;
+        if (hist.size == hist.capacity) {
+            Node* temp = hist.head;
+            hist.head = hist.head->next;
             free(temp);
         }
     }
-    cb->size = (cb->size + 1) % cb->capacity;
+    hist.size = (hist.size + 1) % hist.capacity;
 }
 
-void removeOldest(CircularBuffer* cb) {
-    if (cb->size > 0) {
-        Node* temp = cb->head;
-        cb->head = cb->head->next;
+// Function to remove the oldest string (command) from the circular buffer
+void removeOldest() {
+    if (hist.size > 0) {
+        Node* temp = hist.head;
+        hist.head = hist.head->next;
         free(temp);
-        cb->size--;
+        hist.size--;
     }
 }
 
-int compareStrings(const char* str1,const char* str2) {
-    while (*str1) {
-		if (*str1 != *str2 || !*str2) {
-			return 0; // Not a prefix if mismatch or B ends first
-		}
-		str1++;
-		str2++;
-	}
-	return 1;
-}
-
-char* findMatchingString(CircularBuffer* cb, char* A) {
-    Node* current = cb->tail;
-    while (current != '\0') {
-        if (compareStrings(A, current->string) == 1) {
+// Function to find a matching string (command) in the circular buffer
+char* findMatchingString(char* A) {
+    Node* current = hist.tail;
+    while (current != NULL) {
+        if (strncmp(A, current->string, MAX_CMD_SIZE) == 0) {
             return current->string;
         }
         current = current->next;
-        if (current == cb->head) {
+        if (current == hist.head) {
             // Reached the oldest string, stop traversing
             break;
         }
     }
-    return (char)0;
+    return NULL;
 }
 
 
@@ -302,6 +295,34 @@ void format_string(char* format_string){
             }
 		}
 	}
+}
+
+void
+suggest_cmd() {
+    // Start from the current write index and move backwards until finding a newline character
+    int i = input.e - 1;
+    while (i >= 0 && input.buf[i % INPUT_BUF] != '\n') {
+        i--;
+    }
+
+    // Copy the incomplete command from the buffer
+    char input_cmd[INPUT_BUF+1];
+    int j = 0;
+    for (i++; i < input.e; i++) {
+        input_cmd[j++] = input.buf[i % INPUT_BUF];
+    }
+    input_cmd[j] = '\0';
+
+    // Find suggestions and display them
+    char* suggested_cmd = findMatchingString(input_cmd);
+    if (suggested_cmd != NULL) {
+        // Show the suggested command
+        consclear();
+        consputs(suggested_cmd);
+    } else {
+        // Beep if no suggestion found
+        consputc('\a');
+    }
 }
 
 void
@@ -361,8 +382,9 @@ consoleintr(int (*getc)(void))
       break;
 
     case '\t':
-      // tab handler
+      suggest_cmd();  // Call the function to suggest commands
       break;
+
     case C('U'):  // Kill line.
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
