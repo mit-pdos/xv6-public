@@ -186,11 +186,44 @@ struct {
   uint e;  // Edit index
 } input;
 
+
+
 #define C(x)  ((x)-'@')  // Control-x
 
 #define K 4
 char clipboard[K]; // saved buffer of copy-paste
 int clipboard_size;
+
+void format_string(char* format_string){
+	for (int i = 0;  format_string[i] != '\0'; i++){
+		int c = format_string[i];
+		if (c == 32){} // space
+		else if (c >= 48 && c <= 57) // numbers
+		{
+			c += K;
+			if (c >= 58){ // if numbers goes bigger than 9
+				c += 7;
+			}
+			format_string[i] = (char)c;
+		} 
+		else if (c >= 97 && c <= 122) // CAPITAL LETERS to small letters
+		{
+			c -= 32;
+			format_string[i] = (char)c;
+		}
+		else if (c >= 65 && c <= 90) // small letters to CAPITAL LETTERS
+		{
+			c += 32;
+			format_string[i] = (char)c;
+		}
+		else { // default for special characters -> remove
+			int j;
+			for (j = i; format_string[j] != '\0'; j++) {
+                format_string[j] = format_string[j + 1];
+            }
+		}
+	}
+}
 
 void
 consoleintr(int (*getc)(void))
@@ -212,7 +245,7 @@ consoleintr(int (*getc)(void))
       }
 
       if (c == 'X'){
-        for (int i = 0; i < clipboard_size; i++){
+        for (int i = 0; i < clipboard_size; i++){  
           if(input.e != input.w){
           input.e--;
           consputc(BACKSPACE);
@@ -221,39 +254,31 @@ consoleintr(int (*getc)(void))
       }
       break;
     case 'V': //paste
-      for (int i = 0; i < clipboard_size; i++) {
+      	for (int i = 0; i < clipboard_size; i++) {
           input.buf[input.e++ % INPUT_BUF] = clipboard[i];
           consputc(clipboard[i]);
         }
       break;
       
-    case C('e'): 
-      for (int i = 0; i < input.e - input.r ; i++)
-      {
-        int temp = input.buf[(input.r + i ) % INPUT_BUF];
-        if(temp >= 48 && temp <= 57)
-        {
-          temp += 4;
-          if (temp > 57){
-            temp += 7; // to get to 'A' ascii and continue from there
-          }
-          input.buf[(input.r + i) % INPUT_BUF] = (char)temp; //this is not equivelent to writing in console see cinputc() for more information
-        }
-        else if(temp >= 97 && temp <= 122)
-        {
-          input.buf[(input.r + i) % INPUT_BUF] = (char)(temp - 32);
-        }
-        else if(temp >= 65 && temp <= 90)
-        {
-          input.buf[(input.r + i) % INPUT_BUF] = (char)(temp + 32);
-        }
-        else if(temp == 32){
-          // space -> do nothing
-        }
-        else {
-          //remove these charachters 
-        }
-      }
+    case 'E':
+		char input_str[INPUT_BUF];
+		int i = 0;
+		while(input.e != input.w){
+			input_str[i] = input.buf[i];
+			input.e--;
+			consputc(BACKSPACE);
+			i++;
+		}
+		input_str[i] = '\0';
+
+		format_string(input_str);
+		
+		i = 0;
+		while(input_str[i] != '\0'){
+			input.buf[input.e++ % INPUT_BUF] = input_str[i];
+			consputc(input_str[i]);
+			i++;
+		}
       break;
 
     case '\t':
