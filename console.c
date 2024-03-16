@@ -178,6 +178,88 @@ consputc(int c)
   cgaputc(c);
 }
 
+#define NULL ((void*)0)
+
+typedef struct Node {
+    char* string;
+    struct Node* next;
+} Node;
+
+typedef struct {
+    Node* head;
+    Node* tail;
+    int size;
+    int capacity;
+} CircularBuffer;
+
+// Function to initialize the circular buffer
+CircularBuffer* initCircularBuffer(int capacity) {
+    CircularBuffer* cb = malloc(sizeof(CircularBuffer));
+    cb->head = NULL;
+    cb->tail = NULL;
+    cb->size = 0;
+    cb->capacity = capacity;
+    return cb;
+}
+
+// Function to add a string to the circular buffer
+void addString(CircularBuffer* cb, char* string) {
+    Node* newNode = malloc(sizeof(Node));
+    newNode->string = string; // Assuming you have a way to copy the string
+    newNode->next = NULL;
+
+    if (cb->size == 0) {
+        cb->head = newNode;
+        cb->tail = newNode;
+    } else {
+        cb->tail->next = newNode;
+        cb->tail = newNode;
+        if (cb->size == cb->capacity) {
+            Node* temp = cb->head;
+            cb->head = cb->head->next;
+            free(temp);
+        }
+    }
+    cb->size = (cb->size + 1) % cb->capacity;
+}
+
+void removeOldest(CircularBuffer* cb) {
+    if (cb->size > 0) {
+        Node* temp = cb->head;
+        cb->head = cb->head->next;
+        free(temp);
+        cb->size--;
+    }
+}
+
+int compareStrings(const char* str1,const char* str2) {
+    while (*str1) {
+		if (*str1 != *str2 || !*str2) {
+			return 0; // Not a prefix if mismatch or B ends first
+		}
+		str1++;
+		str2++;
+	}
+	return 1;
+}
+
+char* findMatchingString(CircularBuffer* cb, char* A) {
+    Node* current = cb->tail;
+    while (current != '\0') {
+        if (compareStrings(A, current->string) == 1) {
+            return current->string;
+        }
+        current = current->next;
+        if (current == cb->head) {
+            // Reached the oldest string, stop traversing
+            break;
+        }
+    }
+    return (char)0;
+}
+
+
+
 #define INPUT_BUF 128
 struct {
   char buf[INPUT_BUF];
@@ -185,8 +267,6 @@ struct {
   uint w;  // Write index
   uint e;  // Edit index
 } input;
-
-
 
 #define C(x)  ((x)-'@')  // Control-x
 
