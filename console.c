@@ -1,7 +1,6 @@
 // Console input and output.
 // Input is from the keyboard or serial port.
 // Output is written to the screen and serial port.
-
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -458,7 +457,5 @@ consoleinit(void)
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;
   cons.locking = 1;
-
   ioapicenable(IRQ_KBD, 0);
 }
-
