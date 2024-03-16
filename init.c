@@ -25,8 +25,8 @@ main(void)
     // printing students name and id 
     printf(1, "Group #8 \n");
     printf(1, "Ali Parvizi - 810100102 \n");
-    printf(1, "Mohammad Mataee - 810199493 \n");
     printf(1, "Mohammad Javad Afsari - 810198544 \n");
+    printf(1, "Mohammad Motaee - 810199493 \n");
 
     pid = fork();
     if(pid < 0){
