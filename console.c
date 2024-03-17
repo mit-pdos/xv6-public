@@ -1,7 +1,6 @@
 // Console input and output.
 // Input is from the keyboard or serial port.
 // Output is written to the screen and serial port.
-
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -178,6 +177,88 @@ consputc(int c)
   cgaputc(c);
 }
 
+#define NULL ((void*)0)
+
+typedef struct Node {
+    char* string;
+    struct Node* next;
+} Node;
+
+typedef struct {
+    Node* head;
+    Node* tail;
+    int size;
+    int capacity;
+} CircularBuffer;
+
+// Function to initialize the circular buffer
+CircularBuffer* initCircularBuffer(int capacity) {
+    CircularBuffer* cb = malloc(sizeof(CircularBuffer));
+    cb->head = NULL;
+    cb->tail = NULL;
+    cb->size = 0;
+    cb->capacity = capacity;
+    return cb;
+}
+
+// Function to add a string to the circular buffer
+void addString(CircularBuffer* cb, char* string) {
+    Node* newNode = malloc(sizeof(Node));
+    newNode->string = string; // Assuming you have a way to copy the string
+    newNode->next = NULL;
+
+    if (cb->size == 0) {
+        cb->head = newNode;
+        cb->tail = newNode;
+    } else {
+        cb->tail->next = newNode;
+        cb->tail = newNode;
+        if (cb->size == cb->capacity) {
+            Node* temp = cb->head;
+            cb->head = cb->head->next;
+            free(temp);
+        }
+    }
+    cb->size = (cb->size + 1) % cb->capacity;
+}
+
+void removeOldest(CircularBuffer* cb) {
+    if (cb->size > 0) {
+        Node* temp = cb->head;
+        cb->head = cb->head->next;
+        free(temp);
+        cb->size--;
+    }
+}
+
+int compareStrings(const char* str1,const char* str2) {
+    while (*str1) {
+		if (*str1 != *str2 || !*str2) {
+			return 0; // Not a prefix if mismatch or B ends first
+		}
+		str1++;
+		str2++;
+	}
+	return 1;
+}
+
+char* findMatchingString(CircularBuffer* cb, char* A) {
+    Node* current = cb->tail;
+    while (current != '\0') {
+        if (compareStrings(A, current->string) == 1) {
+            return current->string;
+        }
+        current = current->next;
+        if (current == cb->head) {
+            // Reached the oldest string, stop traversing
+            break;
+        }
+    }
+    return (char)0;
+}
+
+
+
 #define INPUT_BUF 128
 struct {
   char buf[INPUT_BUF];
@@ -187,6 +268,41 @@ struct {
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
+
+#define K 4
+char clipboard[K]; // saved buffer of copy-paste
+int clipboard_size;
+
+void format_string(char* format_string){
+	for (int i = 0;  format_string[i] != '\0'; i++){
+		int c = format_string[i];
+		if (c == 32){} // space
+		else if (c >= 48 && c <= 57) // numbers
+		{
+			c += K;
+			if (c >= 58){ // if numbers goes bigger than 9
+				c += 7;
+			}
+			format_string[i] = (char)c;
+		} 
+		else if (c >= 97 && c <= 122) // CAPITAL LETERS to small letters
+		{
+			c -= 32;
+			format_string[i] = (char)c;
+		}
+		else if (c >= 65 && c <= 90) // small letters to CAPITAL LETTERS
+		{
+			c += 32;
+			format_string[i] = (char)c;
+		}
+		else { // default for special characters -> remove
+			int j;
+			for (j = i; format_string[j] != '\0'; j++) {
+                format_string[j] = format_string[j + 1];
+            }
+		}
+	}
+}
 
 void
 consoleintr(int (*getc)(void))
@@ -199,6 +315,53 @@ consoleintr(int (*getc)(void))
     case C('P'):  // Process listing.
       // procdump() locks cons.lock indirectly; invoke later
       doprocdump = 1;
+      break;
+
+    case 'C': case 'X': //copy & cut
+      clipboard_size = input.e - input.w > 4 ? 4 : input.e - input.w;
+      for (int i = 0; i < clipboard_size; i++) {
+        clipboard[i] = input.buf[(input.e - clipboard_size + i) % INPUT_BUF];
+      }
+
+      if (c == 'X'){
+        for (int i = 0; i < clipboard_size; i++){  
+          if(input.e != input.w){
+          input.e--;
+          consputc(BACKSPACE);
+          }
+        }
+      }
+      break;
+    case 'V': //paste
+      	for (int i = 0; i < clipboard_size; i++) {
+          input.buf[input.e++ % INPUT_BUF] = clipboard[i];
+          consputc(clipboard[i]);
+        }
+      break;
+      
+    case 'E':
+		char input_str[INPUT_BUF];
+		int i = 0;
+		while(input.e != input.w){
+			input_str[i] = input.buf[i];
+			input.e--;
+			consputc(BACKSPACE);
+			i++;
+		}
+		input_str[i] = '\0';
+
+		format_string(input_str);
+		
+		i = 0;
+		while(input_str[i] != '\0'){
+			input.buf[input.e++ % INPUT_BUF] = input_str[i];
+			consputc(input_str[i]);
+			i++;
+		}
+      break;
+
+    case '\t':
+      // tab handler
       break;
     case C('U'):  // Kill line.
       while(input.e != input.w &&
@@ -231,6 +394,7 @@ consoleintr(int (*getc)(void))
     procdump();  // now call procdump() wo. cons.lock held
   }
 }
+
 
 int
 consoleread(struct inode *ip, char *dst, int n)
@@ -293,7 +457,5 @@ consoleinit(void)
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;
   cons.locking = 1;
-
   ioapicenable(IRQ_KBD, 0);
 }
-
