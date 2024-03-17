@@ -1,7 +1,6 @@
 // Console input and output.
 // Input is from the keyboard or serial port.
 // Output is written to the screen and serial port.
-
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -178,6 +177,81 @@ consputc(int c)
   cgaputc(c);
 }
 
+#define NULL ((void*)0)
+
+#define MAX_CMD_SIZE 64
+#define HIST_SIZE 10
+
+typedef struct Node {
+    char string[MAX_CMD_SIZE];
+    struct Node* next;
+} Node;
+
+typedef struct {
+    Node* head;
+    Node* tail;
+    int size;
+    int capacity;
+} CircularBuffer;
+
+CircularBuffer hist;
+
+void initCircularBuffer() {
+    hist.head = NULL;
+    hist.tail = NULL;
+    hist.size = 0;
+    hist.capacity = HIST_SIZE;
+}
+
+// Function to add a string (command) to the circular buffer
+void addString(char* string) {
+    Node* newNode = malloc(sizeof(Node));
+    strncpy(newNode->string, string, MAX_CMD_SIZE);
+    newNode->next = NULL;
+
+    if (hist.size == 0) {
+        hist.head = newNode;
+        hist.tail = newNode;
+    } else {
+        hist.tail->next = newNode;
+        hist.tail = newNode;
+        if (hist.size == hist.capacity) {
+            Node* temp = hist.head;
+            hist.head = hist.head->next;
+            free(temp);
+        }
+    }
+    hist.size = (hist.size + 1) % hist.capacity;
+}
+
+// Function to remove the oldest string (command) from the circular buffer
+void removeOldest() {
+    if (hist.size > 0) {
+        Node* temp = hist.head;
+        hist.head = hist.head->next;
+        free(temp);
+        hist.size--;
+    }
+}
+
+// Function to find a matching string (command) in the circular buffer
+char* findMatchingString(char* A) {
+    Node* current = hist.tail;
+    while (current != NULL) {
+        if (strncmp(A, current->string, MAX_CMD_SIZE) == 0) {
+            return current->string;
+        }
+        current = current->next;
+        if (current == hist.head) {
+            // Reached the oldest string, stop traversing
+            break;
+        }
+    }
+    return NULL;
+}
+
+
+
 #define INPUT_BUF 128
 struct {
   char buf[INPUT_BUF];
@@ -187,6 +261,69 @@ struct {
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
+
+#define K 4
+char clipboard[K]; // saved buffer of copy-paste
+int clipboard_size;
+
+void format_string(char* format_string){
+	for (int i = 0;  format_string[i] != '\0'; i++){
+		int c = format_string[i];
+		if (c == 32){} // space
+		else if (c >= 48 && c <= 57) // numbers
+		{
+			c += K;
+			if (c >= 58){ // if numbers goes bigger than 9
+				c += 7;
+			}
+			format_string[i] = (char)c;
+		} 
+		else if (c >= 97 && c <= 122) // CAPITAL LETERS to small letters
+		{
+			c -= 32;
+			format_string[i] = (char)c;
+		}
+		else if (c >= 65 && c <= 90) // small letters to CAPITAL LETTERS
+		{
+			c += 32;
+			format_string[i] = (char)c;
+		}
+		else { // default for special characters -> remove
+			int j;
+			for (j = i; format_string[j] != '\0'; j++) {
+                format_string[j] = format_string[j + 1];
+            }
+		}
+	}
+}
+
+void
+suggest_cmd() {
+    // Start from the current write index and move backwards until finding a newline character
+    int i = input.e - 1;
+    while (i >= 0 && input.buf[i % INPUT_BUF] != '\n') {
+        i--;
+    }
+
+    // Copy the incomplete command from the buffer
+    char input_cmd[INPUT_BUF+1];
+    int j = 0;
+    for (i++; i < input.e; i++) {
+        input_cmd[j++] = input.buf[i % INPUT_BUF];
+    }
+    input_cmd[j] = '\0';
+
+    // Find suggestions and display them
+    char* suggested_cmd = findMatchingString(input_cmd);
+    if (suggested_cmd != NULL) {
+        // Show the suggested command
+        consclear();
+        consputs(suggested_cmd);
+    } else {
+        // Beep if no suggestion found
+        consputc('\a');
+    }
+}
 
 void
 consoleintr(int (*getc)(void))
@@ -200,6 +337,54 @@ consoleintr(int (*getc)(void))
       // procdump() locks cons.lock indirectly; invoke later
       doprocdump = 1;
       break;
+
+    case 'C': case 'X': //copy & cut
+      clipboard_size = input.e - input.w > 4 ? 4 : input.e - input.w;
+      for (int i = 0; i < clipboard_size; i++) {
+        clipboard[i] = input.buf[(input.e - clipboard_size + i) % INPUT_BUF];
+      }
+
+      if (c == 'X'){
+        for (int i = 0; i < clipboard_size; i++){  
+          if(input.e != input.w){
+          input.e--;
+          consputc(BACKSPACE);
+          }
+        }
+      }
+      break;
+    case 'V': //paste
+      	for (int i = 0; i < clipboard_size; i++) {
+          input.buf[input.e++ % INPUT_BUF] = clipboard[i];
+          consputc(clipboard[i]);
+        }
+      break;
+      
+    case 'E':
+		char input_str[INPUT_BUF];
+		int i = 0;
+		while(input.e != input.w){
+			input_str[i] = input.buf[i];
+			input.e--;
+			consputc(BACKSPACE);
+			i++;
+		}
+		input_str[i] = '\0';
+
+		format_string(input_str);
+		
+		i = 0;
+		while(input_str[i] != '\0'){
+			input.buf[input.e++ % INPUT_BUF] = input_str[i];
+			consputc(input_str[i]);
+			i++;
+		}
+      break;
+
+    case '\t':
+      suggest_cmd();  // Call the function to suggest commands
+      break;
+
     case C('U'):  // Kill line.
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
@@ -231,6 +416,7 @@ consoleintr(int (*getc)(void))
     procdump();  // now call procdump() wo. cons.lock held
   }
 }
+
 
 int
 consoleread(struct inode *ip, char *dst, int n)
@@ -293,7 +479,5 @@ consoleinit(void)
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;
   cons.locking = 1;
-
   ioapicenable(IRQ_KBD, 0);
 }
-
