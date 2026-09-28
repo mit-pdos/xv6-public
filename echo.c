@@ -7,7 +7,7 @@ main(int argc, char *argv[])
 {
   int i;
   int x = 42;   
-	printf(1, "DEBUG: argc=%d\n", argc);
+	printf(1, "DBG argc=%d\n", argc);
 
   for(i = 1; i < argc; i++)
     printf(1, "%s%s", argv[i], i+1 < argc ? " " : "\n");
