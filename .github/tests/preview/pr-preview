@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Score the current branch as if it were opened as a PR, without opening one.
+#
+#   pr-preview [--base BRANCH]
+#
+# Run it inside any git repository. The first run creates a virtualenv next to this
+# script and downloads the Laya model (~1.7 GB), so it takes a few minutes.
+set -euo pipefail
+
+TOOL_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
+VENV="$TOOL_DIR/.venv"
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "pr-preview: not inside a git repository" >&2
+  exit 1
+fi
+
+if [ ! -x "$VENV/bin/python" ]; then
+  echo "pr-preview: first run, installing dependencies into $VENV ..." >&2
+  python3 -m venv "$VENV"
+  "$VENV/bin/pip" install --quiet --upgrade pip
+  "$VENV/bin/pip" install --quiet -r "$TOOL_DIR/requirements.txt"
+fi
+
+export TRANSFORMERS_VERBOSITY=error HF_HUB_DISABLE_PROGRESS_BARS=1 PYTHONWARNINGS=ignore
+REPO="$(pwd)"
+cd "$TOOL_DIR"
+exec "$VENV/bin/python" -m tests.preview.preview --repo "$REPO" "$@"

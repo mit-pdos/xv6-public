@@ -1,0 +1,36 @@
+{
+    "q1": {
+      "type": "noul",
+      "aggregate": "max",
+      "instructions": "Does the code have unit tests that cover it?",
+      "criteria": {
+        "true": "Test files exist (e.g. test_*.py, *.spec.ts, *_test.go) and they exercise the changed code.",
+        "false": "No test files, or the tests don't touch the changed code."
+      }
+    },
+    "q2": {
+      "type": "noul",
+      "instructions": "Is the code modular and does it follow the SOLID principles?",
+      "criteria": {
+        "true": "Small functions/classes with one responsibility; dependencies injected, not hard-coded.",
+        "false": "Large functions/classes mixing several responsibilities, or tightly coupled code."
+      }
+    },
+    "q3": {
+      "type": "noul",
+      "instructions": "Is the code readable, with comments where needed?",
+      "criteria": {
+        "true": "Clear names; non-obvious logic has a comment.",
+        "false": "Unclear names (x, tmp, data2) or complex logic with no comments."
+      }
+    },
+    "q4": {
+      "type": "noul",
+      "aggregate": "min",
+      "instructions": "Is the code free of secrets and sensitive data?",
+      "criteria": {
+        "true": "No API keys, passwords, tokens or .env values are written in the code.",
+        "false": "Some file contains an API_KEY, password, token or values copied from a .env file."
+      }
+    }
+}

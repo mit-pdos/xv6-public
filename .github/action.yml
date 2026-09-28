@@ -1,0 +1,43 @@
+name: Layaction
+description: Reviews a pull request with Laya and posts one comment with every check, plus labels.
+
+inputs:
+  github-token:
+    description: Token used to read the PR and write the comment and labels.
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - id: cache-key
+      shell: bash
+      run: echo "key=layaction-${{ runner.os }}-$(sha256sum "$GITHUB_ACTION_PATH/requirements.txt" | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+    # pip downloads (~200 MB with CPU torch) and the Laya model (~1.7 GB) are the slow part.
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/pip
+          ~/.cache/huggingface
+        key: ${{ steps.cache-key.outputs.key }}
+
+    - name: Install
+      shell: bash
+      run: |
+        # CPU-only torch: the default Linux wheel pulls ~3 GB of CUDA libraries runners can't use.
+        pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+        pip install --quiet -r "$GITHUB_ACTION_PATH/requirements.txt"
+
+    - name: Review PR
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        TRANSFORMERS_VERBOSITY: error
+        HF_HUB_DISABLE_PROGRESS_BARS: "1"
+        PYTHONWARNINGS: ignore
+      run: python -m src.main

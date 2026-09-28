@@ -1,0 +1,28 @@
+name: Layaction
+
+# pull_request_target instead of pull_request so PRs from forks can be commented on and
+# labelled too (their pull_request token is read-only). This is safe here because the
+# checkout below is the base branch: the PR's code is only read through the API, never run.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write  # PR labels and comments go through the issues API
+
+concurrency:
+  group: layaction-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+      - uses: ./.github

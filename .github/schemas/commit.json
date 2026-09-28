@@ -1,0 +1,23 @@
+{
+    "message_clarity": {
+      "type": "score",
+      "instructions": "Does the commit message explain what changed and why? 1 = vague (e.g. 'fix', 'wip', 'update'), 10 = clearly says what changed and why.",
+      "criteria": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    },
+    "message_format": {
+      "type": "score",
+      "instructions": "Does the commit message follow a conventional format? 1 = no format, 10 = conventional prefix (e.g. 'feat: ...', 'fix(api): ...') and subject under 72 characters.",
+      "criteria": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    },
+    "message_accuracy": {
+      "type": "score",
+      "instructions": "Does the commit message match the files that were actually changed? 1 = message describes something unrelated to the changed files (e.g. 'fix typo in README' but only src/auth.py changed), 10 = message accurately describes the changed files.",
+      "criteria": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    },
+    "focus": {
+      "type": "score",
+      "instructions": "Do the changed files belong to a single concern? 1 = unrelated files across many areas, 10 = all files belong to one feature or fix.",
+      "criteria": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    }
+
+}

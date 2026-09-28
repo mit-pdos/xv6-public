@@ -1,0 +1,54 @@
+{
+    "review": {
+      "type": "choice",
+      "instructions": "What should happen with this PR?",
+      "criteria": {
+        "approve": "clean change, tests included, no risks found",
+        "warn": "can merge, but has minor issues (missing tests, unclear naming, small smells)",
+        "block": "must not merge: secrets in code, broken build, obvious bugs",
+        "manual-review": "sensitive or too large to judge automatically (auth, security, CI/CD, big refactors)"
+      }
+    },
+    "category": {
+      "type": "choice",
+      "instructions": "Which area of the project does this PR mainly affect?",
+      "criteria": {
+        "code": "application logic: features, bug fixes, business rules",
+        "ui": "frontend components, styles, pages, user-facing text",
+        "api": "endpoints, request/response contracts, API clients",
+        "database": "schemas, migrations, queries, models",
+        "tests": "unit, integration or end-to-end tests",
+        "security": "authentication, permissions, secrets handling, vulnerability fixes",
+        "performance": "caching, query optimisation, reducing load or memory use",
+        "dependencies": "package.json, requirements.txt, lock files, library upgrades",
+        "configuration": "config files, environment variables, feature flags",
+        "infrastructure": "Terraform, Kubernetes, cloud resources",
+        "ci-cd": "pipelines, workflows, Dockerfiles, deploy scripts",
+        "architecture": "project structure, new modules, interfaces between components",
+        "documentation": "README, docs folder, code comments",
+        "other": "everything else"
+      }
+    },
+    "urgency": {
+      "type": "choice",
+      "instructions": "How urgently should this PR be merged?",
+      "criteria": {
+        "low": "nice to have, can wait (docs, cleanup)",
+        "medium": "normal feature or fix, merge in the regular cycle",
+        "high": "fixes a bug users are hitting or unblocks other work",
+        "urgent": "fixes a production outage or a security issue"
+      }
+    },
+    "type": {
+      "type": "choice",
+      "instructions": "What kind of change is this PR?",
+      "criteria": {
+        "feat": "adds new functionality",
+        "fix": "fixes a bug",
+        "refactor": "restructures code without changing behaviour",
+        "docs": "only documentation changes",
+        "test": "only adds or changes tests",
+        "chore": "dependencies, config, build or tooling"
+      }
+    }
+}
