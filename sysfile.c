@@ -78,6 +78,44 @@ sys_read(void)
   return fileread(f, p, n);
 }
 
+// lseek
+int sys_lseek(void) {
+  struct file *f;
+  int offset;
+  int whence;
+  long long newoff;
+
+  if(argfd(0, 0, &f) < 0 || argint(1, &offset) < 0 || argint(2, &whence) < 0) {
+    return -1;
+  }
+
+  if(f->type != FD_INODE || f->ip->type == T_DEV) {
+    return -1;
+  }
+
+  if(whence == SEEK_SET){
+    newoff = (long long)offset;
+  }
+  else if(whence == SEEK_CUR){
+    newoff = (long long)f->off + offset;
+  }
+  else if(whence == SEEK_END){
+    ilock(f->ip);
+    newoff = (long long)f->ip->size + offset;
+    iunlock(f->ip);
+  }
+  else{
+    return -1;
+  }
+
+  if(newoff < 0 || newoff > 0x7fffffff) {
+    return -1;
+  }
+
+  f->off = (uint)newoff;
+  return (int)newoff;
+}
+
 int
 sys_write(void)
 {

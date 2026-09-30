@@ -1,0 +1,171 @@
+diff --git a/Makefile b/Makefile
+index 09d790c..8282a36 100644
+--- a/Makefile
++++ b/Makefile
+@@ -181,6 +181,7 @@ UPROGS=\
+ 	_usertests\
+ 	_wc\
+ 	_zombie\
++	_trylseek\
+ 
+ fs.img: mkfs README $(UPROGS)
+ 	./mkfs fs.img README $(UPROGS)
+diff --git a/fcntl.h b/fcntl.h
+index d565483..99400a9 100644
+--- a/fcntl.h
++++ b/fcntl.h
+@@ -2,3 +2,7 @@
+ #define O_WRONLY  0x001
+ #define O_RDWR    0x002
+ #define O_CREATE  0x200
++
++#define SEEK_SET 0 //offset from begining
++#define SEEK_CUR 1 //offset from current position
++#define SEEK_END 2 //offset from end
+diff --git a/syscall.c b/syscall.c
+index ee85261..2c204d9 100644
+--- a/syscall.c
++++ b/syscall.c
+@@ -97,6 +97,7 @@ extern int sys_mknod(void);
+ extern int sys_open(void);
+ extern int sys_pipe(void);
+ extern int sys_read(void);
++extern int sys_lseek(void);
+ extern int sys_sbrk(void);
+ extern int sys_sleep(void);
+ extern int sys_unlink(void);
+@@ -110,6 +111,7 @@ static int (*syscalls[])(void) = {
+ [SYS_wait]    sys_wait,
+ [SYS_pipe]    sys_pipe,
+ [SYS_read]    sys_read,
++[SYS_lseek] sys_lseek,
+ [SYS_kill]    sys_kill,
+ [SYS_exec]    sys_exec,
+ [SYS_fstat]   sys_fstat,
+diff --git a/syscall.h b/syscall.h
+index bc5f356..db61927 100644
+--- a/syscall.h
++++ b/syscall.h
+@@ -20,3 +20,4 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_lseek 22 //syscall number
+diff --git a/sysfile.c b/sysfile.c
+index bfe61b7..90b4109 100644
+--- a/sysfile.c
++++ b/sysfile.c
+@@ -78,6 +78,44 @@ sys_read(void)
+   return fileread(f, p, n);
+ }
+ 
++// lseek
++int sys_lseek(void) {
++  struct file *f;
++  int offset;
++  int whence;
++  long long newoff;
++
++  if(argfd(0, 0, &f) < 0 || argint(1, &offset) < 0 || argint(2, &whence) < 0) {
++    return -1;
++  }
++
++  if(f->type != FD_INODE || f->ip->type == T_DEV) {
++    return -1;
++  }
++
++  if(whence == SEEK_SET){
++    newoff = (long long)offset;
++  }
++  else if(whence == SEEK_CUR){
++    newoff = (long long)f->off + offset;
++  }
++  else if(whence == SEEK_END){
++    ilock(f->ip);
++    newoff = (long long)f->ip->size + offset;
++    iunlock(f->ip);
++  }
++  else{
++    return -1;
++  }
++
++  if(newoff < 0 || newoff > 0x7fffffff) {
++    return -1;
++  }
++
++  f->off = (uint)newoff;
++  return (int)newoff;
++}
++
+ int
+ sys_write(void)
+ {
+diff --git a/trylseek.c b/trylseek.c
+new file mode 100644
+index 0000000..b081ff8
+--- /dev/null
++++ b/trylseek.c
+@@ -0,0 +1,39 @@
++#include "types.h"
++#include "fcntl.h"
++#include "stat.h"
++#include "user.h"
++#include "fs.h"
++
++
++int
++main(int argc, char *argv[])
++{
++  int fd, i, n;
++  char buf[128];
++  fd = open(argv[1], O_RDONLY);
++  lseek(fd, 10, SEEK_SET);
++  n = read(fd, buf, 5);
++  for(i = 0; i < n; i++)
++    printf(1, "%c", buf[i]);
++  printf(1, "\n");
++
++
++  lseek(fd, 10, SEEK_CUR);
++  n = read(fd, buf, 5);
++  for(i = 0; i < n; i++)
++    printf(1, "%c", buf[i]);
++  printf(1, "\n");
++
++  lseek(fd, -5, SEEK_END);
++  n = read(fd, buf, 5);
++  for(i = 0; i < n; i++)
++    printf(1, "%c", buf[i]);
++  printf(1, "\n");
++
++  lseek(fd, 5, SEEK_END);
++  n = read(fd, buf, 5);
++  for(i = 0; i < n; i++)
++    printf(1, "%c", buf[i]);
++  printf(1, "\n");
++  exit();
++}
+diff --git a/user.h b/user.h
+index 4f99c52..d01c033 100644
+--- a/user.h
++++ b/user.h
+@@ -8,6 +8,7 @@ int wait(void);
+ int pipe(int*);
+ int write(int, const void*, int);
+ int read(int, void*, int);
++int lseek(int, int, int); //function declaration
+ int close(int);
+ int kill(int);
+ int exec(char*, char**);
+diff --git a/usys.S b/usys.S
+index 8bfd8a1..b5c9a5b 100644
+--- a/usys.S
++++ b/usys.S
+@@ -14,6 +14,7 @@ SYSCALL(wait)
+ SYSCALL(pipe)
+ SYSCALL(read)
+ SYSCALL(write)
++SYSCALL(lseek)
+ SYSCALL(close)
+ SYSCALL(kill)
+ SYSCALL(exec)

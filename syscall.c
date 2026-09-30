@@ -97,6 +97,7 @@ extern int sys_mknod(void);
 extern int sys_open(void);
 extern int sys_pipe(void);
 extern int sys_read(void);
+extern int sys_lseek(void);
 extern int sys_sbrk(void);
 extern int sys_sleep(void);
 extern int sys_unlink(void);
@@ -110,6 +111,7 @@ static int (*syscalls[])(void) = {
 [SYS_wait]    sys_wait,
 [SYS_pipe]    sys_pipe,
 [SYS_read]    sys_read,
+[SYS_lseek] sys_lseek,
 [SYS_kill]    sys_kill,
 [SYS_exec]    sys_exec,
 [SYS_fstat]   sys_fstat,
