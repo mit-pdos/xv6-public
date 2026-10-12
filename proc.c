@@ -6,6 +6,8 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "fs.h"
+
 
 struct {
   struct spinlock lock;
@@ -65,6 +67,22 @@ myproc(void) {
   return p;
 }
 
+struct proc*
+fetch_proc(uint pid)
+{
+  struct proc *ret_proc = 0;
+  acquire(&ptable.lock);
+  for(uint i = 0; i < NPROC; i++) {
+    if(ptable.proc[i].pid == pid) {
+      ret_proc = &ptable.proc[i];
+      release(&ptable.lock);
+      return ret_proc;
+    }
+  }
+  release(&ptable.lock);
+  return ret_proc;
+}
+
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -96,6 +114,7 @@ found:
     p->state = UNUSED;
     return 0;
   }
+
   sp = p->kstack + KSTACKSIZE;
 
   // Leave room for trap frame.
@@ -111,6 +130,8 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  // Don't allocate memory for elfprof yet
+  p->ep = 0;
 
   return p;
 }
@@ -128,7 +149,7 @@ userinit(void)
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
-  inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
+  inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size, p->pid);
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
@@ -155,6 +176,20 @@ userinit(void)
 
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
+
+/* growproc is called by sbrk, which is called by malloc.
+
+  So, growproc is used to dynamically allocate writable
+  memory at runtime to a process, specifically for the
+  heap.
+
+  growproc() used to do this by allocating physical pages
+  in memory from kalloc() (kmem.freelist) and increase the
+  size of the process.
+
+  But since, we will not allocate physical pages prematurely,
+  we will only increase the size of the process.
+*/
 int
 growproc(int n)
 {
@@ -163,8 +198,9 @@ growproc(int n)
 
   sz = curproc->sz;
   if(n > 0){
-    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
+    if(sz + n >= KERNBASE)
       return -1;
+    sz += n;
   } else if(n < 0){
     if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
@@ -190,13 +226,18 @@ fork(void)
   }
 
   // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+  if(((np->pgdir = copyuvm(curproc->pgdir, curproc->sz, np->pid)) == 0) ||
+    ((np->ep = copyprof(curproc->ep)) == 0)){
+    if(np->pgdir)
+      freevm(np->pgdir);
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
     return -1;
   }
   np->sz = curproc->sz;
+  if(curproc->elf)
+    np->elf = idup(curproc->elf);
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
@@ -244,8 +285,11 @@ exit(void)
 
   begin_op();
   iput(curproc->cwd);
+  if(curproc->elf)
+    iput(curproc->elf);
   end_op();
   curproc->cwd = 0;
+  curproc->elf = 0;
 
   acquire(&ptable.lock);
 
@@ -289,6 +333,8 @@ wait(void)
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
+        freeprof(p->ep);
+        p->ep = 0;
         freevm(p->pgdir);
         p->pid = 0;
         p->parent = 0;
@@ -390,6 +436,7 @@ yield(void)
   sched();
   release(&ptable.lock);
 }
+
 
 // A fork child's very first scheduling by scheduler()
 // will swtch here.  "Return" to user space.

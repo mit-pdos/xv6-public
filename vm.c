@@ -6,6 +6,8 @@
 #include "mmu.h"
 #include "proc.h"
 #include "elf.h"
+#include "swap.h"
+#include "rammap.h"
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
@@ -32,7 +34,7 @@ seginit(void)
 // Return the address of the PTE in page table pgdir
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
-static pte_t *
+pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
@@ -57,20 +59,29 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
-static int
-mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
+int
+mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm, uint pid)
 {
   char *a, *last;
   pte_t *pte;
 
   a = (char*)PGROUNDDOWN((uint)va);
-  last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
+  last = (char*)PGROUNDDOWN(((uint)a) + size - 1);
+
   for(;;){
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
     if(*pte & PTE_P)
-      panic("remap");
-    *pte = pa | perm | PTE_P;
+      panic("mappages: remap");
+    // Don't prematurely mark pages as available in PTE.
+    *pte = pa | perm;
+
+    // If the page to be mapped has user permissions enabled
+    // It is a page which will be accessed by user processes
+    // hence, it should be swappable.
+    if(perm & PTE_U)
+      rammap_make_entry(pa, (uint)a, pid, 1);
+
     if(a == last)
       break;
     a += PGSIZE;
@@ -108,10 +119,10 @@ static struct kmap {
   uint phys_end;
   int perm;
 } kmap[] = {
- { (void*)KERNBASE, 0,             EXTMEM,    PTE_W}, // I/O space
- { (void*)KERNLINK, V2P(KERNLINK), V2P(data), 0},     // kern text+rodata
- { (void*)data,     V2P(data),     PHYSTOP,   PTE_W}, // kern data+memory
- { (void*)DEVSPACE, DEVSPACE,      0,         PTE_W}, // more devices
+ { (void*)KERNBASE, 0,             EXTMEM,    PTE_P|PTE_W}, // I/O space
+ { (void*)KERNLINK, V2P(KERNLINK), V2P(data), PTE_P},     // kern text+rodata
+ { (void*)data,     V2P(data),     PHYSTOP,   PTE_P|PTE_W}, // kern data+memory
+ { (void*)DEVSPACE, DEVSPACE,      0,         PTE_P|PTE_W}, // more devices
 };
 
 // Set up kernel part of a page table.
@@ -128,7 +139,7 @@ setupkvm(void)
     panic("PHYSTOP too high");
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
-                (uint)k->phys_start, k->perm) < 0) {
+                (uint)k->phys_start, k->perm, PID_KERNEL) < 0) {
       freevm(pgdir);
       return 0;
     }
@@ -179,8 +190,9 @@ switchuvm(struct proc *p)
 
 // Load the initcode into address 0 of pgdir.
 // sz must be less than a page.
+/*excuse initcode from demand paging*/
 void
-inituvm(pde_t *pgdir, char *init, uint sz)
+inituvm(pde_t *pgdir, char *init, uint sz, uint pid)
 {
   char *mem;
 
@@ -188,70 +200,91 @@ inituvm(pde_t *pgdir, char *init, uint sz)
     panic("inituvm: more than a page");
   mem = kalloc();
   memset(mem, 0, PGSIZE);
-  mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_W|PTE_U);
+  mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_P|PTE_W|PTE_U, pid);
   memmove(mem, init, sz);
 }
 
-// Load a program segment into pgdir.  addr must be page-aligned
-// and the pages from addr to addr+sz must already be mapped.
-int
-loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
+// Allocate a new page to store the info
+// about loadable segments in the ELF file.
+static struct elfprof*
+allocprof(void)
 {
-  uint i, pa, n;
-  pte_t *pte;
-
-  if((uint) addr % PGSIZE != 0)
-    panic("loaduvm: addr must be page aligned");
-  for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walkpgdir(pgdir, addr+i, 0)) == 0)
-      panic("loaduvm: address should exist");
-    pa = PTE_ADDR(*pte);
-    if(sz - i < PGSIZE)
-      n = sz - i;
-    else
-      n = PGSIZE;
-    if(readi(ip, P2V(pa), offset+i, n) != n)
-      return -1;
-  }
-  return 0;
+  char *ep;
+  if((ep = kalloc()) == 0)
+    return 0;
+  memset(ep, 0, PGSIZE);
+  return (struct elfprof *)ep;
 }
 
-// Allocate page tables and physical memory to grow process from oldsz to
-// newsz, which need not be page aligned.  Returns new size or 0 on error.
-int
-allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
+// Record all the info about loadable segments needed
+// by the loader to dynamically load content from disk
+// upon a page fault. (to be called by exec)
+struct elfprof*
+recorduvm(struct elfprof *ep, uint vaddr, uint off, uint filesz, uint memsz)
 {
-  char *mem;
-  uint a;
+  if(!ep)
+    if((ep = allocprof()) == 0)
+      return 0;
 
-  if(newsz >= KERNBASE)
-    return 0;
-  if(newsz < oldsz)
-    return oldsz;
-
-  a = PGROUNDUP(oldsz);
-  for(; a < newsz; a += PGSIZE){
-    mem = kalloc();
-    if(mem == 0){
-      cprintf("allocuvm out of memory\n");
-      deallocuvm(pgdir, newsz, oldsz);
+  if(ep->numseg == MAXSEG){
+    struct elfprof *nep;
+    if((nep = allocprof()) == 0){
+      freeprof(ep);
       return 0;
     }
-    memset(mem, 0, PGSIZE);
-    if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-      cprintf("allocuvm out of memory (2)\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      kfree(mem);
-      return 0;
-    }
+    nep->next = ep;
+    ep = nep;
   }
-  return newsz;
+
+  if(!ep->numseg)
+    ep->start_vaddr = vaddr;
+  ep->end_vaddr = vaddr + memsz;
+
+  ep->ls[ep->numseg].vaddr = vaddr;
+  ep->ls[ep->numseg].off = off;
+  ep->ls[ep->numseg].filesz = filesz;
+  ep->ls[ep->numseg].memsz = memsz;
+  ep->numseg++;
+  return ep;
+}
+
+// Recursively copies the ELF profile of one process
+// To be called during fork.
+struct elfprof*
+copyprof(struct elfprof *ep)
+{
+  if(!ep)
+    return 0;
+  struct elfprof *nep;
+  if((nep = allocprof()) == 0)
+    return 0;
+  nep->numseg = ep->numseg;
+  nep->start_vaddr = ep->start_vaddr;
+  nep->end_vaddr = ep->end_vaddr;
+  nep->next = copyprof(ep->next);
+  if(ep->next && !nep->next){
+    kfree((char *)nep);
+    return 0;
+  }
+  memmove((char *)nep->ls, (char *)ep->ls, MAXSEG * sizeof(struct loadseg));
+  return nep;
+}
+
+// Recursively frees the pages allocated for ELF profile
+void
+freeprof(struct elfprof *ep)
+{
+  if(ep == 0)
+    return;
+  freeprof(ep->next);
+  kfree((char *)ep);
 }
 
 // Deallocate user pages to bring the process size from oldsz to
 // newsz.  oldsz and newsz need not be page-aligned, nor does newsz
 // need to be less than oldsz.  oldsz can be larger than the actual
 // process size.  Returns the new process size.
+/* Updated deallocuvm() to skip over PTEs with absent PTE_P*/
 int
 deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
@@ -264,16 +297,39 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   a = PGROUNDUP(newsz);
   for(; a  < oldsz; a += PGSIZE){
     pte = walkpgdir(pgdir, (char*)a, 0);
-    if(!pte)
+
+    // If page table is not allocated for this PDE
+    /* Since we are implementing pure demand paging
+      where even the page tables may not be allocated
+      beforehand, so walkpgdir() can't find the PTE
+      for such cases and return 0.*/
+    // Just skip to the next PDE
+    if(!pte){
       a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
-    else if((*pte & PTE_P) != 0){
+      continue;
+    }
+
+    // If page is not allocated for this PTE
+    // Nothing to do, just continue
+    else if(!*pte)
+      continue;
+
+    // If page is swapped out and currently exists
+    // in the swapspace.
+    // Just decrement the swapslot refcount.
+    else if(!(*pte & PTE_P))
+      swap_decrease_refcount(GET_SWAPSLOT((uint)*pte));
+
+    // If page is allocated for this PTE and present
+    // in the RAM
+    else{
       pa = PTE_ADDR(*pte);
       if(pa == 0)
         panic("kfree");
       char *v = P2V(pa);
       kfree(v);
-      *pte = 0;
     }
+    *pte = 0;
   }
   return newsz;
 }
@@ -308,35 +364,75 @@ clearpteu(pde_t *pgdir, char *uva)
   if(pte == 0)
     panic("clearpteu");
   *pte &= ~PTE_U;
+  rammap_make_entry((uint)*pte, 0, PID_KERNEL, 0);
 }
 
 // Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
-copyuvm(pde_t *pgdir, uint sz)
+copyuvm(pde_t *pgdir, uint sz, uint child_pid)
 {
   pde_t *d;
-  pte_t *pte;
+  pte_t *pte, *new_pte;
   uint pa, i, flags;
   char *mem;
 
   if((d = setupkvm()) == 0)
     return 0;
   for(i = 0; i < sz; i += PGSIZE){
+    /* Here walkpgdir() would fail if PTE couldn't be
+      found for given address.*/
+    // If no page table allocated for current PDE.
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
-      panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
-    pa = PTE_ADDR(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto bad;
-    memmove(mem, (char*)P2V(pa), PGSIZE);
-    if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
-      kfree(mem);
-      goto bad;
+      i = PGADDR(PDX(i) + 1, 0, 0) - PGSIZE;
+
+    // If page is not allocated for this PTE
+    // Nothing to copy, continue
+    else if(!*pte)
+      continue;
+
+    // If the parent's page is currently swapped out.
+    else if(!(*pte & PTE_P)) {
+      // Get the slot number in swapspace from the PTE.
+      uint slot = GET_SWAPSLOT((uint)*pte);
+
+      if(!swap_increase_refcount(slot))
+        goto bad;
+
+      // Copy the swapslot index to the corresponding PTE
+      // of the child
+      /* Failure of walkpgdir() here usually means out of
+        memory, so abort copyuvm() and call freevm()*/
+      if((new_pte = walkpgdir(d, (char *)i, 1)) == 0) {
+        // revert the refcount increment done before
+        swap_decrease_refcount(slot);
+        goto bad;
+      }
+
+      // child PTE points to the same swapslot
+      *new_pte = *pte;
+    }
+
+    // If a physical page is allocated for the parent,
+    // allocate a physical page for the child and copy
+    // its contents. (no C.O.W in xv6)
+    else {
+      pa = PTE_ADDR(*pte);
+      flags = PTE_FLAGS(*pte);
+      rammap_make_entry(pa, i, myproc()->pid, 0);
+      if((mem = kalloc()) == 0) {
+        rammap_make_entry(pa, i, myproc()->pid, 1);
+        goto bad;
+      }
+      memmove(mem, (char*)P2V((char *)pa), PGSIZE);
+      rammap_make_entry(pa, i, myproc()->pid, 1);
+      if(mappages(d, (void*)i, PGSIZE, V2P((uint)mem), flags, child_pid) < 0) {
+        kfree((char *)mem);
+        goto bad;
+      }
     }
   }
+
   return d;
 
 bad:
@@ -391,4 +487,3 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 // Blank page.
 //PAGEBREAK!
 // Blank page.
-

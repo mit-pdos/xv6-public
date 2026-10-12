@@ -9,6 +9,10 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct elfprof;
+struct loadseg;
+struct rammap;
+struct swapmap;
 
 // bio.c
 void            binit(void);
@@ -55,7 +59,7 @@ int             writei(struct inode*, char*, uint, uint);
 
 // ide.c
 void            ideinit(void);
-void            ideintr(void);
+void            ideintr(int);
 void            iderw(struct buf*);
 
 // ioapic.c
@@ -68,6 +72,7 @@ char*           kalloc(void);
 void            kfree(char*);
 void            kinit1(void*, void*);
 void            kinit2(void*, void*);
+void            rammap_make_entry(uint, uint, uint, uint);
 
 // kbd.c
 void            kbdintr(void);
@@ -91,6 +96,9 @@ void            end_op();
 extern int      ismp;
 void            mpinit(void);
 
+// pgflt.c
+void            page_fault_handler(void);
+
 // picirq.c
 void            picenable(int);
 void            picinit(void);
@@ -105,6 +113,7 @@ int             pipewrite(struct pipe*, char*, int);
 // proc.c
 int             cpuid(void);
 void            exit(void);
+struct proc*    fetch_proc(uint);
 int             fork(void);
 int             growproc(int);
 int             kill(int);
@@ -148,6 +157,13 @@ int             strlen(const char*);
 int             strncmp(const char*, const char*, uint);
 char*           strncpy(char*, const char*, int);
 
+// swap.c
+void            swapinit(void);
+uint            swap_increase_refcount(uint);
+void            swap_decrease_refcount(uint);
+void            read_from_swap(uint, char*);
+uint            write_to_swap(char*);
+
 // syscall.c
 int             argint(int, int*);
 int             argptr(int, char**, int);
@@ -172,15 +188,18 @@ void            uartputc(int);
 
 // vm.c
 void            seginit(void);
+pte_t*          walkpgdir(pde_t*, const void*, int);
+int             mappages(pde_t*, void*, uint, uint, int, uint);
 void            kvmalloc(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
-int             allocuvm(pde_t*, uint, uint);
+struct elfprof* recorduvm(struct elfprof*, uint, uint, uint, uint);
+struct elfprof* copyprof(struct elfprof*);
+void            freeprof(struct elfprof*);
 int             deallocuvm(pde_t*, uint, uint);
 void            freevm(pde_t*);
-void            inituvm(pde_t*, char*, uint);
-int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
-pde_t*          copyuvm(pde_t*, uint);
+void            inituvm(pde_t*, char*, uint, uint);
+pde_t*          copyuvm(pde_t*, uint, uint);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);

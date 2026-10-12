@@ -10,7 +10,7 @@
 int
 exec(char *path, char **argv)
 {
-  char *s, *last;
+  char *s, *last, *ustackpg;
   int i, off;
   uint argc, sz, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
@@ -18,6 +18,7 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
+  struct elfprof *ep = 0;
 
   begin_op();
 
@@ -31,41 +32,49 @@ exec(char *path, char **argv)
 
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
-    goto bad;
+    goto release_ilock;
   if(elf.magic != ELF_MAGIC)
-    goto bad;
+    goto release_ilock;
 
   if((pgdir = setupkvm()) == 0)
-    goto bad;
+    goto release_ilock;
 
-  // Load program into memory.
+  // Record relevant data for loadable segments.
   sz = 0;
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
-      goto bad;
+      goto release_ilock;
     if(ph.type != ELF_PROG_LOAD)
       continue;
     if(ph.memsz < ph.filesz)
-      goto bad;
+      goto release_ilock;
     if(ph.vaddr + ph.memsz < ph.vaddr)
-      goto bad;
-    if((sz = allocuvm(pgdir, sz, ph.vaddr + ph.memsz)) == 0)
-      goto bad;
+      goto release_ilock;
     if(ph.vaddr % PGSIZE != 0)
-      goto bad;
-    if(loaduvm(pgdir, (char*)ph.vaddr, ip, ph.off, ph.filesz) < 0)
-      goto bad;
+      goto release_ilock;
+    if((ep = recorduvm(ep, ph.vaddr, ph.off, ph.filesz, ph.memsz)) == 0)
+      goto release_ilock;
   }
-  iunlockput(ip);
+  iunlock(ip);
   end_op();
-  ip = 0;
 
-  // Allocate two pages at the next page boundary.
-  // Make the first inaccessible.  Use the second as the user stack.
+  // Update the program's virtual size.
+  sz = ep->end_vaddr;
   sz = PGROUNDUP(sz);
-  if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+
+  // Allocate stack page at VA: sz + PGSIZE.
+  /* VA from sz to sz + PGSIZE was meant to be mapped to
+    a guard page.
+    Because of demand paging, that range of VA is left unmapped
+    and is handled by the page fault handler if the process ever
+    faults there.*/
+  // Stack page is excused from demand paging here (can be
+  // subject to later if evicted) because of arguments.
+  sz += PGSIZE;
+  if((ustackpg = kalloc()) == 0)
     goto bad;
-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
+  mappages(pgdir, (char *)sz, PGSIZE, V2P(ustackpg), PTE_P|PTE_W|PTE_U, curproc->pid);
+  sz += PGSIZE;
   sp = sz;
 
   // Push argument strings, prepare rest of stack in ustack.
@@ -99,15 +108,24 @@ exec(char *path, char **argv)
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
+  // inode to elf file of process
+  if(curproc->elf)
+    iput(curproc->elf);
+  curproc->elf = ip;
+  // Info page about loadable segments
+  freeprof(curproc->ep);
+  curproc->ep = ep;
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;
 
+ release_ilock:
+  iunlock(ip);
  bad:
   if(pgdir)
     freevm(pgdir);
   if(ip){
-    iunlockput(ip);
+    iput(ip);
     end_op();
   }
   return -1;

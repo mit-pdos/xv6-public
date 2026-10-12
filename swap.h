@@ -1,0 +1,4 @@
+#define SWAPSIZE 469762048
+#define SWAP_PAGES SWAPSIZE / PGSIZE
+#define MAX_REFCOUNT 255
+#define GET_SWAPSLOT(pte) (PTE_ADDR(pte) >> 12)
